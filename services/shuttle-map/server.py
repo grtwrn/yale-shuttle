@@ -477,11 +477,13 @@ _YALE_LANDMARKS: list[dict] = [
     {"name": "Yale Health",                "lat": 41.3097, "lon": -72.9196, "aliases": ["yale health", "yuhs"]},
     {"name": "Ingalls Rink",               "lat": 41.3115, "lon": -72.9185, "aliases": ["whale", "ingalls"]},
 
-    # Groceries served by shuttle routes — coords match the actual shuttle
-    # stops, which Nominatim/Photon miss (e.g. Trader Joe's is in Orange CT,
-    # outside New Haven city, so upstream geocoders return unrelated hits).
-    {"name": "Trader Joe's (Orange CT)",   "lat": 41.2514, "lon": -73.0181,
-     "aliases": ["trader joes", "trader joe's", "tj", "trader joe"]},
+    # Groceries near campus. Upstream geocoders return unrelated hits
+    # ("Trader Joes" in Oklahoma, etc.) so these are curated explicitly.
+    # Hamden is the one people mean — the closer TJ to Yale.
+    {"name": "Trader Joe's (Hamden)",      "lat": 41.3736, "lon": -72.9187,
+     "aliases": ["trader joes", "trader joe's", "tj", "trader joe", "hamden tj"]},
+    {"name": "Trader Joe's (Orange)",      "lat": 41.2716, "lon": -73.0268,
+     "aliases": ["trader joes orange", "orange tj"]},
     {"name": "Stop & Shop (Whalley)",      "lat": 41.3150, "lon": -72.9382,
      "aliases": ["stop and shop", "stop n shop", "stop shop"]},
     {"name": "Aldi / Walmart (Hamden)",    "lat": 41.3751, "lon": -72.9171,
