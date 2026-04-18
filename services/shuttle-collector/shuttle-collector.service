@@ -1,0 +1,20 @@
+[Unit]
+Description=Yale Shuttle Collector — polls bus positions and builds arrival predictions
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/gwarren/NanoClaw
+ExecStart=/usr/bin/npx tsx services/shuttle-collector/index.ts
+Restart=on-failure
+RestartSec=30
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shuttle-collector
+
+[Install]
+WantedBy=default.target

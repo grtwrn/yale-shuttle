@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yale Shuttle</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F5F3EF;
+    color: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header {
+    width: 100%; max-width: 960px;
+    padding: 24px 32px 0;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .header h1 {
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 5px; text-transform: uppercase;
+  }
+  .header .time { font-size: 13px; color: #8a8a9a; }
+  #map-container {
+    width: 100%; max-width: 960px;
+    padding: 8px 16px;
+  }
+  #map-container svg {
+    width: 100%; height: auto;
+    font-family: 'Inter', sans-serif !important;
+  }
+
+  /* Override d3-tube-map default styles for a cleaner look */
+  .line { stroke-width: 8 !important; }
+  .interchange circle { r: 7; }
+
+  /* Bus overlay */
+  .bus-marker-group { pointer-events: none; }
+  .bus-circle {
+    stroke: #fff; stroke-width: 2.5;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  .bus-text {
+    font-size: 9px; font-weight: 700; fill: #fff;
+    text-anchor: middle; dominant-baseline: central;
+  }
+  .bus-pulse {
+    animation: bpulse 2s ease-in-out infinite;
+  }
+  @keyframes bpulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0; }
+  }
+  .next-stop-ring {
+    fill: none; stroke-width: 3;
+    animation: nsblink 1.2s ease-in-out infinite;
+  }
+  @keyframes nsblink {
+    0%, 100% { opacity: 0; r: 7; }
+    50% { opacity: 0.9; r: 18; }
+  }
+  .bus-heading-arrow {
+    fill: none; stroke-width: 2.5;
+    stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0.9;
+  }
+
+  /* Legend + bus list */
+  .legend {
+    width: 100%; max-width: 960px;
+    padding: 8px 32px 16px;
+    display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; font-weight: 500; color: #546e7a;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 20px; height: 5px; border-radius: 3px; }
+  .legend-home {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #2E7D32; border: 2px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .bus-list {
+    width: 100%; max-width: 960px;
+    padding: 0 32px 24px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .bus-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border-radius: 16px;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    font-size: 12px;
+  }
+  .bus-chip-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .bus-chip b { font-weight: 700; }
+  .bus-chip .dir { color: #8a8a9a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Yale Shuttle</h1>
+  <span class="time" id="clock"></span>
+</div>
+<div id="map-container"></div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#1565C0"></div> Blue</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#C62828"></div> Red</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#E65100"></div> Orange</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#00838F"></div> Blue West</div>
+  <div class="legend-item"><div class="legend-home"></div> Home</div>
+</div>
+<div class="bus-list" id="bus-list"></div>
+<div id="debug" style="padding:16px 32px;color:#C62828;font-size:13px;max-width:960px;word-break:break-all;"></div>
+
+<script src="/static/d3.v6.min.js"></script>
+<script src="/static/d3-tube-map.min.js"></script>
+<script>
+window.onerror = function(msg, src, line) {
+  document.getElementById('debug').textContent = 'JS Error: ' + msg + ' (line ' + line + ')';
+};
+
+// Quick sanity check
+(function() {
+  const dbg = document.getElementById('debug');
+  if (typeof d3 === 'undefined') { dbg.textContent = 'ERROR: d3 not loaded'; return; }
+  if (typeof d3.tubeMap !== 'function') { dbg.textContent = 'ERROR: d3.tubeMap not found. d3 keys: ' + Object.keys(d3).slice(0,20).join(', '); return; }
+  dbg.textContent = '';
+})();
+
+// ── Map data ──────────────────────────────────────────────────────────────
+
+const mapData = {
+  stations: {
+    // Red north
+    Winchester:    { label: "Winchester" },
+    Division:      { label: "Division" },
+    WinchSachem:   { label: "Winch / Sachem" },
+    // Blue north
+    Huntington:    { label: "Huntington" },
+    WhitneyHunt:   { label: "Whitney / Hunt" },
+    Canner:        { label: "Canner" },
+    Cottage:       { label: "Cottage" },
+    Peabody:       { label: "Peabody" },
+    // Orange
+    OrangeCanner:  { label: "Orange / Canner" },
+    Foster:        { label: "Foster" },
+    Audubon:       { label: "Audubon" },
+    // Prospect
+    ProspectCanner:{ label: "Prospect / Canner" },
+    ProspectSachem:{ label: "Prospect / Sachem" },
+    Prospect130:   { label: "130 Prospect St" },
+    Becton:        { label: "Becton" },
+    // Central
+    CollegeWall:   { label: "College / Wall" },
+    Grove:         { label: "Grove / Temple" },
+    PhelpsGate:    { label: "Phelps Gate" },
+    // Blue West
+    PauliMurray:   { label: "Pauli Murray" },
+    Howard:        { label: "Howard" },
+    // South
+    Crown:         { label: "Crown" },
+    George:        { label: "George" },
+    LEPH:          { label: "LEPH" },
+    York129:       { label: "129 York" },
+    York180:       { label: "180 York" },
+    ElmYork:       { label: "Elm / York" },
+    Cedar333:      { label: "333 Cedar" },
+    Amistad:       { label: "Amistad" },
+    UnionStation:  { label: "Union Station" },
+    StateSt:       { label: "State St" },
+    Chapel:        { label: "Chapel" },
+  },
+  lines: [
+    // ── RED NB: Winch/Sachem → up → Winchester → right → Division ──
+    {
+      name: "Red NB",
+      color: "#C62828",
+      shiftCoords: [-1, 0],
+      nodes: [
+        { coords: [-6, -8], name: "WinchSachem", labelPos: "W" },
+        { coords: [-6, -13], name: "Winchester", labelPos: "W" },
+        { coords: [5, -13], name: "Division", labelPos: "N" },
+      ],
+    },
+    // ── RED SB: Division → down Prospect → south trunk ──
+    {
+      name: "Red SB",
+      color: "#C62828",
+      shiftCoords: [1, 0],
+      nodes: [
+        { coords: [5, -13], name: "Division" },
+        { coords: [5, -3], name: "CollegeWall", labelPos: "W" },
+        { coords: [5, 0], name: "PhelpsGate", labelPos: "W" },
+        { coords: [5, 2], name: "Crown", labelPos: "W" },
+        { coords: [5, 4], name: "George", labelPos: "W" },
+        { coords: [5, 7], name: "LEPH", labelPos: "W" },
+        { coords: [8, 10], name: "Cedar333", labelPos: "E" },
+        { coords: [8, 12], name: "Amistad", labelPos: "E" },
+        { coords: [5, 15], name: "UnionStation", labelPos: "E" },
+      ],
+    },
+    {
+      name: "Red Chapel",
+      color: "#C62828",
+      nodes: [
+        { coords: [8, 12], name: "Amistad" },
+        { coords: [11, 12], name: "Chapel", labelPos: "E" },
+      ],
+    },
+    {
+      name: "Red StateSt",
+      color: "#C62828",
+      nodes: [
+        { coords: [5, 15], name: "UnionStation" },
+        { coords: [8, 15], name: "StateSt", labelPos: "E" },
+      ],
+    },
+
+    // ── BLUE outbound: Division → right → Whitney → down → Grove ──
+    {
+      name: "Blue Out",
+      color: "#1565C0",
+      shiftCoords: [0, 1],
+      nodes: [
+        { coords: [5, -13], name: "Division" },
+        { coords: [8, -13], name: "Huntington", labelPos: "N" },
+        { coords: [13, -13], name: "WhitneyHunt", labelPos: "NE" },
+        { coords: [13, -8], name: "Canner", labelPos: "E" },
+        { coords: [13, -5], name: "Cottage", labelPos: "E" },
+        { coords: [13, -3], name: "Peabody", labelPos: "E" },
+        { coords: [9, -3], name: "Grove", labelPos: "E" },
+      ],
+    },
+    // ── BLUE return: Wall → down → LEPH → diag → York ──
+    {
+      name: "Blue Ret",
+      color: "#1565C0",
+      shiftCoords: [-1, 0],
+      nodes: [
+        { coords: [5, -3], name: "CollegeWall" },
+        { coords: [5, 7], name: "LEPH" },
+        { coords: [2, 10], name: "York129", labelPos: "W" },
+        { coords: [2, 12], name: "York180", labelPos: "W" },
+        { coords: [2, 14], name: "ElmYork", labelPos: "W" },
+      ],
+    },
+
+    // ── ORANGE outbound: Canner → right → Foster → down → Audubon → Grove ──
+    {
+      name: "Orange Out",
+      color: "#E65100",
+      shiftCoords: [1, 0],
+      nodes: [
+        { coords: [13, -8], name: "Canner" },
+        { coords: [16, -8], name: "OrangeCanner", labelPos: "E" },
+        { coords: [16, -5], name: "Foster", labelPos: "E" },
+        { coords: [13, -5], name: "Audubon", labelPos: "SE" },
+        { coords: [9, -3], name: "Grove" },
+      ],
+    },
+    // ── ORANGE return: Wall → down → LEPH → diag → York ──
+    {
+      name: "Orange Ret",
+      color: "#E65100",
+      shiftCoords: [1, 0],
+      nodes: [
+        { coords: [5, -3], name: "CollegeWall" },
+        { coords: [5, 7], name: "LEPH" },
+        { coords: [2, 10], name: "York129" },
+        { coords: [2, 14], name: "ElmYork" },
+      ],
+    },
+
+    // ── BLUE WEST ──
+    {
+      name: "Blue West",
+      color: "#00838F",
+      nodes: [
+        { coords: [-4, -8] },
+        { coords: [-4, 0], name: "PauliMurray", labelPos: "W" },
+        { coords: [-4, 10], name: "Howard", labelPos: "W" },
+        { coords: [2, 10], name: "York129" },
+      ],
+    },
+    {
+      name: "Blue West Phelps",
+      color: "#00838F",
+      nodes: [
+        { coords: [-4, 0], name: "PauliMurray" },
+        { coords: [5, 0], name: "PhelpsGate" },
+      ],
+    },
+    {
+      name: "Blue West Cedar",
+      color: "#00838F",
+      nodes: [
+        { coords: [2, 10], name: "York129" },
+        { coords: [8, 10], name: "Cedar333" },
+      ],
+    },
+
+    // ── Prospect spine ──
+    {
+      name: "Prospect",
+      color: "#455a64",
+      nodes: [
+        { coords: [5, -8], name: "ProspectCanner", labelPos: "E" },
+        { coords: [5, -6], name: "ProspectSachem", labelPos: "E" },
+        { coords: [5, -4], name: "Prospect130", labelPos: "E" },
+        { coords: [5, -3], name: "Becton", labelPos: "E" },
+      ],
+    },
+    // Wall ← → Grove
+    {
+      name: "WallGrove",
+      color: "#455a64",
+      nodes: [
+        { coords: [5, -3], name: "CollegeWall" },
+        { coords: [9, -3], name: "Grove" },
+      ],
+    },
+  ],
+};
+
+// ── Render map ────────────────────────────────────────────────────────────
+
+const container = d3.select('#map-container');
+const width = 920;
+const height = 900;
+
+try {
+  const map = d3.tubeMap()
+    .width(width)
+    .height(height)
+    .margin({ top: 40, right: 100, bottom: 60, left: 100 });
+
+  container.datum(mapData).call(map);
+} catch(e) {
+  document.getElementById('debug').textContent = 'Render error: ' + e.message + ' | ' + e.stack?.split('\n')[1];
+}
+
+// Style the home station
+const svg = container.select('svg');
+svg.selectAll('.station text, .interchange text').each(function() {
+  if (d3.select(this).text() === 'Prospect / Canner') {
+    d3.select(this).style('fill', '#2E7D32').style('font-weight', '700');
+    const circle = d3.select(this.parentNode).select('circle');
+    if (!circle.empty()) {
+      circle.style('fill', '#2E7D32').style('stroke', '#fff').style('stroke-width', 3);
+    }
+  }
+});
+
+// ── Stop ID → station key mapping ─────────────────────────────────────────
+
+const STOP_MAP = {
+  11: "Winchester", 48: "Division", 49: "Division", 147: "WinchSachem",
+  105: "Huntington", 69: "Huntington", 139: "WhitneyHunt",
+  129: "Canner", 29: "Canner", 133: "Cottage", 132: "Cottage",
+  97: "Peabody", 82: "OrangeCanner", 57: "Foster", 88: "Foster",
+  19: "Audubon", 100: "ProspectCanner", 106: "ProspectSachem",
+  107: "ProspectSachem", 3: "Prospect130", 4: "Prospect130",
+  20: "Becton", 41: "CollegeWall", 42: "CollegeWall",
+  63: "Grove", 64: "Grove", 118: "Grove", 98: "PhelpsGate",
+  164: "PauliMurray", 153: "Howard", 154: "Howard",
+  38: "Crown", 39: "George", 9: "George", 72: "LEPH",
+  2: "York129", 5: "York180", 52: "ElmYork", 53: "ElmYork",
+  10: "Cedar333", 43: "Cedar333", 13: "Amistad", 14: "Amistad",
+  121: "UnionStation", 115: "StateSt", 30: "Chapel", 31: "Chapel",
+  27: "WinchSachem", 162: "PauliMurray",
+};
+
+const ROUTE_COLORS = {
+  1:'#1565C0',3:'#C62828',4:'#1565C0',13:'#1565C0',14:'#E65100',
+  16:'#00838F',17:'#E65100',2:'#E65100'
+};
+const ROUTE_NAMES = {
+  1:'Blue',3:'Red',4:'Blue',13:'Blue',14:'Orange',
+  16:'Blue West',17:'Orange',2:'Orange'
+};
+
+// ── Find station SVG position by its text label ──────────────────────────
+
+function getStationPos(stationKey) {
+  const label = mapData.stations[stationKey]?.label;
+  if (!label) return null;
+  let pos = null;
+  svg.selectAll('.station text, .interchange text').each(function() {
+    if (d3.select(this).text() === label && !pos) {
+      const parent = d3.select(this.parentNode);
+      const circle = parent.select('circle');
+      if (!circle.empty()) {
+        // Get transform of parent group
+        const transform = parent.attr('transform') || '';
+        const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        if (match) {
+          pos = [parseFloat(match[1]), parseFloat(match[2])];
+        } else {
+          pos = [parseFloat(circle.attr('cx') || 0), parseFloat(circle.attr('cy') || 0)];
+        }
+      }
+    }
+  });
+  return pos;
+}
+
+// Cache positions after first render
+let stationPositions = {};
+function cachePositions() {
+  for (const key of Object.keys(mapData.stations)) {
+    stationPositions[key] = getStationPos(key);
+  }
+}
+setTimeout(cachePositions, 100);
+
+// ── Route stop sequences (from API) ──
+let routeStops = {};
+let stopNames = {};
+
+function getNextStop(routeId, lastStopId) {
+  const stops = routeStops[String(routeId)];
+  if (!stops) return null;
+  const idx = stops.indexOf(lastStopId);
+  if (idx === -1) return null;
+  return stops[(idx + 1) % stops.length];
+}
+
+// ── Clock ──
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 10000);
+
+// ── Bus rendering ──
+const busList = document.getElementById('bus-list');
+
+function renderBuses(buses) {
+  // Remove old overlays
+  svg.selectAll('.bus-marker-group, .next-stop-ring').remove();
+  busList.innerHTML = '';
+
+  for (const bus of buses) {
+    const stnKey = STOP_MAP[bus.last_stop_id];
+    if (!stnKey) continue;
+    const pos = stationPositions[stnKey];
+    if (!pos) continue;
+
+    const color = ROUTE_COLORS[bus.route_id] || '#666';
+    const name = bus.bus_name.replace('#', '');
+    const route = ROUTE_NAMES[bus.route_id] || '?';
+    const heading = bus.heading || 0;
+    const svgAngle = heading - 90;
+
+    const [sx, sy] = [pos[0] + 20, pos[1] - 16];
+
+    // Next stop
+    const nextStopId = getNextStop(bus.route_id, bus.last_stop_id);
+    const nextStopKey = nextStopId ? STOP_MAP[nextStopId] : null;
+    const nextPos = nextStopKey ? stationPositions[nextStopKey] : null;
+    const nextName = nextStopId ? (stopNames[nextStopId] || '') : '';
+
+    // Pulse ring at next stop
+    if (nextPos) {
+      svg.append('circle')
+        .attr('class', 'next-stop-ring')
+        .attr('cx', nextPos[0]).attr('cy', nextPos[1])
+        .attr('r', 7).attr('stroke', color);
+    }
+
+    // Bus marker group
+    const g = svg.append('g').attr('class', 'bus-marker-group');
+
+    // Pulse
+    g.append('circle')
+      .attr('cx', sx).attr('cy', sy).attr('r', 18)
+      .attr('fill', color).attr('class', 'bus-pulse');
+
+    // Heading arrow
+    g.append('g')
+      .attr('transform', `translate(${sx},${sy}) rotate(${svgAngle})`)
+      .append('path')
+      .attr('d', 'M15,-5 L24,0 L15,5')
+      .attr('stroke', color)
+      .attr('class', 'bus-heading-arrow');
+
+    // Dot
+    g.append('circle')
+      .attr('cx', sx).attr('cy', sy).attr('r', 13)
+      .attr('fill', color).attr('class', 'bus-circle');
+
+    // Label
+    g.append('text')
+      .attr('x', sx).attr('y', sy)
+      .attr('class', 'bus-text')
+      .text(name);
+
+    // Chip
+    const nextText = nextName ? ` → ${nextName.split('/')[0].split('(')[0].trim()}` : '';
+    busList.innerHTML += `<div class="bus-chip">
+      <div class="bus-chip-dot" style="background:${color}"></div>
+      <b>#${name}</b> <span class="dir">${route}${nextText}</span>
+    </div>`;
+  }
+}
+
+// ── Poll ──
+async function fetchBuses() {
+  try {
+    const res = await fetch('/api/buses');
+    const data = await res.json();
+    if (data.routes) routeStops = data.routes;
+    if (data.stop_names) stopNames = data.stop_names;
+    renderBuses(data.buses || []);
+  } catch (e) { console.warn('fetch failed:', e); }
+}
+setTimeout(fetchBuses, 200);
+setInterval(fetchBuses, 3000);
+</script>
+</body>
+</html>
