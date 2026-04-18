@@ -491,6 +491,48 @@ _YALE_LANDMARKS: list[dict] = [
     {"name": "Shop Rite (Hamden)",         "lat": 41.3688, "lon": -72.9205,
      "aliases": ["shoprite", "shop rite"]},
 
+    # Cafes / coffee shops near campus. External geocoders often mis-rank
+    # these (apostrophes, word splits) — curate the well-known ones so they
+    # land in the picker regardless of how the user types them.
+    {"name": "Poppy's Coffee and Kitchen", "lat": 41.3170, "lon": -72.9213,
+     "aliases": ["poppys", "poppy's", "poppy", "poppys coffee", "poppys kitchen"]},
+    {"name": "Atticus Bookstore Cafe",     "lat": 41.3082, "lon": -72.9298,
+     "aliases": ["atticus", "atticus cafe", "atticus bookstore"]},
+    {"name": "Book Trader Cafe",           "lat": 41.3079, "lon": -72.9313,
+     "aliases": ["book trader", "booktrader"]},
+    {"name": "Willoughby's Coffee (York)", "lat": 41.3096, "lon": -72.9302,
+     "aliases": ["willoughbys", "willoughby", "willoughbys york"]},
+    {"name": "Willoughby's Coffee (Church)","lat": 41.3088, "lon": -72.9260,
+     "aliases": ["willoughbys church"]},
+    {"name": "Blue State Coffee (York)",   "lat": 41.3104, "lon": -72.9302,
+     "aliases": ["blue state", "blue state coffee", "bluestate"]},
+    {"name": "Blue State Coffee (Wall)",   "lat": 41.3116, "lon": -72.9275,
+     "aliases": ["blue state wall"]},
+    {"name": "Koffee?",                    "lat": 41.3127, "lon": -72.9260,
+     "aliases": ["koffee", "koffee audubon"]},
+    {"name": "Claire's Corner Copia",      "lat": 41.3090, "lon": -72.9280,
+     "aliases": ["claires", "claire's", "corner copia", "claires corner copia"]},
+    {"name": "Common Grounds",             "lat": 41.3074, "lon": -72.9340,
+     "aliases": ["common grounds", "commongrounds"]},
+    {"name": "ERO Cafe",                   "lat": 41.3118, "lon": -72.9213,
+     "aliases": ["ero", "ero cafe"]},
+    {"name": "Cafe Romeo",                 "lat": 41.3185, "lon": -72.9217,
+     "aliases": ["romeo", "cafe romeo"]},
+    {"name": "Donut Crazy",                "lat": 41.3080, "lon": -72.9262,
+     "aliases": ["donut crazy", "donutcrazy"]},
+    {"name": "G Cafe Bakery",              "lat": 41.3140, "lon": -72.9258,
+     "aliases": ["g cafe", "gcafe", "g cafe bakery"]},
+    {"name": "Poindexter",                 "lat": 41.3066, "lon": -72.9247,
+     "aliases": ["poindexter", "poindexter cafe"]},
+    {"name": "Pistachio Cafe",             "lat": 41.3083, "lon": -72.9286,
+     "aliases": ["pistachio", "pistachio cafe"]},
+    {"name": "Motw Coffee and Pastries",   "lat": 41.3088, "lon": -72.9288,
+     "aliases": ["motw", "motw coffee"]},
+    {"name": "The Coffee Pedaler",         "lat": 41.3075, "lon": -72.9234,
+     "aliases": ["coffee pedaler", "pedaler"]},
+    {"name": "Crossroads Cafe",            "lat": 41.3083, "lon": -72.9238,
+     "aliases": ["crossroads", "crossroads cafe"]},
+
     # Landmarks
     {"name": "New Haven Green",            "lat": 41.3082, "lon": -72.9272, "aliases": ["green", "nh green"]},
     {"name": "New Haven Union Station",    "lat": 41.2973, "lon": -72.9263, "aliases": ["union station", "train station"]},
@@ -601,10 +643,20 @@ def geocode(q: str) -> list:
 
     # Curated Yale landmarks first — resolves typos ("rozenkranz") and
     # common abbreviations ("som", "sml") that the external geocoders miss.
-    # Nominatim second (best for real addresses), Photon last (typo-tolerant
-    # fallback for OSM points of interest).
+    # Always merge Nominatim + Photon, rather than short-circuiting on the
+    # first non-empty result. Otherwise a weak far-away Nominatim hit (e.g.
+    # "poppys" → some town in Texas) hides the typo-tolerant Photon match.
+    # After merging we drop anything > 40mi from New Haven and rank the rest
+    # by distance, so local matches surface first.
     landmarks = _match_landmarks(q)
-    external = _nominatim(q) or _photon(q)
+    NH_LAT, NH_LON = 41.31, -72.92
+    MAX_METERS = 64_000  # ~40 mi
+    def _dist(r):
+        dlat = (r["lat"] - NH_LAT) * 111_000
+        dlon = (r["lon"] - NH_LON) * 84_000
+        return (dlat * dlat + dlon * dlon) ** 0.5
+    merged = _nominatim(q) + _photon(q)
+    external = sorted([r for r in merged if _dist(r) <= MAX_METERS], key=_dist)
     # Collapse near-duplicates. OSM often has separate nodes for each
     # direction of travel at a bus stop (e.g. "Prospect/Canner" NB + SB) ~10m
     # apart — keep only the first hit within ~40m of an already-accepted
