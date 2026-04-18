@@ -771,69 +771,91 @@ const TripPlanner: FC<{
                     .filter((c): c is LatLon => !!c);
                   // Pick the specific bus the option was planned against, so
                   // its current GPS position pins to the route segment.
+                  // Normalize "#123" / "123" — the API mixes both forms.
+                  const normBus = (s: string) => s.replace(/^#/, "");
                   const busMatch = buses.find((b) =>
-                    b.bus_name === o.busName &&
+                    normBus(b.bus_name) === normBus(o.busName) &&
                     cfg.busRouteIds.includes(b.route_id)
                   );
+                  // How many stops until the bus reaches the boarding stop,
+                  // going forward around the loop.
+                  let stopsAway: number | null = null;
+                  if (busMatch) {
+                    const busIdx = allStops.indexOf(busMatch.last_stop_id);
+                    if (busIdx >= 0) {
+                      stopsAway = (bi - busIdx + allStops.length) % allStops.length;
+                    }
+                  }
                   return (
                     <div style={{
                       marginTop: 10, padding: "8px 10px",
                       background: "#fafaf8", borderRadius: 8,
                       border: "1px solid #ececec",
                     }} onClick={(e) => e.stopPropagation()}>
-                      {fromLL && toLL && segCoords.length >= 2 && (
-                        <TripMap
-                          from={fromLL} to={toLL}
-                          shuttleStops={segCoords}
-                          bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: busMatch.bus_name } : null}
-                          color={o.color}
-                        />
-                      )}
-                      <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                        Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
-                      </div>
-                      <div style={{ position: "relative", paddingLeft: 16 }}>
-                        {/* Vertical line connecting the stops */}
-                        <span style={{
-                          position: "absolute", left: 6, top: 6, bottom: 6,
-                          width: 2, background: o.color, opacity: 0.6,
-                        }} />
-                        {segStops.map((sid, j) => {
-                          const isBoard = j === 0;
-                          const isAlight = j === segStops.length - 1;
-                          const isEnd = isBoard || isAlight;
-                          const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                          return (
-                            <div key={j} style={{
-                              position: "relative", display: "flex", alignItems: "center",
-                              padding: isEnd ? "4px 6px" : "2px 0",
-                              marginLeft: isEnd ? -6 : 0,
-                              borderRadius: 4,
-                              background: isEnd ? `${o.color}1f` : "transparent",
-                            }}>
-                              <span style={{
-                                position: "absolute", left: isEnd ? -8 : -14, top: "50%",
-                                transform: "translateY(-50%)",
-                                width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
-                                borderRadius: "50%",
-                                background: isEnd ? o.color : "#fff",
-                                border: `2px solid ${o.color}`,
-                                boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
-                                boxSizing: "border-box",
-                              }} />
-                              <span style={{
-                                fontSize: 11,
-                                fontWeight: isEnd ? 700 : 400,
-                                color: isEnd ? "#263238" : "#546e7a",
-                                marginLeft: 8,
-                              }}>
-                                {isBoard && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
-                                {isAlight && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
-                                {name}
-                              </span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
+                        <div style={{ flex: "1 1 260px", minWidth: 220 }}>
+                          {fromLL && toLL && segCoords.length >= 2 && (
+                            <TripMap
+                              from={fromLL} to={toLL}
+                              shuttleStops={segCoords}
+                              bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null}
+                              color={o.color}
+                            />
+                          )}
+                        </div>
+                        <div style={{ flex: "1 1 220px", minWidth: 200 }}>
+                          <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
+                          </div>
+                          {stopsAway !== null && (
+                            <div style={{ fontSize: 11, color: o.color, fontWeight: 600, marginBottom: 6 }}>
+                              🚌 Bus #{normBus(busMatch!.bus_name)} {stopsAway === 0 ? "is at boarding stop" : `is ${stopsAway} stop${stopsAway === 1 ? "" : "s"} away`}
                             </div>
-                          );
-                        })}
+                          )}
+                          <div style={{ position: "relative", paddingLeft: 16 }}>
+                            {/* Vertical line connecting the stops */}
+                            <span style={{
+                              position: "absolute", left: 6, top: 6, bottom: 6,
+                              width: 2, background: o.color, opacity: 0.6,
+                            }} />
+                            {segStops.map((sid, j) => {
+                              const isBoard = j === 0;
+                              const isAlight = j === segStops.length - 1;
+                              const isEnd = isBoard || isAlight;
+                              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                              return (
+                                <div key={j} style={{
+                                  position: "relative", display: "flex", alignItems: "center",
+                                  padding: isEnd ? "4px 6px" : "2px 0",
+                                  marginLeft: isEnd ? -6 : 0,
+                                  borderRadius: 4,
+                                  background: isEnd ? `${o.color}1f` : "transparent",
+                                }}>
+                                  <span style={{
+                                    position: "absolute", left: isEnd ? -8 : -14, top: "50%",
+                                    transform: "translateY(-50%)",
+                                    width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
+                                    borderRadius: "50%",
+                                    background: isEnd ? o.color : "#fff",
+                                    border: `2px solid ${o.color}`,
+                                    boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
+                                    boxSizing: "border-box",
+                                  }} />
+                                  <span style={{
+                                    fontSize: 11,
+                                    fontWeight: isEnd ? 700 : 400,
+                                    color: isEnd ? "#263238" : "#546e7a",
+                                    marginLeft: 8,
+                                  }}>
+                                    {isBoard && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
+                                    {isAlight && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
+                                    {name}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
