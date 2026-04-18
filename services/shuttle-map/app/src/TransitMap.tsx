@@ -504,7 +504,11 @@ const TripPlanner: FC<{
         <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>From</div>
         <div style={{ display: "flex", gap: 6 }}>
           <input value={fromText} onChange={(e) => { setFromText(e.target.value); setFromLL(null); }}
-                 onKeyDown={(e) => { if (e.key === "Enter") geocode(fromText, "from"); }}
+                 onKeyDown={(e) => {
+                   if (e.key !== "Enter") return;
+                   if (fromSugg.length > 0) pickFrom(fromSugg[0]);
+                   else geocode(fromText, "from");
+                 }}
                  placeholder="Address or place" style={inputStyle} />
           <button onClick={useCurrent} style={btnStyle} title="Use current location">📍</button>
           <button onClick={() => geocode(fromText, "from")} disabled={searching === "from"} style={btnStyle}>
@@ -529,7 +533,11 @@ const TripPlanner: FC<{
         <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>To</div>
         <div style={{ display: "flex", gap: 6 }}>
           <input value={toText} onChange={(e) => { setToText(e.target.value); setToLL(null); }}
-                 onKeyDown={(e) => { if (e.key === "Enter") geocode(toText, "to"); }}
+                 onKeyDown={(e) => {
+                   if (e.key !== "Enter") return;
+                   if (toSugg.length > 0) pickTo(toSugg[0]);
+                   else geocode(toText, "to");
+                 }}
                  placeholder="Address or place" style={inputStyle} />
           <button onClick={() => geocode(toText, "to")} disabled={searching === "to"} style={btnStyle}>
             {searching === "to" ? "…" : "Search"}
