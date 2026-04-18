@@ -403,7 +403,11 @@ const TripPlanner: FC<{
     // intersections. Normalize "X and Y" / "X & Y" → "X Y" before querying.
     const normalized = q.replace(/\s+(?:and|&)\s+/gi, " ").replace(/\s+/g, " ").trim();
     try {
-      const r = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}`);
+      // Cache-bust: earlier deploys sent max-age=86400, so browsers may
+      // still hold a stale response for short queries. A unique query
+      // param forces a fresh fetch while the server-side cache still
+      // protects upstream geocoders.
+      const r = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}&_=${Date.now()}`, { cache: "no-store" });
       const d = await r.json();
       const results: GeocodeResult[] = d.results ?? [];
       if (results.length === 0) {
