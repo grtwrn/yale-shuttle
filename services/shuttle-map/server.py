@@ -757,9 +757,14 @@ def api_accuracy():
 
 @app.get("/api/geocode")
 def api_geocode(q: str = Query("")):
+    # Don't let the browser cache geocode responses: on-type autocomplete
+    # repeats the same short queries frequently and stale results (from
+    # before a landmark was added / a coord was fixed) confuse users. The
+    # in-process server cache (_GEOCODE_CACHE, 24h) still protects us from
+    # re-hitting Nominatim/Photon.
     return JSONResponse(
         {"results": geocode(q)},
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": "no-store"},
     )
 
 
