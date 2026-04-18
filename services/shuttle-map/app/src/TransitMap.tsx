@@ -395,8 +395,9 @@ const TripPlanner: FC<{
     setToSugg([]);
   };
 
-  const geocode = async (q: string, which: "from" | "to") => {
+  const geocode = async (q: string, which: "from" | "to", opts: { autoPick?: boolean } = {}) => {
     if (!q.trim()) return;
+    const autoPick = opts.autoPick !== false;
     setSearching(which); setError(null);
     // Nominatim matches poorly on conjunction words like "and" or "&" in
     // intersections. Normalize "X and Y" / "X & Y" → "X Y" before querying.
@@ -407,28 +408,43 @@ const TripPlanner: FC<{
       const results: GeocodeResult[] = d.results ?? [];
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
-        setError("No matches found");
+        if (autoPick) setError("No matches found");
         return;
       }
-      // Auto-pick when confidence is high: a Yale landmark match, a single
-      // result, or when the top result's score is clearly above any other.
+      // Auto-pick when confidence is high (explicit search only): a Yale
+      // landmark, a single result, or an exact address/stop hit. On-type
+      // autocomplete always shows the dropdown so typos don't lock in.
       const top = results[0];
       const highConfidence =
         results.length === 1 ||
         top.class === "yale" ||
         top.type === "bus_stop" ||
         top.type === "house";
-      if (highConfidence) {
+      if (autoPick && highConfidence) {
         if (which === "from") pickFrom(top); else pickTo(top);
       } else {
         if (which === "from") setFromSugg(results); else setToSugg(results);
       }
     } catch {
-      setError("Geocode request failed");
+      if (autoPick) setError("Geocode request failed");
     } finally {
       setSearching(null);
     }
   };
+
+  // Debounced autocomplete: fetch suggestions 300ms after the user stops
+  // typing. Skips when the field has already been locked to a pick (*LL set)
+  // or is showing the "Current location" label.
+  useEffect(() => {
+    if (fromLL || !fromText.trim() || fromText === "Current location") return;
+    const t = setTimeout(() => { geocode(fromText, "from", { autoPick: false }); }, 300);
+    return () => clearTimeout(t);
+  }, [fromText, fromLL]);
+  useEffect(() => {
+    if (toLL || !toText.trim()) return;
+    const t = setTimeout(() => { geocode(toText, "to", { autoPick: false }); }, 300);
+    return () => clearTimeout(t);
+  }, [toText, toLL]);
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const useCurrent = () => {
@@ -2173,7 +2189,11 @@ const TransitMap: FC = () => {
   const [tick, setTick] = useState(0);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
-  const [listView, setListView] = useState<"all" | "favorites" | "accuracy" | "trip">("favorites");
+  const [listView, setListView] = useState<"all" | "favorites" | "accuracy" | "trip">(() => {
+    const saved = localStorage.getItem("listView");
+    return saved === "all" || saved === "accuracy" || saved === "trip" ? saved : "favorites";
+  });
+  useEffect(() => { localStorage.setItem("listView", listView); }, [listView]);
   const [activeOnly, setActiveOnly] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [userLatLon, setUserLatLon] = useState<{ lat: number; lon: number } | null>(null);
