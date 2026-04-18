@@ -495,40 +495,55 @@ const TripPlanner: FC<{
       )}
       {options && options.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          {options.map((o, i) => (
-            <div key={i} style={{
-              padding: "10px 12px", background: "#fff", borderRadius: 10, marginBottom: 8,
-              border: "1px solid #e0ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: o.color }}>
-                  {o.mode === "walk" ? "🚶 Walk" : o.routeLabel}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#263238" }}>
-                  {fmtMin(o.totalSec)}
-                </span>
-                <span style={{ fontSize: 10, color: "#9e9e9e", marginLeft: "auto" }}>
-                  arrive {fmtClock(o.totalSec)}
-                </span>
-              </div>
-              {o.mode === "walk" ? (
-                <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                  Straight shot — {fmtMin(o.totalSec)} on foot, no waiting.
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                  🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                  <br />
-                  ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
-                  <br />
-                  🚌 {fmtMin(o.rideSec)} to <b>{(stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                  <br />
-                  🚶 {fmtMin(o.walkFromSec)} to destination
-                </div>
-              )}
+          {options.length === 1 && options[0].mode === "walk" && (
+            <div style={{ fontSize: 11, color: "#78909c", padding: "0 4px 8px" }}>
+              Walking beats every shuttle here — no bus nearby saves time.
             </div>
-          ))}
+          )}
+          {options.map((o, i) => {
+            const isBest = i === 0;
+            return (
+              <div key={i} style={{
+                padding: "10px 12px", background: "#fff", borderRadius: 10, marginBottom: 8,
+                border: isBest ? "1.5px solid #2E7D32" : "1px solid #e0ddd8",
+                boxShadow: isBest ? "0 1px 4px rgba(46,125,50,0.15)" : "0 1px 2px rgba(0,0,0,0.04)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color }} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: o.color }}>
+                    {o.mode === "walk" ? "🚶 Walk" : o.routeLabel}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#263238" }}>
+                    {fmtMin(o.totalSec)}
+                  </span>
+                  {isBest && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, color: "#2E7D32",
+                      background: "#E8F5E9", padding: "2px 6px", borderRadius: 4,
+                    }}>FASTEST</span>
+                  )}
+                  <span style={{ fontSize: 10, color: "#9e9e9e", marginLeft: "auto" }}>
+                    arrive {fmtClock(o.totalSec)}
+                  </span>
+                </div>
+                {o.mode === "walk" ? (
+                  <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
+                    Straight shot — {fmtMin(o.totalSec)} on foot, no waiting.
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
+                    🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
+                    <br />
+                    ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
+                    <br />
+                    🚌 {fmtMin(o.rideSec)} to <b>{(stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
+                    <br />
+                    🚶 {fmtMin(o.walkFromSec)} to destination
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
