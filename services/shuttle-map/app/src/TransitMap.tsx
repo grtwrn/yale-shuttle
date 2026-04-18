@@ -551,16 +551,29 @@ const TripPlanner: FC<{
 
   // Debounced autocomplete: fetch suggestions 300ms after the user stops
   // typing. Skips when the field has already been locked to a pick (*LL set)
-  // or is showing the "Current location" label.
+  // or is showing the "Current location" label. Timer refs let Enter clear
+  // a pending debounce so it can't preempt an autoPick fetch moments later.
+  const fromTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (fromLL || !fromText.trim() || fromText === "Current location") return;
-    const t = setTimeout(() => { geocode(fromText, "from", { autoPick: false }); }, 300);
-    return () => clearTimeout(t);
+    fromTimerRef.current = setTimeout(() => {
+      fromTimerRef.current = null;
+      geocode(fromText, "from", { autoPick: false });
+    }, 300);
+    return () => {
+      if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
+    };
   }, [fromText, fromLL]);
   useEffect(() => {
     if (toLL || !toText.trim()) return;
-    const t = setTimeout(() => { geocode(toText, "to", { autoPick: false }); }, 300);
-    return () => clearTimeout(t);
+    toTimerRef.current = setTimeout(() => {
+      toTimerRef.current = null;
+      geocode(toText, "to", { autoPick: false });
+    }, 300);
+    return () => {
+      if (toTimerRef.current) { clearTimeout(toTimerRef.current); toTimerRef.current = null; }
+    };
   }, [toText, toLL]);
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
@@ -634,6 +647,7 @@ const TripPlanner: FC<{
           <input value={fromText} onChange={(e) => { setFromText(e.target.value); setFromLL(null); }}
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
+                   if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
                    if (fromSugg.length > 0) pickFrom(fromSugg[0]);
                    else geocode(fromText, "from");
                  }}
@@ -670,6 +684,7 @@ const TripPlanner: FC<{
           <input value={toText} onChange={(e) => { setToText(e.target.value); setToLL(null); }}
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
+                   if (toTimerRef.current) { clearTimeout(toTimerRef.current); toTimerRef.current = null; }
                    if (toSugg.length > 0) pickTo(toSugg[0]);
                    else geocode(toText, "to");
                  }}
@@ -2391,7 +2406,7 @@ const TransitMap: FC = () => {
   const [showMap, setShowMap] = useState(false);
   const [listView, setListView] = useState<"all" | "favorites" | "accuracy" | "trip">(() => {
     const saved = localStorage.getItem("listView");
-    return saved === "all" || saved === "accuracy" || saved === "trip" ? saved : "favorites";
+    return saved === "all" || saved === "favorites" || saved === "accuracy" || saved === "trip" ? saved : "trip";
   });
   useEffect(() => { localStorage.setItem("listView", listView); }, [listView]);
   const [activeOnly, setActiveOnly] = useState(false);
@@ -2683,7 +2698,7 @@ const TransitMap: FC = () => {
           overflowX: "auto", WebkitOverflowScrolling: "touch",
           justifyContent: "center", flexWrap: "wrap",
         }}>
-          {(["favorites", "trip", "all", "accuracy"] as const).map((v) => (
+          {(["trip", "favorites", "all", "accuracy"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setListView(v)}
