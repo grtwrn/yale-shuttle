@@ -350,7 +350,9 @@ function planTrip(
   const dedup = [...bestPerRoute.values()]
     .sort((a, b) => a.totalSec - b.totalSec)
     .slice(0, 3);
-  // Always prepend a direct-walk option so users see it as a baseline.
+  // Include the direct-walk option and sort the whole list by totalSec
+  // so the FASTEST badge actually lands on the fastest one — previously
+  // walk was hard-prepended and always got the badge.
   const walkOption: TripOption = {
     mode: "walk",
     routeLabel: "Walk",
@@ -360,7 +362,7 @@ function planTrip(
     totalSec: directWalkSec, busName: "",
     directWalkSec,
   };
-  return [walkOption, ...dedup];
+  return [walkOption, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
 }
 
 const TripPlanner: FC<{
