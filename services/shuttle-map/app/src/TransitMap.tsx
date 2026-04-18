@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, type FC } from "react";
+import React, { useState, useEffect, useMemo, useRef, type FC } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   stations, routes, stopToStation, routeColorMap, routeNameMap,
   type Station, type Route, type BusData,
@@ -365,6 +367,77 @@ function planTrip(
   return [walkOption, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
 }
 
+// Leaflet + OSM tile map for a single trip option. Shows start (green),
+// end (red), the shuttle boarding/alighting stops and route polyline,
+// and dashed lines for the walking segments. Mounts/unmounts with the
+// expanded card, so we only hold one map instance at a time.
+const TripMap: FC<{
+  from: LatLon;
+  to: LatLon;
+  shuttleStops?: LatLon[];
+  color: string;
+}> = ({ from, to, shuttleStops, color }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+
+    const points: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon]];
+
+    L.circleMarker([from.lat, from.lon], {
+      radius: 8, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
+    }).addTo(map).bindTooltip("Start", { direction: "top" });
+    L.circleMarker([to.lat, to.lon], {
+      radius: 8, color: "#fff", fillColor: "#C62828", fillOpacity: 1, weight: 2,
+    }).addTo(map).bindTooltip("End", { direction: "top" });
+
+    if (shuttleStops && shuttleStops.length >= 2) {
+      const board = shuttleStops[0];
+      const alight = shuttleStops[shuttleStops.length - 1];
+      for (const s of shuttleStops.slice(1, -1)) {
+        L.circleMarker([s.lat, s.lon], {
+          radius: 3, color, fillColor: color, fillOpacity: 0.85, weight: 0,
+        }).addTo(map);
+        points.push([s.lat, s.lon]);
+      }
+      L.polyline(shuttleStops.map((s) => [s.lat, s.lon] as [number, number]), {
+        color, weight: 5, opacity: 0.75,
+      }).addTo(map);
+      L.circleMarker([board.lat, board.lon], {
+        radius: 6, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2,
+      }).addTo(map).bindTooltip("Board", { direction: "top" });
+      L.circleMarker([alight.lat, alight.lon], {
+        radius: 6, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2,
+      }).addTo(map).bindTooltip("Get off", { direction: "top" });
+      L.polyline([[from.lat, from.lon], [board.lat, board.lon]], {
+        color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
+      }).addTo(map);
+      L.polyline([[alight.lat, alight.lon], [to.lat, to.lon]], {
+        color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
+      }).addTo(map);
+      points.push([board.lat, board.lon], [alight.lat, alight.lon]);
+    } else {
+      L.polyline([[from.lat, from.lon], [to.lat, to.lon]], {
+        color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
+      }).addTo(map);
+    }
+
+    map.fitBounds(L.latLngBounds(points), { padding: [24, 24], maxZoom: 16 });
+    // Tile sizes are computed from the container's measured size. When the
+    // card expands the div hits layout one frame later, so nudge Leaflet.
+    setTimeout(() => map.invalidateSize(), 60);
+
+    return () => { map.remove(); };
+  }, []);
+
+  return <div ref={ref} style={{ height: 240, borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10 }} />;
+};
+
+
 const TripPlanner: FC<{
   buses: BusData[];
   stopNames: Record<number, string>;
@@ -578,7 +651,7 @@ const TripPlanner: FC<{
           {options.map((o, i) => {
             const isBest = i === 0;
             const isExpanded = expandedIdx === i;
-            const clickable = o.mode === "shuttle";
+            const clickable = true;
             return (
               <div key={i} style={{
                 padding: "10px 12px", background: "#fff", borderRadius: 10, marginBottom: 8,
@@ -621,6 +694,11 @@ const TripPlanner: FC<{
                     🚶 {fmtMin(o.walkFromSec)} to destination
                   </div>
                 )}
+                {isExpanded && o.mode === "walk" && fromLL && toLL && (
+                  <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                    <TripMap from={fromLL} to={toLL} color={o.color} />
+                  </div>
+                )}
                 {isExpanded && o.mode === "shuttle" && (() => {
                   // Find the route config, then slice its stop sequence
                   // from board → alight so users see the exact path the
@@ -640,12 +718,18 @@ const TripPlanner: FC<{
                   const segStops = bi <= ai
                     ? allStops.slice(bi, ai + 1)
                     : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
+                  const segCoords = segStops
+                    .map((sid) => stopCoords[sid])
+                    .filter((c): c is LatLon => !!c);
                   return (
                     <div style={{
                       marginTop: 10, padding: "8px 10px",
                       background: "#fafaf8", borderRadius: 8,
                       border: "1px solid #ececec",
                     }} onClick={(e) => e.stopPropagation()}>
+                      {fromLL && toLL && segCoords.length >= 2 && (
+                        <TripMap from={fromLL} to={toLL} shuttleStops={segCoords} color={o.color} />
+                      )}
                       <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
                       </div>
