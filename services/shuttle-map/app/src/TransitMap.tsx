@@ -417,10 +417,10 @@ const TripMap: FC<{
       }).addTo(map);
       L.circleMarker([board.lat, board.lon], {
         radius: 7, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2.5,
-      }).addTo(map).bindTooltip("Board", { direction: "top", permanent: true, className: "trip-label trip-label-board" });
+      }).addTo(map).bindTooltip("Board", { direction: "top" });
       L.circleMarker([alight.lat, alight.lon], {
         radius: 7, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2.5,
-      }).addTo(map).bindTooltip("Get off", { direction: "top", permanent: true, className: "trip-label trip-label-alight" });
+      }).addTo(map).bindTooltip("Get off", { direction: "top" });
       L.polyline([[from.lat, from.lon], [board.lat, board.lon]], {
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
       }).addTo(map);
