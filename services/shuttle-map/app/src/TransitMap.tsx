@@ -471,9 +471,13 @@ const TripPlanner: FC<{
   locateError?: string | null;
   savedTrips: SavedTrip[];
   onSaveTrip: (trip: SavedTrip) => void;
+  onDeleteSaved: (id: string) => void;
+  recentTrips: SavedTrip[];
+  onRecordRecent: (trips: SavedTrip[]) => void;
+  onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -630,10 +634,45 @@ const TripPlanner: FC<{
     onConsumePending();
   }, [pendingTrip]);
 
+  const sameCoords = (a: { fromLat: number; fromLon: number; toLat: number; toLon: number },
+                      b: { fromLat: number; fromLon: number; toLat: number; toLon: number }) =>
+    Math.abs(a.fromLat - b.fromLat) < 1e-4 && Math.abs(a.fromLon - b.fromLon) < 1e-4
+      && Math.abs(a.toLat - b.toLat) < 1e-4 && Math.abs(a.toLon - b.toLon) < 1e-4;
+
   const alreadySaved = fromLL && toLL && savedTrips.some(
-    (t) => Math.abs(t.fromLat - fromLL.lat) < 1e-4 && Math.abs(t.fromLon - fromLL.lon) < 1e-4
-        && Math.abs(t.toLat - toLL.lat) < 1e-4 && Math.abs(t.toLon - toLL.lon) < 1e-4
+    (t) => sameCoords(t, { fromLat: fromLL.lat, fromLon: fromLL.lon, toLat: toLL.lat, toLon: toLL.lon })
   );
+
+  // Record each newly-planned from+to pair as a recent trip. De-dup by
+  // coord, promote most-recent to the front, cap at 10. Skip pairs already
+  // in saved so the two lists don't duplicate.
+  useEffect(() => {
+    if (!fromLL || !toLL || !fromText || !toText) return;
+    const key = { fromLat: fromLL.lat, fromLon: fromLL.lon, toLat: toLL.lat, toLon: toLL.lon };
+    if (savedTrips.some((t) => sameCoords(t, key))) return;
+    const filtered = recentTrips.filter((t) => !sameCoords(t, key));
+    const entry: SavedTrip = {
+      id: `r${Date.now().toString(36)}`,
+      name: `${fromText} → ${toText}`,
+      fromText, fromLat: fromLL.lat, fromLon: fromLL.lon,
+      toText, toLat: toLL.lat, toLon: toLL.lon,
+    };
+    const next = [entry, ...filtered].slice(0, 10);
+    // Only persist if there's an actual change — avoids a write loop.
+    if (next.length !== recentTrips.length || next[0].id !== recentTrips[0]?.id) {
+      onRecordRecent(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
+
+  const applyTrip = (t: SavedTrip) => {
+    setFromText(t.fromText);
+    setFromLL({ lat: t.fromLat, lon: t.fromLon });
+    setFromSugg([]);
+    setToText(t.toText);
+    setToLL({ lat: t.toLat, lon: t.toLon });
+    setToSugg([]);
+  };
   const handleSaveTrip = () => {
     if (!fromLL || !toLL) return;
     const name = fromText && toText ? `${fromText} → ${toText}` : "Saved trip";
@@ -678,8 +717,46 @@ const TripPlanner: FC<{
     cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
   };
 
+  const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => (
+    <div key={t.id} style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "5px 8px", borderRadius: 4, background: "#fff",
+      border: "1px solid #e0ddd8", cursor: "pointer",
+    }} onClick={() => applyTrip(t)}>
+      {starred && <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>}
+      <span style={{
+        flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        <span style={{ color: "#2E7D32", fontWeight: 600 }}>{t.fromText}</span>
+        <span style={{ color: "#9e9e9e", margin: "0 4px" }}>→</span>
+        <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
+      </span>
+      <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{
+        border: "none", background: "transparent", color: "#9e9e9e",
+        fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
+      }} title="Remove">✕</button>
+    </div>
+  );
+
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      {savedTrips.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
+          </div>
+        </div>
+      )}
+      {recentTrips.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
+          </div>
+        </div>
+      )}
       {/* From field */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>From</div>
@@ -2544,6 +2621,16 @@ const TransitMap: FC = () => {
     setSavedTrips(t);
     localStorage.setItem("shuttle-saved-trips", JSON.stringify(t));
   };
+  const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(() => {
+    try {
+      const saved = localStorage.getItem("shuttle-recent-trips");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const saveRecentTrips = (t: SavedTrip[]) => {
+    setRecentTrips(t);
+    localStorage.setItem("shuttle-recent-trips", JSON.stringify(t));
+  };
   // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
   // on mount / prop change and applies the from+to fields.
   const [pendingTrip, setPendingTrip] = useState<SavedTrip | null>(null);
@@ -2803,7 +2890,12 @@ const TransitMap: FC = () => {
           routeStops={routeStops} segmentTimes={segmentTimes}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
-          savedTrips={savedTrips} onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
+          savedTrips={savedTrips}
+          onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
+          onDeleteSaved={(id) => saveSavedTrips(savedTrips.filter((x) => x.id !== id))}
+          recentTrips={recentTrips}
+          onRecordRecent={saveRecentTrips}
+          onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
         />
       ) : listView === "favorites" && showGroupSettings ? (
