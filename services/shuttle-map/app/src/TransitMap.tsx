@@ -741,22 +741,6 @@ const TripPlanner: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {savedTrips.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
-          </div>
-        </div>
-      )}
-      {recentTrips.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
-          </div>
-        </div>
-      )}
       {/* From field */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>From</div>
@@ -822,6 +806,23 @@ const TripPlanner: FC<{
         )}
         {toLL && <div style={{ fontSize: 10, color: "#2E7D32", marginTop: 3 }}>✓ Set</div>}
       </div>
+
+      {savedTrips.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
+          </div>
+        </div>
+      )}
+      {recentTrips.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
+          </div>
+        </div>
+      )}
 
       {error && <div style={{ fontSize: 11, color: "#C62828", marginBottom: 8 }}>{error}</div>}
 
