@@ -78,6 +78,16 @@ function initDb(): Database.Database {
   const db = new Database(DB_PATH);
   db.pragma('journal_mode = WAL');
   db.pragma('busy_timeout = 5000');
+  // Enable incremental auto-vacuum so the retention sweep can reclaim
+  // space with `PRAGMA incremental_vacuum`. Must be set before any table
+  // is created on a brand-new DB; for existing DBs this is a no-op if
+  // already set, or triggers a one-shot VACUUM to migrate.
+  const mode = db.pragma('auto_vacuum', { simple: true });
+  if (mode === 0 || mode === '0') {
+    db.pragma('auto_vacuum = INCREMENTAL');
+    // Only the initial VACUUM converts the file to incremental mode.
+    db.exec('VACUUM');
+  }
 
   db.exec(`
     -- Raw bus position snapshots
@@ -1201,6 +1211,39 @@ export function getActiveBuses(
 let pollCount = 0;
 let lastStaticRefresh = 0;
 let lastProfileUpdate = 0;
+let lastRetentionSweep = 0;
+
+// Trim raw tables so the SQLite volume doesn't grow without bound. The
+// calibrated/averages tables are untouched — they're the learning
+// artifacts and we want those kept forever. Retention matches each
+// table's downstream consumer window (e.g. segment_times matches the
+// 30-day lookback in updateCalibratedSegments).
+function runRetention(db: Database.Database): void {
+  const t0 = Date.now();
+  const deletions: Array<[string, string]> = [
+    // table, WHERE clause
+    ["bus_positions", "collected_at < datetime('now', '-6 hours')"],
+    ["predictions",   "predicted_at < datetime('now', '-14 days')"],
+    ["gps_arrivals",  "arrived_at   < datetime('now', '-30 days')"],
+    ["gps_dwells",    "entered_at   < datetime('now', '-30 days')"],
+    ["segment_times", "recorded_at  < datetime('now', '-30 days')"],
+    // stop_arrivals is legacy (nothing reads it) — drop it entirely.
+    ["stop_arrivals", "1=1"],
+  ];
+  const counts: Record<string, number> = {};
+  const tx = db.transaction(() => {
+    for (const [table, where] of deletions) {
+      const res = db.prepare(`DELETE FROM ${table} WHERE ${where}`).run();
+      if (res.changes) counts[table] = res.changes;
+    }
+  });
+  tx();
+  // Compact the freed pages periodically so the volume reclaims space.
+  db.exec("PRAGMA incremental_vacuum(1000)");
+  const ms = Date.now() - t0;
+  const summary = Object.entries(counts).map(([t, n]) => `${t}:${n}`).join(" ") || "nothing to trim";
+  console.log(`[${new Date().toISOString()}] Retention sweep in ${ms} ms — ${summary}`);
+}
 
 async function poll(db: Database.Database): Promise<void> {
   pollCount++;
@@ -1241,6 +1284,12 @@ async function poll(db: Database.Database): Promise<void> {
     updateCalibratedDwellsByBus(db);
     loadSegmentCache(db);
     lastProfileUpdate = now;
+  }
+
+  // Hourly retention sweep — trim raw tables to keep the volume bounded.
+  if (now - lastRetentionSweep > 60 * 60 * 1000) {
+    runRetention(db);
+    lastRetentionSweep = now;
   }
 
   if (pollCount % 60 === 0) {
