@@ -2236,19 +2236,17 @@ function fmtSec(s: number): string {
 }
 
 const AccuracyPage: FC<{ data: AccuracyData | null; savedStops: Set<number> }> = ({ data, savedStops }) => {
-  const [scope, setScope] = useState<string>("all");
-
   if (!data) {
     return (
-      <div style={{ width: "100%", maxWidth: 900, padding: "40px 24px", color: "#78909c", fontSize: 13 }}>
-        Loading accuracy data...
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px", color: "#78909c", fontSize: 13 }}>
+        Loading…
       </div>
     );
   }
   if (!data.overall || data.stops.length === 0) {
     return (
-      <div style={{ width: "100%", maxWidth: 900, padding: "40px 24px", color: "#78909c", fontSize: 13 }}>
-        No matched predictions yet. Check back once buses have been tracked through a few loops.
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 24px", color: "#78909c", fontSize: 13 }}>
+        Not enough data yet. Check back after the buses have run a few loops.
       </div>
     );
   }
@@ -2260,133 +2258,48 @@ const AccuracyPage: FC<{ data: AccuracyData | null; savedStops: Set<number> }> =
     return b.n - a.n;
   });
 
-  // Which (stop, route) is the bucket table scoped to? "all" = fleet-wide.
-  const selectedStop = scope === "all" ? null : rows.find((s) => `${s.stop_id}-${s.route_id}` === scope);
-  const buckets = selectedStop?.buckets ?? data.buckets;
-  const headline = selectedStop ?? data.overall;
-  const headlineN = selectedStop ? selectedStop.n : data.overall.n;
-  const headlineLabel = selectedStop ? `${selectedStop.stop_name} · ${selectedStop.route_name}` : "All stops";
-
   return (
-    <div style={{ width: "100%", maxWidth: 900, padding: "8px 16px", fontSize: 12 }}>
-      {/* Scope picker */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Scope</span>
-        <select
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
-          style={{
-            fontSize: 11, padding: "4px 8px", borderRadius: 4,
-            border: "1px solid #cfd8dc", background: "#fff",
-            fontFamily: "inherit", color: "#263238", flex: 1, minWidth: 0,
-          }}
-        >
-          <option value="all">All stops ({data.overall.n.toLocaleString()} samples)</option>
-          {rows.map((s) => (
-            <option key={`${s.stop_id}-${s.route_id}`} value={`${s.stop_id}-${s.route_id}`}>
-              {savedStops.has(s.stop_id) ? "★ " : ""}{s.stop_name} · {s.route_name} ({s.n})
-            </option>
-          ))}
-        </select>
-      </div>
-      <div style={{
-        display: "flex", gap: 16, flexWrap: "wrap",
-        padding: "12px 16px", background: "#eceae4",
-        borderRadius: 8, marginBottom: 12,
-      }}>
-        <div style={{ flex: "1 1 100%", fontSize: 11, color: "#546e7a", fontWeight: 600 }}>{headlineLabel}</div>
-        <div><span style={{ color: "#78909c", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Samples</span><div style={{ fontSize: 18, fontWeight: 600 }}>{headlineN}</div></div>
-        <div><span style={{ color: "#78909c", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>MAE</span><div style={{ fontSize: 18, fontWeight: 600 }}>{fmtSec(headline.mae_sec)}</div></div>
-        <div><span style={{ color: "#78909c", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Bias</span><div style={{ fontSize: 18, fontWeight: 600, color: headline.bias_sec > 0 ? "#C62828" : "#2E7D32" }}>{headline.bias_sec > 0 ? "+" : ""}{fmtSec(headline.bias_sec)}</div></div>
-        <div><span style={{ color: "#78909c", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>In range</span><div style={{ fontSize: 18, fontWeight: 600 }}>{headline.in_range_pct}%</div></div>
-      </div>
-      <div style={{ fontSize: 10, color: "#9e9e9e", marginBottom: 8, padding: "0 8px" }}>
-        TransitApp / IBI methodology: each prediction bucketed by how far out it was,
-        with asymmetric early/late tolerances per bucket.
-        Headline in-range % is an equally-weighted average across the four buckets
-        so close-in and far-out horizons count the same regardless of sample count.
-        Bias: positive = we predicted later than actual (bus arrived earlier — bad for riders).
-      </div>
-      {buckets && buckets.length > 0 && (
-        <div style={{ overflowX: "auto", marginBottom: 16 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-            <thead>
-              <tr style={{ background: "#eceae4", textAlign: "left" }}>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a" }}>Horizon</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a" }}>Tolerance (early / late)</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>N</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>MAE</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>Bias</th>
-                <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>In range</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buckets.map((b) => (
-                <tr key={b.bucket} style={{ borderBottom: "1px solid #e8e5e0" }}>
-                  <td style={{ padding: "5px 8px", fontWeight: 700 }}>{b.bucket}</td>
-                  <td style={{ padding: "5px 8px", color: "#78909c" }}>
-                    −{Math.round(b.early_tol_sec)}s / +{Math.round(b.late_tol_sec)}s
-                  </td>
-                  <td style={{ padding: "5px 8px", textAlign: "right", color: "#78909c" }}>{b.n}</td>
-                  <td style={{ padding: "5px 8px", textAlign: "right" }}>
-                    {b.mae_sec == null ? "—" : fmtSec(b.mae_sec)}
-                  </td>
-                  <td style={{ padding: "5px 8px", textAlign: "right", color: b.bias_sec == null ? "#9e9e9e" : (b.bias_sec > 0 ? "#C62828" : "#2E7D32") }}>
-                    {b.bias_sec == null ? "—" : `${b.bias_sec > 0 ? "+" : ""}${fmtSec(b.bias_sec)}`}
-                  </td>
-                  <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700 }}>
-                    {b.in_range_pct == null ? "—" : `${b.in_range_pct}%`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      <div style={{ textAlign: "center", padding: "16px 8px 20px" }}>
+        <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+          ETAs on time
         </div>
-      )}
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-          <thead>
-            <tr style={{ background: "#eceae4", textAlign: "left" }}>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a" }}>Stop</th>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a" }}>Route</th>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>N</th>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>MAE</th>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>Bias</th>
-              <th style={{ padding: "6px 8px", fontWeight: 600, color: "#546e7a", textAlign: "right" }}>In range</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => {
-              const isFav = savedStops.has(r.stop_id);
-              return (
-                <tr key={`${r.stop_id}-${r.route_id}`} style={{
-                  borderBottom: "1px solid #e8e5e0",
-                  background: isFav ? "#2E7D320D" : (i % 2 === 0 ? "transparent" : "#f5f3ef"),
-                }}>
-                  <td style={{ padding: "5px 8px", fontWeight: isFav ? 700 : 400, color: isFav ? "#2E7D32" : "#263238" }}>
-                    {isFav && "★ "}{r.stop_name}
-                  </td>
-                  <td style={{ padding: "5px 8px" }}>
-                    <span style={{
-                      display: "inline-block", padding: "1px 6px", borderRadius: 8,
-                      background: r.route_color ? `#${r.route_color}22` : "#eceae4",
-                      color: r.route_color ? `#${r.route_color}` : "#546e7a",
-                      fontSize: 9, fontWeight: 600,
-                    }}>
-                      {r.route_name}
-                    </span>
-                  </td>
-                  <td style={{ padding: "5px 8px", textAlign: "right", color: "#78909c" }}>{r.n}</td>
-                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{fmtSec(r.mae_sec)}</td>
-                  <td style={{ padding: "5px 8px", textAlign: "right", color: r.bias_sec > 0 ? "#2E7D32" : "#C62828" }}>
-                    {r.bias_sec > 0 ? "+" : ""}{fmtSec(r.bias_sec)}
-                  </td>
-                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{r.in_range_pct}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div style={{ fontSize: 48, fontWeight: 700, color: "#2E7D32", lineHeight: 1 }}>
+          {data.overall.in_range_pct}%
+        </div>
+        <div style={{ fontSize: 11, color: "#9e9e9e", marginTop: 6 }}>
+          avg {fmtSec(data.overall.mae_sec)} off · {data.overall.n.toLocaleString()} samples
+        </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, padding: "0 4px 6px" }}>
+        By stop
+      </div>
+      <div style={{ background: "#fff", borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden" }}>
+        {rows.map((r, i) => {
+          const isFav = savedStops.has(r.stop_id);
+          return (
+            <div key={`${r.stop_id}-${r.route_id}`} style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 12px",
+              borderBottom: i === rows.length - 1 ? "none" : "1px solid #f0ede8",
+              background: isFav ? "#2E7D3208" : "transparent",
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: r.route_color ? `#${r.route_color}` : "#9e9e9e",
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 12, color: "#263238", flex: 1, fontWeight: isFav ? 600 : 400 }}>
+                {isFav && "★ "}{r.stop_name}
+              </span>
+              <span style={{ fontSize: 11, color: "#9e9e9e" }}>±{fmtSec(r.mae_sec)}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#263238", minWidth: 40, textAlign: "right" }}>
+                {r.in_range_pct}%
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
