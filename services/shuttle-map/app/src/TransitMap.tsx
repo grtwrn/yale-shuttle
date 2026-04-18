@@ -430,12 +430,29 @@ const TripPlanner: FC<{
     }
   };
 
+  const [awaitingLocation, setAwaitingLocation] = useState(false);
   const useCurrent = () => {
-    if (!userLatLon) { onRequestLocate(); return; }
-    setFromLL(userLatLon);
-    setFromText("Current location");
-    setFromSugg([]);
+    if (userLatLon) {
+      setFromLL(userLatLon);
+      setFromText("Current location");
+      setFromSugg([]);
+      return;
+    }
+    // First click: geolocation isn't resolved yet. Request it and flag
+    // that we want to auto-apply the result as soon as it arrives.
+    setAwaitingLocation(true);
+    onRequestLocate();
   };
+  // Auto-apply the user's location once it lands if they had clicked
+  // the locate button. Avoids a second click.
+  useEffect(() => {
+    if (awaitingLocation && userLatLon) {
+      setFromLL(userLatLon);
+      setFromText("Current location");
+      setFromSugg([]);
+      setAwaitingLocation(false);
+    }
+  }, [awaitingLocation, userLatLon]);
 
   const options = (fromLL && toLL)
     ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes)
