@@ -247,6 +247,8 @@ function haversineMeters(a: LatLon, b: LatLon): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
+
 function planTrip(
   from: LatLon, to: LatLon,
   buses: BusData[],
@@ -287,18 +289,33 @@ function planTrip(
         const prev = stops[j - 1];
         const cur = stops[j];
         const seg = routeSegs[`${prev}-${cur}`];
-        cumRide += seg && seg.n >= 1 ? seg.avg : 180;
+        if (seg && seg.n >= 1) {
+          cumRide += seg.avg;
+        } else {
+          // Fall back to haversine / bus-speed when we have no observed
+          // segment time. Using a fixed 180 s default inflated long
+          // routes to unusable totals whenever a route had no active
+          // buses collecting data.
+          const pc = stopCoords[prev], cc = stopCoords[cur];
+          if (pc && cc) {
+            cumRide += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+          } else {
+            cumRide += 90;
+          }
+        }
         if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
         const walkToSec = fromDist[b] / WALK_SPEED_M_S;
         const walkFromSec = toDist[cur] / WALK_SPEED_M_S;
         // Skip options that require more total walking than just walking
         // direct — no point suggesting a shuttle that leaves you footsore.
         if (walkToSec + walkFromSec >= directWalkSec) continue;
-        // Next bus ETA at boarding stop
+        // Next bus ETA at boarding stop. If no bus is currently on this
+        // route, we still surface the option with wait = 0 so users can
+        // see "best shuttle if one comes" during off-hours.
         const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
         const next = arrivals.find((a) => a.routeLabel === cfg.label);
-        if (!next) continue;
-        const waitSec = Math.max(0, next.eta - walkToSec);
+        const waitSec = next ? Math.max(0, next.eta - walkToSec) : 0;
+        const busName = next?.busName ?? "";
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
         // Only surface shuttle options that actually beat walking.
         if (totalSec >= directWalkSec) continue;
@@ -307,7 +324,7 @@ function planTrip(
           routeLabel: cfg.label, color: cfg.color,
           boardStopId: b, alightStopId: cur,
           walkToSec, waitSec, rideSec: cumRide, walkFromSec,
-          totalSec, busName: next.busName,
+          totalSec, busName,
           directWalkSec,
         });
       }
@@ -617,7 +634,13 @@ function computeUpcomingArrivals(
           cumulative += avgSeg;
           cumulativeVar += fallbackSd * fallbackSd;
         } else {
-          break;
+          // No route-level data yet — estimate from stop-to-stop distance.
+          const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
+          const est = pc && cc
+            ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S)
+            : 90;
+          cumulative += est;
+          cumulativeVar += (est * 0.5) ** 2;
         }
         const sid = stops[curI];
         if (targetSet.has(sid) && !recordedForStop.has(sid) && cumulative > 0) {
