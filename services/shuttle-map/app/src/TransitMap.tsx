@@ -460,7 +460,9 @@ const TripPlanner: FC<{
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate }) => {
+  locating?: boolean;
+  locateError?: string | null;
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -563,6 +565,7 @@ const TripPlanner: FC<{
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const useCurrent = () => {
+    console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
       setFromLL(userLatLon);
       setFromText("Current location");
@@ -635,7 +638,9 @@ const TripPlanner: FC<{
                    else geocode(fromText, "from");
                  }}
                  placeholder="Address or place" style={inputStyle} />
-          <button onClick={useCurrent} style={btnStyle} title="Use current location">📍</button>
+          <button onClick={useCurrent} disabled={locating} style={btnStyle} title="Use current location">
+            {locating || awaitingLocation ? "…" : "📍"}
+          </button>
           <button onClick={() => geocode(fromText, "from")} disabled={searching === "from"} style={btnStyle}>
             {searching === "from" ? "…" : "Search"}
           </button>
@@ -651,6 +656,11 @@ const TripPlanner: FC<{
           </div>
         )}
         {fromLL && <div style={{ fontSize: 10, color: "#2E7D32", marginTop: 3 }}>✓ Set</div>}
+        {locateError && (
+          <div style={{ fontSize: 10, color: "#C62828", marginTop: 3 }}>
+            📍 {locateError}
+          </div>
+        )}
       </div>
 
       {/* To field */}
@@ -2386,14 +2396,20 @@ const TransitMap: FC = () => {
   const watchIdRef = React.useRef<number | null>(null);
 
   const startLocating = () => {
+    console.log("[locate] startLocating called; secure context:", window.isSecureContext, "geo available:", !!navigator.geolocation);
     if (!navigator.geolocation) {
-      setLocateError("Geolocation not supported");
+      setLocateError("Geolocation not supported by this browser");
+      return;
+    }
+    if (!window.isSecureContext) {
+      setLocateError("Geolocation needs HTTPS");
       return;
     }
     setLocating(true);
     setLocateError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        console.log("[locate] got position", pos.coords);
         setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         setLocating(false);
         if (watchIdRef.current == null) {
@@ -2405,8 +2421,16 @@ const TransitMap: FC = () => {
         }
       },
       (err) => {
+        console.warn("[locate] error", err.code, err.message);
         setLocating(false);
-        setLocateError(err.code === err.PERMISSION_DENIED ? "Permission denied" : "Location unavailable");
+        const msg = err.code === err.PERMISSION_DENIED
+          ? "Location permission denied — enable it in your browser settings"
+          : err.code === err.POSITION_UNAVAILABLE
+          ? "Location unavailable (no GPS / offline?)"
+          : err.code === err.TIMEOUT
+          ? "Location request timed out"
+          : err.message || "Location failed";
+        setLocateError(msg);
       },
       { enableHighAccuracy: true, timeout: 10_000 },
     );
@@ -2680,6 +2704,7 @@ const TransitMap: FC = () => {
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} segmentTimes={segmentTimes}
           userLatLon={userLatLon} onRequestLocate={startLocating}
+          locating={locating} locateError={locateError}
         />
       ) : listView === "favorites" && showGroupSettings ? (
         <div style={{ width: "100%" }}>
