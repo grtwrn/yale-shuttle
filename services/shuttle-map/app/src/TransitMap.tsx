@@ -224,6 +224,13 @@ const ROUTE_LABEL_TO_TOGGLE: Record<string, string> = {
 
 type StopGroup = { id: string; name: string; stopIds: number[] };
 
+type SavedTrip = {
+  id: string;
+  name: string;
+  fromText: string; fromLat: number; fromLon: number;
+  toText: string; toLat: number; toLon: number;
+};
+
 type LatLon = { lat: number; lon: number };
 
 type GeocodeResult = { display_name: string; lat: number; lon: number; type?: string; class?: string };
@@ -462,7 +469,11 @@ const TripPlanner: FC<{
   onRequestLocate: () => void;
   locating?: boolean;
   locateError?: string | null;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError }) => {
+  savedTrips: SavedTrip[];
+  onSaveTrip: (trip: SavedTrip) => void;
+  pendingTrip: SavedTrip | null;
+  onConsumePending: () => void;
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -605,6 +616,35 @@ const TripPlanner: FC<{
     ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes)
     : null;
 
+  // Apply a "plan this saved trip" request from Favorites: fills both
+  // fields and clears the pending channel so the next route change doesn't
+  // keep re-applying it.
+  useEffect(() => {
+    if (!pendingTrip) return;
+    setFromText(pendingTrip.fromText);
+    setFromLL({ lat: pendingTrip.fromLat, lon: pendingTrip.fromLon });
+    setFromSugg([]);
+    setToText(pendingTrip.toText);
+    setToLL({ lat: pendingTrip.toLat, lon: pendingTrip.toLon });
+    setToSugg([]);
+    onConsumePending();
+  }, [pendingTrip]);
+
+  const alreadySaved = fromLL && toLL && savedTrips.some(
+    (t) => Math.abs(t.fromLat - fromLL.lat) < 1e-4 && Math.abs(t.fromLon - fromLL.lon) < 1e-4
+        && Math.abs(t.toLat - toLL.lat) < 1e-4 && Math.abs(t.toLon - toLL.lon) < 1e-4
+  );
+  const handleSaveTrip = () => {
+    if (!fromLL || !toLL) return;
+    const name = fromText && toText ? `${fromText} → ${toText}` : "Saved trip";
+    onSaveTrip({
+      id: `t${Date.now().toString(36)}`,
+      name,
+      fromText, fromLat: fromLL.lat, fromLon: fromLL.lon,
+      toText, toLat: toLL.lat, toLon: toLL.lon,
+    });
+  };
+
   // When a fresh trip is planned, auto-expand the best shuttle option so the
   // map + board/alight list appear immediately. Depending only on the
   // endpoint coords avoids re-expanding on every bus tick.
@@ -707,6 +747,25 @@ const TripPlanner: FC<{
       </div>
 
       {error && <div style={{ fontSize: 11, color: "#C62828", marginBottom: 8 }}>{error}</div>}
+
+      {fromLL && toLL && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+          <button
+            onClick={handleSaveTrip}
+            disabled={!!alreadySaved}
+            title={alreadySaved ? "Already saved" : "Save this trip to Favorites"}
+            style={{
+              fontSize: 11, padding: "4px 10px", borderRadius: 6, fontFamily: "inherit",
+              cursor: alreadySaved ? "default" : "pointer",
+              border: "1px solid " + (alreadySaved ? "#c5e1a5" : "#bbb"),
+              background: alreadySaved ? "#f1f8e9" : "#fff",
+              color: alreadySaved ? "#2E7D32" : "#546e7a",
+            }}
+          >
+            {alreadySaved ? "★ Saved" : "☆ Save trip"}
+          </button>
+        </div>
+      )}
 
       {/* Results */}
       {options && options.length === 0 && (
@@ -1284,26 +1343,15 @@ const FavoriteStopsPage: FC<{
   tick: number;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate }) => {
+  savedTrips: SavedTrip[];
+  setSavedTrips: (t: SavedTrip[]) => void;
+  onPlanTrip: (t: SavedTrip) => void;
+}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [mapGroupId, setMapGroupId] = useState<string | null>(null);
   const [nearbyGroupId, setNearbyGroupId] = useState<string | null>(null);
-  const [visibleRoutes, setVisibleRoutes] = useState<Set<string>>(new Set());
 
   const updateGroup = (id: string, patch: Partial<StopGroup>) => {
     setGroups(groups.map((g) => (g.id === id ? { ...g, ...patch } : g)));
-  };
-  const toggleStopInGroup = (gid: string, stopIds: number[]) => {
-    const g = groups.find((x) => x.id === gid);
-    if (!g) return;
-    const current = new Set(g.stopIds);
-    const anyPresent = stopIds.some((s) => current.has(s));
-    if (anyPresent) {
-      stopIds.forEach((s) => current.delete(s));
-    } else {
-      stopIds.forEach((s) => current.add(s));
-    }
-    updateGroup(gid, { stopIds: [...current] });
   };
   const deleteGroup = (id: string) => {
     setGroups(groups.filter((g) => g.id !== id));
@@ -1330,6 +1378,36 @@ const FavoriteStopsPage: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      {savedTrips.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, padding: "0 4px 6px" }}>
+            Saved trips
+          </div>
+          <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e0ddd8", overflow: "hidden" }}>
+            {savedTrips.map((t, i) => (
+              <div key={t.id} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px",
+                borderBottom: i === savedTrips.length - 1 ? "none" : "1px solid #f0ede8",
+              }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#263238", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ color: "#2E7D32", fontWeight: 700 }}>{t.fromText}</span>
+                  <span style={{ color: "#9e9e9e", margin: "0 6px" }}>→</span>
+                  <span style={{ color: "#C62828", fontWeight: 700 }}>{t.toText}</span>
+                </div>
+                <button onClick={() => onPlanTrip(t)} style={{
+                  fontSize: 11, padding: "3px 10px", border: "1px solid #2E7D32",
+                  background: "#fff", color: "#2E7D32", borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
+                }}>Plan</button>
+                <button onClick={() => setSavedTrips(savedTrips.filter((x) => x.id !== t.id))} style={{
+                  border: "none", background: "transparent", color: "#9e9e9e",
+                  fontSize: 14, cursor: "pointer", padding: "0 4px",
+                }} title="Remove">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {groups.length === 0 && (
         <div style={{ textAlign: "center", padding: "24px 16px", color: "#9e9e9e", fontSize: 12 }}>
           No stop groups yet. Create one to track arrivals across multiple stops.
@@ -1402,23 +1480,7 @@ const FavoriteStopsPage: FC<{
                 </span>
               ))}
               <button
-                onClick={() => {
-                  setMapGroupId(mapGroupId === g.id ? null : g.id);
-                  setNearbyGroupId(null);
-                }}
-                style={{
-                  fontSize: 10.5, padding: "2px 8px", background: mapGroupId === g.id ? "#2E7D32" : "#fff",
-                  border: "1px dashed #b0bec5", color: mapGroupId === g.id ? "#fff" : "#546e7a",
-                  borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
-                }}
-              >
-                {mapGroupId === g.id ? "✓ done" : "📍 pick on map"}
-              </button>
-              <button
-                onClick={() => {
-                  setNearbyGroupId(nearbyGroupId === g.id ? null : g.id);
-                  setMapGroupId(null);
-                }}
+                onClick={() => setNearbyGroupId(nearbyGroupId === g.id ? null : g.id)}
                 style={{
                   fontSize: 10.5, padding: "2px 8px", background: nearbyGroupId === g.id ? "#1976D2" : "#fff",
                   border: "1px dashed #b0bec5", color: nearbyGroupId === g.id ? "#fff" : "#546e7a",
@@ -1465,151 +1527,6 @@ const FavoriteStopsPage: FC<{
                 }}
               />
             )}
-
-            {/* Map picker — shows all stops, routes hidden by default */}
-            {mapGroupId === g.id && (() => {
-              const selected = new Set(g.stopIds);
-              const toggleRouteVis = (rid: string) => {
-                setVisibleRoutes((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(rid)) next.delete(rid); else next.add(rid);
-                  return next;
-                });
-              };
-              // Stops hit by any currently-visible route — for bolding.
-              // Visual route labels (e.g. "Red NB") map to ROUTE_LISTS labels
-              // ("Red") which in turn carry the TransLoc routeIds we need.
-              const boldStops = new Set<number>();
-              for (const r of routes) {
-                if (!visibleRoutes.has(r.id)) continue;
-                const cfg = ROUTE_LISTS.find((c) => c.label === r.label)
-                  ?? ROUTE_LISTS.find((c) => r.label.startsWith(c.label + " "))
-                  ?? ROUTE_LISTS.find((c) => r.label.split(" ")[0] === c.label.split(" ")[0]);
-                if (!cfg) continue;
-                for (const rid of cfg.routeIds) {
-                  for (const sid of (routeStops[rid] ?? [])) boldStops.add(sid);
-                }
-              }
-              return (
-                <div style={{
-                  border: "1px solid #e0ddd8", borderRadius: 6,
-                  marginBottom: 8, background: "#fafaf8", padding: 4,
-                }}>
-                  {/* Route toggle chips — dedupe by label so a multi-segment
-                      route (e.g. "Red NB" split into 3 pieces) shows one chip. */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, padding: "4px 4px 6px" }}>
-                    {(() => {
-                      const groupsByLabel = new Map<string, { color: string; ids: string[] }>();
-                      for (const r of routes) {
-                        const entry = groupsByLabel.get(r.label) ?? { color: r.color, ids: [] };
-                        entry.ids.push(r.id);
-                        groupsByLabel.set(r.label, entry);
-                      }
-                      return Array.from(groupsByLabel.entries()).map(([label, { color, ids }]) => {
-                        const on = ids.every((id) => visibleRoutes.has(id));
-                        return (
-                          <button key={label} onClick={() => {
-                            setVisibleRoutes((prev) => {
-                              const next = new Set(prev);
-                              if (on) ids.forEach((id) => next.delete(id));
-                              else ids.forEach((id) => next.add(id));
-                              return next;
-                            });
-                          }}
-                            style={{
-                              fontSize: 9.5, padding: "1px 6px", borderRadius: 3,
-                              border: "none", cursor: "pointer", fontFamily: "inherit",
-                              background: on ? color : "#eceff1",
-                              color: on ? "#fff" : "#78909c",
-                              fontWeight: on ? 700 : 500,
-                              opacity: on ? 1 : 0.7,
-                            }}>
-                            {label}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
-                  <svg viewBox="0 0 960 1120" style={{ width: "100%", display: "block" }}>
-                    {/* Hide unselected labels by default — reveal on hover.
-                        Keeps the map readable when stops are dense. */}
-                    <style>{`
-                      .pick-label { opacity: 0; transition: opacity 0.1s; }
-                      .pick-stop:hover .pick-label,
-                      .pick-stop.selected .pick-label,
-                      .pick-stop.on-route .pick-label { opacity: 1; }
-                      .pick-stop:hover circle { stroke: #2E7D32; }
-                    `}</style>
-                    {/* Selected route lines */}
-                    {routes.filter((r) => visibleRoutes.has(r.id)).map((r, ri) => (
-                      <g key={`r${ri}`} opacity={0.45}>
-                        {r.segments.map((seg, si) => (
-                          <polyline key={si}
-                            points={seg.points.map((p) => p.join(",")).join(" ")}
-                            fill="none" stroke={r.color} strokeWidth={3}
-                            strokeDasharray={r.dashed ? "6 4" : undefined}
-                          />
-                        ))}
-                      </g>
-                    ))}
-                    {/* One dot per stopId. Labels respect the station's labelSide
-                        hint and short-form names for multi-stop stations so
-                        adjacent labels don't run into each other. */}
-                    {stations.flatMap((s) =>
-                      s.stopIds.map((sid, i) => {
-                        const dy = s.stopIds.length > 1 ? (i - (s.stopIds.length - 1) / 2) * 12 : 0;
-                        const cx = s.x;
-                        const cy = s.y + dy;
-                        const hit = selected.has(sid);
-
-                        const raw = stopNames[sid] ?? s.label;
-                        // Strip station's common prefix when the stop name extends it
-                        // (e.g. station "Division" → stop "Division / Sheffield" → "Sheffield")
-                        let short = raw;
-                        if (s.stopIds.length > 1 && s.label) {
-                          const prefix = s.label.split(/\s*\/\s*/)[0];
-                          const re = new RegExp(`^${prefix}\\s*/\\s*`, "i");
-                          short = raw.replace(re, "");
-                        }
-                        short = short.replace(/\s*\/\s*/g, "/");
-                        if (short.length > 18) short = short.slice(0, 17) + "…";
-
-                        // Label position by hint, fallback to right
-                        const side = s.labelSide ?? "r";
-                        const lx = side === "l" ? cx - 8 : side === "r" ? cx + 10 : cx;
-                        const ly = side === "t" ? cy - 10 : side === "b" ? cy + 12 : cy;
-                        const anchor = side === "l" ? "end" : side === "r" ? "start" : "middle";
-
-                        const onVisibleRoute = boldStops.has(sid);
-                        return (
-                          <g key={`${s.id}-${sid}`}
-                             className={`pick-stop${hit ? " selected" : ""}${onVisibleRoute ? " on-route" : ""}`}
-                             style={{ cursor: "pointer" }}
-                             onClick={() => toggleStopInGroup(g.id, [sid])}>
-                            {/* Transparent larger hit target so hover works around the dot */}
-                            <circle cx={cx} cy={cy} r={14} fill="transparent" />
-                            <circle cx={cx} cy={cy} r={hit ? 8 : onVisibleRoute ? 5 : 4}
-                                    fill={hit ? "#2E7D32" : "#fff"}
-                                    stroke={hit ? "#fff" : "#455a64"}
-                                    strokeWidth={hit ? 2.5 : onVisibleRoute ? 2 : 1.5} />
-                            <text className="pick-label"
-                                  x={lx} y={ly} textAnchor={anchor} dominantBaseline="central"
-                                  fontSize={hit || onVisibleRoute ? 11 : 10}
-                                  fontWeight={hit || onVisibleRoute ? 800 : 600}
-                                  fill={hit ? "#2E7D32" : "#263238"}
-                                  stroke="#fafaf8" strokeWidth={3}
-                                  paintOrder="stroke fill"
-                                  style={{ pointerEvents: "none", userSelect: "none" }}>
-                              {short}
-                            </text>
-                          </g>
-                        );
-                      })
-                    )}
-                  </svg>
-                </div>
-              );
-            })()}
 
             {/* Arrivals — next 5 across all routes, sorted by ETA */}
             {g.stopIds.length === 0 ? (
@@ -2617,6 +2534,19 @@ const TransitMap: FC = () => {
     setStopGroups(g);
     localStorage.setItem("shuttle-stop-groups", JSON.stringify(g));
   };
+  const [savedTrips, setSavedTrips] = useState<SavedTrip[]>(() => {
+    try {
+      const saved = localStorage.getItem("shuttle-saved-trips");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const saveSavedTrips = (t: SavedTrip[]) => {
+    setSavedTrips(t);
+    localStorage.setItem("shuttle-saved-trips", JSON.stringify(t));
+  };
+  // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
+  // on mount / prop change and applies the from+to fields.
+  const [pendingTrip, setPendingTrip] = useState<SavedTrip | null>(null);
   const favoriteStopIds = useMemo(
     () => new Set<number>(stopGroups.flatMap((g) => g.stopIds)),
     [stopGroups],
@@ -2873,6 +2803,8 @@ const TransitMap: FC = () => {
           routeStops={routeStops} segmentTimes={segmentTimes}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
+          savedTrips={savedTrips} onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
+          pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
         />
       ) : listView === "favorites" && showGroupSettings ? (
         <div style={{ width: "100%" }}>
@@ -2896,6 +2828,9 @@ const TransitMap: FC = () => {
             tick={tick}
             userLatLon={userLatLon}
             onRequestLocate={startLocating}
+            savedTrips={savedTrips}
+            setSavedTrips={saveSavedTrips}
+            onPlanTrip={(t) => { setPendingTrip(t); setListView("trip"); }}
           />
         </div>
       ) :
