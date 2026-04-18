@@ -180,7 +180,8 @@ interface RouteListConfig {
 
 const ROUTE_LISTS: RouteListConfig[] = [
   { routeIds: ["3"],  busRouteIds: [3],        label: "Red",           color: "#C62828" },
-  { routeIds: ["1"],  busRouteIds: [1, 4],     label: "Blue Day",      color: "#1565C0" },
+  { routeIds: ["1"],  busRouteIds: [1],        label: "Blue Day",      color: "#1565C0" },
+  { routeIds: ["4"],  busRouteIds: [4],        label: "Blue Weekend",  color: "#42A5F5" },
   { routeIds: ["13"], busRouteIds: [13],       label: "Blue Night",    color: "#1E88E5" },
   { routeIds: ["16"], busRouteIds: [16],       label: "Blue West",     color: "#00838F" },
   { routeIds: ["2"],  busRouteIds: [2],        label: "Orange Day",    color: "#E65100" },
@@ -202,7 +203,7 @@ const ROUTE_ID_GROUP: Record<number, string> = {
 
 // Map route_id → toggle label for filtering
 const ROUTE_ID_TO_TOGGLE: Record<number, string> = {
-  1: "Blue", 4: "Blue", 13: "Blue Night",
+  1: "Blue", 4: "Blue Weekend", 13: "Blue Night",
   3: "Red",
   2: "Orange", 14: "Orange Night", 17: "Orange East",
   16: "Blue West",
@@ -213,7 +214,7 @@ const ROUTE_ID_TO_TOGGLE: Record<number, string> = {
 // Map map-data route.label → toggle label
 const ROUTE_LABEL_TO_TOGGLE: Record<string, string> = {
   "Red": "Red", "Red NB": "Red", "Red SB": "Red",
-  "Blue": "Blue", "Blue Night": "Blue Night", "Blue West": "Blue West",
+  "Blue": "Blue", "Blue Weekend": "Blue Weekend", "Blue Night": "Blue Night", "Blue West": "Blue West",
   "Orange": "Orange", "Orange Night": "Orange Night", "Orange East": "Orange East",
   "Brown": "Brown", "Pink": "Pink", "Green": "Green", "Purple": "Purple",
   "Gold": "Gold", "Grocery TJ": "Grocery TJ", "Grocery Ham": "Grocery Ham",
@@ -248,6 +249,7 @@ function haversineMeters(a: LatLon, b: LatLon): number {
 }
 
 const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
+const MAX_RIDE_SEC = 25 * 60; // don't keep looping past a boarding point
 
 function planTrip(
   from: LatLon, to: LatLon,
@@ -303,22 +305,26 @@ function planTrip(
             cumRide += 90;
           }
         }
+        // Stop searching along this route once the ride would wrap past
+        // 25 minutes — any further alight would mean the bus is just
+        // circling back near the boarding point.
+        if (cumRide > MAX_RIDE_SEC) break;
         if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
         const walkToSec = fromDist[b] / WALK_SPEED_M_S;
         const walkFromSec = toDist[cur] / WALK_SPEED_M_S;
         // Skip options that require more total walking than just walking
         // direct — no point suggesting a shuttle that leaves you footsore.
         if (walkToSec + walkFromSec >= directWalkSec) continue;
-        // Next bus ETA at boarding stop. If no bus is currently on this
-        // route, we still surface the option with wait = 0 so users can
-        // see "best shuttle if one comes" during off-hours.
+        // Next bus ETA at boarding stop. Only surface an option when a
+        // bus is actually on the route — "what if the weekday route were
+        // running" guesses were noisy, and users only want rides they
+        // can actually take right now.
         const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
         const next = arrivals.find((a) => a.routeLabel === cfg.label);
-        const waitSec = next ? Math.max(0, next.eta - walkToSec) : 0;
-        const busName = next?.busName ?? "";
+        if (!next) continue;
+        const waitSec = Math.max(0, next.eta - walkToSec);
+        const busName = next.busName;
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
-        // Only surface shuttle options that actually beat walking.
-        if (totalSec >= directWalkSec) continue;
         options.push({
           mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
@@ -330,16 +336,20 @@ function planTrip(
       }
     }
   }
-  options.sort((a, b) => a.totalSec - b.totalSec);
-  // Keep the single best option per route label.
-  const seenRoute = new Set<string>();
-  const dedup: TripOption[] = [];
+  // Per-route pick: the option with the shortest walk to the boarding
+  // stop, then shortest walk from the alight, then shortest total.
+  // Prefers "catch the bus right outside" over "walk 10 min to a stop for
+  // a 30-second ride" — even if the latter total is lower.
+  const bestPerRoute = new Map<string, TripOption>();
   for (const o of options) {
-    if (seenRoute.has(o.routeLabel)) continue;
-    seenRoute.add(o.routeLabel);
-    dedup.push(o);
-    if (dedup.length >= 4) break;
+    const prev = bestPerRoute.get(o.routeLabel);
+    const key = (x: TripOption) => x.walkToSec * 1e9 + x.walkFromSec * 1e4 + x.totalSec;
+    if (!prev || key(o) < key(prev)) bestPerRoute.set(o.routeLabel, o);
   }
+  // Sort the chosen options by total time for display.
+  const dedup = [...bestPerRoute.values()]
+    .sort((a, b) => a.totalSec - b.totalSec)
+    .slice(0, 3);
   // Always prepend a direct-walk option so users see it as a baseline.
   const walkOption: TripOption = {
     mode: "walk",
@@ -2300,6 +2310,7 @@ const TransitMap: FC = () => {
   const legendRoutes: { label: string; toggleLabel: string; color: string; dashed?: boolean }[] = [
     { label: "Red",          toggleLabel: "Red",          color: "#C62828" },
     { label: "Blue Day",     toggleLabel: "Blue",         color: "#1565C0" },
+    { label: "Blue Wknd",    toggleLabel: "Blue Weekend", color: "#42A5F5" },
     { label: "Blue Night",  toggleLabel: "Blue Night",   color: "#1E88E5" },
     { label: "Blue West",   toggleLabel: "Blue West",    color: "#00838F" },
     { label: "Orange",       toggleLabel: "Orange",       color: "#E65100" },
