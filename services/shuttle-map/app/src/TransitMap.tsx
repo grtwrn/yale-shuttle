@@ -2120,12 +2120,15 @@ const TransitMap: FC = () => {
     });
   };
 
-  // When arriving on the favorites page, sync the route-filter chips so that
-  // only the routes currently shown on the page (active favorites) appear
-  // "on"; everything else gets added to hiddenRoutes. Fires on tab switch
-  // or when the active-favorite set changes while on the favorites tab.
+  // Keep hiddenRoutes in sync with the current view. On favorites, hide
+  // anything that isn't an active favorite. On every other view, reset to
+  // empty — otherwise the favorites-hidden state leaks in and the All page
+  // ends up with every route filtered out.
   useEffect(() => {
-    if (listView !== "favorites") return;
+    if (listView !== "favorites") {
+      setHiddenRoutes((prev) => (prev.size === 0 ? prev : new Set()));
+      return;
+    }
     const next = new Set<string>();
     for (const cfg of ROUTE_LISTS) {
       const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
