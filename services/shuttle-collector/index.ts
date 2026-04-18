@@ -174,6 +174,56 @@ function initDb(): Database.Database {
       PRIMARY KEY (route_id, stop_id)
     );
 
+    -- Per-bus calibrated segment times. Lets us learn "bus #123 is reliably
+    -- slow on this segment" or "#456 is faster than average here" without
+    -- polluting the route-wide aggregates.
+    CREATE TABLE IF NOT EXISTS calibrated_segments_by_bus (
+      bus_name TEXT NOT NULL,
+      route_id INTEGER NOT NULL,
+      from_stop_id INTEGER NOT NULL,
+      to_stop_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      avg_seconds REAL NOT NULL,
+      stddev_seconds REAL NOT NULL DEFAULT 0,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      last_updated TEXT NOT NULL,
+      PRIMARY KEY (bus_name, route_id, from_stop_id, to_stop_id, day_of_week)
+    );
+    CREATE TABLE IF NOT EXISTS segment_averages_by_bus (
+      bus_name TEXT NOT NULL,
+      route_id INTEGER NOT NULL,
+      from_stop_id INTEGER NOT NULL,
+      to_stop_id INTEGER NOT NULL,
+      avg_seconds REAL NOT NULL,
+      stddev_seconds REAL NOT NULL DEFAULT 0,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      last_updated TEXT NOT NULL,
+      PRIMARY KEY (bus_name, route_id, from_stop_id, to_stop_id)
+    );
+
+    -- Per-bus calibrated dwell times — "bus #123 lingers at SOM".
+    CREATE TABLE IF NOT EXISTS calibrated_dwells_by_bus (
+      bus_name TEXT NOT NULL,
+      route_id INTEGER NOT NULL,
+      stop_id INTEGER NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      median_dwell_seconds REAL NOT NULL,
+      stddev_dwell_seconds REAL NOT NULL DEFAULT 0,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      last_updated TEXT NOT NULL,
+      PRIMARY KEY (bus_name, route_id, stop_id, day_of_week)
+    );
+    CREATE TABLE IF NOT EXISTS dwell_averages_by_bus (
+      bus_name TEXT NOT NULL,
+      route_id INTEGER NOT NULL,
+      stop_id INTEGER NOT NULL,
+      median_dwell_seconds REAL NOT NULL,
+      stddev_dwell_seconds REAL NOT NULL DEFAULT 0,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      last_updated TEXT NOT NULL,
+      PRIMARY KEY (bus_name, route_id, stop_id)
+    );
+
     -- Predicted arrivals: logged every time a bus transitions to a new GPS-nearest stop.
     -- One row per (bus, downstream stop) snapshot for accuracy tracking.
     CREATE TABLE IF NOT EXISTS predictions (
@@ -349,6 +399,11 @@ const segmentCache = new Map<number, Map<string, { avg: number; stddev: number }
 // Cache calibrated dwell times per (route, stop). { routeId → { stopId → { median, stddev } } }
 const dwellCache = new Map<number, Map<number, { median: number; stddev: number }>>();
 
+// Per-bus segment cache: bus_name → routeId → "from-to" → stats.
+// Checked first; falls back to segmentCache when bus has no personal data.
+const segmentCacheByBus = new Map<string, Map<number, Map<string, { avg: number; stddev: number }>>>();
+const dwellCacheByBus = new Map<string, Map<number, Map<number, { median: number; stddev: number }>>>();
+
 function loadStopCoords(db: Database.Database): void {
   const rows = db.prepare('SELECT id, lat, lon FROM stops').all() as Array<{ id: number; lat: number; lon: number }>;
   stopCoords.clear();
@@ -358,6 +413,8 @@ function loadStopCoords(db: Database.Database): void {
 function loadSegmentCache(db: Database.Database): void {
   segmentCache.clear();
   dwellCache.clear();
+  segmentCacheByBus.clear();
+  dwellCacheByBus.clear();
   const dow = new Date().getDay();
   const calRows = db.prepare(`
     SELECT route_id, from_stop_id, to_stop_id, avg_seconds, stddev_seconds
@@ -394,6 +451,41 @@ function loadSegmentCache(db: Database.Database): void {
     if (!dwellCache.has(r.route_id)) dwellCache.set(r.route_id, new Map());
     dwellCache.get(r.route_id)!.set(r.stop_id, { median: r.median_dwell_seconds, stddev: r.stddev_dwell_seconds });
   }
+
+  // Per-bus caches — same pattern, keyed by bus_name first.
+  const busSegAvgRows = db.prepare(`
+    SELECT bus_name, route_id, from_stop_id, to_stop_id, avg_seconds, stddev_seconds
+    FROM segment_averages_by_bus
+  `).all() as Array<{ bus_name: string; route_id: number; from_stop_id: number; to_stop_id: number; avg_seconds: number; stddev_seconds: number }>;
+  const busSegCalRows = db.prepare(`
+    SELECT bus_name, route_id, from_stop_id, to_stop_id, avg_seconds, stddev_seconds
+    FROM calibrated_segments_by_bus WHERE day_of_week = ?
+  `).all(dow) as Array<{ bus_name: string; route_id: number; from_stop_id: number; to_stop_id: number; avg_seconds: number; stddev_seconds: number }>;
+  const setBusSeg = (r: typeof busSegAvgRows[number]) => {
+    if (!segmentCacheByBus.has(r.bus_name)) segmentCacheByBus.set(r.bus_name, new Map());
+    const byRoute = segmentCacheByBus.get(r.bus_name)!;
+    if (!byRoute.has(r.route_id)) byRoute.set(r.route_id, new Map());
+    byRoute.get(r.route_id)!.set(`${r.from_stop_id}-${r.to_stop_id}`, { avg: r.avg_seconds, stddev: r.stddev_seconds });
+  };
+  for (const r of busSegAvgRows) setBusSeg(r);
+  for (const r of busSegCalRows) setBusSeg(r); // day-specific overrides
+
+  const busDwellAvgRows = db.prepare(`
+    SELECT bus_name, route_id, stop_id, median_dwell_seconds, stddev_dwell_seconds
+    FROM dwell_averages_by_bus
+  `).all() as Array<{ bus_name: string; route_id: number; stop_id: number; median_dwell_seconds: number; stddev_dwell_seconds: number }>;
+  const busDwellCalRows = db.prepare(`
+    SELECT bus_name, route_id, stop_id, median_dwell_seconds, stddev_dwell_seconds
+    FROM calibrated_dwells_by_bus WHERE day_of_week = ?
+  `).all(dow) as Array<{ bus_name: string; route_id: number; stop_id: number; median_dwell_seconds: number; stddev_dwell_seconds: number }>;
+  const setBusDwell = (r: typeof busDwellAvgRows[number]) => {
+    if (!dwellCacheByBus.has(r.bus_name)) dwellCacheByBus.set(r.bus_name, new Map());
+    const byRoute = dwellCacheByBus.get(r.bus_name)!;
+    if (!byRoute.has(r.route_id)) byRoute.set(r.route_id, new Map());
+    byRoute.get(r.route_id)!.set(r.stop_id, { median: r.median_dwell_seconds, stddev: r.stddev_dwell_seconds });
+  };
+  for (const r of busDwellAvgRows) setBusDwell(r);
+  for (const r of busDwellCalRows) setBusDwell(r);
 }
 
 /** Find the nearest stop on a bus's route given GPS position. Returns stop_id or null. */
@@ -443,11 +535,16 @@ function countHopsOnRoute(routeId: number, fromStop: number, toStop: number): nu
 function computeDownstreamEtas(
   routeId: number,
   busStopIdx: number,
+  busName?: string,
 ): Array<{ toStopId: number; fromStopId: number; etaSec: number; lowSec: number; highSec: number }> {
   const stops = routeStopLists.get(routeId);
   if (!stops || stops.length === 0) return [];
   const segMap = segmentCache.get(routeId);
   if (!segMap || segMap.size === 0) return [];
+
+  // Per-bus segment map — may be undefined (new/rare bus). Check first for
+  // each hop; fall back to the route-wide map.
+  const busSegMap = busName ? segmentCacheByBus.get(busName)?.get(routeId) : undefined;
 
   // Fallback average segment time across this route
   const values = [...segMap.values()];
@@ -468,7 +565,8 @@ function computeDownstreamEtas(
     const curIdx = (busStopIdx + step) % n;
 
     const key = `${stops[prevIdx]}-${stops[curIdx]}`;
-    const seg = segMap.get(key);
+    // Prefer per-bus calibration when this specific bus has data here.
+    const seg = busSegMap?.get(key) ?? segMap.get(key);
     if (seg) {
       cumulativeEta += seg.avg;
       cumulativeVar += seg.stddev * seg.stddev;
@@ -550,7 +648,7 @@ function logGpsTransitions(db: Database.Database, buses: Bus[], now: string): vo
       if (!stops) continue;
       const idx = stops.indexOf(near);
       if (idx === -1) continue;
-      const etas = computeDownstreamEtas(bus.route, idx);
+      const etas = computeDownstreamEtas(bus.route, idx, bus.name);
       for (const e of etas) {
         insertPred.run(
           bus.id, bus.name, bus.route, e.fromStopId, e.toStopId,
@@ -786,6 +884,130 @@ function updateCalibratedDwells(db: Database.Database): void {
   tx();
 }
 
+// Per-bus calibration — learns patterns like "bus #123 is slow at stop X"
+// or "on Mondays it dwells 2 min longer". Requires enough samples per
+// (bus, segment) — we use ≥5 so noisy one-off outliers don't skew.
+const MIN_PER_BUS_SAMPLES = 5;
+
+function updateCalibratedSegmentsByBus(db: Database.Database): void {
+  const calRows = db.prepare(`
+    SELECT bus_name, route_id, from_stop_id, to_stop_id, day_of_week,
+           AVG(travel_seconds) as avg_s,
+           AVG(travel_seconds * travel_seconds) as avg_sq,
+           COUNT(*) as n
+    FROM segment_times
+    WHERE hops = 1
+      AND recorded_at > datetime('now', '-30 days')
+      AND travel_seconds BETWEEN 15 AND 1200
+    GROUP BY bus_name, route_id, from_stop_id, to_stop_id, day_of_week
+    HAVING COUNT(*) >= ?
+  `).all(MIN_PER_BUS_SAMPLES) as Array<{
+    bus_name: string; route_id: number; from_stop_id: number; to_stop_id: number;
+    day_of_week: number; avg_s: number; avg_sq: number; n: number;
+  }>;
+
+  const insertCal = db.prepare(`
+    INSERT OR REPLACE INTO calibrated_segments_by_bus
+    (bus_name, route_id, from_stop_id, to_stop_id, day_of_week, avg_seconds, stddev_seconds, sample_count, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  const txCal = db.transaction(() => {
+    for (const r of calRows) {
+      const variance = Math.max(0, r.avg_sq - r.avg_s * r.avg_s);
+      const stddev = Math.sqrt(variance);
+      insertCal.run(r.bus_name, r.route_id, r.from_stop_id, r.to_stop_id, r.day_of_week, r.avg_s, stddev, r.n);
+    }
+  });
+  txCal();
+
+  const avgRows = db.prepare(`
+    SELECT bus_name, route_id, from_stop_id, to_stop_id,
+           AVG(travel_seconds) as avg_s,
+           AVG(travel_seconds * travel_seconds) as avg_sq,
+           COUNT(*) as n
+    FROM segment_times
+    WHERE hops = 1
+      AND recorded_at > datetime('now', '-30 days')
+      AND travel_seconds BETWEEN 15 AND 1200
+    GROUP BY bus_name, route_id, from_stop_id, to_stop_id
+    HAVING COUNT(*) >= ?
+  `).all(MIN_PER_BUS_SAMPLES) as Array<{
+    bus_name: string; route_id: number; from_stop_id: number; to_stop_id: number;
+    avg_s: number; avg_sq: number; n: number;
+  }>;
+
+  const insertAvg = db.prepare(`
+    INSERT OR REPLACE INTO segment_averages_by_bus
+    (bus_name, route_id, from_stop_id, to_stop_id, avg_seconds, stddev_seconds, sample_count, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  const txAvg = db.transaction(() => {
+    for (const r of avgRows) {
+      const variance = Math.max(0, r.avg_sq - r.avg_s * r.avg_s);
+      const stddev = Math.sqrt(variance);
+      insertAvg.run(r.bus_name, r.route_id, r.from_stop_id, r.to_stop_id, r.avg_s, stddev, r.n);
+    }
+  });
+  txAvg();
+}
+
+function updateCalibratedDwellsByBus(db: Database.Database): void {
+  const raw = db.prepare(`
+    SELECT bus_name, route_id, stop_id,
+           CAST(strftime('%w', entered_at) AS INTEGER) AS day_of_week,
+           dwell_seconds
+    FROM gps_dwells
+    WHERE dwell_seconds BETWEEN 30 AND 1800
+      AND entered_at > datetime('now', '-30 days')
+  `).all() as Array<{ bus_name: string; route_id: number; stop_id: number; day_of_week: number; dwell_seconds: number }>;
+
+  const byDow = new Map<string, number[]>();
+  const byAll = new Map<string, number[]>();
+  for (const r of raw) {
+    const kDow = `${r.bus_name}|${r.route_id}|${r.stop_id}|${r.day_of_week}`;
+    const kAll = `${r.bus_name}|${r.route_id}|${r.stop_id}`;
+    if (!byDow.has(kDow)) byDow.set(kDow, []);
+    if (!byAll.has(kAll)) byAll.set(kAll, []);
+    byDow.get(kDow)!.push(r.dwell_seconds);
+    byAll.get(kAll)!.push(r.dwell_seconds);
+  }
+
+  const insertCal = db.prepare(`
+    INSERT OR REPLACE INTO calibrated_dwells_by_bus
+    (bus_name, route_id, stop_id, day_of_week, median_dwell_seconds, stddev_dwell_seconds, sample_count, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+  const insertAvg = db.prepare(`
+    INSERT OR REPLACE INTO dwell_averages_by_bus
+    (bus_name, route_id, stop_id, median_dwell_seconds, stddev_dwell_seconds, sample_count, last_updated)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  const tx = db.transaction(() => {
+    for (const [key, values] of byDow) {
+      if (values.length < MIN_PER_BUS_SAMPLES) continue;
+      const med = median(values);
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+      const stddev = Math.sqrt(variance);
+      const [busName, routeIdStr, stopIdStr, dowStr] = key.split('|');
+      insertCal.run(busName, Number(routeIdStr), Number(stopIdStr), Number(dowStr), med, stddev, values.length);
+    }
+    for (const [key, values] of byAll) {
+      if (values.length < MIN_PER_BUS_SAMPLES) continue;
+      const med = median(values);
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+      const stddev = Math.sqrt(variance);
+      const [busName, routeIdStr, stopIdStr] = key.split('|');
+      insertAvg.run(busName, Number(routeIdStr), Number(stopIdStr), med, stddev, values.length);
+    }
+  });
+  tx();
+}
+
 function updateVehicleProfiles(db: Database.Database): void {
   // Calculate average speed from segment times
   db.exec(`
@@ -1015,6 +1237,8 @@ async function poll(db: Database.Database): Promise<void> {
     updateVehicleProfiles(db);
     updateCalibratedSegments(db);
     updateCalibratedDwells(db);
+    updateCalibratedSegmentsByBus(db);
+    updateCalibratedDwellsByBus(db);
     loadSegmentCache(db);
     lastProfileUpdate = now;
   }
