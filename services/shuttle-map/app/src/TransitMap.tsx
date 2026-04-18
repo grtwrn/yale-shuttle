@@ -1075,6 +1075,204 @@ const NextShuttles: FC<{
   );
 };
 
+// Picker: search a location (or use current), see the nearest ~15 stops on a
+// Leaflet map with tap-to-toggle markers and a parallel text list.
+const NearbyStopsPicker: FC<{
+  selected: Set<number>;
+  stopCoords: Record<number, { lat: number; lon: number }>;
+  stopNames: Record<number, string>;
+  userLatLon: LatLon | null;
+  onRequestLocate: () => void;
+  onToggle: (sid: number) => void;
+}> = ({ selected, stopCoords, stopNames, userLatLon, onRequestLocate, onToggle }) => {
+  const [text, setText] = useState("");
+  const [ll, setLL] = useState<LatLon | null>(null);
+  const [sugg, setSugg] = useState<GeocodeResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [awaiting, setAwaiting] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapDivRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<Record<number, L.CircleMarker>>({});
+
+  const pick = (g: GeocodeResult) => {
+    abortRef.current?.abort(); abortRef.current = null;
+    setLL({ lat: g.lat, lon: g.lon });
+    setText(g.display_name.split(",").slice(0, 2).join(", "));
+    setSugg([]);
+  };
+
+  const geocode = async (q: string, opts: { autoPick?: boolean } = {}) => {
+    if (!q.trim()) return;
+    const autoPick = opts.autoPick !== false;
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setSearching(true); setError(null);
+    const norm = q.replace(/\s+(?:and|&)\s+/gi, " ").replace(/\s+/g, " ").trim();
+    try {
+      const r = await fetch(`/api/geocode?q=${encodeURIComponent(norm)}&_=${Date.now()}`, {
+        cache: "no-store", signal: ctrl.signal,
+      });
+      const d = await r.json();
+      if (abortRef.current !== ctrl) return;
+      const results: GeocodeResult[] = d.results ?? [];
+      if (results.length === 0) {
+        setSugg([]);
+        if (autoPick) setError("No matches found");
+        return;
+      }
+      const top = results[0];
+      const high = results.length === 1 || top.class === "yale" || top.type === "house" || top.type === "bus_stop";
+      if (autoPick && high) pick(top); else setSugg(results);
+    } catch (e) {
+      if ((e as DOMException)?.name === "AbortError") return;
+      if (autoPick) setError("Lookup failed");
+    } finally {
+      if (abortRef.current === ctrl) { abortRef.current = null; setSearching(false); }
+    }
+  };
+
+  useEffect(() => {
+    if (ll || !text.trim() || text === "Current location") return;
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null; geocode(text, { autoPick: false });
+    }, 300);
+    return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
+  }, [text, ll]);
+
+  const useCurrent = () => {
+    if (userLatLon) { setLL(userLatLon); setText("Current location"); setSugg([]); return; }
+    setAwaiting(true);
+    onRequestLocate();
+  };
+  useEffect(() => {
+    if (awaiting && userLatLon) {
+      setLL(userLatLon); setText("Current location"); setSugg([]); setAwaiting(false);
+    }
+  }, [awaiting, userLatLon]);
+
+  const nearbyStops = useMemo(() => {
+    if (!ll) return [];
+    const rows: { id: number; name: string; lat: number; lon: number; d: number }[] = [];
+    for (const [sidStr, c] of Object.entries(stopCoords)) {
+      const id = Number(sidStr);
+      const dlat = (c.lat - ll.lat) * 111_000;
+      const dlon = (c.lon - ll.lon) * 84_000;
+      const d = Math.sqrt(dlat * dlat + dlon * dlon);
+      rows.push({ id, name: stopNames[id] ?? `Stop ${id}`, lat: c.lat, lon: c.lon, d });
+    }
+    rows.sort((a, b) => a.d - b.d);
+    return rows.slice(0, 15);
+  }, [ll?.lat, ll?.lon, stopCoords, stopNames]);
+
+  // Mount the Leaflet map once we have a location. Rebuild when the pinned
+  // location changes or the set of nearest stops shifts.
+  useEffect(() => {
+    if (!mapDivRef.current || !ll) return;
+    const map = L.map(mapDivRef.current, { zoomControl: true, scrollWheelZoom: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
+    }).addTo(map);
+    L.circleMarker([ll.lat, ll.lon], {
+      radius: 8, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
+    }).addTo(map).bindTooltip("You're here", { direction: "top" });
+    const points: [number, number][] = [[ll.lat, ll.lon]];
+    markersRef.current = {};
+    for (const s of nearbyStops) {
+      points.push([s.lat, s.lon]);
+      const sel = selected.has(s.id);
+      const m = L.circleMarker([s.lat, s.lon], {
+        radius: sel ? 7 : 5,
+        color: "#fff", weight: 2,
+        fillColor: sel ? "#1976D2" : "#78909c",
+        fillOpacity: 1,
+      }).addTo(map).bindTooltip(s.name, { direction: "top" });
+      m.on("click", () => onToggle(s.id));
+      markersRef.current[s.id] = m;
+    }
+    map.fitBounds(L.latLngBounds(points), { padding: [24, 24], maxZoom: 17 });
+    setTimeout(() => map.invalidateSize(), 60);
+    return () => { map.remove(); markersRef.current = {}; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ll?.lat, ll?.lon, nearbyStops]);
+
+  // Restyle markers in place when selection changes — avoids tearing down the map.
+  useEffect(() => {
+    for (const [sidStr, m] of Object.entries(markersRef.current)) {
+      const sid = Number(sidStr);
+      const sel = selected.has(sid);
+      m.setStyle({ radius: sel ? 7 : 5, fillColor: sel ? "#1976D2" : "#78909c" });
+    }
+  }, [selected]);
+
+  return (
+    <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginBottom: 8, background: "#fafaf8", padding: 8 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+        <input
+          value={text}
+          onChange={(e) => { setText(e.target.value); setLL(null); }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+            if (sugg.length > 0) pick(sugg[0]); else geocode(text);
+          }}
+          placeholder="Search a location (address, cafe, landmark)"
+          style={{ flex: 1, fontSize: 11, padding: "5px 8px", border: "1px solid #cfd8dc", borderRadius: 4, fontFamily: "inherit" }}
+        />
+        <button onClick={useCurrent} title="Use current location"
+                style={{ fontSize: 11, padding: "4px 8px", border: "1px solid #bbb", background: "#fff", borderRadius: 4, cursor: "pointer" }}>
+          {awaiting ? "…" : "📍"}
+        </button>
+      </div>
+      {sugg.length > 0 && (
+        <div style={{ border: "1px solid #e0ddd8", borderRadius: 4, background: "#fff", marginBottom: 6 }}>
+          {sugg.map((g, i) => (
+            <div key={i} onClick={() => pick(g)} style={{
+              padding: "4px 8px", fontSize: 11, cursor: "pointer",
+              borderBottom: i === sugg.length - 1 ? "none" : "1px solid #f0ede8",
+            }}>
+              {g.display_name}
+            </div>
+          ))}
+        </div>
+      )}
+      {error && <div style={{ fontSize: 10, color: "#C62828", marginBottom: 6 }}>{error}</div>}
+      {ll && (
+        <>
+          <div ref={mapDivRef} style={{ height: 240, borderRadius: 6, border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 6 }} />
+          <div style={{ fontSize: 10, color: "#78909c", marginBottom: 4 }}>
+            Nearest {nearbyStops.length} stops — tap to toggle
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 180, overflowY: "auto" }}>
+            {nearbyStops.map((s) => {
+              const sel = selected.has(s.id);
+              return (
+                <div key={s.id} onClick={() => onToggle(s.id)} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", borderRadius: 4,
+                  cursor: "pointer", background: sel ? "#1976D215" : "transparent",
+                }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: sel ? "#1976D2" : "#9e9e9e", flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: 11, color: sel ? "#1976D2" : "#263238", fontWeight: sel ? 600 : 400, flex: 1 }}>
+                    {s.name.replace(/\s*\/\s*/g, "/")}
+                  </span>
+                  <span style={{ fontSize: 10, color: "#9e9e9e" }}>
+                    {s.d < 1000 ? `${Math.round(s.d)}m` : `${(s.d / 1000).toFixed(1)}km`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const FavoriteStopsPage: FC<{
   groups: StopGroup[];
   setGroups: (groups: StopGroup[]) => void;
@@ -1084,9 +1282,12 @@ const FavoriteStopsPage: FC<{
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   tick: number;
-}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
+  userLatLon: LatLon | null;
+  onRequestLocate: () => void;
+}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [mapGroupId, setMapGroupId] = useState<string | null>(null);
+  const [nearbyGroupId, setNearbyGroupId] = useState<string | null>(null);
   const [visibleRoutes, setVisibleRoutes] = useState<Set<string>>(new Set());
 
   const updateGroup = (id: string, patch: Partial<StopGroup>) => {
@@ -1201,7 +1402,10 @@ const FavoriteStopsPage: FC<{
                 </span>
               ))}
               <button
-                onClick={() => setMapGroupId(mapGroupId === g.id ? null : g.id)}
+                onClick={() => {
+                  setMapGroupId(mapGroupId === g.id ? null : g.id);
+                  setNearbyGroupId(null);
+                }}
                 style={{
                   fontSize: 10.5, padding: "2px 8px", background: mapGroupId === g.id ? "#2E7D32" : "#fff",
                   border: "1px dashed #b0bec5", color: mapGroupId === g.id ? "#fff" : "#546e7a",
@@ -1209,6 +1413,19 @@ const FavoriteStopsPage: FC<{
                 }}
               >
                 {mapGroupId === g.id ? "✓ done" : "📍 pick on map"}
+              </button>
+              <button
+                onClick={() => {
+                  setNearbyGroupId(nearbyGroupId === g.id ? null : g.id);
+                  setMapGroupId(null);
+                }}
+                style={{
+                  fontSize: 10.5, padding: "2px 8px", background: nearbyGroupId === g.id ? "#1976D2" : "#fff",
+                  border: "1px dashed #b0bec5", color: nearbyGroupId === g.id ? "#fff" : "#546e7a",
+                  borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
+                }}
+              >
+                {nearbyGroupId === g.id ? "✓ done" : "🔍 near a place"}
               </button>
               <select
                 value=""
@@ -1231,6 +1448,23 @@ const FavoriteStopsPage: FC<{
                   ))}
               </select>
             </div>
+
+            {/* Nearby-a-place picker */}
+            {nearbyGroupId === g.id && (
+              <NearbyStopsPicker
+                selected={new Set(g.stopIds)}
+                stopCoords={stopCoords}
+                stopNames={stopNames}
+                userLatLon={userLatLon}
+                onRequestLocate={onRequestLocate}
+                onToggle={(sid) => {
+                  const has = g.stopIds.includes(sid);
+                  updateGroup(g.id, {
+                    stopIds: has ? g.stopIds.filter((s) => s !== sid) : [...g.stopIds, sid],
+                  });
+                }}
+              />
+            )}
 
             {/* Map picker — shows all stops, routes hidden by default */}
             {mapGroupId === g.id && (() => {
@@ -2660,6 +2894,8 @@ const TransitMap: FC = () => {
             routeStops={routeStops}
             segmentTimes={segmentTimes}
             tick={tick}
+            userLatLon={userLatLon}
+            onRequestLocate={startLocating}
           />
         </div>
       ) :
