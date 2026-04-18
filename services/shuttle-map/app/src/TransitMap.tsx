@@ -582,11 +582,7 @@ const TripPlanner: FC<{
                     </span>
                   )}
                 </div>
-                {o.mode === "walk" ? (
-                  <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                    Straight shot — {fmtMin(o.totalSec)} on foot, no waiting.
-                  </div>
-                ) : (
+                {o.mode === "walk" ? null : (
                   <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
                     🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
                     <br />
