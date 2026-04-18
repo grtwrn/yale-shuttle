@@ -380,6 +380,7 @@ const TripPlanner: FC<{
   const [toSugg, setToSugg] = useState<GeocodeResult[]>([]);
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const pickFrom = (g: GeocodeResult) => {
     setFromLL({ lat: g.lat, lon: g.lon });
@@ -529,12 +530,16 @@ const TripPlanner: FC<{
           )}
           {options.map((o, i) => {
             const isBest = i === 0;
+            const isExpanded = expandedIdx === i;
+            const clickable = o.mode === "shuttle";
             return (
               <div key={i} style={{
                 padding: "10px 12px", background: "#fff", borderRadius: 10, marginBottom: 8,
                 border: isBest ? "1.5px solid #2E7D32" : "1px solid #e0ddd8",
                 boxShadow: isBest ? "0 1px 4px rgba(46,125,50,0.15)" : "0 1px 2px rgba(0,0,0,0.04)",
-              }}>
+                cursor: clickable ? "pointer" : "default",
+              }}
+              onClick={clickable ? () => setExpandedIdx(isExpanded ? null : i) : undefined}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color }} />
                   <span style={{ fontSize: 12, fontWeight: 700, color: o.color }}>
@@ -552,6 +557,11 @@ const TripPlanner: FC<{
                   <span style={{ fontSize: 10, color: "#9e9e9e", marginLeft: "auto" }}>
                     arrive {fmtClock(o.totalSec)}
                   </span>
+                  {clickable && (
+                    <span style={{ fontSize: 10, color: "#90a4ae", marginLeft: 4 }}>
+                      {isExpanded ? "▴" : "▾"}
+                    </span>
+                  )}
                 </div>
                 {o.mode === "walk" ? (
                   <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
@@ -568,6 +578,73 @@ const TripPlanner: FC<{
                     🚶 {fmtMin(o.walkFromSec)} to destination
                   </div>
                 )}
+                {isExpanded && o.mode === "shuttle" && (() => {
+                  // Find the route config, then slice its stop sequence
+                  // from board → alight so users see the exact path the
+                  // bus takes — just the relevant stops, not the full loop.
+                  const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                  if (!cfg) return null;
+                  const allStops: number[] = [];
+                  const seen = new Set<number>();
+                  for (const rid of cfg.routeIds) {
+                    for (const sid of (routeStops[rid] ?? [])) {
+                      if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
+                    }
+                  }
+                  const bi = allStops.indexOf(o.boardStopId);
+                  const ai = allStops.indexOf(o.alightStopId);
+                  if (bi === -1 || ai === -1) return null;
+                  const segStops = bi <= ai
+                    ? allStops.slice(bi, ai + 1)
+                    : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
+                  return (
+                    <div style={{
+                      marginTop: 10, padding: "8px 10px",
+                      background: "#fafaf8", borderRadius: 8,
+                      border: "1px solid #ececec",
+                    }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
+                      </div>
+                      <div style={{ position: "relative", paddingLeft: 16 }}>
+                        {/* Vertical line connecting the stops */}
+                        <span style={{
+                          position: "absolute", left: 6, top: 6, bottom: 6,
+                          width: 2, background: o.color, opacity: 0.6,
+                        }} />
+                        {segStops.map((sid, j) => {
+                          const isEnd = j === 0 || j === segStops.length - 1;
+                          const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                          return (
+                            <div key={j} style={{
+                              position: "relative", display: "flex", alignItems: "center",
+                              padding: "2px 0",
+                            }}>
+                              <span style={{
+                                position: "absolute", left: -14, top: "50%",
+                                transform: "translateY(-50%)",
+                                width: isEnd ? 12 : 8, height: isEnd ? 12 : 8,
+                                borderRadius: "50%",
+                                background: isEnd ? o.color : "#fff",
+                                border: `2px solid ${o.color}`,
+                                boxSizing: "border-box",
+                              }} />
+                              <span style={{
+                                fontSize: 11,
+                                fontWeight: isEnd ? 700 : 400,
+                                color: isEnd ? "#263238" : "#546e7a",
+                                marginLeft: 4,
+                              }}>
+                                {j === 0 ? "Board: " : j === segStops.length - 1 ? "Alight: " : ""}
+                                {name}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
