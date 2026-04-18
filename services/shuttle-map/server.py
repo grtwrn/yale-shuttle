@@ -629,19 +629,43 @@ app.add_middleware(
 )
 
 
-def _json(payload):
-    # no-cache on live data; short cache on geocode is set per-route below
-    return JSONResponse(payload, headers={"Cache-Control": "no-cache"})
+# In-memory TTL cache for read endpoints. Guards against thundering-herd
+# cache stampedes from the Cloudflare edge and keeps the SQLite-heavy
+# handlers off the critical path. Values: (expires_at, payload).
+_RESPONSE_CACHE: dict[str, tuple[float, dict]] = {}
+
+
+def _cached(key: str, ttl_sec: float, loader):
+    now = time.time()
+    hit = _RESPONSE_CACHE.get(key)
+    if hit and hit[0] > now:
+        return hit[1]
+    payload = loader()
+    _RESPONSE_CACHE[key] = (now + ttl_sec, payload)
+    return payload
+
+
+def _json_cached(payload, max_age: int):
+    # Tell Cloudflare / browsers to cache for max_age seconds.
+    # stale-while-revalidate lets clients serve a stale response while we
+    # refresh in the background — no user-visible latency spikes.
+    cc = f"public, max-age={max_age}, stale-while-revalidate={max_age * 2}"
+    return JSONResponse(payload, headers={"Cache-Control": cc})
 
 
 @app.get("/api/buses")
 def api_buses():
-    return _json(get_bus_data())
+    # Live data updates every 5s upstream, so cache 3s — fresh enough and
+    # absorbs hundreds of simultaneous clients without hitting SQLite.
+    data = _cached("buses", 3, get_bus_data)
+    return _json_cached(data, 3)
 
 
 @app.get("/api/accuracy")
 def api_accuracy():
-    return _json(get_accuracy_stats())
+    # Accuracy stats recompute slowly (14-day window). 60s is plenty fresh.
+    data = _cached("accuracy", 60, get_accuracy_stats)
+    return _json_cached(data, 60)
 
 
 @app.get("/api/geocode")
