@@ -494,7 +494,7 @@ _YALE_LANDMARKS: list[dict] = [
     # Cafes / coffee shops near campus. External geocoders often mis-rank
     # these (apostrophes, word splits) — curate the well-known ones so they
     # land in the picker regardless of how the user types them.
-    {"name": "Poppy's Coffee and Kitchen", "lat": 41.3170, "lon": -72.9213,
+    {"name": "Poppy's Coffee and Kitchen", "lat": 41.3210, "lon": -72.9186,
      "aliases": ["poppys", "poppy's", "poppy", "poppys coffee", "poppys kitchen"]},
     {"name": "Atticus Bookstore Cafe",     "lat": 41.3082, "lon": -72.9298,
      "aliases": ["atticus", "atticus cafe", "atticus bookstore"]},
@@ -540,24 +540,45 @@ _YALE_LANDMARKS: list[dict] = [
 ]
 
 
+def _key_variants(k: str) -> list[str]:
+    """Expand a match key into tolerant variants so "poppy", "poppys", and
+    "poppy's" all hit the same landmark. We match against every variant, so
+    this is safe even for words with a real trailing 's' (atticus stays
+    "atticus" — the original is always included)."""
+    base = k.lower().strip()
+    no_apos = base.replace("'", "").replace("\u2019", "").replace("\u2018", "")
+    out = {base, no_apos}
+    if no_apos.endswith("s") and len(no_apos) > 3:
+        out.add(no_apos[:-1])
+    return [v for v in out if v]
+
+
+def _query_variants(q: str) -> list[str]:
+    base = q.lower().strip()
+    no_apos = base.replace("'", "").replace("\u2019", "").replace("\u2018", "")
+    return [v for v in {base, no_apos} if v]
+
+
 def _match_landmarks(q: str) -> list:
-    qn = q.lower().strip()
-    if not qn:
+    q_variants = _query_variants(q)
+    if not q_variants:
         return []
-    # Collect (score, landmark) for ranking.
+    # Collect (score, landmark) for ranking. We score the best match across
+    # every (query_variant × key_variant) pair so apostrophe / trailing-s
+    # differences never lower the score.
     scored: list[tuple[float, dict]] = []
     for L in _YALE_LANDMARKS:
-        keys = [L["name"].lower()] + [a.lower() for a in L.get("aliases", [])]
+        keys = [L["name"]] + L.get("aliases", [])
+        k_variants = [v for k in keys for v in _key_variants(k)]
         best = 0.0
-        for k in keys:
-            if qn == k:
-                best = max(best, 1.0); continue
-            if qn in k or k in qn:
-                # substring is a strong signal but not perfect
-                best = max(best, 0.9)
-                continue
-            # Fuzzy match — handles typos like rozenkranz ↔ rosenkranz
-            best = max(best, difflib.SequenceMatcher(None, qn, k).ratio())
+        for qn in q_variants:
+            for k in k_variants:
+                if qn == k:
+                    best = max(best, 1.0); continue
+                if qn in k or k in qn:
+                    best = max(best, 0.9); continue
+                # Fuzzy match — handles typos like rozenkranz ↔ rosenkranz
+                best = max(best, difflib.SequenceMatcher(None, qn, k).ratio())
         if best >= 0.75:
             scored.append((best, L))
     scored.sort(key=lambda x: -x[0])
