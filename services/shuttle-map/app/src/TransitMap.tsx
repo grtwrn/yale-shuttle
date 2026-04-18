@@ -471,12 +471,22 @@ const TripPlanner: FC<{
   const [error, setError] = useState<string | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
+  // AbortControllers per field so pickFrom/pickTo can cancel a debounced
+  // fetch that was already in flight — otherwise the late response would
+  // reopen the dropdown right after the user picked a location.
+  const fromAbortRef = useRef<AbortController | null>(null);
+  const toAbortRef = useRef<AbortController | null>(null);
+
   const pickFrom = (g: GeocodeResult) => {
+    fromAbortRef.current?.abort();
+    fromAbortRef.current = null;
     setFromLL({ lat: g.lat, lon: g.lon });
     setFromText(g.display_name.split(",").slice(0, 2).join(", "));
     setFromSugg([]);
   };
   const pickTo = (g: GeocodeResult) => {
+    toAbortRef.current?.abort();
+    toAbortRef.current = null;
     setToLL({ lat: g.lat, lon: g.lon });
     setToText(g.display_name.split(",").slice(0, 2).join(", "));
     setToSugg([]);
@@ -485,6 +495,12 @@ const TripPlanner: FC<{
   const geocode = async (q: string, which: "from" | "to", opts: { autoPick?: boolean } = {}) => {
     if (!q.trim()) return;
     const autoPick = opts.autoPick !== false;
+    // Supersede any in-flight fetch for this field, including a stale
+    // debounced one from the last keystroke.
+    const abortRef = which === "from" ? fromAbortRef : toAbortRef;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setSearching(which); setError(null);
     // Nominatim matches poorly on conjunction words like "and" or "&" in
     // intersections. Normalize "X and Y" / "X & Y" → "X Y" before querying.
@@ -494,8 +510,12 @@ const TripPlanner: FC<{
       // still hold a stale response for short queries. A unique query
       // param forces a fresh fetch while the server-side cache still
       // protects upstream geocoders.
-      const r = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}&_=${Date.now()}`, { cache: "no-store" });
+      const r = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}&_=${Date.now()}`, {
+        cache: "no-store", signal: controller.signal,
+      });
       const d = await r.json();
+      // If a newer request (or a pick) has superseded us, bail quietly.
+      if (abortRef.current !== controller) return;
       const results: GeocodeResult[] = d.results ?? [];
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
@@ -516,10 +536,14 @@ const TripPlanner: FC<{
       } else {
         if (which === "from") setFromSugg(results); else setToSugg(results);
       }
-    } catch {
+    } catch (e) {
+      if ((e as DOMException)?.name === "AbortError") return;
       if (autoPick) setError("Geocode request failed");
     } finally {
-      setSearching(null);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setSearching(null);
+      }
     }
   };
 
