@@ -226,10 +226,12 @@ type LatLon = { lat: number; lon: number };
 type GeocodeResult = { display_name: string; lat: number; lon: number; type?: string; class?: string };
 
 type TripOption = {
+  mode: "shuttle" | "walk";
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
   totalSec: number; busName: string;
+  directWalkSec: number;
 };
 
 const WALK_SPEED_M_S = 1.3;
@@ -252,7 +254,10 @@ function planTrip(
   stopCoords: Record<number, LatLon>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
 ): TripOption[] {
-  const MAX_WALK_M = 1500;
+  const MAX_WALK_M = 1200;
+  const directWalkM = haversineMeters(from, to);
+  const directWalkSec = directWalkM / WALK_SPEED_M_S;
+
   const fromDist: Record<number, number> = {};
   const toDist: Record<number, number> = {};
   for (const [k, c] of Object.entries(stopCoords)) {
@@ -286,32 +291,49 @@ function planTrip(
         if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
         const walkToSec = fromDist[b] / WALK_SPEED_M_S;
         const walkFromSec = toDist[cur] / WALK_SPEED_M_S;
+        // Skip options that require more total walking than just walking
+        // direct — no point suggesting a shuttle that leaves you footsore.
+        if (walkToSec + walkFromSec >= directWalkSec) continue;
         // Next bus ETA at boarding stop
         const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
         const next = arrivals.find((a) => a.routeLabel === cfg.label);
         if (!next) continue;
         const waitSec = Math.max(0, next.eta - walkToSec);
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
+        // Only surface shuttle options that actually beat walking.
+        if (totalSec >= directWalkSec) continue;
         options.push({
+          mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
           boardStopId: b, alightStopId: cur,
           walkToSec, waitSec, rideSec: cumRide, walkFromSec,
           totalSec, busName: next.busName,
+          directWalkSec,
         });
       }
     }
   }
   options.sort((a, b) => a.totalSec - b.totalSec);
-  // Keep the single best option per route label
-  const seen = new Set<string>();
+  // Keep the single best option per route label.
+  const seenRoute = new Set<string>();
   const dedup: TripOption[] = [];
   for (const o of options) {
-    if (seen.has(o.routeLabel)) continue;
-    seen.add(o.routeLabel);
+    if (seenRoute.has(o.routeLabel)) continue;
+    seenRoute.add(o.routeLabel);
     dedup.push(o);
-    if (dedup.length >= 5) break;
+    if (dedup.length >= 4) break;
   }
-  return dedup;
+  // Always prepend a direct-walk option so users see it as a baseline.
+  const walkOption: TripOption = {
+    mode: "walk",
+    routeLabel: "Walk",
+    color: "#546e7a",
+    boardStopId: 0, alightStopId: 0,
+    walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
+    totalSec: directWalkSec, busName: "",
+    directWalkSec,
+  };
+  return [walkOption, ...dedup];
 }
 
 const TripPlanner: FC<{
@@ -468,7 +490,7 @@ const TripPlanner: FC<{
       {/* Results */}
       {options && options.length === 0 && (
         <div style={{ fontSize: 12, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
-          No shuttle routes found between these locations. Try closer to campus.
+          No trip options found between these locations.
         </div>
       )}
       {options && options.length > 0 && (
@@ -480,7 +502,9 @@ const TripPlanner: FC<{
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: o.color }}>{o.routeLabel}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: o.color }}>
+                  {o.mode === "walk" ? "🚶 Walk" : o.routeLabel}
+                </span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#263238" }}>
                   {fmtMin(o.totalSec)}
                 </span>
@@ -488,15 +512,21 @@ const TripPlanner: FC<{
                   arrive {fmtClock(o.totalSec)}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                <br />
-                ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
-                <br />
-                🚌 {fmtMin(o.rideSec)} to <b>{(stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                <br />
-                🚶 {fmtMin(o.walkFromSec)} to destination
-              </div>
+              {o.mode === "walk" ? (
+                <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
+                  Straight shot — {fmtMin(o.totalSec)} on foot, no waiting.
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
+                  🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
+                  <br />
+                  ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
+                  <br />
+                  🚌 {fmtMin(o.rideSec)} to <b>{(stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
+                  <br />
+                  🚶 {fmtMin(o.walkFromSec)} to destination
+                </div>
+              )}
             </div>
           ))}
         </div>
