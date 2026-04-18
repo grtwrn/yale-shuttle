@@ -817,11 +817,17 @@ const TripPlanner: FC<{
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
                           </div>
-                          {stopsAway !== null && (
-                            <div style={{ fontSize: 11, color: o.color, fontWeight: 600, marginBottom: 6 }}>
-                              🚌 Bus #{normBus(busMatch!.bus_name)} {stopsAway === 0 ? "is at boarding stop" : `is ${stopsAway} stop${stopsAway === 1 ? "" : "s"} away`}
-                            </div>
-                          )}
+                          {stopsAway !== null && (() => {
+                            const busEta = o.walkToSec + o.waitSec;
+                            const away = stopsAway === 0
+                              ? "is at boarding stop"
+                              : `is ${stopsAway} stop${stopsAway === 1 ? "" : "s"} away`;
+                            return (
+                              <div style={{ fontSize: 11, color: o.color, fontWeight: 600, marginBottom: 6 }}>
+                                🚌 Bus #{normBus(busMatch!.bus_name)} {away} · arrives in {fmtMin(busEta)} ({fmtClock(busEta)})
+                              </div>
+                            );
+                          })()}
                           <div style={{ position: "relative", paddingLeft: 16 }}>
                             {/* Vertical line connecting the stops */}
                             <span style={{
