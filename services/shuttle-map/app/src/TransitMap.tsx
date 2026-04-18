@@ -375,8 +375,9 @@ const TripMap: FC<{
   from: LatLon;
   to: LatLon;
   shuttleStops?: LatLon[];
+  bus?: { lat: number; lon: number; name?: string } | null;
   color: string;
-}> = ({ from, to, shuttleStops, color }) => {
+}> = ({ from, to, shuttleStops, bus, color }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -408,11 +409,11 @@ const TripMap: FC<{
         color, weight: 5, opacity: 0.75,
       }).addTo(map);
       L.circleMarker([board.lat, board.lon], {
-        radius: 6, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2,
-      }).addTo(map).bindTooltip("Board", { direction: "top" });
+        radius: 7, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2.5,
+      }).addTo(map).bindTooltip("Board", { direction: "top", permanent: true, className: "trip-label trip-label-board" });
       L.circleMarker([alight.lat, alight.lon], {
-        radius: 6, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2,
-      }).addTo(map).bindTooltip("Get off", { direction: "top" });
+        radius: 7, color: "#fff", fillColor: color, fillOpacity: 1, weight: 2.5,
+      }).addTo(map).bindTooltip("Get off", { direction: "top", permanent: true, className: "trip-label trip-label-alight" });
       L.polyline([[from.lat, from.lon], [board.lat, board.lon]], {
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
       }).addTo(map);
@@ -420,13 +421,26 @@ const TripMap: FC<{
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
       }).addTo(map);
       points.push([board.lat, board.lon], [alight.lat, alight.lon]);
+
+      if (bus) {
+        const busIcon = L.divIcon({
+          className: "bus-pin",
+          html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45));">🚌</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+        L.marker([bus.lat, bus.lon], { icon: busIcon, zIndexOffset: 1000 })
+          .addTo(map)
+          .bindTooltip(bus.name ? `Bus #${bus.name}` : "Bus", { direction: "top" });
+        points.push([bus.lat, bus.lon]);
+      }
     } else {
       L.polyline([[from.lat, from.lon], [to.lat, to.lon]], {
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
       }).addTo(map);
     }
 
-    map.fitBounds(L.latLngBounds(points), { padding: [24, 24], maxZoom: 16 });
+    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 16 });
     // Tile sizes are computed from the container's measured size. When the
     // card expands the div hits layout one frame later, so nudge Leaflet.
     setTimeout(() => map.invalidateSize(), 60);
@@ -550,6 +564,16 @@ const TripPlanner: FC<{
   const options = (fromLL && toLL)
     ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes)
     : null;
+
+  // When a fresh trip is planned, auto-expand the best shuttle option so the
+  // map + board/alight list appear immediately. Depending only on the
+  // endpoint coords avoids re-expanding on every bus tick.
+  useEffect(() => {
+    if (!fromLL || !toLL || !options) { setExpandedIdx(null); return; }
+    const idx = options.findIndex((o) => o.mode === "shuttle");
+    setExpandedIdx(idx >= 0 ? idx : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
 
   const fmtMin = (s: number) => {
     const m = Math.round(s / 60);
@@ -721,6 +745,12 @@ const TripPlanner: FC<{
                   const segCoords = segStops
                     .map((sid) => stopCoords[sid])
                     .filter((c): c is LatLon => !!c);
+                  // Pick the specific bus the option was planned against, so
+                  // its current GPS position pins to the route segment.
+                  const busMatch = buses.find((b) =>
+                    b.bus_name === o.busName &&
+                    cfg.busRouteIds.includes(b.route_id)
+                  );
                   return (
                     <div style={{
                       marginTop: 10, padding: "8px 10px",
@@ -728,7 +758,12 @@ const TripPlanner: FC<{
                       border: "1px solid #ececec",
                     }} onClick={(e) => e.stopPropagation()}>
                       {fromLL && toLL && segCoords.length >= 2 && (
-                        <TripMap from={fromLL} to={toLL} shuttleStops={segCoords} color={o.color} />
+                        <TripMap
+                          from={fromLL} to={toLL}
+                          shuttleStops={segCoords}
+                          bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: busMatch.bus_name } : null}
+                          color={o.color}
+                        />
                       )}
                       <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
@@ -740,29 +775,36 @@ const TripPlanner: FC<{
                           width: 2, background: o.color, opacity: 0.6,
                         }} />
                         {segStops.map((sid, j) => {
-                          const isEnd = j === 0 || j === segStops.length - 1;
+                          const isBoard = j === 0;
+                          const isAlight = j === segStops.length - 1;
+                          const isEnd = isBoard || isAlight;
                           const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
                           return (
                             <div key={j} style={{
                               position: "relative", display: "flex", alignItems: "center",
-                              padding: "2px 0",
+                              padding: isEnd ? "4px 6px" : "2px 0",
+                              marginLeft: isEnd ? -6 : 0,
+                              borderRadius: 4,
+                              background: isEnd ? `${o.color}1f` : "transparent",
                             }}>
                               <span style={{
-                                position: "absolute", left: -14, top: "50%",
+                                position: "absolute", left: isEnd ? -8 : -14, top: "50%",
                                 transform: "translateY(-50%)",
-                                width: isEnd ? 12 : 8, height: isEnd ? 12 : 8,
+                                width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
                                 borderRadius: "50%",
                                 background: isEnd ? o.color : "#fff",
                                 border: `2px solid ${o.color}`,
+                                boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
                                 boxSizing: "border-box",
                               }} />
                               <span style={{
                                 fontSize: 11,
                                 fontWeight: isEnd ? 700 : 400,
                                 color: isEnd ? "#263238" : "#546e7a",
-                                marginLeft: 4,
+                                marginLeft: 8,
                               }}>
-                                {j === 0 ? "Board: " : j === segStops.length - 1 ? "Alight: " : ""}
+                                {isBoard && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
+                                {isAlight && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
                                 {name}
                               </span>
                             </div>
