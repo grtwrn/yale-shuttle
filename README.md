@@ -35,11 +35,36 @@ cd services/shuttle-map/app && npx vite
 
 Then open http://localhost:8090.
 
-## Deploy
+## Deploy (Fly.io)
 
-Any host that can run Python + a Node daemon with persistent storage
-works. Fly.io, Hetzner, and a Raspberry Pi all do. The collector must
-stay running — it's the only thing writing to the database.
+One-shot deploy — spins up a single machine running both the collector
+and the server, with a persistent SQLite volume.
+
+```bash
+# one-time: install flyctl and log in
+curl -L https://fly.io/install.sh | sh
+flyctl auth login
+
+# one-time: create the app + volume (from repo root)
+flyctl launch --no-deploy --copy-config --name yale-shuttle --region bos
+flyctl volumes create shuttle_data --region bos --size 1
+
+# deploy
+flyctl deploy
+```
+
+The `Dockerfile` builds the Vite frontend, installs Python + Node
+runtimes, pre-builds the collector's native `better-sqlite3` module,
+and `start.sh` launches the collector in the background with the
+FastAPI server in the foreground. Health checks hit `/healthz`.
+
+## Deploy (anywhere else)
+
+Any Linux host with Python 3.12 + Node 20 works. Run the collector
+under systemd so SQLite stays fresh, then run the server behind your
+reverse proxy of choice. The Pi-systemd unit at
+`services/shuttle-collector/shuttle-collector.service` is a starting
+point.
 
 ## Data
 

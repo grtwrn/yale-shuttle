@@ -19,7 +19,6 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
 DB_PATH = os.environ.get(
@@ -27,6 +26,10 @@ DB_PATH = os.environ.get(
     str(Path(__file__).resolve().parent.parent.parent / "store" / "shuttle.db"),
 )
 HTML_PATH = Path(__file__).resolve().parent / "index.html"
+STATIC_DIR = Path(os.environ.get(
+    "SHUTTLE_STATIC_DIR",
+    str(Path(__file__).resolve().parent / "app" / "dist"),
+))
 PORT = int(os.environ.get("PORT", "8091"))
 
 
@@ -610,37 +613,76 @@ def geocode(q: str) -> list:
     return kept
 
 
-class Handler(BaseHTTPRequestHandler):
-    def _json(self, data):
-        body = json.dumps(data).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(body)
+# ── HTTP app (FastAPI) ────────────────────────────────────────────────────
 
-    def do_GET(self):
-        if self.path == "/api/buses":
-            self._json(get_bus_data())
-        elif self.path == "/api/accuracy":
-            self._json(get_accuracy_stats())
-        elif self.path.startswith("/api/geocode"):
-            qs = urllib.parse.urlparse(self.path).query
-            q = urllib.parse.parse_qs(qs).get("q", [""])[0]
-            self._json({"results": geocode(q)})
-        else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b"Use /api/buses, /api/accuracy, or /api/geocode?q=")
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
-    def log_message(self, *a):
-        pass
+app = FastAPI(title="Yale Shuttle Map")
+
+# Permissive CORS — the API is read-only and deliberately public.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"],
+)
+
+
+def _json(payload):
+    # no-cache on live data; short cache on geocode is set per-route below
+    return JSONResponse(payload, headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/api/buses")
+def api_buses():
+    return _json(get_bus_data())
+
+
+@app.get("/api/accuracy")
+def api_accuracy():
+    return _json(get_accuracy_stats())
+
+
+@app.get("/api/geocode")
+def api_geocode(q: str = Query("")):
+    return JSONResponse(
+        {"results": geocode(q)},
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+# Serve the Vite-built frontend if it exists. In dev, the Vite server
+# proxies /api itself, so this mount is only active on deploys where
+# the `app/dist` directory has been built.
+if STATIC_DIR.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(STATIC_DIR / "assets")),
+        name="assets",
+    )
+
+    @app.get("/")
+    def index():
+        return FileResponse(str(STATIC_DIR / "index.html"))
+
+    # Catch-all for any other path so client-side routing still serves
+    # index.html. Keeping /api above this so it takes precedence.
+    @app.get("/{_path:path}")
+    def spa(_path: str):
+        candidate = STATIC_DIR / _path
+        if candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(STATIC_DIR / "index.html"))
 
 
 def main():
-    server = HTTPServer(("0.0.0.0", PORT), Handler)
-    server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    import uvicorn
 
     # Get local IP for display
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -664,12 +706,7 @@ def main():
         except Exception:
             pass
 
-    print("  Ctrl+C to stop\n")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.shutdown()
-        print("\n  Stopped.\n")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
 
 
 if __name__ == "__main__":

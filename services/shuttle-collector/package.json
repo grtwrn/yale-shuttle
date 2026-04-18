@@ -1,0 +1,13 @@
+{
+  "name": "shuttle-collector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "tsx": "^4.19.2"
+  }
+}
