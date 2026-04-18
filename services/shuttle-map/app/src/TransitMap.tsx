@@ -2591,21 +2591,28 @@ const TransitMap: FC = () => {
         );
       })()}
 
-      {/* Locate button (all view, under the map) */}
+      {/* All / Active filter (all view, above the stop list) */}
       {listView === "all" && (
         <div style={{ padding: "8px 16px", textAlign: "center", display: "flex",
-                      justifyContent: "center", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={startLocating} disabled={locating} style={{
-            padding: "4px 16px", borderRadius: 12, border: "1px solid #bbb",
-            background: userLatLon ? "#1E88E5" : "#fff",
-            color: userLatLon ? "#fff" : "#546e7a",
-            fontSize: 11, fontWeight: 500, cursor: locating ? "wait" : "pointer", fontFamily: "inherit",
+                      justifyContent: "center", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={() => setActiveOnly(false)} style={{
+            padding: "4px 16px", borderRadius: 12,
+            border: !activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
+            background: !activeOnly ? "#1a1a2e" : "#fff",
+            color: !activeOnly ? "#fff" : "#546e7a",
+            fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
           }}>
-            {locating ? "Locating…" : userLatLon ? "📍 Locating" : "📍 Locate me"}
+            All
           </button>
-          {locateError && (
-            <span style={{ fontSize: 10, color: "#C62828" }}>{locateError}</span>
-          )}
+          <button onClick={() => setActiveOnly(true)} style={{
+            padding: "4px 16px", borderRadius: 12,
+            border: activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
+            background: activeOnly ? "#1a1a2e" : "#fff",
+            color: activeOnly ? "#fff" : "#546e7a",
+            fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+          }}>
+            Active
+          </button>
         </div>
       )}
 
