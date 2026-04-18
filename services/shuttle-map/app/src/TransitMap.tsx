@@ -2370,13 +2370,45 @@ const TransitMap: FC = () => {
       )}
 
       {/* Stop-group arrivals summary (favorites only) */}
-      {listView === "favorites" && (
+      {listView === "favorites" && stopGroups.length > 0 && (
         <StopGroupsSummary
           groups={stopGroups}
           buses={buses}
           stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} segmentTimes={segmentTimes} tick={tick}
         />
+      )}
+
+      {/* Empty state — no groups yet */}
+      {listView === "favorites" && stopGroups.length === 0 && (
+        <div style={{
+          width: "100%", maxWidth: 480, margin: "16px auto",
+          padding: "28px 20px", background: "#fff",
+          border: "1px solid #e0ddd8", borderRadius: 10,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>⭐</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#263238", marginBottom: 4 }}>
+            Add a group to get started
+          </div>
+          <div style={{ fontSize: 12, color: "#78909c", marginBottom: 16 }}>
+            Groups bundle stops you care about so you can see upcoming shuttles at a glance.
+          </div>
+          <button
+            onClick={() => {
+              const id = `g${Date.now().toString(36)}`;
+              saveStopGroups([{ id, name: "New Group", stopIds: [] }]);
+              setShowGroupSettings(true);
+            }}
+            style={{
+              padding: "8px 18px", borderRadius: 10, border: "none",
+              background: "#2E7D32", color: "#fff",
+              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            + Create a group
+          </button>
+        </div>
       )}
 
       {/* Stop list above loops on favorites */}
