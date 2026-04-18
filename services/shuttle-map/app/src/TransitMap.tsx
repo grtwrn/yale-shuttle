@@ -2433,8 +2433,20 @@ const TransitMap: FC = () => {
         </div>
       )}
 
-      {/* Map (at top on "all", below the vertical list on favorites) */}
-      {(listView === "all" || listView === "favorites") && (() => {
+      {/* Map — hidden until the schematic is polished. Show a placeholder
+          on the two views that previously rendered it. */}
+      {(listView === "all" || listView === "favorites") && (
+        <div style={{
+          width: "100%", maxWidth: 560, margin: "16px auto",
+          padding: "40px 20px", background: "#fff",
+          border: "1px dashed #cfd8dc", borderRadius: 10,
+          textAlign: "center",
+          color: "#78909c", fontSize: 13, letterSpacing: 0.5,
+        }}>
+          🗺️ Map coming soon
+        </div>
+      )}
+      {false && (() => {
         const visibleRouteIds = new Set<string>();
         const visibleStopIds = new Set<number>();
 
