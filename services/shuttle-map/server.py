@@ -415,7 +415,7 @@ _GEOCODE_TTL = 24 * 60 * 60
 
 # New Haven viewbox biases results toward the shuttle service area.
 # left,top,right,bottom (lon_min, lat_max, lon_max, lat_min)
-_VIEWBOX = "-73.00,41.40,-72.80,41.25"
+_VIEWBOX = "-73.08,41.40,-72.80,41.22"
 
 # Curated Yale campus landmarks with common aliases. Matched before we hit
 # external geocoders so typos like "rozenkranz" or partial names like "SOM"
@@ -476,6 +476,18 @@ _YALE_LANDMARKS: list[dict] = [
     {"name": "Payne Whitney Gymnasium",    "lat": 41.3119, "lon": -72.9220, "aliases": ["payne whitney", "pwg", "yale gym", "gym"]},
     {"name": "Yale Health",                "lat": 41.3097, "lon": -72.9196, "aliases": ["yale health", "yuhs"]},
     {"name": "Ingalls Rink",               "lat": 41.3115, "lon": -72.9185, "aliases": ["whale", "ingalls"]},
+
+    # Groceries served by shuttle routes — coords match the actual shuttle
+    # stops, which Nominatim/Photon miss (e.g. Trader Joe's is in Orange CT,
+    # outside New Haven city, so upstream geocoders return unrelated hits).
+    {"name": "Trader Joe's (Orange CT)",   "lat": 41.2514, "lon": -73.0181,
+     "aliases": ["trader joes", "trader joe's", "tj", "trader joe"]},
+    {"name": "Stop & Shop (Whalley)",      "lat": 41.3150, "lon": -72.9382,
+     "aliases": ["stop and shop", "stop n shop", "stop shop"]},
+    {"name": "Aldi / Walmart (Hamden)",    "lat": 41.3751, "lon": -72.9171,
+     "aliases": ["aldi", "walmart", "aldi walmart"]},
+    {"name": "Shop Rite (Hamden)",         "lat": 41.3688, "lon": -72.9205,
+     "aliases": ["shoprite", "shop rite"]},
 
     # Landmarks
     {"name": "New Haven Green",            "lat": 41.3082, "lon": -72.9272, "aliases": ["green", "nh green"]},
