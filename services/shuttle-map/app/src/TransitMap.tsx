@@ -2043,7 +2043,7 @@ const StopList: FC<{
                     <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
                   </div>
                   {schedule && (
-                    <div style={{ fontSize: 9, color: "#b0bec5", padding: "0 10px 3px" }}>
+                    <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px" }}>
                       {schedule}
                     </div>
                   )}
