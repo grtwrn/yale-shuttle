@@ -106,6 +106,16 @@ function initDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_bp_bus ON bus_positions(bus_id, collected_at);
     CREATE INDEX IF NOT EXISTS idx_bp_route ON bus_positions(route_id, collected_at);
 
+    -- Per-route peak concurrent bus count, updated on every poll cycle.
+    -- Persists forever (retention leaves this table alone) so the "X/Y
+    -- buses" display always has a sensible ceiling even when bus_positions
+    -- has been trimmed.
+    CREATE TABLE IF NOT EXISTS route_peaks (
+      route_id INTEGER PRIMARY KEY,
+      peak_concurrent INTEGER NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Stop arrival events (derived from consecutive position polls)
     CREATE TABLE IF NOT EXISTS stop_arrivals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -697,9 +707,19 @@ function collectBusPositions(db: Database.Database, buses: Bus[]): void {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
+  const upsertPeak = db.prepare(`
+    INSERT INTO route_peaks (route_id, peak_concurrent, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(route_id) DO UPDATE SET
+      peak_concurrent = MAX(peak_concurrent, excluded.peak_concurrent),
+      updated_at = excluded.updated_at
+  `);
+
   const tx = db.transaction(() => {
+    const countByRoute = new Map<number, number>();
     for (const bus of buses) {
       insert.run(bus.id, bus.name, bus.route, bus.lat, bus.lon, bus.heading, bus.lastStop, bus.lastUpdate, now);
+      countByRoute.set(bus.route, (countByRoute.get(bus.route) ?? 0) + 1);
 
       // Detect stop transitions from the API's last_stop_id — we use this for
       // dwell tracking in stop_arrivals (kept for backwards compatibility), but
@@ -718,6 +738,9 @@ function collectBusPositions(db: Database.Database, buses: Bus[]): void {
       if (!prev || prev.stopId !== bus.lastStop) {
         lastKnownStop.set(bus.id, { stopId: bus.lastStop, timestamp: now });
       }
+    }
+    for (const [rid, n] of countByRoute) {
+      upsertPeak.run(rid, n, now);
     }
   });
 

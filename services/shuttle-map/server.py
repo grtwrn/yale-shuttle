@@ -111,7 +111,24 @@ def get_bus_data():
     db.close()
     segments = get_segment_times()
     dwells = get_dwell_times()
-    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells}
+    peaks = get_route_peaks()
+    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "route_peaks": peaks}
+
+
+def get_route_peaks() -> dict:
+    """Max concurrent bus count ever observed per route (persisted across
+    bus_positions retention trims)."""
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception:
+        return {}
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute("SELECT route_id, peak_concurrent FROM route_peaks").fetchall()
+    except Exception:
+        rows = []
+    db.close()
+    return {str(r["route_id"]): r["peak_concurrent"] for r in rows}
 
 
 def get_segment_times():

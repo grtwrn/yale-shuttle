@@ -754,11 +754,19 @@ const TripPlanner: FC<{
     setToText(t.toText);
     setToLL({ lat: t.toLat, lon: t.toLon });
     setToSugg([]);
-    // If From isn't set or was "Current location", snap it to the latest GPS.
-    if ((!fromLL || fromText === "Current location") && userLatLon) {
+    // Always force From = current location when applying a saved dest.
+    // If GPS hasn't been resolved yet, trigger a locate request and rely
+    // on the awaitingLocation effect below to fill From when it lands.
+    if (userLatLon) {
       setFromLL(userLatLon);
       setFromText("Current location");
       setFromSugg([]);
+    } else {
+      setFromText("Current location");
+      setFromLL(null);
+      setFromSugg([]);
+      setAwaitingLocation(true);
+      onRequestLocate();
     }
   };
   const handleSaveTrip = () => {
@@ -1837,6 +1845,7 @@ const StopList: FC<{
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+  routePeaks?: Record<string, number>;
   tick: number;
   listView: "all" | "favorites" | "accuracy";
   activeOnly?: boolean;
@@ -1846,7 +1855,7 @@ const StopList: FC<{
   onToggleFavorite: (routeId: string) => void;
   savedStops: Set<number>;
   onToggleSavedStop: (stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, routePeaks, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
 
   // GPS-based: find nearest route stop for each bus
   function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
@@ -1976,12 +1985,16 @@ const StopList: FC<{
                 }
               }
               const busCount = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).length;
+              const peak = Math.max(
+                busCount,
+                ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
+              );
               const loopMin = Math.round(loopSec / 60);
-              if (!loopSec && !busCount) return null;
+              if (!loopSec && !busCount && !peak) return null;
               return (
                 <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px", display: "flex", justifyContent: "space-between" }}>
                   <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin}m` : ""}</span>
-                  <span>{busCount} {busCount === 1 ? "bus" : "buses"}</span>
+                  <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
                 </div>
               );
             })()}
@@ -2708,13 +2721,14 @@ const TransitMap: FC = () => {
   const [stopNames, setStopNames] = useState<Record<number, string>>({});
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
   const [dwellTimes, setDwellTimes] = useState<Record<string, Record<string, { med: number; sd: number; n: number }>>>({});
+  const [routePeaks, setRoutePeaks] = useState<Record<string, number>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
-  const [listView, setListView] = useState<"all" | "favorites" | "accuracy" | "trip">(() => {
+  const [listView, setListView] = useState<"all" | "accuracy" | "trip">(() => {
     const saved = localStorage.getItem("listView");
-    return saved === "all" || saved === "favorites" || saved === "accuracy" || saved === "trip" ? saved : "trip";
+    return saved === "all" || saved === "accuracy" || saved === "trip" ? saved : "trip";
   });
   useEffect(() => { localStorage.setItem("listView", listView); }, [listView]);
   const [activeOnly, setActiveOnly] = useState(false);
@@ -2927,6 +2941,7 @@ const TransitMap: FC = () => {
         if (data.segments) setSegmentTimes(data.segments);
         if (data.dwells) setDwellTimes(data.dwells);
         if (data.stop_coords) setStopCoords(data.stop_coords);
+        if (data.route_peaks) setRoutePeaks(data.route_peaks);
       } catch { /* ignore */ }
     };
     poll();
@@ -3029,7 +3044,7 @@ const TransitMap: FC = () => {
           overflowX: "auto", WebkitOverflowScrolling: "touch",
           justifyContent: "center", flexWrap: "wrap",
         }}>
-          {(["trip", "favorites", "all", "accuracy"] as const).map((v) => (
+          {(["trip", "all", "accuracy"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setListView(v)}
@@ -3065,186 +3080,8 @@ const TransitMap: FC = () => {
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
         />
-      ) : listView === "favorites" && showGroupSettings ? (
-        <div style={{ width: "100%" }}>
-          <div style={{ padding: "8px 16px", textAlign: "center" }}>
-            <button onClick={() => setShowGroupSettings(false)} style={{
-              padding: "4px 16px", borderRadius: 12, border: "1px solid #bbb",
-              background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 500,
-              cursor: "pointer", fontFamily: "inherit",
-            }}>
-              ← Done
-            </button>
-          </div>
-          <FavoriteStopsPage
-            groups={stopGroups}
-            setGroups={saveStopGroups}
-            buses={buses}
-            stopNames={stopNames}
-            stopCoords={stopCoords}
-            routeStops={routeStops}
-            segmentTimes={segmentTimes}
-            tick={tick}
-            userLatLon={userLatLon}
-            onRequestLocate={startLocating}
-            savedTrips={savedTrips}
-            setSavedTrips={saveSavedTrips}
-            onPlanTrip={(t) => { setPendingTrip(t); setListView("trip"); }}
-          />
-        </div>
-      ) :
-      /* Stop lists + map side by side */
-      buses.length === 0 && listView === "favorites" ? (
-        <div style={{
-          width: "100%", maxWidth: 1200, padding: "60px 32px",
-          textAlign: "center", color: "#9e9e9e",
-        }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🚌</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#546e7a", marginBottom: 6 }}>
-            No shuttles running
-          </div>
-          <div style={{ fontSize: 13 }}>
-            Buses typically run 6 AM – midnight. Check back during service hours.
-          </div>
-          <button
-            onClick={() => setListView("all")}
-            style={{
-              marginTop: 16, padding: "6px 20px", borderRadius: 12, border: "none",
-              background: "#1a1a2e", color: "#fff", fontSize: 12, fontWeight: 500,
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            View all routes
-          </button>
-        </div>
       ) : (
       <>
-      {/* Settings button (favorites only) */}
-      {listView === "favorites" && (
-        <div style={{ padding: "4px 16px 0", display: "flex", justifyContent: "flex-end",
-                      maxWidth: 560, margin: "0 auto", width: "100%" }}>
-          <button onClick={() => setShowGroupSettings(true)} style={{
-            padding: "3px 10px", borderRadius: 10, border: "1px solid #ddd",
-            background: "transparent", color: "#546e7a",
-            fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-          }} title="Edit favorite stop groups">
-            ⚙ Edit groups
-          </button>
-        </div>
-      )}
-
-      {/* Stop-group arrivals summary (favorites only) */}
-      {listView === "favorites" && stopGroups.length > 0 && (
-        <StopGroupsSummary
-          groups={stopGroups}
-          buses={buses}
-          stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} segmentTimes={segmentTimes} tick={tick}
-        />
-      )}
-
-      {/* Empty state — no groups yet */}
-      {listView === "favorites" && stopGroups.length === 0 && (
-        <div style={{
-          width: "100%", maxWidth: 480, margin: "16px auto",
-          padding: "28px 20px", background: "#fff",
-          border: "1px solid #e0ddd8", borderRadius: 10,
-          textAlign: "center",
-        }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>⭐</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#263238", marginBottom: 4 }}>
-            Add a group to get started
-          </div>
-          <div style={{ fontSize: 12, color: "#78909c", marginBottom: 16 }}>
-            Groups bundle stops you care about so you can see upcoming shuttles at a glance.
-          </div>
-          <button
-            onClick={() => {
-              const id = `g${Date.now().toString(36)}`;
-              saveStopGroups([{ id, name: "New Group", stopIds: [] }]);
-              setShowGroupSettings(true);
-            }}
-            style={{
-              padding: "8px 18px", borderRadius: 10, border: "none",
-              background: "#2E7D32", color: "#fff",
-              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            + Create a group
-          </button>
-        </div>
-      )}
-
-      {/* Stop list above loops on favorites */}
-      {listView === "favorites" && (
-        <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
-          <StopList
-            buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
-            segmentTimes={segmentTimes} dwellTimes={dwellTimes} tick={tick}
-            listView={listView}
-            favoriteStopIds={favoriteStopIds}
-            favorites={favorites} onToggleFavorite={toggleFavorite}
-            savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
-          />
-        </div>
-      )}
-
-      {/* Track loops (favorites only) */}
-      {listView === "favorites" && (
-        <div style={{
-          width: "100%", padding: "8px 16px", display: "flex",
-          gap: 8, flexWrap: "wrap", justifyContent: "center",
-        }}>
-          {ROUTE_LISTS.map((cfg, idx) => {
-            const routeBuses = buses.filter((b) => cfg.busRouteIds.includes(b.route_id));
-            if (routeBuses.length === 0) return null;
-            const allStops: number[] = [];
-            const seen = new Set<number>();
-            for (const rid of cfg.routeIds) {
-              for (const sid of (routeStops[rid] ?? [])) {
-                if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-              }
-            }
-            if (listView === "favorites") {
-              if (favoriteStopIds.size > 0) {
-                if (!allStops.some((sid) => favoriteStopIds.has(sid))) return null;
-              } else if (!favorites.has(cfg.routeIds[0])) {
-                return null;
-              }
-            }
-            return (
-              <TrackLoop
-                key={idx}
-                label={cfg.label}
-                color={cfg.color}
-                stops={allStops}
-                stopNames={stopNames}
-                stopCoords={stopCoords}
-                buses={routeBuses}
-                savedStops={savedStops}
-                tick={tick}
-                segmentTimes={segmentTimes}
-                dwellTimes={dwellTimes}
-                routeId={cfg.routeIds[0]}
-              />
-            );
-          })}
-        </div>
-      )}
-
-      {/* Map — hidden until the schematic is polished. Show a placeholder
-          on the two views that previously rendered it. */}
-      {(listView === "all" || listView === "favorites") && (
-        <div style={{
-          width: "100%", maxWidth: 560, margin: "16px auto",
-          padding: "40px 20px", background: "#fff",
-          border: "1px dashed #cfd8dc", borderRadius: 10,
-          textAlign: "center",
-          color: "#78909c", fontSize: 13, letterSpacing: 0.5,
-        }}>
-          🗺️ Map coming soon
-        </div>
-      )}
       {false && (() => {
         const visibleRouteIds = new Set<string>();
         const visibleStopIds = new Set<number>();
@@ -3420,7 +3257,7 @@ const TransitMap: FC = () => {
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
-            segmentTimes={segmentTimes} dwellTimes={dwellTimes} tick={tick}
+            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} tick={tick}
             listView={listView} activeOnly={activeOnly}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}
