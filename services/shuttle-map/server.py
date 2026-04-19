@@ -513,6 +513,8 @@ _YALE_LANDMARKS: list[dict] = [
     # land in the picker regardless of how the user types them.
     {"name": "Poppy's Coffee and Kitchen", "lat": 41.3210, "lon": -72.9186,
      "aliases": ["poppys", "poppy's", "poppy", "poppys coffee", "poppys kitchen"]},
+    {"name": "Arwa Yemeni Coffee",         "lat": 41.3097, "lon": -72.9202,
+     "aliases": ["arwa", "arwa coffee", "arwa yemeni", "yemeni coffee", "yemeni"]},
     {"name": "Atticus Bookstore Cafe",     "lat": 41.3082, "lon": -72.9298,
      "aliases": ["atticus", "atticus cafe", "atticus bookstore"]},
     {"name": "Book Trader Cafe",           "lat": 41.3079, "lon": -72.9313,
