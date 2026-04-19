@@ -692,66 +692,81 @@ const TripPlanner: FC<{
     ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, targetDate)
     : null;
 
-  // Apply a "plan this saved trip" request from Favorites: fills both
-  // fields and clears the pending channel so the next route change doesn't
-  // keep re-applying it.
+  // Apply a "plan this saved destination" request from Favorites: sets
+  // the To field, and defaults From to current location (falling back to
+  // empty if we don't have GPS yet).
   useEffect(() => {
     if (!pendingTrip) return;
-    setFromText(pendingTrip.fromText);
-    setFromLL({ lat: pendingTrip.fromLat, lon: pendingTrip.fromLon });
-    setFromSugg([]);
     setToText(pendingTrip.toText);
     setToLL({ lat: pendingTrip.toLat, lon: pendingTrip.toLon });
     setToSugg([]);
+    if (userLatLon) {
+      setFromLL(userLatLon);
+      setFromText("Current location");
+      setFromSugg([]);
+    }
     onConsumePending();
   }, [pendingTrip]);
 
-  const sameCoords = (a: { fromLat: number; fromLon: number; toLat: number; toLon: number },
-                      b: { fromLat: number; fromLon: number; toLat: number; toLon: number }) =>
-    Math.abs(a.fromLat - b.fromLat) < 1e-4 && Math.abs(a.fromLon - b.fromLon) < 1e-4
-      && Math.abs(a.toLat - b.toLat) < 1e-4 && Math.abs(a.toLon - b.toLon) < 1e-4;
+  // We store destinations only now (the From point is almost always the
+  // user's current location, so saving a fixed From coord went stale).
+  // SavedTrip shape is kept for storage compatibility; only toText/toLat/
+  // toLon are used.
+  const sameDest = (a: { toLat: number; toLon: number }, b: { toLat: number; toLon: number }) =>
+    Math.abs(a.toLat - b.toLat) < 1e-4 && Math.abs(a.toLon - b.toLon) < 1e-4;
 
-  const alreadySaved = fromLL && toLL && savedTrips.some(
-    (t) => sameCoords(t, { fromLat: fromLL.lat, fromLon: fromLL.lon, toLat: toLL.lat, toLon: toLL.lon })
-  );
+  const alreadySaved = toLL && savedTrips.some((t) => sameDest(t, { toLat: toLL.lat, toLon: toLL.lon }));
 
-  // Record each newly-planned from+to pair as a recent trip. De-dup by
-  // coord, promote most-recent to the front, cap at 10. Skip pairs already
-  // in saved so the two lists don't duplicate.
+  // Record each new destination as "recent". De-dup by to-coord, most
+  // recent first, cap at 10. Skip if already in saved.
   useEffect(() => {
-    if (!fromLL || !toLL || !fromText || !toText) return;
-    const key = { fromLat: fromLL.lat, fromLon: fromLL.lon, toLat: toLL.lat, toLon: toLL.lon };
-    if (savedTrips.some((t) => sameCoords(t, key))) return;
-    const filtered = recentTrips.filter((t) => !sameCoords(t, key));
+    if (!toLL || !toText) return;
+    const key = { toLat: toLL.lat, toLon: toLL.lon };
+    if (savedTrips.some((t) => sameDest(t, key))) return;
+    const filtered = recentTrips.filter((t) => !sameDest(t, key));
     const entry: SavedTrip = {
       id: `r${Date.now().toString(36)}`,
-      name: `${fromText} → ${toText}`,
-      fromText, fromLat: fromLL.lat, fromLon: fromLL.lon,
+      name: toText,
+      fromText: "", fromLat: 0, fromLon: 0,
       toText, toLat: toLL.lat, toLon: toLL.lon,
     };
     const next = [entry, ...filtered].slice(0, 10);
-    // Only persist if there's an actual change — avoids a write loop.
     if (next.length !== recentTrips.length || next[0].id !== recentTrips[0]?.id) {
       onRecordRecent(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
+  }, [toLL?.lat, toLL?.lon]);
 
-  const applyTrip = (t: SavedTrip) => {
-    setFromText(t.fromText);
-    setFromLL({ lat: t.fromLat, lon: t.fromLon });
-    setFromSugg([]);
+  // Fill From with the user's current location by default once we have it.
+  // Runs once so manually clearing From isn't overwritten by later GPS
+  // ticks.
+  const autoFilledFromRef = useRef(false);
+  useEffect(() => {
+    if (autoFilledFromRef.current) return;
+    if (!fromLL && !fromText && userLatLon) {
+      setFromLL(userLatLon);
+      setFromText("Current location");
+      autoFilledFromRef.current = true;
+    }
+  }, [userLatLon]);
+
+  const applyDestination = (t: SavedTrip) => {
     setToText(t.toText);
     setToLL({ lat: t.toLat, lon: t.toLon });
     setToSugg([]);
+    // If From isn't set or was "Current location", snap it to the latest GPS.
+    if ((!fromLL || fromText === "Current location") && userLatLon) {
+      setFromLL(userLatLon);
+      setFromText("Current location");
+      setFromSugg([]);
+    }
   };
   const handleSaveTrip = () => {
-    if (!fromLL || !toLL) return;
-    const name = fromText && toText ? `${fromText} → ${toText}` : "Saved trip";
+    if (!toLL) return;
     onSaveTrip({
       id: `t${Date.now().toString(36)}`,
-      name,
-      fromText, fromLat: fromLL.lat, fromLon: fromLL.lon,
+      name: toText || "Saved destination",
+      fromText: "", fromLat: 0, fromLon: 0,
       toText, toLat: toLL.lat, toLon: toLL.lon,
     });
   };
@@ -795,14 +810,13 @@ const TripPlanner: FC<{
       display: "flex", alignItems: "center", gap: 6,
       padding: "5px 8px", borderRadius: 4, background: "#fff",
       border: "1px solid #e0ddd8", cursor: "pointer",
-    }} onClick={() => applyTrip(t)}>
+    }} onClick={() => applyDestination(t)}>
       {starred && <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>}
       <span style={{
         flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
-        <span style={{ color: "#2E7D32", fontWeight: 600 }}>{t.fromText}</span>
-        <span style={{ color: "#9e9e9e", margin: "0 4px" }}>→</span>
+        <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
         <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
       </span>
       <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{
@@ -882,7 +896,7 @@ const TripPlanner: FC<{
 
       {savedTrips.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved</div>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
           </div>
@@ -890,7 +904,7 @@ const TripPlanner: FC<{
       )}
       {recentTrips.length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent</div>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
           </div>
@@ -926,12 +940,12 @@ const TripPlanner: FC<{
 
       {error && <div style={{ fontSize: 11, color: "#C62828", marginBottom: 8 }}>{error}</div>}
 
-      {fromLL && toLL && (
+      {toLL && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
           <button
             onClick={handleSaveTrip}
             disabled={!!alreadySaved}
-            title={alreadySaved ? "Already saved" : "Save this trip to Favorites"}
+            title={alreadySaved ? "Already saved" : "Save this destination"}
             style={{
               fontSize: 11, padding: "4px 10px", borderRadius: 6, fontFamily: "inherit",
               cursor: alreadySaved ? "default" : "pointer",
@@ -940,7 +954,7 @@ const TripPlanner: FC<{
               color: alreadySaved ? "#2E7D32" : "#546e7a",
             }}
           >
-            {alreadySaved ? "★ Saved" : "☆ Save trip"}
+            {alreadySaved ? "★ Saved" : "☆ Save destination"}
           </button>
         </div>
       )}
@@ -1559,7 +1573,7 @@ const FavoriteStopsPage: FC<{
       {savedTrips.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, padding: "0 4px 6px" }}>
-            Saved trips
+            Saved destinations
           </div>
           <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e0ddd8", overflow: "hidden" }}>
             {savedTrips.map((t, i) => (
@@ -1569,8 +1583,7 @@ const FavoriteStopsPage: FC<{
                 borderBottom: i === savedTrips.length - 1 ? "none" : "1px solid #f0ede8",
               }}>
                 <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#263238", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <span style={{ color: "#2E7D32", fontWeight: 700 }}>{t.fromText}</span>
-                  <span style={{ color: "#9e9e9e", margin: "0 6px" }}>→</span>
+                  <span style={{ color: "#9e9e9e", marginRight: 6 }}>→</span>
                   <span style={{ color: "#C62828", fontWeight: 700 }}>{t.toText}</span>
                 </div>
                 <button onClick={() => onPlanTrip(t)} style={{
@@ -1919,6 +1932,30 @@ const StopList: FC<{
                 ★
               </span>
             </div>
+            {(() => {
+              // Route subtitle: sum of mean segment times around the full
+              // loop ("avg loop ~Xm") and the count of buses currently on
+              // this route. Skip the subtitle if we have no segment data
+              // and no buses to avoid a blank "Loop · 0 buses" line.
+              const loopSegs = segmentTimes[primaryRouteId] ?? {};
+              let loopSec = 0;
+              const n = stops.length;
+              for (let k = 0; k < n; k++) {
+                const prev = stops[k];
+                const cur = stops[(k + 1) % n];
+                const seg = loopSegs[`${prev}-${cur}`];
+                if (seg && seg.n >= 1) loopSec += seg.avg;
+              }
+              const busCount = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).length;
+              const loopMin = Math.round(loopSec / 60);
+              if (!loopSec && !busCount) return null;
+              return (
+                <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px", display: "flex", justifyContent: "space-between" }}>
+                  <span>{loopSec ? `loop ~${loopMin}m` : ""}</span>
+                  <span>{busCount} {busCount === 1 ? "bus" : "buses"}</span>
+                </div>
+              );
+            })()}
             {(() => {
               // Pre-compute cumulative ETAs from each bus to downstream stops
               const routeSegs = segmentTimes[primaryRouteId] ?? {};
