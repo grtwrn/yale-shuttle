@@ -198,6 +198,58 @@ const ROUTE_LISTS: RouteListConfig[] = [
   { routeIds: ["18"], busRouteIds: [18],       label: "Grocery Ham",   color: "#8D6E63" },
 ];
 
+// Published Yale shuttle operating windows, keyed by ROUTE_LISTS label.
+// days uses JS getDay() (0=Sun..6=Sat). endMin > 1440 means the window
+// extends into the next day's early hours — e.g. 25*60 = 1:00 AM.
+// Sources: your.yale.edu daytime/nighttime/weekend routes pages.
+type ScheduleWindow = { days: number[]; startMin: number; endMin: number };
+const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
+  "Red":          [{ days: [1,2,3,4,5],         startMin: 5*60+40, endMin: 19*60 }],
+  "Blue Day":     [{ days: [1,2,3,4,5],         startMin: 7*60,    endMin: 18*60 }],
+  "Blue Weekend": [{ days: [0,6],               startMin: 8*60,    endMin: 18*60 }],
+  "Blue Night":   [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
+  "Blue West":    [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
+  "Orange Day":   [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
+  "Orange Night": [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
+  "Orange East":  [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
+  "Brown":        [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
+  "Pink":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
+  "Green":        [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 18*60 }],
+  "Purple":       [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 25*60 }],
+  "Gold":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
+  "Grocery TJ":   [{ days: [0,6],               startMin: 10*60,   endMin: 18*60 }],
+  "Grocery Ham":  [{ days: [0,6],               startMin: 10*60,   endMin: 18*60 }],
+};
+
+// Approximate headway in minutes — used to estimate wait = headway/2 for
+// future-date planning when no live bus is running yet. Educated guesses
+// from observed Yale service levels; the main routes are faster than the
+// evening / weekend ones.
+const HEADWAY_MIN: Record<string, number> = {
+  "Red": 8, "Blue Day": 10, "Blue Weekend": 20, "Blue Night": 20, "Blue West": 20,
+  "Orange Day": 10, "Orange Night": 20, "Orange East": 20,
+  "Brown": 15, "Pink": 20, "Green": 15, "Purple": 20, "Gold": 20,
+  "Grocery TJ": 30, "Grocery Ham": 30,
+};
+
+function isRouteActiveAt(label: string, d: Date): boolean {
+  const wins = ROUTE_HOURS[label];
+  if (!wins) return true;                    // unknown → don't filter
+  const day = d.getDay();
+  const mins = d.getHours() * 60 + d.getMinutes();
+  for (const w of wins) {
+    if (w.endMin <= 1440) {
+      if (w.days.includes(day) && mins >= w.startMin && mins < w.endMin) return true;
+    } else {
+      // Overnight: same-day portion, then previous-day portion < (end-1440)
+      if (w.days.includes(day) && mins >= w.startMin) return true;
+      const prev = (day + 6) % 7;
+      if (w.days.includes(prev) && mins < (w.endMin - 1440)) return true;
+    }
+  }
+  return false;
+}
+
 // Map route_id numbers to our list routeIds for matching buses
 const ROUTE_ID_GROUP: Record<number, string> = {
   3: "3", 1: "1", 13: "1", 4: "1", 2: "2", 14: "2", 17: "2", 16: "16",
@@ -266,8 +318,13 @@ function planTrip(
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
+  targetDate?: Date | null,
 ): TripOption[] {
   const MAX_WALK_M = 1200;
+  // Future-plan mode: the user picked a date/time >60s away. We can't
+  // rely on live buses, so we filter by published operating hours and
+  // estimate wait from headway.
+  const futureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
   const directWalkM = haversineMeters(from, to);
   const directWalkSec = directWalkM / WALK_SPEED_M_S;
 
@@ -281,6 +338,10 @@ function planTrip(
   const options: TripOption[] = [];
 
   for (const cfg of ROUTE_LISTS) {
+    // Skip routes that won't be running at the target time. In live mode
+    // we still let computeUpcomingArrivals gate (bus presence filters
+    // naturally).
+    if (futureMode && !isRouteActiveAt(cfg.label, targetDate!)) continue;
     const stops: number[] = [];
     const seen = new Set<number>();
     for (const rid of cfg.routeIds) {
@@ -324,15 +385,20 @@ function planTrip(
         // Skip options that require more total walking than just walking
         // direct — no point suggesting a shuttle that leaves you footsore.
         if (walkToSec + walkFromSec >= directWalkSec) continue;
-        // Next bus ETA at boarding stop. Only surface an option when a
-        // bus is actually on the route — "what if the weekday route were
-        // running" guesses were noisy, and users only want rides they
-        // can actually take right now.
-        const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
-        const next = arrivals.find((a) => a.routeLabel === cfg.label);
-        if (!next) continue;
-        const waitSec = Math.max(0, next.eta - walkToSec);
-        const busName = next.busName;
+        // Wait time: for a live plan we need a real bus on the route; for
+        // a future plan we use half the published headway since no bus
+        // exists yet to time against.
+        let waitSec: number; let busName: string;
+        if (futureMode) {
+          waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
+          busName = "";
+        } else {
+          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
+          const next = arrivals.find((a) => a.routeLabel === cfg.label);
+          if (!next) continue;
+          waitSec = Math.max(0, next.eta - walkToSec);
+          busName = next.busName;
+        }
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
         options.push({
           mode: "shuttle",
@@ -487,6 +553,12 @@ const TripPlanner: FC<{
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  // Empty string = "plan for now". A datetime-local value flips future mode
+  // on inside planTrip and lets us predict against the published schedule
+  // instead of the live bus fleet.
+  const [tripTime, setTripTime] = useState<string>("");
+  const targetDate = tripTime ? new Date(tripTime) : null;
+  const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
   // fetch that was already in flight — otherwise the late response would
@@ -617,7 +689,7 @@ const TripPlanner: FC<{
   }, [awaitingLocation, userLatLon]);
 
   const options = (fromLL && toLL)
-    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes)
+    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, targetDate)
     : null;
 
   // Apply a "plan this saved trip" request from Favorites: fills both
@@ -698,8 +770,9 @@ const TripPlanner: FC<{
     const m = Math.round(s / 60);
     return m < 1 ? "<1m" : `${m}m`;
   };
-  const fmtClock = (s: number) => {
-    const d = new Date(Date.now() + s * 1000);
+  const fmtClock = (s: number, from?: Date) => {
+    const base = from?.getTime() ?? Date.now();
+    const d = new Date(base + s * 1000);
     let h = d.getHours();
     const mm = d.getMinutes();
     const ampm = h >= 12 ? "p" : "a";
@@ -824,6 +897,33 @@ const TripPlanner: FC<{
         </div>
       )}
 
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+        <span style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
+        <input
+          type="datetime-local"
+          value={tripTime}
+          onChange={(e) => setTripTime(e.target.value)}
+          style={{
+            fontSize: 11, padding: "4px 6px", borderRadius: 4,
+            border: "1px solid #cfd8dc", background: "#fff",
+            fontFamily: "inherit", color: "#263238", flex: 1, minWidth: 0,
+          }}
+        />
+        {tripTime && (
+          <button onClick={() => setTripTime("")} style={{
+            fontSize: 11, padding: "4px 8px", border: "1px solid #bbb",
+            background: "#fff", color: "#546e7a", borderRadius: 4,
+            fontFamily: "inherit", cursor: "pointer",
+          }}>Now</button>
+        )}
+      </div>
+      {isFuture && targetDate && (
+        <div style={{ fontSize: 10, color: "#1976D2", marginBottom: 8, padding: "0 2px" }}>
+          Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          {" · routes filtered by published hours, wait = ½ typical headway"}
+        </div>
+      )}
+
       {error && <div style={{ fontSize: 11, color: "#C62828", marginBottom: 8 }}>{error}</div>}
 
       {fromLL && toLL && (
@@ -885,7 +985,7 @@ const TripPlanner: FC<{
                     }}>FASTEST</span>
                   )}
                   <span style={{ fontSize: 10, color: "#9e9e9e", marginLeft: "auto" }}>
-                    arrive {fmtClock(o.totalSec)}
+                    arrive {fmtClock(o.totalSec, isFuture ? targetDate! : undefined)}
                   </span>
                   {clickable && (
                     <span style={{ fontSize: 10, color: "#90a4ae", marginLeft: 4 }}>
