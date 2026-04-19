@@ -232,6 +232,33 @@ const HEADWAY_MIN: Record<string, number> = {
   "Grocery TJ": 30, "Grocery Ham": 30,
 };
 
+function fmtScheduleTime(min: number): string {
+  // Handles values > 1440 (overnight windows, e.g. 25*60 = 1:00 AM).
+  const m = ((min % 1440) + 1440) % 1440;
+  let h = Math.floor(m / 60);
+  const mm = m % 60;
+  const ampm = h >= 12 ? "p" : "a";
+  h = h % 12; if (h === 0) h = 12;
+  return mm ? `${h}:${String(mm).padStart(2, "0")}${ampm}` : `${h}${ampm}`;
+}
+
+function fmtScheduleDays(days: number[]): string {
+  const key = [...days].sort().join(",");
+  if (key === "0,1,2,3,4,5,6") return "Daily";
+  if (key === "1,2,3,4,5") return "M–F";
+  if (key === "0,6") return "Sa/Su";
+  const names = ["Su", "M", "Tu", "W", "Th", "F", "Sa"];
+  return [...days].sort().map((d) => names[d]).join("/");
+}
+
+function fmtSchedule(label: string): string {
+  const wins = ROUTE_HOURS[label];
+  if (!wins || wins.length === 0) return "";
+  return wins.map((w) =>
+    `${fmtScheduleDays(w.days)} ${fmtScheduleTime(w.startMin)}–${fmtScheduleTime(w.endMin)}`
+  ).join(" · ");
+}
+
 function isRouteActiveAt(label: string, d: Date): boolean {
   const wins = ROUTE_HOURS[label];
   if (!wins) return true;                    // unknown → don't filter
@@ -2007,12 +2034,20 @@ const StopList: FC<{
                 ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
               );
               const loopMin = Math.round(loopSec / 60);
-              if (!loopSec && !busCount && !peak) return null;
+              const schedule = fmtSchedule(cfg.label);
+              if (!loopSec && !busCount && !peak && !schedule) return null;
               return (
-                <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px", display: "flex", justifyContent: "space-between" }}>
-                  <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin}m` : ""}</span>
-                  <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
-                </div>
+                <>
+                  <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 2px", display: "flex", justifyContent: "space-between" }}>
+                    <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin}m` : ""}</span>
+                    <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
+                  </div>
+                  {schedule && (
+                    <div style={{ fontSize: 9, color: "#b0bec5", padding: "0 10px 3px" }}>
+                      {schedule}
+                    </div>
+                  )}
+                </>
               );
             })()}
             {(() => {
