@@ -1933,25 +1933,37 @@ const StopList: FC<{
               </span>
             </div>
             {(() => {
-              // Route subtitle: sum of mean segment times around the full
-              // loop ("avg loop ~Xm") and the count of buses currently on
-              // this route. Skip the subtitle if we have no segment data
-              // and no buses to avoid a blank "Loop · 0 buses" line.
+              // Route subtitle: estimated loop duration + live bus count.
+              // Prefer learned segment averages; fall back to straight-line
+              // distance over BUS_SPEED_M_S for any missing segment. This
+              // keeps the line populated for routes like Red that currently
+              // have no calibrated data in the DB (collector hasn't logged
+              // them yet, or they've been trimmed), as long as we know the
+              // stop coordinates.
               const loopSegs = segmentTimes[primaryRouteId] ?? {};
               let loopSec = 0;
+              let hasAny = false;
               const n = stops.length;
               for (let k = 0; k < n; k++) {
                 const prev = stops[k];
                 const cur = stops[(k + 1) % n];
                 const seg = loopSegs[`${prev}-${cur}`];
-                if (seg && seg.n >= 1) loopSec += seg.avg;
+                if (seg && seg.n >= 1) {
+                  loopSec += seg.avg;
+                  hasAny = true;
+                } else {
+                  const pc = stopCoords[prev], cc = stopCoords[cur];
+                  if (pc && cc) {
+                    loopSec += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+                  }
+                }
               }
               const busCount = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).length;
               const loopMin = Math.round(loopSec / 60);
               if (!loopSec && !busCount) return null;
               return (
                 <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px", display: "flex", justifyContent: "space-between" }}>
-                  <span>{loopSec ? `loop ~${loopMin}m` : ""}</span>
+                  <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin}m` : ""}</span>
                   <span>{busCount} {busCount === 1 ? "bus" : "buses"}</span>
                 </div>
               );
