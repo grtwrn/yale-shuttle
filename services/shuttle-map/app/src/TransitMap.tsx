@@ -993,7 +993,10 @@ const TripPlanner: FC<{
       {savedTrips.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 4,
+            maxHeight: 140, overflowY: "auto",
+          }}>
             {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
           </div>
         </div>
@@ -1001,8 +1004,11 @@ const TripPlanner: FC<{
       {recentTrips.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 4,
+            maxHeight: 140, overflowY: "auto",
+          }}>
+            {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
           </div>
         </div>
       )}
