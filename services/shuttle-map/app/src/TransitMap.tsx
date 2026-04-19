@@ -894,6 +894,50 @@ const TripPlanner: FC<{
         {toLL && <div style={{ fontSize: 10, color: "#2E7D32", marginTop: 3 }}>✓ Set</div>}
       </div>
 
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <span style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
+        {tripTime ? (
+          <>
+            <input
+              type="datetime-local"
+              value={tripTime}
+              onChange={(e) => setTripTime(e.target.value)}
+              style={{
+                fontSize: 11, padding: "4px 6px", borderRadius: 4,
+                border: "1px solid #cfd8dc", background: "#fff",
+                fontFamily: "inherit", color: "#263238", flex: 1, minWidth: 0,
+              }}
+            />
+            <button onClick={() => setTripTime("")} style={{
+              fontSize: 11, padding: "4px 8px", border: "1px solid #bbb",
+              background: "#fff", color: "#546e7a", borderRadius: 4,
+              fontFamily: "inherit", cursor: "pointer",
+            }}>Now</button>
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: 12, color: "#263238", fontWeight: 600, flex: 1 }}>Now</span>
+            <button onClick={() => {
+              // Pre-fill with current local time so the picker opens on a
+              // sensible starting point; user can bump it forward.
+              const d = new Date();
+              const pad = (n: number) => String(n).padStart(2, "0");
+              setTripTime(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+            }} style={{
+              fontSize: 11, padding: "4px 10px", border: "1px solid #bbb",
+              background: "#fff", color: "#546e7a", borderRadius: 4,
+              fontFamily: "inherit", cursor: "pointer",
+            }}>Plan for later…</button>
+          </>
+        )}
+      </div>
+      {isFuture && targetDate && (
+        <div style={{ fontSize: 10, color: "#1976D2", marginBottom: 8, padding: "0 2px" }}>
+          Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          {" · routes filtered by published hours, wait = ½ typical headway"}
+        </div>
+      )}
+
       {savedTrips.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
@@ -908,33 +952,6 @@ const TripPlanner: FC<{
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {recentTrips.slice(0, 5).map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
           </div>
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <span style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
-        <input
-          type="datetime-local"
-          value={tripTime}
-          onChange={(e) => setTripTime(e.target.value)}
-          style={{
-            fontSize: 11, padding: "4px 6px", borderRadius: 4,
-            border: "1px solid #cfd8dc", background: "#fff",
-            fontFamily: "inherit", color: "#263238", flex: 1, minWidth: 0,
-          }}
-        />
-        {tripTime && (
-          <button onClick={() => setTripTime("")} style={{
-            fontSize: 11, padding: "4px 8px", border: "1px solid #bbb",
-            background: "#fff", color: "#546e7a", borderRadius: 4,
-            fontFamily: "inherit", cursor: "pointer",
-          }}>Now</button>
-        )}
-      </div>
-      {isFuture && targetDate && (
-        <div style={{ fontSize: 10, color: "#1976D2", marginBottom: 8, padding: "0 2px" }}>
-          Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          {" · routes filtered by published hours, wait = ½ typical headway"}
         </div>
       )}
 
