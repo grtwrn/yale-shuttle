@@ -827,6 +827,23 @@ const TripPlanner: FC<{
         <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
         <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
       </span>
+      {!starred && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // Promote this recent destination into Saved. Use a fresh id so
+            // the entries stay unique even if the user later re-visits and
+            // a new recent record is generated.
+            onSaveTrip({ ...t, id: `t${Date.now().toString(36)}` });
+            onDelete();
+          }}
+          style={{
+            border: "none", background: "transparent", color: "#2E7D32",
+            fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
+          }}
+          title="Save destination"
+        >☆</button>
+      )}
       <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{
         border: "none", background: "transparent", color: "#9e9e9e",
         fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
