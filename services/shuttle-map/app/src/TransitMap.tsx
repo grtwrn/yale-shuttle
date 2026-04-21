@@ -795,9 +795,20 @@ const TripPlanner: FC<{
   // state). This way leaving From empty + tapping a Saved destination just
   // works without a separate "use current location" click.
   const effectiveFromLL = fromLL ?? (!fromText ? userLatLon : null);
-  const options = (effectiveFromLL && toLL)
-    ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
-    : null;
+  // Freeze the result list when From/To/When are stable. Live data
+  // (bus pins, stops-away, ETA text inside each expansion) still
+  // refreshes on every /api/buses poll because those re-read the
+  // latest `buses` array per render — but the set of options, their
+  // order, and each option's board/alight choice stay pinned until
+  // the user changes a search input. Without this the list visibly
+  // reshuffles every ~5s as bus states change.
+  const options = useMemo(
+    () => (effectiveFromLL && toLL)
+      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime()],
+  );
 
   // Apply a "plan this saved destination" request from Favorites: sets
   // the To field, and defaults From to current location (falling back to
