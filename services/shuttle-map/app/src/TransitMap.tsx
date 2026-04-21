@@ -1287,9 +1287,17 @@ const TripPlanner: FC<{
                           </div>
                           {stopsAway !== null && (() => {
                             const busEta = o.walkToSec + o.waitSec;
+                            // Count *stops before pickup* — doesn't include
+                            // the pickup itself, which matches how riders
+                            // think about "how many stops till it gets to
+                            // me." stopsAway as returned by the anchor math
+                            // includes the pickup, so subtract 1.
+                            const before = stopsAway - 1;
                             const away = stopsAway === 0
-                              ? "is at boarding stop"
-                              : `is ${stopsAway} stop${stopsAway === 1 ? "" : "s"} away`;
+                              ? "is at your stop"
+                              : before === 0
+                              ? "your stop is next"
+                              : `${before} stop${before === 1 ? "" : "s"} before yours`;
                             return (
                               <div style={{ fontSize: 11, color: o.color, fontWeight: 600, marginBottom: 6 }}>
                                 🚌 Bus #{normBus(busMatch!.bus_name)} {away} · arrives in {fmtMin(busEta)} ({fmtClock(busEta)})
