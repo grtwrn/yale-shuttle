@@ -1362,6 +1362,24 @@ function computeUpcomingArrivals(
       }
       if (busIdx === -1) continue;
 
+      // TransLoc updates last_stop_id with a few-second lag. If the GPS
+      // already shows the bus past the reported anchor — closer to the
+      // next stop than to the current one — advance the anchor. Without
+      // this, a just-passed bus momentarily reports a short ETA ("bus in
+      // 1 min!") instead of a full-loop ETA, and takes over the "next
+      // incoming" slot from the real next bus a few stops back.
+      if (bus.lat && bus.lon && bus.at_stop_id !== stops[busIdx]) {
+        const here = stopCoords[stops[busIdx]];
+        const next = stopCoords[stops[(busIdx + 1) % stops.length]];
+        if (here && next) {
+          const d2 = (a: { lat: number; lon: number }) =>
+            (bus.lat - a.lat) ** 2 + (bus.lon - a.lon) ** 2;
+          if (d2(next) < d2(here)) {
+            busIdx = (busIdx + 1) % stops.length;
+          }
+        }
+      }
+
       // Stall credit: if the bus is currently sitting at its anchor stop,
       // subtract how long it's already been there from the first segment.
       // segment_times.avg is measured arrival-to-arrival, so it *includes*
