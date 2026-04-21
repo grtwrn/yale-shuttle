@@ -477,9 +477,14 @@ const TripMap: FC<{
   from: LatLon;
   to: LatLon;
   shuttleStops?: LatLon[];
+  // Stops the bus will pass *before* it reaches the boarding stop (from
+  // the bus's current anchor → board). Rendered as small faded dots +
+  // a dashed muted polyline so the rider can see what's still ahead of
+  // them before pickup.
+  upcomingStops?: LatLon[];
   bus?: { lat: number; lon: number; name?: string } | null;
   color: string;
-}> = ({ from, to, shuttleStops, bus, color }) => {
+}> = ({ from, to, shuttleStops, upcomingStops, bus, color }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
@@ -508,6 +513,22 @@ const TripMap: FC<{
     if (shuttleStops && shuttleStops.length >= 2) {
       const board = shuttleStops[0];
       const alight = shuttleStops[shuttleStops.length - 1];
+
+      // Upstream (pre-pickup) leg: bus's current anchor → board stop.
+      // Drawn under the main segment with a muted polyline and tiny
+      // translucent dots so the rider can see "N stops before mine."
+      if (upcomingStops && upcomingStops.length >= 2) {
+        L.polyline(upcomingStops.map((s) => [s.lat, s.lon] as [number, number]), {
+          color, weight: 3, opacity: 0.35, dashArray: "6 4",
+        }).addTo(map);
+        for (const s of upcomingStops.slice(0, -1)) {
+          L.circleMarker([s.lat, s.lon], {
+            radius: 2.5, color, fillColor: color, fillOpacity: 0.5, weight: 0,
+          }).addTo(map);
+          points.push([s.lat, s.lon]);
+        }
+      }
+
       for (const s of shuttleStops.slice(1, -1)) {
         L.circleMarker([s.lat, s.lon], {
           radius: 3, color, fillColor: color, fillOpacity: 0.85, weight: 0,
@@ -545,7 +566,11 @@ const TripMap: FC<{
       busMarkerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from.lat, from.lon, to.lat, to.lon, color, JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon]))]);
+  }, [
+    from.lat, from.lon, to.lat, to.lon, color,
+    JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon])),
+    JSON.stringify(upcomingStops?.map((s) => [s.lat, s.lon])),
+  ]);
 
   // Live bus marker — updates in place on every bus prop change (~5s via
   // /api/buses polling). Animates smoothly to the new GPS point instead of
@@ -1186,12 +1211,22 @@ const TripPlanner: FC<{
                     cfg.busRouteIds.includes(b.route_id)
                   );
                   // How many stops until the bus reaches the boarding stop,
-                  // going forward around the loop.
+                  // going forward around the loop. Also grab the upstream
+                  // slice (bus → board) so TripMap can render the stops
+                  // before the rider's pickup in a muted style.
                   let stopsAway: number | null = null;
+                  let upcomingCoords: LatLon[] | undefined;
                   if (busMatch) {
                     const busIdx = allStops.indexOf(busMatch.last_stop_id);
                     if (busIdx >= 0) {
                       stopsAway = (bi - busIdx + allStops.length) % allStops.length;
+                      const upstreamStops = busIdx <= bi
+                        ? allStops.slice(busIdx, bi + 1)
+                        : [...allStops.slice(busIdx), ...allStops.slice(0, bi + 1)];
+                      upcomingCoords = upstreamStops
+                        .map((sid) => stopCoords[sid])
+                        .filter((c): c is LatLon => !!c);
+                      if (upcomingCoords.length < 2) upcomingCoords = undefined;
                     }
                   }
                   return (
@@ -1206,6 +1241,7 @@ const TripPlanner: FC<{
                             <TripMap
                               from={effectiveFromLL} to={toLL}
                               shuttleStops={segCoords}
+                              upcomingStops={upcomingCoords}
                               bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null}
                               color={o.color}
                             />
