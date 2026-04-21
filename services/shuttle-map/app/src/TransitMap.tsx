@@ -345,6 +345,7 @@ function planTrip(
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>,
   targetDate?: Date | null,
 ): TripOption[] {
   const MAX_WALK_M = 1200;
@@ -420,7 +421,7 @@ function planTrip(
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
         } else {
-          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes);
+          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes, dwellTimes);
           const next = arrivals.find((a) => a.routeLabel === cfg.label);
           if (!next) continue;
           waitSec = Math.max(0, next.eta - walkToSec);
@@ -558,6 +559,7 @@ const TripPlanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -570,7 +572,7 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -716,7 +718,7 @@ const TripPlanner: FC<{
   }, [awaitingLocation, userLatLon]);
 
   const options = (fromLL && toLL)
-    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, targetDate)
+    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
     : null;
 
   // Apply a "plan this saved destination" request from Favorites: sets
@@ -1237,6 +1239,7 @@ function computeUpcomingArrivals(
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, { lat: number; lon: number }>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
+  dwellTimes?: Record<string, Record<string, { med: number; sd: number; n: number }>>,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -1280,6 +1283,28 @@ function computeUpcomingArrivals(
       }
       if (busIdx === -1) continue;
 
+      // Stall credit: if the bus is currently sitting at its anchor stop,
+      // subtract how long it's already been there from the first segment.
+      // segment_times.avg is measured arrival-to-arrival, so it *includes*
+      // the typical dwell at the anchor; without this correction we'd
+      // double-count the portion the bus has already waited. Capped at the
+      // first segment's own avg so we can't go negative.
+      let stallCredit = 0;
+      if (
+        bus.at_stop_id === stops[busIdx] &&
+        bus.at_stop_since
+      ) {
+        const elapsedSec = Math.max(
+          0,
+          (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000,
+        );
+        // Cap by typical dwell at this stop so an extra-long stall doesn't
+        // erase the drive segment. If we have no learned dwell, fall back
+        // to the elapsed time directly (still capped below by first seg).
+        const dwellMed = dwellTimes?.[cfg.routeIds[0]]?.[String(stops[busIdx])]?.med;
+        stallCredit = dwellMed != null ? Math.min(elapsedSec, dwellMed) : elapsedSec;
+      }
+
       let cumulative = 0;
       let cumulativeVar = 0;
       const totalStops = stops.length;
@@ -1289,21 +1314,30 @@ function computeUpcomingArrivals(
         const prevI = (busIdx + step - 1) % totalStops;
         const curI = (busIdx + step) % totalStops;
         const seg = routeSegs[`${stops[prevI]}-${stops[curI]}`];
+        let segAvg: number;
+        let segVar: number;
         if (seg && seg.n >= 1) {
-          cumulative += seg.avg;
-          cumulativeVar += (seg.sd ?? 0) ** 2;
+          segAvg = seg.avg;
+          segVar = (seg.sd ?? 0) ** 2;
         } else if (avgSeg > 0) {
-          cumulative += avgSeg;
-          cumulativeVar += fallbackSd * fallbackSd;
+          segAvg = avgSeg;
+          segVar = fallbackSd * fallbackSd;
         } else {
-          // No route-level data yet — estimate from stop-to-stop distance.
           const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
-          const est = pc && cc
+          segAvg = pc && cc
             ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S)
             : 90;
-          cumulative += est;
-          cumulativeVar += (est * 0.5) ** 2;
+          segVar = (segAvg * 0.5) ** 2;
         }
+        // Burn stall credit on the first segment only, capped by the
+        // segment itself so we don't go negative.
+        if (step === 1 && stallCredit > 0) {
+          const applied = Math.min(stallCredit, segAvg);
+          segAvg -= applied;
+          stallCredit -= applied;
+        }
+        cumulative += segAvg;
+        cumulativeVar += segVar;
         const sid = stops[curI];
         if (targetSet.has(sid) && !recordedForStop.has(sid) && cumulative > 0) {
           recordedForStop.add(sid);
@@ -3130,7 +3164,7 @@ const TransitMap: FC = () => {
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} segmentTimes={segmentTimes}
+          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}
