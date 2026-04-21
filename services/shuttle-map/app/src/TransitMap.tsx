@@ -1262,8 +1262,14 @@ function computeUpcomingArrivals(
     const fallbackSd = avgSeg * 0.5;
 
     for (const bus of routeBuses) {
-      let busIdx = -1;
-      if (bus.lat && bus.lon) {
+      // TransLoc's last_stop_id is the authoritative "stop most recently
+      // visited" and respects loop direction. Prefer it over nearest-coord:
+      // routes like Red overlap NB/SB along Prospect, so the closest stop
+      // by straight-line can live earlier in the loop order and inflate
+      // ETAs by a full loop. Only use nearest-coord when last_stop_id is
+      // missing or not on this route's stop list.
+      let busIdx = stops.indexOf(bus.last_stop_id);
+      if (busIdx === -1 && bus.lat && bus.lon) {
         let bestD = Infinity;
         for (let i = 0; i < stops.length; i++) {
           const sc = stopCoords[stops[i]];
@@ -1272,10 +1278,7 @@ function computeUpcomingArrivals(
           if (d < bestD) { bestD = d; busIdx = i; }
         }
       }
-      if (busIdx === -1) {
-        busIdx = stops.indexOf(bus.last_stop_id);
-        if (busIdx === -1) continue;
-      }
+      if (busIdx === -1) continue;
 
       let cumulative = 0;
       let cumulativeVar = 0;
