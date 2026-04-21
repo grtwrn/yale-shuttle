@@ -1234,7 +1234,24 @@ const TripPlanner: FC<{
                   let stopsAway: number | null = null;
                   let upcomingCoords: LatLon[] | undefined;
                   if (busMatch) {
-                    const busIdx = allStops.indexOf(busMatch.last_stop_id);
+                    let busIdx = allStops.indexOf(busMatch.last_stop_id);
+                    // Mirror computeUpcomingArrivals: advance the anchor
+                    // past stops the bus has already blown past (stale
+                    // last_stop_id from TransLoc). Without this the "N
+                    // stops away" line can disagree with the bus pin on
+                    // the map when the feed lags.
+                    if (busIdx >= 0 && busMatch.lat && busMatch.lon && busMatch.at_stop_id !== busMatch.last_stop_id) {
+                      const d2 = (a: { lat: number; lon: number }) =>
+                        (busMatch.lat - a.lat) ** 2 + (busMatch.lon - a.lon) ** 2;
+                      const maxAdvance = Math.max(1, Math.floor(allStops.length / 2));
+                      for (let step = 0; step < maxAdvance; step++) {
+                        const here = stopCoords[allStops[busIdx]];
+                        const nxt = stopCoords[allStops[(busIdx + 1) % allStops.length]];
+                        if (!here || !nxt) break;
+                        if (d2(nxt) >= d2(here)) break;
+                        busIdx = (busIdx + 1) % allStops.length;
+                      }
+                    }
                     if (busIdx >= 0) {
                       stopsAway = (bi - busIdx + allStops.length) % allStops.length;
                       const upstreamStops = busIdx <= bi
@@ -1415,21 +1432,22 @@ function computeUpcomingArrivals(
       }
       if (busIdx === -1) continue;
 
-      // TransLoc updates last_stop_id with a few-second lag. If the GPS
-      // already shows the bus past the reported anchor — closer to the
-      // next stop than to the current one — advance the anchor. Without
-      // this, a just-passed bus momentarily reports a short ETA ("bus in
-      // 1 min!") instead of a full-loop ETA, and takes over the "next
-      // incoming" slot from the real next bus a few stops back.
+      // TransLoc updates last_stop_id with a few-second lag — and if the
+      // bus blew through several stops between polls or the feed's been
+      // stale longer, the anchor can be multiple stops behind where the
+      // bus actually is. Iteratively advance the anchor while GPS is
+      // closer to the next stop in loop order than to the current one.
+      // Capped at N/2 to prevent a runaway wrap if segmentation is off.
       if (bus.lat && bus.lon && bus.at_stop_id !== stops[busIdx]) {
-        const here = stopCoords[stops[busIdx]];
-        const next = stopCoords[stops[(busIdx + 1) % stops.length]];
-        if (here && next) {
-          const d2 = (a: { lat: number; lon: number }) =>
-            (bus.lat - a.lat) ** 2 + (bus.lon - a.lon) ** 2;
-          if (d2(next) < d2(here)) {
-            busIdx = (busIdx + 1) % stops.length;
-          }
+        const d2 = (a: { lat: number; lon: number }) =>
+          (bus.lat - a.lat) ** 2 + (bus.lon - a.lon) ** 2;
+        const maxAdvance = Math.max(1, Math.floor(stops.length / 2));
+        for (let step = 0; step < maxAdvance; step++) {
+          const here = stopCoords[stops[busIdx]];
+          const next = stopCoords[stops[(busIdx + 1) % stops.length]];
+          if (!here || !next) break;
+          if (d2(next) >= d2(here)) break;
+          busIdx = (busIdx + 1) % stops.length;
         }
       }
 
