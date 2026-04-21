@@ -1233,6 +1233,10 @@ const TripPlanner: FC<{
                   // before the rider's pickup in a muted style.
                   let stopsAway: number | null = null;
                   let upcomingCoords: LatLon[] | undefined;
+                  // Upstream stops the bus must pass before reaching the
+                  // board stop (exclusive of the board stop itself). Used
+                  // to prepend greyed-out rows to the vertical stop list.
+                  let preBoardStops: number[] = [];
                   if (busMatch) {
                     let busIdx = allStops.indexOf(busMatch.last_stop_id);
                     // Mirror computeUpcomingArrivals: advance the anchor
@@ -1261,6 +1265,18 @@ const TripPlanner: FC<{
                         .map((sid) => stopCoords[sid])
                         .filter((c): c is LatLon => !!c);
                       if (upcomingCoords.length < 2) upcomingCoords = undefined;
+                      // Drop the board stop (last entry) — it's already
+                      // the first row of segStops. If the bus is sitting
+                      // at its current anchor stop (stalled), keep that
+                      // as the first pre-board row; otherwise also drop
+                      // it since the bus has already moved past it.
+                      preBoardStops = upstreamStops.slice(0, -1);
+                      if (
+                        busMatch.at_stop_id !== allStops[busIdx] &&
+                        preBoardStops.length > 0
+                      ) {
+                        preBoardStops = preBoardStops.slice(1);
+                      }
                     }
                   }
                   return (
@@ -1305,11 +1321,53 @@ const TripPlanner: FC<{
                             );
                           })()}
                           <div style={{ position: "relative", paddingLeft: 16 }}>
-                            {/* Vertical line connecting the stops */}
+                            {/* Muted vertical line covering the upstream
+                                (pre-board) leg — dashed + low opacity so
+                                it reads as "hasn't happened yet." Only
+                                rendered if there are pre-board rows. */}
+                            {preBoardStops.length > 0 && (
+                              <span style={{
+                                position: "absolute", left: 6, top: 6,
+                                height: preBoardStops.length * 18 + 4,
+                                borderLeft: `2px dashed ${o.color}`,
+                                opacity: 0.35,
+                              }} />
+                            )}
+                            {/* Full-color line for the actual ride */}
                             <span style={{
-                              position: "absolute", left: 6, top: 6, bottom: 6,
+                              position: "absolute", left: 6,
+                              top: preBoardStops.length * 18 + 6,
+                              bottom: 6,
                               width: 2, background: o.color, opacity: 0.6,
                             }} />
+                            {preBoardStops.map((sid, k) => {
+                              const isBusHere = busMatch?.at_stop_id === sid;
+                              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                              return (
+                                <div key={`pre-${k}`} style={{
+                                  position: "relative", display: "flex", alignItems: "center",
+                                  padding: "2px 0", opacity: isBusHere ? 1 : 0.55,
+                                }}>
+                                  <span style={{
+                                    position: "absolute", left: -14, top: "50%",
+                                    transform: "translateY(-50%)",
+                                    width: 7, height: 7, borderRadius: "50%",
+                                    background: "#fff",
+                                    border: `2px solid ${o.color}`,
+                                    boxSizing: "border-box",
+                                  }} />
+                                  <span style={{
+                                    fontSize: 10.5,
+                                    color: isBusHere ? o.color : "#78909c",
+                                    fontWeight: isBusHere ? 700 : 400,
+                                    marginLeft: 8,
+                                  }}>
+                                    {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                                    {name}
+                                  </span>
+                                </div>
+                              );
+                            })}
                             {segStops.map((sid, j) => {
                               const isBoard = j === 0;
                               const isAlight = j === segStops.length - 1;
