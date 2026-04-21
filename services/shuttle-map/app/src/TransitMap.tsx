@@ -748,8 +748,13 @@ const TripPlanner: FC<{
     }
   }, [awaitingLocation, userLatLon]);
 
-  const options = (fromLL && toLL)
-    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
+  // Effective From coord: explicit pick wins; otherwise fall back to live
+  // GPS when the user hasn't typed anything (placeholder "Current location"
+  // state). This way leaving From empty + tapping a Saved destination just
+  // works without a separate "use current location" click.
+  const effectiveFromLL = fromLL ?? (!fromText ? userLatLon : null);
+  const options = (effectiveFromLL && toLL)
+    ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
     : null;
 
   // Apply a "plan this saved destination" request from Favorites: sets
@@ -797,29 +802,24 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toLL?.lat, toLL?.lon]);
 
-  // Start location defaults to "Current location" as a label — GPS isn't
-  // actually fetched until the user picks a destination (search Enter or
-  // Recent/Saved tap). That way we don't prompt for location on tab open.
-  useEffect(() => {
-    if (!fromText && !fromLL) {
-      setFromText("Current location");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // "Current location" isn't a typed value — it's the implicit meaning
+  // of an empty From field. Treat empty fromText + userLatLon as valid
+  // "use my current GPS" so the user never has to delete a placeholder
+  // label to type a new start.
+  const fromIsCurrent = !fromText && (!!fromLL || !!userLatLon);
 
-  // Once GPS resolves, silently snap From's coord if the label is still
-  // "Current location". Covers the pending-locate case.
+  // Once GPS resolves, silently snap From to it when the user hasn't
+  // typed anything else. Covers the pending-locate case.
   useEffect(() => {
-    if (userLatLon && fromText === "Current location" && !fromLL) {
+    if (userLatLon && !fromText && !fromLL) {
       setFromLL(userLatLon);
     }
   }, [userLatLon, fromText, fromLL]);
 
-  // If the user has set a destination while the From label is
-  // "Current location" but we don't have GPS yet, kick off a locate
-  // request. The effect above will snap in the coord when it arrives.
+  // If the user sets a destination while From is still "use current
+  // location" but we don't have GPS yet, kick off a locate request.
   useEffect(() => {
-    if (toLL && fromText === "Current location" && !fromLL && !locating && !userLatLon) {
+    if (toLL && !fromText && !fromLL && !locating && !userLatLon) {
       onRequestLocate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -934,26 +934,40 @@ const TripPlanner: FC<{
       <div style={{ marginBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 9, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 26, flexShrink: 0 }}>From</span>
-          <input value={fromText} onChange={(e) => { setFromText(e.target.value); setFromLL(null); }}
+          <input value={fromText}
+                 onChange={(e) => {
+                   setFromText(e.target.value);
+                   // Typing invalidates any prior coord (locked pick or
+                   // "current location" snap) until a new suggestion lands.
+                   if (e.target.value) setFromLL(null);
+                 }}
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
                    if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
                    if (fromSugg.length > 0) pickFrom(fromSugg[0]);
                    else geocode(fromText, "from");
                  }}
-                 placeholder="Address or place" style={inputStyle} />
-          {fromText && fromText !== "Current location" && (
+                 placeholder={fromIsCurrent ? "📍 Current location" : "Address or place"}
+                 style={inputStyle} />
+          {fromText && (
             <button
               onClick={() => {
                 fromAbortRef.current?.abort();
                 if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
-                setFromText("Current location");
+                setFromText("");
                 setFromLL(userLatLon);
                 setFromSugg([]);
               }}
               style={btnStyle}
               title="Reset to current location"
             >✕</button>
+          )}
+          {!fromText && !fromLL && (
+            <button
+              onClick={() => { setFromLL(userLatLon); onRequestLocate(); }}
+              style={btnStyle}
+              title="Use current location"
+            >📍</button>
           )}
         </div>
         {fromSugg.length > 0 && (
@@ -1136,9 +1150,9 @@ const TripPlanner: FC<{
                     🚶 {fmtMin(o.walkFromSec)} to destination
                   </div>
                 )}
-                {isExpanded && o.mode === "walk" && fromLL && toLL && (
+                {isExpanded && o.mode === "walk" && effectiveFromLL && toLL && (
                   <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                    <TripMap from={fromLL} to={toLL} color={o.color} />
+                    <TripMap from={effectiveFromLL} to={toLL} color={o.color} />
                   </div>
                 )}
                 {isExpanded && o.mode === "shuttle" && (() => {
@@ -1188,9 +1202,9 @@ const TripPlanner: FC<{
                     }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                         <div style={{ flex: "1 1 260px", minWidth: 220 }}>
-                          {fromLL && toLL && segCoords.length >= 2 && (
+                          {effectiveFromLL && toLL && segCoords.length >= 2 && (
                             <TripMap
-                              from={fromLL} to={toLL}
+                              from={effectiveFromLL} to={toLL}
                               shuttleStops={segCoords}
                               bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null}
                               color={o.color}
