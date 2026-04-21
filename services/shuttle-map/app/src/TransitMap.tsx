@@ -942,9 +942,19 @@ const TripPlanner: FC<{
                    else geocode(fromText, "from");
                  }}
                  placeholder="Address or place" style={inputStyle} />
-          <button onClick={useCurrent} disabled={locating} style={btnStyle} title="Use current location">
-            {locating || awaitingLocation ? "…" : "📍"}
-          </button>
+          {fromText && fromText !== "Current location" && (
+            <button
+              onClick={() => {
+                fromAbortRef.current?.abort();
+                if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
+                setFromText("Current location");
+                setFromLL(userLatLon);
+                setFromSugg([]);
+              }}
+              style={btnStyle}
+              title="Reset to current location"
+            >✕</button>
+          )}
         </div>
         {fromSugg.length > 0 && (
           <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}>
