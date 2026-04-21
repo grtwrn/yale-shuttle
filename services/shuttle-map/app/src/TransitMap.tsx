@@ -928,10 +928,12 @@ const TripPlanner: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {/* From field */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>From</div>
-        <div style={{ display: "flex", gap: 6 }}>
+      {/* From + To — compact single-row layout with inline labels. Drop
+          the separate "✓ Set" indicator lines since the locked text in
+          each input is self-explanatory. */}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 26, flexShrink: 0 }}>From</span>
           <input value={fromText} onChange={(e) => { setFromText(e.target.value); setFromLL(null); }}
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
@@ -943,12 +945,9 @@ const TripPlanner: FC<{
           <button onClick={useCurrent} disabled={locating} style={btnStyle} title="Use current location">
             {locating || awaitingLocation ? "…" : "📍"}
           </button>
-          <button onClick={() => geocode(fromText, "from")} disabled={searching === "from"} style={btnStyle}>
-            {searching === "from" ? "…" : "Search"}
-          </button>
         </div>
         {fromSugg.length > 0 && (
-          <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff" }}>
+          <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}>
             {fromSugg.map((g, i) => (
               <div key={i} onClick={() => pickFrom(g)}
                    style={{ padding: "6px 10px", fontSize: 11, cursor: "pointer", borderBottom: i === fromSugg.length - 1 ? "none" : "1px solid #f0ede8" }}>
@@ -957,18 +956,11 @@ const TripPlanner: FC<{
             ))}
           </div>
         )}
-        {fromLL && <div style={{ fontSize: 10, color: "#2E7D32", marginTop: 3 }}>✓ Set</div>}
-        {locateError && (
-          <div style={{ fontSize: 10, color: "#C62828", marginTop: 3 }}>
-            📍 {locateError}
-          </div>
-        )}
       </div>
 
-      {/* To field */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 10, color: "#78909c", marginBottom: 3, letterSpacing: 1, textTransform: "uppercase" }}>To</div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, color: "#78909c", letterSpacing: 1, textTransform: "uppercase", width: 26, flexShrink: 0 }}>To</span>
           <input value={toText} onChange={(e) => { setToText(e.target.value); setToLL(null); }}
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
@@ -992,12 +984,9 @@ const TripPlanner: FC<{
               title="Clear destination"
             >✕</button>
           )}
-          <button onClick={() => geocode(toText, "to")} disabled={searching === "to"} style={btnStyle}>
-            {searching === "to" ? "…" : "Search"}
-          </button>
         </div>
         {toSugg.length > 0 && (
-          <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff" }}>
+          <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}>
             {toSugg.map((g, i) => (
               <div key={i} onClick={() => pickTo(g)}
                    style={{ padding: "6px 10px", fontSize: 11, cursor: "pointer", borderBottom: i === toSugg.length - 1 ? "none" : "1px solid #f0ede8" }}>
@@ -1006,8 +995,12 @@ const TripPlanner: FC<{
             ))}
           </div>
         )}
-        {toLL && <div style={{ fontSize: 10, color: "#2E7D32", marginTop: 3 }}>✓ Set</div>}
       </div>
+      {locateError && (
+        <div style={{ fontSize: 10, color: "#C62828", marginBottom: 6, marginLeft: 32 }}>
+          📍 {locateError}
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
         <span style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
