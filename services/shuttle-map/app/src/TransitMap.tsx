@@ -488,6 +488,10 @@ const TripMap: FC<{
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
+  // Start marker is kept in a ref so we can move it in place when the
+  // user's GPS updates while walking toward the board stop, without
+  // tearing down the whole map.
+  const startMarkerRef = useRef<L.CircleMarker | null>(null);
 
   // Mount-once: build map, tiles, endpoints, stops, polylines. Re-runs only
   // when the planned trip itself changes (endpoints, route, shuttle shape),
@@ -503,9 +507,9 @@ const TripMap: FC<{
 
     const points: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon]];
 
-    L.circleMarker([from.lat, from.lon], {
+    startMarkerRef.current = L.circleMarker([from.lat, from.lon], {
       radius: 8, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
-    }).addTo(map).bindTooltip("Start", { direction: "top" });
+    }).addTo(map).bindTooltip("You", { direction: "top" });
     L.circleMarker([to.lat, to.lon], {
       radius: 8, color: "#fff", fillColor: "#C62828", fillOpacity: 1, weight: 2,
     }).addTo(map).bindTooltip("End", { direction: "top" });
@@ -564,13 +568,26 @@ const TripMap: FC<{
       map.remove();
       mapRef.current = null;
       busMarkerRef.current = null;
+      startMarkerRef.current = null;
     };
+    // `from` is intentionally NOT in deps — the start marker is moved in
+    // place by the separate effect below so GPS updates don't tear down
+    // the whole map and refit bounds every 5 seconds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    from.lat, from.lon, to.lat, to.lon, color,
+    to.lat, to.lon, color,
     JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon])),
     JSON.stringify(upcomingStops?.map((s) => [s.lat, s.lon])),
   ]);
+
+  // Live "you" marker — moves as the rider walks. Same pattern as the
+  // bus marker: setLatLng on the existing CircleMarker instead of
+  // rebuilding the layer.
+  useEffect(() => {
+    if (startMarkerRef.current) {
+      startMarkerRef.current.setLatLng([from.lat, from.lon]);
+    }
+  }, [from.lat, from.lon]);
 
   // Live bus marker — updates in place on every bus prop change (~5s via
   // /api/buses polling). Animates smoothly to the new GPS point instead of
