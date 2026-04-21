@@ -481,9 +481,16 @@ const TripMap: FC<{
   color: string;
 }> = ({ from, to, shuttleStops, bus, color }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const busMarkerRef = useRef<L.Marker | null>(null);
+
+  // Mount-once: build map, tiles, endpoints, stops, polylines. Re-runs only
+  // when the planned trip itself changes (endpoints, route, shuttle shape),
+  // not when the bus moves.
   useEffect(() => {
     if (!ref.current) return;
     const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: false });
+    mapRef.current = map;
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,
@@ -523,19 +530,6 @@ const TripMap: FC<{
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
       }).addTo(map);
       points.push([board.lat, board.lon], [alight.lat, alight.lon]);
-
-      if (bus) {
-        const busIcon = L.divIcon({
-          className: "bus-pin",
-          html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45));">🚌</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
-        });
-        L.marker([bus.lat, bus.lon], { icon: busIcon, zIndexOffset: 1000 })
-          .addTo(map)
-          .bindTooltip(bus.name ? `Bus #${bus.name}` : "Bus", { direction: "top" });
-        points.push([bus.lat, bus.lon]);
-      }
     } else {
       L.polyline([[from.lat, from.lon], [to.lat, to.lon]], {
         color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
@@ -543,12 +537,47 @@ const TripMap: FC<{
     }
 
     map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 16 });
-    // Tile sizes are computed from the container's measured size. When the
-    // card expands the div hits layout one frame later, so nudge Leaflet.
     setTimeout(() => map.invalidateSize(), 60);
 
-    return () => { map.remove(); };
-  }, []);
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      busMarkerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from.lat, from.lon, to.lat, to.lon, color, JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon]))]);
+
+  // Live bus marker — updates in place on every bus prop change (~5s via
+  // /api/buses polling). Animates smoothly to the new GPS point instead of
+  // tearing down/rebuilding the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!bus) {
+      if (busMarkerRef.current) {
+        map.removeLayer(busMarkerRef.current);
+        busMarkerRef.current = null;
+      }
+      return;
+    }
+    const latlng: [number, number] = [bus.lat, bus.lon];
+    if (busMarkerRef.current) {
+      busMarkerRef.current.setLatLng(latlng);
+      if (bus.name) {
+        busMarkerRef.current.setTooltipContent(`Bus #${bus.name}`);
+      }
+    } else {
+      const busIcon = L.divIcon({
+        className: "bus-pin",
+        html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45));">🚌</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      });
+      busMarkerRef.current = L.marker(latlng, { icon: busIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindTooltip(bus.name ? `Bus #${bus.name}` : "Bus", { direction: "top" });
+    }
+  }, [bus?.lat, bus?.lon, bus?.name]);
 
   return <div ref={ref} style={{ height: 240, borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10 }} />;
 };
@@ -768,18 +797,33 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toLL?.lat, toLL?.lon]);
 
-  // Fill From with the user's current location by default once we have it.
-  // Runs once so manually clearing From isn't overwritten by later GPS
-  // ticks.
-  const autoFilledFromRef = useRef(false);
+  // Start location defaults to "Current location" as a label — GPS isn't
+  // actually fetched until the user picks a destination (search Enter or
+  // Recent/Saved tap). That way we don't prompt for location on tab open.
   useEffect(() => {
-    if (autoFilledFromRef.current) return;
-    if (!fromLL && !fromText && userLatLon) {
-      setFromLL(userLatLon);
+    if (!fromText && !fromLL) {
       setFromText("Current location");
-      autoFilledFromRef.current = true;
     }
-  }, [userLatLon]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Once GPS resolves, silently snap From's coord if the label is still
+  // "Current location". Covers the pending-locate case.
+  useEffect(() => {
+    if (userLatLon && fromText === "Current location" && !fromLL) {
+      setFromLL(userLatLon);
+    }
+  }, [userLatLon, fromText, fromLL]);
+
+  // If the user has set a destination while the From label is
+  // "Current location" but we don't have GPS yet, kick off a locate
+  // request. The effect above will snap in the coord when it arrives.
+  useEffect(() => {
+    if (toLL && fromText === "Current location" && !fromLL && !locating && !userLatLon) {
+      onRequestLocate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toLL]);
 
   const applyDestination = (t: SavedTrip) => {
     setToText(t.toText);
@@ -933,6 +977,21 @@ const TripPlanner: FC<{
                    else geocode(toText, "to");
                  }}
                  placeholder="Address or place" style={inputStyle} />
+          {(toText || toLL) && (
+            <button
+              onClick={() => {
+                toAbortRef.current?.abort();
+                if (toTimerRef.current) { clearTimeout(toTimerRef.current); toTimerRef.current = null; }
+                setToText("");
+                setToLL(null);
+                setToSugg([]);
+                setExpandedIdx(null);
+                setError(null);
+              }}
+              style={btnStyle}
+              title="Clear destination"
+            >✕</button>
+          )}
           <button onClick={() => geocode(toText, "to")} disabled={searching === "to"} style={btnStyle}>
             {searching === "to" ? "…" : "Search"}
           </button>
@@ -991,29 +1050,6 @@ const TripPlanner: FC<{
         <div style={{ fontSize: 10, color: "#1976D2", marginBottom: 8, padding: "0 2px" }}>
           Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
           {" · routes filtered by published hours, wait = ½ typical headway"}
-        </div>
-      )}
-
-      {savedTrips.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
-          <div style={{
-            display: "flex", flexDirection: "column", gap: 4,
-            maxHeight: 140, overflowY: "auto",
-          }}>
-            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
-          </div>
-        </div>
-      )}
-      {recentTrips.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
-          <div style={{
-            display: "flex", flexDirection: "column", gap: 4,
-            maxHeight: 140, overflowY: "auto",
-          }}>
-            {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
-          </div>
         </div>
       )}
 
@@ -1224,6 +1260,29 @@ const TripPlanner: FC<{
               </div>
             );
           })}
+        </div>
+      )}
+
+      {savedTrips.length > 0 && (
+        <div style={{ marginTop: 12, marginBottom: 8 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 4,
+            maxHeight: 140, overflowY: "auto",
+          }}>
+            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
+          </div>
+        </div>
+      )}
+      {recentTrips.length > 0 && (
+        <div style={{ marginTop: savedTrips.length > 0 ? 0 : 12, marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 4,
+            maxHeight: 140, overflowY: "auto",
+          }}>
+            {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
+          </div>
         </div>
       )}
     </div>
