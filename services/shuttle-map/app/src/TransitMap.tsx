@@ -529,10 +529,10 @@ const TripMap: FC<{
         }
       }
 
+      // Only the board/alight markers are rendered on the ride segment —
+      // intermediate stop dots were noise. The colored polyline still
+      // shows the ride's shape.
       for (const s of shuttleStops.slice(1, -1)) {
-        L.circleMarker([s.lat, s.lon], {
-          radius: 3, color, fillColor: color, fillOpacity: 0.85, weight: 0,
-        }).addTo(map);
         points.push([s.lat, s.lon]);
       }
       L.polyline(shuttleStops.map((s) => [s.lat, s.lon] as [number, number]), {
