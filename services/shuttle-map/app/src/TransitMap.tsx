@@ -346,6 +346,7 @@ function planTrip(
   stopCoords: Record<number, LatLon>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>,
+  dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>,
   targetDate?: Date | null,
 ): TripOption[] {
   const MAX_WALK_M = 1200;
@@ -421,7 +422,7 @@ function planTrip(
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
         } else {
-          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes, dwellTimes);
+          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus);
           const next = arrivals.find((a) => a.routeLabel === cfg.label);
           if (!next) continue;
           waitSec = Math.max(0, next.eta - walkToSec);
@@ -560,6 +561,7 @@ const TripPlanner: FC<{
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+  dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -572,7 +574,7 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -718,7 +720,7 @@ const TripPlanner: FC<{
   }, [awaitingLocation, userLatLon]);
 
   const options = (fromLL && toLL)
-    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
+    ? planTrip(fromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
     : null;
 
   // Apply a "plan this saved destination" request from Favorites: sets
@@ -1240,6 +1242,7 @@ function computeUpcomingArrivals(
   stopCoords: Record<number, { lat: number; lon: number }>,
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
   dwellTimes?: Record<string, Record<string, { med: number; sd: number; n: number }>>,
+  dwellsByBus?: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -1299,9 +1302,18 @@ function computeUpcomingArrivals(
           (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000,
         );
         // Cap by typical dwell at this stop so an extra-long stall doesn't
-        // erase the drive segment. If we have no learned dwell, fall back
-        // to the elapsed time directly (still capped below by first seg).
-        const dwellMed = dwellTimes?.[cfg.routeIds[0]]?.[String(stops[busIdx])]?.med;
+        // erase the drive segment. Hierarchy: per-bus dwell for this
+        // (bus, route, stop) → route-level dwell → raw elapsed. Per-bus
+        // wins when it has ≥5 samples (the collector's MIN_PER_BUS_SAMPLES),
+        // since "bus #123 lingers at SOM" is more predictive than the
+        // route-wide average that mixes all vehicles.
+        const busKey = bus.bus_name.replace(/^#/, "");
+        const stopKey = String(stops[busIdx]);
+        const perBus = dwellsByBus?.[busKey]?.[cfg.routeIds[0]]?.[stopKey];
+        const routeDwell = dwellTimes?.[cfg.routeIds[0]]?.[stopKey];
+        const dwellMed =
+          (perBus && perBus.n >= 5) ? perBus.med
+          : (routeDwell != null ? routeDwell.med : undefined);
         stallCredit = dwellMed != null ? Math.min(elapsedSec, dwellMed) : elapsedSec;
       }
 
@@ -2817,6 +2829,9 @@ const TransitMap: FC = () => {
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
   const [dwellTimes, setDwellTimes] = useState<Record<string, Record<string, { med: number; sd: number; n: number }>>>({});
   const [routePeaks, setRoutePeaks] = useState<Record<string, number>>({});
+  // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
+  // that we prefer over route-level when computing stall credit.
+  const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
@@ -3037,6 +3052,7 @@ const TransitMap: FC = () => {
         if (data.dwells) setDwellTimes(data.dwells);
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
+        if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
       } catch { /* ignore */ }
     };
     poll();
@@ -3164,7 +3180,7 @@ const TransitMap: FC = () => {
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes}
+          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}

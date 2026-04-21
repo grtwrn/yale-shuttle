@@ -111,8 +111,54 @@ def get_bus_data():
     db.close()
     segments = get_segment_times()
     dwells = get_dwell_times()
+    dwells_by_bus = get_dwell_times_by_bus()
     peaks = get_route_peaks()
-    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "route_peaks": peaks}
+    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "dwells_by_bus": dwells_by_bus, "route_peaks": peaks}
+
+
+def get_dwell_times_by_bus() -> dict:
+    """Per-bus calibrated dwell times, prefer today's day-of-week then fall
+    back to all-days average. Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}}."""
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception:
+        return {}
+    db.row_factory = sqlite3.Row
+    try:
+        day_of_week = time.localtime().tm_wday
+        sqlite_dow = (day_of_week + 1) % 7
+        rows = db.execute("""
+            SELECT cdb.bus_name, cdb.route_id, cdb.stop_id,
+                   cdb.median_dwell_seconds, cdb.stddev_dwell_seconds, cdb.sample_count
+            FROM calibrated_dwells_by_bus cdb
+            WHERE cdb.day_of_week = ?
+            UNION ALL
+            SELECT dab.bus_name, dab.route_id, dab.stop_id,
+                   dab.median_dwell_seconds, dab.stddev_dwell_seconds, dab.sample_count
+            FROM dwell_averages_by_bus dab
+            WHERE NOT EXISTS (
+                SELECT 1 FROM calibrated_dwells_by_bus cdb2
+                WHERE cdb2.bus_name = dab.bus_name
+                  AND cdb2.route_id = dab.route_id
+                  AND cdb2.stop_id = dab.stop_id
+                  AND cdb2.day_of_week = ?
+            )
+        """, (sqlite_dow, sqlite_dow)).fetchall()
+    except Exception:
+        rows = []
+    db.close()
+
+    result: dict = {}
+    for r in rows:
+        bn = r["bus_name"].lstrip("#")
+        rid = str(r["route_id"])
+        sid = str(r["stop_id"])
+        result.setdefault(bn, {}).setdefault(rid, {})[sid] = {
+            "med": round(r["median_dwell_seconds"], 1),
+            "sd": round(r["stddev_dwell_seconds"] or 0, 1),
+            "n": r["sample_count"],
+        }
+    return result
 
 
 def get_route_peaks() -> dict:
