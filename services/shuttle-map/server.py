@@ -820,6 +820,87 @@ def api_accuracy():
     return _json_cached(data, 60)
 
 
+@app.get("/api/debug/predictions")
+def api_debug_predictions(
+    route_id: int | None = Query(None),
+    bus_name: str | None = Query(None),
+    to_stop_id: int | None = Query(None),
+    hours: int = Query(24, ge=1, le=168),
+    limit: int = Query(200, ge=1, le=2000),
+):
+    """Join predictions with the closest-matching gps_arrival so we can see
+    over/under per bus × stop over the last N hours (1..168 = 7 days, the
+    retention ceiling). Any combination of route_id / bus_name / to_stop_id
+    is allowed. Returns rows with predicted_at, horizon, actual_arrived_at,
+    delta_sec (positive = bus arrived later than we said → rider waits
+    longer than shown; negative = bus came earlier → rider misses it)."""
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception:
+        return {"predictions": []}
+    db.row_factory = sqlite3.Row
+    wheres = [f"p.predicted_at > datetime('now', '-{int(hours)} hours')"]
+    params: list = []
+    if route_id is not None:
+        wheres.append("p.route_id = ?"); params.append(route_id)
+    if bus_name is not None:
+        wheres.append("REPLACE(p.bus_name, '#', '') = ?"); params.append(bus_name.lstrip('#'))
+    if to_stop_id is not None:
+        wheres.append("p.to_stop_id = ?"); params.append(to_stop_id)
+    where_sql = " AND ".join(wheres)
+    try:
+        rows = db.execute(f"""
+            SELECT p.predicted_at, p.bus_name, p.route_id, p.from_stop_id, p.to_stop_id,
+                   p.predicted_eta_sec, p.predicted_low_sec, p.predicted_high_sec,
+                   (
+                     SELECT ga.arrived_at
+                     FROM gps_arrivals ga
+                     WHERE ga.bus_id = p.bus_id AND ga.stop_id = p.to_stop_id
+                       AND ga.arrived_at >= p.predicted_at
+                       AND ga.arrived_at < datetime(p.predicted_at, '+2 hours')
+                     ORDER BY ga.arrived_at ASC
+                     LIMIT 1
+                   ) as actual_arrived_at
+            FROM predictions p
+            WHERE {where_sql}
+            ORDER BY p.predicted_at DESC
+            LIMIT ?
+        """, (*params, int(limit))).fetchall()
+    except Exception as e:
+        db.close()
+        return {"predictions": [], "error": str(e)}
+    db.close()
+
+    out = []
+    for r in rows:
+        actual = r["actual_arrived_at"]
+        delta = None
+        if actual:
+            try:
+                predicted = r["predicted_at"]
+                # Convert both to epoch seconds via SQLite's julianday to avoid
+                # timezone parsing mismatches. Do it in Python for clarity.
+                import datetime as _dt
+                pred_dt = _dt.datetime.fromisoformat(predicted.replace(" ", "T"))
+                act_dt = _dt.datetime.fromisoformat(actual.replace(" ", "T"))
+                delta = (act_dt - pred_dt).total_seconds() - float(r["predicted_eta_sec"])
+            except Exception:
+                pass
+        out.append({
+            "predicted_at": r["predicted_at"],
+            "bus_name": r["bus_name"].lstrip("#") if r["bus_name"] else r["bus_name"],
+            "route_id": r["route_id"],
+            "from_stop_id": r["from_stop_id"],
+            "to_stop_id": r["to_stop_id"],
+            "predicted_eta_sec": round(r["predicted_eta_sec"], 1),
+            "predicted_low_sec": round(r["predicted_low_sec"], 1),
+            "predicted_high_sec": round(r["predicted_high_sec"], 1),
+            "actual_arrived_at": actual,
+            "delta_sec": round(delta, 1) if delta is not None else None,
+        })
+    return {"predictions": out, "horizon_hours": hours, "retention_days": 7}
+
+
 @app.get("/api/geocode")
 def api_geocode(q: str = Query("")):
     # Don't let the browser cache geocode responses: on-type autocomplete

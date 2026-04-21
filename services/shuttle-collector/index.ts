@@ -1246,7 +1246,10 @@ function runRetention(db: Database.Database): void {
   const deletions: Array<[string, string]> = [
     // table, WHERE clause
     ["bus_positions", "collected_at < datetime('now', '-6 hours')"],
-    ["predictions",   "predicted_at < datetime('now', '-14 days')"],
+    // Predictions are a circular 7-day debug buffer — long enough to chase
+    // down any "my bus came 7 min early" reports from a week ago, short
+    // enough to keep the table small (~150k rows/week across the fleet).
+    ["predictions",   "predicted_at < datetime('now', '-7 days')"],
     ["gps_arrivals",  "arrived_at   < datetime('now', '-30 days')"],
     ["gps_dwells",    "entered_at   < datetime('now', '-30 days')"],
     ["segment_times", "recorded_at  < datetime('now', '-30 days')"],
