@@ -342,15 +342,15 @@ const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
 // OSRM (free public router) on demand; cached in localStorage so each
 // segment costs one fetch per device forever. Straight-line is used as
 // a fallback when the fetch fails or hasn't landed yet.
-// "You are here" divIcon — pulsing green dot, centered on the coord.
-// Separate from destination so start/end are distinguishable at a
-// glance without reading labels.
+// "You are here" divIcon — pulsing blue dot, centered on the coord.
+// Blue is the conventional GPS-position color (Google/Apple Maps use
+// the same) and keeps the green reserved for route/status confirmations.
 const makeYouIcon = () => L.divIcon({
   className: "trip-you",
   html: `
     <div style="position:relative;width:22px;height:22px;">
-      <div style="position:absolute;inset:0;border-radius:50%;background:#2E7D32;opacity:0.3;animation:youPulse 2s ease-out infinite;"></div>
-      <div style="position:absolute;inset:4px;border-radius:50%;background:#2E7D32;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>
+      <div style="position:absolute;inset:0;border-radius:50%;background:#1976D2;opacity:0.3;animation:youPulse 2s ease-out infinite;"></div>
+      <div style="position:absolute;inset:4px;border-radius:50%;background:#1976D2;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>
       <style>
         @keyframes youPulse {
           0%   { transform: scale(0.9); opacity: 0.5; }
