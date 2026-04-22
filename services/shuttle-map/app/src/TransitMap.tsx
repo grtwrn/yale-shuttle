@@ -338,6 +338,88 @@ function haversineMeters(a: LatLon, b: LatLon): number {
 
 const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
 
+// Road-following polylines per (from_stop, to_stop) pair. Fetched from
+// OSRM (free public router) on demand; cached in localStorage so each
+// segment costs one fetch per device forever. Straight-line is used as
+// a fallback when the fetch fails or hasn't landed yet.
+const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
+const LS_KEY = "shuttle-segment-geoms-v1";
+type SegGeom = [number, number][]; // [lat, lon][]
+function loadSegCache(): Record<string, SegGeom> {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    return s ? JSON.parse(s) : {};
+  } catch { return {}; }
+}
+function saveSegCache(cache: Record<string, SegGeom>) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(cache)); } catch { /* quota */ }
+}
+const segCache: Record<string, SegGeom> = loadSegCache();
+const segInFlight = new Set<string>();
+const segKey = (a: LatLon, b: LatLon) =>
+  `${a.lat.toFixed(5)},${a.lon.toFixed(5)}|${b.lat.toFixed(5)},${b.lon.toFixed(5)}`;
+
+async function fetchSegGeom(a: LatLon, b: LatLon): Promise<SegGeom | null> {
+  const key = segKey(a, b);
+  if (segCache[key]) return segCache[key];
+  if (segInFlight.has(key)) return null;
+  segInFlight.add(key);
+  try {
+    const url = `${OSRM_BASE}/${a.lon},${a.lat};${b.lon},${b.lat}?geometries=geojson&overview=full`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d.code !== "Ok" || !d.routes?.[0]?.geometry?.coordinates) return null;
+    const pts: SegGeom = d.routes[0].geometry.coordinates.map(
+      (c: [number, number]) => [c[1], c[0]] as [number, number],
+    );
+    segCache[key] = pts;
+    saveSegCache(segCache);
+    return pts;
+  } catch { return null; }
+  finally { segInFlight.delete(key); }
+}
+
+// Walk a list of stops, call OSRM for each consecutive pair, and
+// concatenate the road-following polyline. Returns straight-line
+// [stop0, stop1, ..., stopN] while requests are in flight so the map
+// has something to draw immediately; caller is expected to re-render
+// when the async pieces land (we notify via a `tick` counter).
+function useRoadPolyline(stops: LatLon[] | undefined, tick: () => void): [number, number][] | undefined {
+  const ref = useRef<number>(0);
+  useEffect(() => {
+    if (!stops || stops.length < 2) return;
+    let cancelled = false;
+    (async () => {
+      let changed = false;
+      for (let i = 0; i < stops.length - 1; i++) {
+        const key = segKey(stops[i], stops[i + 1]);
+        if (!segCache[key]) {
+          const pts = await fetchSegGeom(stops[i], stops[i + 1]);
+          if (cancelled) return;
+          if (pts) changed = true;
+        }
+      }
+      if (changed) { ref.current += 1; tick(); }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stops && stops.map((s) => `${s.lat},${s.lon}`).join(";")]);
+
+  if (!stops || stops.length < 2) return undefined;
+  const out: [number, number][] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const geom = segCache[segKey(stops[i], stops[i + 1])];
+    if (geom && geom.length > 0) {
+      if (i === 0) out.push(geom[0]);
+      for (let j = 1; j < geom.length; j++) out.push(geom[j]);
+    } else {
+      if (i === 0) out.push([stops[i].lat, stops[i].lon]);
+      out.push([stops[i + 1].lat, stops[i + 1].lon]);
+    }
+  }
+  return out;
+}
+
 // Scalar projection of `p` onto the segment from `a` to `b`, normalized so
 // t=0 means "at A", t=1 means "at B", t>1 means "past B", t<0 means
 // "before A". Uses an equirectangular approximation (stretches lon by
@@ -507,6 +589,13 @@ const TripMap: FC<{
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
+  // Bump whenever async OSRM fetches resolve so the map-building
+  // effect reruns with the now-populated cache. Trivially cheap —
+  // just a counter that flips one state value.
+  const [geomTick, setGeomTick] = useState(0);
+  const bumpGeom = () => setGeomTick((v) => v + 1);
+  const shuttleRoad = useRoadPolyline(shuttleStops, bumpGeom);
+  const upcomingRoad = useRoadPolyline(upcomingStops, bumpGeom);
   // Start marker is kept in a ref so we can move it in place when the
   // user's GPS updates while walking toward the board stop, without
   // tearing down the whole map.
@@ -541,7 +630,7 @@ const TripMap: FC<{
       // Drawn under the main segment with a muted polyline and tiny
       // translucent dots so the rider can see "N stops before mine."
       if (upcomingStops && upcomingStops.length >= 2) {
-        L.polyline(upcomingStops.map((s) => [s.lat, s.lon] as [number, number]), {
+        L.polyline(upcomingRoad ?? upcomingStops.map((s) => [s.lat, s.lon] as [number, number]), {
           color, weight: 3, opacity: 0.35, dashArray: "6 4",
         }).addTo(map);
         for (const s of upcomingStops.slice(0, -1)) {
@@ -558,7 +647,7 @@ const TripMap: FC<{
       for (const s of shuttleStops.slice(1, -1)) {
         points.push([s.lat, s.lon]);
       }
-      L.polyline(shuttleStops.map((s) => [s.lat, s.lon] as [number, number]), {
+      L.polyline(shuttleRoad ?? shuttleStops.map((s) => [s.lat, s.lon] as [number, number]), {
         color, weight: 5, opacity: 0.75,
       }).addTo(map);
       L.circleMarker([board.lat, board.lon], {
@@ -597,6 +686,9 @@ const TripMap: FC<{
     to.lat, to.lon, color,
     JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon])),
     JSON.stringify(upcomingStops?.map((s) => [s.lat, s.lon])),
+    // Rebuild when async road-polyline fetches land so we swap from
+    // the straight-line fallback to the real road geometry.
+    geomTick,
   ]);
 
   // Live "you" marker — moves as the rider walks. Same pattern as the
