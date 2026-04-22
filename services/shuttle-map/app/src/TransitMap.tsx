@@ -1538,16 +1538,17 @@ const TripPlanner: FC<{
             {savedTrips.map((t) => {
               const editing = editingSavedId === t.id;
               if (editing) {
-                // Inline rename uses the full-row input — a stretched chip
-                // is too cramped for editing.
+                // Edit mode stretches to a full row so the input is
+                // comfortable AND the ✕ delete button lives far from the
+                // regular tap target to avoid accidental removal.
                 return (
                   <div key={t.id} style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    padding: "3px 8px", borderRadius: 999,
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "4px 8px", borderRadius: 8,
                     background: "#f1f8e9", border: "1px solid #c5e1a5",
                     flex: "1 1 100%",
                   }} onClick={(e) => e.stopPropagation()}>
-                    <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>
+                    <span style={{ color: "#2E7D32", fontSize: 11 }}>★</span>
                     <input
                       defaultValue={t.toText}
                       autoFocus
@@ -1561,11 +1562,29 @@ const TripPlanner: FC<{
                         if (e.key === "Escape") setEditingSavedId(null);
                       }}
                       style={{
-                        flex: 1, minWidth: 0, fontSize: 11, padding: "1px 4px",
-                        border: "none", background: "transparent",
+                        flex: 1, minWidth: 0, fontSize: 12, padding: "2px 6px",
+                        border: "1px solid #cfd8dc", background: "#fff",
+                        borderRadius: 4,
                         fontFamily: "inherit", color: "#263238", outline: "none",
                       }}
                     />
+                    <button
+                      onMouseDown={(e) => {
+                        // Fire before input's onBlur so we don't commit a
+                        // half-edited name when the user is really just
+                        // removing the entry.
+                        e.preventDefault(); e.stopPropagation();
+                        setEditingSavedId(null);
+                        onDeleteSaved(t.id);
+                      }}
+                      style={{
+                        fontSize: 11, padding: "3px 8px",
+                        border: "1px solid #C62828", background: "#fff",
+                        color: "#C62828", borderRadius: 4,
+                        fontFamily: "inherit", cursor: "pointer",
+                      }}
+                      title="Delete this saved destination"
+                    >✕ delete</button>
                   </div>
                 );
               }
@@ -1573,11 +1592,10 @@ const TripPlanner: FC<{
                 <div
                   key={t.id}
                   onClick={() => applyDestination(t)}
-                  onDoubleClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
-                  title="Tap to plan · double-tap to rename"
+                  title="Tap to plan"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
-                    padding: "3px 10px", borderRadius: 999,
+                    padding: "3px 4px 3px 10px", borderRadius: 999,
                     background: "#fff", border: "1px solid #c5e1a5",
                     fontSize: 11, color: "#263238", cursor: "pointer",
                     maxWidth: "100%",
@@ -1589,14 +1607,14 @@ const TripPlanner: FC<{
                     color: "#C62828", fontWeight: 600,
                   }}>{t.toText}</span>
                   <button
-                    onClick={(e) => { e.stopPropagation(); onDeleteSaved(t.id); }}
+                    onClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
                     style={{
-                      border: "none", background: "transparent", color: "#9e9e9e",
-                      cursor: "pointer", padding: 0, fontSize: 12, lineHeight: 1,
+                      border: "none", background: "transparent", color: "#90a4ae",
+                      cursor: "pointer", padding: "2px 4px", fontSize: 11, lineHeight: 1,
                       marginLeft: 2,
                     }}
-                    title="Remove"
-                  >✕</button>
+                    title="Rename or delete"
+                  >✎</button>
                 </div>
               );
             })}
