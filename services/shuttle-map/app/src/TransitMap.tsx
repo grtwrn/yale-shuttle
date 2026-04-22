@@ -337,6 +337,25 @@ function haversineMeters(a: LatLon, b: LatLon): number {
 }
 
 const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
+
+// Scalar projection of `p` onto the segment from `a` to `b`, normalized so
+// t=0 means "at A", t=1 means "at B", t>1 means "past B", t<0 means
+// "before A". Uses an equirectangular approximation (stretches lon by
+// cos(lat)) — good enough for sub-mile bus segments and stable vs.
+// perpendicular GPS jitter. Straight-line distance comparisons aren't
+// robust: a bus at the midpoint flips "closer to A" vs "closer to B" on
+// noise, wrecking both anchor-advance and mid-segment proration.
+function progressAlongSegment(p: LatLon, a: LatLon, b: LatLon): number {
+  const meanLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
+  const scale = Math.cos(meanLat);
+  const ax = a.lon * scale, ay = a.lat;
+  const bx = b.lon * scale, by = b.lat;
+  const px = p.lon * scale, py = p.lat;
+  const dx = bx - ax, dy = by - ay;
+  const denom = dx * dx + dy * dy;
+  if (denom < 1e-12) return 0;
+  return ((px - ax) * dx + (py - ay) * dy) / denom;
+}
 const MAX_RIDE_SEC = 25 * 60; // don't keep looping past a boarding point
 
 function planTrip(
@@ -1358,14 +1377,13 @@ const TripPlanner: FC<{
                     // stops away" line can disagree with the bus pin on
                     // the map when the feed lags.
                     if (busIdx >= 0 && busMatch.lat && busMatch.lon && busMatch.at_stop_id !== busMatch.last_stop_id) {
-                      const d2 = (a: { lat: number; lon: number }) =>
-                        (busMatch.lat - a.lat) ** 2 + (busMatch.lon - a.lon) ** 2;
+                      const busPt = { lat: busMatch.lat, lon: busMatch.lon };
                       const maxAdvance = Math.max(1, Math.floor(allStops.length / 2));
                       for (let step = 0; step < maxAdvance; step++) {
                         const here = stopCoords[allStops[busIdx]];
                         const nxt = stopCoords[allStops[(busIdx + 1) % allStops.length]];
                         if (!here || !nxt) break;
-                        if (d2(nxt) >= d2(here)) break;
+                        if (progressAlongSegment(busPt, here, nxt) <= 1) break;
                         busIdx = (busIdx + 1) % allStops.length;
                       }
                     }
@@ -1747,20 +1765,23 @@ function computeUpcomingArrivals(
       if (busIdx === -1) continue;
 
       // TransLoc updates last_stop_id with a few-second lag — and if the
-      // bus blew through several stops between polls or the feed's been
-      // stale longer, the anchor can be multiple stops behind where the
-      // bus actually is. Iteratively advance the anchor while GPS is
-      // closer to the next stop in loop order than to the current one.
-      // Capped at N/2 to prevent a runaway wrap if segmentation is off.
+      // bus blew through several stops between polls, the anchor can be
+      // multiple stops behind the bus's real position. Iteratively
+      // advance the anchor while the bus has projected *past* the next
+      // stop (t > 1 along the current→next line). Using scalar
+      // projection instead of nearest-coord avoids the midpoint-jitter
+      // case where a bus halfway through a segment flips anchors every
+      // poll and the ETA oscillates (user reported Orange Night flipping
+      // between 7 and 25 min at Canner/Whitney).
       if (bus.lat && bus.lon && bus.at_stop_id !== stops[busIdx]) {
-        const d2 = (a: { lat: number; lon: number }) =>
-          (bus.lat - a.lat) ** 2 + (bus.lon - a.lon) ** 2;
+        const busPt = { lat: bus.lat, lon: bus.lon };
         const maxAdvance = Math.max(1, Math.floor(stops.length / 2));
         for (let step = 0; step < maxAdvance; step++) {
           const here = stopCoords[stops[busIdx]];
           const next = stopCoords[stops[(busIdx + 1) % stops.length]];
           if (!here || !next) break;
-          if (d2(next) >= d2(here)) break;
+          const t = progressAlongSegment(busPt, here, next);
+          if (t <= 1) break;
           busIdx = (busIdx + 1) % stops.length;
         }
       }
@@ -1794,29 +1815,24 @@ function computeUpcomingArrivals(
         stallCredit = dwellMed != null ? Math.min(elapsedSec, dwellMed) : elapsedSec;
       }
 
-      // Mid-segment proration: if the bus is en route (not dwelled at the
-      // anchor) and GPS shows it somewhere between stops[busIdx] and the
-      // next stop, scale the first segment's time by how much of that
-      // A→B distance is still ahead. Without this, a bus 80% of the way
-      // to B still contributes the full seg(A→B) to ETA, so riders get
-      // a "3 min" when realistically only ~1 min remains.
+      // Mid-segment proration: if the bus is en route (not dwelled at
+      // the anchor) and GPS shows it between A and B, scale the first
+      // segment's time by the fraction of A→B still ahead.
       //
-      // We use the ratio (dist bus→B) / (dist A→B) on straight lines —
-      // not road-accurate, but a good proxy for short shuttle segments
-      // where roads track the line-of-sight reasonably. Clamped to [0, 1]
-      // so a bus overshooting B (shouldn't happen post-anchor-advance,
-      // but belt-and-suspenders) doesn't invert the segment.
+      // Use the along-segment projection t (0 = at A, 1 = at B) — the
+      // same number the anchor-advance uses — so the two stay
+      // consistent. Perpendicular GPS jitter moves t very little, unlike
+      // straight-line-to-B distance which can swing wildly. Remaining
+      // fraction = (1 - t), clamped [0, 1]: if anchor-advance didn't
+      // fire but t happens to exceed 1 due to sub-step drift, treat it
+      // as 0 remaining rather than negative.
       let firstSegProgressFactor = 1;
       if (!busIsAtAnchor && bus.lat && bus.lon) {
         const a = stopCoords[stops[busIdx]];
         const b = stopCoords[stops[(busIdx + 1) % stops.length]];
         if (a && b) {
-          const abM = haversineMeters(a, b);
-          if (abM > 10) {
-            const busPt = { lat: bus.lat, lon: bus.lon };
-            const remainingM = haversineMeters(busPt, b);
-            firstSegProgressFactor = Math.max(0, Math.min(1, remainingM / abM));
-          }
+          const t = progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b);
+          firstSegProgressFactor = Math.max(0, Math.min(1, 1 - t));
         }
       }
 
