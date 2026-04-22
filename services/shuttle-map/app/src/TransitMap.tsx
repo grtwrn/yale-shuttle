@@ -1599,7 +1599,7 @@ const TripPlanner: FC<{
             maxHeight: 140, overflowY: "auto",
           }}>
             {savedTrips.map((t) => {
-              const editing = editingSavedMode && editingSavedId === t.id;
+              const editing = editingSavedMode;
               if (editing) {
                 // Edit mode stretches to a full row so the input is
                 // comfortable AND the ✕ delete button lives far from the
@@ -1614,7 +1614,6 @@ const TripPlanner: FC<{
                     <span style={{ color: "#2E7D32", fontSize: 11 }}>★</span>
                     <input
                       defaultValue={t.toText}
-                      autoFocus
                       onBlur={(e) => {
                         const v = e.currentTarget.value.trim();
                         if (v && v !== t.toText) onRenameSaved(t.id, v);
@@ -1654,15 +1653,12 @@ const TripPlanner: FC<{
               return (
                 <div
                   key={t.id}
-                  onClick={() => {
-                    if (editingSavedMode) setEditingSavedId(t.id);
-                    else applyDestination(t);
-                  }}
-                  title={editingSavedMode ? "Tap to edit" : "Tap to plan"}
+                  onClick={() => applyDestination(t)}
+                  title="Tap to plan"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
                     padding: "3px 10px", borderRadius: 999,
-                    background: editingSavedMode ? "#f1f8e9" : "#fff",
+                    background: "#fff",
                     border: "1px solid #c5e1a5",
                     fontSize: 11, color: "#263238", cursor: "pointer",
                     maxWidth: "100%",
