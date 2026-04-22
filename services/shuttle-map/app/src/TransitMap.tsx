@@ -1983,14 +1983,24 @@ const TripPlanner: FC<{
                               bar doubles as the collapse control. */}
                           {trackerPreviewIdx === i && (
                             <div style={{ marginTop: 8 }}>
-                              <div style={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                gap: 8, padding: "7px 10px",
-                                borderRadius: "8px 8px 0 0",
-                                border: `1px solid ${o.color}`, borderBottom: "none",
-                                background: o.color, color: "#fff",
-                                fontSize: 11, fontWeight: 600,
-                              }}>
+                              {/* Entire title bar is a button — tapping
+                                  anywhere along the row collapses the
+                                  preview. The "open ↗" link stops
+                                  propagation so it doesn't also close. */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
+                                title="Hide preview"
+                                style={{
+                                  width: "100%",
+                                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                                  gap: 8, padding: "7px 10px",
+                                  borderRadius: "8px 8px 0 0",
+                                  border: `1px solid ${o.color}`, borderBottom: "none",
+                                  background: o.color, color: "#fff",
+                                  fontSize: 11, fontWeight: 600,
+                                  fontFamily: "inherit", cursor: "pointer",
+                                }}
+                              >
                                 <span>📱 Yale tracker — {o.routeLabel}</span>
                                 <span style={{ display: "flex", alignItems: "center", gap: 20 }}>
                                   <a
@@ -2000,17 +2010,9 @@ const TripPlanner: FC<{
                                     style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
                                     title="Open in new tab"
                                   >open ↗</a>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
-                                    title="Hide preview"
-                                    style={{
-                                      border: "none", background: "transparent",
-                                      color: "#fff", fontSize: 14, lineHeight: 1,
-                                      cursor: "pointer", padding: 0,
-                                    }}
-                                  >✕</button>
+                                  <span style={{ fontSize: 12, lineHeight: 1 }}>✕</span>
                                 </span>
-                              </div>
+                              </button>
                               <iframe
                                 src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
                                 title={`Yale tracker ${o.routeLabel}`}
@@ -2027,10 +2029,27 @@ const TripPlanner: FC<{
                           )}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
-                          {/* Full-width "Vertical route list" toggle —
-                              defaults collapsed so the expansion card
-                              stays short until the rider asks to see
-                              the per-stop layout. */}
+                          {/* Yale tracker toggle first, then stop list.
+                              Both full-width so they read as a matched
+                              pair of primary actions. */}
+                          {trackerPreviewIdx !== i && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(i); }}
+                              title="Open tracker preview below the map"
+                              style={{
+                                width: "100%",
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "6px 10px", borderRadius: 6, marginBottom: 6,
+                                fontSize: 11, fontWeight: 600,
+                                border: `1px solid ${o.color}`,
+                                background: "#fff", color: o.color,
+                                fontFamily: "inherit", cursor: "pointer",
+                              }}
+                            >
+                              <span>📱 Yale tracker</span>
+                              <span style={{ fontSize: 12, lineHeight: 1 }}>▾</span>
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2044,7 +2063,7 @@ const TripPlanner: FC<{
                             style={{
                               width: "100%",
                               display: "flex", alignItems: "center", justifyContent: "space-between",
-                              padding: "6px 10px", borderRadius: 6, marginBottom: 6,
+                              padding: "6px 10px", borderRadius: 6, marginBottom: 8,
                               border: `1px solid ${o.color}`,
                               background: expandedListIds.has(i) ? `${o.color}18` : "#fff",
                               color: o.color, fontFamily: "inherit",
@@ -2055,26 +2074,6 @@ const TripPlanner: FC<{
                             <span>Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride</span>
                             <span style={{ fontSize: 12, lineHeight: 1 }}>{expandedListIds.has(i) ? "▴" : "▾"}</span>
                           </button>
-                          {/* Yale tracker button stretches full-width
-                              for consistency with the stop-list toggle. */}
-                          {trackerPreviewIdx !== i && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(i); }}
-                              title="Open tracker preview below the map"
-                              style={{
-                                width: "100%",
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                padding: "6px 10px", borderRadius: 6, marginBottom: 8,
-                                fontSize: 11, fontWeight: 600,
-                                border: `1px solid ${o.color}`,
-                                background: "#fff", color: o.color,
-                                fontFamily: "inherit", cursor: "pointer",
-                              }}
-                            >
-                              <span>📱 Yale tracker</span>
-                              <span style={{ fontSize: 12, lineHeight: 1 }}>▾</span>
-                            </button>
-                          )}
                           {busMatch && (() => {
                             const pace = readBusPace(busMatch.bus_name);
                             if (!pace.fast && !pace.slow && !pace.skip) return null;
