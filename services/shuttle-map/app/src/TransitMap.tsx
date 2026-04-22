@@ -1886,92 +1886,28 @@ const TripPlanner: FC<{
                               color={o.color}
                             />
                           )}
-                          {trackerPreviewIdx === i && (
-                            <div style={{
-                              marginTop: 6, borderRadius: 8,
-                              border: `1px solid ${o.color}`,
-                              overflow: "hidden", position: "relative",
-                            }}>
-                              <div style={{
-                                fontSize: 9, padding: "4px 8px",
-                                background: "#fafaf8", color: "#78909c",
-                                textTransform: "uppercase", letterSpacing: 1,
-                                borderBottom: "1px solid #ececec",
-                                display: "flex", justifyContent: "space-between", alignItems: "center",
-                                gap: 8,
-                              }}>
-                                <span>Yale tracker — {o.routeLabel}</span>
-                                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                  <a
-                                    href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                                    target="_blank" rel="noreferrer"
-                                    style={{ fontSize: 9, color: o.color, textDecoration: "none" }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Open in new tab"
-                                  >open ↗</a>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
-                                    style={{
-                                      border: "none", background: "transparent",
-                                      color: "#78909c", fontSize: 13, cursor: "pointer",
-                                      padding: 0, lineHeight: 1,
-                                    }}
-                                    title="Hide preview"
-                                  >✕</button>
-                                </span>
-                              </div>
-                              <iframe
-                                src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                                title={`Yale tracker ${o.routeLabel}`}
-                                loading="lazy"
-                                // allow="geolocation" lets the embedded
-                                // tracker request browser location (you-
-                                // are-here dot). Without it the iframe's
-                                // Geolocation API is blocked and the
-                                // tracker's locate button shows with a
-                                // slash. Cross-origin iframe permission
-                                // flows through Permissions-Policy —
-                                // yale.downtownerapp.com doesn't send a
-                                // restrictive one, so this works.
-                                allow="geolocation"
-                                style={{
-                                  display: "block",
-                                  width: "100%", height: 360, border: "none",
-                                }}
-                              />
-                            </div>
-                          )}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
                           </div>
-                          {/* Deep-link into Yale's official tracker for
-                              this specific route. (Walking directions
-                              to pickup are rendered inline next to the
-                              "🚶 Xm to Board" line above.) */}
-                          {(() => {
-                            const yaleRouteId = cfg.busRouteIds[0];
-                            const officialHref = `https://yale.downtownerapp.com/routes/${yaleRouteId}`;
-                            return (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTrackerPreviewIdx(trackerPreviewIdx === i ? null : i);
-                                  }}
-                                  title={trackerPreviewIdx === i ? "Hide tracker" : "Open tracker preview below"}
-                                  style={{
-                                    fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                                    border: `1px solid ${o.color}`,
-                                    background: trackerPreviewIdx === i ? o.color : "#fff",
-                                    color: trackerPreviewIdx === i ? "#fff" : o.color,
-                                    fontFamily: "inherit", cursor: "pointer",
-                                  }}
-                                >📱 Yale tracker</button>
-                              </div>
-                            );
-                          })()}
+                          {/* Compact "📱 Yale tracker" button. When tapped
+                              it's replaced (below the row) with a
+                              full-width title bar + iframe preview. */}
+                          {trackerPreviewIdx !== i && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(i); }}
+                                title="Open tracker preview below"
+                                style={{
+                                  fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                  border: `1px solid ${o.color}`,
+                                  background: "#fff", color: o.color,
+                                  fontFamily: "inherit", cursor: "pointer",
+                                }}
+                              >📱 Yale tracker</button>
+                            </div>
+                          )}
                           {busMatch && (() => {
                             const pace = readBusPace(busMatch.bus_name);
                             if (!pace.fast && !pace.slow && !pace.skip) return null;
@@ -2184,6 +2120,51 @@ const TripPlanner: FC<{
                           </div>
                         </div>
                       </div>
+                      {/* Yale tracker preview — full-width title bar +
+                          iframe below the map/list row so the iframe is
+                          comfortable. Clicking the title bar hides it. */}
+                      {trackerPreviewIdx === i && (
+                        <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
+                            title="Hide tracker preview"
+                            style={{
+                              width: "100%",
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              gap: 8, padding: "7px 10px",
+                              borderRadius: "8px 8px 0 0",
+                              border: `1px solid ${o.color}`, borderBottom: "none",
+                              background: o.color, color: "#fff",
+                              fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <span>📱 Yale tracker — {o.routeLabel}</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <a
+                                href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                target="_blank" rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
+                                title="Open in new tab"
+                              >open ↗</a>
+                              <span style={{ fontSize: 12, lineHeight: 1 }}>▴</span>
+                            </span>
+                          </button>
+                          <iframe
+                            src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                            title={`Yale tracker ${o.routeLabel}`}
+                            loading="lazy"
+                            allow="geolocation"
+                            style={{
+                              display: "block",
+                              width: "100%", height: 420,
+                              border: `1px solid ${o.color}`, borderTop: "none",
+                              borderRadius: "0 0 8px 8px",
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
