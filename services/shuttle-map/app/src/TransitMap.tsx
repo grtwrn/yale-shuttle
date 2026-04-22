@@ -795,20 +795,42 @@ const TripPlanner: FC<{
   // state). This way leaving From empty + tapping a Saved destination just
   // works without a separate "use current location" click.
   const effectiveFromLL = fromLL ?? (!fromText ? userLatLon : null);
-  // Freeze the result list when From/To/When are stable. Live data
-  // (bus pins, stops-away, ETA text inside each expansion) still
-  // refreshes on every /api/buses poll because those re-read the
-  // latest `buses` array per render — but the set of options, their
-  // order, and each option's board/alight choice stay pinned until
-  // the user changes a search input. Without this the list visibly
-  // reshuffles every ~5s as bus states change.
-  const options = useMemo(
+  // Memoize the candidate set (which routes, which board/alight pair per
+  // route) on the endpoint coords + target time. This stops the list
+  // from reshuffling every /api/buses poll. Then recompute live wait /
+  // totalSec for each option per render so the "arriving in Xm" text
+  // stays fresh as the bus moves. Without this split, freezing the
+  // list also froze ETAs — leaving a stale "3 min" on screen while the
+  // bus was actually pulling up.
+  const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
       ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime()],
   );
+  const options: TripOption[] | null = useMemo(() => {
+    if (!stableOptions) return null;
+    // For future-mode (user picked a date >60s out) we can't refresh
+    // against live buses — keep the memoized numbers.
+    const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
+    if (isFutureMode) return stableOptions;
+    return stableOptions.map((o) => {
+      if (o.mode !== "shuttle") return o;
+      // Re-derive this option's wait from the current arrivals for its
+      // pinned bus. If the pinned bus has dropped off, fall back to
+      // whatever arrival is next on this route to the same board stop.
+      const live = computeUpcomingArrivals(
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+      ).filter((a) => a.routeLabel === o.routeLabel);
+      if (live.length === 0) return o;
+      const match = live.find((a) => a.busName.replace(/^#/, "") === o.busName.replace(/^#/, "")) ?? live[0];
+      const waitSec = Math.max(0, match.eta - o.walkToSec);
+      const totalSec = o.walkToSec + waitSec + o.rideSec + o.walkFromSec;
+      return { ...o, waitSec, totalSec, busName: match.busName };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate]);
 
   // Apply a "plan this saved destination" request from Favorites: sets
   // the To field, and defaults From to current location (falling back to
