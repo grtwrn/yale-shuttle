@@ -628,11 +628,27 @@ const TripMap: FC<{
         busMarkerRef.current.setTooltipContent(`Bus #${bus.name}`);
       }
     } else {
+      // Route-colored halo + white disc behind the 🚌 so it stays
+      // readable against varied tile backgrounds. The outer pulse ring
+      // adds motion hint so a stationary bus still catches the eye.
       const busIcon = L.divIcon({
         className: "bus-pin",
-        html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45));">🚌</div>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        html: `
+          <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.25;animation:busPulse 2s ease-out infinite;"></div>
+            <div style="position:absolute;inset:4px;border-radius:50%;background:#fff;border:3px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+            <span style="position:relative;font-size:18px;line-height:1;">🚌</span>
+          </div>
+          <style>
+            @keyframes busPulse {
+              0%   { transform: scale(0.9); opacity: 0.45; }
+              70%  { transform: scale(1.25); opacity: 0; }
+              100% { transform: scale(1.25); opacity: 0; }
+            }
+          </style>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
       });
       busMarkerRef.current = L.marker(latlng, { icon: busIcon, zIndexOffset: 1000 })
         .addTo(map)
@@ -1496,6 +1512,16 @@ const TripPlanner: FC<{
                                 src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
                                 title={`Yale tracker ${o.routeLabel}`}
                                 loading="lazy"
+                                // allow="geolocation" lets the embedded
+                                // tracker request browser location (you-
+                                // are-here dot). Without it the iframe's
+                                // Geolocation API is blocked and the
+                                // tracker's locate button shows with a
+                                // slash. Cross-origin iframe permission
+                                // flows through Permissions-Policy —
+                                // yale.downtownerapp.com doesn't send a
+                                // restrictive one, so this works.
+                                allow="geolocation"
                                 style={{
                                   display: "block",
                                   width: "100%", height: 360, border: "none",
