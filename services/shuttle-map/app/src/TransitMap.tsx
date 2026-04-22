@@ -1414,6 +1414,50 @@ const TripPlanner: FC<{
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
                           </div>
+                          {/* Action buttons: external nav to pickup, and
+                              deep-link into Yale's official tracker for
+                              this specific route. */}
+                          {(() => {
+                            const boardCoord = stopCoords[o.boardStopId];
+                            const boardName = stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`;
+                            const navHref = boardCoord
+                              ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
+                              : null;
+                            const yaleRouteId = cfg.busRouteIds[0];
+                            const officialHref = `https://yale.downtownerapp.com/routes/${yaleRouteId}`;
+                            return (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                                {navHref && (
+                                  <a
+                                    href={navHref}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={`Walking directions to ${boardName}`}
+                                    style={{
+                                      fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                      border: "1px solid #2E7D32", background: "#fff",
+                                      color: "#2E7D32", textDecoration: "none",
+                                      fontFamily: "inherit",
+                                    }}
+                                  >🧭 Directions</a>
+                                )}
+                                <a
+                                  href={officialHref}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Open this route in Yale's official tracker"
+                                  style={{
+                                    fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                    border: `1px solid ${o.color}`, background: "#fff",
+                                    color: o.color, textDecoration: "none",
+                                    fontFamily: "inherit",
+                                  }}
+                                >📱 Yale tracker</a>
+                              </div>
+                            );
+                          })()}
                           {stopsAway !== null && (() => {
                             const busEta = o.walkToSec + o.waitSec;
                             // Count *stops before pickup* — doesn't include
