@@ -1475,17 +1475,42 @@ const TripPlanner: FC<{
                     </span>
                   )}
                 </div>
-                {o.mode === "walk" ? null : (
-                  <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                    🚶 {fmtMin(o.walkToSec)} to <b>{(stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                    <br />
-                    ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
-                    <br />
-                    🚌 {fmtMin(o.rideSec)} to <b>{(stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/")}</b>
-                    <br />
-                    🚶 {fmtMin(o.walkFromSec)} to destination
-                  </div>
-                )}
+                {o.mode === "walk" ? null : (() => {
+                  const boardCoord = stopCoords[o.boardStopId];
+                  const navHref = boardCoord
+                    ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
+                    : null;
+                  const boardName = (stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/");
+                  const alightName = (stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/");
+                  return (
+                    <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
+                      <span>🚶 {fmtMin(o.walkToSec)} to <b>{boardName}</b></span>
+                      {navHref && (
+                        <a
+                          href={navHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title={`Walking directions to ${boardName}`}
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 10, padding: "1px 6px", borderRadius: 4,
+                            border: "1px solid #2E7D32", background: "#fff",
+                            color: "#2E7D32", textDecoration: "none",
+                            fontFamily: "inherit",
+                            display: "inline-block", lineHeight: 1.3,
+                          }}
+                        >🧭 directions to pickup</a>
+                      )}
+                      <br />
+                      ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
+                      <br />
+                      🚌 {fmtMin(o.rideSec)} to <b>{alightName}</b>
+                      <br />
+                      🚶 {fmtMin(o.walkFromSec)} to destination
+                    </div>
+                  );
+                })()}
                 {isExpanded && o.mode === "walk" && effectiveFromLL && toLL && (
                   <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                     <TripMap from={effectiveFromLL} to={toLL} color={o.color} />
@@ -1672,34 +1697,15 @@ const TripPlanner: FC<{
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
                             Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
                           </div>
-                          {/* Action buttons: external nav to pickup, and
-                              deep-link into Yale's official tracker for
-                              this specific route. */}
+                          {/* Deep-link into Yale's official tracker for
+                              this specific route. (Walking directions
+                              to pickup are rendered inline next to the
+                              "🚶 Xm to Board" line above.) */}
                           {(() => {
-                            const boardCoord = stopCoords[o.boardStopId];
-                            const boardName = stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`;
-                            const navHref = boardCoord
-                              ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
-                              : null;
                             const yaleRouteId = cfg.busRouteIds[0];
                             const officialHref = `https://yale.downtownerapp.com/routes/${yaleRouteId}`;
                             return (
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                                {navHref && (
-                                  <a
-                                    href={navHref}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title={`Walking directions to ${boardName}`}
-                                    style={{
-                                      fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                                      border: "1px solid #2E7D32", background: "#fff",
-                                      color: "#2E7D32", textDecoration: "none",
-                                      fontFamily: "inherit",
-                                    }}
-                                  >🧭 Directions</a>
-                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
