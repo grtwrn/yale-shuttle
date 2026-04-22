@@ -342,6 +342,43 @@ const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
 // OSRM (free public router) on demand; cached in localStorage so each
 // segment costs one fetch per device forever. Straight-line is used as
 // a fallback when the fetch fails or hasn't landed yet.
+// "You are here" divIcon — pulsing green dot, centered on the coord.
+// Separate from destination so start/end are distinguishable at a
+// glance without reading labels.
+const makeYouIcon = () => L.divIcon({
+  className: "trip-you",
+  html: `
+    <div style="position:relative;width:22px;height:22px;">
+      <div style="position:absolute;inset:0;border-radius:50%;background:#2E7D32;opacity:0.3;animation:youPulse 2s ease-out infinite;"></div>
+      <div style="position:absolute;inset:4px;border-radius:50%;background:#2E7D32;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>
+      <style>
+        @keyframes youPulse {
+          0%   { transform: scale(0.9); opacity: 0.5; }
+          80%  { transform: scale(1.6); opacity: 0; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+      </style>
+    </div>
+  `,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
+// Destination pin — classic teardrop pointing down. Anchor is the tip
+// so the point sits on the exact coord.
+const makeDestPin = () => L.divIcon({
+  className: "trip-dest",
+  html: `
+    <svg width="28" height="36" viewBox="0 0 28 36" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));">
+      <path d="M14 1 C7 1 2 6 2 13 c0 8 12 22 12 22 s12 -14 12 -22 c0 -7 -5 -12 -12 -12 z"
+            fill="#C62828" stroke="#fff" stroke-width="2"/>
+      <circle cx="14" cy="13" r="5" fill="#fff"/>
+    </svg>
+  `,
+  iconSize: [28, 36],
+  iconAnchor: [14, 35],
+});
+
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
 const LS_KEY = "shuttle-segment-geoms-v1";
 type SegGeom = [number, number][]; // [lat, lon][]
@@ -599,7 +636,7 @@ const TripMap: FC<{
   // Start marker is kept in a ref so we can move it in place when the
   // user's GPS updates while walking toward the board stop, without
   // tearing down the whole map.
-  const startMarkerRef = useRef<L.CircleMarker | null>(null);
+  const startMarkerRef = useRef<L.Marker | null>(null);
 
   // Mount-once: build map, tiles, endpoints, stops, polylines. Re-runs only
   // when the planned trip itself changes (endpoints, route, shuttle shape),
@@ -615,12 +652,10 @@ const TripMap: FC<{
 
     const points: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon]];
 
-    startMarkerRef.current = L.circleMarker([from.lat, from.lon], {
-      radius: 8, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
-    }).addTo(map).bindTooltip("You", { direction: "top" });
-    L.circleMarker([to.lat, to.lon], {
-      radius: 8, color: "#fff", fillColor: "#C62828", fillOpacity: 1, weight: 2,
-    }).addTo(map).bindTooltip("End", { direction: "top" });
+    startMarkerRef.current = L.marker([from.lat, from.lon], { icon: makeYouIcon(), zIndexOffset: 500 })
+      .addTo(map).bindTooltip("You", { direction: "top" });
+    L.marker([to.lat, to.lon], { icon: makeDestPin(), zIndexOffset: 500 })
+      .addTo(map).bindTooltip("End", { direction: "top" });
 
     if (shuttleStops && shuttleStops.length >= 2) {
       const board = shuttleStops[0];
@@ -842,7 +877,7 @@ const CombinedTripMap: FC<{
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
-  const startMarkerRef = useRef<L.CircleMarker | null>(null);
+  const startMarkerRef = useRef<L.Marker | null>(null);
   const [geomTick, setGeomTick] = useState(0);
   // Fetch road geometry for every (from, to) pair across all options
   // in one effect, so hook count stays constant regardless of how many
@@ -880,12 +915,10 @@ const CombinedTripMap: FC<{
 
     const points: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon]];
 
-    startMarkerRef.current = L.circleMarker([from.lat, from.lon], {
-      radius: 7, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
-    }).addTo(map).bindTooltip("You", { direction: "top" });
-    L.circleMarker([to.lat, to.lon], {
-      radius: 7, color: "#fff", fillColor: "#C62828", fillOpacity: 1, weight: 2,
-    }).addTo(map).bindTooltip("End", { direction: "top" });
+    startMarkerRef.current = L.marker([from.lat, from.lon], { icon: makeYouIcon(), zIndexOffset: 500 })
+      .addTo(map).bindTooltip("You", { direction: "top" });
+    L.marker([to.lat, to.lon], { icon: makeDestPin(), zIndexOffset: 500 })
+      .addTo(map).bindTooltip("End", { direction: "top" });
 
     // Each option: colored polyline, board/alight rings. Polylines use
     // the OSRM road geom when cached, straight line otherwise.
@@ -980,17 +1013,44 @@ const CombinedTripMap: FC<{
     }
   }, [options]);
 
+  // Fullscreen toggle — matches the per-option TripMap behavior.
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
+    return () => clearTimeout(t);
+  }, [fullscreen]);
+  const wrapperStyle: React.CSSProperties = fullscreen
+    ? {
+        position: "fixed", inset: 0, zIndex: 9999,
+        borderRadius: 0, border: "none", overflow: "hidden", marginTop: 0,
+      }
+    : {
+        position: "relative", height: 300, borderRadius: 6,
+        border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 6,
+      };
+
   return (
-    <div className="trip-map-wrap" style={{
-      position: "relative", height: 300, borderRadius: 6,
-      border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 6,
-    }}>
+    <div className="trip-map-wrap" style={wrapperStyle}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
         }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      <button
+        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+        style={{
+          position: "absolute", top: 8, right: 8, zIndex: 1000,
+          width: 32, height: 32, border: "none", borderRadius: 6,
+          background: "rgba(255,255,255,0.92)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+          cursor: "pointer", fontSize: 14, lineHeight: 1,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {fullscreen ? "✕" : "⛶"}
+      </button>
       {/* Legend: route color chips so the user can tell which
           polyline is which option without hovering. */}
       <div style={{
