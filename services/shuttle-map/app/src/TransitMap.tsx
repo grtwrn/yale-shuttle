@@ -877,14 +877,23 @@ const TripPlanner: FC<{
     if (isFutureMode) return stableOptions;
     return stableOptions.map((o) => {
       if (o.mode !== "shuttle") return o;
-      // Re-derive this option's wait from the current arrivals for its
-      // pinned bus. If the pinned bus has dropped off, fall back to
-      // whatever arrival is next on this route to the same board stop.
+      // Re-derive this option's wait from current arrivals for its
+      // pinned bus. Prefer the pinned bus only if it still arrives no
+      // earlier than the user can reach the stop (30 s slack for walking
+      // uncertainty). Otherwise pick the next CATCHABLE arrival on this
+      // route — skipping buses that will have already departed by the
+      // time the rider gets there. Without this, we'd happily report
+      // "🚌 is at your stop · arrives in 3m" for a bus you'd miss.
       const live = computeUpcomingArrivals(
         [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
       ).filter((a) => a.routeLabel === o.routeLabel);
       if (live.length === 0) return o;
-      const match = live.find((a) => a.busName.replace(/^#/, "") === o.busName.replace(/^#/, "")) ?? live[0];
+      const catchThreshold = Math.max(0, o.walkToSec - 30);
+      const catchable = live.filter((a) => a.eta >= catchThreshold);
+      const pinned = live.find((a) => a.busName.replace(/^#/, "") === o.busName.replace(/^#/, ""));
+      const match = (pinned && pinned.eta >= catchThreshold)
+        ? pinned
+        : (catchable[0] ?? pinned ?? live[0]);
       const waitSec = Math.max(0, match.eta - o.walkToSec);
       const totalSec = o.walkToSec + waitSec + o.rideSec + o.walkFromSec;
       return { ...o, waitSec, totalSec, busName: match.busName };
@@ -1415,6 +1424,16 @@ const TripPlanner: FC<{
                       upcomingCoords = upstreamStops
                         .map((sid) => stopCoords[sid])
                         .filter((c): c is LatLon => !!c);
+                      // Always anchor the upstream polyline at the bus's
+                      // actual GPS position. For fixed routes this adds
+                      // the real bus location ahead of the anchor stop;
+                      // for flex routes (Blue West) where busIdx snaps
+                      // to the board stop itself, this is the only way
+                      // to visualize the "bus → pickup" leg at all.
+                      if (busMatch.lat && busMatch.lon) {
+                        const bp = { lat: busMatch.lat, lon: busMatch.lon };
+                        upcomingCoords = [bp, ...upcomingCoords];
+                      }
                       if (upcomingCoords.length < 2) upcomingCoords = undefined;
                       // Drop the board stop (last entry) — it's already
                       // the first row of segStops. If the bus is sitting
