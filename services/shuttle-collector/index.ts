@@ -60,6 +60,9 @@ interface RouteInfo {
   description: string;
   color: string;
   stops: number[];
+  // Flat alternating [lat, lon, lat, lon, ...] polyline for the whole
+  // route loop. Present on downtownerapp's routes_routes.php response.
+  path?: number[];
 }
 
 interface StopInfo {
@@ -307,6 +310,13 @@ function initDb(): Database.Database {
       description TEXT,
       color TEXT,
       stops_json TEXT,
+      -- Flat alternating lat,lon array from the downtownerapp
+      -- routes_routes.php `path` field — the actual road-following
+      -- polyline the bus drives. Used by the frontend to slice segment
+      -- shapes, replacing the OSRM driving-directions guess which
+      -- didn't always match real routes (e.g. Brown going via Munson
+      -- instead of Division).
+      path_json TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -770,9 +780,15 @@ function collectEtas(db: Database.Database, stopId: number, etas: EtaEntry[]): v
 }
 
 function refreshStaticData(db: Database.Database, routes: RouteInfo[], stops: StopInfo[]): void {
+  // Try the new schema first; if the column is missing (older deploy),
+  // fall back to the legacy insert so the collector still works until
+  // the migration hook below adds path_json.
+  try {
+    db.prepare("ALTER TABLE routes ADD COLUMN path_json TEXT").run();
+  } catch { /* already exists */ }
   const insertRoute = db.prepare(`
-    INSERT OR REPLACE INTO routes (id, name, short_name, description, color, stops_json, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT OR REPLACE INTO routes (id, name, short_name, description, color, stops_json, path_json, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `);
   const insertStop = db.prepare(`
     INSERT OR REPLACE INTO stops (id, name, lat, lon, updated_at)
@@ -781,7 +797,11 @@ function refreshStaticData(db: Database.Database, routes: RouteInfo[], stops: St
 
   const tx = db.transaction(() => {
     for (const r of routes) {
-      insertRoute.run(r.id, r.name, r.short_name, r.description, r.color, JSON.stringify(r.stops));
+      insertRoute.run(
+        r.id, r.name, r.short_name, r.description, r.color,
+        JSON.stringify(r.stops),
+        r.path && r.path.length > 0 ? JSON.stringify(r.path) : null,
+      );
     }
     for (const s of stops) {
       insertStop.run(s.id, s.name, s.lat, s.lon);

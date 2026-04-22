@@ -384,6 +384,42 @@ const makeDestPin = () => L.divIcon({
   iconAnchor: [14, 35],
 });
 
+// Given the full route-loop polyline from downtownerapp and a sequence
+// of stops, slice the polyline between each consecutive (from, to) stop
+// pair and concatenate into one polyline. Handles loop wraparound.
+// When routePath is unavailable, caller should fall back to straight
+// lines between stops.
+function sliceRouteSegment(
+  path: [number, number][], from: LatLon, to: LatLon,
+): [number, number][] {
+  if (!path || path.length < 2) return [];
+  let fromIdx = 0, toIdx = 0;
+  let fromBest = Infinity, toBest = Infinity;
+  for (let i = 0; i < path.length; i++) {
+    const [plat, plon] = path[i];
+    const df = (plat - from.lat) ** 2 + (plon - from.lon) ** 2;
+    const dt = (plat - to.lat) ** 2 + (plon - to.lon) ** 2;
+    if (df < fromBest) { fromBest = df; fromIdx = i; }
+    if (dt < toBest) { toBest = dt; toIdx = i; }
+  }
+  if (fromIdx <= toIdx) return path.slice(fromIdx, toIdx + 1);
+  // Wrap: from is later in the loop than to, slice over the seam.
+  return [...path.slice(fromIdx), ...path.slice(0, toIdx + 1)];
+}
+function buildStopSequencePolyline(
+  path: [number, number][] | undefined, stops: LatLon[] | undefined,
+): [number, number][] | undefined {
+  if (!path || path.length < 2 || !stops || stops.length < 2) return undefined;
+  const out: [number, number][] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const slice = sliceRouteSegment(path, stops[i], stops[i + 1]);
+    if (slice.length < 2) continue;
+    if (i === 0) out.push(...slice);
+    else out.push(...slice.slice(1)); // dedupe junction point
+  }
+  return out.length >= 2 ? out : undefined;
+}
+
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
 const LS_KEY = "shuttle-segment-geoms-v1";
 type SegGeom = [number, number][]; // [lat, lon][]
@@ -625,19 +661,17 @@ const TripMap: FC<{
   // a dashed muted polyline so the rider can see what's still ahead of
   // them before pickup.
   upcomingStops?: LatLon[];
+  // Pre-sliced road-following polylines for each leg — built by the
+  // caller from the downtownerapp `path` field. When undefined, we
+  // fall back to straight lines between stops.
+  shuttleRoad?: [number, number][];
+  upcomingRoad?: [number, number][];
   bus?: { lat: number; lon: number; name?: string } | null;
   color: string;
-}> = ({ from, to, shuttleStops, upcomingStops, bus, color }) => {
+}> = ({ from, to, shuttleStops, upcomingStops, shuttleRoad, upcomingRoad, bus, color }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
-  // Bump whenever async OSRM fetches resolve so the map-building
-  // effect reruns with the now-populated cache. Trivially cheap —
-  // just a counter that flips one state value.
-  const [geomTick, setGeomTick] = useState(0);
-  const bumpGeom = () => setGeomTick((v) => v + 1);
-  const shuttleRoad = useRoadPolyline(shuttleStops, bumpGeom);
-  const upcomingRoad = useRoadPolyline(upcomingStops, bumpGeom);
   // Start marker is kept in a ref so we can move it in place when the
   // user's GPS updates while walking toward the board stop, without
   // tearing down the whole map.
@@ -718,7 +752,7 @@ const TripMap: FC<{
     // passes stops, and re-including it would rebuild the whole map
     // (tiles, bus marker, everything) every 5 s. The upstream layer is
     // managed in its own effect below.
-    geomTick,
+    JSON.stringify(shuttleRoad),
   ]);
 
   // Upstream polyline + translucent dots. Maintained in place across
@@ -889,6 +923,9 @@ type OverviewOption = {
   label: string;
   color: string;
   segCoords: LatLon[];
+  // Pre-sliced road polyline from the route's full path (when available).
+  // Straight-line fallback happens per-caller if this is missing.
+  road?: [number, number][];
   bus: { lat: number; lon: number; name?: string } | null;
 };
 const CombinedTripMap: FC<{
@@ -900,31 +937,6 @@ const CombinedTripMap: FC<{
   const mapRef = useRef<L.Map | null>(null);
   const busMarkersRef = useRef<Record<string, L.Marker>>({});
   const startMarkerRef = useRef<L.Marker | null>(null);
-  const [geomTick, setGeomTick] = useState(0);
-  // Fetch road geometry for every (from, to) pair across all options
-  // in one effect, so hook count stays constant regardless of how many
-  // options were returned. Results land in the shared segCache; when
-  // any fetch completes we bump geomTick to rebuild the map.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let changed = false;
-      for (const o of options) {
-        for (let i = 0; i < o.segCoords.length - 1; i++) {
-          const k = segKey(o.segCoords[i], o.segCoords[i + 1]);
-          if (!segCache[k]) {
-            const pts = await fetchSegGeom(o.segCoords[i], o.segCoords[i + 1]);
-            if (cancelled) return;
-            if (pts) changed = true;
-          }
-        }
-      }
-      if (changed) setGeomTick((v) => v + 1);
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(options.map((o) => o.segCoords.map((c) => [c.lat, c.lon])))]);
-
   // Build/teardown when the set of endpoints or options changes.
   useEffect(() => {
     if (!ref.current) return;
@@ -942,21 +954,13 @@ const CombinedTripMap: FC<{
     L.marker([to.lat, to.lon], { icon: makeDestPin(), zIndexOffset: 500 })
       .addTo(map).bindTooltip("End", { direction: "top" });
 
-    // Each option: colored polyline, board/alight rings. Polylines use
-    // the OSRM road geom when cached, straight line otherwise.
+    // Each option: colored polyline, board/alight rings. Use the
+    // pre-sliced route path when available, straight line otherwise.
     for (const o of options) {
       if (o.segCoords.length < 2) continue;
-      const road: [number, number][] = [];
-      for (let i = 0; i < o.segCoords.length - 1; i++) {
-        const cached = segCache[segKey(o.segCoords[i], o.segCoords[i + 1])];
-        if (cached && cached.length > 0) {
-          if (i === 0) road.push(cached[0]);
-          for (let j = 1; j < cached.length; j++) road.push(cached[j]);
-        } else {
-          if (i === 0) road.push([o.segCoords[i].lat, o.segCoords[i].lon]);
-          road.push([o.segCoords[i + 1].lat, o.segCoords[i + 1].lon]);
-        }
-      }
+      const road: [number, number][] = o.road && o.road.length >= 2
+        ? o.road
+        : o.segCoords.map((s) => [s.lat, s.lon] as [number, number]);
       L.polyline(road, { color: o.color, weight: 4, opacity: 0.7 }).addTo(map);
       const board = o.segCoords[0];
       const alight = o.segCoords[o.segCoords.length - 1];
@@ -985,8 +989,8 @@ const CombinedTripMap: FC<{
       label: o.label,
       color: o.color,
       segCoords: o.segCoords.map((c) => [c.lat, c.lon]),
+      road: o.road,
     }))),
-    geomTick,
   ]);
 
   // Live you-marker follows GPS.
@@ -1099,6 +1103,7 @@ const TripPlanner: FC<{
   stopNames: Record<number, string>;
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
+  routePaths: Record<string, [number, number][]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
@@ -1116,7 +1121,7 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, busPace, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, busPace, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -1955,15 +1960,22 @@ const TripPlanner: FC<{
                       )}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                         <div style={{ flex: "1 1 260px", minWidth: 220 }}>
-                          {effectiveFromLL && toLL && segCoords.length >= 2 && (
-                            <TripMap
-                              from={effectiveFromLL} to={toLL}
-                              shuttleStops={segCoords}
-                              upcomingStops={upcomingCoords}
-                              bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null}
-                              color={o.color}
-                            />
-                          )}
+                          {effectiveFromLL && toLL && segCoords.length >= 2 && (() => {
+                            const routePath = routePaths?.[cfg.routeIds[0]];
+                            const shuttleRoad = buildStopSequencePolyline(routePath, segCoords);
+                            const upcomingRoad = buildStopSequencePolyline(routePath, upcomingCoords);
+                            return (
+                              <TripMap
+                                from={effectiveFromLL} to={toLL}
+                                shuttleStops={segCoords}
+                                upcomingStops={upcomingCoords}
+                                shuttleRoad={shuttleRoad}
+                                upcomingRoad={upcomingRoad}
+                                bus={busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null}
+                                color={o.color}
+                              />
+                            );
+                          })()}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -2235,10 +2247,12 @@ const TripPlanner: FC<{
                 normBus(b.bus_name) === normBus(o.busName) &&
                 cfg.busRouteIds.includes(b.route_id)
               );
+              const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords);
               overviewOpts.push({
                 label: o.routeLabel,
                 color: o.color,
                 segCoords,
+                road,
                 bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
               });
             }
@@ -4055,6 +4069,11 @@ const TransitMap: FC = () => {
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
   const [dwellTimes, setDwellTimes] = useState<Record<string, Record<string, { med: number; sd: number; n: number }>>>({});
   const [routePeaks, setRoutePeaks] = useState<Record<string, number>>({});
+  // Full per-route polyline from downtownerapp's routes_routes.php
+  // `path` field. Used to draw exact bus-route shapes on the trip map,
+  // replacing the OSRM driving-directions fallback that occasionally
+  // picked the wrong street.
+  const [routePaths, setRoutePaths] = useState<Record<string, [number, number][]>>({});
   // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
   // that we prefer over route-level when computing stall credit.
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
@@ -4280,6 +4299,7 @@ const TransitMap: FC = () => {
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
+        if (data.route_paths) setRoutePaths(data.route_paths);
         if (data.bus_pace) setBusPace(data.bus_pace);
       } catch { /* ignore */ }
     };
@@ -4408,7 +4428,7 @@ const TransitMap: FC = () => {
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus} busPace={busPace}
+          routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus} busPace={busPace}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}

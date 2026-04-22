@@ -93,28 +93,56 @@ def get_bus_data():
                 b["at_stop_id"] = state["at_stop_id"]
                 b["at_stop_since"] = state["at_stop_since"]
 
-        # Get route stop sequences so frontend can compute next stop
-        route_rows = db.execute(
-            "SELECT id, stops_json FROM routes WHERE stops_json IS NOT NULL"
-        ).fetchall()
+        # Get route stop sequences + shape paths. The `path_json` column
+        # holds downtownerapp's road-following polyline for the whole
+        # loop, which the frontend slices per segment instead of asking
+        # OSRM for driving directions (which sometimes picks a different
+        # street than the bus actually uses).
+        try:
+            route_rows = db.execute(
+                "SELECT id, stops_json, path_json FROM routes WHERE stops_json IS NOT NULL"
+            ).fetchall()
+            has_path = True
+        except Exception:
+            # Migration case: older collector without path_json. Fall
+            # back to the legacy columns so the API keeps serving.
+            route_rows = db.execute(
+                "SELECT id, stops_json FROM routes WHERE stops_json IS NOT NULL"
+            ).fetchall()
+            has_path = False
         routes = {}
+        route_paths = {}
         for r in route_rows:
+            rid = str(r["id"])
             stops = json.loads(r["stops_json"]) if r["stops_json"] else []
-            routes[str(r["id"])] = stops
+            routes[rid] = stops
+            if has_path and r["path_json"]:
+                try:
+                    flat = json.loads(r["path_json"])
+                    # Pair up flat [lat, lon, lat, lon, ...] into [[lat, lon], ...]
+                    if isinstance(flat, list) and len(flat) >= 4 and len(flat) % 2 == 0:
+                        route_paths[rid] = [[flat[i], flat[i + 1]] for i in range(0, len(flat), 2)]
+                except Exception:
+                    pass
 
         # Get stop names for display
         stop_rows = db.execute("SELECT id, name, lat, lon FROM stops").fetchall()
         stop_names = {r["id"]: r["name"] for r in stop_rows}
         stop_coords = {r["id"]: {"lat": r["lat"], "lon": r["lon"]} for r in stop_rows}
     except Exception:
-        buses, routes, stop_names, stop_coords = [], {}, {}, {}
+        buses, routes, route_paths, stop_names, stop_coords = [], {}, {}, {}, {}
     db.close()
     segments = get_segment_times()
     dwells = get_dwell_times()
     dwells_by_bus = get_dwell_times_by_bus()
     peaks = get_route_peaks()
     pace = get_bus_pace()
-    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "dwells_by_bus": dwells_by_bus, "route_peaks": peaks, "bus_pace": pace}
+    return {
+        "buses": buses, "routes": routes, "route_paths": route_paths,
+        "stop_names": stop_names, "stop_coords": stop_coords,
+        "segments": segments, "dwells": dwells, "dwells_by_bus": dwells_by_bus,
+        "route_peaks": peaks, "bus_pace": pace,
+    }
 
 
 def _expected_segment_seconds(
