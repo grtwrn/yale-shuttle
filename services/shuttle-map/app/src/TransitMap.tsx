@@ -1826,9 +1826,13 @@ const TripPlanner: FC<{
                               const dwellAnnotation = (sid: number) => {
                                 const elapsed = liveElapsed(sid);
                                 if (elapsed != null) {
-                                  // Bus is currently here — show live.
-                                  // Compare to any-learned-dwell (no
-                                  // threshold) for "• long" tagging.
+                                  // Bus is currently here — show live
+                                  // elapsed AND the typical dwell so the
+                                  // rider has a sense of how long the
+                                  // counter might keep climbing. If it's
+                                  // already >1.5× (or +30s over) typical,
+                                  // flag red "• long" so the over-run
+                                  // stands out.
                                   const d = anyDwellFor(sid);
                                   const over = d && elapsed > Math.max(d.med * 1.5, d.med + 30);
                                   return (
@@ -1837,7 +1841,13 @@ const TripPlanner: FC<{
                                       color: over ? "#C62828" : "#78909c",
                                       marginLeft: 6,
                                     }} title={d ? `Typical ${fmtShort(d.med)}${d.fromPerBus ? " for this bus" : ""}` : undefined}>
-                                      ⏸ {fmtShort(elapsed)}{over ? " • long" : ""}
+                                      ⏸ {fmtShort(elapsed)}
+                                      {d && (
+                                        <span style={{ color: over ? "#C62828" : "#b0bec5", fontWeight: 500 }}>
+                                          {" / ~"}{fmtShort(d.med)}
+                                        </span>
+                                      )}
+                                      {over ? " • long" : ""}
                                     </span>
                                   );
                                 }
