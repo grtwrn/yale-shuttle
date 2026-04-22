@@ -621,7 +621,44 @@ const TripMap: FC<{
     }
   }, [bus?.lat, bus?.lon, bus?.name]);
 
-  return <div ref={ref} style={{ height: 240, borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10 }} />;
+  // Fullscreen toggle: an inset button the user can tap to expand the
+  // map to the viewport. Leaflet's invalidateSize is called after the
+  // DOM layout changes so tiles re-fit to the new container size.
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    // Give the browser one frame to apply the new style, then redraw.
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
+    return () => clearTimeout(t);
+  }, [fullscreen]);
+  const wrapperStyle: React.CSSProperties = fullscreen
+    ? {
+        position: "fixed", inset: 0, zIndex: 9999,
+        borderRadius: 0, border: "none", overflow: "hidden", marginBottom: 0,
+      }
+    : {
+        position: "relative",
+        height: 240, borderRadius: 8,
+        border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
+      };
+  return (
+    <div style={wrapperStyle}>
+      <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      <button
+        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+        style={{
+          position: "absolute", top: 8, right: 8, zIndex: 1000,
+          width: 32, height: 32, border: "none", borderRadius: 6,
+          background: "rgba(255,255,255,0.92)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+          cursor: "pointer", fontSize: 14, lineHeight: 1,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {fullscreen ? "✕" : "⛶"}
+      </button>
+    </div>
+  );
 };
 
 
@@ -640,12 +677,13 @@ const TripPlanner: FC<{
   savedTrips: SavedTrip[];
   onSaveTrip: (trip: SavedTrip) => void;
   onDeleteSaved: (id: string) => void;
+  onRenameSaved: (id: string, toText: string) => void;
   recentTrips: SavedTrip[];
   onRecordRecent: (trips: SavedTrip[]) => void;
   onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -766,6 +804,7 @@ const TripPlanner: FC<{
   }, [toText, toLL]);
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
+  const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
   const useCurrent = () => {
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
@@ -963,20 +1002,54 @@ const TripPlanner: FC<{
     cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
   };
 
-  const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => (
+  const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => {
+    const editing = editingSavedId === t.id;
+    return (
     <div key={t.id} style={{
       display: "flex", alignItems: "center", gap: 6,
       padding: "5px 8px", borderRadius: 4, background: "#fff",
-      border: "1px solid #e0ddd8", cursor: "pointer",
-    }} onClick={() => applyDestination(t)}>
+      border: "1px solid #e0ddd8", cursor: editing ? "default" : "pointer",
+    }} onClick={() => { if (!editing) applyDestination(t); }}>
       {starred && <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>}
-      <span style={{
-        flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>
-        <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
-        <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
-      </span>
+      {editing ? (
+        <input
+          defaultValue={t.toText}
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+          onBlur={(e) => {
+            const v = e.currentTarget.value.trim();
+            if (v && v !== t.toText) onRenameSaved(t.id, v);
+            setEditingSavedId(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") setEditingSavedId(null);
+          }}
+          style={{
+            flex: 1, minWidth: 0, fontSize: 11, padding: "2px 6px",
+            border: "1px solid #c5e1a5", background: "#f1f8e9",
+            borderRadius: 4, fontFamily: "inherit", color: "#263238",
+          }}
+        />
+      ) : (
+        <span style={{
+          flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
+          <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
+        </span>
+      )}
+      {starred && !editing && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
+          style={{
+            border: "none", background: "transparent", color: "#9e9e9e",
+            fontSize: 12, cursor: "pointer", padding: "0 2px", lineHeight: 1,
+          }}
+          title="Rename"
+        >✎</button>
+      )}
       {!starred && (
         <button
           onClick={(e) => {
@@ -999,7 +1072,8 @@ const TripPlanner: FC<{
         fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
       }} title="Remove">✕</button>
     </div>
-  );
+    );
+  };
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
@@ -1022,7 +1096,7 @@ const TripPlanner: FC<{
                    if (fromSugg.length > 0) pickFrom(fromSugg[0]);
                    else geocode(fromText, "from");
                  }}
-                 placeholder={fromIsCurrent ? "📍 Current location" : "Address or place"}
+                 placeholder="📍 Current location"
                  style={inputStyle} />
           {fromText && (
             <button
@@ -1082,6 +1156,23 @@ const TripPlanner: FC<{
               style={btnStyle}
               title="Clear destination"
             >✕</button>
+          )}
+          {toLL && (
+            <button
+              onClick={handleSaveTrip}
+              disabled={!!alreadySaved}
+              title={alreadySaved ? "Already saved" : "Save this destination"}
+              style={{
+                ...btnStyle,
+                padding: "6px 8px",
+                cursor: alreadySaved ? "default" : "pointer",
+                border: "1px solid " + (alreadySaved ? "#c5e1a5" : "#bbb"),
+                background: alreadySaved ? "#f1f8e9" : "#fff",
+                color: alreadySaved ? "#2E7D32" : "#546e7a",
+              }}
+            >
+              {alreadySaved ? "★" : "☆"}
+            </button>
           )}
         </div>
         {toSugg.length > 0 && (
@@ -1146,25 +1237,6 @@ const TripPlanner: FC<{
       )}
 
       {error && <div style={{ fontSize: 11, color: "#C62828", marginBottom: 8 }}>{error}</div>}
-
-      {toLL && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-          <button
-            onClick={handleSaveTrip}
-            disabled={!!alreadySaved}
-            title={alreadySaved ? "Already saved" : "Save this destination"}
-            style={{
-              fontSize: 11, padding: "4px 10px", borderRadius: 6, fontFamily: "inherit",
-              cursor: alreadySaved ? "default" : "pointer",
-              border: "1px solid " + (alreadySaved ? "#c5e1a5" : "#bbb"),
-              background: alreadySaved ? "#f1f8e9" : "#fff",
-              color: alreadySaved ? "#2E7D32" : "#546e7a",
-            }}
-          >
-            {alreadySaved ? "★ Saved" : "☆ Save destination"}
-          </button>
-        </div>
-      )}
 
       {/* Results */}
       {options && options.length === 0 && (
@@ -1272,6 +1344,20 @@ const TripPlanner: FC<{
                   let preBoardStops: number[] = [];
                   if (busMatch) {
                     let busIdx = allStops.indexOf(busMatch.last_stop_id);
+                    // Fallback: when last_stop_id isn't on this route's
+                    // stop list (happens on routes like Blue West that
+                    // share vehicles with other routes, or when the feed
+                    // reports a stale cross-route stop), snap the bus to
+                    // the nearest stop on this route by GPS distance.
+                    if (busIdx === -1 && busMatch.lat && busMatch.lon) {
+                      let bestD = Infinity;
+                      for (let i = 0; i < allStops.length; i++) {
+                        const sc = stopCoords[allStops[i]];
+                        if (!sc) continue;
+                        const d = (busMatch.lat - sc.lat) ** 2 + (busMatch.lon - sc.lon) ** 2;
+                        if (d < bestD) { bestD = d; busIdx = i; }
+                      }
+                    }
                     // Mirror computeUpcomingArrivals: advance the anchor
                     // past stops the bus has already blown past (stale
                     // last_stop_id from TransLoc). Without this the "N
@@ -3482,6 +3568,7 @@ const TransitMap: FC = () => {
           savedTrips={savedTrips}
           onSaveTrip={(t) => saveSavedTrips([...savedTrips, t])}
           onDeleteSaved={(id) => saveSavedTrips(savedTrips.filter((x) => x.id !== id))}
+          onRenameSaved={(id, toText) => saveSavedTrips(savedTrips.map((x) => x.id === id ? { ...x, toText, name: toText } : x))}
           recentTrips={recentTrips}
           onRecordRecent={saveRecentTrips}
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
