@@ -139,30 +139,59 @@ def get_bus_pace() -> dict:
     db.row_factory = sqlite3.Row
 
     result: dict = {}
+    # SQLite strftime("%w") gives Sun=0..Sat=6, matching how the
+    # collector stores calibrated_segments.day_of_week. See
+    # updateCalibratedSegments() for the conversion.
+    sqlite_dow = (time.localtime().tm_wday + 1) % 7
     try:
-        # Single-hop traversals in the last 15 min, joined to the route-
-        # level avg the bus was graded against. BETWEEN filter matches
-        # updateCalibratedSegments' sanity band to avoid junk samples.
-        rows = db.execute("""
-            SELECT st.bus_name, st.travel_seconds, sa.avg_seconds
+        # Single-hop traversals in the last 15 min. Expected time is
+        # hierarchical: prefer calibrated_segments[dow] (same day-of-week
+        # average) when it has ≥3 samples, else segment_averages
+        # (route-wide, all-days) when it has ≥3 samples. The COALESCE
+        # picks whichever layer fires first. Per-bus is intentionally
+        # NOT used on the comparison side — a bus compared to its own
+        # average would always look normal and we'd miss "this bus is
+        # moving faster than typical" signals.
+        rows = db.execute(
+            """
+            SELECT
+              st.bus_name,
+              st.travel_seconds,
+              COALESCE(cs.avg_seconds, sa.avg_seconds) AS expected_seconds,
+              CASE WHEN cs.avg_seconds IS NOT NULL THEN 'dow'
+                   ELSE 'route' END AS layer
             FROM segment_times st
-            JOIN segment_averages sa
+            LEFT JOIN calibrated_segments cs
+              ON cs.route_id = st.route_id
+             AND cs.from_stop_id = st.from_stop_id
+             AND cs.to_stop_id   = st.to_stop_id
+             AND cs.day_of_week = ?
+             AND cs.sample_count >= 3
+            LEFT JOIN segment_averages sa
               ON sa.route_id = st.route_id
              AND sa.from_stop_id = st.from_stop_id
-             AND sa.to_stop_id = st.to_stop_id
+             AND sa.to_stop_id   = st.to_stop_id
+             AND sa.sample_count >= 3
             WHERE st.recorded_at > datetime('now', '-15 minutes')
               AND st.hops = 1
               AND st.travel_seconds BETWEEN 15 AND 1200
-              AND sa.avg_seconds > 15
-              AND sa.sample_count >= 3
-        """).fetchall()
+              AND COALESCE(cs.avg_seconds, sa.avg_seconds) > 15
+            """,
+            (sqlite_dow,),
+        ).fetchall()
     except Exception:
         rows = []
 
     ratios_by_bus: dict = {}
+    dow_counts: dict = {}
     for r in rows:
         bn = r["bus_name"].lstrip("#")
-        ratios_by_bus.setdefault(bn, []).append(r["travel_seconds"] / r["avg_seconds"])
+        exp = r["expected_seconds"]
+        if not exp or exp <= 0:
+            continue
+        ratios_by_bus.setdefault(bn, []).append(r["travel_seconds"] / exp)
+        if r["layer"] == "dow":
+            dow_counts[bn] = dow_counts.get(bn, 0) + 1
 
     for bn, rs in ratios_by_bus.items():
         if len(rs) < 2:
@@ -174,6 +203,11 @@ def get_bus_pace() -> dict:
             "slow": median > 1.25,
             "ratio": round(median, 2),
             "n": len(rs),
+            # How many of the samples were compared to a same-day-of-week
+            # baseline vs. fell back to the route-wide all-days average.
+            # Purely diagnostic so we can tell in the debug endpoint
+            # whether calibration is thin for this bus/day.
+            "dow_samples": dow_counts.get(bn, 0),
             "skip": None,
         }
 
@@ -194,7 +228,7 @@ def get_bus_pace() -> dict:
 
     for r in skip_rows:
         bn = r["bus_name"].lstrip("#")
-        entry = result.setdefault(bn, {"fast": False, "slow": False, "ratio": None, "n": 0, "skip": None})
+        entry = result.setdefault(bn, {"fast": False, "slow": False, "ratio": None, "n": 0, "dow_samples": 0, "skip": None})
         entry["skip"] = {"count": r["hops"] - 1, "ago_sec": int(r["ago_sec"] or 0)}
 
     db.close()
