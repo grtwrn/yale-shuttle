@@ -1111,13 +1111,6 @@ const TripPlanner: FC<{
               title="Reset to current location"
             >✕</button>
           )}
-          {!fromText && !fromLL && (
-            <button
-              onClick={() => { setFromLL(userLatLon); onRequestLocate(); }}
-              style={btnStyle}
-              title="Use current location"
-            >📍</button>
-          )}
         </div>
         {fromSugg.length > 0 && (
           <div style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}>
