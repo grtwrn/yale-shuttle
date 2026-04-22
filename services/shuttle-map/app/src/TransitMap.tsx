@@ -321,6 +321,11 @@ type TripOption = {
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
   totalSec: number; busName: string;
   directWalkSec: number;
+  // True when the pinned bus has already gone past the board stop and
+  // isn't catchable anymore. Set only while the rider is watching the
+  // option (expanded) so we stop advancing to the next catchable bus
+  // and show "departed" instead of an arrival time.
+  departed?: boolean;
 };
 
 const WALK_SPEED_M_S = 1.3;
@@ -661,20 +666,9 @@ const TripMap: FC<{
       const board = shuttleStops[0];
       const alight = shuttleStops[shuttleStops.length - 1];
 
-      // Upstream (pre-pickup) leg: bus's current anchor → board stop.
-      // Drawn under the main segment with a muted polyline and tiny
-      // translucent dots so the rider can see "N stops before mine."
-      if (upcomingStops && upcomingStops.length >= 2) {
-        L.polyline(upcomingRoad ?? upcomingStops.map((s) => [s.lat, s.lon] as [number, number]), {
-          color, weight: 3, opacity: 0.35, dashArray: "6 4",
-        }).addTo(map);
-        for (const s of upcomingStops.slice(0, -1)) {
-          L.circleMarker([s.lat, s.lon], {
-            radius: 2.5, color, fillColor: color, fillOpacity: 0.5, weight: 0,
-          }).addTo(map);
-          points.push([s.lat, s.lon]);
-        }
-      }
+      // Upstream (pre-pickup) stops get their own in-place effect below
+      // so the list can shrink as the bus passes stops without tearing
+      // down and rebuilding the whole map each poll.
 
       // Only the board/alight markers are rendered on the ride segment —
       // intermediate stop dots were noise. The colored polyline still
@@ -720,10 +714,38 @@ const TripMap: FC<{
   }, [
     to.lat, to.lon, color,
     JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon])),
-    JSON.stringify(upcomingStops?.map((s) => [s.lat, s.lon])),
-    // Rebuild when async road-polyline fetches land so we swap from
-    // the straight-line fallback to the real road geometry.
+    // upcomingStops intentionally NOT in deps — it shrinks as the bus
+    // passes stops, and re-including it would rebuild the whole map
+    // (tiles, bus marker, everything) every 5 s. The upstream layer is
+    // managed in its own effect below.
     geomTick,
+  ]);
+
+  // Upstream polyline + translucent dots. Maintained in place across
+  // bus-anchor advances so the main map doesn't flash.
+  const upstreamLayersRef = useRef<L.Layer[]>([]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    for (const layer of upstreamLayersRef.current) map.removeLayer(layer);
+    upstreamLayersRef.current = [];
+    if (!upcomingStops || upcomingStops.length < 2) return;
+    const line = L.polyline(
+      upcomingRoad ?? upcomingStops.map((s) => [s.lat, s.lon] as [number, number]),
+      { color, weight: 3, opacity: 0.35, dashArray: "6 4" },
+    ).addTo(map);
+    upstreamLayersRef.current.push(line);
+    for (const s of upcomingStops.slice(0, -1)) {
+      const dot = L.circleMarker([s.lat, s.lon], {
+        radius: 2.5, color, fillColor: color, fillOpacity: 0.5, weight: 0,
+      }).addTo(map);
+      upstreamLayersRef.current.push(dot);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    JSON.stringify(upcomingStops?.map((s) => [s.lat, s.lon])),
+    JSON.stringify(upcomingRoad),
+    color,
   ]);
 
   // Live "you" marker — moves as the rider walks. Same pattern as the
@@ -1271,15 +1293,17 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions;
-    return stableOptions.map((o) => {
+    return stableOptions.map((o, idx) => {
       if (o.mode !== "shuttle") return o;
       // Re-derive this option's wait from current arrivals for its
-      // pinned bus. Prefer the pinned bus only if it still arrives no
-      // earlier than the user can reach the stop (30 s slack for walking
-      // uncertainty). Otherwise pick the next CATCHABLE arrival on this
-      // route — skipping buses that will have already departed by the
-      // time the rider gets there. Without this, we'd happily report
-      // "🚌 is at your stop · arrives in 3m" for a bus you'd miss.
+      // pinned bus. Prefer the pinned bus when catchable; otherwise
+      // behavior depends on whether the rider is actively watching
+      // this option (expanded):
+      //   - Collapsed: auto-advance to the next catchable bus so the
+      //     scan-list stays useful.
+      //   - Expanded: stick with the pinned bus even once it's past
+      //     the stop, so the user keeps watching the bus they chose.
+      //     Display will show "departed" instead of an arrival time.
       const live = computeUpcomingArrivals(
         [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
       ).filter((a) => a.routeLabel === o.routeLabel);
@@ -1287,15 +1311,24 @@ const TripPlanner: FC<{
       const catchThreshold = Math.max(0, o.walkToSec - 30);
       const catchable = live.filter((a) => a.eta >= catchThreshold);
       const pinned = live.find((a) => a.busName.replace(/^#/, "") === o.busName.replace(/^#/, ""));
-      const match = (pinned && pinned.eta >= catchThreshold)
-        ? pinned
-        : (catchable[0] ?? pinned ?? live[0]);
+      const isWatching = idx === expandedIdx;
+      let match: typeof live[number];
+      let departed = false;
+      if (pinned && pinned.eta >= catchThreshold) {
+        match = pinned;
+      } else if (isWatching && pinned) {
+        // Sticky: keep tracking the bus the rider committed to.
+        match = pinned;
+        departed = true;
+      } else {
+        match = catchable[0] ?? pinned ?? live[0];
+      }
       const waitSec = Math.max(0, match.eta - o.walkToSec);
       const totalSec = o.walkToSec + waitSec + o.rideSec + o.walkFromSec;
-      return { ...o, waitSec, totalSec, busName: match.busName };
+      return { ...o, waitSec, totalSec, busName: match.busName, departed };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate]);
+  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, expandedIdx]);
 
   // Apply a "plan this saved destination" request from Favorites: sets
   // the To field, and defaults From to current location (falling back to
@@ -1716,7 +1749,7 @@ const TripPlanner: FC<{
                     }}>FASTEST</span>
                   )}
                   <span style={{ fontSize: 10, color: "#9e9e9e", marginLeft: "auto" }}>
-                    arrive {fmtClock(o.totalSec, isFuture ? targetDate! : undefined)}
+                    {o.departed ? "departed" : `arrive ${fmtClock(o.totalSec, isFuture ? targetDate! : undefined)}`}
                   </span>
                   {clickable && (
                     <span style={{ fontSize: 10, color: "#90a4ae", marginLeft: 4 }}>
@@ -1875,6 +1908,51 @@ const TripPlanner: FC<{
                       background: "#fafaf8", borderRadius: 8,
                       border: "1px solid #ececec",
                     }} onClick={(e) => e.stopPropagation()}>
+                      {/* Yale tracker preview — rendered above the map
+                          + stop list so the stop list always stays in
+                          view when open. Clicking the title bar hides. */}
+                      {trackerPreviewIdx === i && (
+                        <div style={{ marginBottom: 10 }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
+                            title="Hide tracker preview"
+                            style={{
+                              width: "100%",
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              gap: 8, padding: "7px 10px",
+                              borderRadius: "8px 8px 0 0",
+                              border: `1px solid ${o.color}`, borderBottom: "none",
+                              background: o.color, color: "#fff",
+                              fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <span>📱 Yale tracker — {o.routeLabel}</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <a
+                                href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                target="_blank" rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
+                                title="Open in new tab"
+                              >open ↗</a>
+                              <span style={{ fontSize: 12, lineHeight: 1 }}>▴</span>
+                            </span>
+                          </button>
+                          <iframe
+                            src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                            title={`Yale tracker ${o.routeLabel}`}
+                            loading="lazy"
+                            allow="geolocation"
+                            style={{
+                              display: "block",
+                              width: "100%", height: 420,
+                              border: `1px solid ${o.color}`, borderTop: "none",
+                              borderRadius: "0 0 8px 8px",
+                            }}
+                          />
+                        </div>
+                      )}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                         <div style={{ flex: "1 1 260px", minWidth: 220 }}>
                           {effectiveFromLL && toLL && segCoords.length >= 2 && (
@@ -1950,7 +2028,7 @@ const TripPlanner: FC<{
                               : `${before} stop${before === 1 ? "" : "s"} before yours`;
                             return (
                               <div style={{ fontSize: 11, color: o.color, fontWeight: 600, marginBottom: 6 }}>
-                                🚌 Bus #{normBus(busMatch!.bus_name)} {away} · arrives in {fmtMin(busEta)} ({fmtClock(busEta)})
+                                🚌 Bus #{normBus(busMatch!.bus_name)} {o.departed ? "has departed your stop — watching next loop" : `${away} · arrives in ${fmtMin(busEta)} (${fmtClock(busEta)})`}
                               </div>
                             );
                           })()}
@@ -2120,51 +2198,6 @@ const TripPlanner: FC<{
                           </div>
                         </div>
                       </div>
-                      {/* Yale tracker preview — full-width title bar +
-                          iframe below the map/list row so the iframe is
-                          comfortable. Clicking the title bar hides it. */}
-                      {trackerPreviewIdx === i && (
-                        <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
-                            title="Hide tracker preview"
-                            style={{
-                              width: "100%",
-                              display: "flex", alignItems: "center", justifyContent: "space-between",
-                              gap: 8, padding: "7px 10px",
-                              borderRadius: "8px 8px 0 0",
-                              border: `1px solid ${o.color}`, borderBottom: "none",
-                              background: o.color, color: "#fff",
-                              fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <span>📱 Yale tracker — {o.routeLabel}</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <a
-                                href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                                target="_blank" rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
-                                title="Open in new tab"
-                              >open ↗</a>
-                              <span style={{ fontSize: 12, lineHeight: 1 }}>▴</span>
-                            </span>
-                          </button>
-                          <iframe
-                            src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                            title={`Yale tracker ${o.routeLabel}`}
-                            loading="lazy"
-                            allow="geolocation"
-                            style={{
-                              display: "block",
-                              width: "100%", height: 420,
-                              border: `1px solid ${o.color}`, borderTop: "none",
-                              borderRadius: "0 0 8px 8px",
-                            }}
-                          />
-                        </div>
-                      )}
                     </div>
                   );
                 })()}
