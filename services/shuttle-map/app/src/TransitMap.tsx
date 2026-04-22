@@ -1285,41 +1285,10 @@ const TripPlanner: FC<{
   // stays fresh as the bus moves. Without this split, freezing the
   // list also froze ETAs — leaving a stale "3 min" on screen while the
   // bus was actually pulling up.
-  // Pull-to-refresh counter: bumping this forces planTrip to re-run
-  // from scratch against the latest buses/segments, same as hitting
-  // Enter on the destination field. Without it, stableOptions only
-  // recomputes on endpoint/time changes.
+  // Bumping this forces planTrip to re-run from scratch against the
+  // latest buses/segments. Used by the Enter-in-search-bar refresh —
+  // press Enter with a locked destination and we recompute.
   const [refreshKey, setRefreshKey] = useState(0);
-  const [pullProgress, setPullProgress] = useState(0);
-  useEffect(() => {
-    let startY = 0; let pulling = false;
-    const onStart = (e: TouchEvent) => {
-      if (window.scrollY > 0) return;
-      startY = e.touches[0].clientY;
-      pulling = true;
-    };
-    const onMove = (e: TouchEvent) => {
-      if (!pulling) return;
-      const dy = e.touches[0].clientY - startY;
-      if (dy > 0) setPullProgress(Math.min(1, dy / 90));
-    };
-    const onEnd = () => {
-      if (pulling && pullProgress >= 1) {
-        setRefreshKey((k) => k + 1);
-      }
-      pulling = false;
-      setPullProgress(0);
-    };
-    document.addEventListener("touchstart", onStart, { passive: true });
-    document.addEventListener("touchmove", onMove, { passive: true });
-    document.addEventListener("touchend", onEnd);
-    return () => {
-      document.removeEventListener("touchstart", onStart);
-      document.removeEventListener("touchmove", onMove);
-      document.removeEventListener("touchend", onEnd);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pullProgress]);
 
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
@@ -1610,18 +1579,6 @@ const TripPlanner: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {pullProgress > 0 && (
-        <div style={{
-          height: 6, marginBottom: 4, borderRadius: 3,
-          background: "#e0ddd8", overflow: "hidden",
-        }}>
-          <div style={{
-            width: `${pullProgress * 100}%`, height: "100%",
-            background: pullProgress >= 1 ? "#2E7D32" : "#90a4ae",
-            transition: "background 0.15s",
-          }} />
-        </div>
-      )}
       {/* From + To — compact single-row layout with inline labels. Drop
           the separate "✓ Set" indicator lines since the locked text in
           each input is self-explanatory. */}
@@ -1677,6 +1634,7 @@ const TripPlanner: FC<{
                    if (e.key !== "Enter") return;
                    if (toTimerRef.current) { clearTimeout(toTimerRef.current); toTimerRef.current = null; }
                    if (toSugg.length > 0) pickTo(toSugg[0]);
+                   else if (toLL) setRefreshKey((k) => k + 1); // already locked — re-plan
                    else geocode(toText, "to");
                  }}
                  placeholder="Address or place" style={inputStyle} />

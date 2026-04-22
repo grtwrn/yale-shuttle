@@ -311,11 +311,11 @@ function initDb(): Database.Database {
       color TEXT,
       stops_json TEXT,
       -- Flat alternating lat,lon array from the downtownerapp
-      -- routes_routes.php `path` field — the actual road-following
-      -- polyline the bus drives. Used by the frontend to slice segment
-      -- shapes, replacing the OSRM driving-directions guess which
-      -- didn't always match real routes (e.g. Brown going via Munson
-      -- instead of Division).
+      -- routes_routes.php path field — the actual road-following
+      -- polyline the bus drives. Used by the frontend to slice
+      -- segment shapes, replacing the OSRM driving-directions guess
+      -- which didn't always match real routes (e.g. Brown going via
+      -- Munson instead of Division).
       path_json TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
