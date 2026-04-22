@@ -1532,10 +1532,74 @@ const TripPlanner: FC<{
         <div style={{ marginTop: 12, marginBottom: 8 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
           <div style={{
-            display: "flex", flexDirection: "column", gap: 4,
+            display: "flex", flexWrap: "wrap", gap: 4,
             maxHeight: 140, overflowY: "auto",
           }}>
-            {savedTrips.map((t) => renderTripRow(t, () => onDeleteSaved(t.id), true))}
+            {savedTrips.map((t) => {
+              const editing = editingSavedId === t.id;
+              if (editing) {
+                // Inline rename uses the full-row input — a stretched chip
+                // is too cramped for editing.
+                return (
+                  <div key={t.id} style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "3px 8px", borderRadius: 999,
+                    background: "#f1f8e9", border: "1px solid #c5e1a5",
+                    flex: "1 1 100%",
+                  }} onClick={(e) => e.stopPropagation()}>
+                    <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>
+                    <input
+                      defaultValue={t.toText}
+                      autoFocus
+                      onBlur={(e) => {
+                        const v = e.currentTarget.value.trim();
+                        if (v && v !== t.toText) onRenameSaved(t.id, v);
+                        setEditingSavedId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        if (e.key === "Escape") setEditingSavedId(null);
+                      }}
+                      style={{
+                        flex: 1, minWidth: 0, fontSize: 11, padding: "1px 4px",
+                        border: "none", background: "transparent",
+                        fontFamily: "inherit", color: "#263238", outline: "none",
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => applyDestination(t)}
+                  onDoubleClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
+                  title="Tap to plan · double-tap to rename"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "3px 10px", borderRadius: 999,
+                    background: "#fff", border: "1px solid #c5e1a5",
+                    fontSize: 11, color: "#263238", cursor: "pointer",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>
+                  <span style={{
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    color: "#C62828", fontWeight: 600,
+                  }}>{t.toText}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteSaved(t.id); }}
+                    style={{
+                      border: "none", background: "transparent", color: "#9e9e9e",
+                      cursor: "pointer", padding: 0, fontSize: 12, lineHeight: 1,
+                      marginLeft: 2,
+                    }}
+                    title="Remove"
+                  >✕</button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
