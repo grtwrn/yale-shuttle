@@ -982,8 +982,8 @@ const CombinedTripMap: FC<{
 
   return (
     <div className="trip-map-wrap" style={{
-      position: "relative", height: 300, borderRadius: 8,
-      border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 10,
+      position: "relative", height: 300, borderRadius: 6,
+      border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 6,
     }}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
@@ -1048,6 +1048,7 @@ const TripPlanner: FC<{
   // one at a time since the iframe loads a whole SPA (~1.5 MB gz)
   // and we don't want to spawn one per card.
   const [trackerPreviewIdx, setTrackerPreviewIdx] = useState<number | null>(null);
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -2169,11 +2170,42 @@ const TripPlanner: FC<{
             }
             if (overviewOpts.length < 1) return null;
             return (
-              <CombinedTripMap
-                from={effectiveFromLL}
-                to={toLL}
-                options={overviewOpts}
-              />
+              <div style={{
+                marginTop: 12,
+                padding: 8,
+                background: "#fff",
+                borderRadius: 10,
+                border: "1px solid #e0ddd8",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              }}>
+                <button
+                  onClick={() => setOverviewExpanded((v) => !v)}
+                  style={{
+                    width: "100%",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    background: "transparent", border: "none",
+                    padding: "4px 4px", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                  title={overviewExpanded ? "Collapse overview" : "Expand overview"}
+                >
+                  <span style={{
+                    fontSize: 10, color: "#78909c",
+                    textTransform: "uppercase", letterSpacing: 1,
+                  }}>
+                    Overview — all {overviewOpts.length} route{overviewOpts.length === 1 ? "" : "s"}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#90a4ae" }}>
+                    {overviewExpanded ? "▴" : "▾"}
+                  </span>
+                </button>
+                {overviewExpanded && (
+                  <CombinedTripMap
+                    from={effectiveFromLL}
+                    to={toLL}
+                    options={overviewOpts}
+                  />
+                )}
+              </div>
             );
           })()}
         </div>
