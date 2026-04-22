@@ -703,50 +703,76 @@ const TripMap: FC<{
   // Live bus marker — updates in place on every bus prop change (~5s via
   // /api/buses polling). Animates smoothly to the new GPS point instead of
   // tearing down/rebuilding the map.
+  //
+  // Flex routes (Blue West etc.) occasionally drop off the TransLoc feed
+  // for a poll cycle or two and the pinned-bus lookup returns null. Don't
+  // tear the marker down immediately in that case — keep it at its last
+  // known position, dimmed, for a ~30 s grace period so it reappears at
+  // full opacity when the feed catches up. Only after the grace period
+  // elapses do we actually remove the layer.
+  const BUS_STALE_MS = 30_000;
+  const lastBusSeenRef = useRef<number>(0);
+  const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    const makeIcon = (dim: boolean) => L.divIcon({
+      className: "bus-pin",
+      html: `
+        <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;opacity:${dim ? 0.5 : 1};">
+          <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.25;${dim ? "" : "animation:busPulse 2s ease-out infinite;"}"></div>
+          <div style="position:absolute;inset:4px;border-radius:50%;background:#fff;border:3px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
+          <span style="position:relative;font-size:18px;line-height:1;">🚌</span>
+        </div>
+        <style>
+          @keyframes busPulse {
+            0%   { transform: scale(0.9); opacity: 0.45; }
+            70%  { transform: scale(1.25); opacity: 0; }
+            100% { transform: scale(1.25); opacity: 0; }
+          }
+        </style>
+      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+    });
+
     if (!bus) {
+      // Lost the live fix — keep the marker around briefly, then remove.
       if (busMarkerRef.current) {
-        map.removeLayer(busMarkerRef.current);
-        busMarkerRef.current = null;
+        busMarkerRef.current.setIcon(makeIcon(true));
+        if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
+        const elapsed = Date.now() - lastBusSeenRef.current;
+        const remaining = Math.max(0, BUS_STALE_MS - elapsed);
+        staleTimerRef.current = setTimeout(() => {
+          if (busMarkerRef.current && mapRef.current) {
+            mapRef.current.removeLayer(busMarkerRef.current);
+            busMarkerRef.current = null;
+          }
+        }, remaining);
       }
       return;
     }
+
+    lastBusSeenRef.current = Date.now();
+    if (staleTimerRef.current) {
+      clearTimeout(staleTimerRef.current);
+      staleTimerRef.current = null;
+    }
+
     const latlng: [number, number] = [bus.lat, bus.lon];
     if (busMarkerRef.current) {
       busMarkerRef.current.setLatLng(latlng);
+      busMarkerRef.current.setIcon(makeIcon(false)); // restore full opacity if it was dimmed
       if (bus.name) {
         busMarkerRef.current.setTooltipContent(`Bus #${bus.name}`);
       }
     } else {
-      // Route-colored halo + white disc behind the 🚌 so it stays
-      // readable against varied tile backgrounds. The outer pulse ring
-      // adds motion hint so a stationary bus still catches the eye.
-      const busIcon = L.divIcon({
-        className: "bus-pin",
-        html: `
-          <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
-            <div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.25;animation:busPulse 2s ease-out infinite;"></div>
-            <div style="position:absolute;inset:4px;border-radius:50%;background:#fff;border:3px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>
-            <span style="position:relative;font-size:18px;line-height:1;">🚌</span>
-          </div>
-          <style>
-            @keyframes busPulse {
-              0%   { transform: scale(0.9); opacity: 0.45; }
-              70%  { transform: scale(1.25); opacity: 0; }
-              100% { transform: scale(1.25); opacity: 0; }
-            }
-          </style>
-        `,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-      });
-      busMarkerRef.current = L.marker(latlng, { icon: busIcon, zIndexOffset: 1000 })
+      busMarkerRef.current = L.marker(latlng, { icon: makeIcon(false), zIndexOffset: 1000 })
         .addTo(map)
         .bindTooltip(bus.name ? `Bus #${bus.name}` : "Bus", { direction: "top" });
     }
-  }, [bus?.lat, bus?.lon, bus?.name]);
+  }, [bus?.lat, bus?.lon, bus?.name, color]);
 
   // Fullscreen toggle: an inset button the user can tap to expand the
   // map to the viewport. Leaflet's invalidateSize is called after the
