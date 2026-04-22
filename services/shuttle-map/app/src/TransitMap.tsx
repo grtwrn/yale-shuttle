@@ -1632,70 +1632,119 @@ const TripPlanner: FC<{
                               bottom: 6,
                               width: 2, background: o.color, opacity: 0.6,
                             }} />
-                            {preBoardStops.map((sid, k) => {
-                              const isBusHere = busMatch?.at_stop_id === sid;
-                              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                              return (
-                                <div key={`pre-${k}`} style={{
-                                  position: "relative", display: "flex", alignItems: "center",
-                                  padding: "2px 0", opacity: isBusHere ? 1 : 0.55,
-                                }}>
-                                  <span style={{
-                                    position: "absolute", left: -14, top: "50%",
-                                    transform: "translateY(-50%)",
-                                    width: 7, height: 7, borderRadius: "50%",
-                                    background: "#fff",
-                                    border: `2px solid ${o.color}`,
-                                    boxSizing: "border-box",
-                                  }} />
-                                  <span style={{
-                                    fontSize: 10.5,
-                                    color: isBusHere ? o.color : "#78909c",
-                                    fontWeight: isBusHere ? 700 : 400,
-                                    marginLeft: 8,
-                                  }}>
-                                    {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
-                                    {name}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            {segStops.map((sid, j) => {
-                              const isBoard = j === 0;
-                              const isAlight = j === segStops.length - 1;
-                              const isEnd = isBoard || isAlight;
-                              const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                              return (
-                                <div key={j} style={{
-                                  position: "relative", display: "flex", alignItems: "center",
-                                  padding: isEnd ? "4px 6px" : "2px 0",
-                                  marginLeft: isEnd ? -6 : 0,
-                                  borderRadius: 4,
-                                  background: isEnd ? `${o.color}1f` : "transparent",
-                                }}>
-                                  <span style={{
-                                    position: "absolute", left: isEnd ? -8 : -14, top: "50%",
-                                    transform: "translateY(-50%)",
-                                    width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
-                                    borderRadius: "50%",
-                                    background: isEnd ? o.color : "#fff",
-                                    border: `2px solid ${o.color}`,
-                                    boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
-                                    boxSizing: "border-box",
-                                  }} />
-                                  <span style={{
-                                    fontSize: 11,
-                                    fontWeight: isEnd ? 700 : 400,
-                                    color: isEnd ? "#263238" : "#546e7a",
-                                    marginLeft: 8,
-                                  }}>
-                                    {isBoard && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
-                                    {isAlight && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
-                                    {name}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                            {(() => {
+                              // Helpers shared by pre-board + seg rows.
+                              const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
+                              const busKey = busMatch ? busMatch.bus_name.replace(/^#/, "") : null;
+                              const busDwells = busKey ? (dwellsByBus?.[busKey]?.[cfg.routeIds[0]] ?? {}) : {};
+                              const WAIT_THRESHOLD = 45; // seconds — below this it's just boarding, not a "wait"
+                              const dwellFor = (sid: number): { med: number; fromPerBus: boolean } | null => {
+                                const pb = busDwells[String(sid)];
+                                if (pb && pb.n >= 5 && pb.med >= WAIT_THRESHOLD) return { med: pb.med, fromPerBus: true };
+                                const r = routeDwells[String(sid)];
+                                if (r && r.n >= 3 && r.med >= WAIT_THRESHOLD) return { med: r.med, fromPerBus: false };
+                                return null;
+                              };
+                              const liveElapsed = (sid: number): number | null => {
+                                if (!busMatch || busMatch.at_stop_id !== sid || !busMatch.at_stop_since) return null;
+                                return Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000);
+                              };
+                              const fmtShort = (s: number) => s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)}m`;
+                              const dwellAnnotation = (sid: number) => {
+                                const elapsed = liveElapsed(sid);
+                                const d = dwellFor(sid);
+                                if (elapsed != null) {
+                                  const over = d && elapsed > d.med * 1.5;
+                                  return (
+                                    <span style={{
+                                      fontSize: 9, fontWeight: 700,
+                                      color: over ? "#C62828" : "#78909c",
+                                      marginLeft: 6,
+                                    }} title={d ? `Typical ${fmtShort(d.med)}${d.fromPerBus ? " for this bus" : ""}` : undefined}>
+                                      ⏸ {fmtShort(elapsed)}{over ? " • long" : ""}
+                                    </span>
+                                  );
+                                }
+                                if (d) {
+                                  return (
+                                    <span style={{ fontSize: 9, color: "#b0bec5", marginLeft: 6 }}
+                                          title={d.fromPerBus ? "Typical dwell for this bus" : "Typical dwell on this route"}>
+                                      ⏸ ~{fmtShort(d.med)}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              };
+
+                              return (<>
+                                {preBoardStops.map((sid, k) => {
+                                  const isBusHere = busMatch?.at_stop_id === sid;
+                                  const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                                  return (
+                                    <div key={`pre-${k}`} style={{
+                                      position: "relative", display: "flex", alignItems: "center",
+                                      padding: "2px 0", opacity: isBusHere ? 1 : 0.55,
+                                    }}>
+                                      <span style={{
+                                        position: "absolute", left: -14, top: "50%",
+                                        transform: "translateY(-50%)",
+                                        width: 7, height: 7, borderRadius: "50%",
+                                        background: "#fff",
+                                        border: `2px solid ${o.color}`,
+                                        boxSizing: "border-box",
+                                      }} />
+                                      <span style={{
+                                        fontSize: 10.5,
+                                        color: isBusHere ? o.color : "#78909c",
+                                        fontWeight: isBusHere ? 700 : 400,
+                                        marginLeft: 8,
+                                      }}>
+                                        {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
+                                        {name}
+                                        {dwellAnnotation(sid)}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                                {segStops.map((sid, j) => {
+                                  const isBoard = j === 0;
+                                  const isAlight = j === segStops.length - 1;
+                                  const isEnd = isBoard || isAlight;
+                                  const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                                  return (
+                                    <div key={j} style={{
+                                      position: "relative", display: "flex", alignItems: "center",
+                                      padding: isEnd ? "4px 6px" : "2px 0",
+                                      marginLeft: isEnd ? -6 : 0,
+                                      borderRadius: 4,
+                                      background: isEnd ? `${o.color}1f` : "transparent",
+                                    }}>
+                                      <span style={{
+                                        position: "absolute", left: isEnd ? -8 : -14, top: "50%",
+                                        transform: "translateY(-50%)",
+                                        width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
+                                        borderRadius: "50%",
+                                        background: isEnd ? o.color : "#fff",
+                                        border: `2px solid ${o.color}`,
+                                        boxShadow: isEnd ? `0 0 0 2px #fff, 0 0 0 3px ${o.color}` : "none",
+                                        boxSizing: "border-box",
+                                      }} />
+                                      <span style={{
+                                        fontSize: 11,
+                                        fontWeight: isEnd ? 700 : 400,
+                                        color: isEnd ? "#263238" : "#546e7a",
+                                        marginLeft: 8,
+                                      }}>
+                                        {isBoard && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
+                                        {isAlight && <span style={{ fontSize: 9, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
+                                        {name}
+                                        {!isBoard && !isAlight && dwellAnnotation(sid)}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </>);
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1733,8 +1782,10 @@ const TripPlanner: FC<{
             >{editingSavedMode ? "Done" : "✎"}</button>
           </div>
           <div style={{
-            display: "flex", flexWrap: "wrap", gap: 4,
-            maxHeight: 140, overflowY: "auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 4,
+            maxHeight: 180, overflowY: "auto",
           }}>
             {savedTrips.map((t) => {
               const editing = editingSavedMode;
@@ -1747,7 +1798,7 @@ const TripPlanner: FC<{
                     display: "flex", alignItems: "center", gap: 6,
                     padding: "4px 8px", borderRadius: 8,
                     background: "#f1f8e9", border: "1px solid #c5e1a5",
-                    flex: "1 1 100%",
+                    gridColumn: "1 / -1",
                   }} onClick={(e) => e.stopPropagation()}>
                     <span style={{ color: "#2E7D32", fontSize: 11 }}>★</span>
                     <input
