@@ -1485,7 +1485,7 @@ const TripPlanner: FC<{
                   return (
                     <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
                       <span>🚶 {fmtMin(o.walkToSec)} to <b>{boardName}</b></span>
-                      {navHref && (
+                      {navHref && isExpanded && (
                         <a
                           href={navHref}
                           target="_blank"
