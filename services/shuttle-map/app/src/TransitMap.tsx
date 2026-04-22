@@ -1663,13 +1663,29 @@ const TripPlanner: FC<{
                               const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
                               const busKey = busMatch ? busMatch.bus_name.replace(/^#/, "") : null;
                               const busDwells = busKey ? (dwellsByBus?.[busKey]?.[cfg.routeIds[0]] ?? {}) : {};
-                              const WAIT_THRESHOLD = 45; // seconds — below this it's just boarding, not a "wait"
-                              const dwellFor = (sid: number): { med: number; fromPerBus: boolean } | null => {
+                              // Only surface the ambient "⏸ ~Xm" tag for
+                              // real layover stops. 4 min is long enough
+                              // that a rider actually wants to know
+                              // ("bus will hold here ~4m"); under that
+                              // it's just normal boarding dwell and the
+                              // annotation on every stop becomes noise.
+                              const LAYOVER_THRESHOLD_SEC = 240;
+                              // Any learned dwell (any n, no threshold) —
+                              // used for the "• long" red flag against
+                              // live elapsed, because even a normally
+                              // 20s stop becomes alarming at 3 min.
+                              const anyDwellFor = (sid: number): { med: number; fromPerBus: boolean } | null => {
                                 const pb = busDwells[String(sid)];
-                                if (pb && pb.n >= 5 && pb.med >= WAIT_THRESHOLD) return { med: pb.med, fromPerBus: true };
+                                if (pb && pb.n >= 5) return { med: pb.med, fromPerBus: true };
                                 const r = routeDwells[String(sid)];
-                                if (r && r.n >= 3 && r.med >= WAIT_THRESHOLD) return { med: r.med, fromPerBus: false };
+                                if (r && r.n >= 3) return { med: r.med, fromPerBus: false };
                                 return null;
+                              };
+                              // Threshold-gated version for the ambient
+                              // "⏸ ~4m" tag.
+                              const layoverDwellFor = (sid: number) => {
+                                const d = anyDwellFor(sid);
+                                return d && d.med >= LAYOVER_THRESHOLD_SEC ? d : null;
                               };
                               const liveElapsed = (sid: number): number | null => {
                                 if (!busMatch || busMatch.at_stop_id !== sid || !busMatch.at_stop_since) return null;
@@ -1678,9 +1694,12 @@ const TripPlanner: FC<{
                               const fmtShort = (s: number) => s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)}m`;
                               const dwellAnnotation = (sid: number) => {
                                 const elapsed = liveElapsed(sid);
-                                const d = dwellFor(sid);
                                 if (elapsed != null) {
-                                  const over = d && elapsed > d.med * 1.5;
+                                  // Bus is currently here — show live.
+                                  // Compare to any-learned-dwell (no
+                                  // threshold) for "• long" tagging.
+                                  const d = anyDwellFor(sid);
+                                  const over = d && elapsed > Math.max(d.med * 1.5, d.med + 30);
                                   return (
                                     <span style={{
                                       fontSize: 9, fontWeight: 700,
@@ -1691,10 +1710,11 @@ const TripPlanner: FC<{
                                     </span>
                                   );
                                 }
+                                const d = layoverDwellFor(sid);
                                 if (d) {
                                   return (
                                     <span style={{ fontSize: 9, color: "#b0bec5", marginLeft: 6 }}
-                                          title={d.fromPerBus ? "Typical dwell for this bus" : "Typical dwell on this route"}>
+                                          title={d.fromPerBus ? "Typical layover for this bus" : "Typical layover on this route"}>
                                       ⏸ ~{fmtShort(d.med)}
                                     </span>
                                   );
