@@ -1285,12 +1285,48 @@ const TripPlanner: FC<{
   // stays fresh as the bus moves. Without this split, freezing the
   // list also froze ETAs — leaving a stale "3 min" on screen while the
   // bus was actually pulling up.
+  // Pull-to-refresh counter: bumping this forces planTrip to re-run
+  // from scratch against the latest buses/segments, same as hitting
+  // Enter on the destination field. Without it, stableOptions only
+  // recomputes on endpoint/time changes.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [pullProgress, setPullProgress] = useState(0);
+  useEffect(() => {
+    let startY = 0; let pulling = false;
+    const onStart = (e: TouchEvent) => {
+      if (window.scrollY > 0) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 0) setPullProgress(Math.min(1, dy / 90));
+    };
+    const onEnd = () => {
+      if (pulling && pullProgress >= 1) {
+        setRefreshKey((k) => k + 1);
+      }
+      pulling = false;
+      setPullProgress(0);
+    };
+    document.addEventListener("touchstart", onStart, { passive: true });
+    document.addEventListener("touchmove", onMove, { passive: true });
+    document.addEventListener("touchend", onEnd);
+    return () => {
+      document.removeEventListener("touchstart", onStart);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pullProgress]);
+
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
       ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime()],
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
   const options: TripOption[] | null = useMemo(() => {
     if (!stableOptions) return null;
@@ -1452,6 +1488,20 @@ const TripPlanner: FC<{
     }
     return `${Math.floor(s / 60)}m`;
   };
+  // Walking estimate — round to nearest minute. A 1:30 walk is "2 min"
+  // not "1:30", since sub-minute precision on foot is meaningless and
+  // the rider just wants "about N minutes of walking."
+  const fmtWalk = (s: number) => {
+    const m = Math.max(1, Math.round(s / 60));
+    return `${m} min`;
+  };
+  // Wait time — floor to minutes. "1:32" of wait becomes "1 min" since
+  // the bus won't arrive before that. "0 min" when under a minute so the
+  // display reads honestly small.
+  const fmtWait = (s: number) => {
+    const m = Math.max(0, Math.floor(s / 60));
+    return `${m} min`;
+  };
   const fmtClock = (s: number, from?: Date) => {
     const base = from?.getTime() ?? Date.now();
     const d = new Date(base + s * 1000);
@@ -1560,6 +1610,18 @@ const TripPlanner: FC<{
 
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      {pullProgress > 0 && (
+        <div style={{
+          height: 6, marginBottom: 4, borderRadius: 3,
+          background: "#e0ddd8", overflow: "hidden",
+        }}>
+          <div style={{
+            width: `${pullProgress * 100}%`, height: "100%",
+            background: pullProgress >= 1 ? "#2E7D32" : "#90a4ae",
+            transition: "background 0.15s",
+          }} />
+        </div>
+      )}
       {/* From + To — compact single-row layout with inline labels. Drop
           the separate "✓ Set" indicator lines since the locked text in
           each input is self-explanatory. */}
@@ -1771,7 +1833,7 @@ const TripPlanner: FC<{
                   const alightName = (stopNames[o.alightStopId] ?? "").replace(/\s*\/\s*/g, "/");
                   return (
                     <div style={{ fontSize: 11, color: "#546e7a", lineHeight: 1.5 }}>
-                      <span>🚶 {fmtMin(o.walkToSec)} to <b>{boardName}</b></span>
+                      <span>🚶 {fmtWalk(o.walkToSec)} to <b>{boardName}</b></span>
                       {navHref && isExpanded && (
                         <a
                           href={navHref}
@@ -1790,11 +1852,11 @@ const TripPlanner: FC<{
                         >🧭 directions to pickup</a>
                       )}
                       <br />
-                      ⏳ wait {fmtMin(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
+                      ⏳ wait {fmtWait(o.waitSec)} for {o.busName ? `#${o.busName}` : "next shuttle"}
                       <br />
                       🚌 {fmtMin(o.rideSec)} to <b>{alightName}</b>
                       <br />
-                      🚶 {fmtMin(o.walkFromSec)} to destination
+                      🚶 {fmtWalk(o.walkFromSec)} to destination
                     </div>
                   );
                 })()}
@@ -1913,51 +1975,6 @@ const TripPlanner: FC<{
                       background: "#fafaf8", borderRadius: 8,
                       border: "1px solid #ececec",
                     }} onClick={(e) => e.stopPropagation()}>
-                      {/* Yale tracker preview — rendered above the map
-                          + stop list so the stop list always stays in
-                          view when open. Clicking the title bar hides. */}
-                      {trackerPreviewIdx === i && (
-                        <div style={{ marginBottom: 10 }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
-                            title="Hide tracker preview"
-                            style={{
-                              width: "100%",
-                              display: "flex", alignItems: "center", justifyContent: "space-between",
-                              gap: 8, padding: "7px 10px",
-                              borderRadius: "8px 8px 0 0",
-                              border: `1px solid ${o.color}`, borderBottom: "none",
-                              background: o.color, color: "#fff",
-                              fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <span>📱 Yale tracker — {o.routeLabel}</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <a
-                                href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                                target="_blank" rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
-                                title="Open in new tab"
-                              >open ↗</a>
-                              <span style={{ fontSize: 12, lineHeight: 1 }}>▴</span>
-                            </span>
-                          </button>
-                          <iframe
-                            src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                            title={`Yale tracker ${o.routeLabel}`}
-                            loading="lazy"
-                            allow="geolocation"
-                            style={{
-                              display: "block",
-                              width: "100%", height: 420,
-                              border: `1px solid ${o.color}`, borderTop: "none",
-                              borderRadius: "0 0 8px 8px",
-                            }}
-                          />
-                        </div>
-                      )}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                         <div style={{ flex: "1 1 260px", minWidth: 220 }}>
                           {effectiveFromLL && toLL && segCoords.length >= 2 && (() => {
@@ -1976,6 +1993,54 @@ const TripPlanner: FC<{
                               />
                             );
                           })()}
+                          {/* Yale tracker preview lives just below the
+                              mini-map in the left column so the stop
+                              list stays visible on the right. Title
+                              bar doubles as the collapse control. */}
+                          {trackerPreviewIdx === i && (
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                gap: 8, padding: "7px 10px",
+                                borderRadius: "8px 8px 0 0",
+                                border: `1px solid ${o.color}`, borderBottom: "none",
+                                background: o.color, color: "#fff",
+                                fontSize: 11, fontWeight: 600,
+                              }}>
+                                <span>📱 Yale tracker — {o.routeLabel}</span>
+                                <span style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                                  <a
+                                    href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                    target="_blank" rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ fontSize: 10, color: "#fff", textDecoration: "underline", fontWeight: 500 }}
+                                    title="Open in new tab"
+                                  >open ↗</a>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
+                                    title="Hide preview"
+                                    style={{
+                                      border: "none", background: "transparent",
+                                      color: "#fff", fontSize: 14, lineHeight: 1,
+                                      cursor: "pointer", padding: 0,
+                                    }}
+                                  >✕</button>
+                                </span>
+                              </div>
+                              <iframe
+                                src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                title={`Yale tracker ${o.routeLabel}`}
+                                loading="lazy"
+                                allow="geolocation"
+                                style={{
+                                  display: "block",
+                                  width: "100%", height: 360,
+                                  border: `1px solid ${o.color}`, borderTop: "none",
+                                  borderRadius: "0 0 8px 8px",
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
