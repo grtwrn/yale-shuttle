@@ -646,12 +646,20 @@ function logGpsTransitions(db: Database.Database, buses: Bus[], now: string): vo
           // Segment travel time: interval between entering prev and entering new.
           // This INCLUDES dwell at prev (intentional — matches rider experience: "if bus is at A,
           // how long until it reaches B" naturally includes the pause at A).
-          // Only record if it's a consecutive hop on the route, to filter jumps.
+          //
+          // For hops === 1: the bus moved to the next consecutive stop;
+          // this is what we learn averages from.
+          // For hops > 1 (up to a sane ceiling): the bus appeared to
+          // skip stops — either the feed was stale, the driver blew
+          // past stops, or there's a brief GPS gap. Still record the
+          // row so the pace detector can surface a "skipped N stops"
+          // banner, but the `hops` column marks it non-consecutive so
+          // updateCalibratedSegments already filters it out of learning.
           const hops = countHopsOnRoute(bus.route, prev.stop, near);
-          if (hops === 1) {
+          if (hops >= 1 && hops <= 5) {
             insertSeg.run(
               bus.id, bus.name, bus.route, prev.stop, near,
-              elapsedSec, 1, dayOfWeek, hour, now,
+              elapsedSec, hops, dayOfWeek, hour, now,
             );
           }
         }

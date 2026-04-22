@@ -689,6 +689,7 @@ const TripPlanner: FC<{
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
+  busPace: Record<string, { fast?: boolean; slow?: boolean; ratio?: number; n?: number; skip?: { count: number; ago_sec: number } | null }>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -702,7 +703,7 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, busPace, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -1028,84 +1029,17 @@ const TripPlanner: FC<{
     cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
   };
 
-  // Bus pace tracking: observe each bus across polls and infer whether
-  // it's running faster than the route-wide segment averages or skipping
-  // stops (advancing last_stop_id by >1 within a single poll). History
-  // stays in a ref so unchanged renders don't clobber it.
-  type PaceState = {
-    lastStopId: number;
-    lastStopSince: number;
-    ratios: number[];       // observed_elapsed / seg.avg per recent transition
-    lastSkip: number;       // Date.now() of last multi-stop jump
-    skipMagnitude: number;  // how many stops it skipped
-  };
-  const busPaceRef = useRef<Map<string, PaceState>>(new Map());
-  useEffect(() => {
-    const now = Date.now();
-    const map = busPaceRef.current;
-    for (const bus of buses) {
-      const key = bus.bus_name.replace(/^#/, "");
-      const prev = map.get(key);
-      if (!prev) {
-        map.set(key, {
-          lastStopId: bus.last_stop_id,
-          lastStopSince: now,
-          ratios: [],
-          lastSkip: 0,
-          skipMagnitude: 0,
-        });
-        continue;
-      }
-      if (bus.last_stop_id === prev.lastStopId) continue;
-      // Stop transition. Measure traversal relative to learned seg.avg.
-      const routeId = String(bus.route_id);
-      const segs = segmentTimes[routeId] ?? {};
-      const stops = routeStops[routeId] ?? [];
-      const prevIdx = stops.indexOf(prev.lastStopId);
-      const curIdx = stops.indexOf(bus.last_stop_id);
-      // Count how far the bus advanced in loop order; a jump > 1 implies
-      // stops were skipped (or the feed was offline).
-      let advance = 1;
-      if (prevIdx >= 0 && curIdx >= 0 && stops.length > 0) {
-        advance = (curIdx - prevIdx + stops.length) % stops.length;
-      }
-      if (advance > 1 && advance < stops.length / 2) {
-        prev.lastSkip = now;
-        prev.skipMagnitude = advance - 1;
-      }
-      const seg = segs[`${prev.lastStopId}-${bus.last_stop_id}`];
-      const elapsed = (now - prev.lastStopSince) / 1000;
-      if (seg && seg.n >= 2 && seg.avg > 15 && elapsed > 5 && advance === 1) {
-        const ratio = elapsed / seg.avg;
-        prev.ratios.push(ratio);
-        if (prev.ratios.length > 5) prev.ratios.shift();
-      }
-      prev.lastStopId = bus.last_stop_id;
-      prev.lastStopSince = now;
-    }
-    // Forget buses we haven't seen this tick (they went offline).
-    const live = new Set(buses.map((b) => b.bus_name.replace(/^#/, "")));
-    for (const k of Array.from(map.keys())) if (!live.has(k)) map.delete(k);
-  }, [buses, segmentTimes, routeStops]);
-
-  const readBusPace = (busName: string): { fast: boolean; slow: boolean; skip: { count: number; ago: number } | null } => {
-    const p = busPaceRef.current.get(busName.replace(/^#/, ""));
-    if (!p) return { fast: false, slow: false, skip: null };
-    // Need at least 2 recent transitions to call it. Median-ratio < 0.8
-    // = running ~20% faster; > 1.25 = ~25% slower.
-    const rs = [...p.ratios].sort((a, b) => a - b);
-    let fast = false, slow = false;
-    if (rs.length >= 2) {
-      const med = rs[Math.floor(rs.length / 2)];
-      fast = med < 0.8;
-      slow = med > 1.25;
-    }
-    // Skip event valid for ~90s.
-    const ageMs = Date.now() - p.lastSkip;
-    const skip = p.lastSkip && ageMs < 90_000
-      ? { count: p.skipMagnitude, ago: Math.floor(ageMs / 1000) }
-      : null;
-    return { fast, slow, skip };
+  // busPace arrives from /api/buses — server-side computed from the
+  // collector's 24/7 history. See get_bus_pace() in server.py.
+  const readBusPace = (busName: string) => {
+    const key = busName.replace(/^#/, "");
+    const p = busPace?.[key];
+    if (!p) return { fast: false, slow: false, skip: null as null | { count: number; ago: number } };
+    return {
+      fast: !!p.fast,
+      slow: !!p.slow,
+      skip: p.skip ? { count: p.skip.count, ago: p.skip.ago_sec } : null,
+    };
   };
 
   const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => {
@@ -3475,6 +3409,7 @@ const TransitMap: FC = () => {
   // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
   // that we prefer over route-level when computing stall credit.
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
+  const [busPace, setBusPace] = useState<Record<string, { fast?: boolean; slow?: boolean; ratio?: number; n?: number; skip?: { count: number; ago_sec: number } | null }>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
@@ -3696,6 +3631,7 @@ const TransitMap: FC = () => {
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
+        if (data.bus_pace) setBusPace(data.bus_pace);
       } catch { /* ignore */ }
     };
     poll();
@@ -3823,7 +3759,7 @@ const TransitMap: FC = () => {
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
+          routeStops={routeStops} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus} busPace={busPace}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}

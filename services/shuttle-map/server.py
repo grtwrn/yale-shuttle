@@ -113,7 +113,92 @@ def get_bus_data():
     dwells = get_dwell_times()
     dwells_by_bus = get_dwell_times_by_bus()
     peaks = get_route_peaks()
-    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "dwells_by_bus": dwells_by_bus, "route_peaks": peaks}
+    pace = get_bus_pace()
+    return {"buses": buses, "routes": routes, "stop_names": stop_names, "stop_coords": stop_coords, "segments": segments, "dwells": dwells, "dwells_by_bus": dwells_by_bus, "route_peaks": peaks, "bus_pace": pace}
+
+
+def get_bus_pace() -> dict:
+    """For each bus, read the last 15 minutes of segment_times and
+    compare actual travel_seconds against the route-level average for
+    that same (from_stop, to_stop) to infer pace.
+
+    Returns {bus_name: {fast: bool, slow: bool, ratio: float, n: int,
+    skip: {count, ago_sec} | null}} where ratio is the median
+    actual/expected ratio. Fast = median < 0.80 (20%+ quicker). Slow =
+    median > 1.25. Skip detection uses the `hops` column — segment_times
+    rows with hops>1 indicate the collector saw last_stop_id jump past
+    intermediate stops; we surface the most recent such event per bus.
+
+    Reading from segment_times avoids a new collector table and takes
+    the pace signal straight from data the collector already writes on
+    every bus poll."""
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception:
+        return {}
+    db.row_factory = sqlite3.Row
+
+    result: dict = {}
+    try:
+        # Single-hop traversals in the last 15 min, joined to the route-
+        # level avg the bus was graded against. BETWEEN filter matches
+        # updateCalibratedSegments' sanity band to avoid junk samples.
+        rows = db.execute("""
+            SELECT st.bus_name, st.travel_seconds, sa.avg_seconds
+            FROM segment_times st
+            JOIN segment_averages sa
+              ON sa.route_id = st.route_id
+             AND sa.from_stop_id = st.from_stop_id
+             AND sa.to_stop_id = st.to_stop_id
+            WHERE st.recorded_at > datetime('now', '-15 minutes')
+              AND st.hops = 1
+              AND st.travel_seconds BETWEEN 15 AND 1200
+              AND sa.avg_seconds > 15
+              AND sa.sample_count >= 3
+        """).fetchall()
+    except Exception:
+        rows = []
+
+    ratios_by_bus: dict = {}
+    for r in rows:
+        bn = r["bus_name"].lstrip("#")
+        ratios_by_bus.setdefault(bn, []).append(r["travel_seconds"] / r["avg_seconds"])
+
+    for bn, rs in ratios_by_bus.items():
+        if len(rs) < 2:
+            continue
+        rs_sorted = sorted(rs)
+        median = rs_sorted[len(rs_sorted) // 2]
+        result[bn] = {
+            "fast": median < 0.80,
+            "slow": median > 1.25,
+            "ratio": round(median, 2),
+            "n": len(rs),
+            "skip": None,
+        }
+
+    # Most recent multi-hop transition per bus in last 5 min —
+    # collector records these when last_stop_id jumps >1 stop.
+    try:
+        skip_rows = db.execute("""
+            SELECT bus_name, hops,
+                   CAST((julianday('now') - julianday(recorded_at)) * 86400 AS INTEGER) AS ago_sec
+            FROM segment_times
+            WHERE recorded_at > datetime('now', '-5 minutes')
+              AND hops > 1
+            GROUP BY bus_name
+            HAVING MIN(ago_sec)
+        """).fetchall()
+    except Exception:
+        skip_rows = []
+
+    for r in skip_rows:
+        bn = r["bus_name"].lstrip("#")
+        entry = result.setdefault(bn, {"fast": False, "slow": False, "ratio": None, "n": 0, "skip": None})
+        entry["skip"] = {"count": r["hops"] - 1, "ago_sec": int(r["ago_sec"] or 0)}
+
+    db.close()
+    return result
 
 
 def get_dwell_times_by_bus() -> dict:
