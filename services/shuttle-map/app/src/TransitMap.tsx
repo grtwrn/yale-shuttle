@@ -1599,15 +1599,27 @@ const TripPlanner: FC<{
                                 textTransform: "uppercase", letterSpacing: 1,
                                 borderBottom: "1px solid #ececec",
                                 display: "flex", justifyContent: "space-between", alignItems: "center",
+                                gap: 8,
                               }}>
                                 <span>Yale tracker — {o.routeLabel}</span>
-                                <a
-                                  href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
-                                  target="_blank" rel="noreferrer"
-                                  style={{ fontSize: 9, color: o.color, textDecoration: "none" }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  title="Open in new tab"
-                                >open ↗</a>
+                                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <a
+                                    href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                    target="_blank" rel="noreferrer"
+                                    style={{ fontSize: 9, color: o.color, textDecoration: "none" }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Open in new tab"
+                                  >open ↗</a>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(null); }}
+                                    style={{
+                                      border: "none", background: "transparent",
+                                      color: "#78909c", fontSize: 13, cursor: "pointer",
+                                      padding: 0, lineHeight: 1,
+                                    }}
+                                    title="Hide preview"
+                                  >✕</button>
+                                </span>
                               </div>
                               <iframe
                                 src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
@@ -1663,25 +1675,12 @@ const TripPlanner: FC<{
                                     }}
                                   >🧭 Directions</a>
                                 )}
-                                <a
-                                  href={officialHref}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  title="Open this route in Yale's official tracker"
-                                  style={{
-                                    fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                                    border: `1px solid ${o.color}`, background: "#fff",
-                                    color: o.color, textDecoration: "none",
-                                    fontFamily: "inherit",
-                                  }}
-                                >📱 Yale tracker</a>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setTrackerPreviewIdx(trackerPreviewIdx === i ? null : i);
                                   }}
-                                  title={trackerPreviewIdx === i ? "Hide tracker preview" : "Show tracker preview"}
+                                  title={trackerPreviewIdx === i ? "Hide tracker" : "Open tracker preview below"}
                                   style={{
                                     fontSize: 11, padding: "4px 10px", borderRadius: 6,
                                     border: `1px solid ${o.color}`,
@@ -1689,7 +1688,7 @@ const TripPlanner: FC<{
                                     color: trackerPreviewIdx === i ? "#fff" : o.color,
                                     fontFamily: "inherit", cursor: "pointer",
                                   }}
-                                >{trackerPreviewIdx === i ? "▴ Hide preview" : "▾ Preview"}</button>
+                                >📱 Yale tracker</button>
                               </div>
                             );
                           })()}
