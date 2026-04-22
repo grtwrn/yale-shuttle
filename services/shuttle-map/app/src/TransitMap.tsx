@@ -805,6 +805,7 @@ const TripPlanner: FC<{
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
+  const [editingSavedMode, setEditingSavedMode] = useState(false);
   const useCurrent = () => {
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
@@ -1530,13 +1531,31 @@ const TripPlanner: FC<{
 
       {savedTrips.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 8 }}>
-          <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Saved destinations</div>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 3, padding: "0 2px",
+          }}>
+            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Saved destinations</span>
+            <button
+              onClick={() => {
+                setEditingSavedMode((v) => !v);
+                setEditingSavedId(null);
+              }}
+              style={{
+                border: "none", background: "transparent",
+                color: editingSavedMode ? "#2E7D32" : "#90a4ae",
+                fontSize: 12, fontWeight: editingSavedMode ? 700 : 400,
+                cursor: "pointer", padding: "0 4px", lineHeight: 1,
+              }}
+              title={editingSavedMode ? "Done editing" : "Rename or delete"}
+            >{editingSavedMode ? "Done" : "✎"}</button>
+          </div>
           <div style={{
             display: "flex", flexWrap: "wrap", gap: 4,
             maxHeight: 140, overflowY: "auto",
           }}>
             {savedTrips.map((t) => {
-              const editing = editingSavedId === t.id;
+              const editing = editingSavedMode && editingSavedId === t.id;
               if (editing) {
                 // Edit mode stretches to a full row so the input is
                 // comfortable AND the ✕ delete button lives far from the
@@ -1591,12 +1610,16 @@ const TripPlanner: FC<{
               return (
                 <div
                   key={t.id}
-                  onClick={() => applyDestination(t)}
-                  title="Tap to plan"
+                  onClick={() => {
+                    if (editingSavedMode) setEditingSavedId(t.id);
+                    else applyDestination(t);
+                  }}
+                  title={editingSavedMode ? "Tap to edit" : "Tap to plan"}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
-                    padding: "3px 4px 3px 10px", borderRadius: 999,
-                    background: "#fff", border: "1px solid #c5e1a5",
+                    padding: "3px 10px", borderRadius: 999,
+                    background: editingSavedMode ? "#f1f8e9" : "#fff",
+                    border: "1px solid #c5e1a5",
                     fontSize: 11, color: "#263238", cursor: "pointer",
                     maxWidth: "100%",
                   }}
@@ -1606,15 +1629,6 @@ const TripPlanner: FC<{
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     color: "#C62828", fontWeight: 600,
                   }}>{t.toText}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
-                    style={{
-                      border: "none", background: "transparent", color: "#90a4ae",
-                      cursor: "pointer", padding: "2px 4px", fontSize: 11, lineHeight: 1,
-                      marginLeft: 2,
-                    }}
-                    title="Rename or delete"
-                  >✎</button>
                 </div>
               );
             })}
