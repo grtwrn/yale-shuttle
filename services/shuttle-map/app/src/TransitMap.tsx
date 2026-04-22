@@ -1661,7 +1661,7 @@ const TripPlanner: FC<{
           screen — the destination search is what the user is acting on.
           They come back automatically once the destination is cleared. */}
       {!options && savedTrips.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
+        <div style={{ marginTop: 20, marginBottom: 8 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             marginBottom: 3, padding: "0 2px",
@@ -1763,11 +1763,11 @@ const TripPlanner: FC<{
         </div>
       )}
       {!options && recentTrips.length > 0 && (
-        <div style={{ marginTop: savedTrips.length > 0 ? 0 : 12, marginBottom: 10 }}>
+        <div style={{ marginTop: savedTrips.length > 0 ? 8 : 20, marginBottom: 10 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
           <div style={{
             display: "flex", flexDirection: "column", gap: 4,
-            maxHeight: 140, overflowY: "auto",
+            maxHeight: 320, overflowY: "auto",
           }}>
             {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
           </div>
