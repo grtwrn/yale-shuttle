@@ -999,8 +999,17 @@ const TripPlanner: FC<{
   }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
 
   const fmtMin = (s: number) => {
-    const m = Math.round(s / 60);
-    return m < 1 ? "<1m" : `${m}m`;
+    // Floor for minutes ≥ 2 so "7m" honestly means "at least 7 min left"
+    // (Math.round would call 6:31 "7m" and then jump to "6m" at 6:30 —
+    // felt stuck). Under 2 min, show MM:SS so the final countdown ticks
+    // visibly each poll. Under 10 s, just "now".
+    if (s < 10) return "now";
+    if (s < 120) {
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${m}:${String(sec).padStart(2, "0")}`;
+    }
+    return `${Math.floor(s / 60)}m`;
   };
   const fmtClock = (s: number, from?: Date) => {
     const base = from?.getTime() ?? Date.now();
