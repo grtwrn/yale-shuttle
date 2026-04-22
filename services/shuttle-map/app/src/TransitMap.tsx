@@ -1557,10 +1557,8 @@ function computeUpcomingArrivals(
       // double-count the portion the bus has already waited. Capped at the
       // first segment's own avg so we can't go negative.
       let stallCredit = 0;
-      if (
-        bus.at_stop_id === stops[busIdx] &&
-        bus.at_stop_since
-      ) {
+      const busIsAtAnchor = bus.at_stop_id === stops[busIdx];
+      if (busIsAtAnchor && bus.at_stop_since) {
         const elapsedSec = Math.max(
           0,
           (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000,
@@ -1579,6 +1577,32 @@ function computeUpcomingArrivals(
           (perBus && perBus.n >= 5) ? perBus.med
           : (routeDwell != null ? routeDwell.med : undefined);
         stallCredit = dwellMed != null ? Math.min(elapsedSec, dwellMed) : elapsedSec;
+      }
+
+      // Mid-segment proration: if the bus is en route (not dwelled at the
+      // anchor) and GPS shows it somewhere between stops[busIdx] and the
+      // next stop, scale the first segment's time by how much of that
+      // A→B distance is still ahead. Without this, a bus 80% of the way
+      // to B still contributes the full seg(A→B) to ETA, so riders get
+      // a "3 min" when realistically only ~1 min remains.
+      //
+      // We use the ratio (dist bus→B) / (dist A→B) on straight lines —
+      // not road-accurate, but a good proxy for short shuttle segments
+      // where roads track the line-of-sight reasonably. Clamped to [0, 1]
+      // so a bus overshooting B (shouldn't happen post-anchor-advance,
+      // but belt-and-suspenders) doesn't invert the segment.
+      let firstSegProgressFactor = 1;
+      if (!busIsAtAnchor && bus.lat && bus.lon) {
+        const a = stopCoords[stops[busIdx]];
+        const b = stopCoords[stops[(busIdx + 1) % stops.length]];
+        if (a && b) {
+          const abM = haversineMeters(a, b);
+          if (abM > 10) {
+            const busPt = { lat: bus.lat, lon: bus.lon };
+            const remainingM = haversineMeters(busPt, b);
+            firstSegProgressFactor = Math.max(0, Math.min(1, remainingM / abM));
+          }
+        }
       }
 
       let cumulative = 0;
@@ -1611,6 +1635,14 @@ function computeUpcomingArrivals(
           const applied = Math.min(stallCredit, segAvg);
           segAvg -= applied;
           stallCredit -= applied;
+        }
+        // Mid-segment proration on the first segment: scale down by the
+        // fraction of the A→B distance still ahead of the bus. Scale
+        // variance by fraction² so "almost there" also means "less
+        // uncertainty about when."
+        if (step === 1 && firstSegProgressFactor < 1) {
+          segAvg *= firstSegProgressFactor;
+          segVar *= firstSegProgressFactor * firstSegProgressFactor;
         }
         cumulative += segAvg;
         cumulativeVar += segVar;
