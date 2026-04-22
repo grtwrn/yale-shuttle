@@ -988,14 +988,11 @@ const TripPlanner: FC<{
     });
   };
 
-  // When a fresh trip is planned, auto-expand the best shuttle option so the
-  // map + board/alight list appear immediately. Depending only on the
-  // endpoint coords avoids re-expanding on every bus tick.
+  // Collapse all option expansions when a fresh trip is planned — the
+  // user picks which route to dig into rather than us auto-opening the
+  // first one.
   useEffect(() => {
-    if (!fromLL || !toLL || !options) { setExpandedIdx(null); return; }
-    const idx = options.findIndex((o) => o.mode === "shuttle");
-    setExpandedIdx(idx >= 0 ? idx : 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setExpandedIdx(null);
   }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
 
   const fmtMin = (s: number) => {
@@ -1029,6 +1026,86 @@ const TripPlanner: FC<{
     padding: "6px 12px", borderRadius: 8, border: "1px solid #bbb",
     background: "#fff", color: "#546e7a", fontSize: 12,
     cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+  };
+
+  // Bus pace tracking: observe each bus across polls and infer whether
+  // it's running faster than the route-wide segment averages or skipping
+  // stops (advancing last_stop_id by >1 within a single poll). History
+  // stays in a ref so unchanged renders don't clobber it.
+  type PaceState = {
+    lastStopId: number;
+    lastStopSince: number;
+    ratios: number[];       // observed_elapsed / seg.avg per recent transition
+    lastSkip: number;       // Date.now() of last multi-stop jump
+    skipMagnitude: number;  // how many stops it skipped
+  };
+  const busPaceRef = useRef<Map<string, PaceState>>(new Map());
+  useEffect(() => {
+    const now = Date.now();
+    const map = busPaceRef.current;
+    for (const bus of buses) {
+      const key = bus.bus_name.replace(/^#/, "");
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, {
+          lastStopId: bus.last_stop_id,
+          lastStopSince: now,
+          ratios: [],
+          lastSkip: 0,
+          skipMagnitude: 0,
+        });
+        continue;
+      }
+      if (bus.last_stop_id === prev.lastStopId) continue;
+      // Stop transition. Measure traversal relative to learned seg.avg.
+      const routeId = String(bus.route_id);
+      const segs = segmentTimes[routeId] ?? {};
+      const stops = routeStops[routeId] ?? [];
+      const prevIdx = stops.indexOf(prev.lastStopId);
+      const curIdx = stops.indexOf(bus.last_stop_id);
+      // Count how far the bus advanced in loop order; a jump > 1 implies
+      // stops were skipped (or the feed was offline).
+      let advance = 1;
+      if (prevIdx >= 0 && curIdx >= 0 && stops.length > 0) {
+        advance = (curIdx - prevIdx + stops.length) % stops.length;
+      }
+      if (advance > 1 && advance < stops.length / 2) {
+        prev.lastSkip = now;
+        prev.skipMagnitude = advance - 1;
+      }
+      const seg = segs[`${prev.lastStopId}-${bus.last_stop_id}`];
+      const elapsed = (now - prev.lastStopSince) / 1000;
+      if (seg && seg.n >= 2 && seg.avg > 15 && elapsed > 5 && advance === 1) {
+        const ratio = elapsed / seg.avg;
+        prev.ratios.push(ratio);
+        if (prev.ratios.length > 5) prev.ratios.shift();
+      }
+      prev.lastStopId = bus.last_stop_id;
+      prev.lastStopSince = now;
+    }
+    // Forget buses we haven't seen this tick (they went offline).
+    const live = new Set(buses.map((b) => b.bus_name.replace(/^#/, "")));
+    for (const k of Array.from(map.keys())) if (!live.has(k)) map.delete(k);
+  }, [buses, segmentTimes, routeStops]);
+
+  const readBusPace = (busName: string): { fast: boolean; slow: boolean; skip: { count: number; ago: number } | null } => {
+    const p = busPaceRef.current.get(busName.replace(/^#/, ""));
+    if (!p) return { fast: false, slow: false, skip: null };
+    // Need at least 2 recent transitions to call it. Median-ratio < 0.8
+    // = running ~20% faster; > 1.25 = ~25% slower.
+    const rs = [...p.ratios].sort((a, b) => a - b);
+    let fast = false, slow = false;
+    if (rs.length >= 2) {
+      const med = rs[Math.floor(rs.length / 2)];
+      fast = med < 0.8;
+      slow = med > 1.25;
+    }
+    // Skip event valid for ~90s.
+    const ageMs = Date.now() - p.lastSkip;
+    const skip = p.lastSkip && ageMs < 90_000
+      ? { count: p.skipMagnitude, ago: Math.floor(ageMs / 1000) }
+      : null;
+    return { fast, slow, skip };
   };
 
   const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => {
@@ -1485,6 +1562,33 @@ const TripPlanner: FC<{
                               </div>
                             );
                           })()}
+                          {busMatch && (() => {
+                            const pace = readBusPace(busMatch.bus_name);
+                            if (!pace.fast && !pace.slow && !pace.skip) return null;
+                            const msgs: { label: string; tint: string; bg: string }[] = [];
+                            if (pace.fast) msgs.push({
+                              label: "🐇 Running faster than average — could arrive early",
+                              tint: "#C62828", bg: "#ffebee",
+                            });
+                            if (pace.slow) msgs.push({
+                              label: "🐢 Running slower than average",
+                              tint: "#8D6E63", bg: "#efebe9",
+                            });
+                            if (pace.skip) msgs.push({
+                              label: `⚠️ Just skipped ${pace.skip.count} stop${pace.skip.count === 1 ? "" : "s"}`,
+                              tint: "#E65100", bg: "#fff3e0",
+                            });
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 6 }}>
+                                {msgs.map((m, i) => (
+                                  <div key={i} style={{
+                                    fontSize: 10, padding: "3px 6px", borderRadius: 4,
+                                    background: m.bg, color: m.tint, fontWeight: 600,
+                                  }}>{m.label}</div>
+                                ))}
+                              </div>
+                            );
+                          })()}
                           {stopsAway !== null && (() => {
                             const busEta = o.walkToSec + o.waitSec;
                             // Count *stops before pickup* — doesn't include
@@ -1600,8 +1704,11 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {savedTrips.length > 0 && (
-        <div style={{ marginTop: 12, marginBottom: 8 }}>
+      {/* Saved + Recent are hidden whenever we have a live trip on
+          screen — the destination search is what the user is acting on.
+          They come back automatically once the destination is cleared. */}
+      {!options && savedTrips.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             marginBottom: 3, padding: "0 2px",
@@ -1702,7 +1809,7 @@ const TripPlanner: FC<{
           </div>
         </div>
       )}
-      {recentTrips.length > 0 && (
+      {!options && recentTrips.length > 0 && (
         <div style={{ marginTop: savedTrips.length > 0 ? 0 : 12, marginBottom: 10 }}>
           <div style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3, padding: "0 2px" }}>Recent destinations</div>
           <div style={{
