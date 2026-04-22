@@ -713,6 +713,10 @@ const TripPlanner: FC<{
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  // Which option has its embedded Yale-tracker preview visible. Only
+  // one at a time since the iframe loads a whole SPA (~1.5 MB gz)
+  // and we don't want to spawn one per card.
+  const [trackerPreviewIdx, setTrackerPreviewIdx] = useState<number | null>(null);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -1466,6 +1470,39 @@ const TripPlanner: FC<{
                               color={o.color}
                             />
                           )}
+                          {trackerPreviewIdx === i && (
+                            <div style={{
+                              marginTop: 6, borderRadius: 8,
+                              border: `1px solid ${o.color}`,
+                              overflow: "hidden", position: "relative",
+                            }}>
+                              <div style={{
+                                fontSize: 9, padding: "4px 8px",
+                                background: "#fafaf8", color: "#78909c",
+                                textTransform: "uppercase", letterSpacing: 1,
+                                borderBottom: "1px solid #ececec",
+                                display: "flex", justifyContent: "space-between", alignItems: "center",
+                              }}>
+                                <span>Yale tracker — {o.routeLabel}</span>
+                                <a
+                                  href={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                  target="_blank" rel="noreferrer"
+                                  style={{ fontSize: 9, color: o.color, textDecoration: "none" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Open in new tab"
+                                >open ↗</a>
+                              </div>
+                              <iframe
+                                src={`https://yale.downtownerapp.com/routes/${cfg.busRouteIds[0]}`}
+                                title={`Yale tracker ${o.routeLabel}`}
+                                loading="lazy"
+                                style={{
+                                  display: "block",
+                                  width: "100%", height: 360, border: "none",
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
                           <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -1512,6 +1549,20 @@ const TripPlanner: FC<{
                                     fontFamily: "inherit",
                                   }}
                                 >📱 Yale tracker</a>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTrackerPreviewIdx(trackerPreviewIdx === i ? null : i);
+                                  }}
+                                  title={trackerPreviewIdx === i ? "Hide tracker preview" : "Show tracker preview"}
+                                  style={{
+                                    fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                                    border: `1px solid ${o.color}`,
+                                    background: trackerPreviewIdx === i ? o.color : "#fff",
+                                    color: trackerPreviewIdx === i ? "#fff" : o.color,
+                                    fontFamily: "inherit", cursor: "pointer",
+                                  }}
+                                >{trackerPreviewIdx === i ? "▴ Hide preview" : "▾ Preview"}</button>
                               </div>
                             );
                           })()}
