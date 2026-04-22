@@ -676,7 +676,16 @@ const TripMap: FC<{
         border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
       };
   return (
-    <div style={wrapperStyle}>
+    <div className="trip-map-wrap" style={wrapperStyle}>
+      {/* Desaturate the OSM tile layer so the route color, bus pin,
+          and user/endpoint markers pop against a quieter background.
+          Only the tile pane is filtered; SVG overlays (polylines,
+          circle markers) and DOM markers (bus emoji) stay full color. */}
+      <style>{`
+        .trip-map-wrap .leaflet-tile-pane {
+          filter: grayscale(0.9) contrast(0.95) brightness(1.05);
+        }
+      `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
       <button
         onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
