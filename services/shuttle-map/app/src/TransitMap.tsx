@@ -863,6 +863,13 @@ const TripMap: FC<{
         .addTo(map)
         .bindTooltip(bus.name ? `Bus #${bus.name}` : "Bus", { direction: "top" });
     }
+    // If the bus has drifted outside the current viewport, re-fit the
+    // bounds so it's always visible. Skip when already inside so we
+    // don't jitter the zoom level on small movements.
+    if (!map.getBounds().pad(-0.05).contains(latlng)) {
+      const current = map.getBounds();
+      map.fitBounds(current.extend(latlng), { padding: [24, 24], maxZoom: 17, animate: true });
+    }
   }, [bus?.lat, bus?.lon, bus?.name, color]);
 
   // Fullscreen toggle: an inset button the user can tap to expand the
@@ -1249,6 +1256,9 @@ const TripPlanner: FC<{
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
   const [editingSavedMode, setEditingSavedMode] = useState(false);
+  // Which shuttle options have their vertical stop list open. Empty by
+  // default so the expansion card stays short until the rider clicks.
+  const [expandedListIds, setExpandedListIds] = useState<Set<number>>(new Set());
   const useCurrent = () => {
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
@@ -1326,8 +1336,16 @@ const TripPlanner: FC<{
       let departed = false;
       if (pinned && pinned.eta >= catchThreshold) {
         match = pinned;
-      } else if (isWatching && pinned) {
-        // Sticky: keep tracking the bus the rider committed to.
+      } else if (
+        isWatching && pinned
+        // Require a clear full-loop wraparound before calling it
+        // "departed" — a bus that's 20 s past the catch threshold isn't
+        // really gone yet, and flagging it as departed mid-plan looks
+        // like a bug. Demand the pinned ETA exceeds walkTo + 5 min so
+        // we only stick when the bus has actually done the lap.
+        && pinned.eta > o.walkToSec + 5 * 60
+        && catchable.length > 0
+      ) {
         match = pinned;
         departed = true;
       } else {
@@ -1437,12 +1455,20 @@ const TripPlanner: FC<{
     });
   };
 
-  // Collapse all option expansions when a fresh trip is planned — the
-  // user picks which route to dig into rather than us auto-opening the
-  // first one.
-  useEffect(() => {
-    setExpandedIdx(null);
-  }, [fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon]);
+  // Collapse all option expansions when a fresh trip is planned. This
+  // has to be synchronous so the options memo below sees expandedIdx =
+  // null on the first render of the new plan — otherwise the sticky-
+  // watched-bus flag fires using the prior expansion index and paints
+  // "departed" on an option the user never asked to watch. Derived-
+  // state pattern: setState-during-render is legal when gated on a
+  // prop/state change, and React reschedules the render with the new
+  // state before paint.
+  const tripKeyRef = useRef<string>("");
+  const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
+  if (tripKeyRef.current !== tripKey) {
+    tripKeyRef.current = tripKey;
+    if (expandedIdx !== null) setExpandedIdx(null);
+  }
 
   const fmtMin = (s: number) => {
     // Floor for minutes ≥ 2 so "7m" honestly means "at least 7 min left"
@@ -2001,25 +2027,53 @@ const TripPlanner: FC<{
                           )}
                         </div>
                         <div style={{ flex: "1 1 220px", minWidth: 200 }}>
-                          <div style={{ fontSize: 10, color: "#78909c", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                            Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride
-                          </div>
-                          {/* Compact "📱 Yale tracker" button. When tapped
-                              it's replaced (below the row) with a
-                              full-width title bar + iframe preview. */}
+                          {/* Full-width "Vertical route list" toggle —
+                              defaults collapsed so the expansion card
+                              stays short until the rider asks to see
+                              the per-stop layout. */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedListIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(i)) next.delete(i); else next.add(i);
+                                return next;
+                              });
+                            }}
+                            title={expandedListIds.has(i) ? "Hide stop list" : "Show stop list"}
+                            style={{
+                              width: "100%",
+                              display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "6px 10px", borderRadius: 6, marginBottom: 6,
+                              border: `1px solid ${o.color}`,
+                              background: expandedListIds.has(i) ? `${o.color}18` : "#fff",
+                              color: o.color, fontFamily: "inherit",
+                              fontSize: 11, fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <span>Route — {segStops.length} stops, ~{fmtMin(o.rideSec)} ride</span>
+                            <span style={{ fontSize: 12, lineHeight: 1 }}>{expandedListIds.has(i) ? "▴" : "▾"}</span>
+                          </button>
+                          {/* Yale tracker button stretches full-width
+                              for consistency with the stop-list toggle. */}
                           {trackerPreviewIdx !== i && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(i); }}
-                                title="Open tracker preview below"
-                                style={{
-                                  fontSize: 11, padding: "4px 10px", borderRadius: 6,
-                                  border: `1px solid ${o.color}`,
-                                  background: "#fff", color: o.color,
-                                  fontFamily: "inherit", cursor: "pointer",
-                                }}
-                              >📱 Yale tracker</button>
-                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTrackerPreviewIdx(i); }}
+                              title="Open tracker preview below the map"
+                              style={{
+                                width: "100%",
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                padding: "6px 10px", borderRadius: 6, marginBottom: 8,
+                                fontSize: 11, fontWeight: 600,
+                                border: `1px solid ${o.color}`,
+                                background: "#fff", color: o.color,
+                                fontFamily: "inherit", cursor: "pointer",
+                              }}
+                            >
+                              <span>📱 Yale tracker</span>
+                              <span style={{ fontSize: 12, lineHeight: 1 }}>▾</span>
+                            </button>
                           )}
                           {busMatch && (() => {
                             const pace = readBusPace(busMatch.bus_name);
@@ -2067,6 +2121,7 @@ const TripPlanner: FC<{
                               </div>
                             );
                           })()}
+                          {expandedListIds.has(i) && (
                           <div style={{ position: "relative", paddingLeft: 16 }}>
                             {/* Muted vertical line covering the upstream
                                 (pre-board) leg — dashed + low opacity so
@@ -2231,6 +2286,7 @@ const TripPlanner: FC<{
                               </>);
                             })()}
                           </div>
+                          )}
                         </div>
                       </div>
                     </div>
