@@ -824,6 +824,194 @@ const TripMap: FC<{
 };
 
 
+// Combined overview map: draws ALL shuttle options at once below the
+// route list so the rider can compare them geographically. Not using
+// TripMap because the shapes differ — one polyline per option, one bus
+// pin per matched bus, and no per-option upstream/walk ornamentation.
+type OverviewOption = {
+  label: string;
+  color: string;
+  segCoords: LatLon[];
+  bus: { lat: number; lon: number; name?: string } | null;
+};
+const CombinedTripMap: FC<{
+  from: LatLon;
+  to: LatLon;
+  options: OverviewOption[];
+}> = ({ from, to, options }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const busMarkersRef = useRef<Record<string, L.Marker>>({});
+  const startMarkerRef = useRef<L.CircleMarker | null>(null);
+  const [geomTick, setGeomTick] = useState(0);
+  // Fetch road geometry for every (from, to) pair across all options
+  // in one effect, so hook count stays constant regardless of how many
+  // options were returned. Results land in the shared segCache; when
+  // any fetch completes we bump geomTick to rebuild the map.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let changed = false;
+      for (const o of options) {
+        for (let i = 0; i < o.segCoords.length - 1; i++) {
+          const k = segKey(o.segCoords[i], o.segCoords[i + 1]);
+          if (!segCache[k]) {
+            const pts = await fetchSegGeom(o.segCoords[i], o.segCoords[i + 1]);
+            if (cancelled) return;
+            if (pts) changed = true;
+          }
+        }
+      }
+      if (changed) setGeomTick((v) => v + 1);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(options.map((o) => o.segCoords.map((c) => [c.lat, c.lon])))]);
+
+  // Build/teardown when the set of endpoints or options changes.
+  useEffect(() => {
+    if (!ref.current) return;
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: false });
+    mapRef.current = map;
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+
+    const points: [number, number][] = [[from.lat, from.lon], [to.lat, to.lon]];
+
+    startMarkerRef.current = L.circleMarker([from.lat, from.lon], {
+      radius: 7, color: "#fff", fillColor: "#2E7D32", fillOpacity: 1, weight: 2,
+    }).addTo(map).bindTooltip("You", { direction: "top" });
+    L.circleMarker([to.lat, to.lon], {
+      radius: 7, color: "#fff", fillColor: "#C62828", fillOpacity: 1, weight: 2,
+    }).addTo(map).bindTooltip("End", { direction: "top" });
+
+    // Each option: colored polyline, board/alight rings. Polylines use
+    // the OSRM road geom when cached, straight line otherwise.
+    for (const o of options) {
+      if (o.segCoords.length < 2) continue;
+      const road: [number, number][] = [];
+      for (let i = 0; i < o.segCoords.length - 1; i++) {
+        const cached = segCache[segKey(o.segCoords[i], o.segCoords[i + 1])];
+        if (cached && cached.length > 0) {
+          if (i === 0) road.push(cached[0]);
+          for (let j = 1; j < cached.length; j++) road.push(cached[j]);
+        } else {
+          if (i === 0) road.push([o.segCoords[i].lat, o.segCoords[i].lon]);
+          road.push([o.segCoords[i + 1].lat, o.segCoords[i + 1].lon]);
+        }
+      }
+      L.polyline(road, { color: o.color, weight: 4, opacity: 0.7 }).addTo(map);
+      const board = o.segCoords[0];
+      const alight = o.segCoords[o.segCoords.length - 1];
+      L.circleMarker([board.lat, board.lon], {
+        radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
+      }).addTo(map).bindTooltip(`Board ${o.label}`, { direction: "top" });
+      L.circleMarker([alight.lat, alight.lon], {
+        radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
+      }).addTo(map).bindTooltip(`Get off ${o.label}`, { direction: "top" });
+      for (const s of o.segCoords) points.push([s.lat, s.lon]);
+    }
+
+    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 15 });
+    setTimeout(() => map.invalidateSize(), 60);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      busMarkersRef.current = {};
+      startMarkerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    to.lat, to.lon,
+    JSON.stringify(options.map((o) => ({
+      label: o.label,
+      color: o.color,
+      segCoords: o.segCoords.map((c) => [c.lat, c.lon]),
+    }))),
+    geomTick,
+  ]);
+
+  // Live you-marker follows GPS.
+  useEffect(() => {
+    startMarkerRef.current?.setLatLng([from.lat, from.lon]);
+  }, [from.lat, from.lon]);
+
+  // Live bus markers — one per option.busName that exists. We update in
+  // place so the 5s /api/buses tick doesn't rebuild the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const seenKeys = new Set<string>();
+    for (const o of options) {
+      if (!o.bus) continue;
+      const key = `${o.label}-${o.bus.name}`;
+      seenKeys.add(key);
+      const latlng: [number, number] = [o.bus.lat, o.bus.lon];
+      const existing = busMarkersRef.current[key];
+      if (existing) {
+        existing.setLatLng(latlng);
+        continue;
+      }
+      const icon = L.divIcon({
+        className: "bus-pin-sm",
+        html: `
+          <div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;inset:2px;border-radius:50%;background:#fff;border:2.5px solid ${o.color};box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>
+            <span style="position:relative;font-size:13px;line-height:1;">🚌</span>
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+      const marker = L.marker(latlng, { icon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindTooltip(o.bus.name ? `${o.label} #${o.bus.name}` : o.label, { direction: "top" });
+      busMarkersRef.current[key] = marker;
+    }
+    // Remove markers whose options dropped (bus went dormant).
+    for (const [key, marker] of Object.entries(busMarkersRef.current)) {
+      if (!seenKeys.has(key)) {
+        map.removeLayer(marker);
+        delete busMarkersRef.current[key];
+      }
+    }
+  }, [options]);
+
+  return (
+    <div className="trip-map-wrap" style={{
+      position: "relative", height: 300, borderRadius: 8,
+      border: "1px solid #e0ddd8", overflow: "hidden", marginTop: 10,
+    }}>
+      <style>{`
+        .trip-map-wrap .leaflet-tile-pane {
+          filter: grayscale(0.9) contrast(0.95) brightness(1.05);
+        }
+      `}</style>
+      <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      {/* Legend: route color chips so the user can tell which
+          polyline is which option without hovering. */}
+      <div style={{
+        position: "absolute", bottom: 8, left: 8, zIndex: 1000,
+        background: "rgba(255,255,255,0.92)", borderRadius: 6,
+        padding: "4px 8px", fontSize: 10, color: "#263238",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+        display: "flex", flexDirection: "column", gap: 2,
+      }}>
+        {options.map((o, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 10, height: 3, background: o.color, borderRadius: 1 }} />
+            <span style={{ fontWeight: 600, color: o.color }}>{o.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
 const TripPlanner: FC<{
   buses: BusData[];
   stopNames: Record<number, string>;
@@ -1941,6 +2129,53 @@ const TripPlanner: FC<{
               </div>
             );
           })}
+          {/* Combined overview: all shuttle options on one map so the
+              rider can compare routes geographically. Built from the
+              same segCoords + busMatch we compute per option above. */}
+          {effectiveFromLL && toLL && (() => {
+            const normBus = (s: string) => s.replace(/^#/, "");
+            const overviewOpts: OverviewOption[] = [];
+            for (const o of options) {
+              if (o.mode !== "shuttle") continue;
+              const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+              if (!cfg) continue;
+              const allStops: number[] = [];
+              const seen = new Set<number>();
+              for (const rid of cfg.routeIds) {
+                for (const sid of (routeStops[rid] ?? [])) {
+                  if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
+                }
+              }
+              const bi = allStops.indexOf(o.boardStopId);
+              const ai = allStops.indexOf(o.alightStopId);
+              if (bi === -1 || ai === -1) continue;
+              const segStops = bi <= ai
+                ? allStops.slice(bi, ai + 1)
+                : [...allStops.slice(bi), ...allStops.slice(0, ai + 1)];
+              const segCoords = segStops
+                .map((sid) => stopCoords[sid])
+                .filter((c): c is LatLon => !!c);
+              if (segCoords.length < 2) continue;
+              const busMatch = buses.find((b) =>
+                normBus(b.bus_name) === normBus(o.busName) &&
+                cfg.busRouteIds.includes(b.route_id)
+              );
+              overviewOpts.push({
+                label: o.routeLabel,
+                color: o.color,
+                segCoords,
+                bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
+              });
+            }
+            if (overviewOpts.length < 1) return null;
+            return (
+              <CombinedTripMap
+                from={effectiveFromLL}
+                to={toLL}
+                options={overviewOpts}
+              />
+            );
+          })()}
         </div>
       )}
 
