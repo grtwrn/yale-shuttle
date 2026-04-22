@@ -561,6 +561,8 @@ _YALE_LANDMARKS: list[dict] = [
      "aliases": ["poppys", "poppy's", "poppy", "poppys coffee", "poppys kitchen"]},
     {"name": "Arwa Yemeni Coffee",         "lat": 41.3097, "lon": -72.9202,
      "aliases": ["arwa", "arwa coffee", "arwa yemeni", "yemeni coffee", "yemeni"]},
+    {"name": "The Whale Tea",              "lat": 41.3120, "lon": -72.9223,
+     "aliases": ["whale tea", "the whale", "whale", "bubble tea"]},
     {"name": "Atticus Bookstore Cafe",     "lat": 41.3082, "lon": -72.9298,
      "aliases": ["atticus", "atticus cafe", "atticus bookstore"]},
     {"name": "Book Trader Cafe",           "lat": 41.3079, "lon": -72.9313,
