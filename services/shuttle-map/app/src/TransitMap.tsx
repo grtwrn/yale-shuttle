@@ -1571,16 +1571,15 @@ const TripPlanner: FC<{
                       upcomingCoords = upstreamStops
                         .map((sid) => stopCoords[sid])
                         .filter((c): c is LatLon => !!c);
-                      // Always anchor the upstream polyline at the bus's
-                      // actual GPS position. For fixed routes this adds
-                      // the real bus location ahead of the anchor stop;
-                      // for flex routes (Blue West) where busIdx snaps
-                      // to the board stop itself, this is the only way
-                      // to visualize the "bus → pickup" leg at all.
-                      if (busMatch.lat && busMatch.lon) {
-                        const bp = { lat: busMatch.lat, lon: busMatch.lon };
-                        upcomingCoords = [bp, ...upcomingCoords];
-                      }
+                      // Don't prepend live bus GPS here — it changes on
+                      // every poll, and the TripMap mount-effect rebuilds
+                      // when upcomingStops coords change, flashing the
+                      // whole map every 5 s. The separate bus-marker
+                      // effect already shows the live position in place;
+                      // this polyline just needs to be the stable stop
+                      // sequence. Flex routes with only the board stop
+                      // as upstream get no polyline — the pin + board
+                      // marker are enough context.
                       if (upcomingCoords.length < 2) upcomingCoords = undefined;
                       // Drop the board stop (last entry) — it's already
                       // the first row of segStops. If the bus is sitting
