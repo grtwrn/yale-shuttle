@@ -38,7 +38,7 @@ primary_region = 'ewr'
     path = '/healthz'
 
 [[vm]]
-  memory = '512mb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 512
+  memory_mb = 2048

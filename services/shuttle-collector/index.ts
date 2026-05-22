@@ -1269,8 +1269,18 @@ let lastRetentionSweep = 0;
 // artifacts and we want those kept forever. Retention matches each
 // table's downstream consumer window (e.g. segment_times matches the
 // 30-day lookback in updateCalibratedSegments).
+//
+// Deletes run in bounded batches per table rather than one mega-transaction.
+// On a month-old DB the full trim set can be millions of rows; a single
+// transaction would hold the write lock long enough to starve the poll
+// loop and trip the Fly.io health-check. Each batch is its own implicit
+// transaction, so WAL checkpoints and the next poll can interleave. Use
+// `rowid IN (... LIMIT)` because SQLite's `DELETE ... LIMIT` requires a
+// compile-time flag that better-sqlite3's bundled build doesn't always have.
 function runRetention(db: Database.Database): void {
   const t0 = Date.now();
+  const BATCH = 2000;
+  const MAX_MS_PER_TABLE = 4000; // bail early; leftover rows go next sweep
   const deletions: Array<[string, string]> = [
     // table, WHERE clause
     ["bus_positions", "collected_at < datetime('now', '-6 hours')"],
@@ -1285,13 +1295,22 @@ function runRetention(db: Database.Database): void {
     ["stop_arrivals", "1=1"],
   ];
   const counts: Record<string, number> = {};
-  const tx = db.transaction(() => {
-    for (const [table, where] of deletions) {
-      const res = db.prepare(`DELETE FROM ${table} WHERE ${where}`).run();
-      if (res.changes) counts[table] = res.changes;
+  for (const [table, where] of deletions) {
+    const stmt = db.prepare(
+      `DELETE FROM ${table} WHERE rowid IN ` +
+      `(SELECT rowid FROM ${table} WHERE ${where} LIMIT ${BATCH})`,
+    );
+    let total = 0;
+    const start = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const res = stmt.run();
+      total += res.changes;
+      if (!res.changes) break;
+      if (Date.now() - start > MAX_MS_PER_TABLE) break;
     }
-  });
-  tx();
+    if (total) counts[table] = total;
+  }
   // Compact the freed pages periodically so the volume reclaims space.
   db.exec("PRAGMA incremental_vacuum(1000)");
   const ms = Date.now() - t0;

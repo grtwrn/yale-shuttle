@@ -11,15 +11,31 @@ Usage:
 """
 
 import json
+import logging
 import os
 import socket
 import sqlite3
 import subprocess
 import sys
 import time
+import traceback
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+logging.basicConfig(
+    level=os.environ.get("SHUTTLE_LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(message)s",
+    stream=sys.stderr,
+)
+_log = logging.getLogger("shuttle-map")
+
+
+def _log_err(where: str, err: Exception) -> None:
+    # Keep the message short for journal / Fly log tailers, but include the
+    # traceback at DEBUG so we can flip SHUTTLE_LOG_LEVEL=DEBUG when triaging.
+    _log.warning("%s: %s: %s", where, type(err).__name__, err)
+    _log.debug("%s traceback:\n%s", where, traceback.format_exc())
 
 DB_PATH = os.environ.get(
     "SHUTTLE_DB",
@@ -33,11 +49,74 @@ STATIC_DIR = Path(os.environ.get(
 PORT = int(os.environ.get("PORT", "8091"))
 
 
+# Route stops + polyline shapes change every ~6h upstream. Re-fetching and
+# re-parsing them (json.loads of thousands of GPS points × ~16 routes) on
+# every /api/buses tick was the dominant source of CPython heap churn —
+# RSS climbed steadily until the 1GB cgroup OOM-killed the process. Cache
+# for 5 minutes; live bus positions still refresh per call.
+_ROUTE_STATIC_CACHE: tuple[float, dict] = (0.0, {})
+_ROUTE_STATIC_TTL = 300.0
+
+
+def _get_route_static() -> dict:
+    global _ROUTE_STATIC_CACHE
+    expires, payload = _ROUTE_STATIC_CACHE
+    if payload and expires > time.time():
+        return payload
+    empty = {"routes": {}, "route_paths": {}, "stop_names": {}, "stop_coords": {}}
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception as e:
+        _log_err("_get_route_static db.connect", e)
+        return payload or empty
+    db.row_factory = sqlite3.Row
+    try:
+        try:
+            route_rows = db.execute(
+                "SELECT id, stops_json, path_json FROM routes WHERE stops_json IS NOT NULL"
+            ).fetchall()
+            has_path = True
+        except Exception:
+            route_rows = db.execute(
+                "SELECT id, stops_json FROM routes WHERE stops_json IS NOT NULL"
+            ).fetchall()
+            has_path = False
+        routes: dict = {}
+        route_paths: dict = {}
+        for r in route_rows:
+            rid = str(r["id"])
+            stops = json.loads(r["stops_json"]) if r["stops_json"] else []
+            routes[rid] = stops
+            if has_path and r["path_json"]:
+                try:
+                    flat = json.loads(r["path_json"])
+                    if isinstance(flat, list) and len(flat) >= 4 and len(flat) % 2 == 0:
+                        route_paths[rid] = [[flat[i], flat[i + 1]] for i in range(0, len(flat), 2)]
+                except Exception:
+                    pass
+        stop_rows = db.execute("SELECT id, name, lat, lon FROM stops").fetchall()
+        stop_names = {r["id"]: r["name"] for r in stop_rows}
+        stop_coords = {r["id"]: {"lat": r["lat"], "lon": r["lon"]} for r in stop_rows}
+        result = {
+            "routes": routes,
+            "route_paths": route_paths,
+            "stop_names": stop_names,
+            "stop_coords": stop_coords,
+        }
+    except Exception as e:
+        _log_err("_get_route_static query", e)
+        result = payload or empty
+    db.close()
+    _ROUTE_STATIC_CACHE = (time.time() + _ROUTE_STATIC_TTL, result)
+    return result
+
+
 def get_bus_data():
     """Return live bus positions + route stop sequences."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_bus_data db.connect", e)
         return {"buses": [], "routes": {}}
     db.row_factory = sqlite3.Row
     try:
@@ -93,43 +172,13 @@ def get_bus_data():
                 b["at_stop_id"] = state["at_stop_id"]
                 b["at_stop_since"] = state["at_stop_since"]
 
-        # Get route stop sequences + shape paths. The `path_json` column
-        # holds downtownerapp's road-following polyline for the whole
-        # loop, which the frontend slices per segment instead of asking
-        # OSRM for driving directions (which sometimes picks a different
-        # street than the bus actually uses).
-        try:
-            route_rows = db.execute(
-                "SELECT id, stops_json, path_json FROM routes WHERE stops_json IS NOT NULL"
-            ).fetchall()
-            has_path = True
-        except Exception:
-            # Migration case: older collector without path_json. Fall
-            # back to the legacy columns so the API keeps serving.
-            route_rows = db.execute(
-                "SELECT id, stops_json FROM routes WHERE stops_json IS NOT NULL"
-            ).fetchall()
-            has_path = False
-        routes = {}
-        route_paths = {}
-        for r in route_rows:
-            rid = str(r["id"])
-            stops = json.loads(r["stops_json"]) if r["stops_json"] else []
-            routes[rid] = stops
-            if has_path and r["path_json"]:
-                try:
-                    flat = json.loads(r["path_json"])
-                    # Pair up flat [lat, lon, lat, lon, ...] into [[lat, lon], ...]
-                    if isinstance(flat, list) and len(flat) >= 4 and len(flat) % 2 == 0:
-                        route_paths[rid] = [[flat[i], flat[i + 1]] for i in range(0, len(flat), 2)]
-                except Exception:
-                    pass
-
-        # Get stop names for display
-        stop_rows = db.execute("SELECT id, name, lat, lon FROM stops").fetchall()
-        stop_names = {r["id"]: r["name"] for r in stop_rows}
-        stop_coords = {r["id"]: {"lat": r["lat"], "lon": r["lon"]} for r in stop_rows}
-    except Exception:
+        static = _get_route_static()
+        routes = static["routes"]
+        route_paths = static["route_paths"]
+        stop_names = static["stop_names"]
+        stop_coords = static["stop_coords"]
+    except Exception as e:
+        _log_err("get_bus_data query", e)
         buses, routes, route_paths, stop_names, stop_coords = [], {}, {}, {}, {}
     db.close()
     segments = get_segment_times()
@@ -179,6 +228,11 @@ def _expected_segment_seconds(
     BUS_NORM = bus_name.lstrip("#")
     ONLY_BUS_NAMES = (f"#{BUS_NORM}", BUS_NORM)
 
+    def hour_set(center: int, window: int) -> list[int]:
+        # Modular window around `center` so midnight doesn't drop samples.
+        # e.g. center=23, window=1 → [22, 23, 0]; center=0, window=2 → [22, 23, 0, 1, 2]
+        return [(center + d) % 24 for d in range(-window, window + 1)]
+
     def raw_avg(bus_filter_sql: str, params: tuple) -> tuple[float | None, int]:
         row = db.execute(
             f"""
@@ -195,16 +249,15 @@ def _expected_segment_seconds(
         ).fetchone()
         return (row["avg"], row["n"] or 0)
 
-    # Per-bus, per-dow, at progressively wider hour windows.
+    # Per-bus, per-dow, at progressively wider hour windows (wraps at midnight).
     for window in (0, 1, 2):
-        h_lo, h_hi = hour - window, hour + window
-        # Hour can wrap, but our hour column is 0..23 raw; windows that
-        # cross midnight are edge-case enough to ignore here.
+        hours = hour_set(hour, window)
+        placeholders = ",".join(["?"] * len(hours))
         avg, n = raw_avg(
-            "AND bus_name IN (?, ?) AND hour BETWEEN ? AND ?",
-            (route_id, from_stop, to_stop, dow, *ONLY_BUS_NAMES, h_lo, h_hi),
+            f"AND bus_name IN (?, ?) AND hour IN ({placeholders})",
+            (route_id, from_stop, to_stop, dow, *ONLY_BUS_NAMES, *hours),
         )
-        if avg and n >= MIN:
+        if avg is not None and n >= MIN:
             return avg, f"bus.dow.hr±{window}"
 
     # Per-bus, per-dow, any hour — use the calibrated table.
@@ -217,7 +270,7 @@ def _expected_segment_seconds(
         """,
         (*ONLY_BUS_NAMES, route_id, from_stop, to_stop, dow),
     ).fetchone()
-    if row and row["avg"] and row["n"] >= MIN:
+    if row and row["avg"] is not None and row["n"] >= MIN:
         return row["avg"], "bus.dow"
 
     # Per-bus across days.
@@ -230,17 +283,18 @@ def _expected_segment_seconds(
         """,
         (*ONLY_BUS_NAMES, route_id, from_stop, to_stop),
     ).fetchone()
-    if row and row["avg"] and row["n"] >= MIN:
+    if row and row["avg"] is not None and row["n"] >= MIN:
         return row["avg"], "bus.any"
 
-    # Any-bus, per-dow, at progressively wider hour windows.
+    # Any-bus, per-dow, at progressively wider hour windows (wraps at midnight).
     for window in (0, 1, 2):
-        h_lo, h_hi = hour - window, hour + window
+        hours = hour_set(hour, window)
+        placeholders = ",".join(["?"] * len(hours))
         avg, n = raw_avg(
-            "AND hour BETWEEN ? AND ?",
-            (route_id, from_stop, to_stop, dow, h_lo, h_hi),
+            f"AND hour IN ({placeholders})",
+            (route_id, from_stop, to_stop, dow, *hours),
         )
-        if avg and n >= MIN:
+        if avg is not None and n >= MIN:
             return avg, f"route.dow.hr±{window}"
 
     # Any-bus, per-dow (calibrated).
@@ -253,7 +307,7 @@ def _expected_segment_seconds(
         """,
         (route_id, from_stop, to_stop, dow),
     ).fetchone()
-    if row and row["avg"] and row["n"] >= MIN:
+    if row and row["avg"] is not None and row["n"] >= MIN:
         return row["avg"], "route.dow"
 
     # Any-bus, any-day (route-wide).
@@ -265,7 +319,7 @@ def _expected_segment_seconds(
         """,
         (route_id, from_stop, to_stop),
     ).fetchone()
-    if row and row["avg"] and row["n"] >= MIN:
+    if row and row["avg"] is not None and row["n"] >= MIN:
         return row["avg"], "route.any"
 
     return None, "none"
@@ -279,7 +333,8 @@ def get_bus_pace() -> dict:
     counts how many samples fell through to each baseline."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_bus_pace db.connect", e)
         return {}
     db.row_factory = sqlite3.Row
 
@@ -303,7 +358,8 @@ def get_bus_pace() -> dict:
               AND travel_seconds BETWEEN 15 AND 1200
             """
         ).fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_bus_pace samples", e)
         samples = []
 
     ratios_by_bus: dict = {}
@@ -350,7 +406,8 @@ def get_bus_pace() -> dict:
             GROUP BY bus_name
             HAVING MIN(ago_sec)
         """).fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_bus_pace skips", e)
         skip_rows = []
 
     for r in skip_rows:
@@ -367,7 +424,8 @@ def get_dwell_times_by_bus() -> dict:
     back to all-days average. Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}}."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_dwell_times_by_bus db.connect", e)
         return {}
     db.row_factory = sqlite3.Row
     try:
@@ -390,7 +448,8 @@ def get_dwell_times_by_bus() -> dict:
                   AND cdb2.day_of_week = ?
             )
         """, (sqlite_dow, sqlite_dow)).fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_dwell_times_by_bus query", e)
         rows = []
     db.close()
 
@@ -412,12 +471,14 @@ def get_route_peaks() -> dict:
     bus_positions retention trims)."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_route_peaks db.connect", e)
         return {}
     db.row_factory = sqlite3.Row
     try:
         rows = db.execute("SELECT route_id, peak_concurrent FROM route_peaks").fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_route_peaks query", e)
         rows = []
     db.close()
     return {str(r["route_id"]): r["peak_concurrent"] for r in rows}
@@ -427,7 +488,8 @@ def get_segment_times():
     """Return calibrated segment times for all routes."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_segment_times db.connect", e)
         return {}
     db.row_factory = sqlite3.Row
     try:
@@ -454,7 +516,8 @@ def get_segment_times():
                   AND cs2.day_of_week = ?
             )
         """, (sqlite_dow, sqlite_dow)).fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_segment_times query", e)
         rows = []
     db.close()
 
@@ -477,7 +540,8 @@ def get_dwell_times():
     """Return calibrated per-stop dwell times for all routes."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_dwell_times db.connect", e)
         return {}
     db.row_factory = sqlite3.Row
     try:
@@ -499,7 +563,8 @@ def get_dwell_times():
                   AND cd2.day_of_week = ?
             )
         """, (sqlite_dow, sqlite_dow)).fetchall()
-    except Exception:
+    except Exception as e:
+        _log_err("get_dwell_times query", e)
         rows = []
     db.close()
 
@@ -549,7 +614,8 @@ def get_accuracy_stats():
     """
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("get_accuracy_stats db.connect", e)
         return {"buckets": [], "stops": [], "overall": None}
     db.row_factory = sqlite3.Row
     try:
@@ -557,42 +623,101 @@ def get_accuracy_stats():
         # to 15 minutes ahead. Crucially, each prediction only matches the NEXT
         # arrival of that (bus, stop) — stale predictions from a prior loop
         # that were superseded by an earlier arrival are excluded.
+        # Sanity filter on wraparound matches. A prediction made *after*
+        # the bus had already blown past the pickup has its "next arrival"
+        # land on the bus's next loop — inflating every error in that
+        # sample to ~one full loop. We drop any row where the realised
+        # horizon is more than 3× the predicted value plus 60 s, since
+        # no legitimate miss (stall, traffic, etc.) should balloon that
+        # much relative to what we told the rider. The absolute 15 min
+        # ceiling stays in place as a secondary guard.
         rows = db.execute("""
             WITH next_arrival AS (
                 SELECT
-                    p.bus_id, p.to_stop_id, p.predicted_at, p.predicted_eta_sec,
+                    p.bus_id, p.to_stop_id, p.from_stop_id, p.route_id,
+                    p.predicted_at, p.predicted_eta_sec,
                     (SELECT MIN(a.arrived_at)
                        FROM gps_arrivals a
                       WHERE a.bus_id = p.bus_id
                         AND a.stop_id = p.to_stop_id
-                        AND a.arrived_at > p.predicted_at) AS arrived_at,
-                    (SELECT a2.route_id
-                       FROM gps_arrivals a2
-                      WHERE a2.bus_id = p.bus_id
-                        AND a2.stop_id = p.to_stop_id
-                        AND a2.arrived_at > p.predicted_at
-                      ORDER BY a2.arrived_at ASC
-                      LIMIT 1) AS route_id
+                        AND a.arrived_at > p.predicted_at) AS arrived_at
                 FROM predictions p
-                WHERE p.predicted_at > datetime('now', '-14 days')
+                WHERE p.predicted_at > datetime('now', '-7 days')
             )
-            SELECT to_stop_id AS stop_id, route_id, predicted_eta_sec,
+            SELECT to_stop_id AS stop_id, route_id, from_stop_id, predicted_eta_sec,
                    (julianday(arrived_at) - julianday(predicted_at)) * 86400 AS actual_sec
             FROM next_arrival
             WHERE arrived_at IS NOT NULL
               AND (julianday(arrived_at) - julianday(predicted_at)) * 86400 <= 15 * 60
+              AND (julianday(arrived_at) - julianday(predicted_at)) * 86400
+                  <= predicted_eta_sec * 3 + 60
+            LIMIT 150000
         """).fetchall()
 
         stop_names = {r["id"]: r["name"] for r in db.execute("SELECT id, name FROM stops").fetchall()}
         route_colors = {r["id"]: (r["name"], r["color"]) for r in db.execute("SELECT id, name, color FROM routes").fetchall()}
+        # Route stop sequences: needed to compute how many stops lay
+        # between the bus and the pickup at prediction time. We pool
+        # abs_error by (pickup_stop, stops_ahead) so the UI can show
+        # "when the bus is N stops away, 95% of arrivals land in ±X m."
+        route_seqs: dict[int, list[int]] = {}
+        for r in db.execute("SELECT id, stops_json FROM routes WHERE stops_json IS NOT NULL").fetchall():
+            try:
+                seq = json.loads(r["stops_json"])
+                if isinstance(seq, list) and seq:
+                    route_seqs[r["id"]] = seq
+            except Exception:
+                pass
     except Exception as e:
-        print(f"accuracy query error: {e}")
+        _log_err("get_accuracy_stats query", e)
         rows = []
         stop_names = {}
         route_colors = {}
+        route_seqs = {}
     db.close()
 
+    def _stops_ahead(route_id: int, from_stop: int, to_stop: int) -> int | None:
+        # Modular stop-count along the route loop. Returns None when
+        # either stop isn't on this route's sequence (route-crossing
+        # vehicles or stale `from_stop_id` can produce this).
+        seq = route_seqs.get(route_id)
+        if not seq:
+            return None
+        try:
+            fi = seq.index(from_stop)
+            ti = seq.index(to_stop)
+        except ValueError:
+            return None
+        return (ti - fi) % len(seq)
+
+    # Finer buckets: individual 1-10, then everything 10+. User ask
+    # was to distinguish a 6-stops-away prediction from a 27-stops-
+    # away one (both landed in the old "6+" bucket and that hid how
+    # much worse far-bus accuracy is). Far buckets will be sparser
+    # but we already gate on n >= 10 samples in the UI.
+    DIST_BUCKETS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"]
+    def _dist_bucket(ahead: int) -> str | None:
+        if ahead <= 0:
+            return None  # bus at / past the pickup — different regime
+        if ahead <= 10:
+            return str(ahead)
+        return "10+"
+
     from collections import defaultdict
+
+    def _percentile(values: list[float], p: float) -> float | None:
+        """Linear-interpolated percentile. p in [0, 100]."""
+        if not values:
+            return None
+        s = sorted(values)
+        n = len(s)
+        if n == 1:
+            return s[0]
+        pos = (p / 100.0) * (n - 1)
+        lo = int(pos)
+        hi = min(lo + 1, n - 1)
+        frac = pos - lo
+        return s[lo] + (s[hi] - s[lo]) * frac
 
     # Per-bucket aggregates (fleet-wide)
     def fresh_bucket():
@@ -602,6 +727,9 @@ def get_accuracy_stats():
     # Per-(stop, route) overall + per-(stop, route, bucket) detail
     stop_samples = defaultdict(fresh_bucket)
     stop_bucket_samples = defaultdict(fresh_bucket)  # key: (stop_id, route_id, bucket)
+    # Per-(stop, route, distance-bucket) — how accurate is the ETA when
+    # the bus is N stops away? keys: (stop_id, route_id, dist_bucket).
+    stop_dist_samples: dict = defaultdict(fresh_bucket)
 
     for r in rows:
         horizon = r["actual_sec"]  # seconds between prediction and arrival
@@ -626,6 +754,20 @@ def get_accuracy_stats():
             sink["in_range"] += 1 if in_range else 0
             sink["errors"].append(err)
             sink["abs_errors"].append(abs_err)
+
+        # Distance-bucketed samples (bus → pickup, in stop hops).
+        ahead = _stops_ahead(r["route_id"], r["from_stop_id"], r["stop_id"])
+        if ahead is not None:
+            db_label = _dist_bucket(ahead)
+            if db_label is not None:
+                dsink = stop_dist_samples[(r["stop_id"], r["route_id"], db_label)]
+                dsink["n"] += 1
+                dsink["errors"].append(err)
+                dsink["abs_errors"].append(abs_err)
+
+    # Release the raw rows immediately — they're large and no longer needed.
+    del rows
+    import gc; gc.collect()
 
     # Per-bucket output
     buckets_out = []
@@ -654,11 +796,17 @@ def get_accuracy_stats():
         headline_mae = round(sum(b["mae_sec"] for b in covered) / len(covered), 1)
         headline_bias = round(sum(b["bias_sec"] for b in covered) / len(covered), 1)
         total_n = sum(b["n"] for b in buckets_out)
+        # Pool every abs-error across buckets to compute overall confidence
+        # windows. The frontend picks 95% if it fits within 15 min of
+        # prediction, else falls back to 90%.
+        all_abs = [e for bs in bucket_stats.values() for e in bs["abs_errors"]]
         overall = {
             "n": total_n,
             "in_range_pct": headline_in_range,
             "mae_sec": headline_mae,
             "bias_sec": headline_bias,
+            "p90_sec": round(_percentile(all_abs, 90) or 0, 1) if all_abs else None,
+            "p95_sec": round(_percentile(all_abs, 95) or 0, 1) if all_abs else None,
             "weighted": "equal per bucket (TransitApp / IBI methodology)",
         }
     else:
@@ -696,6 +844,29 @@ def get_accuracy_stats():
             stop_bias = round(sum(b["bias_sec"] for b in covered_b) / len(covered_b), 1)
         else:
             stop_in_range = stop_mae = stop_bias = 0.0
+        stop_abs = ss["abs_errors"]
+        by_distance = []
+        for db_label in DIST_BUCKETS:
+            dsink = stop_dist_samples.get((stop_id, route_id, db_label))
+            if not dsink or dsink["n"] == 0:
+                continue
+            dabs = dsink["abs_errors"]
+            derrs = dsink["errors"]
+            by_distance.append({
+                "stops_ahead": db_label,
+                "n": dsink["n"],
+                # p50: the "typical miss" rider-facing number. Robust
+                # to the long late-tail (median, not mean).
+                "p50_sec": round(_percentile(dabs, 50) or 0, 1) if dabs else None,
+                "p90_sec": round(_percentile(dabs, 90) or 0, 1) if dabs else None,
+                "p95_sec": round(_percentile(dabs, 95) or 0, 1) if dabs else None,
+                "mae_sec": round(sum(dabs) / len(dabs), 1) if dabs else None,
+                # Signed mean error. +ve → predicted > actual (bus
+                # arrived earlier than we said → rider could miss it).
+                # Surfaced as a warning when |bias| is large enough
+                # to matter at the catch boundary.
+                "bias_sec": round(sum(derrs) / len(derrs), 1) if derrs else None,
+            })
         stops_out.append({
             "stop_id": stop_id,
             "stop_name": stop_names.get(stop_id, f"Stop {stop_id}"),
@@ -705,6 +876,9 @@ def get_accuracy_stats():
             "n": n,
             "mae_sec": stop_mae,
             "bias_sec": stop_bias,
+            "p90_sec": round(_percentile(stop_abs, 90) or 0, 1) if stop_abs else None,
+            "p95_sec": round(_percentile(stop_abs, 95) or 0, 1) if stop_abs else None,
+            "by_distance": by_distance,
             "in_range_pct": stop_in_range,
             "buckets": per_bucket,
         })
@@ -719,8 +893,11 @@ import difflib
 
 # In-process cache for geocode results. Keeps the client snappy and stays
 # well within Nominatim's 1 req/sec policy. Entries expire after a day.
+# Bounded so a flood of unique queries (typed-as-you-go autocomplete) can't
+# leak — the dict was previously written to but never pruned.
 _GEOCODE_CACHE: dict[str, tuple[float, list]] = {}
 _GEOCODE_TTL = 24 * 60 * 60
+_GEOCODE_MAX_ENTRIES = 1000
 
 # New Haven viewbox biases results toward the shuttle service area.
 # left,top,right,bottom (lon_min, lat_max, lon_max, lat_min)
@@ -895,11 +1072,74 @@ def _match_landmarks(q: str) -> list:
         if best >= 0.75:
             scored.append((best, L))
     scored.sort(key=lambda x: -x[0])
+    # Emit the raw score alongside each result so the unified ranker in
+    # geocode() can compare apples-to-apples against shuttle stops and
+    # external geocoder hits rather than relying on source-ordering alone.
     return [
         {"display_name": f"{L['name']} (Yale)", "lat": L["lat"], "lon": L["lon"],
-         "type": "landmark", "class": "yale"}
-        for _, L in scored[:3]
+         "type": "landmark", "class": "yale", "_score": score}
+        for score, L in scored[:6]
     ]
+
+
+MAPBOX_TOKEN = os.environ.get("MAPBOX_TOKEN", "")
+
+
+def _mapbox(q: str) -> list:
+    """Mapbox Search Box `/forward` — single-shot search that covers
+    both addresses and POIs (Geocoding v6 is address-only). Tight
+    New Haven proximity bias. This is the primary external source;
+    Nominatim and Photon stay as fallbacks so the picker keeps
+    working if the token expires or the free tier runs out. Silent
+    no-op when MAPBOX_TOKEN is unset."""
+    if not MAPBOX_TOKEN:
+        return []
+    params = urllib.parse.urlencode({
+        "q": q,
+        "access_token": MAPBOX_TOKEN,
+        "proximity": "-72.92,41.31",  # lon,lat (Mapbox order)
+        "country": "us",
+        "limit": "8",
+        "language": "en",
+    })
+    url = f"https://api.mapbox.com/search/searchbox/v1/forward?{params}"
+    # Send Referer so a public token with URL restrictions (recommended
+    # setup) accepts the server-side call. Without this, Mapbox returns
+    # 403 Forbidden and we silently fall through to Nominatim.
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "YaleShuttleTracker/1.0 (personal-use)",
+        "Referer": "https://yale-shuttle.fly.dev/",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception as e:
+        _log.debug("mapbox fetch failed for %r: %s", q, e)
+        return []
+    out: list = []
+    for f in data.get("features", []):
+        props = f.get("properties", {}) or {}
+        coords = (f.get("geometry") or {}).get("coordinates") or []
+        if len(coords) < 2:
+            continue
+        try:
+            lon, lat = float(coords[0]), float(coords[1])
+        except (TypeError, ValueError):
+            continue
+        # For POIs, `name` is the business / landmark name; for
+        # addresses it's the street + number. `full_address` gives
+        # the whole human-readable form. Prefer full_address when the
+        # name by itself is ambiguous ("Wall Street" → show city too).
+        name = props.get("name") or ""
+        full = props.get("full_address") or props.get("place_formatted") or ""
+        display = f"{name}, {full}" if name and full and name not in full else (full or name)
+        out.append({
+            "display_name": display,
+            "lat": lat, "lon": lon,
+            "type": props.get("feature_type") or "place",
+            "class": "mapbox",
+        })
+    return out
 
 
 def _nominatim(q: str) -> list:
@@ -915,7 +1155,8 @@ def _nominatim(q: str) -> list:
     try:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
-    except Exception:
+    except Exception as e:
+        _log.debug("nominatim fetch failed for %r: %s", q, e)
         return []
     return [
         {
@@ -939,7 +1180,8 @@ def _photon(q: str) -> list:
     try:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
-    except Exception:
+    except Exception as e:
+        _log.debug("photon fetch failed for %r: %s", q, e)
         return []
     out = []
     for f in data.get("features", []):
@@ -965,6 +1207,145 @@ def _photon(q: str) -> list:
     return out
 
 
+# Shuttle-stop list cached in memory so we don't hit SQLite on every
+# keystroke. Refreshes when the collector ingests new stops (rare).
+_STOPS_CACHE: tuple[float, list[dict]] = (0.0, [])
+_STOPS_CACHE_TTL = 5 * 60  # seconds
+
+
+def _load_shuttle_stops() -> list[dict]:
+    global _STOPS_CACHE
+    now = time.time()
+    if now - _STOPS_CACHE[0] < _STOPS_CACHE_TTL and _STOPS_CACHE[1]:
+        return _STOPS_CACHE[1]
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    except Exception as e:
+        _log_err("_load_shuttle_stops db.connect", e)
+        return _STOPS_CACHE[1]  # return stale rather than nothing
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute("SELECT id, name, lat, lon FROM stops WHERE name IS NOT NULL").fetchall()
+    except Exception as e:
+        _log_err("_load_shuttle_stops query", e)
+        rows = []
+    db.close()
+    out = [
+        {"id": r["id"], "name": r["name"], "lat": r["lat"], "lon": r["lon"]}
+        for r in rows if r["lat"] is not None and r["lon"] is not None
+    ]
+    _STOPS_CACHE = (now, out)
+    return out
+
+
+def _nearest_stop_meters(lat: float, lon: float) -> float:
+    """Approximate meters from a point to the nearest shuttle stop.
+    Used to filter the picker to the service area — a Trader Joe's
+    in Fairfield is technically within 40 mi of New Haven but none of
+    the shuttles go there, so we shouldn't surface it. Returns inf
+    when the stop cache is empty (don't filter) so initial requests
+    during cold-start still return something."""
+    stops = _load_shuttle_stops()
+    if not stops:
+        return float("inf")
+    best = float("inf")
+    for s in stops:
+        dlat = (lat - s["lat"]) * 111_000
+        dlon = (lon - s["lon"]) * 84_000
+        d2 = dlat * dlat + dlon * dlon
+        if d2 < best:
+            best = d2
+    return best ** 0.5
+
+
+def _match_shuttle_stops(q: str) -> list:
+    """Match a query against the shuttle stops table. Stops are the
+    ground truth for "places the rider cares about" — when a user types
+    'phelps gate' we should find the stop even though it isn't in the
+    curated landmark list and may not exist cleanly on OSM. Emits a
+    raw `_score` so the unified ranker in geocode() can compare against
+    landmarks and external hits on even footing."""
+    q_variants = _query_variants(q)
+    if not q_variants:
+        return []
+    stops = _load_shuttle_stops()
+    scored: list[tuple[float, dict]] = []
+    for s in stops:
+        name = s["name"]
+        base = name.lower()
+        no_punct = "".join(c if c.isalnum() or c == " " else " " for c in base)
+        split_parts = [p for p in no_punct.split() if len(p) >= 3]
+        key_variants = _key_variants(name) + _key_variants(no_punct) + split_parts
+        best = 0.0
+        for qn in q_variants:
+            for k in key_variants:
+                if not k:
+                    continue
+                if qn == k:
+                    best = max(best, 1.0); continue
+                if qn in k or k in qn:
+                    # Distinguish prefix (strong) from contains (weaker).
+                    # A whole-query prefix match is more meaningful than
+                    # a single matching substring deep in the name.
+                    if k.startswith(qn) or qn.startswith(k):
+                        best = max(best, 0.92)
+                    else:
+                        best = max(best, 0.80); continue
+                    continue
+                best = max(best, difflib.SequenceMatcher(None, qn, k).ratio())
+        if best >= 0.78:
+            scored.append((best, s))
+    scored.sort(key=lambda x: -x[0])
+    seen_names: set[str] = set()
+    out: list = []
+    for score, s in scored:
+        if s["name"] in seen_names:
+            continue
+        seen_names.add(s["name"])
+        out.append({
+            "display_name": f"{s['name']} (shuttle stop)",
+            "lat": s["lat"], "lon": s["lon"],
+            "type": "stop", "class": "shuttle",
+            "_score": score,
+        })
+        if len(out) >= 8:
+            break
+    return out
+
+
+def _score_external(q: str, candidate: dict) -> float:
+    """Compute a match score for a Nominatim / Photon result. They
+    don't return one, so we derive it from the first comma-separated
+    segment of `display_name` (the actual place name — the rest is
+    location hierarchy). Mirrors the tiered approach used for the
+    internal matchers: exact → prefix → contains → fuzzy."""
+    q_norm = q.lower().strip()
+    full = (candidate.get("display_name") or "").lower()
+    head = full.split(",", 1)[0].strip()
+    if not head:
+        return 0.0
+    if q_norm == head:
+        return 1.0
+    if head.startswith(q_norm) or q_norm.startswith(head):
+        return 0.92
+    if q_norm in head:
+        return 0.82
+    # Also try against the address form "<number> <street>" by
+    # normalizing out extra punctuation. "220 york" vs "220 york street".
+    simple = "".join(c if c.isalnum() or c == " " else " " for c in head)
+    simple = " ".join(simple.split())
+    if q_norm in simple:
+        return 0.82
+    # Whole-query fuzzy ratio against the head.
+    ratio = difflib.SequenceMatcher(None, q_norm, head).ratio()
+    # Word-level fallback: best ratio of the query against any
+    # 3+-char token in the name, lightly dampened.
+    for w in simple.split():
+        if len(w) >= 3:
+            ratio = max(ratio, difflib.SequenceMatcher(None, q_norm, w).ratio() * 0.85)
+    return ratio
+
+
 def geocode(q: str) -> list:
     q = (q or "").strip()
     if not q:
@@ -975,47 +1356,132 @@ def geocode(q: str) -> list:
     if hit and now - hit[0] < _GEOCODE_TTL:
         return hit[1]
 
-    # Curated Yale landmarks first — resolves typos ("rozenkranz") and
-    # common abbreviations ("som", "sml") that the external geocoders miss.
-    # Always merge Nominatim + Photon, rather than short-circuiting on the
-    # first non-empty result. Otherwise a weak far-away Nominatim hit (e.g.
-    # "poppys" → some town in Texas) hides the typo-tolerant Photon match.
-    # After merging we drop anything > 40mi from New Haven and rank the rest
-    # by distance, so local matches surface first.
-    landmarks = _match_landmarks(q)
+    # Unified ranker: collect candidates from every source with their
+    # raw match score (or compute one for external hits), then apply
+    # intent-aware adjustments and sort. No more "shuttle stops always
+    # win" — a specific address beats a partial-word stop match when
+    # the user types digits; a campus-near hit beats a city-suburb one
+    # when scores are similar.
+    q_has_digit = any(c.isdigit() for c in q)
+    q_word_count = len([w for w in q.split() if w])
+
     NH_LAT, NH_LON = 41.31, -72.92
-    MAX_METERS = 64_000  # ~40 mi
-    def _dist(r):
+    MAX_METERS = 64_000   # ~40 mi fallback (used when stop data unavailable)
+    # Tighter service-area cutoff: a candidate must be within ~2 mi of
+    # an actual shuttle stop. That covers the Yale campus + Hamden
+    # Trader Joe's + West Haven loop + Union Station and excludes
+    # everything the shuttle can't reach (Fairfield, Stratford, etc.).
+    SERVICE_AREA_METERS = 3200
+
+    def _meters_from_nh(r: dict) -> float:
         dlat = (r["lat"] - NH_LAT) * 111_000
         dlon = (r["lon"] - NH_LON) * 84_000
         return (dlat * dlat + dlon * dlon) ** 0.5
-    merged = _nominatim(q) + _photon(q)
-    external = sorted([r for r in merged if _dist(r) <= MAX_METERS], key=_dist)
-    # Collapse near-duplicates. OSM often has separate nodes for each
-    # direction of travel at a bus stop (e.g. "Prospect/Canner" NB + SB) ~10m
-    # apart — keep only the first hit within ~40m of an already-accepted
-    # result so the picker doesn't show visual dupes.
+
+    def _unified_score(r: dict) -> float:
+        source = r.get("class") or ""
+        base = float(r.get("_score", _score_external(q, r)))
+
+        # Intent: a query with digits is almost certainly an address
+        # ("220 york", "80 wall"). Addresses should beat loose word
+        # matches on shuttle stops or landmark aliases in that case.
+        if q_has_digit:
+            if source == "shuttle":
+                base *= 0.55
+            elif source == "yale":
+                base *= 0.80
+            # external: leave alone — addresses deserve full score
+
+        # Intent: a multi-word query with no digits is ambiguous. Give
+        # curated landmarks + shuttle stops a slight edge since they're
+        # what riders actually search for ("sterling library", "phelps
+        # gate"). Single-word queries ("sml", "poppys") rely on
+        # aliases, so the raw matcher score already handled that.
+        if not q_has_digit and q_word_count >= 2:
+            if source in ("yale", "shuttle"):
+                base *= 1.05
+
+        # Service-area gate: drop candidates too far from any shuttle
+        # stop. Shuttle stops and curated landmarks are, by definition,
+        # in-area — skip the check for them to save cycles. For
+        # everything from Mapbox / Nominatim / Photon we measure.
+        if source not in ("shuttle", "yale"):
+            stop_dist = _nearest_stop_meters(r["lat"], r["lon"])
+            if stop_dist > SERVICE_AREA_METERS and stop_dist != float("inf"):
+                return 0.0
+
+        # Distance bonus (from New Haven center). New Haven-proximal
+        # results outrank far-off coincidences (a "York" in Pennsylvania,
+        # a "Phelps" in Ohio). Also a hard outer cutoff in case the
+        # stop table is unavailable and we fell through the gate above.
+        dist = _meters_from_nh(r)
+        if dist > MAX_METERS:
+            return 0.0
+        if dist < 2_000:        # ~1.2 mi — campus core
+            base += 0.06
+        elif dist < 8_000:      # ~5 mi
+            base += 0.03
+        elif dist < 24_000:     # ~15 mi — greater New Haven
+            base += 0.01
+
+        return base
+
+    # Mapbox takes priority among external sources when the token is
+    # configured — its autocomplete quality and proximity biasing are
+    # miles better than what Nominatim gives us. Nominatim + Photon
+    # stay as fallbacks so the picker still works if Mapbox fails or
+    # the token is unset.
+    #
+    # Curated `_match_landmarks` is kept as a Yale-jargon safety net.
+    # Mapbox handles full names well ("Kline Tower") but has no
+    # tolerance for common typos ("klein" → Kline) or two-letter
+    # abbreviations ("KBT", "SML"). The landmark matcher's difflib
+    # fuzzy-match catches those. The unified scorer ranks everything
+    # together, so this source only wins when it's a clear match.
+    mapbox = _mapbox(q)
+    if len(mapbox) >= 3:
+        candidates = _match_shuttle_stops(q) + _match_landmarks(q) + mapbox
+    else:
+        candidates = _match_shuttle_stops(q) + _match_landmarks(q) + mapbox + _nominatim(q) + _photon(q)
+    scored = [(_unified_score(c), c) for c in candidates]
+    # Drop anything the scorer returned 0 for (out-of-area, no match)
+    # and anything below a weak-match floor so we don't surface junk.
+    scored = [(s, c) for s, c in scored if s >= 0.55]
+    scored.sort(key=lambda x: -x[0])
+
+    # Dedupe by geographic proximity — TransLoc NB/SB twins and OSM
+    # direction-specific nodes often land within 40 m of each other.
     DEDUP_METERS = 70
     kept: list = []
-    for r in landmarks + external:
+    for score, r in scored:
         dup = False
         for k in kept:
-            # Quick planar-metric approximation at lat ≈ 41°: 1° lat ≈ 111km,
-            # 1° lon ≈ 84km. Close-enough for short distances.
             dlat = (r["lat"] - k["lat"]) * 111_000
             dlon = (r["lon"] - k["lon"]) * 84_000
             if dlat * dlat + dlon * dlon < DEDUP_METERS * DEDUP_METERS:
                 dup = True
                 break
         if not dup:
-            kept.append(r)
+            # Strip the internal scoring field before returning to the
+            # client — it's implementation-detail, not something the UI
+            # should see or depend on.
+            out = {k: v for k, v in r.items() if not k.startswith("_")}
+            kept.append(out)
+        if len(kept) >= 8:
+            break
+    if len(_GEOCODE_CACHE) >= _GEOCODE_MAX_ENTRIES:
+        # Drop the oldest ~20% by write timestamp. Cheap, avoids LRU bookkeeping.
+        ts_sorted = sorted(v[0] for v in _GEOCODE_CACHE.values())
+        cutoff = ts_sorted[len(ts_sorted) // 5]
+        for k in [k for k, v in _GEOCODE_CACHE.items() if v[0] <= cutoff]:
+            del _GEOCODE_CACHE[k]
     _GEOCODE_CACHE[key] = (now, kept)
     return kept
 
 
 # ── HTTP app (FastAPI) ────────────────────────────────────────────────────
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -1063,8 +1529,9 @@ def api_buses():
 
 @app.get("/api/accuracy")
 def api_accuracy():
-    # Accuracy stats recompute slowly (14-day window). 60s is plenty fresh.
-    data = _cached("accuracy", 60, get_accuracy_stats)
+    # Accuracy stats recompute slowly (7-day window). 5 min is plenty fresh
+    # and keeps the expensive fetchall off the hot path.
+    data = _cached("accuracy", 300, get_accuracy_stats)
     return _json_cached(data, 60)
 
 
@@ -1084,7 +1551,8 @@ def api_debug_predictions(
     longer than shown; negative = bus came earlier → rider misses it)."""
     try:
         db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
-    except Exception:
+    except Exception as e:
+        _log_err("api_debug_predictions db.connect", e)
         return {"predictions": []}
     db.row_factory = sqlite3.Row
     wheres = [f"p.predicted_at > datetime('now', '-{int(hours)} hours')"]
@@ -1115,6 +1583,7 @@ def api_debug_predictions(
             LIMIT ?
         """, (*params, int(limit))).fetchall()
     except Exception as e:
+        _log_err("api_debug_predictions query", e)
         db.close()
         return {"predictions": [], "error": str(e)}
     db.close()
@@ -1165,6 +1634,230 @@ def api_geocode(q: str = Query("")):
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+def _ensure_reports_table() -> None:
+    """Lazily create the bug-report table so this endpoint doesn't
+    require a schema migration in the collector. Writes are rare
+    enough that creating on first use is fine. The status/resolution
+    columns track whether the developer has addressed a report so a
+    later "show me outstanding reports" query can skip fixed ones."""
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS debug_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                reported_at TEXT NOT NULL DEFAULT (datetime('now')),
+                note TEXT,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                resolution TEXT,
+                resolved_at TEXT
+            )
+        """)
+        # Additive migrations for existing deployments.
+        for col, decl in [
+            ("status", "TEXT NOT NULL DEFAULT 'open'"),
+            ("resolution", "TEXT"),
+            ("resolved_at", "TEXT"),
+        ]:
+            try:
+                db.execute(f"ALTER TABLE debug_reports ADD COLUMN {col} {decl}")
+            except Exception:
+                pass  # already exists
+        db.commit()
+        db.close()
+    except Exception as e:
+        _log_err("_ensure_reports_table", e)
+
+
+# Per-client rate limiter for /api/report. In-memory sliding window
+# keyed by IP. Resets on process restart, which is fine — the goal is
+# to stop accidental or malicious floods from filling the volume, not
+# to be cryptographically strict. Values: (minute_bucket_start,
+# minute_count, day_bucket_start, day_count).
+_REPORT_RATE: dict[str, tuple[float, int, float, int]] = {}
+_REPORT_PER_MINUTE = 10
+_REPORT_PER_DAY = 200
+
+
+def _report_rate_allow(client_ip: str) -> bool:
+    now = time.time()
+    m_bucket = now // 60
+    d_bucket = now // 86400
+    m_start, m_count, d_start, d_count = _REPORT_RATE.get(
+        client_ip, (m_bucket, 0, d_bucket, 0),
+    )
+    if m_start != m_bucket:
+        m_start, m_count = m_bucket, 0
+    if d_start != d_bucket:
+        d_start, d_count = d_bucket, 0
+    if m_count >= _REPORT_PER_MINUTE or d_count >= _REPORT_PER_DAY:
+        _REPORT_RATE[client_ip] = (m_start, m_count, d_start, d_count)
+        return False
+    _REPORT_RATE[client_ip] = (m_start, m_count + 1, d_start, d_count + 1)
+    # Clean up cold entries so the dict doesn't grow forever.
+    if len(_REPORT_RATE) > 1000:
+        stale_cutoff = now - 86400 * 2
+        for k, v in list(_REPORT_RATE.items()):
+            if v[0] * 60 < stale_cutoff:
+                _REPORT_RATE.pop(k, None)
+    return True
+
+
+def _json_depth(obj, d: int = 0) -> int:
+    """Max nesting depth of a JSON-like value. Used to reject deeply
+    nested payloads that could be a denial-of-service via parser
+    recursion."""
+    if isinstance(obj, dict):
+        return max((_json_depth(v, d + 1) for v in obj.values()), default=d)
+    if isinstance(obj, list):
+        return max((_json_depth(v, d + 1) for v in obj), default=d)
+    return d
+
+
+@app.post("/api/report")
+async def api_report(req: Request):
+    """Log a user-submitted bug report. The payload is the client's
+    current state (planned option, live buses, stop context) plus an
+    optional free-text note. Stored verbatim — debugging later is a
+    matter of SELECTing rows. Size-capped at 64 KB to keep the volume
+    from filling with accidental floods. Rate-limited per-IP so a bad
+    actor can't burst the endpoint."""
+    client_ip = req.client.host if req.client else "unknown"
+    # Fly sets X-Forwarded-For with the real client. Trust only when
+    # the immediate peer is a known proxy IP range — but on Fly every
+    # request arrives through their proxy, so pulling the first XFF
+    # hop is safe for rate-limiting purposes.
+    fwd = req.headers.get("x-forwarded-for")
+    if fwd:
+        client_ip = fwd.split(",")[0].strip() or client_ip
+    if not _report_rate_allow(client_ip):
+        raise HTTPException(status_code=429, detail="too many reports — slow down")
+    try:
+        body = await req.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid json")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="expected object body")
+    if _json_depth(body) > 6:
+        raise HTTPException(status_code=400, detail="payload too deeply nested")
+    note = str(body.pop("note", "") or "")[:2000]
+    payload = json.dumps(body, default=str)
+    if len(payload) > 64_000:
+        raise HTTPException(status_code=413, detail="payload too large")
+    _ensure_reports_table()
+    try:
+        db = sqlite3.connect(DB_PATH)
+        cursor = db.execute(
+            "INSERT INTO debug_reports (note, payload) VALUES (?, ?)",
+            (note, payload),
+        )
+        report_id = cursor.lastrowid
+        db.commit()
+        db.close()
+    except Exception as e:
+        _log_err("api_report insert", e)
+        raise HTTPException(status_code=500, detail="could not save report")
+    _log.info("debug report #%s saved (%d bytes, note=%r)", report_id, len(payload), note[:80])
+    return {"ok": True, "id": report_id}
+
+
+@app.get("/api/reports")
+def api_reports(
+    limit: int = Query(50, ge=1, le=500),
+    status: str = Query("", description="Filter by status (open, addressed, wontfix). Empty = all."),
+):
+    """Read back recent bug reports — for the developer, not riders.
+    Returns newest first. Includes status/resolution so a later
+    "check for new errors" query can skip already-addressed ones."""
+    _ensure_reports_table()
+    wheres: list = []
+    params: list = []
+    if status:
+        wheres.append("status = ?")
+        params.append(status)
+    where_sql = f"WHERE {' AND '.join(wheres)}" if wheres else ""
+    try:
+        db = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        db.row_factory = sqlite3.Row
+        rows = db.execute(
+            f"SELECT id, reported_at, note, payload, status, resolution, resolved_at "
+            f"FROM debug_reports {where_sql} ORDER BY id DESC LIMIT ?",
+            (*params, limit),
+        ).fetchall()
+        db.close()
+    except Exception as e:
+        _log_err("api_reports query", e)
+        return {"reports": []}
+    return {
+        "reports": [
+            {
+                "id": r["id"],
+                "reported_at": r["reported_at"],
+                "note": r["note"],
+                "payload": json.loads(r["payload"]) if r["payload"] else None,
+                "status": r["status"],
+                "resolution": r["resolution"],
+                "resolved_at": r["resolved_at"],
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.post("/api/reports/{report_id}/update")
+async def api_reports_update(report_id: int, req: Request):
+    """Developer-only endpoint to annotate a bug report: set status
+    (open/addressed/wontfix/duplicate) and/or add resolution notes.
+    Each call appends the note to whatever was there, timestamping
+    the update, so the resolution field doubles as a triage log."""
+    try:
+        body = await req.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid json")
+    status = body.get("status")
+    note = body.get("note")
+    if status is not None and status not in ("open", "addressed", "wontfix", "duplicate"):
+        raise HTTPException(status_code=400, detail="invalid status")
+    _ensure_reports_table()
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+        row = db.execute("SELECT resolution FROM debug_reports WHERE id = ?", (report_id,)).fetchone()
+        if not row:
+            db.close()
+            raise HTTPException(status_code=404, detail="report not found")
+        new_resolution = row["resolution"] or ""
+        if note:
+            # Append with timestamp; keep prior notes so the field
+            # reads chronologically like a bug-tracker comment log.
+            ts = time.strftime("%Y-%m-%d %H:%M")
+            entry = f"[{ts}] {note}"
+            new_resolution = f"{new_resolution}\n{entry}" if new_resolution else entry
+        fields: list = []
+        params: list = []
+        if status is not None:
+            fields.append("status = ?")
+            params.append(status)
+            if status != "open":
+                fields.append("resolved_at = COALESCE(resolved_at, datetime('now'))")
+        if note:
+            fields.append("resolution = ?")
+            params.append(new_resolution)
+        if not fields:
+            db.close()
+            raise HTTPException(status_code=400, detail="nothing to update")
+        params.append(report_id)
+        db.execute(f"UPDATE debug_reports SET {', '.join(fields)} WHERE id = ?", params)
+        db.commit()
+        db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        _log_err("api_reports_update", e)
+        raise HTTPException(status_code=500, detail="could not update report")
+    return {"ok": True, "id": report_id}
 
 
 # Serve the Vite-built frontend if it exists. In dev, the Vite server

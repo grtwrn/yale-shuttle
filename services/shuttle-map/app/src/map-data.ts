@@ -109,7 +109,7 @@ export const stations: Station[] = [
   { id: "olive_greene",  label: "Olive / Greene",    x: 700, y: 620, labelSide: "r", stopIds: [159] },
   { id: "union_fair",    label: "Union / Fair",      x: 580, y: 800, labelSide: "r", stopIds: [160, 168] },
 
-  // Canal/Munson (shared by Red NB, Blue West, Brown)
+  // Canal/Munson (shared by Red NB, Blue West)
   { id: "canal_munson",  label: "Canal / Munson",    x: 110, y: 140, labelSide: "l", stopIds: [27] },
 
   // Brown Connector

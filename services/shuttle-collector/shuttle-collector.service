@@ -10,6 +10,7 @@ ExecStart=/usr/bin/npx tsx services/shuttle-collector/index.ts
 Restart=on-failure
 RestartSec=30
 Environment=NODE_ENV=production
+Environment=TZ=America/New_York
 
 # Logging
 StandardOutput=journal
