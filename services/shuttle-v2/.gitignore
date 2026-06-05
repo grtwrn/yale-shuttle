@@ -1,0 +1,9 @@
+node_modules/
+dist/
+store/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.env.*

@@ -1,0 +1,40 @@
+app = 'yale-shuttle'
+primary_region = 'ewr'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '8080'
+  SHUTTLE_V2_DB = '/data/shuttle-v2.db'
+  SHUTTLE_V2_DB_DIR = '/data'
+  SHUTTLE_V2_STATIC_DIR = '/app/web/dist'
+
+[[mounts]]
+  source = 'shuttle_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 200
+    soft_limit = 150
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '15s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
