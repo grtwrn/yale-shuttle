@@ -85,4 +85,4 @@ curl -s https://yale-shuttle.fly.dev/api/buses | jq '.buses[0]'
 ~/.fly/bin/flyctl ssh console -a yale-shuttle -C "ls -la /data"
 ```
 
-Debugging a blank/white page without a browser (headless chromium is broken on this Pi): run the built bundle under jsdom — see the memory note on environment quirks for the harness.
+Visual checks of the live site DO work on this Pi via Playwright driving system chromium over CDP (only the legacy `chromium --screenshot` one-shot CLI hangs). Recipe: `npm i playwright-core`, launch with `executablePath: "/usr/bin/chromium"` + `--no-sandbox --disable-gpu --disable-dev-shm-usage`, `goto(url, {waitUntil: "domcontentloaded"})`. Working end-to-end example: `services/shuttle-v2/scripts/map-bot-visual.mjs` (run with `BOT_CHROMIUM_PATH=/usr/bin/chromium`) — picks a random trip, sets geolocation as the origin, screenshots the plan + the Leaflet map with bus markers, and watches a bus approach. The companion `scripts/map-bot.mjs` is a headless data-level check (random trip → `/api/plan` ground truth). For a pure JS-crash repro without any browser, the jsdom harness still works — see the memory note on environment quirks.

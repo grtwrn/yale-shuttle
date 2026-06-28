@@ -1469,9 +1469,14 @@ const AllRoutesMap: FC<{
         icon: busIcon(color, b.heading ?? 0, label, dwelling),
         keyboard: false, zIndexOffset: 1000,
       })
-        .bindTooltip(`${b.bus_name} · ${cfg?.label ?? `Route ${b.route_id}`}`, {
-          direction: "top", offset: [0, -16],
-        })
+        .bindTooltip(() => {
+          let tip = `${b.bus_name} · ${cfg?.label ?? `Route ${b.route_id}`}`;
+          if (b.at_stop_id != null && b.at_stop_since) {
+            const minAt = Math.round(Math.max(0, (Date.now() - new Date(b.at_stop_since + "Z").getTime()) / 60000));
+            if (minAt > 0) tip += ` · at stop ${minAt} min`;
+          }
+          return tip;
+        }, { direction: "top", offset: [0, -16] })
         .addTo(grp);
     }
   }, [buses]);
@@ -3068,12 +3073,18 @@ const TripPlanner: FC<{
                           {away}
                         </div>
                       )}
-                      {!o.departed && dwellNow && (
-                        <div style={{ fontSize: 12, color: "#78909c", fontWeight: 500, lineHeight: 1.4, marginTop: 2 }}>
-                          ⏸ waiting at {dwellNow.stopName || "a stop"} {fmtDwell(dwellNow.elapsed)}
-                          {dwellNow.typical ? ` · ~${fmtDwell(dwellNow.typical.med)} typical` : ""}
-                        </div>
-                      )}
+                      {!o.departed && dwellNow && (() => {
+                        const overdue = dwellNow.typical
+                          ? dwellNow.elapsed > Math.max(dwellNow.typical.med * 1.5, 120)
+                          : dwellNow.elapsed > 300;
+                        return (
+                          <div style={{ fontSize: 12, color: overdue ? "#e65100" : "#78909c", fontWeight: overdue ? 600 : 500, lineHeight: 1.4, marginTop: 2 }}>
+                            {overdue ? "⚠️" : "⏸"} waiting at {dwellNow.stopName || "a stop"} {fmtDwell(dwellNow.elapsed)}
+                            {dwellNow.typical ? ` · ~${fmtDwell(dwellNow.typical.med)} typical` : ""}
+                            {overdue ? " — may be delayed" : ""}
+                          </div>
+                        );
+                      })()}
                       {(() => {
                         if (o.departed) return null;
                         if (!conf || typicalSec == null) return null;
@@ -5797,6 +5808,152 @@ function distanceBucket(stopsAhead: number): string | null {
 // sticky across tabs. Counts down stops-to-alight from the live bus position
 // and turns red ("Get off NEXT stop!") as the stop approaches. Stateless —
 // recomputes on every root re-render (i.e. every poll), so it stays current.
+// Focused map for the post-boarding view: draws ONLY the boarded route — its
+// path, its stops (board emphasised, alight as 🏁), the live buses on that line
+// (your bus opaque, others faded), and "you are here". Modeled on AllRoutesMap
+// but scoped to one ride so the rider sees just their line and where they are.
+const RideRouteMap: FC<{
+  ride: BoardedRide;
+  buses: BusData[];
+  routePaths: Record<string, [number, number][]>;
+  stopCoords: Record<number, LatLon>;
+  stopNames: Record<number, string>;
+  routeStops: Record<string, number[]>;
+  userLatLon: LatLon | null;
+  onRequestLocate: () => void;
+}> = ({ ride, buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const busLayerRef = useRef<L.LayerGroup | null>(null);
+  const youMarkerRef = useRef<L.Marker | null>(null);
+  const [awaitingPan, setAwaitingPan] = useState(false);
+
+  const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
+  const routeIds = cfg ? cfg.routeIds : [];
+  const normBus = (s: string) => s.replace(/^#/, "");
+
+  // Same bus disc as AllRoutesMap (route-colored, number inside, heading arrow,
+  // pulse when dwelling).
+  const busIcon = (color: string, headingDeg: number, label: string, dwelling: boolean) => {
+    const fontSize = label.length >= 3 ? 9 : 11;
+    return L.divIcon({
+      className: "bus-marker",
+      html: `
+        <div style="width:44px;height:44px;position:relative;">
+          ${dwelling ? `<div style="position:absolute;inset:4px;border:2px solid ${color};border-radius:50%;opacity:0.35;animation:shuttlePulse 1.8s ease-out infinite;"></div>` : ""}
+          <div style="position:absolute;inset:0;transform:rotate(${Math.round(headingDeg)}deg);">
+            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${color};filter:drop-shadow(0 -1px 1px rgba(0,0,0,0.4));"></div>
+          </div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;background:${color};color:#fff;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;font:700 ${fontSize}px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;letter-spacing:-0.02em;">${label}</div>
+        </div>`,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+    });
+  };
+
+  // Mount-once (rebuilds when route path data lands): tiles, the boarded route's
+  // polyline, its stops with board emphasised + alight as 🏁, fit to the route.
+  useEffect(() => {
+    if (!ref.current || mapRef.current || !cfg) return;
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
+    mapRef.current = map;
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
+    }).addTo(map);
+
+    const pts: [number, number][] = [];
+    for (const rid of routeIds) {
+      const path = routePaths[rid];
+      if (!path || path.length < 2) continue;
+      L.polyline(path, { color: ride.color, weight: 4, opacity: 0.85 }).addTo(map);
+      for (const p of path) pts.push(p);
+    }
+
+    const seen = new Set<number>();
+    for (const rid of routeIds) {
+      for (const sid of routeStops[rid] ?? []) {
+        if (seen.has(sid)) continue;
+        seen.add(sid);
+        const c = stopCoords[sid];
+        if (!c) continue;
+        const nm = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+        if (sid === ride.alightStopId) {
+          L.marker([c.lat, c.lon], {
+            icon: L.divIcon({ className: "alight-marker", html: `<div style="font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));">🏁</div>`, iconSize: [20, 20], iconAnchor: [3, 18] }),
+            keyboard: false, zIndexOffset: 800,
+          }).addTo(map).bindTooltip(`Get off: ${nm}`, { direction: "top", offset: [0, -10] });
+        } else {
+          const isBoard = sid === ride.boardStopId;
+          L.circleMarker([c.lat, c.lon], {
+            radius: isBoard ? 6 : 4,
+            color: isBoard ? ride.color : "#0f172a",
+            weight: isBoard ? 3 : 1.5,
+            fillColor: isBoard ? ride.color : "#ffffff",
+            fillOpacity: 1,
+          }).addTo(map).bindTooltip((isBoard ? "Boarded: " : "") + nm, { direction: "top", offset: [0, -4] });
+        }
+        pts.push([c.lat, c.lon]);
+      }
+    }
+
+    busLayerRef.current = L.layerGroup().addTo(map);
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [28, 28] });
+    const t1 = setTimeout(() => map.invalidateSize(), 60);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    return () => {
+      clearTimeout(t1); clearTimeout(t2);
+      map.remove();
+      mapRef.current = null; busLayerRef.current = null; youMarkerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ride.routeLabel, ride.boardStopId, ride.alightStopId, JSON.stringify(Object.keys(routePaths).sort())]);
+
+  // Live buses on this route — redrawn each poll. Your bus is opaque + on top;
+  // others on the same line are faded for context.
+  useEffect(() => {
+    const grp = busLayerRef.current;
+    if (!grp || !cfg) return;
+    grp.clearLayers();
+    for (const b of buses) {
+      if (!cfg.busRouteIds.includes(b.route_id)) continue;
+      const isMine = normBus(b.bus_name) === normBus(ride.busName);
+      L.marker([b.lat, b.lon], {
+        icon: busIcon(ride.color, b.heading ?? 0, b.bus_name.replace(/^#/, ""), b.at_stop_id != null),
+        keyboard: false, zIndexOffset: isMine ? 1100 : 1000, opacity: isMine ? 1 : 0.5,
+      }).bindTooltip(isMine ? `${b.bus_name} · your bus` : b.bus_name, { direction: "top", offset: [0, -16] }).addTo(grp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buses, ride.busName, ride.routeLabel]);
+
+  // "You are here" — same pulsing blue dot used elsewhere; moved in place per fix.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userLatLon) { youMarkerRef.current?.remove(); youMarkerRef.current = null; return; }
+    if (youMarkerRef.current) youMarkerRef.current.setLatLng([userLatLon.lat, userLatLon.lon]);
+    else youMarkerRef.current = L.marker([userLatLon.lat, userLatLon.lon], { icon: makeYouIcon(), keyboard: false, interactive: false, zIndexOffset: 900 }).addTo(map);
+    if (awaitingPan) { setAwaitingPan(false); map.setView([userLatLon.lat, userLatLon.lon], Math.max(map.getZoom(), 16), { animate: true }); }
+  }, [userLatLon?.lat, userLatLon?.lon, awaitingPan]);
+
+  const locateMe = () => {
+    const map = mapRef.current;
+    if (map && userLatLon) { map.setView([userLatLon.lat, userLatLon.lon], Math.max(map.getZoom(), 16), { animate: true }); return; }
+    setAwaitingPan(true); onRequestLocate();
+  };
+
+  return (
+    <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 8px 4px", boxSizing: "border-box" }}>
+      <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
+      <div style={{ position: "relative", width: "100%" }}>
+        <div ref={ref} style={{ position: "relative", width: "100%", height: "40vh", borderRadius: 8, border: "1px solid #e0ddd8", overflow: "hidden" }} />
+        <button onClick={locateMe} aria-label="Show my location" title="Show my location" style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, width: 44, height: 44, borderRadius: 10, border: "1px solid #cfd8dc", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, lineHeight: 1, padding: 0 }}>📍</button>
+      </div>
+    </div>
+  );
+};
+
+// On-bus tracking stop list. Shown under RideRouteMap once the rider taps
+// "I'm on this bus" / "Route". Counts down stops-to-alight from the live bus.
 const RideStopList: FC<{
   ride: BoardedRide;
   buses: BusData[];
@@ -5939,8 +6096,7 @@ const OnBusBanner: FC<{
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   onEnd: () => void;
-  onShowRoute: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, onEnd, onShowRoute }) => {
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, onEnd }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -6018,17 +6174,6 @@ const OnBusBanner: FC<{
         </div>
       </div>
       <button
-        onClick={onShowRoute}
-        style={{
-          flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
-          border: "1px solid rgba(255,255,255,0.6)", borderRadius: 6,
-          background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer",
-          fontFamily: "inherit", minHeight: 36,
-        }}
-      >
-        Route
-      </button>
-      <button
         onClick={onEnd}
         style={{
           flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
@@ -6067,8 +6212,8 @@ const TransitMap: FC = () => {
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
-  const [showRideList, setShowRideList] = useState(false);
-  useEffect(() => { if (!boardedRide) setShowRideList(false); }, [boardedRide]);
+  // While a ride is active, the dedicated ride page (map + stop list) replaces
+  // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
   const [listView, setListView] = useState<"all" | "trip" | "map">(() => {
@@ -6190,7 +6335,7 @@ const TransitMap: FC = () => {
           watchIdRef.current = navigator.geolocation.watchPosition(
             (p) => setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude }),
             () => {},
-            { enableHighAccuracy: true, maximumAge: 30_000 },
+            { enableHighAccuracy: true, maximumAge: 5_000 },
           );
         }
       },
@@ -6239,7 +6384,7 @@ const TransitMap: FC = () => {
         // From manually.
         if (err.code === err.PERMISSION_DENIED) return;
       },
-      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 15_000 },
+      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
     );
     // If we don't have ANY location yet (cache stale, first run),
     // show the "Locating…" hint so the rider knows to wait.
@@ -6548,8 +6693,7 @@ const TransitMap: FC = () => {
           segmentTimes={segmentTimes}
           dwellTimes={dwellTimes}
           dwellsByBus={dwellsByBus}
-          onEnd={() => { setBoardedRide(null); setShowRideList(false); }}
-          onShowRoute={() => setShowRideList(r => !r)}
+          onEnd={() => { setBoardedRide(null); }}
         />
       )}
       {/* Header */}
@@ -6563,7 +6707,8 @@ const TransitMap: FC = () => {
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
       </div>
 
-      {/* View tabs — horizontally scrollable on narrow screens */}
+      {/* View tabs — hidden while on a bus, since the ride page is its own view */}
+      {!boardedRide && (
       <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
@@ -6573,7 +6718,7 @@ const TransitMap: FC = () => {
           {(["trip", "all", "map"] as const).map((v) => (
             <button
               key={v}
-              onClick={() => { setListView(v); setShowRideList(false); }}
+              onClick={() => { setListView(v); }}
               style={{
                 padding: "4px 14px", borderRadius: 12, border: "none",
                 background: listView === v ? "#1a1a2e" : "#e0ddd8",
@@ -6588,19 +6733,34 @@ const TransitMap: FC = () => {
           ))}
         </div>
       </div>
+      )}
 
-      {/* Ride stop list — shown when rider taps "Route" in the boarding banner */}
-      {boardedRide && showRideList ? (
-        <RideStopList
-          ride={boardedRide}
-          buses={buses}
-          stopNames={stopNames}
-          stopCoords={stopCoords}
-          routeStops={routeStops}
-          segmentTimes={segmentTimes}
-          dwellTimes={dwellTimes}
-          dwellsByBus={dwellsByBus}
-        />
+      {/* Ride page — once on a bus this is the whole view (its own page): a map
+          of just your route + your location, then the stop list. Tabs are hidden
+          above; "Done" in the banner ends the ride and returns to the tabs. */}
+      {boardedRide ? (
+        <>
+          <RideRouteMap
+            ride={boardedRide}
+            buses={buses}
+            routePaths={routePaths}
+            stopCoords={stopCoords}
+            stopNames={stopNames}
+            routeStops={routeStops}
+            userLatLon={userLatLon}
+            onRequestLocate={startLocating}
+          />
+          <RideStopList
+            ride={boardedRide}
+            buses={buses}
+            stopNames={stopNames}
+            stopCoords={stopCoords}
+            routeStops={routeStops}
+            segmentTimes={segmentTimes}
+            dwellTimes={dwellTimes}
+            dwellsByBus={dwellsByBus}
+          />
+        </>
       ) : listView === "map" ? (
         <AllRoutesMap
           buses={buses} routePaths={routePaths}
@@ -6622,7 +6782,7 @@ const TransitMap: FC = () => {
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
           accuracy={accuracy}
-          onBoard={(ride) => { setBoardedRide(ride); setListView("map"); }}
+          onBoard={(ride) => { setBoardedRide(ride); }}
         />
       ) : (
       <>
