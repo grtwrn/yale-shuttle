@@ -6096,7 +6096,9 @@ const OnBusBanner: FC<{
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   onEnd: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, onEnd }) => {
+  minimized: boolean;
+  onToggleMinimize: () => void;
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, onEnd, minimized, onToggleMinimize }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -6174,6 +6176,17 @@ const OnBusBanner: FC<{
         </div>
       </div>
       <button
+        onClick={onToggleMinimize}
+        style={{
+          flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
+          border: "1px solid rgba(255,255,255,0.6)", borderRadius: 6,
+          background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer",
+          fontFamily: "inherit", minHeight: 36,
+        }}
+      >
+        {minimized ? "Open" : "Minimize"}
+      </button>
+      <button
         onClick={onEnd}
         style={{
           flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
@@ -6213,7 +6226,9 @@ const TransitMap: FC = () => {
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // While a ride is active, the dedicated ride page (map + stop list) replaces
-  // the tabbed views entirely — no toggle needed.
+  // the tabbed views. "Minimize" collapses it back to the tabs WITHOUT ending
+  // the ride (banner stays, "Open" re-expands); "Done" ends the ride.
+  const [rideMinimized, setRideMinimized] = useState(false);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
   const [listView, setListView] = useState<"all" | "trip" | "map">(() => {
@@ -6693,7 +6708,9 @@ const TransitMap: FC = () => {
           segmentTimes={segmentTimes}
           dwellTimes={dwellTimes}
           dwellsByBus={dwellsByBus}
-          onEnd={() => { setBoardedRide(null); }}
+          onEnd={() => { setBoardedRide(null); setRideMinimized(false); }}
+          minimized={rideMinimized}
+          onToggleMinimize={() => setRideMinimized((m) => !m)}
         />
       )}
       {/* Header */}
@@ -6707,8 +6724,9 @@ const TransitMap: FC = () => {
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
       </div>
 
-      {/* View tabs — hidden while on a bus, since the ride page is its own view */}
-      {!boardedRide && (
+      {/* View tabs — hidden while the ride page is open; shown again once the
+          ride is minimized (or no ride), so the rider can use them mid-trip. */}
+      {(!boardedRide || rideMinimized) && (
       <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
@@ -6737,8 +6755,9 @@ const TransitMap: FC = () => {
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
           of just your route + your location, then the stop list. Tabs are hidden
-          above; "Done" in the banner ends the ride and returns to the tabs. */}
-      {boardedRide ? (
+          above. "Minimize" collapses to the tabs (ride stays active); "Done"
+          ends the ride. */}
+      {boardedRide && !rideMinimized ? (
         <>
           <RideRouteMap
             ride={boardedRide}
@@ -6782,7 +6801,7 @@ const TransitMap: FC = () => {
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
           accuracy={accuracy}
-          onBoard={(ride) => { setBoardedRide(ride); }}
+          onBoard={(ride) => { setBoardedRide(ride); setRideMinimized(false); }}
         />
       ) : (
       <>
