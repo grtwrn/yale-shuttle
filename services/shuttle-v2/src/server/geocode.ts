@@ -22,24 +22,71 @@ export interface GeocodeHit {
 
 /**
  * Yale-area landmarks the rider is likely to type into the trip planner.
- * Coordinates from public Google Maps lookups. Keep the list short and
- * high-signal — a long list dilutes the ranking and adds maintenance load.
+ * Keep the list short and high-signal — a long list dilutes the ranking and
+ * adds maintenance load.
+ *
+ * ⚠️ Hand-entered coordinates rot silently. Every entry here was audited on
+ * 2026-08-31 against OpenStreetMap/Nominatim (forward AND reverse geocode) and
+ * against the live shuttle stop network; seven of the original fourteen were
+ * wrong, one by 1.2 km. `geocode.test.ts` now pins each landmark to the shuttle
+ * stop that serves it, so the same drift fails the suite instead of sending a
+ * rider across town. **If you add or move an entry, cross-check it externally
+ * and add its anchor to that test** — do not eyeball it.
  */
-const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
+export const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
+  // -- Central campus / downtown --------------------------------------------
   { label: "Sterling Memorial Library", lat: 41.3115, lon: -72.9282 },
   { label: "Beinecke Library", lat: 41.3115, lon: -72.9272 },
   { label: "Bass Library", lat: 41.3110, lon: -72.9281 },
-  { label: "School of Management (SOM)", lat: 41.3163, lon: -72.9209 },
-  { label: "School of Public Health (YSPH)", lat: 41.3162, lon: -72.9367 },
-  { label: "Peabody Museum", lat: 41.3151, lon: -72.9223 },
-  { label: "Rosenkranz Hall", lat: 41.3098, lon: -72.9259 },
-  { label: "Becton Center", lat: 41.3168, lon: -72.9234 },
-  { label: "Kline Biology Tower", lat: 41.3199, lon: -72.9223 },
+  { label: "Old Campus", lat: 41.3083, lon: -72.9282 },
+  // Was 41.3091,-72.9298 — east of York St, on the Old Campus block, and
+  // reverse-geocoding it named no building at all. OSM's Davenport College
+  // polygon (248 York St) sits 224 m NW, west of York between Chapel and Elm,
+  // which is where the college actually is.
+  { label: "Davenport College", lat: 41.3105, lon: -72.9317 },
+  { label: "Woolsey Hall", lat: 41.3112, lon: -72.9262 },
+  { label: "Schwarzman Center", lat: 41.3118, lon: -72.9264 },
+  { label: "Yale Law School", lat: 41.3120, lon: -72.9278 },
+  { label: "Yale University Art Gallery", lat: 41.3084, lon: -72.9309 },
+  { label: "Yale Center for British Art", lat: 41.3079, lon: -72.9309 },
+  // Was 41.3115,-72.9173 — 1.2 km east, which reverse-geocodes to 712 State
+  // Street. The gym is 70 Tower Parkway, 44 m from our own "Payne Whitney Gym"
+  // shuttle stop.
+  { label: "Payne Whitney Gym", lat: 41.3137, lon: -72.9311 },
+  // Nominatim has no POI for Yale Health, so the curated list is the only way
+  // a rider finds it. 55 Lock St, per the OSM address node.
+  { label: "Yale Health Center", lat: 41.3157, lon: -72.9278 },
+
+  // -- Science Hill / Prospect / Whitney ------------------------------------
+  // Was 41.3168,-72.9234 — 481 m north, on Kroon Hall. Becton is 15 Prospect,
+  // 22 m from the "Becton / 15 Prospect" stop.
+  { label: "Becton Center", lat: 41.3127, lon: -72.9251 },
+  // Was 41.3098,-72.9259 — 556 m south, on 51 Temple St. Rosenkranz is
+  // 115 Prospect St.
+  { label: "Rosenkranz Hall", lat: 41.3147, lon: -72.9246 },
+  // Was 41.3163,-72.9209 — outside Evans Hall's footprint and reverse-geocoding
+  // to the Kline Geology Laboratory next door. SOM is Evans Hall, 165 Whitney,
+  // 32 m from the "SOM" stop.
+  { label: "School of Management (SOM)", lat: 41.3152, lon: -72.9205 },
+  // Was 41.3151,-72.9223 — 145 m SW, outside the museum footprint.
+  { label: "Peabody Museum", lat: 41.3160, lon: -72.9211 },
+  { label: "Ingalls Rink", lat: 41.3168, lon: -72.9250 },
+  // Renamed: the 2023 renovation dropped "Biology" (biology moved to the Yale
+  // Science Building) and OSM now maps 219 Prospect as "Kline Tower". The old
+  // name stays in the label so riders who still type it get a hit. The old
+  // coordinate 41.3199,-72.9223 was ~300 m north, on Edwards Street.
+  { label: "Kline Tower (Kline Biology Tower)", lat: 41.3172, lon: -72.9225 },
+  { label: "Yale Science Building (YSB)", lat: 41.3174, lon: -72.9218 },
+  { label: "Divinity School", lat: 41.3232, lon: -72.9225 },
+
+  // -- Medical campus / south -----------------------------------------------
+  // Report #14 got the *matching* fixed but not the coordinate: 41.3162,-72.9367
+  // is 1.4 km NW, on Goffe Street. YSPH is 60 College St (LEPH), 52 m from the
+  // "LEPH / 60 College" stop.
+  { label: "School of Public Health (YSPH)", lat: 41.3037, lon: -72.9322 },
+  { label: "School of Medicine (YSM)", lat: 41.3032, lon: -72.9337 },
   { label: "Yale-New Haven Hospital", lat: 41.3035, lon: -72.9358 },
   { label: "Union Station", lat: 41.2974, lon: -72.9266 },
-  { label: "Payne Whitney Gym", lat: 41.3115, lon: -72.9173 },
-  { label: "Davenport College", lat: 41.3091, lon: -72.9298 },
-  { label: "Old Campus", lat: 41.3083, lon: -72.9282 },
 ];
 
 const MAX_RESULTS = 10;

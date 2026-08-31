@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   etDayAndMinutes, fmtSchedule, fmtScheduleDays, fmtScheduleTime,
-  isBusInService, isRouteActiveAt, nextActiveWindow, SERVICE_GRACE_MS,
+  isBusInService, isRouteActiveAt, nextActiveWindow, ROUTE_HOURS, SERVICE_GRACE_MS,
 } from "./schedule";
+import { ROUTE_LISTS } from "./routes";
 import { makeBus } from "./__fixtures__/payload";
 
 // 2026-08-31T20:30:00Z is Monday 16:30 in America/New_York (EDT, UTC-4).
@@ -125,8 +126,9 @@ describe("nextActiveWindow", () => {
   it("finds the next opening of a weekend route from a weekday", () => {
     const next = nextActiveWindow("Blue Weekend", MON_1630_ET);
     expect(next).not.toBeNull();
-    // Blue Weekend opens 08:00 ET on Saturday 2026-09-05.
-    expect(etDayAndMinutes(next!)).toEqual({ day: 6, mins: 8 * 60 });
+    // Blue Weekend opens 07:00 ET on Saturday 2026-09-05 (observed: the 07:00
+    // hour was in service on all 13 Saturdays and all 13 Sundays sampled).
+    expect(etDayAndMinutes(next!)).toEqual({ day: 6, mins: 7 * 60 });
     expect(next!.getTime()).toBeGreaterThan(MON_1630_ET.getTime());
   });
 
@@ -161,8 +163,188 @@ describe("schedule formatting", () => {
   });
 
   it("renders a whole route schedule", () => {
-    expect(fmtSchedule("Blue Weekend")).toBe("Sa/Su 8a–6p");
+    expect(fmtSchedule("Blue Weekend")).toBe("Sa/Su 7a–6p");
     expect(fmtSchedule("Red")).toBe("M–F 5:40a–7p");
     expect(fmtSchedule("Route That Does Not Exist")).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Windows pinned against observed service.
+//
+// Every instant below is a real Eastern wall-clock time taken from the
+// 2026-08-31 reconciliation of ROUTE_HOURS against 565,739 `arrivals` rows
+// (2026-06-02 → 2026-08-31, 13 full weeks). "runs" times are hours that were
+// in service on a majority of that weekday's service days; "dead" times are
+// hours with essentially no arrivals in 90 days. These exist so that widening
+// or narrowing a window is a deliberate act with a failing test attached.
+// ---------------------------------------------------------------------------
+
+// All of these dates fall inside EDT, so a literal -04:00 offset is exact and
+// stays correct whatever TZ the test process runs under.
+const et = (day: string, hh: number, mm = 0) =>
+  new Date(`${day}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00-04:00`);
+const WED = "2026-09-02";   // Wednesday
+const FRI = "2026-09-04";   // Friday
+const SAT = "2026-09-05";   // Saturday
+const SUN = "2026-09-06";   // Sunday
+
+const OBSERVED: { label: string; runs: Date[]; dead: Date[] }[] = [
+  // M–F 06:30–18:30 observed; the published 05:40–19:00 brackets it.
+  { label: "Red",
+    runs: [et(WED, 7), et(WED, 17)],
+    dead: [et(WED, 3), et(SUN, 12)] },
+  // M–F 07:00–18:00, sharp at both ends.
+  { label: "Blue Day",
+    runs: [et(WED, 7), et(WED, 17, 30)],
+    dead: [et(WED, 6), et(WED, 3), et(SAT, 12)] },
+  // 07:00 open, an hour earlier than the published 08:00.
+  { label: "Blue Weekend",
+    runs: [et(SAT, 7, 15), et(SUN, 7, 15), et(SAT, 17)],
+    dead: [et(SAT, 3), et(WED, 12)] },
+  // Evening routes: 18:00 → ~00:15, seven days a week.
+  { label: "Blue Night",
+    runs: [et(FRI, 22), et(SAT, 0, 30)],
+    dead: [et(WED, 3), et(WED, 12)] },
+  { label: "Blue West",
+    runs: [et(FRI, 22), et(SAT, 0, 30)],
+    dead: [et(WED, 3), et(WED, 12)] },
+  { label: "Orange Night",
+    runs: [et(WED, 21), et(WED, 0, 30)],
+    dead: [et(WED, 3), et(WED, 12)] },
+  { label: "Orange East",
+    runs: [et(WED, 21), et(WED, 0, 30)],
+    dead: [et(WED, 3), et(WED, 12)] },
+  // M–F 06:35–18:15.
+  { label: "Orange Day",
+    runs: [et(WED, 7), et(WED, 17, 30)],
+    dead: [et(WED, 3), et(SUN, 12)] },
+  // ~05:50 open (not 05:00), and the 18:00 hour is full service, not a
+  // straggler — it ran on 85–100 % of weekdays.
+  { label: "Brown",
+    runs: [et(WED, 6), et(WED, 18, 30)],
+    dead: [et(WED, 3), et(WED, 5), et(SUN, 12)] },
+  // 05:25–18:50. The 05:00 hour ran on 92–100 % of weekdays; the 04:00 hour
+  // appeared on 2 days out of 65 and is deliberately NOT in the window.
+  { label: "Pink",
+    runs: [et(WED, 5, 30), et(WED, 18, 30)],
+    dead: [et(WED, 4), et(WED, 3), et(SAT, 12)] },
+  // Daily from 05:25; weekdays to ~19:15, weekends to ~18:35.
+  { label: "Green",
+    runs: [et(WED, 5, 30), et(WED, 19, 15), et(SUN, 6), et(SAT, 18)],
+    dead: [et(WED, 3), et(WED, 21)] },
+  // The all-day/all-evening route: 100 % occupancy 05:00–23:00 every day —
+  // but zero arrivals after midnight in 90 days, so the window closes at 24:00.
+  { label: "Purple",
+    runs: [et(WED, 5, 30), et(WED, 23, 30), et(SUN, 12)],
+    dead: [et(WED, 0, 30), et(WED, 3)] },
+  // 08:00–17:45, flat across 13 weeks; 07:00 ran on ≤ 15 % of days.
+  { label: "Gold",
+    runs: [et(WED, 8), et(WED, 17, 30)],
+    dead: [et(WED, 6, 30), et(WED, 3), et(SAT, 12)] },
+  // Both grocery runs open at 07:00, not the published 10:00, and never run
+  // on a weekday (0 arrivals, M–F, in 90 days).
+  { label: "Grocery TJ",
+    runs: [et(SAT, 7, 30), et(SUN, 15)],
+    dead: [et(SAT, 3), et(WED, 12)] },
+  { label: "Grocery Ham",
+    runs: [et(SAT, 7, 30), et(SUN, 15)],
+    dead: [et(SAT, 3), et(WED, 12)] },
+];
+
+describe("ROUTE_HOURS vs observed service", () => {
+  it("has a window for every route the app can show", () => {
+    for (const cfg of ROUTE_LISTS) expect(ROUTE_HOURS[cfg.label]).toBeDefined();
+    // And no orphan windows keyed to a label that no longer exists.
+    const labels = new Set(ROUTE_LISTS.map((c) => c.label));
+    for (const label of Object.keys(ROUTE_HOURS)) expect(labels.has(label)).toBe(true);
+  });
+
+  for (const { label, runs, dead } of OBSERVED) {
+    it(`${label}: active when it demonstrably runs`, () => {
+      for (const t of runs) {
+        const { day, mins } = etDayAndMinutes(t);
+        expect(
+          isRouteActiveAt(label, t),
+          `${label} should be active on day ${day} at ${fmtScheduleTime(mins)} ET`,
+        ).toBe(true);
+      }
+    });
+
+    it(`${label}: inactive when it demonstrably does not`, () => {
+      for (const t of dead) {
+        const { day, mins } = etDayAndMinutes(t);
+        expect(
+          isRouteActiveAt(label, t),
+          `${label} should be inactive on day ${day} at ${fmtScheduleTime(mins)} ET`,
+        ).toBe(false);
+      }
+    });
+  }
+
+  // The dead-of-night sweep: nothing at all ran between 01:00 and 05:00 ET in
+  // 90 days, and isBusInService — the function that DELETES buses from the map,
+  // planner and arrival boards — must agree even after ±90 min of grace.
+  it("shows no route at 03:00 ET, grace included", () => {
+    const deadOfNight = et(WED, 3).getTime();
+    for (const cfg of ROUTE_LISTS) {
+      const bus = makeBus({ route_id: cfg.busRouteIds[0], lat: 41.31, lon: -72.93 });
+      expect(isBusInService(bus, deadOfNight), `${cfg.label} at 03:00 ET`).toBe(false);
+    }
+  });
+
+  // ...and the converse: every route must be visible during a slot the data
+  // says it really runs, once grace is applied.
+  it("shows every route during its own observed service", () => {
+    const byLabel = new Map(ROUTE_LISTS.map((c) => [c.label, c.busRouteIds[0]] as const));
+    for (const { label, runs } of OBSERVED) {
+      const routeId = byLabel.get(label)!;
+      const bus = makeBus({ route_id: routeId, lat: 41.31, lon: -72.93 });
+      for (const t of runs) {
+        expect(isBusInService(bus, t.getTime()), `${label} at ${t.toISOString()}`).toBe(true);
+      }
+    }
+  });
+
+  // Report #30 stays fixed: a weekday-only route seen on a Sunday afternoon is
+  // a parked shuttle with a live transponder. Red logged 1 arrival across 13
+  // Sundays; Pink, Brown and Gold logged none on any weekend day.
+  it("still deletes the weekday-only ghosts (report #30)", () => {
+    const sundayAfternoon = et(SUN, 17, 40).getTime();
+    for (const label of ["Red", "Blue Day", "Orange Day", "Pink", "Brown", "Gold"]) {
+      const routeId = ROUTE_LISTS.find((c) => c.label === label)!.busRouteIds[0];
+      const bus = makeBus({ route_id: routeId, lat: 41.31, lon: -72.93 });
+      expect(isBusInService(bus, sundayAfternoon), `${label} on a Sunday`).toBe(false);
+    }
+  });
+
+  // Purple's old 01:00 close was a 65-minute ghost window every night. The
+  // window now ends at midnight; grace still carries a genuinely late bus to
+  // 01:30, and only after that does Purple disappear.
+  it("closes Purple's overnight ghost window", () => {
+    const purpleId = ROUTE_LISTS.find((c) => c.label === "Purple")!.busRouteIds[0];
+    const bus = makeBus({ route_id: purpleId, lat: 41.31, lon: -72.93 });
+    expect(isBusInService(bus, et(WED, 23, 50).getTime())).toBe(true);
+    expect(isBusInService(bus, et(WED, 1, 0).getTime())).toBe(true);   // grace
+    expect(isBusInService(bus, et(WED, 2, 0).getTime())).toBe(false);  // ghost
+  });
+
+  // Gold was narrowed (07:30, from a published 06:00 never once observed).
+  // That narrowing must not be able to hide a bus that shows up at the old
+  // published start — grace has to still reach it.
+  it("keeps Gold visible back to its published 06:00 start", () => {
+    const goldId = ROUTE_LISTS.find((c) => c.label === "Gold")!.busRouteIds[0];
+    const bus = makeBus({ route_id: goldId, lat: 41.31, lon: -72.93 });
+    expect(isRouteActiveAt("Gold", et(WED, 6))).toBe(false);
+    expect(isBusInService(bus, et(WED, 6).getTime())).toBe(true);
+  });
+
+  // The grace is sized to the largest gap the corrected windows still leave:
+  // Blue Day's Friday tail, observed out to 19:05 against an 18:00 close.
+  it("covers Blue Day's observed Friday tail", () => {
+    const blueDay = makeBus({ route_id: 1, lat: 41.31, lon: -72.93 });
+    expect(SERVICE_GRACE_MS).toBeGreaterThanOrEqual(65 * 60 * 1000);
+    expect(isRouteActiveAt("Blue Day", et(FRI, 19, 5))).toBe(false);
+    expect(isBusInService(blueDay, et(FRI, 19, 5).getTime())).toBe(true);
   });
 });

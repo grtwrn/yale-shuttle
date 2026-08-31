@@ -244,7 +244,7 @@ describe("findPotentialRoutes", () => {
   it("annotates each route with its schedule and next opening", () => {
     const found = findPotentialRoutes(from, to, routeStops, stopCoords, new Date(NOW));
     const weekend = found.find((r) => r.label === "Blue Weekend")!;
-    expect(weekend.schedule).toBe("Sa/Su 8a–6p");
+    expect(weekend.schedule).toBe("Sa/Su 7a–6p");
     expect(weekend.nextActive!.getTime()).toBeGreaterThan(NOW);
     expect(stopCoords[weekend.boardStopId]).toBeDefined();
     expect(stopCoords[weekend.alightStopId]).toBeDefined();

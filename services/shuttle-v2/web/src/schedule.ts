@@ -5,28 +5,70 @@
 import type { BusData } from "./map-data";
 import { ROUTE_ID_LABEL } from "./routes";
 
-// Published Yale shuttle operating windows, keyed by ROUTE_LISTS label.
+// Yale shuttle operating windows, keyed by ROUTE_LISTS label.
 // days uses JS getDay() (0=Sun..6=Sat). endMin > 1440 means the window
 // extends into the next day's early hours — e.g. 25*60 = 1:00 AM.
-// Sources: your.yale.edu daytime/nighttime/weekend routes pages.
+//
+// Originally transcribed from your.yale.edu; reconciled 2026-08-31 against
+// 565,739 observed `arrivals` rows spanning 2026-06-02 → 2026-08-31 (13 full
+// weeks). Method — deliberately robust, because a single shuttle
+// repositioning at 04:00 is not "service starts at 4am":
+//   * group arrivals by *service day* (ET day shifted back 4 h, so 00:00–03:59
+//     belongs to the previous evening — that is how the night routes really
+//     run);
+//   * a date counts as a service day for a route only if it saw ≥ 20 arrivals;
+//   * an hour counts as in service for a (route, weekday) only if ≥ 2 arrivals
+//     landed in it on ≥ 50 % of that route's service days for that weekday;
+//   * the window is then [first such hour, last such hour + 1), cross-checked
+//     against the median and 10th/90th-percentile first/last arrival minute.
+// The hour-occupancy rule is what separates real early service (Pink hour 05:
+// 92–100 % of days) from a one-off deadhead (Pink hour 04: 8 %, i.e. 1 day).
+//
+// Caveat: the sample is a summer term. It is therefore used to WIDEN windows
+// freely and to narrow them only where the published start was never once
+// observed and the ±90 min SERVICE_GRACE_MS still covers the published time.
 export type ScheduleWindow = { days: number[]; startMin: number; endMin: number };
 
 export const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
+  // Observed M–F 06:30–18:30; the published window is wider at both ends, and
+  // wider is the safe direction. 1 arrival on 13 Sundays confirms M–F (#30).
   "Red":          [{ days: [1,2,3,4,5],         startMin: 5*60+40, endMin: 19*60 }],
+  // Observed M–F 07:00–18:00 almost exactly. Friday's tail reaches 19:05 on
+  // the worst day, which the grace covers.
   "Blue Day":     [{ days: [1,2,3,4,5],         startMin: 7*60,    endMin: 18*60 }],
-  "Blue Weekend": [{ days: [0,6],               startMin: 8*60,    endMin: 18*60 }],
+  // Every one of 13 Saturdays and 13 Sundays had full service in the 07:00
+  // hour — an hour before the published 08:00 open.
+  "Blue Weekend": [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
+  // Night routes: observed 18:00–00:15 daily (Sa/Su Blue Night and Fri/Sat
+  // Blue West creep back to ~17:40, inside the grace). Nothing at all runs
+  // after 00:20, so the 01:00 close is already on the generous side.
   "Blue Night":   [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
   "Blue West":    [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
+  // Observed M–F 06:35–18:15 — the published window brackets it.
   "Orange Day":   [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
   "Orange Night": [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
   "Orange East":  [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
-  "Brown":        [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Pink":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Green":        [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 18*60 }],
-  "Purple":       [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 25*60 }],
-  "Gold":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  // Observed running from ~07:00 on weekends, three hours before the
-  // published 10:00 — more than SERVICE_GRACE_MS covers, so widen the window.
+  // Observed M–F ~05:50–18:55. The 18:00 hour is a full service hour (85–100 %
+  // of days), not a straggler, so it belongs inside the window.
+  "Brown":        [{ days: [1,2,3,4,5],         startMin: 5*60+45, endMin: 19*60 }],
+  // Observed M–F 05:25–18:50, with the 05:00 and 18:00 hours both ~100 %
+  // occupied. (Not 04:00: that was a single deadhead on 2 of 65 weekdays.)
+  "Pink":         [{ days: [1,2,3,4,5],         startMin: 5*60+15, endMin: 19*60 }],
+  // Observed daily 05:25 →; weekdays run to ~19:00–19:15 (the 19:00 hour is
+  // occupied on 45–85 % of weekdays), weekends to ~18:35.
+  "Green":        [{ days: [0,1,2,3,4,5,6],     startMin: 5*60+15, endMin: 19*60+30 }],
+  // The only route that runs all day AND all evening: 100 % occupancy every
+  // hour 05:00–23:00, all seven days. But it stops dead at ~23:55 — zero
+  // arrivals after midnight in 90 days — so the old 01:00 close was a
+  // 65-minute ghost window every single night.
+  "Purple":       [{ days: [0,1,2,3,4,5,6],     startMin: 5*60+15, endMin: 24*60 }],
+  // Observed M–F 08:00–17:45, dead flat across 13 weeks; the 07:00 hour is
+  // occupied on ≤ 15 % of days and 06:00 on none. Narrowed to 07:30 rather
+  // than 08:00 so that grace still reaches the published 06:00 start.
+  "Gold":         [{ days: [1,2,3,4,5],         startMin: 7*60+30, endMin: 18*60 }],
+  // Confirmed: both grocery runs start at 07:00, not the published 10:00 —
+  // the 07:00 hour is occupied on 100 % of their service days. They alternate
+  // weekends (TJ on 7, Hamden on 6 of the 13), and never run on a weekday.
   "Grocery TJ":   [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
   "Grocery Ham":  [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
 };
@@ -119,16 +161,23 @@ export function isRouteActiveAt(label: string, d: Date): boolean {
 // window is a ghost — typically a parked shuttle with its transponder left
 // on (report #30: a "Red" bus on screen at 5:40 PM on a Sunday; Red runs
 // M–F). Filtered at /api/buses ingest so the map, the trip planner, and the
-// arrivals boards all agree it doesn't exist. The ±45 min grace keeps real
-// buses visible while they finish a last loop after close or pre-position
-// before open; a route with no known schedule is never filtered.
-// Widened from 45 min: comparing ROUTE_HOURS against 8 days of observed
-// arrivals showed the published windows run NARROWER than real service at both
-// ends (Pink from 04:00 not 06:00, Brown from 05:00, Green until 19:00, the
-// night routes from 17:00). Because this filter DELETES buses from the entire
-// app — map, planner and arrival boards — a too-narrow window hides a bus the
-// rider can see out the window, which is a far worse failure than showing a
-// parked one. Fail wide.
+// arrivals boards all agree it doesn't exist. The grace keeps real buses
+// visible while they finish a last loop after close or pre-position before
+// open; a route with no known schedule is never filtered. Because this filter
+// DELETES buses from the entire app — map, planner and arrival boards — a
+// too-narrow window hides a bus the rider can see out of the window, which is
+// a far worse failure than showing a parked one. Fail wide.
+//
+// Kept at 90 min after the 2026-08-31 reconciliation above. Most of the slack
+// the grace used to absorb is now inside ROUTE_HOURS itself; what still leans
+// on it, measured against 13 weeks of arrivals, is:
+//   Blue Day    Friday tail to 19:05  →  65 min past the 18:00 close
+//   Blue Night  Sa/Su start ~17:35    →  25 min before the 18:00 open
+//   Blue West   Fr/Sa start ~17:45    →  15 min
+//   Blue Weekend Sat tail to 18:15    →  15 min
+// The worst case is 65 min, so 90 keeps ~25 min of headroom for a term whose
+// service runs a little longer than the summer sample. Anything below 70 min
+// would start deleting buses that demonstrably run.
 export const SERVICE_GRACE_MS = 90 * 60 * 1000;
 
 export function isBusInService(b: BusData, now = Date.now()): boolean {
