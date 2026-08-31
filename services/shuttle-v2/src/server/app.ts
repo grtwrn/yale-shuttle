@@ -383,12 +383,20 @@ export function buildApp(opts: AppOptions): Hono {
     // report) keeps us healthy.
     const pollStalenessMs = opts.collector.pollStalenessMs();
     const healthy = pollStalenessMs <= HEALTH_POLL_STALE_MS;
+    // Surfaced because nothing else reveals them: `pollSkipped` rising is the
+    // only outward sign that upstream latency has crossed the 5 s poll interval
+    // and ticks are being dropped to avoid overlapping writes, and
+    // `droppedObservations` counts malformed buses filtered out of a payload.
+    // Both stay flat in normal operation, so any non-zero value is a signal.
+    const poll = opts.collector.pollStats();
     return c.json(
       {
         ok: healthy,
         pollStalenessMs,
         collectorLagMs: lagMs,
         knownBuses: buses.length,
+        pollSkipped: poll.skipped,
+        droppedObservations: poll.droppedObservations,
       },
       healthy ? 200 : 503,
     );

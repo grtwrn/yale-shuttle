@@ -84,6 +84,17 @@ describe("GET /healthz", () => {
     expect(body.knownBuses).toBe(0);
   });
 
+  // These counters stay flat in normal operation, so a non-zero value is the
+  // only outward signal that upstream latency is causing dropped poll ticks.
+  it("surfaces collector poll counters", async () => {
+    const res = await app.request("/healthz");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toHaveProperty("pollSkipped");
+    expect(body).toHaveProperty("droppedObservations");
+    expect(body.pollSkipped).toBe(0);
+    expect(body.droppedObservations).toBe(0);
+  });
+
   it("returns 503 when the poll loop is wedged", async () => {
     (collector as unknown as { lastPollAttemptAt: number }).lastPollAttemptAt =
       Date.now() - 5 * 60_000;

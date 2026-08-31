@@ -25,6 +25,25 @@ const CALIBRATE_INTERVAL_MS = 5 * 60_000;
 const STATIC_REFRESH_INTERVAL_MS = 6 * 60 * 60_000;
 const RETENTION_INTERVAL_MS = 60 * 60_000;
 
+/**
+ * How soon to retry a failed static refresh, and the ceiling for the
+ * exponential backoff. Without this, one flaky upstream response at boot
+ * left the network as whatever SQLite happened to hold — empty on a fresh
+ * volume — for the full 6 h until the next scheduled refresh.
+ */
+const STATIC_RETRY_BASE_MS = 60_000;
+const STATIC_RETRY_MAX_MS = 15 * 60_000;
+
+/**
+ * Sanity bounds on an upstream coordinate. The feed is loosely typed (ints
+ * arrive as strings, so `Number("")` → NaN sails through Zod's coercion) and
+ * a GPS unit that has lost its fix reports 0/0. Either one anchors a bus to
+ * whatever stop is nearest to nonsense and writes fabricated arrivals and
+ * segments into the calibration tables.
+ */
+const MAX_ABS_LAT = 90;
+const MAX_ABS_LON = 180;
+
 // How close a bus must actually be before we call it "at" a stop. The
 // detector's `nearestStopId` is an unbounded nearest-neighbour with no radius,
 // so without this a bus idling mid-route claims whichever stop happens to be
@@ -116,6 +135,25 @@ export class Collector {
   private retentionHandle?: NodeJS.Timeout;
 
   private lastStaticRefreshAt = 0;
+  /**
+   * True from the moment `runPoll` starts until it finishes, including across
+   * every `await`. The poll timer fires every 5 s but the upstream fetch is
+   * allowed 10 s, so under upstream latency two or three `runPoll` bodies
+   * would otherwise be in flight at once. They all mutate the same `states`
+   * and `livePositions` maps *after* resuming from their awaits, so a slow
+   * poll's continuation could apply a stale observation on top of a newer
+   * one — resetting a bus's `enteredAt`/`nearestStopId` anchor and emitting
+   * bogus `segment` and `dwell` rows straight into the calibration tables.
+   * The corruption is silent and permanent; the samples outlive the outage.
+   */
+  private pollInFlight = false;
+  /** Ticks dropped because the previous poll was still running. */
+  private pollSkipped = 0;
+  private staticRefreshInFlight = false;
+  private staticRetryHandle: NodeJS.Timeout | undefined;
+  private staticRetryDelayMs = STATIC_RETRY_BASE_MS;
+  /** Upstream rows rejected by `sanitizeObservations`, cumulative. */
+  private droppedObservations = 0;
   // Monotonic counter over everything the HTTP layer's fat /api/buses payload
   // is derived from: live positions (every 5 s), calibrated segment/dwell
   // stats (every 5 min) and the static topology (every 6 h). The server
@@ -222,51 +260,158 @@ export class Collector {
     for (const h of [this.pollHandle, this.calibrateHandle, this.staticHandle, this.retentionHandle]) {
       if (h) clearInterval(h);
     }
+    this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
 
   // -- Tick handlers ---------------------------------------------------------
 
   private async runPoll(): Promise<void> {
-    // Record the attempt first so liveness reflects "the loop is firing",
-    // not "upstream is healthy".
-    this.lastPollAttemptAt = Date.now();
-    let buses: RawBus[];
-    try {
-      buses = await this.upstream.buses();
-    } catch (err) {
-      this.logUpstreamError("poll", err);
+    if (this.pollInFlight) {
+      // Never silent: a rising `skipped` is the only signal that upstream
+      // latency has crossed the poll interval, which is the sole condition
+      // under which we deliberately lose samples.
+      this.pollSkipped++;
+      this.logger.warn("collector.poll_skipped_overlap", {
+        skippedTotal: this.pollSkipped,
+        inFlightForMs: Date.now() - this.lastPollAttemptAt,
+      });
       return;
     }
-    if (buses.length === 0) return;
-
-    // Persistence + detector can throw (SQLite locked/full, bad geometry). A
-    // single bad tick must never reject the poll promise — that would surface
-    // as an unhandledRejection and could take the whole process down.
+    this.pollInFlight = true;
+    // Record the attempt first so liveness reflects "the loop is firing",
+    // not "upstream is healthy". Deliberately NOT updated on a skipped tick:
+    // if a fetch ever wedges past its AbortSignal, /healthz should go stale
+    // and let Fly restart us, rather than report a healthy loop that is in
+    // fact stuck behind one hung request.
+    this.lastPollAttemptAt = Date.now();
     try {
-      const now = Date.now();
-      const observations: BusObservation[] = buses
-        .filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lon))
-        .map((b) => ({
-          busId: b.id,
-          busName: b.name,
-          routeId: b.route,
-          lat: b.lat,
-          lon: b.lon,
-          heading: b.heading,
-          lastStopId: b.lastStop ?? null,
-          collectedAt: now,
-        }));
+      let buses: RawBus[];
+      try {
+        buses = await this.upstream.buses();
+      } catch (err) {
+        this.logUpstreamError("poll", err);
+        return;
+      }
 
-      this.persistRawPositions(observations);
-      const events = stepMany(this.ref.get(), this.states, observations);
-      if (events.length > 0) this.persistEvents(events);
-      this.updateLivePositions(observations);
-    } catch (err) {
-      this.logger.error("collector.poll_process_failed", {
-        error: (err as Error).message,
+      // Persistence + detector can throw (SQLite locked/full, bad geometry). A
+      // single bad tick must never reject the poll promise — that would surface
+      // as an unhandledRejection and could take the whole process down.
+      try {
+        const now = Date.now();
+        const observations = this.sanitizeObservations(buses, now);
+
+        // Prune on every tick, not only on ticks that carried observations.
+        // Upstream returns `[]` overnight when nothing is running, and the
+        // pruning used to live inside `updateLivePositions`, which those
+        // ticks skip — so the maps held whatever the last bus of the day
+        // left behind until the next morning.
+        this.pruneStale(now);
+
+        if (observations.length === 0) return;
+
+        this.persistRawPositions(observations);
+        const events = stepMany(this.ref.get(), this.states, observations);
+        if (events.length > 0) this.persistEvents(events);
+        this.updateLivePositions(observations);
+      } catch (err) {
+        this.logger.error("collector.poll_process_failed", {
+          error: (err as Error).message,
+        });
+      }
+    } finally {
+      this.pollInFlight = false;
+    }
+  }
+
+  /**
+   * Turn raw upstream rows into observations we're willing to act on.
+   *
+   * Three failure modes this closes, all of which otherwise reach the
+   * calibration tables:
+   *
+   *  1. **Non-finite numbers.** `RawBusSchema` coerces strings with
+   *     `z.string().transform(Number)` and never refines the result, so `""`,
+   *     `"null"` or `"n/a"` parse cleanly to `NaN`. A NaN `busId` binds as
+   *     SQL NULL against a NOT NULL column: the insert throws and the whole
+   *     tick — every other bus included — is lost.
+   *  2. **Null island.** A GPS unit with no fix reports 0/0. That is finite,
+   *     so it survives every type check, anchors to whichever stop is
+   *     "nearest" to the Gulf of Guinea, and emits arrivals and segments.
+   *  3. **Duplicate bus ids in one payload.** Two rows for the same bus share
+   *     a `collectedAt`, so the detector sees a 0-second transition and
+   *     records a segment with `travelSec: 0`.
+   *
+   * Dropping the offending row (rather than rejecting the payload in Zod)
+   * keeps one bad bus from costing us the other fifteen.
+   */
+  private sanitizeObservations(buses: readonly RawBus[], now: number): BusObservation[] {
+    const byBusId = new Map<number, BusObservation>();
+    let dropped = 0;
+    for (const b of buses) {
+      if (
+        !Number.isFinite(b.id) ||
+        !Number.isFinite(b.route) ||
+        !Number.isFinite(b.lat) ||
+        !Number.isFinite(b.lon) ||
+        Math.abs(b.lat) > MAX_ABS_LAT ||
+        Math.abs(b.lon) > MAX_ABS_LON ||
+        (b.lat === 0 && b.lon === 0)
+      ) {
+        dropped++;
+        continue;
+      }
+      byBusId.set(b.id, {
+        busId: b.id,
+        busName: b.name,
+        routeId: b.route,
+        lat: b.lat,
+        lon: b.lon,
+        // Heading is cosmetic, so normalize a bad one rather than discard an
+        // otherwise-good position — but never let NaN into the JSON payload.
+        heading: Number.isFinite(b.heading) ? b.heading : 0,
+        lastStopId:
+          b.lastStop != null && Number.isFinite(b.lastStop) ? b.lastStop : null,
+        collectedAt: now,
       });
     }
+    if (dropped > 0) {
+      this.droppedObservations += dropped;
+      this.logger.warn("collector.observations_dropped", {
+        dropped,
+        droppedTotal: this.droppedObservations,
+        received: buses.length,
+      });
+    }
+    return [...byBusId.values()];
+  }
+
+  /**
+   * Age out per-bus state. Runs every poll, including ticks where upstream
+   * gave us nothing — see the call site in `runPoll`.
+   */
+  private pruneStale(now: number): void {
+    const liveCutoff = now - LIVE_BUS_TTL_MS;
+    for (const [id, b] of this.livePositions) {
+      if (b.collectedAt < liveCutoff) this.livePositions.delete(id);
+    }
+    const stateCutoff = now - STATE_TTL_MS;
+    for (const [id, s] of this.states) {
+      if (s.lastObservedAt < stateCutoff) this.states.delete(id);
+    }
+  }
+
+  /**
+   * Counters for observability. `skipped` rising means upstream latency has
+   * exceeded the 5 s poll interval; `droppedObservations` rising means the
+   * feed is emitting rows we refuse to trust.
+   */
+  pollStats(): { skipped: number; droppedObservations: number; knownBuses: number } {
+    return {
+      skipped: this.pollSkipped,
+      droppedObservations: this.droppedObservations,
+      knownBuses: this.livePositions.size,
+    };
   }
 
   /** Milliseconds since the poll loop last fired. Liveness signal for /healthz. */
@@ -335,18 +480,9 @@ export class Collector {
         collectedAt: o.collectedAt,
       });
     }
-    // Drop buses that have aged out of the feed so the map doesn't grow
-    // unbounded and getLiveBuses stays cheap. (getLiveBuses also filters, to
-    // cover the no-poll/outage case.)
-    const now = observations[0]?.collectedAt ?? Date.now();
-    const liveCutoff = now - LIVE_BUS_TTL_MS;
-    for (const [id, b] of this.livePositions) {
-      if (b.collectedAt < liveCutoff) this.livePositions.delete(id);
-    }
-    const stateCutoff = now - STATE_TTL_MS;
-    for (const [id, s] of this.states) {
-      if (s.lastObservedAt < stateCutoff) this.states.delete(id);
-    }
+    // Aging-out of stale buses moved to `pruneStale`, called once per poll
+    // from `runPoll` — including the ticks where upstream returned nothing,
+    // which never reach this method.
     this.version++;
   }
 
@@ -365,11 +501,26 @@ export class Collector {
   }
 
   private async refreshStaticIfNeeded(force: boolean): Promise<void> {
+    // Same overlap hazard as the poll loop: two concurrent refreshes would
+    // each build a network and race to `ref.replace`, and the loser's
+    // calibration work is thrown away. Far rarer (6 h timer vs. a 10 s fetch)
+    // but the guard is free.
+    if (this.staticRefreshInFlight) return;
     const now = Date.now();
     if (!force && now - this.lastStaticRefreshAt < STATIC_REFRESH_INTERVAL_MS) return;
+    this.staticRefreshInFlight = true;
     try {
       const [stops, routes] = await Promise.all([this.upstream.stops(), this.upstream.routes()]);
-      if (stops.length === 0 || routes.length === 0) return;
+      if (stops.length === 0 || routes.length === 0) {
+        // An empty feed is a failure, not a refresh: keep the topology we
+        // have and try again soon rather than in six hours.
+        this.logger.warn("collector.static_refresh_empty", {
+          stops: stops.length,
+          routes: routes.length,
+        });
+        this.scheduleStaticRetry();
+        return;
+      }
       this.persistStatic(stops, routes);
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
@@ -378,13 +529,43 @@ export class Collector {
       this.ref.replace(rebuilt);
       this.version++;
       this.lastStaticRefreshAt = now;
+      this.cancelStaticRetry();
       this.logger.info("collector.static_refreshed", {
         stops: stops.length,
         routes: routes.length,
       });
     } catch (err) {
       this.logUpstreamError("static_refresh", err);
+      this.scheduleStaticRetry();
+    } finally {
+      this.staticRefreshInFlight = false;
     }
+  }
+
+  /**
+   * Retry a failed static refresh on a backoff instead of waiting out the
+   * 6 h cadence. On a fresh volume the network is built from an empty SQLite,
+   * so one flaky response at boot used to mean six hours of "no routes, no
+   * stops, no plans" — a total outage that looked like a healthy process.
+   */
+  private scheduleStaticRetry(): void {
+    if (this.staticRetryHandle) return;
+    const delay = this.staticRetryDelayMs;
+    this.logger.warn("collector.static_retry_scheduled", { delayMs: delay });
+    this.staticRetryHandle = setTimeout(() => {
+      this.staticRetryHandle = undefined;
+      this.staticRetryDelayMs = Math.min(delay * 2, STATIC_RETRY_MAX_MS);
+      void this.refreshStaticIfNeeded(true);
+    }, delay);
+    this.staticRetryHandle.unref();
+  }
+
+  private cancelStaticRetry(): void {
+    if (this.staticRetryHandle) {
+      clearTimeout(this.staticRetryHandle);
+      this.staticRetryHandle = undefined;
+    }
+    this.staticRetryDelayMs = STATIC_RETRY_BASE_MS;
   }
 
   private runRetention(): void {

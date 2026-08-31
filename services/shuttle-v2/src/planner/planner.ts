@@ -60,11 +60,25 @@ export interface PlanInputs {
  *     Wait time is derived from live buses on that route via
  *     {@link expectedWait}; ride time from {@link etaAlongRoute}.
  *
- * For this network (~170 stops, ~15 routes) the candidate set stays tiny — the
- * MAX_WALK_M radius admits only a handful of board × alight × route
- * combinations regardless of network size. We sort by total seconds
- * (the rider's actual cost) and dedupe; transfers are intentionally out of
- * scope for v1, because empirically they're almost never worth the wait.
+ * ## Cost
+ *
+ * The network is 172 stops over 14 routes, and MAX_WALK_M is 1500 m — wide
+ * enough that a downtown origin puts most of the network inside the radius,
+ * so `originStops` is routinely ~100 entries, not the handful an earlier
+ * comment assumed. The loop is therefore
+ * `origins × routes-at-origin × route length`, with the expensive parts
+ * gated:
+ *
+ *  - The inner offset scan is a `Set.has` per stop, and `etaAlongRoute` runs
+ *    only for stops that are actually near the destination.
+ *  - `expectedWait` — the costly call, since it walks the loop once per live
+ *    bus — runs only after we know the route has at least one reachable
+ *    alight stop. Computing it first meant paying for it on every route that
+ *    could never produce a plan, which is most of them.
+ *
+ * We sort by total seconds (the rider's actual cost) and dedupe; transfers
+ * are intentionally out of scope for v1, because empirically they're almost
+ * never worth the wait.
  *
  * Returns the ranked plans plus a list of routes that *could* take you
  * between origin and destination but aren't currently running, which the UI
@@ -82,6 +96,9 @@ export function planTrip(inputs: PlanInputs): PlanResponse {
   const destWalkSecById = new Map(
     destStops.map((d) => [d.toStopId, d.seconds] as const),
   );
+  const destWalkMetersById = new Map(
+    destStops.map((d) => [d.toStopId, d.meters] as const),
+  );
 
   const candidates: Plan[] = [];
 
@@ -96,21 +113,30 @@ export function planTrip(inputs: PlanInputs): PlanResponse {
       const route = network.routes.get(routeId);
       if (!route) continue;
 
+      // Walk forward along the route from the origin and collect the stops
+      // that are both downstream and near the destination. Stop at the loop
+      // wrap (we don't want "ride a full loop back to a stop one before
+      // origin" as a suggestion). Deduped because the two West Campus routes
+      // list some stops twice — `etaAlongRoute` resolves the occurrence
+      // itself, so a second visit is the same candidate, not a new one.
+      const idx = network.positionOnRoute(routeId, origin.toStopId);
+      if (idx === null) continue;
+
+      const alightStopIds = new Set<number>();
+      for (let offset = 1; offset < route.stops.length; offset++) {
+        const stopId = route.stops[(idx + offset) % route.stops.length]!;
+        if (destStopIds.has(stopId)) alightStopIds.add(stopId);
+      }
+      // Nothing on this route lands near the destination, so don't pay for a
+      // wait estimate (which walks the loop once per live bus on the route).
+      if (alightStopIds.size === 0) continue;
+
       const wait = expectedWait(network, buses, routeId, origin.toStopId, now);
       // No live bus on this route — record the candidate for the "potential
       // routes" rollup but don't fabricate a plan.
       if (!wait) continue;
 
-      // Walk forward along the route from the origin and try each subsequent
-      // stop as a candidate alight. Stop at the loop wrap (we don't want
-      // "ride a full loop back to a stop one before origin" as a suggestion).
-      const idx = network.positionOnRoute(routeId, origin.toStopId);
-      if (idx === null) continue;
-
-      for (let offset = 1; offset < route.stops.length; offset++) {
-        const alightStopId = route.stops[(idx + offset) % route.stops.length]!;
-        if (!destStopIds.has(alightStopId)) continue;
-
+      for (const alightStopId of alightStopIds) {
         const eta = etaAlongRoute(network, routeId, origin.toStopId, alightStopId);
         if (!eta) continue;
 
@@ -150,12 +176,13 @@ export function planTrip(inputs: PlanInputs): PlanResponse {
           confidenceHighSec: wait.meanSec + eta.meanSec + halfWidth,
         });
         if (walkFromSec > 0) {
-          const destDist = destStops.find((d) => d.toStopId === alightStopId);
           legs.push({
             mode: "walk",
             fromStopId: alightStopId,
             toStopId: null,
-            meters: destDist?.meters ?? 0,
+            // Map lookup, not a linear `find` — `destStops` is ~100 entries
+            // at MAX_WALK_M and this sits in the innermost loop.
+            meters: destWalkMetersById.get(alightStopId) ?? 0,
             seconds: walkFromSec,
           });
         }
@@ -257,20 +284,24 @@ function collectPotentialRoutes(
   for (const origin of originStops) {
     const edges = network.segmentEdges.get(origin.toStopId);
     if (!edges) continue;
-    for (const edge of edges) {
-      if (liveRouteIds.has(edge.routeId)) continue;
-      const route = network.routes.get(edge.routeId);
+    // A stop can have several outgoing edges for the SAME route when that
+    // route visits it twice (route 9's stop 25 leads to both 23 and 127).
+    // Scanning the route once per edge just repeats identical work.
+    const routeIdsAtOrigin = new Set(edges.map((e) => e.routeId));
+    for (const routeId of routeIdsAtOrigin) {
+      if (liveRouteIds.has(routeId)) continue;
+      const route = network.routes.get(routeId);
       if (!route) continue;
-      const originIdx = network.positionOnRoute(edge.routeId, origin.toStopId);
+      const originIdx = network.positionOnRoute(routeId, origin.toStopId);
       if (originIdx === null) continue;
       for (let offset = 1; offset < route.stops.length; offset++) {
         const alight = route.stops[(originIdx + offset) % route.stops.length]!;
         const walkFrom = destWalkSecById.get(alight);
         if (walkFrom === undefined) continue;
         const walkSec = origin.seconds + walkFrom;
-        const prev = bestPerRoute.get(edge.routeId);
+        const prev = bestPerRoute.get(routeId);
         if (!prev || walkSec < prev.walkSec) {
-          bestPerRoute.set(edge.routeId, {
+          bestPerRoute.set(routeId, {
             boardStopId: origin.toStopId,
             alightStopId: alight,
             walkSec,

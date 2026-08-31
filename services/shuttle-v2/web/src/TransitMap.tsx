@@ -5,6 +5,21 @@ import {
   stations, routes, stopToStation, routeColorMap, routeNameMap,
   type Station, type Route, type BusData,
 } from "./map-data";
+// Pure logic lives in sibling modules so it is reachable from tests without
+// mounting React or Leaflet. This file is the UI.
+import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import {
+  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, suggIcon, suggLabel,
+  type GeocodeResult,
+} from "./format";
+import { haversineMeters, type LatLon } from "./geo";
+import {
+  dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
+} from "./planner";
+import { BUS_SPEED_M_S, ROUTE_LISTS } from "./routes";
+import { fmtSchedule, isBusInService } from "./schedule";
+import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
 
@@ -168,196 +183,8 @@ const BusMarker: FC<BusMarkerProps> = ({ bus, station, nextStation, pulse }) => 
 
 // ── Stop list sidebar ──────────────────────────────────────────────────────
 
-interface RouteListConfig {
-  /** Route IDs to pull stops from (first one is primary, rest are merged) */
-  routeIds: string[];
-  /** Route IDs to match buses against */
-  busRouteIds: number[];
-  label: string;
-  color: string;
-  dashed?: boolean;
-  sliceStart?: number;
-  sliceEnd?: number;
-}
 
-const ROUTE_LISTS: RouteListConfig[] = [
-  { routeIds: ["3"],  busRouteIds: [3],        label: "Red",           color: "#C62828" },
-  { routeIds: ["1"],  busRouteIds: [1],        label: "Blue Day",      color: "#1565C0" },
-  { routeIds: ["4"],  busRouteIds: [4],        label: "Blue Weekend",  color: "#42A5F5" },
-  { routeIds: ["13"], busRouteIds: [13],       label: "Blue Night",    color: "#1E88E5" },
-  { routeIds: ["16"], busRouteIds: [16],       label: "Blue West",     color: "#00838F" },
-  { routeIds: ["2"],  busRouteIds: [2],        label: "Orange Day",    color: "#E65100" },
-  { routeIds: ["14"], busRouteIds: [14],       label: "Orange Night",  color: "#E65100" },
-  { routeIds: ["17"], busRouteIds: [17],       label: "Orange East",   color: "#E65100" },
-  { routeIds: ["19"], busRouteIds: [19],       label: "Brown",         color: "#795548" },
-  { routeIds: ["8"],  busRouteIds: [8],        label: "Pink",          color: "#AD1457" },
-  { routeIds: ["9"],  busRouteIds: [9],        label: "Green",         color: "#43A047" },
-  { routeIds: ["10"], busRouteIds: [10],       label: "Purple",        color: "#7B1FA2" },
-  { routeIds: ["15"], busRouteIds: [15],       label: "Gold",          color: "#F9A825" },
-  { routeIds: ["6"],  busRouteIds: [6],        label: "Grocery TJ",    color: "#5D4037" },
-  { routeIds: ["18"], busRouteIds: [18],       label: "Grocery Ham",   color: "#8D6E63" },
-];
 
-// Published Yale shuttle operating windows, keyed by ROUTE_LISTS label.
-// days uses JS getDay() (0=Sun..6=Sat). endMin > 1440 means the window
-// extends into the next day's early hours — e.g. 25*60 = 1:00 AM.
-// Sources: your.yale.edu daytime/nighttime/weekend routes pages.
-type ScheduleWindow = { days: number[]; startMin: number; endMin: number };
-const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
-  "Red":          [{ days: [1,2,3,4,5],         startMin: 5*60+40, endMin: 19*60 }],
-  "Blue Day":     [{ days: [1,2,3,4,5],         startMin: 7*60,    endMin: 18*60 }],
-  "Blue Weekend": [{ days: [0,6],               startMin: 8*60,    endMin: 18*60 }],
-  "Blue Night":   [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
-  "Blue West":    [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
-  "Orange Day":   [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Orange Night": [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
-  "Orange East":  [{ days: [0,1,2,3,4,5,6],     startMin: 18*60,   endMin: 25*60 }],
-  "Brown":        [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Pink":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Green":        [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 18*60 }],
-  "Purple":       [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 25*60 }],
-  "Gold":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  // Observed running from ~07:00 on weekends, three hours before the
-  // published 10:00 — more than SERVICE_GRACE_MS covers, so widen the window.
-  "Grocery TJ":   [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
-  "Grocery Ham":  [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
-};
-
-// Approximate headway in minutes — used to estimate wait = headway/2 for
-// future-date planning when no live bus is running yet. Educated guesses
-// from observed Yale service levels; the main routes are faster than the
-// evening / weekend ones.
-const HEADWAY_MIN: Record<string, number> = {
-  "Red": 8, "Blue Day": 10, "Blue Weekend": 20, "Blue Night": 20, "Blue West": 20,
-  "Orange Day": 10, "Orange Night": 20, "Orange East": 20,
-  "Brown": 15, "Pink": 20, "Green": 15, "Purple": 20, "Gold": 20,
-  "Grocery TJ": 30, "Grocery Ham": 30,
-};
-
-function fmtScheduleTime(min: number): string {
-  // Handles values > 1440 (overnight windows, e.g. 25*60 = 1:00 AM).
-  const m = ((min % 1440) + 1440) % 1440;
-  let h = Math.floor(m / 60);
-  const mm = m % 60;
-  const ampm = h >= 12 ? "p" : "a";
-  h = h % 12; if (h === 0) h = 12;
-  return mm ? `${h}:${String(mm).padStart(2, "0")}${ampm}` : `${h}${ampm}`;
-}
-
-function fmtScheduleDays(days: number[]): string {
-  const key = [...days].sort().join(",");
-  if (key === "0,1,2,3,4,5,6") return "Daily";
-  if (key === "1,2,3,4,5") return "M–F";
-  if (key === "0,6") return "Sa/Su";
-  const names = ["Su", "M", "Tu", "W", "Th", "F", "Sa"];
-  return [...days].sort().map((d) => names[d]).join("/");
-}
-
-function fmtSchedule(label: string): string {
-  const wins = ROUTE_HOURS[label];
-  if (!wins || wins.length === 0) return "";
-  return wins.map((w) =>
-    `${fmtScheduleDays(w.days)} ${fmtScheduleTime(w.startMin)}–${fmtScheduleTime(w.endMin)}`
-  ).join(" · ");
-}
-
-// ROUTE_HOURS is published Eastern Time, but `getDay()`/`getHours()` read the
-// DEVICE's timezone. A phone set to UTC — or any visitor whose phone is still
-// on their home zone — mapped ET afternoon into the overnight window, so every
-// weekday route was judged out of service: `isBusInService` dropped the buses
-// and the app showed "😴 No shuttles running right now" while shuttles were
-// visibly running outside. Anchor every schedule comparison to ET instead.
-const ET_TIME_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
-});
-const ET_DAY_INDEX: Record<string, number> = {
-  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-};
-/** Day-of-week (0=Sun) and minutes-past-midnight for `d`, in America/New_York. */
-function etDayAndMinutes(d: Date): { day: number; mins: number } {
-  const parts = ET_TIME_FMT.formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const day = ET_DAY_INDEX[get("weekday")];
-  const hour = parseInt(get("hour"), 10);
-  const minute = parseInt(get("minute"), 10);
-  // Fall back to device-local only if Intl gave us something unusable, which
-  // beats throwing on an ancient browser.
-  if (day === undefined || !Number.isFinite(hour) || !Number.isFinite(minute)) {
-    return { day: d.getDay(), mins: d.getHours() * 60 + d.getMinutes() };
-  }
-  return { day, mins: (hour % 24) * 60 + minute };
-}
-
-function isRouteActiveAt(label: string, d: Date): boolean {
-  const wins = ROUTE_HOURS[label];
-  if (!wins) return true;                    // unknown → don't filter
-  const { day, mins } = etDayAndMinutes(d);
-  for (const w of wins) {
-    if (w.endMin <= 1440) {
-      if (w.days.includes(day) && mins >= w.startMin && mins < w.endMin) return true;
-    } else {
-      // Overnight: same-day portion, then previous-day portion < (end-1440)
-      if (w.days.includes(day) && mins >= w.startMin) return true;
-      const prev = (day + 6) % 7;
-      if (w.days.includes(prev) && mins < (w.endMin - 1440)) return true;
-    }
-  }
-  return false;
-}
-
-// A bus reported on a route far outside that route's published operating
-// window is a ghost — typically a parked shuttle with its transponder left
-// on (report #30: a "Red" bus on screen at 5:40 PM on a Sunday; Red runs
-// M–F). Filtered at /api/buses ingest so the map, the trip planner, and the
-// arrivals boards all agree it doesn't exist. The ±45 min grace keeps real
-// buses visible while they finish a last loop after close or pre-position
-// before open; a route with no known schedule is never filtered.
-// Widened from 45 min: comparing ROUTE_HOURS against 8 days of observed
-// arrivals showed the published windows run NARROWER than real service at both
-// ends (Pink from 04:00 not 06:00, Brown from 05:00, Green until 19:00, the
-// night routes from 17:00). Because this filter DELETES buses from the entire
-// app — map, planner and arrival boards — a too-narrow window hides a bus the
-// rider can see out the window, which is a far worse failure than showing a
-// parked one. Fail wide.
-const SERVICE_GRACE_MS = 90 * 60 * 1000;
-const ROUTE_ID_LABEL: Record<number, string> = {};
-for (const cfg of ROUTE_LISTS) for (const rid of cfg.busRouteIds) ROUTE_ID_LABEL[rid] = cfg.label;
-function isBusInService(b: BusData): boolean {
-  const label = ROUTE_ID_LABEL[b.route_id];
-  if (!label) return true;
-  const now = Date.now();
-  return (
-    isRouteActiveAt(label, new Date(now)) ||
-    isRouteActiveAt(label, new Date(now - SERVICE_GRACE_MS)) ||
-    isRouteActiveAt(label, new Date(now + SERVICE_GRACE_MS))
-  );
-}
-
-// Next Date at which this route becomes active, starting from `after`.
-// Returns null when the route has no schedule at all (treated as
-// always-running). Walks forward up to 7 days since every window
-// repeats weekly; anything beyond that doesn't exist in our schedule.
-function nextActiveWindow(label: string, after: Date): Date | null {
-  const wins = ROUTE_HOURS[label];
-  if (!wins) return null;
-  for (let offset = 0; offset < 7; offset++) {
-    const cand = new Date(after.getTime() + offset * 86_400_000);
-    const { day: dow, mins } = etDayAndMinutes(cand);
-    for (const w of wins) {
-      if (!w.days.includes(dow)) continue;
-      // Shift from where the ET wall clock currently sits to the window's
-      // start minute on that same ET day. (A window whose start straddles a
-      // DST changeover lands an hour off; a twice-a-year hour on a "next
-      // active" hint isn't worth carrying a full tz library for.)
-      const startAt = new Date(cand.getTime() + (w.startMin - mins) * 60_000);
-      // Same day: the window must still be in the future.
-      if (startAt.getTime() <= after.getTime()) continue;
-      return startAt;
-    }
-  }
-  return null;
-}
 
 // Map route_id numbers to our list routeIds for matching buses
 const ROUTE_ID_GROUP: Record<number, string> = {
@@ -392,52 +219,11 @@ type SavedTrip = {
   toText: string; toLat: number; toLon: number;
 };
 
-type LatLon = { lat: number; lon: number };
-
-type GeocodeResult = { display_name: string; lat: number; lon: number; type?: string; class?: string };
-
-// Trim geocoder verbosity for the suggestion dropdown: Nominatim returns
-// "Indian River, Forest Heights, Fort Trumbull, Milford, South Central
-// Connecticut Planning Region, Connecticut, United States" — two segments
-// carry all the signal on a phone-width row.
-function suggLabel(g: GeocodeResult, siblings?: GeocodeResult[]): string {
-  const parts = g.display_name.split(",").map((s) => s.trim()).filter(Boolean);
-  const short = parts.slice(0, 2).join(", ");
-  if (!siblings) return short;
-  // Two distinct results can share their first two segments ("Chapel Street,
-  // New Haven" for both ends of a long street), which renders as duplicate
-  // rows the rider cannot choose between. Widen only the colliding ones.
-  const collides = siblings.some((o) => o !== g && suggLabel(o) === short);
-  return collides ? (parts.slice(0, 3).join(", ") || short) : short;
-}
-// Row icon by result kind so stops and landmarks are scannable at a glance.
-function suggIcon(g: GeocodeResult): string {
-  if (g.type === "bus_stop") return "🚏";
-  if (g.class === "yale") return "🏛️";
-  return "📍";
-}
 // Anything this far from campus isn't reachable by a Yale shuttle — the
 // geocoder result is noise for this app's purpose.
 const SERVICE_CENTER: LatLon = { lat: 41.31, lon: -72.93 };
 const SERVICE_RADIUS_M = 8_000;
 
-type TripOption = {
-  mode: "shuttle" | "walk";
-  routeLabel: string; color: string;
-  boardStopId: number; alightStopId: number;
-  walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
-  totalSec: number; busName: string;
-  directWalkSec: number;
-  // True when the pinned bus has already gone past the board stop and
-  // isn't catchable anymore. Set only while the rider is watching the
-  // option (expanded) so we stop advancing to the next catchable bus
-  // and show "departed" instead of an arrival time.
-  departed?: boolean;
-  // Set when the originally-planned bus is no longer catchable and we advanced
-  // to a later bus. Drives the "#X just passed — next is …" note. Cleared
-  // automatically once the missed bus drops out of the live feed.
-  missedBus?: string;
-};
 
 // An active ride the rider has boarded — drives the on-bus tracking banner.
 // Persisted to localStorage so refreshing mid-trip keeps the banner alive.
@@ -465,7 +251,7 @@ function loadBoardedRide(): BoardedRide | null {
       typeof p.routeLabel === "string" &&
       typeof p.boardStopId === "number" &&
       typeof p.alightStopId === "number" &&
-      // Stale rides don't restore — mirrors the goTrip age cap and the
+      // Stale rides don't restore — mirrors the
       // 2 h auto-end, so a forgotten ride can't resurrect days later.
       typeof p.startedAt === "number" &&
       Date.now() - p.startedAt < 2 * 3600_000
@@ -486,39 +272,18 @@ function saveBoardedRide(r: BoardedRide | null): void {
   }
 }
 
-type AlertedRide = { busName: string; boardStopId: number; routeLabel: string; color: string; dwellStopId?: number };
-const ALERTED_LS_KEY = "shuttle-alerted-ride";
-function loadAlertedRide(): AlertedRide | null {
+// Two retired features left keys behind in localStorage: the guided "Go"
+// trip (retired 2026-07-17, plumbing deleted 2026-08-31) and the "alert me
+// when the bus is close" ride. Nothing reads either key any more, but a
+// browser that stored one before this build would keep it forever, so sweep
+// them once on mount. Failure is fine — private mode, quota, all best effort.
+const RETIRED_LS_KEYS = ["shuttle-go-trip", "shuttle-alerted-ride"];
+function clearRetiredLocalState(): void {
   try {
-    const raw = localStorage.getItem(ALERTED_LS_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as Partial<AlertedRide>;
-    if (p && typeof p.busName === "string" && typeof p.boardStopId === "number") return p as AlertedRide;
-  } catch { /* ignore */ }
-  return null;
-}
-function saveAlertedRide(r: AlertedRide | null): void {
-  try {
-    if (r) localStorage.setItem(ALERTED_LS_KEY, JSON.stringify(r));
-    else localStorage.removeItem(ALERTED_LS_KEY);
+    for (const k of RETIRED_LS_KEYS) localStorage.removeItem(k);
   } catch { /* quota / private mode */ }
 }
 
-// A committed "Go" trip — the rider picked one shuttle option and asked to be
-// guided through it (walk to stop → wait → ride). Lives at the app level
-// because the planner unmounts on tab switches; persisted so a refresh
-// mid-walk resumes the guidance instead of dumping the rider back at search.
-type GoTrip = {
-  routeLabel: string;
-  color: string;
-  busName: string;
-  boardStopId: number;
-  alightStopId: number;
-  toText: string;
-  toLat: number;
-  toLon: number;
-  startedAt: number;
-};
 // First-visit shortcuts: well-known campus destinations a new rider can tap
 // instead of typing into an empty search box. Coords are geocode-grade.
 const POPULAR_DESTS: { name: string; lat: number; lon: number }[] = [
@@ -530,36 +295,6 @@ const POPULAR_DESTS: { name: string; lat: number; lon: number }[] = [
   { name: "Old Campus", lat: 41.30815, lon: -72.92915 },
 ];
 
-const GO_LS_KEY = "shuttle-go-trip";
-// A go-trip older than 2 h is yesterday's news — don't resurrect it.
-const GO_MAX_AGE_MS = 2 * 60 * 60 * 1000;
-function loadGoTrip(): GoTrip | null {
-  try {
-    const raw = localStorage.getItem(GO_LS_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw) as Partial<GoTrip>;
-    if (
-      p &&
-      typeof p.routeLabel === "string" &&
-      typeof p.boardStopId === "number" &&
-      typeof p.alightStopId === "number" &&
-      typeof p.toLat === "number" &&
-      typeof p.toLon === "number" &&
-      typeof p.startedAt === "number" &&
-      Date.now() - p.startedAt < GO_MAX_AGE_MS
-    ) {
-      return p as GoTrip;
-    }
-  } catch { /* corrupt value */ }
-  return null;
-}
-function saveGoTrip(g: GoTrip | null): void {
-  try {
-    if (g) localStorage.setItem(GO_LS_KEY, JSON.stringify(g));
-    else localStorage.removeItem(GO_LS_KEY);
-  } catch { /* quota / private mode */ }
-}
-
 // What the From box reads after the rider taps 📍. It is a sentinel, not a
 // geocoded place: the origin should keep tracking live GPS while they walk.
 // The live-origin checks used to test `!fromText`, which is only true when the
@@ -568,39 +303,6 @@ function saveGoTrip(g: GoTrip | null): void {
 const CURRENT_LOCATION_TEXT = "Current location";
 const isCurrentLocationText = (t: string) => !t || t === CURRENT_LOCATION_TEXT;
 
-const WALK_SPEED_M_S = 1.3;
-// Streets aren't straight lines: crow-flies distance understates real
-// walking. Measured against OSRM foot routes across six representative
-// campus pairs (ratios 1.05–1.38, mean ~1.22), hence 1.2. Times stay on
-// this instant/offline model everywhere so totals are consistent; the
-// DRAWN walk path separately upgrades to routed geometry when available.
-const WALK_DETOUR = 1.2;
-const walkSecFromMeters = (m: number) => (m * WALK_DETOUR) / WALK_SPEED_M_S;
-
-// Initial bearing from a to b, degrees clockwise from north. Drives the
-// Go screen's compass arrow (rotated by GPS course when we have one).
-function bearingDeg(a: LatLon, b: LatLon): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLon = toRad(b.lon - a.lon);
-  const la1 = toRad(a.lat);
-  const la2 = toRad(b.lat);
-  const y = Math.sin(dLon) * Math.cos(la2);
-  const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLon);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
-
-function haversineMeters(a: LatLon, b: LatLon): number {
-  const R = 6_371_000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const la1 = toRad(a.lat);
-  const la2 = toRad(b.lat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-const BUS_SPEED_M_S = 6;   // fallback speed when segment-time data is missing
 
 // Road-following polylines per (from_stop, to_stop) pair. Fetched from
 // OSRM (free public router) on demand; cached in localStorage so each
@@ -795,466 +497,12 @@ function useRoadPolyline(stops: LatLon[] | undefined, tick: () => void): [number
 // perpendicular GPS jitter. Straight-line distance comparisons aren't
 // robust: a bus at the midpoint flips "closer to A" vs "closer to B" on
 // noise, wrecking both anchor-advance and mid-segment proration.
-function progressAlongSegment(p: LatLon, a: LatLon, b: LatLon): number {
-  const meanLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
-  const scale = Math.cos(meanLat);
-  const ax = a.lon * scale, ay = a.lat;
-  const bx = b.lon * scale, by = b.lat;
-  const px = p.lon * scale, py = p.lat;
-  const dx = bx - ax, dy = by - ay;
-  const denom = dx * dx + dy * dy;
-  if (denom < 1e-12) return 0;
-  return ((px - ax) * dx + (py - ay) * dy) / denom;
-}
-const MAX_RIDE_SEC = 25 * 60; // don't keep looping past a boarding point
-
-// How long a rider still has to board a bus that's dwelling at a stop RIGHT
-// NOW. Floor of 120 s (GPS slack + "the driver waits for someone running"),
-// stretched by the calibrated remaining dwell when we have data — layover
-// stops where the bus rests for minutes are catchable from much farther
-// away. Shared by planTrip (option generation) and the live recompute so the
-// two never disagree about whether a parked bus is boardable. The backend
-// planner's expectedWait applies the same elapsed-vs-median dwell logic.
-function dwellBoardWindowSec(
-  bus: BusData,
-  routeListId: string,
-  stopId: number,
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>,
-): number {
-  let remaining = 0;
-  const d = dwellTimes[routeListId]?.[String(stopId)];
-  if (d && d.n >= 2 && bus.at_stop_since) {
-    const elapsed = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-    remaining = Math.max(0, d.med - elapsed);
-  }
-  return Math.max(120, remaining + 60);
-}
-
-function planTrip(
-  from: LatLon, to: LatLon,
-  buses: BusData[],
-  routeStops: Record<string, number[]>,
-  stopCoords: Record<number, LatLon>,
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>,
-  dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>,
-  targetDate?: Date | null,
-): TripOption[] {
-  // 1500 m ≈ 18 min walk. Earlier 1200 m cut off plausible trips
-  // where the one pickup stop on a destination-niche route (e.g.
-  // Grocery TJ from 517 Prospect → Peabody Museum, 1257 m) was just
-  // out of range. The `walkTo + walkFrom < directWalk` check below
-  // prevents the raised ceiling from suggesting dumb detours.
-  const MAX_WALK_M = 1500;
-  // Future-plan mode: the user picked a date/time >60s away. We can't
-  // rely on live buses, so we filter by published operating hours and
-  // estimate wait from headway.
-  const futureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
-  const directWalkM = haversineMeters(from, to);
-  const directWalkSec = walkSecFromMeters(directWalkM);
-
-  const fromDist: Record<number, number> = {};
-  const toDist: Record<number, number> = {};
-  for (const [k, c] of Object.entries(stopCoords)) {
-    const sid = Number(k);
-    fromDist[sid] = haversineMeters(from, c);
-    toDist[sid] = haversineMeters(to, c);
-  }
-  const options: TripOption[] = [];
-
-  for (const cfg of ROUTE_LISTS) {
-    // Skip routes that won't be running at the target time. In live mode
-    // we still let computeUpcomingArrivals gate (bus presence filters
-    // naturally).
-    if (futureMode && !isRouteActiveAt(cfg.label, targetDate!)) continue;
-    const stops: number[] = [];
-    const seen = new Set<number>();
-    for (const rid of cfg.routeIds) {
-      for (const sid of (routeStops[rid] ?? [])) {
-        if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
-      }
-    }
-    if (stops.length < 2) continue;
-    const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
-
-    for (let i = 0; i < stops.length; i++) {
-      const b = stops[i];
-      if (fromDist[b] === undefined || fromDist[b] > MAX_WALK_M) continue;
-      // Compute ride-time cumulatively walking forward along the route,
-      // WRAPPING around the loop — these are circular routes, so a board
-      // stop late in the stop array still reaches an alight earlier in
-      // it. The old forward-only scan couldn't pair those, which made
-      // the planner skip the stop nearest the rider whenever it sat
-      // "after" the destination in array order and suggest a farther
-      // one instead (user report 2026-07-17, Blue). MAX_RIDE_SEC still
-      // caps how far around the loop an option can ride.
-      // These two depend only on the BOARD stop, not on how far around the
-      // loop we ride, but they sat inside the alight scan and were recomputed
-      // for every candidate. computeUpcomingArrivals is the expensive one, and
-      // the wrap-around change above roughly doubled the (board, alight) pairs
-      // — so it was running about 4x more often than it used to.
-      const hereBus = futureMode ? undefined : buses.find(
-        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
-      );
-      const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
-        [b], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
-      ).filter((a) => a.routeLabel === cfg.label);
-      let cumRide = 0;
-      for (let step = 1; step < stops.length; step++) {
-        const prev = stops[(i + step - 1) % stops.length];
-        const cur = stops[(i + step) % stops.length];
-        const seg = routeSegs[`${prev}-${cur}`];
-        if (seg && seg.n >= 1) {
-          cumRide += seg.avg;
-        } else {
-          // Fall back to haversine / bus-speed when we have no observed
-          // segment time. Using a fixed 180 s default inflated long
-          // routes to unusable totals whenever a route had no active
-          // buses collecting data.
-          const pc = stopCoords[prev], cc = stopCoords[cur];
-          if (pc && cc) {
-            cumRide += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
-          } else {
-            cumRide += 90;
-          }
-        }
-        // Stop searching along this route once the ride would wrap past
-        // 25 minutes — any further alight would mean the bus is just
-        // circling back near the boarding point.
-        if (cumRide > MAX_RIDE_SEC) break;
-        if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
-        const walkToSec = walkSecFromMeters(fromDist[b]);
-        const walkFromSec = walkSecFromMeters(toDist[cur]);
-        // (The "more walking than walking direct" test used to live here,
-        // before waitSec/rideSec were known. See the dominance check below.)
-        // Wait time: for a live plan we need a real bus on the route; for
-        // a future plan we use half the published headway since no bus
-        // exists yet to time against.
-        let waitSec: number; let busName: string;
-        if (futureMode) {
-          waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
-          busName = "";
-        } else {
-          // A bus physically dwelling AT this board stop is boardable NOW if
-          // the rider can reach it before it pulls away — generate the option
-          // with wait 0 instead of relying on ETA math. Without this the
-          // stop was silently DROPPED here (a dwelling bus used to emit no
-          // ETA for its own stop), which is how the planner missed a 10-min
-          // fastest route entirely (report #28: bus parked 13 m from the
-          // board stop, every pair boarding there discarded).
-          const arrivals = boardArrivals;
-          if (hereBus && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes)) {
-            waitSec = 0;
-            busName = hereBus.bus_name.replace(/^#/, "");
-          } else if (arrivals.length === 0) {
-            continue;
-          } else {
-            // Pin the soonest *catchable* bus (one the rider can reach before it
-            // finishes dwelling), not merely the soonest — with second-lap
-            // arrivals that's usually the same vehicle a loop later rather
-            // than nothing. Pinning an uncatchable bus made the live recompute
-            // flag it "🚌 #X just passed your stop" the instant a fresh plan
-            // rendered. Falls back to the soonest when none is catchable —
-            // the option then correctly shows "departed".
-            // STOP_DWELL_SEC mirrors the live options memo's canCatch().
-            const STOP_DWELL_SEC = 60;
-            const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
-            waitSec = Math.max(0, next.eta - walkToSec);
-            busName = next.busName;
-          }
-        }
-        const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
-        // Drop only options STRICTLY dominated by walking: more walking AND
-        // no faster overall. The old test compared the walking legs alone,
-        // before the ride was known, so it threw away trips that were plainly
-        // better — for report #40 the server's recommended 15.9-min ride was
-        // discarded because its two walk legs summed to ~7 s more than the
-        // 18.5-min direct walk, and the rider was shown walk-only instead.
-        // Options that are merely slower are kept on purpose and labelled
-        // "slower than walking" by the picker (see the note below the loop).
-        if (walkToSec + walkFromSec >= directWalkSec && totalSec >= directWalkSec) continue;
-        options.push({
-          mode: "shuttle",
-          routeLabel: cfg.label, color: cfg.color,
-          boardStopId: b, alightStopId: cur,
-          walkToSec, waitSec, rideSec: cumRide, walkFromSec,
-          totalSec, busName,
-          directWalkSec,
-        });
-      }
-    }
-  }
-  // Options slower than just walking are KEPT (the user wants to see every
-  // route), but the picker demotes and labels them "slower than walking" at
-  // render time so one can't masquerade as the recommendation — that was
-  // report #15: a 2-min ride wrapped in 29 min of walking totalled MORE
-  // than the direct walk yet read like the top pick.
-  const viable = options;
-  // Per-route pick: lowest total time, with one carve-out — among options
-  // whose totals are within ~3 min of the route's best, prefer the
-  // shortest walk to the boarding stop ("catch the bus right outside").
-  // The old pick minimized walk-to unconditionally, which ignored wait:
-  // report #3 saw a 43-min wait at the nearest stop chosen over boarding
-  // the same (resting) bus a 4-min walk away.
-  const TOTAL_TIE_SEC = 180;
-  const byRoute = new Map<string, TripOption[]>();
-  for (const o of viable) {
-    const bucket = byRoute.get(o.routeLabel);
-    if (bucket) bucket.push(o);
-    else byRoute.set(o.routeLabel, [o]);
-  }
-  const bestPerRoute = new Map<string, TripOption>();
-  for (const [label, group] of byRoute) {
-    const minTotal = Math.min(...group.map((o) => o.totalSec));
-    const nearBest = group.filter((o) => o.totalSec <= minTotal + TOTAL_TIE_SEC);
-    nearBest.sort((a, b) => a.walkToSec - b.walkToSec || a.totalSec - b.totalSec);
-    bestPerRoute.set(label, nearBest[0]);
-  }
-  // Sort the chosen options by total time for display.
-  const dedup = [...bestPerRoute.values()]
-    .sort((a, b) => a.totalSec - b.totalSec)
-    .slice(0, 6);
-  // Include the direct-walk option and sort the whole list by totalSec
-  // so the FASTEST badge actually lands on the fastest one — previously
-  // walk was hard-prepended and always got the badge. Skip the walk
-  // suggestion entirely when the direct walk exceeds an hour: nobody
-  // plans a 60+ min walk across New Haven, and offering it as a trip
-  // option clutters the picker when the only viable choice is a bus.
-  // ...unless it's the only thing we have. Report #35: a 4.3 km trip where
-  // the server planner returned a perfectly good 53-min walk, but the client
-  // walk model (crow-flies x 1.2 detour / 1.3 m/s) put it at 66 min — over
-  // this cutoff — so the walk was suppressed, no shuttle matched, and the
-  // rider got a bare "No trip options found between these locations."
-  // Suppressing the clutter is fine; suppressing the last option is not.
-  const walkList: TripOption[] = directWalkSec <= 3600 || dedup.length === 0
-    ? [{
-        mode: "walk",
-        routeLabel: "Walk",
-        color: "#546e7a",
-        boardStopId: 0, alightStopId: 0,
-        walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
-        totalSec: directWalkSec, busName: "",
-        directWalkSec,
-      }]
-    : [];
-  return [...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
-}
-
-// Routes that geographically connect from→to (a stop within walking
-// distance of each) regardless of whether they're running right now.
-// Used as a fallback when planTrip returns only Walk: lets the picker
-// explain "the Grocery TJ route goes there, but it's Sa/Su 10a–6p,
-// next active Sat 10:00 AM" rather than leaving the rider staring at
-// just "walk 45 min".
-interface PotentialRoute {
-  label: string;
-  color: string;
-  boardStopId: number;
-  alightStopId: number;
-  schedule: string;
-  nextActive: Date | null;
-}
-
-function findPotentialRoutes(
-  from: LatLon, to: LatLon,
-  routeStops: Record<string, number[]>,
-  stopCoords: Record<number, LatLon>,
-  after: Date,
-): PotentialRoute[] {
-  const MAX_WALK_M = 1500;
-  const out: PotentialRoute[] = [];
-  for (const cfg of ROUTE_LISTS) {
-    const stops: number[] = [];
-    const seen = new Set<number>();
-    for (const rid of cfg.routeIds) {
-      for (const sid of (routeStops[rid] ?? [])) {
-        if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
-      }
-    }
-    if (stops.length < 2) continue;
-    // Any board stop near "from" and any alight stop near "to",
-    // with alight further along the route than board (so we're not
-    // suggesting a ride that goes the wrong way).
-    let bestBoard = -1;
-    let bestAlight = -1;
-    let bestTotal = Infinity;
-    for (let i = 0; i < stops.length; i++) {
-      const b = stops[i];
-      const bc = stopCoords[b];
-      if (!bc) continue;
-      const dFrom = haversineMeters(from, bc);
-      if (dFrom > MAX_WALK_M) continue;
-      // Wrap around the loop — same circular-route fix as planTrip.
-      for (let j = 1; j < stops.length; j++) {
-        const a = stops[(i + j) % stops.length];
-        const ac = stopCoords[a];
-        if (!ac) continue;
-        const dTo = haversineMeters(to, ac);
-        if (dTo > MAX_WALK_M) continue;
-        const total = dFrom + dTo;
-        if (total < bestTotal) {
-          bestTotal = total; bestBoard = b; bestAlight = a;
-        }
-      }
-    }
-    if (bestBoard === -1) continue;
-    out.push({
-      label: cfg.label,
-      color: cfg.color,
-      boardStopId: bestBoard,
-      alightStopId: bestAlight,
-      schedule: fmtSchedule(cfg.label),
-      nextActive: nextActiveWindow(cfg.label, after),
-    });
-  }
-  // Sort by next-active — soonest first, routes with no schedule last.
-  out.sort((a, b) => {
-    const ta = a.nextActive ? a.nextActive.getTime() : Infinity;
-    const tb = b.nextActive ? b.nextActive.getTime() : Infinity;
-    return ta - tb;
-  });
-  return out;
-}
 
 
 // Leaflet + OSM tile map for a single trip option. Shows start (green),
 // end (red), the shuttle boarding/alighting stops and route polyline,
 // and dashed lines for the walking segments. Mounts/unmounts with the
 // expanded card, so we only hold one map instance at a time.
-// Go screen's picture-in-picture locator: a small round map bubble with the
-// rider's live dot, the pickup stop, and the street-routed path between
-// them; tapping swaps between bubble and full-width. Location CONTEXT, not
-// turn-by-turn — directions stay in the external maps app.
-const GoMiniMap: FC<{ from: LatLon; to: LatLon; color: string; stopName: string; big: boolean; onToggle: () => void; bus?: { lat: number; lon: number; name?: string } | null }> =
-  ({ from, to, color, stopName, big, onToggle, bus }) => {
-  const divRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const lineRef = useRef<L.Polyline | null>(null);
-  const youRef = useRef<L.Marker | null>(null);
-  const busRef = useRef<L.Marker | null>(null);
-  const routedFromRef = useRef<LatLon | null>(null);
-
-  useEffect(() => {
-    if (!divRef.current || mapRef.current) return;
-    const map = L.map(divRef.current, {
-      zoomControl: false, scrollWheelZoom: false, dragging: false,
-      touchZoom: false, doubleClickZoom: false, keyboard: false,
-      attributionControl: false, zoomAnimation: false,
-    });
-    mapRef.current = map;
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-    L.circleMarker([to.lat, to.lon], { radius: 7, color, weight: 2.5, fillColor: "#fff", fillOpacity: 1 })
-      .addTo(map).bindTooltip(`🚏 ${stopName}`, { direction: "top", offset: [0, -6] });
-    youRef.current = L.marker([from.lat, from.lon], {
-      icon: makeYouIcon(), interactive: false, keyboard: false, zIndexOffset: 900,
-    }).addTo(map);
-    lineRef.current = L.polyline([[from.lat, from.lon], [to.lat, to.lon]], {
-      color, weight: 3.5, opacity: 0.85, dashArray: "5 7",
-    }).addTo(map);
-    map.fitBounds(L.latLngBounds([[from.lat, from.lon], [to.lat, to.lon]]), { padding: [22, 22], maxZoom: 17 });
-    const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
-    return () => {
-      clearTimeout(sizeTimer);
-      try { map.stop(); } catch { /* mid-animation teardown */ }
-      map.remove();
-      mapRef.current = null; lineRef.current = null; youRef.current = null; busRef.current = null; routedFromRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Live bus marker (report #17: "mini map doesn't show bus") — moved in
-  // place per poll. The bubble keeps its you↔stop framing; only the
-  // full-width map widens its bounds to keep the bus in view.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    if (!bus) {
-      busRef.current?.remove();
-      busRef.current = null;
-      return;
-    }
-    const ll: [number, number] = [bus.lat, bus.lon];
-    if (busRef.current) {
-      busRef.current.setLatLng(ll);
-    } else {
-      const icon = L.divIcon({
-        className: "bus-pin-sm",
-        html: `
-          <div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
-            <div style="position:absolute;inset:2px;border-radius:50%;background:#fff;border:2.5px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>
-            <span style="position:relative;font-size:13px;line-height:1;">🚌</span>
-          </div>
-        `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      });
-      busRef.current = L.marker(ll, { icon, interactive: false, keyboard: false, zIndexOffset: 950 }).addTo(map);
-    }
-    if (big && !map.getBounds().pad(-0.05).contains(ll)) {
-      map.fitBounds(map.getBounds().extend(ll), { padding: [30, 30], maxZoom: 17, animate: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bus?.lat, bus?.lon, big]);
-
-  // Bubble ↔ full-width: the container resizes, tell Leaflet and refit.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const t = setTimeout(() => {
-      if (mapRef.current !== map) return;
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds([[from.lat, from.lon], [to.lat, to.lon]]), { padding: big ? [34, 34] : [22, 22], maxZoom: 17 });
-    }, 60);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [big]);
-
-  // Live you-dot; re-route the foot path when the rider drifts >60 m from
-  // the origin it was computed for. fetchSegGeom returns null while a
-  // request is in flight — retry once so the first paint still upgrades.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    youRef.current?.setLatLng([from.lat, from.lon]);
-    const last = routedFromRef.current;
-    if (last && haversineMeters(last, from) < 60) return;
-    routedFromRef.current = from;
-    let cancelled = false;
-    const apply = (g: SegGeom | null) => {
-      if (!g || cancelled || mapRef.current !== map || !lineRef.current) return;
-      lineRef.current.setLatLngs(g);
-    };
-    fetchSegGeom(from, to, true).then((g) => {
-      if (g) { apply(g); return; }
-      setTimeout(() => { if (!cancelled) fetchSegGeom(from, to, true).then(apply); }, 3000);
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from.lat, from.lon]);
-
-  return (
-    <div
-      onClick={onToggle}
-      title={big ? "Shrink map" : "Expand map"}
-      style={big ? {
-        width: "100%", height: 220, borderRadius: 10, overflow: "hidden",
-        border: "1px solid #e0ddd8", cursor: "pointer", position: "relative",
-      } : {
-        width: 84, height: 84, alignSelf: "center", flexShrink: 0,
-        borderRadius: "50%", overflow: "hidden", cursor: "pointer", position: "relative",
-        border: "2.5px solid #fff", boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
-      }}
-    >
-      <div ref={divRef} style={{ position: "absolute", inset: 0 }} />
-      <span style={{
-        position: "absolute", bottom: 4, right: 6, zIndex: 500,
-        fontSize: 9, color: "#546e7a", background: "rgba(255,255,255,0.85)",
-        borderRadius: 4, padding: "1px 5px", pointerEvents: "none",
-      }}>{big ? "shrink" : "tap"}</span>
-    </div>
-  );
-};
-
 const TripMap: FC<{
   from: LatLon;
   to: LatLon;
@@ -2224,7 +1472,6 @@ const TripPlanner: FC<{
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
-  busPace: Record<string, { fast?: boolean; slow?: boolean; ratio?: number; n?: number; skip?: { count: number; ago_sec: number } | null }>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -2242,22 +1489,9 @@ const TripPlanner: FC<{
   // the pickup stops on the current plan. Pushed as a deduped, sorted
   // array so referential equality reflects a real change, not just a
   // re-render.
-  // Live accuracy rollup (p95/p90 per stop, and per stops-ahead bucket).
-  // Nullable because the fetch runs in parallel with the trip page —
-  // UI must tolerate missing data gracefully.
-  accuracy?: AccuracyData | null;
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-  // Go mode: the committed trip (state lives in the parent so it survives
-  // tab switches), plus start/update/end callbacks.
-  goTrip: GoTrip | null;
-  onGoStart: (g: GoTrip) => void;
-  onGoUpdate: (g: GoTrip) => void;
-  onGoEnd: () => void;
-  // GPS course (degrees from north, null when stationary) for the Go
-  // screen's compass arrow.
-  userHeading: number | null;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, busPace, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending, accuracy, onBoard, goTrip, onGoStart, onGoUpdate, onGoEnd, userHeading }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending, onBoard }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -2303,13 +1537,6 @@ const TripPlanner: FC<{
   const targetDate = tripTime ? new Date(tripTime) : null;
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
-  // Approach-progress snapshots for the expanded card's stop list: where
-  // the pinned bus was (stops-away from the board stop) when the rider
-  // first looked, keyed by route|bus|boardStop. Lets the list keep passed
-  // stops visible and FILL the vertical line like a progress bar as the
-  // bus advances, instead of silently dropping rows. Entries expire after
-  // 30 min so yesterday's snapshot can't stretch today's track.
-  const approachStartRef = useRef<Record<string, { away: number; at: number }>>({});
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
   // fetch that was already in flight — otherwise the late response would
   // reopen the dropdown right after the user picked a location.
@@ -2325,10 +1552,6 @@ const TripPlanner: FC<{
   // Short-lived status string shown beside "Report issue" after a
   // submit lands (e.g. "Thanks, logged (#42)") or fails.
   const [reportStatus, setReportStatus] = useState<string | null>(null);
-
-  // "Alert me" — fires a browser Notification when the selected bus is ≤5 min away.
-  const [alertedRide, setAlertedRide] = useState<AlertedRide | null>(() => loadAlertedRide());
-  useEffect(() => { saveAlertedRide(alertedRide); }, [alertedRide]);
 
   // Reset the keyboard-active index whenever the suggestion list changes,
   // so an outdated highlight never survives a new set of results.
@@ -2529,7 +1752,7 @@ const TripPlanner: FC<{
 
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
-      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus, targetDate)
+      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
@@ -2563,7 +1786,7 @@ const TripPlanner: FC<{
       // the loop coming toward you). We only flag departed when NO
       // bus on the route is catchable.
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -2809,108 +2032,6 @@ const TripPlanner: FC<{
     setAutoDetectOffer(null);
   }, [userLatLon, buses, options, stopCoords]);
 
-  // ---- Go mode (committed-trip guidance) ----
-  // NOTE: everything here must stay BELOW the `options` useMemo (TDZ).
-  const goActive = !!goTrip;
-  // The committed trip's live option — carries the auto-updating wait,
-  // catchability rebooking (missedBus), and departed state for free.
-  const goOpt = goTrip && options
-    ? options.find((o) => o.mode === "shuttle" && o.routeLabel === goTrip.routeLabel) ?? null
-    : null;
-  const goBoardCoord = goTrip ? stopCoords[goTrip.boardStopId] : undefined;
-  const goDistM = goTrip && userLatLon && goBoardCoord ? haversineMeters(userLatLon, goBoardCoord) : null;
-  // WAIT once the rider is essentially at the stop; WALK otherwise
-  // (including when we have no GPS fix to judge by).
-  const goStage: "walk" | "wait" = goDistM !== null && goDistM <= 80 ? "wait" : "walk";
-
-  // Restore-race repair: if the plan ran before the first bus poll landed
-  // (reload mid-trip), it's walk-only and the committed route looks dead.
-  // Re-plan ONCE when buses arrive; if the route is genuinely bus-less the
-  // banner's "no live bus" message stands after that single retry.
-  const goReplanRef = useRef(false);
-  useEffect(() => {
-    if (!goTrip) { goReplanRef.current = false; return; }
-    if (goReplanRef.current || goOpt || !options || buses.length === 0) return;
-    goReplanRef.current = true;
-    setRefreshKey((k) => k + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goTrip, goOpt, options, buses.length]);
-
-  // Keep the committed busName in sync when the live option rebooks to a
-  // later bus (planned one missed) — the parent's persistent bar and the
-  // approach alert both key off goTrip.busName.
-  useEffect(() => {
-    if (!goTrip || !goOpt) return;
-    const norm = (s: string) => s.replace(/^#/, "");
-    if (norm(goOpt.busName) !== norm(goTrip.busName)) {
-      onGoUpdate({ ...goTrip, busName: goOpt.busName });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goOpt?.busName]);
-
-  // Go dashboard state: whether the PiP locator bubble is expanded to a
-  // full-width map. Reset per trip.
-  const [goMapBig, setGoMapBig] = useState(false);
-  useEffect(() => { setGoMapBig(false); }, [goTrip?.startedAt]);
-
-  // One-shot Go-mode nudges (vibrate + Notification when permitted).
-  const goNotifiedRef = useRef<Set<string>>(new Set());
-  const goNotify = (key: string, title: string, body: string) => {
-    if (goNotifiedRef.current.has(key)) return;
-    goNotifiedRef.current.add(key);
-    try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
-    try {
-      if (Notification.permission === "granted") new Notification(title, { body });
-    } catch { /* unsupported */ }
-  };
-  // WALK stage: "time to leave" — the slack (waitSec = time you'd stand at
-  // the stop if you left right now) has burned down to the safety buffer.
-  useEffect(() => {
-    if (!goTrip || !goOpt || goOpt.departed || goStage !== "walk") return;
-    if (goOpt.waitSec <= 90) {
-      const norm = goOpt.busName.replace(/^#/, "");
-      goNotify(
-        `leave|${goTrip.startedAt}|${norm}`,
-        "Time to leave",
-        `Bus #${norm} — leave now to make it to ${(stopNames[goTrip.boardStopId] ?? "your stop").replace(/\s*\/\s*/g, "/")}.`,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goOpt?.waitSec, goStage, goTrip?.startedAt]);
-  // WAIT stage: bus one stop away — get ready.
-  useEffect(() => {
-    if (!goTrip || goStage !== "wait" || !goOpt || goOpt.departed) return;
-    const cfg = ROUTE_LISTS.find((c) => c.label === goTrip.routeLabel);
-    if (!cfg) return;
-    const allStops: number[] = [];
-    const seen = new Set<number>();
-    for (const rid of cfg.routeIds) {
-      for (const sid of (routeStops[rid] ?? [])) {
-        if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-      }
-    }
-    const bi = allStops.indexOf(goTrip.boardStopId);
-    if (bi === -1) return;
-    const norm = (s: string) => s.replace(/^#/, "");
-    const bus = buses.find((b) =>
-      norm(b.bus_name) === norm(goOpt.busName) &&
-      cfg.busRouteIds.includes(b.route_id) &&
-      isBusOnRoute(b, allStops, stopCoords),
-    );
-    if (!bus) return;
-    const busIdx = findRouteAnchor(bus, allStops, stopCoords);
-    if (busIdx < 0) return;
-    const away = (bi - busIdx + allStops.length) % allStops.length;
-    if (away === 1) {
-      goNotify(
-        `approach|${goTrip.startedAt}|${norm(goOpt.busName)}`,
-        "Your bus is almost here",
-        `#${norm(goOpt.busName)} is at the stop before yours — get ready.`,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buses, goStage, goOpt?.busName, goTrip?.startedAt]);
-
   // Apply a "plan this saved destination" request from Favorites: sets
   // the To field, and defaults From to current location (falling back to
   // empty if we don't have GPS yet).
@@ -2926,29 +2047,6 @@ const TripPlanner: FC<{
     }
     onConsumePending();
   }, [pendingTrip]);
-
-  // Restore/enter Go mode: seed the destination from the committed trip so
-  // the planner recomputes the same options after a refresh or a tab switch.
-  // From stays empty on purpose — effectiveFromLL then tracks the live GPS
-  // fix, so the walk estimate counts down as the rider actually walks.
-  useEffect(() => {
-    if (!goTrip) return;
-    // Wait for the structural data (routes/stops) before seeding — on a
-    // reload-restore this effect fires before the /api/buses payload
-    // lands, and planTrip against empty data yields a walk-only plan
-    // that the stableOptions memo (deliberately) never recomputes.
-    if (Object.keys(routeStops).length === 0 || Object.keys(stopCoords).length === 0) return;
-    // Collapse everything so the guided view starts compact. The
-    // WAIT-stage effect expands the committed card (with its stop list)
-    // once the rider is at the stop.
-    setExpandedKey(null);
-    if (toLL && Math.abs(toLL.lat - goTrip.toLat) < 1e-6 && Math.abs(toLL.lon - goTrip.toLon) < 1e-6) return;
-    setToText(goTrip.toText);
-    prevToTextRef.current = goTrip.toText;
-    setToLL({ lat: goTrip.toLat, lon: goTrip.toLon });
-    setToSugg([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goTrip?.startedAt, Object.keys(routeStops).length === 0, Object.keys(stopCoords).length === 0]);
 
   // We store destinations only now (the From point is almost always the
   // user's current location, so saving a fixed From coord went stale).
@@ -2978,44 +2076,6 @@ const TripPlanner: FC<{
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toLL?.lat, toLL?.lon]);
-
-  // Fire a browser Notification when:
-  //   (a) dwellStopId set → bus has departed that stop (departure detection), or
-  //   (b) no dwellStopId → bus ETA to pickup is ≤5 min.
-  useEffect(() => {
-    if (!alertedRide || !options) return;
-    const normBus = (s: string) => s.replace(/^#/, "");
-    const match = options.find(
-      (o) =>
-        o.mode === "shuttle" &&
-        !o.departed &&
-        normBus(o.busName) === normBus(alertedRide.busName) &&
-        o.boardStopId === alertedRide.boardStopId &&
-        o.routeLabel === alertedRide.routeLabel,
-    );
-    if (!match) return;
-
-    if (alertedRide.dwellStopId != null) {
-      // Departure mode: fire the moment the bus leaves the recorded dwell stop.
-      const currentBus = buses.find((b) => normBus(b.bus_name) === normBus(alertedRide.busName));
-      if (!currentBus || currentBus.at_stop_id === alertedRide.dwellStopId) return;
-      const dwellName = (stopNames[alertedRide.dwellStopId] ?? "its stop").replace(/\s*\/\s*/g, "/");
-      const etaMins = match.waitSec > 0 ? Math.round(match.waitSec / 60) : 0;
-      const body = etaMins > 0
-        ? `Bus #${normBus(alertedRide.busName)} left ${dwellName} — ~${etaMins} min to your stop`
-        : `Bus #${normBus(alertedRide.busName)} left ${dwellName} — arriving now`;
-      try { new Notification(`${alertedRide.routeLabel} is moving!`, { body }); } catch { /* blocked */ }
-      setAlertedRide(null);
-      return;
-    }
-
-    // ETA mode: fire when bus is ≤5 min from the pickup stop.
-    if (match.waitSec > 300) return;
-    const mins = Math.max(0, Math.round(match.waitSec / 60));
-    const body = mins === 0 ? "Bus is arriving now!" : `Bus #${normBus(match.busName)} arrives in ${mins} min`;
-    try { new Notification(`${alertedRide.routeLabel} arriving soon`, { body }); } catch { /* blocked */ }
-    setAlertedRide(null);
-  }, [options, alertedRide, buses, stopNames]);
 
   // "Current location" isn't a typed value — it's the implicit meaning
   // of an empty From field. Treat empty fromText + userLatLon as valid
@@ -3151,43 +2211,6 @@ const TripPlanner: FC<{
     if (expandedKey !== null) setExpandedKey(null);
   }
 
-  const fmtMin = (s: number) => {
-    // Floor for minutes ≥ 2 so "7 min" honestly means "at least 7 min
-    // left" (Math.round would call 6:31 "7 min" and then jump to "6 min"
-    // at 6:30 — felt stuck). Under 2 min, show MM:SS so the final
-    // countdown ticks visibly each poll. Under 10 s, just "now".
-    // "min" (not "m") everywhere so readers don't confuse it with miles.
-    if (s < 10) return "now";
-    if (s < 120) {
-      const m = Math.floor(s / 60);
-      const sec = Math.floor(s % 60);
-      return `${m}:${String(sec).padStart(2, "0")}`;
-    }
-    return `${Math.floor(s / 60)} min`;
-  };
-  // Walking estimate — round to nearest minute. A 1:30 walk is "2 min"
-  // not "1:30", since sub-minute precision on foot is meaningless and
-  // the rider just wants "about N minutes of walking."
-  const fmtWalk = (s: number) => {
-    const m = Math.max(1, Math.round(s / 60));
-    return `${m} min`;
-  };
-  // Wait time — floor to minutes. "1:32" of wait becomes "1 min" since
-  // the bus won't arrive before that. "0 min" when under a minute so the
-  // display reads honestly small.
-  const fmtWait = (s: number) => {
-    const m = Math.max(0, Math.floor(s / 60));
-    return `${m} min`;
-  };
-  const fmtClock = (s: number, from?: Date) => {
-    const base = from?.getTime() ?? Date.now();
-    const d = new Date(base + s * 1000);
-    let h = d.getHours();
-    const mm = d.getMinutes();
-    const ampm = h >= 12 ? "p" : "a";
-    h = h % 12; if (h === 0) h = 12;
-    return `${h}:${String(mm).padStart(2, "0")}${ampm}`;
-  };
 
   const inputStyle: React.CSSProperties = {
     // 16px is the iOS threshold below which mobile Safari zooms the
@@ -3800,10 +2823,6 @@ const TripPlanner: FC<{
         </div>
       )}
       </div>
-      {/* Go mode (the guided "walk → wait → ride" dashboard) was retired
-          2026-07-17 on user feedback ("way too complicated — just show the
-          route list"). Its plumbing (goTrip state, GoMiniMap, stage nudges)
-          is dormant: entry points were removed, goTrip is never set. */}
       {options && options.length > 0 && (
         <div style={{ marginTop: 4 }}>
           {/* Details page leads with the way back — the search rows are
@@ -3824,9 +2843,8 @@ const TripPlanner: FC<{
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
               overviewExpanded init). Built from the same segCoords +
-              busMatch we compute per option below. Skipped in Go mode —
-              comparing routes is over. */}
-          {!goActive && effectiveFromLL && toLL && (() => {
+              busMatch we compute per option below. */}
+          {effectiveFromLL && toLL && (() => {
             const normBus = (s: string) => s.replace(/^#/, "");
             const overviewOpts: OverviewOption[] = [];
             // Mirror the visible option list (same sort + slice, same
@@ -3976,14 +2994,7 @@ const TripPlanner: FC<{
             // Fastest-first with hysteresis — see orderedOptions above.
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
-            // Go mode: the committed option's card is pinned to the top;
-            // the other routes stay listed (collapsed) below it so the
-            // rider can still compare or switch without ending the trip.
-            const _isGoCard = (o: TripOption) =>
-              goActive && o.mode === "shuttle" && o.routeLabel === goTrip!.routeLabel;
-            const _visibleBase = goActive
-              ? [..._sorted.filter(_isGoCard), ..._sorted.filter((o) => !_isGoCard(o))]
-              : showAllOptions ? _sorted : _sorted.slice(0, 3);
+            const _visibleBase = showAllOptions ? _sorted : _sorted.slice(0, 3);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested
@@ -3991,10 +3002,10 @@ const TripPlanner: FC<{
             // staying tappable from the details view. Opening a 4th-ranked
             // route and refreshing therefore left the chrome in details mode
             // with the top-3 rows rendered underneath it.
-            const _visible = !goActive && expandedKey && !_visibleBase.some((v) => v.routeLabel === expandedKey)
+            const _visible = expandedKey && !_visibleBase.some((v) => v.routeLabel === expandedKey)
               ? [..._visibleBase, ..._sorted.filter((o) => o.routeLabel === expandedKey)]
               : _visibleBase;
-            const _hidden = goActive ? 0 : _sorted.length - _visible.length;
+            const _hidden = _sorted.length - _visible.length;
             // Google-Maps pattern: options are divider-separated ROWS of one
             // sheet; tapping a row swaps the list for that route's details
             // view (← All routes restores the list).
@@ -4002,7 +3013,7 @@ const TripPlanner: FC<{
             // Reassure rather than confuse: when every shuttle option got
             // demoted below walking, say so up front — otherwise the grey
             // tags read like the app is broken.
-            const _allShuttlesSlower = !goActive &&
+            const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
               _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
             return <>
@@ -4104,19 +3115,10 @@ const TripPlanner: FC<{
                     {!isExpanded && <span style={{ fontSize: 16, color: "#9aa0a6" }}>›</span>}
                   </span>
                 </div>
-                {/* Only one badge survives: YOUR TRIP (marks the committed
-                    Go option). FASTEST is implied by sort order — the top
-                    card is the recommendation, Google-style — and
+                {/* No badges: FASTEST is implied by sort order — the top card
+                    is the recommendation, Google-style — and
                     slower-than-walking is already communicated by the tier
                     sort + the "walking wins" banner. */}
-                {_isGoCard(o) && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, color: "#1a73e8",
-                      background: "#e8f0fe", padding: "2px 8px", borderRadius: 10,
-                    }}>YOUR TRIP</span>
-                  </div>
-                )}
                 {/* Line 2: leg chips — walk / route pill / walk, Google
                     transit-style, omitting a walk leg when it's 0 sec.
                     Collapsed rows ONLY: the details view's step list
@@ -4167,7 +3169,7 @@ const TripPlanner: FC<{
                   // vehicle a loop later counts.
                   const nextArr = !o.departed
                     ? (computeUpcomingArrivals(
-                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes,
                       )
                         .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEta + 30)
                         .sort((a, b) => a.eta - b.eta)[0] ?? null)
@@ -4261,10 +3263,10 @@ const TripPlanner: FC<{
                           "could be one line"). The colored pill carries the
                           RIDE TIME + bus number, not the route name — the
                           route is named in the map header above, and stop
-                          names live in Stops ▾ / the map / Go guidance.
+                          names live in Stops ▾ / the map.
                           The walk chip is duration only — the live meters
                           readout was cut 2026-07-17 ("don't need the
-                          distance"); Go mode still shows it. */}
+                          distance"). */}
                       {(() => {
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
@@ -4291,11 +3293,9 @@ const TripPlanner: FC<{
                           </div>
                         );
                       })()}
-                      {/* The "▶ Go" button (entry to the guided Go mode)
-                          was removed 2026-07-17 with the rest of Go mode —
-                          "way too complicated". Directions took its place
-                          as the card's one prominent action (user request
-                          2026-07-17: "make it more obvious"). */}
+                      {/* Directions is the card's one prominent action
+                          (user request 2026-07-17: "make it more
+                          obvious"). */}
                       {navHref && (
                         <a
                           href={navHref}
@@ -4590,10 +3590,8 @@ const TripPlanner: FC<{
           live bus positions without changing the destination — useful
           when a bus has pulled up and you want the ETA recomputed.
           Rendered whenever a trip is in progress (options !== null),
-          so the same pair appears for both "0 results" and full lists.
-          Hidden in Go mode — the banner's End trip is the exit, and the
-          live option auto-refreshes with every bus update anyway. */}
-      {options && !goActive && (
+          so the same pair appears for both "0 results" and full lists. */}
+      {options && (
         <div style={{
           display: "flex", justifyContent: "center", alignItems: "center",
           gap: 4, marginTop: 18, marginBottom: 10,
@@ -4648,7 +3646,7 @@ const TripPlanner: FC<{
           first trip doesn't start with a blank search box. The popular
           chips are training wheels — once the rider has their own saved
           or recent destinations, those take the space instead. */}
-      {!options && !goActive && (() => {
+      {!options && (() => {
         const activeRoutes = ROUTE_LISTS.filter((c) => buses.some((b) => c.busRouteIds.includes(b.route_id)));
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (
@@ -4691,7 +3689,7 @@ const TripPlanner: FC<{
       {/* Saved + Recent are hidden whenever we have a live trip on
           screen — the destination search is what the user is acting on.
           They come back automatically once the destination is cleared. */}
-      {!options && !goActive && savedTrips.length > 0 && (
+      {!options && savedTrips.length > 0 && (
         <div style={{ marginTop: 20, marginBottom: 8 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -4795,7 +3793,7 @@ const TripPlanner: FC<{
           </div>
         </div>
       )}
-      {!options && !goActive && recentTrips.length > 0 && (
+      {!options && recentTrips.length > 0 && (
         <div style={{ marginTop: savedTrips.length > 0 ? 8 : 20, marginBottom: 10 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -4877,336 +3875,6 @@ const TripPlanner: FC<{
   );
 };
 
-type UpcomingArrival = {
-  eta: number; low: number; high: number;
-  routeLabel: string; color: string; busName: string; stopId: number;
-};
-
-// Drop buses whose GPS sits far from every stop on the route.
-// TransLoc keeps reporting a bus when it's parked at a depot or
-// deadheading between shifts — at the Hamden yard we see Red bus #122
-// show up ~2 km north of the route, creating phantom arrivals and
-// stranded pins on the minimap. 500 m is generous enough to tolerate
-// routes that briefly drift off the stop-list geometry (shortcut
-// turns, etc.) while rejecting anything that's genuinely off-route.
-const OFF_ROUTE_THRESHOLD_M = 500;
-function isBusOnRoute(
-  bus: { lat: number; lon: number },
-  stops: number[],
-  stopCoords: Record<number, { lat: number; lon: number }>,
-): boolean {
-  if (!bus.lat || !bus.lon) return true; // no GPS → don't filter
-  let bestM2 = Infinity;
-  for (const sid of stops) {
-    const sc = stopCoords[sid];
-    if (!sc) continue;
-    const dlat = (bus.lat - sc.lat) * 111_000;
-    const dlon = (bus.lon - sc.lon) * 84_000;
-    const m2 = dlat * dlat + dlon * dlon;
-    if (m2 < bestM2) bestM2 = m2;
-    if (bestM2 < OFF_ROUTE_THRESHOLD_M * OFF_ROUTE_THRESHOLD_M) return true;
-  }
-  return bestM2 < OFF_ROUTE_THRESHOLD_M * OFF_ROUTE_THRESHOLD_M;
-}
-
-// Distance from a point to a line segment, in meters (flat-earth
-// approximation adequate for intra-campus distances). Unlike the line
-// distance, this clamps projection to [0, 1] — points past either
-// endpoint return distance to that endpoint, not some imagined
-// perpendicular into the wrong direction.
-function distanceToSegmentM(
-  p: { lat: number; lon: number },
-  a: { lat: number; lon: number },
-  b: { lat: number; lon: number },
-): number {
-  const t = Math.max(0, Math.min(1, progressAlongSegment(p, a, b)));
-  const projLat = a.lat + (b.lat - a.lat) * t;
-  const projLon = a.lon + (b.lon - a.lon) * t;
-  const dlat = (p.lat - projLat) * 111_000;
-  const dlon = (p.lon - projLon) * 84_000;
-  return Math.sqrt(dlat * dlat + dlon * dlon);
-}
-
-// Locate a bus on a route's stop sequence. First-principles algorithm:
-//
-//   1. Find all segments stops[i] → stops[i+1] within GPS_THRESHOLD_M
-//      of the bus's actual GPS — these are plausible candidates.
-//   2. If the feed provides last_stop_id and it's on the route, among
-//      the candidates prefer the one with the shortest FORWARD
-//      distance from last_stop_id. This disambiguates routes that
-//      revisit the same vicinity twice (e.g., Red passes 130 Prospect
-//      on both inbound and outbound legs) without letting the
-//      feed override fresh GPS.
-//   3. If no segment is within threshold (bus is genuinely off-route
-//      or on a part of the route the stop list doesn't model), fall
-//      back to the globally-nearest segment.
-//
-// Returns the starting-stop index of the segment. The downstream step
-// loop treats this as "bus is currently on segment i → i+1" which is
-// the correct mental model for both dwelling-at-stop and mid-segment
-// cases.
-const ANCHOR_GPS_THRESHOLD_M = 150;
-function findRouteAnchor(
-  bus: { lat: number; lon: number; last_stop_id?: number; at_stop_id?: number },
-  stops: number[],
-  stopCoords: Record<number, { lat: number; lon: number }>,
-): number {
-  const N = stops.length;
-  if (N === 0) return -1;
-
-  // No GPS — fall back to feed's last_stop_id (or 0 if not on route).
-  if (!bus.lat || !bus.lon) {
-    const idx = bus.last_stop_id != null ? stops.indexOf(bus.last_stop_id) : -1;
-    return idx >= 0 ? idx : 0;
-  }
-
-  // Distance to each segment.
-  const dists: number[] = new Array(N);
-  for (let i = 0; i < N; i++) {
-    const a = stopCoords[stops[i]];
-    const b = stopCoords[stops[(i + 1) % N]];
-    if (!a || !b) { dists[i] = Infinity; continue; }
-    dists[i] = distanceToSegmentM(bus, a, b);
-  }
-
-  const lastIdx = bus.last_stop_id != null ? stops.indexOf(bus.last_stop_id) : -1;
-
-  // Candidates within threshold, sorted by forward distance from
-  // last_stop_id (if available) so a route that revisits a vicinity
-  // twice picks the right leg. Distance tiebreaker for ties.
-  const candidates: number[] = [];
-  for (let i = 0; i < N; i++) {
-    if (dists[i] < ANCHOR_GPS_THRESHOLD_M) candidates.push(i);
-  }
-  if (candidates.length > 0) {
-    if (lastIdx >= 0) {
-      candidates.sort((a, b) => {
-        const fa = (a - lastIdx + N) % N;
-        const fb = (b - lastIdx + N) % N;
-        if (fa !== fb) return fa - fb;
-        return dists[a] - dists[b];
-      });
-    } else {
-      candidates.sort((a, b) => dists[a] - dists[b]);
-    }
-    return refineWithAtStop(candidates[0]);
-  }
-
-  // Nothing within threshold — bus is off-route-ish. Just pick
-  // globally-nearest so downstream code still has a valid anchor.
-  let bestIdx = 0;
-  let bestD = dists[0];
-  for (let i = 1; i < N; i++) {
-    if (dists[i] < bestD) { bestD = dists[i]; bestIdx = i; }
-  }
-  return refineWithAtStop(bestIdx);
-
-  // at_stop_id REFINES the GPS anchor; it must never contradict it. It used to
-  // short-circuit the whole scan, which is how a bus appeared to travel
-  // backwards: many routes pass two stops that sit almost on top of each other
-  // but are far apart in sequence — Broadway/York and Elm/York are 23 m apart
-  // yet 2 stops apart on Blue Weekend, and Orange/Pearl (N)/(S) are 35 m apart
-  // yet 9 stops apart on Green. A few metres of GPS noise picked the wrong one
-  // and threw the anchor a third of a loop (reports #37, #38; the same swing
-  // drove the "6 min then 16 min" ETA in #32).
-  //
-  // So accept it only when the bus is really there AND it is the GPS anchor or
-  // exactly one stop ahead — which still preserves report #27's fix, where the
-  // segment scan lags one stop behind at a shared segment endpoint.
-  function refineWithAtStop(gpsIdx: number): number {
-    if (bus.at_stop_id == null) return gpsIdx;
-    const ai = stops.indexOf(bus.at_stop_id);
-    if (ai < 0) return gpsIdx;
-    const sc = stopCoords[stops[ai]];
-    if (!sc) return gpsIdx;
-    const dlat = (bus.lat - sc.lat) * 111_000;
-    const dlon = (bus.lon - sc.lon) * 84_000;
-    const near = dlat * dlat + dlon * dlon < ANCHOR_GPS_THRESHOLD_M * ANCHOR_GPS_THRESHOLD_M;
-    return near && (ai - gpsIdx + N) % N <= 1 ? ai : gpsIdx;
-  }
-}
-
-
-function computeUpcomingArrivals(
-  targetStopIds: number[],
-  buses: BusData[],
-  routeStops: Record<string, number[]>,
-  stopCoords: Record<number, { lat: number; lon: number }>,
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>,
-  dwellTimes?: Record<string, Record<string, { med: number; sd: number; n: number }>>,
-  dwellsByBus?: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>,
-): UpcomingArrival[] {
-  const result: UpcomingArrival[] = [];
-  const targetSet = new Set(targetStopIds);
-  for (const cfg of ROUTE_LISTS) {
-    const seen = new Set<number>();
-    const stops: number[] = [];
-    for (const rid of cfg.routeIds) {
-      for (const sid of (routeStops[rid] ?? [])) {
-        if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
-      }
-    }
-    const hitsTarget = stops.some((s) => targetSet.has(s));
-    if (!hitsTarget) continue;
-
-    const routeBuses = buses.filter((b) =>
-      cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, stops, stopCoords),
-    );
-    if (routeBuses.length === 0) continue;
-
-    const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
-    const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
-    const avgSeg = segValues.length > 0
-      ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
-      : 0;
-    const fallbackSd = avgSeg * 0.5;
-
-    for (const bus of routeBuses) {
-      // Anchor = segment start. GPS is the ground-truth signal;
-      // last_stop_id only breaks ties on routes that revisit a
-      // vicinity (e.g., Red passes 130 Prospect on both inbound
-      // and outbound legs). This replaces the older "trust feed,
-      // advance one stop at a time" pattern which stalled when
-      // last_stop_id was multi-stops-stale and the bus had drifted
-      // off-axis from subsequent segment lines.
-      const gpsAnchorIdx = findRouteAnchor(bus, stops, stopCoords);
-      if (gpsAnchorIdx < 0) continue;
-
-      // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
-      // current than last_stop_id (the feed lags by one stop on arrival).
-      // If the bus is parked at a known route stop, use that as the anchor
-      // so the stall credit and segment walk both start from the right place.
-      // Without this, findRouteAnchor's last_stop_id tiebreak picks the
-      // segment that ENDS at the current stop (because last_stop_id is still
-      // the previous stop), causing busIsAtAnchor to fail and no credit applied.
-      //
-      // This override had NO distance and NO ordering check, so it was even
-      // weaker than findRouteAnchor's. On Green the two Orange/Pearl platforms
-      // are 35 m apart but 9 stops apart in the loop, so a 35 m GPS wobble
-      // relocated the bus a third of a lap and swung the displayed ETA by
-      // ~10 minutes — exactly the "6 min then it said 16" in report #32. Now
-      // findRouteAnchor already returns at_stop_id's index whenever it is
-      // legitimate, so the anchor is simply trusted, and the dwell credit is
-      // only granted when the anchor agrees the bus is actually there.
-      const busIdx = gpsAnchorIdx;
-      let stallCredit = 0;
-      if (bus.at_stop_id && bus.at_stop_since) {
-        const atIdx = stops.indexOf(bus.at_stop_id);
-        if (atIdx >= 0 && atIdx === gpsAnchorIdx) {
-          stallCredit = Math.max(
-            0,
-            (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000,
-          );
-        }
-      }
-
-      // Mid-segment proration: if the bus is en route (not dwelling at
-      // the anchor) and GPS shows it between A and B, scale the first
-      // segment's time by the fraction of A→B still ahead.
-      //
-      // Use the along-segment projection t (0 = at A, 1 = at B) — the
-      // same number the anchor-advance uses — so the two stay
-      // consistent. Perpendicular GPS jitter moves t very little, unlike
-      // straight-line-to-B distance which can swing wildly. Remaining
-      // fraction = (1 - t), clamped [0, 1]: if anchor-advance didn't
-      // fire but t happens to exceed 1 due to sub-step drift, treat it
-      // as 0 remaining rather than negative.
-      let firstSegProgressFactor = 1;
-      if (stallCredit === 0 && bus.lat && bus.lon) {
-        const a = stopCoords[stops[busIdx]];
-        const b = stopCoords[stops[(busIdx + 1) % stops.length]];
-        if (a && b) {
-          const t = progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b);
-          firstSegProgressFactor = Math.max(0, Math.min(1, 1 - t));
-        }
-      }
-
-      let cumulative = 0;
-      let cumulativeVar = 0;
-      const totalStops = stops.length;
-      // Walk the loop TWICE so each stop can get two arrivals per bus: the
-      // upcoming one and the same vehicle a full lap later. On single-bus
-      // routes (Blue Weekend most weekends) that second-lap entry is the only
-      // way to answer "and the one after that?" (report #29), and it turns
-      // "departed" into an honest wait-for-it-to-come-around when the rider
-      // can't catch the current pass (report #30). It also covers the bus's
-      // own anchor stop (reachable only at step ≥ totalStops), so a bus
-      // dwelling AT a stop still yields an ETA for that stop.
-      const recordedForStop = new Map<number, number>();
-      const MAX_ETA_SEC = 90 * 60; // sanity cap — beyond this the lap-2 guess is noise
-      for (let step = 1; step <= totalStops * 2; step++) {
-        const prevI = (busIdx + step - 1) % totalStops;
-        const curI = (busIdx + step) % totalStops;
-        const seg = routeSegs[`${stops[prevI]}-${stops[curI]}`];
-        let segAvg: number;
-        let segVar: number;
-        if (seg && seg.n >= 1) {
-          segAvg = seg.avg;
-          segVar = (seg.sd ?? 0) ** 2;
-        } else if (avgSeg > 0) {
-          segAvg = avgSeg;
-          segVar = fallbackSd * fallbackSd;
-        } else {
-          const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
-          segAvg = pc && cc
-            ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S)
-            : 90;
-          segVar = (segAvg * 0.5) ** 2;
-        }
-        // Burn stall credit on the first segment only, capped by the
-        // segment itself so we don't go negative.
-        if (step === 1 && stallCredit > 0) {
-          const applied = Math.min(stallCredit, segAvg);
-          segAvg -= applied;
-          stallCredit -= applied;
-        }
-        // Mid-segment proration on the first segment: scale down by the
-        // fraction of the A→B distance still ahead of the bus. Scale
-        // variance by fraction² so "almost there" also means "less
-        // uncertainty about when."
-        if (step === 1 && firstSegProgressFactor < 1) {
-          segAvg *= firstSegProgressFactor;
-          segVar *= firstSegProgressFactor * firstSegProgressFactor;
-        }
-        cumulative += segAvg;
-        cumulativeVar += segVar;
-        if (cumulative > MAX_ETA_SEC) break;
-        const sid = stops[curI];
-        const recorded = recordedForStop.get(sid) ?? 0;
-        if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
-          recordedForStop.set(sid, recorded + 1);
-          const sd = Math.sqrt(cumulativeVar);
-          result.push({
-            eta: cumulative,
-            low: Math.max(0, cumulative - sd),
-            high: cumulative + sd,
-            routeLabel: cfg.label,
-            color: cfg.color,
-            busName: bus.bus_name.replace("#", ""),
-            stopId: sid,
-          });
-        }
-      }
-    }
-  }
-  result.sort((a, b) => a.eta - b.eta);
-  return result;
-}
-
-function formatClockAt(sec: number): string {
-  const d = new Date(Date.now() + sec * 1000);
-  let h = d.getHours();
-  const m = d.getMinutes();
-  const ampm = h >= 12 ? "p" : "a";
-  h = h % 12; if (h === 0) h = 12;
-  return `${h}:${String(m).padStart(2, "0")}${ampm}`;
-}
-
-function formatEtaRange(a: { eta: number; low: number; high: number }): string {
-  const lo = Math.round(a.low / 60);
-  if (a.eta < 60) return "<1 min";
-  return `${lo} min`;
-}
 
 const NextShuttles: FC<{
   buses: BusData[];
@@ -5226,7 +3894,7 @@ const NextShuttles: FC<{
   }
 
   const formatEta = formatEtaRange;
-  const formatClock = formatClockAt;
+  const formatClock = fmtClock;
 
   return (
     <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", padding: "8px 16px" }}>
@@ -6064,7 +4732,7 @@ const StopList: FC<{
                               {e.estimated ? "~" : ""}{label}
                             </span>
                             <span style={{ fontSize: 8, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
-                              {formatClockAt(e.eta)}
+                              {fmtClock(e.eta)}
                             </span>
                           </>
                         );
@@ -6539,104 +5207,6 @@ const TrackLoop: FC<TrackLoopProps & {
   );
 };
 
-// ── Accuracy page ──────────────────────────────────────────────────────────
-
-interface AccuracyByDistance {
-  stops_ahead: string; // "1" | "2" | "3" | "4-5" | "6+"
-  n: number;
-  // Typical miss (median of |error|), worst-case window (p95 / p90),
-  // and signed bias (+ve = bus arrives earlier than we predict →
-  // rider could miss it; -ve = bus arrives later than we predict).
-  p50_sec?: number | null;
-  p90_sec?: number | null;
-  p95_sec?: number | null;
-  mae_sec?: number | null;
-  bias_sec?: number | null;
-}
-
-interface AccuracyStop {
-  stop_id: number;
-  stop_name: string;
-  route_id: number;
-  route_name: string;
-  route_color: string;
-  n: number;
-  mae_sec: number;
-  bias_sec: number;
-  in_range_pct: number;
-  // 90th/95th percentile absolute-error in seconds. The UI picks the
-  // higher-confidence one if its window is ≤ 15 min of prediction,
-  // otherwise falls back to 90%.
-  p90_sec?: number | null;
-  p95_sec?: number | null;
-  // How accuracy varies with how many stops the bus is away at
-  // prediction time. A close bus ("1" stop) is typically an order
-  // of magnitude tighter than a far one ("6+").
-  by_distance?: AccuracyByDistance[];
-  buckets?: AccuracyBucket[];
-}
-
-interface AccuracyBucket {
-  bucket: string;
-  n: number;
-  in_range_pct: number | null;
-  mae_sec: number | null;
-  bias_sec: number | null;
-  early_tol_sec: number;
-  late_tol_sec: number;
-}
-
-interface AccuracyData {
-  buckets: AccuracyBucket[];
-  stops: AccuracyStop[];
-  overall: {
-    n: number; mae_sec: number; bias_sec: number; in_range_pct: number;
-    p90_sec?: number | null;
-    p95_sec?: number | null;
-    weighted?: string;
-  } | null;
-}
-
-function fmtSec(s: number): string {
-  const abs = Math.abs(s);
-  if (abs < 60) return `${Math.round(s)}s`;
-  const m = s / 60;
-  return `${m.toFixed(1)} min`;
-}
-
-// Pretty-print a confidence window (±X min). Sub-minute values stay
-// in seconds so "±30s" doesn't get rounded to "±0.5 min". Round to
-// whole minutes once we're past 10 min — the implied precision isn't
-// there. Spell "min" (not "m") so it can't be read as miles.
-function fmtWindow(sec: number): string {
-  if (sec < 60) return `±${Math.round(sec)}s`;
-  const m = sec / 60;
-  if (m >= 10) return `±${Math.round(m)} min`;
-  return `±${m.toFixed(1)} min`;
-}
-
-// Choose which percentile to show: prefer 95% if that window sits
-// within maxSec (default 15 min), otherwise fall back to 90%. Returns
-// null when neither value is available.
-function pickConfidence(
-  p95: number | null | undefined,
-  p90: number | null | undefined,
-  maxSec = 15 * 60,
-): { windowSec: number; level: 95 | 90 } | null {
-  if (p95 != null && p95 <= maxSec) return { windowSec: p95, level: 95 };
-  if (p90 != null) return { windowSec: p90, level: 90 };
-  if (p95 != null) return { windowSec: p95, level: 95 }; // fallback even if >15m
-  return null;
-}
-
-// Map a numeric stops-ahead count to the server-side distance bucket
-// label. Mirrors _dist_bucket() in server.py — keep in sync.
-function distanceBucket(stopsAhead: number): string | null {
-  if (stopsAhead <= 0) return null;
-  if (stopsAhead <= 10) return String(stopsAhead);
-  return "10+";
-}
-
 
 // On-bus tracking banner. Appears once the rider taps "I'm on this bus";
 // sticky across tabs. Counts down stops-to-alight from the live bus position
@@ -6655,7 +5225,7 @@ const RideRouteMap: FC<{
   routeStops: Record<string, number[]>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-  // The rider's actual destination (from the committed Go trip), distinct from
+  // The rider's actual destination (from the plan they boarded), distinct from
   // the alight stop — 🚏 marks where you get off, 🏁 marks where you're going.
   dest: { lat: number; lon: number; text: string } | null;
 }> = ({ ride, buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate, dest }) => {
@@ -6827,9 +5397,7 @@ const RideStopList: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus }) => {
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
   const cfg = ROUTE_LISTS.find(c => c.label === ride.routeLabel);
   const normBus = (s: string) => s.replace(/^#/, "");
 
@@ -6859,7 +5427,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
     );
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
@@ -6965,10 +5533,8 @@ const OnBusBanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   onEnd: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, dwellsByBus, onEnd }) => {
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, onEnd }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -7006,7 +5572,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
     );
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
@@ -7143,20 +5709,16 @@ const TransitMap: FC = () => {
   // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
   // that we prefer over route-level when computing stall credit.
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
-  const [busPace, setBusPace] = useState<Record<string, { fast?: boolean; slow?: boolean; ratio?: number; n?: number; skip?: { count: number; ago_sec: number } | null }>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
-  // Committed Go trip (guided walk → wait → ride). Held here rather than in
-  // TripPlanner because the planner unmounts on tab switches; persisted so
-  // a refresh mid-walk resumes guidance.
-  // Go mode retired 2026-07-17 ("too complicated") — never restore a
-  // persisted Go trip; the save effect below clears any stored one.
-  const [goTrip, setGoTrip] = useState<GoTrip | null>(null);
-  useEffect(() => { saveGoTrip(goTrip); }, [goTrip]);
+  // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
+  // deleted 2026-08-31. Clear anything an older build left in localStorage so
+  // a stale trip can't linger there forever.
+  useEffect(() => { clearRetiredLocalState(); }, []);
   // While a ride is active, the dedicated ride page (map + stop list) replaces
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
@@ -7221,9 +5783,6 @@ const TransitMap: FC = () => {
   // St → 517 Prospect returned no results because the cached coord
   // was "already at 517 Prospect."
   const LOCATION_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
-  // GPS course in degrees from north (null when stationary/unknown) —
-  // rotates the Go screen's compass arrow toward the pickup stop.
-  const [userHeading, setUserHeading] = useState<number | null>(null);
   const [userLatLon, setUserLatLon] = useState<{ lat: number; lon: number } | null>(() => {
     try {
       const raw = localStorage.getItem("lastUserLatLon");
@@ -7295,7 +5854,6 @@ const TransitMap: FC = () => {
           watchIdRef.current = navigator.geolocation.watchPosition(
             (p) => {
               setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-              setUserHeading(Number.isFinite(p.coords.heading as number) ? p.coords.heading : null);
             },
             () => {},
             { enableHighAccuracy: true, maximumAge: 5_000 },
@@ -7338,9 +5896,6 @@ const TransitMap: FC = () => {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (p) => {
         setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-        // GPS course (degrees from north) — only valid while moving;
-        // NaN/null when stationary. Drives the Go screen's compass arrow.
-        setUserHeading(Number.isFinite(p.coords.heading as number) ? p.coords.heading : null);
         setLocating(false);
         setLocateError(null);
       },
@@ -7360,19 +5915,19 @@ const TransitMap: FC = () => {
   }, []);
 
   // Battery saver (report #23): continuous high-accuracy GPS only while a
-  // trip actually needs it (guided Go trip or on-bus ride). Idle browsing
+  // trip actually needs it (planning, or an on-bus ride). Idle browsing
   // — including after the rider reaches their destination and taps Done —
   // downgrades to a coarse, heavily-cached watch. Restarting the watch on
   // transition is the only way to change accuracy; the callback is the
   // same either way.
-  // `goTrip || boardedRide` alone mis-classified the single most
+  // `boardedRide` alone mis-classified the single most
   // location-sensitive phase there is — walking to the pickup stop, before
   // any trip has been started — as idle browsing. Those riders got
   // enableHighAccuracy:false with maximumAge:60_000, i.e. a coarse fix up to
   // a minute stale, and watched their dot sit still while they walked
   // (reports #36, #39, #43, #44). Only the passive "all routes" list is
   // genuinely idle; the trip and map views both render a live dot.
-  const tripActiveForGps = !!goTrip || !!boardedRide || listView !== "all";
+  const tripActiveForGps = !!boardedRide || listView !== "all";
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     if (watchIdRef.current == null) return; // nothing running yet — mount effect owns the first start
@@ -7382,7 +5937,6 @@ const TransitMap: FC = () => {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (p) => {
         setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-        setUserHeading(Number.isFinite(p.coords.heading as number) ? p.coords.heading : null);
         setLocating(false);
         setLocateError(null);
       },
@@ -7413,7 +5967,6 @@ const TransitMap: FC = () => {
         watchIdRef.current = navigator.geolocation.watchPosition(
           (p) => {
             setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-            setUserHeading(Number.isFinite(p.coords.heading as number) ? p.coords.heading : null);
             setLocating(false);
             setLocateError(null);
           },
@@ -7442,14 +5995,8 @@ const TransitMap: FC = () => {
   useEffect(() => {
     const TRIP_MAX_AGE_MS = 2 * 3600_000;
     const now = Date.now();
-    if (goTrip && now - goTrip.startedAt > TRIP_MAX_AGE_MS) {
-      setGoTrip(null);
-      setBoardedRide(null);
-      return;
-    }
     if (boardedRide && boardedRide.startedAt && now - boardedRide.startedAt > TRIP_MAX_AGE_MS) {
       setBoardedRide(null);
-      setGoTrip(null);
       return;
     }
     if (!boardedRide) {
@@ -7465,7 +6012,6 @@ const TransitMap: FC = () => {
     if (!bus) {
       if (now - busLastSeenRef.current > 10 * 60_000) {
         setBoardedRide(null);
-        setGoTrip(null);
       }
       return;
     }
@@ -7476,7 +6022,6 @@ const TransitMap: FC = () => {
       if (offBusStreakRef.current >= 3) {
         offBusStreakRef.current = 0;
         setBoardedRide(null);
-        setGoTrip(null);
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
           try {
             new Notification("Ride ended", { body: "Looks like you've left the bus — tracking stopped to save battery." });
@@ -7485,7 +6030,7 @@ const TransitMap: FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buses, userLatLon?.lat, userLatLon?.lon, goTrip, boardedRide]);
+  }, [buses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
   const [stopGroups, setStopGroups] = useState<StopGroup[]>(() => {
     try {
       const saved = localStorage.getItem("shuttle-stop-groups");
@@ -7553,7 +6098,6 @@ const TransitMap: FC = () => {
     }
     return { x: sumX / sumW, y: sumY / sumW };
   }, [userLatLon, stationLatLon]);
-  const [accuracy, setAccuracy] = useState<AccuracyData | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem("shuttle-favorites");
@@ -7656,7 +6200,7 @@ const TransitMap: FC = () => {
         // Drop out-of-service ghosts (see isBusInService) before anything
         // downstream — map markers, planner, and arrival boards all read
         // this state.
-        setBuses(((data.buses ?? []) as BusData[]).filter(isBusInService));
+        setBuses(((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b)));
         if (data.routes) setRouteStops(data.routes);
         if (data.stop_names) setStopNames(data.stop_names);
         if (data.segments) setSegmentTimes(data.segments);
@@ -7665,7 +6209,6 @@ const TransitMap: FC = () => {
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
         if (data.route_paths) setRoutePaths(data.route_paths);
-        if (data.bus_pace) setBusPace(data.bus_pace);
       } catch { /* aborted or network error — next tick will retry */ }
     };
     // Adaptive cadence: 5s when the tab is visible (active riders
@@ -7706,32 +6249,6 @@ const TransitMap: FC = () => {
     };
     schedule();
     return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Accuracy refreshes on a much slower cadence than /api/buses —
-    // it's a 14-day rollup, so stale-by-a-few-minutes is fine. We run
-    // it regardless of the active tab now so the Trip card can
-    // annotate each route with the ±window for "bus N stops away"
-    // without a round-trip on tab switch.
-    let cancelled = false;
-    const fetchAccuracy = async () => {
-      if (document.hidden) return;
-      try {
-        const res = await fetch("/api/accuracy");
-        const data = await res.json();
-        if (!cancelled) setAccuracy(data);
-      } catch { /* ignore */ }
-    };
-    fetchAccuracy();
-    const id = setInterval(fetchAccuracy, 2 * 60_000);
-    const onVisibility = () => { if (!document.hidden) fetchAccuracy(); };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
   }, []);
 
   const stationMap = new Map(stations.map((s) => [s.id, s]));
@@ -7789,9 +6306,7 @@ const TransitMap: FC = () => {
           stopCoords={stopCoords}
           routeStops={routeStops}
           segmentTimes={segmentTimes}
-          dwellTimes={dwellTimes}
-          dwellsByBus={dwellsByBus}
-          onEnd={() => { setBoardedRide(null); setGoTrip(null); }}
+          onEnd={() => setBoardedRide(null)}
         />
       )}
       {/* Header */}
@@ -7862,8 +6377,6 @@ const TransitMap: FC = () => {
             stopCoords={stopCoords}
             routeStops={routeStops}
             segmentTimes={segmentTimes}
-            dwellTimes={dwellTimes}
-            dwellsByBus={dwellsByBus}
           />
         </>
       ) : listView === "map" ? (
@@ -7875,7 +6388,7 @@ const TransitMap: FC = () => {
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
-          routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus} busPace={busPace}
+          routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}
@@ -7886,13 +6399,7 @@ const TransitMap: FC = () => {
           onRecordRecent={saveRecentTrips}
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          accuracy={accuracy}
           onBoard={(ride) => { setBoardedRide(ride); }}
-          goTrip={goTrip}
-          onGoStart={(g) => setGoTrip(g)}
-          onGoUpdate={(g) => setGoTrip(g)}
-          onGoEnd={() => setGoTrip(null)}
-          userHeading={userHeading}
         />
       ) : (
       <>
@@ -8249,59 +6756,6 @@ const TransitMap: FC = () => {
           </div>
         )}
       </div>
-      {/* Persistent Go-trip bar: keeps the committed trip one tap away
-          while the rider browses the All/Map tabs. Live stops-away count
-          when the pinned bus is trackable; plain label otherwise. */}
-      {goTrip && !boardedRide && listView !== "trip" && (() => {
-        let liveNote: string | null = null;
-        const cfg = ROUTE_LISTS.find((c) => c.label === goTrip.routeLabel);
-        if (cfg) {
-          const allStops: number[] = [];
-          const seen = new Set<number>();
-          for (const rid of cfg.routeIds) {
-            for (const sid of (routeStops[rid] ?? [])) {
-              if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-            }
-          }
-          const bi = allStops.indexOf(goTrip.boardStopId);
-          const norm = (s: string) => s.replace(/^#/, "");
-          const bus = bi >= 0 ? buses.find((b) =>
-            norm(b.bus_name) === norm(goTrip.busName) &&
-            cfg.busRouteIds.includes(b.route_id) &&
-            isBusOnRoute(b, allStops, stopCoords),
-          ) : undefined;
-          if (bus) {
-            const busIdx = findRouteAnchor(bus, allStops, stopCoords);
-            if (busIdx >= 0) {
-              const away = (bi - busIdx + allStops.length) % allStops.length;
-              liveNote = away === 0 ? "bus at your stop" : `bus ${away} stop${away === 1 ? "" : "s"} away`;
-            }
-          }
-        }
-        return (
-          <div
-            onClick={() => setListView("trip")}
-            role="button"
-            tabIndex={0}
-            style={{
-              position: "fixed", bottom: 12, left: "50%", transform: "translateX(-50%)",
-              zIndex: 9998, background: "#1a1a2e", color: "#fff",
-              borderRadius: 999, padding: "10px 18px",
-              display: "flex", alignItems: "center", gap: 10,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.35)", cursor: "pointer",
-              maxWidth: "calc(100% - 32px)",
-            }}
-          >
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: goTrip.color, flexShrink: 0 }} />
-            <span style={{
-              fontSize: 13, fontWeight: 600,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {goTrip.routeLabel}{liveNote ? ` · ${liveNote}` : " trip in progress"} — tap to return
-            </span>
-          </div>
-        );
-      })()}
     </div>
   );
 };

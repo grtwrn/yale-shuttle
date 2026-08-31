@@ -213,6 +213,155 @@ describe("planTrip", () => {
   });
 });
 
+// Out-and-back planning -------------------------------------------------------
+//
+// Upstream route 9 (Green — West Campus) verbatim. Stops 23, 24, 25 and 26
+// each appear twice because the shuttle drives down to Building 400 and back
+// out the same way.
+const wcSeq = [
+  78, 84, 89, 77, 94, 143, 144, 133, 88, 92, 81, 26, 25, 23, 22, 23, 24, 25,
+  127, 26, 80, 91, 87,
+];
+const wcStopIds = [...new Set(wcSeq)];
+const wcStops: Stop[] = wcStopIds.map((id, i) => ({
+  id,
+  name: `S${id}`,
+  lat: 41.29,
+  lon: -72.98 + i * 0.003,
+}));
+const wcRoutes: Route[] = [
+  {
+    id: 9,
+    name: "Green - West Campus",
+    shortName: "G",
+    color: "#000",
+    stops: wcSeq,
+  },
+];
+
+function wcNet(): TransitNetwork {
+  const net = TransitNetwork.build(wcStops, wcRoutes);
+  const segMap = new Map<string, ReturnType<TransitNetwork["getSegmentStats"]>>();
+  for (let i = 0; i < wcSeq.length; i++) {
+    const from = wcSeq[i]!;
+    const to = wcSeq[(i + 1) % wcSeq.length]!;
+    segMap.set(TransitNetwork.segmentKey(9, from, to), {
+      mean: 60,
+      stddev: 5,
+      n: 20,
+      source: "specific",
+    });
+  }
+  const dwellMap = new Map(
+    wcStopIds.map((s) => [
+      TransitNetwork.dwellKey(9, s),
+      { mean: 10, stddev: 3, n: 20 },
+    ]),
+  );
+  net.setCalibration(segMap, dwellMap);
+  return net;
+}
+
+describe("etaAlongRoute on an out-and-back route", () => {
+  it("terminates instead of oscillating between the repeated stops", () => {
+    // THE BUG: `nextOnRoute` resolves stop 23 to its FIRST occurrence, so the
+    // old id-stepping walk went 23 → 22 → 23 → 22 forever, hit its hop cap,
+    // and returned null. Measured against the live feed, that erased 219 of
+    // 380 ordered stop pairs on route 9 and 54 of 110 on route 10 — and a
+    // null ETA makes `expectedWait` give up, so the planner offered nothing
+    // at all for those trips.
+    const net = wcNet();
+    let nulls = 0;
+    for (const a of wcStopIds) {
+      for (const b of wcStopIds) {
+        if (a === b) continue;
+        if (etaAlongRoute(net, 9, a, b) === null) nulls++;
+      }
+    }
+    expect(nulls).toBe(0);
+  });
+
+  it("rides the turnaround rather than teleporting across it", () => {
+    const net = wcNet();
+    // Building 800 (index 12) → Building 750 (index 16) is genuinely
+    // 25 → 23 → 22 → 23 → 24: four hops down and back, not one.
+    const eta = etaAlongRoute(net, 9, 25, 24)!;
+    expect(eta.hops).toBe(4);
+    expect(eta.meanSec).toBe(4 * 60 + 3 * 10);
+  });
+
+  it("targets the first occurrence a bus will reach", () => {
+    const net = wcNet();
+    // From Building 400 (the turnaround, index 14), Building 800 is next
+    // reached at index 17 — three hops out, not the 21 it would take to come
+    // back round to the index-12 occurrence.
+    expect(etaAlongRoute(net, 9, 22, 25)!.hops).toBe(3);
+  });
+
+  it("keeps hop counts bounded by the route's own length", () => {
+    const net = wcNet();
+    for (const a of wcStopIds) {
+      for (const b of wcStopIds) {
+        const eta = etaAlongRoute(net, 9, a, b);
+        if (eta) expect(eta.hops).toBeLessThan(wcSeq.length);
+      }
+    }
+  });
+});
+
+describe("planTrip on an out-and-back route", () => {
+  it("offers a ride across the West Campus turnaround", () => {
+    // Before the fix this returned walk-only: every candidate died inside
+    // `expectedWait`, because the ETA from the bus to the board stop was null.
+    const net = wcNet();
+    const board = wcStops.find((s) => s.id === 22)!; // the turnaround
+    const alight = wcStops.find((s) => s.id === 127)!; // on the return leg
+    const buses: BusPosition[] = [
+      busAt(1, "#g", 9, wcStops.find((s) => s.id === 23)!, T0, {
+        lastStopId: 23,
+      }),
+    ];
+    const response = planTrip({
+      network: net,
+      buses,
+      from: board,
+      to: alight,
+      now: T0,
+    });
+    const ride = response.plans
+      .flatMap((p) => p.legs)
+      .find((l) => l.mode === "ride");
+    expect(ride).toBeDefined();
+    if (ride && ride.mode === "ride") {
+      expect(ride.routeId).toBe(9);
+      expect(ride.boardStopId).toBe(22);
+      expect(ride.alightStopId).toBe(127);
+    }
+  });
+
+  it("never proposes boarding and alighting at the same stop", () => {
+    // A repeated stop makes this newly possible to get wrong: stop 26 sits at
+    // both index 11 and index 19, so a naive forward scan could offer
+    // "board at 26, ride the loop, alight at 26".
+    const net = wcNet();
+    const at26 = wcStops.find((s) => s.id === 26)!;
+    const response = planTrip({
+      network: net,
+      buses: [busAt(1, "#g", 9, at26, T0, { lastStopId: 26 })],
+      from: at26,
+      to: at26,
+      now: T0,
+    });
+    for (const plan of response.plans) {
+      for (const leg of plan.legs) {
+        if (leg.mode === "ride") {
+          expect(leg.boardStopId).not.toBe(leg.alightStopId);
+        }
+      }
+    }
+  });
+});
+
 // Helpers --------------------------------------------------------------------
 
 function busAt(

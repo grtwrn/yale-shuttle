@@ -116,4 +116,159 @@ describe("TransitNetwork", () => {
     expect(near[0]?.toStopId).toBe(1);
     expect(near.map((t) => t.toStopId)).not.toContain(2); // 2 is ~840 m away
   });
+
+  it("nearestStopOnRoute reports the sequence index, not just the id", () => {
+    const net = TransitNetwork.build(stops, routes);
+    const anchor = net.nearestStopOnRoute(100, { lat: 41.31, lon: -72.92 })!;
+    expect(anchor.stopId).toBe(2);
+    expect(anchor.index).toBe(1);
+  });
+
+  it("nearestStopOnRoute honours a radius cap", () => {
+    const net = TransitNetwork.build(stops, routes);
+    const far = { lat: 41.5, lon: -72.93 }; // ~21 km north of everything
+    expect(net.nearestStopOnRoute(100, far)).not.toBeNull();
+    expect(net.nearestStopOnRoute(100, far, 75)).toBeNull();
+  });
+});
+
+// Out-and-back topology, taken verbatim from upstream route 10 (Purple —
+// West Campus): the shuttle runs down to Building 400 and back out the same
+// way, so 23, 24, 25 and 26 each appear TWICE in the sequence.
+//
+//   idx: 0  1  2   3   4   5  6  7  8  9  10 11 12 13 14
+//   id:  10 9  1  122 127 26 25 24 23 22 23 24 25 26 72
+//                                   └──turnaround──┘
+const outAndBackRoute: Route = {
+  id: 10,
+  name: "Purple - West Campus",
+  shortName: "P",
+  color: "#000",
+  stops: [10, 9, 1, 122, 127, 26, 25, 24, 23, 22, 23, 24, 25, 26, 72],
+};
+
+// Laid out west-to-east so "nearest" is well defined and the out and back
+// legs retrace the same coordinates, exactly as the real stops do.
+const outAndBackStops: Stop[] = [10, 9, 1, 122, 127, 26, 25, 24, 23, 22, 72].map(
+  (id, i) => ({ id, name: `S${id}`, lat: 41.29, lon: -72.95 + i * 0.004 }),
+);
+
+describe("TransitNetwork with repeated stops (West Campus out-and-back)", () => {
+  const net = TransitNetwork.build(outAndBackStops, [outAndBackRoute]);
+
+  it("records every occurrence of a repeated stop", () => {
+    expect(net.positionsOnRoute(10, 23)).toEqual([8, 10]);
+    expect(net.positionsOnRoute(10, 26)).toEqual([5, 13]);
+    expect(net.positionsOnRoute(10, 22)).toEqual([9]); // turnaround, visited once
+    expect(net.positionsOnRoute(10, 999)).toEqual([]);
+  });
+
+  it("keeps positionOnRoute on the first (pessimistic) occurrence", () => {
+    expect(net.positionOnRoute(10, 23)).toBe(8);
+    expect(net.positionOnRoute(10, 26)).toBe(5);
+  });
+
+  it("hopsForward takes the shortest connecting distance on the return leg", () => {
+    // THE BUG: with first-occurrence-only indexing these scored 14 hops each,
+    // blew past the detector's MAX_SEGMENT_HOPS of 5, and were discarded —
+    // so the entire West Campus return leg had zero calibration samples.
+    expect(net.hopsForward(10, 22, 23)).toBe(1);
+    expect(net.hopsForward(10, 23, 24)).toBe(1);
+    expect(net.hopsForward(10, 24, 25)).toBe(1);
+    expect(net.hopsForward(10, 25, 26)).toBe(1);
+    expect(net.hopsForward(10, 26, 72)).toBe(1);
+  });
+
+  it("hopsForward still measures the outbound leg correctly", () => {
+    expect(net.hopsForward(10, 127, 26)).toBe(1);
+    expect(net.hopsForward(10, 26, 25)).toBe(1);
+    expect(net.hopsForward(10, 23, 22)).toBe(1);
+  });
+
+  it("stopIdAtIndex wraps in both directions", () => {
+    expect(net.stopIdAtIndex(10, 0)).toBe(10);
+    expect(net.stopIdAtIndex(10, 14)).toBe(72);
+    expect(net.stopIdAtIndex(10, 15)).toBe(10); // wraps forward
+    expect(net.stopIdAtIndex(10, -1)).toBe(72); // wraps backward
+    expect(net.stopIdAtIndex(999, 0)).toBeNull();
+  });
+
+  it("documents that nextOnRoute cannot walk an out-and-back route", () => {
+    // Kept as an executable warning: id-addressed stepping oscillates
+    // 23 → 22 → 23 → 22 forever and never reaches 24. This is why
+    // etaAlongRoute walks indices instead.
+    expect(net.nextOnRoute(10, 23)).toBe(22);
+    expect(net.nextOnRoute(10, 22)).toBe(23);
+  });
+
+  it("does not emit a segment edge for a stop repeated back-to-back", () => {
+    const degenerate = TransitNetwork.build(outAndBackStops, [
+      { ...outAndBackRoute, id: 11, stops: [10, 9, 9, 1] },
+    ]);
+    const fromNine = degenerate.segmentEdges.get(9) ?? [];
+    expect(fromNine.map((e) => e.toStopId)).toEqual([1]);
+  });
+});
+
+describe("nearestStopAheadOnRoute", () => {
+  // Route that doubles back within metres of itself, as route 1 does at
+  // College/Wall: `(S)` at index 1 and `(N)` at index 3 are 28 m apart.
+  // Sequence: 1 → 2 (Wall S) → 3 → 5 → 4 (Wall N). The twin sits at index 4,
+  // ten stops downstream in the real route 1 and well outside any sane
+  // lookahead window — but 28 m away on the ground.
+  const twinStops: Stop[] = [
+    { id: 1, name: "Start", lat: 41.31, lon: -72.93 },
+    { id: 2, name: "College / Wall (S)", lat: 41.315, lon: -72.925 },
+    { id: 3, name: "Phelps Gate", lat: 41.318, lon: -72.928 },
+    { id: 5, name: "Elm / York", lat: 41.32, lon: -72.94 },
+    { id: 4, name: "College / Wall (N)", lat: 41.31525, lon: -72.925 },
+  ];
+  const twinRoute: Route = {
+    id: 1,
+    name: "Doubles back",
+    shortName: "D",
+    color: "#000",
+    stops: [1, 2, 3, 5, 4],
+  };
+  const net = TransitNetwork.build(twinStops, [twinRoute]);
+
+  it("ignores a physically-closer stop that is out of sequence", () => {
+    // Southbound bus stopped at College/Wall, nudged a few metres north by
+    // GPS noise — enough to land closer to the (N) twin than to its own stop.
+    const atCollegeWall = { lat: 41.3152, lon: -72.925 };
+    // A global scan picks the wrong twin — that is the defect.
+    expect(net.nearestStopOnRoute(1, atCollegeWall)!.stopId).toBe(4);
+    // Windowed from index 1, only indices 1..3 are eligible.
+    const ahead = net.nearestStopAheadOnRoute(1, atCollegeWall, 1, 2)!;
+    expect(ahead.stopId).toBe(2);
+    expect(ahead.index).toBe(1);
+  });
+
+  it("lets a bus that has not moved stay where it is", () => {
+    const anchor = net.nearestStopAheadOnRoute(
+      1,
+      { lat: 41.31, lon: -72.93 },
+      0,
+      2,
+    )!;
+    expect(anchor.index).toBe(0);
+  });
+
+  it("wraps the window past the end of the sequence", () => {
+    const anchor = net.nearestStopAheadOnRoute(
+      1,
+      { lat: 41.31, lon: -72.93 },
+      4,
+      2,
+    )!;
+    // From index 4 the window is {4, 0, 1}; stop 1 (index 0) is the closest.
+    expect(anchor.index).toBe(0);
+  });
+
+  it("never returns a candidate outside the window", () => {
+    // Even standing exactly on the (N) twin at index 4, a window starting at
+    // index 0 with a span of 2 can only answer with indices 0, 1 or 2.
+    const anchor = net.nearestStopAheadOnRoute(1, twinStops[4]!, 0, 2)!;
+    expect(anchor.index).toBeLessThanOrEqual(2);
+  });
 });

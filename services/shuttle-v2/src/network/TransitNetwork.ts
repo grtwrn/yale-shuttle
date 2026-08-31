@@ -53,6 +53,18 @@ export interface WalkTransfer {
   seconds: number;
 }
 
+/**
+ * Where a bus sits on a route: which stop, and — crucially for out-and-back
+ * routes, where one stop id occupies two positions — which entry in the
+ * route's sequence.
+ */
+export interface RouteAnchor {
+  stopId: number;
+  /** Index into the route's raw stop sequence. */
+  index: number;
+  meters: number;
+}
+
 /** A segment edge keyed by (routeId, fromStopId, toStopId). */
 export interface SegmentEdge {
   routeId: number;
@@ -61,6 +73,9 @@ export interface SegmentEdge {
 }
 
 // Implementation --------------------------------------------------------------
+
+/** Shared empty result so `positionsOnRoute` misses don't allocate. */
+const EMPTY_POSITIONS: ReadonlyArray<number> = Object.freeze([]);
 
 /**
  * The shuttle network as a typed graph.
@@ -85,8 +100,27 @@ export class TransitNetwork {
   /** Walking-transfer edges from each stop, sorted nearest-first. */
   readonly walkTransfers: ReadonlyMap<number, ReadonlyArray<WalkTransfer>>;
 
-  /** Stops on each route, in loop order (same as Route.stops, but indexed). */
+  /**
+   * First index of each stop on each route.
+   *
+   * ⚠️ Lossy for out-and-back routes. Routes 9 (Green) and 10 (Purple) visit
+   * West Campus with a genuine out-and-back leg, so their upstream sequences
+   * repeat stop ids (route 10 is `…26,25,24,23,22,23,24,25,26,72`). This map
+   * keeps only the FIRST occurrence. Use {@link routeStopPositions} /
+   * {@link positionsOnRoute} whenever "where is this stop on the route" needs
+   * to be right for a repeated stop.
+   */
   readonly routeStopIndex: ReadonlyMap<number, ReadonlyMap<number, number>>;
+
+  /**
+   * Every index at which a stop appears on a route, ascending. The lossless
+   * counterpart to {@link routeStopIndex}; a stop with one occurrence has a
+   * single-element array, so callers can treat both cases uniformly.
+   */
+  readonly routeStopPositions: ReadonlyMap<
+    number,
+    ReadonlyMap<number, ReadonlyArray<number>>
+  >;
 
   private readonly segmentStats = new Map<string, SegmentStats>();
   private readonly dwellStats = new Map<string, DwellStats>();
@@ -97,12 +131,17 @@ export class TransitNetwork {
     segmentEdges: ReadonlyMap<number, ReadonlyArray<SegmentEdge>>;
     walkTransfers: ReadonlyMap<number, ReadonlyArray<WalkTransfer>>;
     routeStopIndex: ReadonlyMap<number, ReadonlyMap<number, number>>;
+    routeStopPositions: ReadonlyMap<
+      number,
+      ReadonlyMap<number, ReadonlyArray<number>>
+    >;
   }) {
     this.stops = args.stops;
     this.routes = args.routes;
     this.segmentEdges = args.segmentEdges;
     this.walkTransfers = args.walkTransfers;
     this.routeStopIndex = args.routeStopIndex;
+    this.routeStopPositions = args.routeStopPositions;
   }
 
   static build(stops: readonly Stop[], routes: readonly Route[]): TransitNetwork {
@@ -110,13 +149,15 @@ export class TransitNetwork {
     const routeMap = new Map(routes.map((r) => [r.id, r]));
     const segmentEdges = buildSegmentEdges(routes);
     const walkTransfers = buildWalkTransfers(stops);
-    const routeStopIndex = buildRouteStopIndex(routes);
+    const routeStopPositions = buildRouteStopPositions(routes);
+    const routeStopIndex = buildRouteStopIndex(routeStopPositions);
     return new TransitNetwork({
       stops: stopMap,
       routes: routeMap,
       segmentEdges,
       walkTransfers,
       routeStopIndex,
+      routeStopPositions,
     });
   }
 
@@ -161,66 +202,185 @@ export class TransitNetwork {
 
   // -- Queries ---------------------------------------------------------------
 
-  /** Index of `stopId` on `routeId`, or null if the stop isn't on that route. */
+  /**
+   * FIRST index of `stopId` on `routeId`, or null if the stop isn't on that
+   * route. For a stop that a route visits twice (West Campus out-and-back),
+   * this is deliberately the earlier, more pessimistic occurrence — a rider
+   * told "the bus still has the whole out-and-back to do" is disappointed far
+   * less often than one told the opposite. Use {@link positionsOnRoute} when
+   * you need every occurrence.
+   */
   positionOnRoute(routeId: number, stopId: number): number | null {
     return this.routeStopIndex.get(routeId)?.get(stopId) ?? null;
   }
 
   /**
+   * Every index at which `stopId` appears on `routeId`, ascending. Empty if
+   * the stop isn't on the route (or the route is unknown).
+   */
+  positionsOnRoute(routeId: number, stopId: number): ReadonlyArray<number> {
+    return this.routeStopPositions.get(routeId)?.get(stopId) ?? EMPTY_POSITIONS;
+  }
+
+  /** Number of entries in a route's raw stop sequence (duplicates included). */
+  routeLength(routeId: number): number {
+    return this.routes.get(routeId)?.stops.length ?? 0;
+  }
+
+  /**
+   * Stop id at `index` in a route's sequence, wrapping the loop in both
+   * directions. Null if the route is unknown or has no stops.
+   *
+   * Index-addressed traversal is the only way to walk an out-and-back route
+   * correctly: `stopIdAtIndex` distinguishes the two visits to a repeated
+   * stop, whereas id-addressed stepping (see {@link nextOnRoute}) cannot.
+   */
+  stopIdAtIndex(routeId: number, index: number): number | null {
+    const route = this.routes.get(routeId);
+    const n = route?.stops.length ?? 0;
+    if (!route || n === 0) return null;
+    return route.stops[((index % n) + n) % n] ?? null;
+  }
+
+  /**
    * Next stop along the route loop after `stopId`. Wraps from the last stop
    * back to the first. Returns null if the stop isn't on the route.
+   *
+   * ⚠️ Ambiguous — and non-terminating if you iterate it — on a route that
+   * visits a stop twice. Route 10 is `…26,25,24,23,22,23,24,25,26,72`: this
+   * resolves `next(23)` from the FIRST 23 (→ 22) and `next(22)` (→ 23), so
+   * chasing `nextOnRoute` from stop 23 oscillates 23→22→23→22 forever and
+   * never reaches 24. Walk indices with {@link stopIdAtIndex} instead; this
+   * method is kept only for single-visit lookups.
    */
   nextOnRoute(routeId: number, stopId: number): number | null {
-    const route = this.routes.get(routeId);
-    if (!route) return null;
     const idx = this.positionOnRoute(routeId, stopId);
     if (idx === null) return null;
-    return route.stops[(idx + 1) % route.stops.length] ?? null;
+    return this.stopIdAtIndex(routeId, idx + 1);
   }
 
   /**
    * Number of stops from `fromStopId` to `toStopId` going forward along the
    * route's loop. Returns null if either stop isn't on the route.
    * Loops wrap: stop 5 → stop 2 on a 7-stop route is 4 hops, not -3.
+   *
+   * When either stop is visited more than once, this returns the SMALLEST
+   * forward distance over all (from-occurrence, to-occurrence) pairs — i.e.
+   * the shortest ride that could actually connect them. Anything else breaks
+   * the detector: with first-occurrence-only indexing, route 10's return leg
+   * (`22→23`, `23→24`, `24→25`, `25→26`) scored 14 hops apiece, blew past
+   * MAX_SEGMENT_HOPS, and was discarded — half of West Campus had *zero*
+   * calibration samples in 3.2k recorded segments.
    */
   hopsForward(routeId: number, fromStopId: number, toStopId: number): number | null {
-    const route = this.routes.get(routeId);
-    if (!route) return null;
-    const from = this.positionOnRoute(routeId, fromStopId);
-    const to = this.positionOnRoute(routeId, toStopId);
-    if (from === null || to === null) return null;
-    const n = route.stops.length;
-    return ((to - from) % n + n) % n;
+    const n = this.routeLength(routeId);
+    if (n === 0) return null;
+    const fromIdxs = this.positionsOnRoute(routeId, fromStopId);
+    const toIdxs = this.positionsOnRoute(routeId, toStopId);
+    if (fromIdxs.length === 0 || toIdxs.length === 0) return null;
+    let best = Infinity;
+    for (const from of fromIdxs) {
+      for (const to of toIdxs) {
+        const d = (((to - from) % n) + n) % n;
+        if (d < best) best = d;
+      }
+    }
+    return Number.isFinite(best) ? best : null;
   }
 
   /**
-   * Closest stop on `routeId` to `point`, or null if the route doesn't exist
-   * or has no stops. Linear scan over the route's stop list — routes have
-   * at most ~20 stops, so a spatial index would be overkill.
+   * Closest stop on `routeId` to `point`, or null if the route doesn't exist,
+   * has no stops, or nothing falls within `maxMeters`. Linear scan over the
+   * route's stop list — the longest route has 33 entries, so a spatial index
+   * would be overkill.
    *
    * This is the input to arrival detection: when a bus's `nearestStopOnRoute`
    * changes between polls, we treat it as having departed the previous stop
    * and arrived at the new one.
+   *
+   * ⚠️ Two things this deliberately does NOT do:
+   *  - No direction: a bus between A and B anchors to whichever is closer,
+   *    not to the one it is heading toward.
+   *  - No occurrence disambiguation: on an out-and-back route the two visits
+   *    to a stop are the same physical coordinate, so distance alone can
+   *    never tell them apart. {@link hopsForward} resolves that ambiguity
+   *    downstream by taking the shortest forward distance.
+   *
+   * `maxMeters` defaults to Infinity to preserve the "always anchor
+   * somewhere" behaviour the detector relies on; callers that need a real
+   * "the bus is AT this stop" answer must pass a radius.
    */
   nearestStopOnRoute(
     routeId: number,
     point: { lat: number; lon: number },
-  ): { stopId: number; meters: number } | null {
+    maxMeters = Infinity,
+  ): RouteAnchor | null {
     const route = this.routes.get(routeId);
     if (!route || route.stops.length === 0) return null;
-    let bestId = -1;
-    let bestM = Infinity;
-    for (const stopId of route.stops) {
+    let best: RouteAnchor | null = null;
+    for (let i = 0; i < route.stops.length; i++) {
+      const stopId = route.stops[i]!;
       const stop = this.stops.get(stopId);
       if (!stop) continue;
       const m = distanceMeters(point, stop);
-      if (m < bestM) {
-        bestM = m;
-        bestId = stopId;
-      }
+      if (!best || m < best.meters) best = { stopId, index: i, meters: m };
     }
-    if (bestId < 0) return null;
-    return { stopId: bestId, meters: bestM };
+    if (!best || best.meters > maxMeters) return null;
+    return best;
+  }
+
+  /**
+   * Closest stop to `point` among the next `lookahead` entries of the route
+   * sequence starting at `fromIndex` (inclusive, wrapping). Null if the route
+   * is unknown or every candidate stop is missing from the stop table.
+   *
+   * ## Why a window instead of a global scan
+   *
+   * `nearestStopOnRoute` has no notion of where the bus already is, so on a
+   * route that comes back within a few dozen metres of itself the anchor
+   * teleports across the sequence. Route 1 lists `College / Wall (S)` at
+   * index 18 and `College / Wall (N)` at index 28 — **28 m apart**, far
+   * inside GPS noise. A southbound bus at College/Wall therefore flickers
+   * between index 18 and index 28 on consecutive polls, and the damage is
+   * twofold:
+   *
+   *  - Each flicker is a "transition" 10 or 21 hops long, so it is discarded
+   *    by MAX_SEGMENT_HOPS...
+   *  - ...and worse, it leaves the anchor at index 28, so the *next* genuine
+   *    transition (to `Phelps Gate`, index 19) also scores 9 hops and is
+   *    discarded too.
+   *
+   * Replaying 59,605 recorded positions, this cost every sample on
+   * `42→98`, `52→41`, `41→20`, `97→118` and eleven other legs across routes
+   * 1, 2, 3 and 9 — all of them (N)/(S) pairs on the same street, or a stop
+   * the route passes near out of sequence. Restricting candidates to the
+   * stops the bus could plausibly reach next makes the far-away twin
+   * ineligible, which is exactly the direction information a pure distance
+   * scan throws away.
+   *
+   * The window includes `fromIndex` itself, so a bus that has not moved
+   * simply stays where it is.
+   */
+  nearestStopAheadOnRoute(
+    routeId: number,
+    point: { lat: number; lon: number },
+    fromIndex: number,
+    lookahead: number,
+  ): RouteAnchor | null {
+    const route = this.routes.get(routeId);
+    const n = route?.stops.length ?? 0;
+    if (!route || n === 0) return null;
+    const span = Math.min(lookahead, n - 1);
+    let best: RouteAnchor | null = null;
+    for (let step = 0; step <= span; step++) {
+      const index = (((fromIndex + step) % n) + n) % n;
+      const stopId = route.stops[index]!;
+      const stop = this.stops.get(stopId);
+      if (!stop) continue;
+      const m = distanceMeters(point, stop);
+      if (!best || m < best.meters) best = { stopId, index, meters: m };
+    }
+    return best;
   }
 
   /** Stops within `radiusM` of a coordinate, with walking time. */
@@ -270,9 +430,20 @@ function buildSegmentEdges(
   for (const route of routes) {
     const n = route.stops.length;
     if (n < 2) continue;
+    // An out-and-back route yields two distinct edges from the same stop on
+    // the same route (route 9's stop 25 goes to both 23 and 127). Both are
+    // real, so both are kept; a `seen` key stops the *identical* pair from
+    // being stored twice when a route doubles back on itself exactly.
+    const seen = new Set<string>();
     for (let i = 0; i < n; i++) {
       const fromStopId = route.stops[i]!;
       const toStopId = route.stops[(i + 1) % n]!;
+      // A route listing the same stop twice in a row is an upstream typo, not
+      // a segment; recording it would teach the calibrator a 0 m hop.
+      if (fromStopId === toStopId) continue;
+      const key = `${fromStopId}:${toStopId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       const edge: SegmentEdge = { routeId: route.id, fromStopId, toStopId };
       const bucket = byStop.get(fromStopId);
       if (bucket) bucket.push(edge);
@@ -282,19 +453,34 @@ function buildSegmentEdges(
   return byStop;
 }
 
-function buildRouteStopIndex(
+function buildRouteStopPositions(
   routes: readonly Route[],
-): Map<number, Map<number, number>> {
-  const out = new Map<number, Map<number, number>>();
+): Map<number, Map<number, number[]>> {
+  const out = new Map<number, Map<number, number[]>>();
   for (const route of routes) {
-    const inner = new Map<number, number>();
+    const inner = new Map<number, number[]>();
     for (let i = 0; i < route.stops.length; i++) {
-      // First occurrence wins — most Yale routes don't repeat a stop, but
-      // a few loop variants do; the first hit is the canonical board position.
       const stopId = route.stops[i]!;
-      if (!inner.has(stopId)) inner.set(stopId, i);
+      const bucket = inner.get(stopId);
+      if (bucket) bucket.push(i);
+      else inner.set(stopId, [i]);
     }
     out.set(route.id, inner);
+  }
+  return out;
+}
+
+function buildRouteStopIndex(
+  positions: ReadonlyMap<number, ReadonlyMap<number, ReadonlyArray<number>>>,
+): Map<number, Map<number, number>> {
+  const out = new Map<number, Map<number, number>>();
+  for (const [routeId, byStop] of positions) {
+    const inner = new Map<number, number>();
+    // First occurrence wins — most Yale routes don't repeat a stop, but the
+    // two West Campus routes do; the first hit is the canonical (and
+    // pessimistic) board position. See `positionOnRoute`.
+    for (const [stopId, idxs] of byStop) inner.set(stopId, idxs[0]!);
+    out.set(routeId, inner);
   }
   return out;
 }
