@@ -1,81 +1,133 @@
 # Yale Shuttle Tracker
 
-Live map + stop-level ETAs for the Yale Downtowner shuttles. Ingests the
-public Yale Downtowner API every few seconds and renders an HK-MTR-style
-schematic with accurate routes, live bus positions, dwell timers, and
-trip-planning between any two locations.
+Live map, stop-level ETAs and trip planning for the Yale Downtowner shuttles,
+at **https://yale-shuttle.fly.dev**.
+
+It polls the public Yale Downtowner API every 5 seconds, derives its own
+arrival and travel-time history from raw GPS, and calibrates per-segment
+predictions from that history — so ETAs come from what the buses actually did
+on this route, at this time of day, rather than from a published timetable.
+The map is OpenStreetMap tiles with live vehicle positions, route polylines
+and dwell timers; the planner routes between any two points, walking included.
 
 ## Structure
 
+The live application is **`services/shuttle-v2/`** — a single Node process
+serving a React SPA.
+
 ```
-services/
-  shuttle-collector/   Node daemon that polls the Downtowner API and
-                       writes bus_positions, gps_arrivals, predictions
-                       to SQLite at store/shuttle.db.
-  shuttle-map/         Python web server (server.py) exposing
-                       /api/buses, /api/accuracy, /api/geocode plus a
-                       Vite/React schematic map under app/.
+services/shuttle-v2/
+  src/collector/     Polls the Downtowner API every 5 s, detects arrivals,
+                     dwells and segment travel times from raw positions.
+  src/calibrator/    Rebuilds per-segment/dwell statistics every 5 min,
+                     bucketed by day-of-week and hour.
+  src/network/       Route/stop topology and geometry.
+  src/planner/       Server-side trip planning (/api/plan).
+  src/server/        Hono HTTP server: /api/buses, /api/plan, /api/geocode,
+                     /healthz, and operator-only triage endpoints.
+  src/db/            Drizzle schema; SQLite, migrations in drizzle/.
+  web/               Vite + React SPA. TransitMap.tsx is the app; the pure
+                     logic lives in sibling modules (planner, schedule,
+                     anchor, arrivals, geo, walk, format, routes).
+  scripts/           map-bot (automated visual/data checks) and the
+                     verification harnesses described below.
 ```
+
+`services/shuttle-collector/` and `services/shuttle-map/` are the **archived v1
+stack** — a Node collector plus a Python server rendering an HK-MTR-style
+schematic. They are kept for reference and are **not deployed**. Don't run or
+change them; the root `fly.v1-archived.toml` is deliberately renamed so a stray
+`flyctl deploy` from the repo root cannot resurrect v1 over production.
 
 ## Local development
 
 ```bash
-# one-time
-cd services/shuttle-map/app && npm install
+cd services/shuttle-v2
+npm install
 
-# start the collector (keeps shuttle.db fresh)
-npx tsx services/shuttle-collector/index.ts
+npm run dev        # collector + server on :8092
+npm test           # vitest (unit + integration)
+npm run typecheck  # backend types
 
-# in another terminal: Python API server (port 8091)
-python3 services/shuttle-map/server.py
-
-# in another terminal: Vite dev server with /api proxy (port 8090)
-cd services/shuttle-map/app && npx vite
+cd web && npx vite build   # the frontend's type/syntax gate
 ```
 
-Then open http://localhost:8090.
+`npx vite build` is the source of truth for frontend types — do not run a bare
+`tsc` against `web/`.
 
-## Deploy (Fly.io)
+## Deploy
 
-One-shot deploy — spins up a single machine running both the collector
-and the server, with a persistent SQLite volume.
+Only `services/shuttle-v2/fly.toml` is live. **Never deploy from the repo
+root.**
 
 ```bash
-# one-time: install flyctl and log in
-curl -L https://fly.io/install.sh | sh
-flyctl auth login
+cd services/shuttle-v2
+flyctl deploy --remote-only
 
-# one-time: create the app + volume (from repo root)
-flyctl launch --no-deploy --copy-config --name yale-shuttle --region bos
-flyctl volumes create shuttle_data --region bos --size 1
-
-# deploy
-flyctl deploy
+curl -s https://yale-shuttle.fly.dev/healthz
 ```
 
-The `Dockerfile` builds the Vite frontend, installs Python + Node
-runtimes, pre-builds the collector's native `better-sqlite3` module,
-and `start.sh` launches the collector in the background with the
-FastAPI server in the foreground. Health checks hit `/healthz`.
-
-## Deploy (anywhere else)
-
-Any Linux host with Python 3.12 + Node 20 works. Run the collector
-under systemd so SQLite stays fresh, then run the server behind your
-reverse proxy of choice. The Pi-systemd unit at
-`services/shuttle-collector/shuttle-collector.service` is a starting
-point.
+One machine in `ewr` with a 1 GB volume at `/data`. The Dockerfile builds the
+Vite frontend, compiles `better-sqlite3`, and runs the collector, calibrator
+and HTTP server in one process; migrations run on boot. `TZ=America/New_York`
+is set deliberately — the collector writes ET day/hour columns that the
+calibration queries bucket on.
 
 ## Data
 
-SQLite (`store/shuttle.db`). Schema is created on first run:
-- `bus_positions` — raw vehicle polls
-- `gps_arrivals` — derived stop arrivals from GPS
-- `predictions` — historical TransLoc ETAs (for accuracy scoring)
-- `segments` / `dwells` — rolling aggregates used by the client
+SQLite at `/data/shuttle-v2.db` (`store/` locally), via Drizzle:
+
+- `raw_positions` — raw vehicle polls (6 h retention)
+- `arrivals` — derived stop arrivals, with dwell (90 d)
+- `segments` — derived stop-to-stop travel times (90 d)
+- `stops`, `routes` — topology mirrored from upstream
+- `reports` — in-app rider feedback, an operator triage queue
+- `daily_actives` — one row per (day, anonymous browser id); see Privacy
+
+Segment and dwell statistics are recomputed every 5 minutes from a 30/14-day
+window, bucketed by day-of-week and hour ± 1, and shrunk toward a segment-wide
+prior. Samples implying an impossible speed are discarded before any statistic
+sees them.
+
+## Verifying changes
+
+Beyond the test suite, `services/shuttle-v2/scripts/` holds harnesses that run
+a real headless browser against the live site or a local build:
+
+```bash
+BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/gps-tier-check.mjs
+BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/timezone-check.mjs
+BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/walk-fallback-check.mjs
+BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/eta-accuracy.mjs
+node scripts/map-bot.mjs
+```
+
+`eta-accuracy.mjs` measures prediction quality honestly: it reads the ETA the
+app shows a rider while independently watching raw positions for the moment a
+bus actually arrives, and scores one against the other.
 
 ## Geocoding
 
-`/api/geocode?q=...` proxies Nominatim + Photon with an in-memory cache
-and a curated list of Yale landmarks (Rosenkranz, SOM, YSPH, etc.) that
-handles typos and abbreviations.
+`/api/geocode?q=…` ranks shuttle stops and a curated list of Yale landmarks
+first, then falls back to Nominatim for street addresses. Outbound Nominatim
+calls are throttled to their 1 req/s policy, with identical concurrent lookups
+collapsed into one request; when the budget is exhausted, results degrade to
+stops and landmarks rather than failing.
+
+## Privacy
+
+- **Rider counting** is one row per (day, random browser id) and nothing else —
+  no IP, no user agent, no coordinates, no time of day. The id is generated by
+  the browser, stored in localStorage beside its favourites, and sent on the
+  poll the app already makes. It answers "how many distinct people used this
+  this week" and cannot answer "what did this person do". Counts are behind an
+  operator token, not public.
+- **Favourites, saved trips and stop groups never leave the browser.**
+- **Rider reports** store the submitted text plus the client IP for abuse
+  triage. That endpoint is operator-only; it is not public.
+
+## License / contributing
+
+Issues and pull requests welcome. The app is a third-party client of Yale's
+public Downtowner feed and is not affiliated with or endorsed by Yale
+University or the shuttle operator.

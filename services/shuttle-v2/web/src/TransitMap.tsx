@@ -18,7 +18,8 @@ import {
   dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
-import { ContributeButton } from "./ContributeButton";
+import { ContributeButton, SupportButton } from "./ContributeButton";
+import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
@@ -3386,6 +3387,11 @@ const TripPlanner: FC<{
                           </span>
                         )}
                       </div>
+                      {/* Restored from v1: one tap to the operator's own view
+                          of THIS route, for when a rider doubts what we show. */}
+                      {o.mode === "shuttle" && (
+                        <YaleTrackerPreview routeLabel={o.routeLabel} color={o.color} />
+                      )}
                     </div>
                   );
                 })()}
@@ -6690,6 +6696,7 @@ const TransitMap: FC = () => {
               💬 Send feedback
             </button>
             <ContributeButton />
+            <SupportButton />
             {feedbackStatus && (
               <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
             )}

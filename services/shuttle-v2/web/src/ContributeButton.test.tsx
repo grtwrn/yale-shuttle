@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ContributeButton, REPO_URL } from "./ContributeButton";
+import { ContributeButton, REPO_URL, SUPPORT_URL, SupportButton } from "./ContributeButton";
 
 // Rendered without a DOM library: the component is a single element, so
 // inspecting the returned React element keeps this test dependency-free
@@ -40,5 +40,34 @@ describe("ContributeButton", () => {
     // element type so this stays true if the component is ever reworked.
     const el = render();
     expect(el.type).toBe("a");
+  });
+});
+
+describe("SupportButton", () => {
+  const renderSupport = () => SupportButton({}) as unknown as El;
+
+  it("points at the support page over https", () => {
+    expect(renderSupport().props.href).toBe(SUPPORT_URL);
+    expect(SUPPORT_URL.startsWith("https://")).toBe(true);
+  });
+
+  it("carries the same external-link safety as its neighbour", () => {
+    const el = renderSupport();
+    expect(el.props.target).toBe("_blank");
+    expect(String(el.props.rel)).toContain("noopener");
+    expect(String(el.props.rel)).toContain("noreferrer");
+  });
+
+  it("is named for a screen reader — the cup alone says nothing", () => {
+    expect(String(renderSupport().props["aria-label"])).toMatch(/coffee/i);
+    expect(String(renderSupport().props["aria-label"])).toMatch(/new tab/i);
+  });
+
+  // They sit side by side in the footer, so they must not drift apart.
+  it("shares the contribute button's shape and touch target", () => {
+    const a = ContributeButton({}) as unknown as El;
+    const b = renderSupport();
+    expect(b.props.style).toBe(a.props.style);
+    expect((b.props.style as Record<string, unknown>).minHeight).toBeGreaterThanOrEqual(44);
   });
 });

@@ -1,15 +1,45 @@
+import type React from "react";
+
 /**
- * "Contribute" — links riders to the source repository.
+ * The footer's outbound links: source, and support.
  *
- * Kept as its own component because it is the one piece of chrome that points
- * off-site: it needs the external-link safety attributes, its own accessible
- * name (an icon button with no text is invisible to a screen reader), and the
- * 44 px touch target this project requires, none of which should be scattered
- * into the footer's layout code.
+ * Kept together because they are the pieces of chrome that point off-site, and
+ * each needs the same three things — the external-link safety attributes, its
+ * own accessible name (an icon button with no text is invisible to a screen
+ * reader), and the 44 px touch target this project requires. None of that
+ * should be scattered into the footer's layout code, and both should look like
+ * a matched pair rather than two ad-hoc links.
  */
 
 /** Where the source lives. */
 export const REPO_URL = "https://github.com/grtwrn/yale-shuttle";
+
+/** Where riders can support the project. */
+export const SUPPORT_URL = "https://buymeacoffee.com/grtwrn";
+
+/**
+ * Shared shape for both footer links, so they cannot drift apart visually or
+ * lose a safety attribute independently.
+ */
+const linkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  // 44 px is the project's minimum touch target; padding carries it there
+  // without making the footer chrome heavy.
+  minHeight: 44,
+  padding: "0 14px",
+  fontSize: 13,
+  fontFamily: "inherit",
+  color: "#546e7a",
+  background: "#fff",
+  border: "1px solid #bbb",
+  borderRadius: 6,
+  textDecoration: "none",
+  cursor: "pointer",
+  WebkitTapHighlightColor: "transparent",
+};
 
 /**
  * GitHub's mark, inlined rather than loaded from github.com.
@@ -45,28 +75,28 @@ export function ContributeButton() {
       rel="noopener noreferrer"
       aria-label="Contribute on GitHub (opens in a new tab)"
       title="View the source and contribute on GitHub"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 7,
-        // 44 px is the project's minimum touch target; padding carries it there
-        // without making the footer chrome heavy.
-        minHeight: 44,
-        padding: "0 14px",
-        fontSize: 13,
-        fontFamily: "inherit",
-        color: "#546e7a",
-        background: "#fff",
-        border: "1px solid #bbb",
-        borderRadius: 6,
-        textDecoration: "none",
-        cursor: "pointer",
-        WebkitTapHighlightColor: "transparent",
-      }}
+      style={linkStyle}
     >
       <GitHubMark />
       <span>Contribute</span>
+    </a>
+  );
+}
+
+export function SupportButton() {
+  return (
+    <a
+      href={SUPPORT_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Support this project on Buy Me a Coffee (opens in a new tab)"
+      title="Buy me a coffee"
+      style={linkStyle}
+    >
+      <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>
+        ☕
+      </span>
+      <span>Buy me a coffee</span>
     </a>
   );
 }
