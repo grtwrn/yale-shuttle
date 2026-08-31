@@ -9,6 +9,7 @@ import {
   segments,
   stops as stopsTable,
 } from "../db/schema.js";
+import { distanceMeters } from "../network/geo.js";
 import { NetworkRef } from "../network/NetworkRef.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
@@ -23,6 +24,12 @@ const POLL_INTERVAL_MS = 5_000;
 const CALIBRATE_INTERVAL_MS = 5 * 60_000;
 const STATIC_REFRESH_INTERVAL_MS = 6 * 60 * 60_000;
 const RETENTION_INTERVAL_MS = 60 * 60_000;
+
+// How close a bus must actually be before we call it "at" a stop. The
+// detector's `nearestStopId` is an unbounded nearest-neighbour with no radius,
+// so without this a bus idling mid-route claims whichever stop happens to be
+// closest — observed at 166–558 m on 5 of 16 live buses.
+const AT_STOP_MAX_M = 75;
 
 /**
  * A bus is "live" only while it keeps appearing in the upstream feed. Once it
@@ -302,7 +309,17 @@ export class Collector {
       // long enough that it isn't just passing through. Mirrors the
       // detector's MIN_DWELL_SEC threshold so the UI dot stays put while
       // the bus actually waits.
-      const atStop = state && dwellingForMs >= 15_000
+      // ...and only if it's actually THERE. `nearestStopId` is an unbounded
+      // nearest-neighbour, so a bus idling anywhere on the route was reported
+      // "at" whatever stop happened to be closest — 5 of 16 live buses were
+      // claiming a stop 166–558 m away. Clients treat at_stop_id as ground
+      // truth over GPS, so those bogus anchors made buses appear to jump
+      // backwards and swung ETAs by a third of a loop (reports #32, #37, #38).
+      const atStopCandidate = state && dwellingForMs >= 15_000
+        ? this.ref.get().stops.get(state.nearestStopId)
+        : undefined;
+      const atStop = state && atStopCandidate &&
+        distanceMeters(o, atStopCandidate) <= AT_STOP_MAX_M
         ? { id: state.nearestStopId, since: state.enteredAt }
         : null;
       this.livePositions.set(o.busId, {

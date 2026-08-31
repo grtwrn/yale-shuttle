@@ -217,8 +217,10 @@ const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
   "Green":        [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 18*60 }],
   "Purple":       [{ days: [0,1,2,3,4,5,6],     startMin: 6*60,    endMin: 25*60 }],
   "Gold":         [{ days: [1,2,3,4,5],         startMin: 6*60,    endMin: 18*60 }],
-  "Grocery TJ":   [{ days: [0,6],               startMin: 10*60,   endMin: 18*60 }],
-  "Grocery Ham":  [{ days: [0,6],               startMin: 10*60,   endMin: 18*60 }],
+  // Observed running from ~07:00 on weekends, three hours before the
+  // published 10:00 — more than SERVICE_GRACE_MS covers, so widen the window.
+  "Grocery TJ":   [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
+  "Grocery Ham":  [{ days: [0,6],               startMin: 7*60,    endMin: 18*60 }],
 };
 
 // Approximate headway in minutes — used to estimate wait = headway/2 for
@@ -311,7 +313,14 @@ function isRouteActiveAt(label: string, d: Date): boolean {
 // arrivals boards all agree it doesn't exist. The ±45 min grace keeps real
 // buses visible while they finish a last loop after close or pre-position
 // before open; a route with no known schedule is never filtered.
-const SERVICE_GRACE_MS = 45 * 60 * 1000;
+// Widened from 45 min: comparing ROUTE_HOURS against 8 days of observed
+// arrivals showed the published windows run NARROWER than real service at both
+// ends (Pink from 04:00 not 06:00, Brown from 05:00, Green until 19:00, the
+// night routes from 17:00). Because this filter DELETES buses from the entire
+// app — map, planner and arrival boards — a too-narrow window hides a bus the
+// rider can see out the window, which is a far worse failure than showing a
+// parked one. Fail wide.
+const SERVICE_GRACE_MS = 90 * 60 * 1000;
 const ROUTE_ID_LABEL: Record<number, string> = {};
 for (const cfg of ROUTE_LISTS) for (const rid of cfg.busRouteIds) ROUTE_ID_LABEL[rid] = cfg.label;
 function isBusInService(b: BusData): boolean {
@@ -4443,6 +4452,16 @@ const TripPlanner: FC<{
                     : null;
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                      {approachStops.length > 0 && busMatch && (
+                        // Name the vehicle this approach belongs to. Report #41
+                        // said the list showed "only 3 stops" on an 11-stop
+                        // approach; with the bus unnamed there was no way for
+                        // the rider (or us) to tell whether the anchor was wrong
+                        // or they were simply watching a different shuttle.
+                        <div style={{ fontSize: 11, color: "#78909c", marginBottom: 2 }}>
+                          🚌 #{String(busMatch.bus_name).replace(/^#/, "")} · {stopsAway} {stopsAway === 1 ? "stop" : "stops"} away
+                        </div>
+                      )}
                       {approachStops.length > 0 && (
                         <div style={{ position: "relative", paddingLeft: 16, marginBottom: 4 }}>
                           <span style={{
@@ -4941,26 +4960,6 @@ function findRouteAnchor(
     return idx >= 0 ? idx : 0;
   }
 
-  // Bus parked at a stop on this route (at_stop_id is GPS-derived, fresh
-  // within one poll cycle): anchor there directly. The segment scan below
-  // can lag one stop behind at exactly this moment — the bus sits on the
-  // shared endpoint of segments i-1→i and i→i+1, and a stale last_stop_id
-  // tie-breaks toward the earlier segment (report #27: banner said "get
-  // off in 2 stops" while the bus was already at the stop before the
-  // rider's). GPS proximity is still required so a stale at_stop_id
-  // can't drag the anchor somewhere the bus isn't.
-  if (bus.at_stop_id != null) {
-    const ai = stops.indexOf(bus.at_stop_id);
-    if (ai >= 0) {
-      const sc = stopCoords[stops[ai]];
-      if (sc) {
-        const dlat = (bus.lat - sc.lat) * 111_000;
-        const dlon = (bus.lon - sc.lon) * 84_000;
-        if (dlat * dlat + dlon * dlon < ANCHOR_GPS_THRESHOLD_M * ANCHOR_GPS_THRESHOLD_M) return ai;
-      }
-    }
-  }
-
   // Distance to each segment.
   const dists: number[] = new Array(N);
   for (let i = 0; i < N; i++) {
@@ -4990,7 +4989,7 @@ function findRouteAnchor(
     } else {
       candidates.sort((a, b) => dists[a] - dists[b]);
     }
-    return candidates[0];
+    return refineWithAtStop(candidates[0]);
   }
 
   // Nothing within threshold — bus is off-route-ish. Just pick
@@ -5000,7 +4999,31 @@ function findRouteAnchor(
   for (let i = 1; i < N; i++) {
     if (dists[i] < bestD) { bestD = dists[i]; bestIdx = i; }
   }
-  return bestIdx;
+  return refineWithAtStop(bestIdx);
+
+  // at_stop_id REFINES the GPS anchor; it must never contradict it. It used to
+  // short-circuit the whole scan, which is how a bus appeared to travel
+  // backwards: many routes pass two stops that sit almost on top of each other
+  // but are far apart in sequence — Broadway/York and Elm/York are 23 m apart
+  // yet 2 stops apart on Blue Weekend, and Orange/Pearl (N)/(S) are 35 m apart
+  // yet 9 stops apart on Green. A few metres of GPS noise picked the wrong one
+  // and threw the anchor a third of a loop (reports #37, #38; the same swing
+  // drove the "6 min then 16 min" ETA in #32).
+  //
+  // So accept it only when the bus is really there AND it is the GPS anchor or
+  // exactly one stop ahead — which still preserves report #27's fix, where the
+  // segment scan lags one stop behind at a shared segment endpoint.
+  function refineWithAtStop(gpsIdx: number): number {
+    if (bus.at_stop_id == null) return gpsIdx;
+    const ai = stops.indexOf(bus.at_stop_id);
+    if (ai < 0) return gpsIdx;
+    const sc = stopCoords[stops[ai]];
+    if (!sc) return gpsIdx;
+    const dlat = (bus.lat - sc.lat) * 111_000;
+    const dlon = (bus.lon - sc.lon) * 84_000;
+    const near = dlat * dlat + dlon * dlon < ANCHOR_GPS_THRESHOLD_M * ANCHOR_GPS_THRESHOLD_M;
+    return near && (ai - gpsIdx + N) % N <= 1 ? ai : gpsIdx;
+  }
 }
 
 
@@ -5056,12 +5079,20 @@ function computeUpcomingArrivals(
       // Without this, findRouteAnchor's last_stop_id tiebreak picks the
       // segment that ENDS at the current stop (because last_stop_id is still
       // the previous stop), causing busIsAtAnchor to fail and no credit applied.
-      let busIdx = gpsAnchorIdx;
+      //
+      // This override had NO distance and NO ordering check, so it was even
+      // weaker than findRouteAnchor's. On Green the two Orange/Pearl platforms
+      // are 35 m apart but 9 stops apart in the loop, so a 35 m GPS wobble
+      // relocated the bus a third of a lap and swung the displayed ETA by
+      // ~10 minutes — exactly the "6 min then it said 16" in report #32. Now
+      // findRouteAnchor already returns at_stop_id's index whenever it is
+      // legitimate, so the anchor is simply trusted, and the dwell credit is
+      // only granted when the anchor agrees the bus is actually there.
+      const busIdx = gpsAnchorIdx;
       let stallCredit = 0;
       if (bus.at_stop_id && bus.at_stop_since) {
         const atIdx = stops.indexOf(bus.at_stop_id);
-        if (atIdx >= 0) {
-          busIdx = atIdx;
+        if (atIdx >= 0 && atIdx === gpsAnchorIdx) {
           stallCredit = Math.max(
             0,
             (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000,
@@ -7787,12 +7818,18 @@ const TransitMap: FC = () => {
               key={v}
               onClick={() => { setListView(v); }}
               style={{
+                // These are the app's primary navigation and were the
+                // smallest tap targets on the page at 21px high. Padding
+                // carries them to the 44px minimum without inflating the
+                // pill's visual weight in the header.
                 padding: "4px 14px", borderRadius: 12, border: "none",
                 background: listView === v ? "#1a1a2e" : "#e0ddd8",
                 color: listView === v ? "#fff" : "#546e7a",
                 fontWeight: listView === v ? 600 : 400,
                 cursor: "pointer", fontSize: 11,
                 fontFamily: "inherit", textTransform: "capitalize",
+                minHeight: 44, minWidth: 44,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
               }}
             >
               {v}
@@ -8143,7 +8180,8 @@ const TransitMap: FC = () => {
             <button
               onClick={() => setFeedbackOpen(true)}
               style={{
-                fontSize: 13, padding: "8px 14px", minHeight: 40,
+                fontSize: 13, padding: "8px 14px", minHeight: 44,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
                 border: "1px solid #bbb", borderRadius: 6,
                 background: "#fff", color: "#546e7a",
                 cursor: "pointer", fontFamily: "inherit",
