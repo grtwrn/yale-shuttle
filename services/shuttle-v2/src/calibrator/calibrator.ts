@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import type { DB } from "../db/client.js";
+import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type {
   DwellStats,
@@ -15,6 +16,28 @@ import { median, percentile, shrink } from "./shrinkage.js";
 const SHRINKAGE_K = 8;
 
 /** Sliding window of segment data fed to the calibrator. */
+/**
+ * Fastest a shuttle can plausibly cover the straight-line distance between two
+ * stops, m/s. 22 m/s is ~79 km/h — generous, since the West Campus legs really
+ * are highway runs, so anything above it is not a slow bus, it is bad data.
+ *
+ * This is not hypothetical. Route 9's Orange/Bradley (S) -> Building 900 is a
+ * genuine 8,204 m consecutive hop, and 2,411 of its 2,421 recorded samples came
+ * in under five minutes — a median of 90 s, i.e. 328 km/h. Calibration served
+ * that median, so the planner offered the 8.4 km West Campus ride as a 97-second
+ * trip. Across 30 days, 2.5% of all segments imply over 60 km/h, concentrated on
+ * exactly these long hops (10:122->127, 9:81->26, 9:80->91, 19:4->172).
+ *
+ * The detector's duration gates cannot catch this: 90 s is a perfectly ordinary
+ * segment time until you know the two stops are 8 km apart. Only a speed test
+ * sees it, and only calibration knows both the samples and the geometry.
+ *
+ * Dropping every sample for a pair leaves it absent from the map, so
+ * `getSegmentStats` falls back to its distance prior (meters / 5.5), which puts
+ * that same hop at a believable ~25 minutes.
+ */
+const MAX_PLAUSIBLE_M_S = 22;
+
 const SEGMENT_WINDOW_DAYS = 30;
 
 /** Sliding window of dwell data fed to the calibrator. */
@@ -54,7 +77,7 @@ export function calibrate(
   const segmentGroups = loadSegmentGroups(db, SEGMENT_WINDOW_DAYS, nowMs, dow, hours);
   const dwellGroups = loadDwellGroups(db, DWELL_WINDOW_DAYS, nowMs, dow, hours);
 
-  const segmentStats = computeSegmentStats(segmentGroups);
+  const segmentStats = computeSegmentStats(segmentGroups, network);
   const dwellStats = computeDwellStats(dwellGroups);
 
   network.setCalibration(segmentStats, dwellStats);
@@ -260,16 +283,28 @@ function countSamples(groups: readonly ValueGroup[]): number {
  */
 export function computeSegmentStats(
   groups: readonly ValueGroup[],
+  network?: TransitNetwork,
 ): Map<string, SegmentStats> {
   const out = new Map<string, SegmentStats>();
 
   for (const group of groups) {
+    // Drop physically impossible samples before any statistic sees them. The
+    // median is robust to a few outliers but not to a majority: on the long
+    // West Campus hops nearly every recorded sample is impossible, so the
+    // median itself is nonsense. See MAX_PLAUSIBLE_M_S.
+    const meters = network ? segmentMeters(network, group.key) : null;
+    const all = meters == null ? group.all : plausible(group.all, meters);
+    const windowed = meters == null ? group.windowed : plausible(group.windowed, meters);
+    // Nothing credible left: omit the entry entirely so getSegmentStats falls
+    // back to its distance prior rather than serving a fabricated number.
+    if (all.length === 0) continue;
+
     // Median for the prior (robust to outliers — a broken-down bus skews
     // the mean badly; the median is unmoved).
-    const priorMean = median(group.all);
+    const priorMean = median(all);
 
     const est = shrink({
-      samples: group.windowed,
+      samples: windowed,
       priorMean,
       k: SHRINKAGE_K,
     });
@@ -285,6 +320,24 @@ export function computeSegmentStats(
   }
 
   return out;
+}
+
+/** Straight-line metres for a "routeId:fromStopId:toStopId" key, if known. */
+function segmentMeters(network: TransitNetwork, key: string): number | null {
+  const parts = key.split(":");
+  if (parts.length !== 3) return null;
+  // Tests inject a bare setCalibration sink; without geometry there is nothing
+  // to check against, so fall through to the unfiltered path rather than throw.
+  if (!network.stops) return null;
+  const from = network.stops.get(Number(parts[1]));
+  const to = network.stops.get(Number(parts[2]));
+  if (!from || !to) return null;
+  return distanceMeters(from, to);
+}
+
+/** Samples whose implied straight-line speed is physically possible. */
+function plausible(values: readonly number[], meters: number): number[] {
+  return values.filter((sec) => sec > 0 && meters / sec <= MAX_PLAUSIBLE_M_S);
 }
 
 export function computeDwellStats(

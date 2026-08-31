@@ -8,8 +8,8 @@ import { openDb, type DbBundle } from "../db/client.js";
 import type {
   DwellStats,
   SegmentStats,
-  TransitNetwork,
 } from "../network/TransitNetwork.js";
+import { TransitNetwork } from "../network/TransitNetwork.js";
 
 import {
   calibrate,
@@ -325,5 +325,66 @@ describe("calibrate over a real database", () => {
     });
     expect(captured.segments.size).toBe(0);
     expect(captured.dwells.size).toBe(0);
+  });
+});
+
+describe("computeSegmentStats: physical plausibility", () => {
+  // Route 9's Orange/Bradley (S) -> Building 900 is a genuine 8,204 m
+  // consecutive hop (the highway run to West Campus). 2,411 of its 2,421
+  // recorded samples came in under five minutes, median 90 s = 328 km/h, and
+  // calibration served that median — so the planner offered the 8.4 km ride as
+  // a 97-second trip. A duration gate cannot catch this; only a speed test can.
+  const FAR_A = { id: 81, name: "Orange / Bradley (S)", lat: 41.31301, lon: -72.91867 };
+  const FAR_B = { id: 26, name: "Building 900", lat: 41.26002, lon: -72.98698 };
+  const NEAR_B = { id: 92, name: "Orange / Pearl (S)", lat: 41.31483, lon: -72.91732 };
+
+  const net = (stops: Array<{ id: number; name: string; lat: number; lon: number }>) =>
+    TransitNetwork.build(stops, [
+      { id: 9, name: "Green", shortName: "G", color: "#0a0", stops: stops.map((s) => s.id) },
+    ]);
+
+  it("drops impossible samples and omits the segment entirely", () => {
+    const network = net([FAR_A, FAR_B]);
+    const key = TransitNetwork.segmentKey(9, 81, 26);
+    const stats = computeSegmentStats(
+      [{ key, n: 5, all: [90, 95, 88, 5, 120], windowed: [90, 95] }],
+      network,
+    );
+    // Every sample implies >79 km/h over 8.2 km, so nothing credible remains.
+    expect(stats.has(key)).toBe(false);
+    // ...and the network therefore answers from its distance prior instead,
+    // which puts the hop at a believable ~25 min rather than 97 s.
+    network.setCalibration(stats, new Map());
+    const served = network.getSegmentStats(9, 81, 26);
+    expect(served.source).toBe("prior");
+    expect(served.mean).toBeGreaterThan(20 * 60);
+  });
+
+  it("keeps the plausible samples when a pair has both", () => {
+    const network = net([FAR_A, FAR_B]);
+    const key = TransitNetwork.segmentKey(9, 81, 26);
+    // 1500 s over 8.2 km is ~20 km/h — a real bus. 90 s is not.
+    const stats = computeSegmentStats(
+      [{ key, n: 4, all: [90, 1500, 1600, 95], windowed: [90, 1500, 1600, 95] }],
+      network,
+    );
+    const got = stats.get(key)!;
+    expect(got).toBeDefined();
+    // The median must come from the two real samples, not the impossible ones.
+    expect(got.mean).toBeGreaterThan(1000);
+  });
+
+  it("leaves ordinary short hops untouched", () => {
+    const network = net([FAR_A, NEAR_B]);
+    const key = TransitNetwork.segmentKey(9, 81, 92);
+    const samples = [55, 60, 65, 70];
+    const stats = computeSegmentStats(
+      [{ key, n: samples.length, all: samples, windowed: samples }],
+      network,
+    );
+    expect(stats.get(key)!.mean).toBeCloseTo(
+      computeSegmentStats([{ key, n: samples.length, all: samples, windowed: samples }]).get(key)!.mean,
+      9,
+    );
   });
 });
