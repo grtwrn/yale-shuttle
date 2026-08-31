@@ -12,7 +12,8 @@
     "mapbot": "node scripts/map-bot.mjs",
     "mapbot:visual": "node scripts/map-bot-visual.mjs",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "riders": "node scripts/riders.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",
