@@ -82,15 +82,31 @@ function normalize(s: string): string {
 }
 
 /**
- * 1.0 for an exact match, 0.75 for prefix, 0.5 for any-word match, 0.25 for
- * substring, 0 otherwise. Keeps the dialer simple while still putting
- * `som` ahead of "social some thing" — the more specific the hit, the higher.
+ * Query tokens that carry no signal here — nearly everything a rider can type
+ * is Yale's, so "yale school of public health" must match a label that never
+ * mentions Yale.
+ */
+const STOPWORDS = new Set(["yale", "university", "the", "at"]);
+
+/**
+ * 1.0 for an exact match, 0.75 for prefix, 0.5 for any-word match, 0.4 when
+ * every meaningful query token prefixes some candidate word (superset queries
+ * like "yale school of public health"), 0.25 for substring, 0 otherwise.
+ * Keeps the dialer simple while still putting `som` ahead of
+ * "social some thing" — the more specific the hit, the higher.
  */
 function scoreMatch(query: string, candidate: string): number {
   if (candidate === query) return 1;
   if (candidate.startsWith(query)) return 0.75;
   const words = candidate.split(" ");
   if (words.some((w) => w.startsWith(query))) return 0.5;
+  const qTokens = query.split(" ").filter((t) => !STOPWORDS.has(t));
+  if (
+    qTokens.length > 0 &&
+    qTokens.every((t) => words.some((w) => w.startsWith(t)))
+  ) {
+    return 0.4;
+  }
   if (candidate.includes(query)) return 0.25;
   return 0;
 }

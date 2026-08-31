@@ -145,6 +145,26 @@ describe("GET /api/geocode", () => {
     const body = (await res.json()) as { results: Array<{ display_name: string; class: string }> };
     expect(body.results.some((r) => r.class === "yale")).toBe(true);
   });
+
+  // Report #14: "yale school of public health" found nothing while
+  // "school of public health" worked — superset queries must still match.
+  it("matches landmarks when the query has a redundant 'yale' prefix", async () => {
+    const res = await app.request(
+      "/api/geocode?q=" + encodeURIComponent("yale school of public health"),
+    );
+    const body = (await res.json()) as { results: Array<{ display_name: string }> };
+    expect(
+      body.results.some((r) => r.display_name.includes("School of Public Health")),
+    ).toBe(true);
+  });
+
+  it("matches landmarks on out-of-order token subsets", async () => {
+    const res = await app.request(
+      "/api/geocode?q=" + encodeURIComponent("yale peabody museum"),
+    );
+    const body = (await res.json()) as { results: Array<{ display_name: string }> };
+    expect(body.results.some((r) => r.display_name === "Peabody Museum")).toBe(true);
+  });
 });
 
 describe("getLiveBuses staleness", () => {

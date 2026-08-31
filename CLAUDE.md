@@ -75,7 +75,7 @@ Users submit reports via the in-app "🚩 Report issue" / "💬 Send feedback". 
 - **Don't touch `/data/shuttle.db`** on the volume — that's v1's archived history.
 - **Don't run standalone `tsc` against `web/`** — `npx vite build` is the frontend's source of truth (bleeding-edge TS/Vite/React versions). Backend `npm run typecheck` is fine.
 - **Don't hand-edit route stop lists or path polylines.** They come from TransLoc upstream.
-- **Don't commit unless the user asks.** The host handles source control. Note `services/shuttle-v2/` is currently untracked — there is no git history for it; the deployed image's sourcemaps are the only record of previous frontend versions.
+- **Don't commit unless the user asks.** The host handles source control. (`services/shuttle-v2/` has been git-tracked since June 2026 — history exists now.)
 - `services/shuttle-collector/` and `services/shuttle-map/` are the archived v1 stack — don't modify or deploy them.
 
 ## Useful probes
