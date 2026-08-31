@@ -102,9 +102,11 @@ export type Plan = z.infer<typeof PlanSchema>;
 export const PlanRequestSchema = z.object({
   from: LatLonSchema,
   to: LatLonSchema,
-  // Null means "now". Future timestamps trigger schedule-based estimation
-  // (no live buses).
-  departAt: EpochMsSchema.nullable(),
+  // Null or absent means "now". Future timestamps trigger schedule-based
+  // estimation (no live buses). This was `.nullable()` alone, which made the
+  // field *required* — the handler's `departAt ?? now()` fallback was dead
+  // code and a body that simply omitted the key got a 400.
+  departAt: EpochMsSchema.nullable().optional(),
 });
 export type PlanRequest = z.infer<typeof PlanRequestSchema>;
 

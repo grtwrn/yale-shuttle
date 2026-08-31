@@ -101,6 +101,48 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   };
 }
 
+/**
+ * How long a memoized payload may be served without re-checking the live bus
+ * list. See {@link createBusesPayloadCache} — this is not a freshness budget
+ * for bus positions (the version key handles those), it exists solely because
+ * `getLiveBuses()` also applies the 120 s liveness TTL at *read* time.
+ */
+const BUSES_CACHE_MAX_AGE_MS = 1_000;
+
+/**
+ * Memoize the fat `/api/buses` payload, serialized.
+ *
+ * This is the endpoint every rider polls, and building it means walking every
+ * route's stop list to rebuild six dictionaries and then stringifying ~87 KB —
+ * of which the static topology (`route_paths`, `stop_coords`, `stop_names`,
+ * `routes`) is ~74% and only moves on a 6-hourly refresh. Doing that per
+ * request meant ~40 identical rebuilds a second at launch load, all on the one
+ * event loop that also runs the collector. Now it happens once per collector
+ * tick and every concurrent request gets the same string back.
+ *
+ * Keyed on `collector.dataVersion()`, which covers positions, calibration and
+ * topology. The wall-clock bound is the subtle half: during an upstream outage
+ * `runPoll` bails before touching live positions, so the version never moves —
+ * but `getLiveBuses()` filters on LIVE_BUS_TTL_MS against the clock, so a
+ * version-only key would keep serving ghost buses that have aged off the map.
+ * Re-checking once a second still collapses ~40:1 at launch load.
+ */
+export function createBusesPayloadCache(collector: Collector): () => string {
+  let cachedVersion = -1;
+  let cachedAt = 0;
+  let cachedJson = "";
+  return () => {
+    const nowMs = Date.now();
+    if (cachedVersion === collector.dataVersion() && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS) {
+      return cachedJson;
+    }
+    cachedVersion = collector.dataVersion();
+    cachedJson = JSON.stringify(buildBusesPayload(collector));
+    cachedAt = nowMs;
+    return cachedJson;
+  };
+}
+
 // -- /api/geocode (v1 shape) --------------------------------------------------
 
 interface GeocodeV1Hit {
@@ -256,7 +298,51 @@ const IN_RANGE_TOL_SEC = 90; // symmetric tolerance for the headline "in range %
 const ACC_WINDOW_DAYS = 7;
 const ACC_MATCH_MS = 2 * 60 * 60 * 1000;
 
+// How often we re-check an empty predictions_log before answering "no data"
+// from the latch below.
+const EMPTY_ACCURACY_PROBE_INTERVAL_MS = 60_000;
+// Latch per database, so the test suite's throwaway bundles don't inherit each
+// other's answer.
+const predictionProbes = new WeakMap<object, { seen: boolean; lastProbeAt: number }>();
+
+function emptyAccuracy(): Record<string, unknown> {
+  return { overall: null, buckets: [], stops: [] };
+}
+
+/**
+ * ⚠️ Prediction logging is NOT implemented. Nothing anywhere in `src/` inserts
+ * into `predictions_log` — the schema definition plus two readers (this
+ * function and server/accuracy.ts) are the table's only references — so in
+ * production it holds zero rows and this endpoint's only honest answer is the
+ * empty rollup. It still has to be *served*: the frontend polls /api/accuracy
+ * every 2 min per rider (~1.7 req/s at 200 riders), so producing that constant
+ * must cost nothing. Hence the probe below — one `LIMIT 1` at most once a
+ * minute, then we bail before the real query runs.
+ *
+ * If prediction logging is ever wired up, this function needs work before it
+ * faces rider poll rates: the SELECT further down is a table SCAN — no index
+ * leads with `predicted_at` — over a 7-day window, run synchronously by
+ * better-sqlite3 on the one event loop that also serves every other request
+ * and the 5 s collector poll. It wants an index on
+ * `predictions_log(predicted_at)` and a memoized result (the window is 7 days;
+ * a minute of staleness is free) before it can be let out.
+ */
 export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Record<string, unknown> {
+  let probe = predictionProbes.get(bundle.sqlite);
+  if (!probe) {
+    probe = { seen: false, lastProbeAt: 0 };
+    predictionProbes.set(bundle.sqlite, probe);
+  }
+  if (!probe.seen) {
+    const probedAt = Date.now();
+    if (probedAt - probe.lastProbeAt < EMPTY_ACCURACY_PROBE_INTERVAL_MS) return emptyAccuracy();
+    probe.lastProbeAt = probedAt;
+    if (bundle.sqlite.prepare(`SELECT 1 FROM predictions_log LIMIT 1`).get() === undefined) {
+      return emptyAccuracy();
+    }
+    probe.seen = true;
+  }
+
   const cutoff = Date.now() - ACC_WINDOW_DAYS * 86_400_000;
 
   type Pred = {
@@ -275,7 +361,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     .all(cutoff) as Pred[];
 
   if (preds.length === 0) {
-    return { overall: null, buckets: [], stops: [] };
+    return emptyAccuracy();
   }
 
   const earliest = preds[0]!.predicted_at;
@@ -312,7 +398,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     });
   }
 
-  if (errs.length === 0) return { overall: null, buckets: [], stops: [] };
+  if (errs.length === 0) return emptyAccuracy();
 
   const overall = cell(errs.map((e) => e.error));
 

@@ -39,6 +39,10 @@ export const rawPositions = sqliteTable(
   },
   (t) => ({
     busTimeIdx: index("raw_positions_bus_time_idx").on(t.busId, t.collectedAt),
+    // Time-leading. The hourly retention sweep probes
+    // `WHERE collected_at < ? LIMIT n` with no bus_id, so the composite above
+    // can't serve it and SQLite falls back to a full covering scan.
+    timeIdx: index("raw_positions_time_idx").on(t.collectedAt),
   }),
 );
 
@@ -64,6 +68,12 @@ export const arrivals = sqliteTable(
       t.arrivedAt,
     ),
     busTimeIdx: index("arrivals_bus_time_idx").on(t.busId, t.arrivedAt),
+    // Time-leading. Serves the calibrator's dwell window
+    // (`WHERE arrived_at >= ?`), the accuracy endpoints' arrival-match range
+    // (`arrived_at BETWEEN ? AND ?`) and the retention sweep — none of which
+    // constrain route_id/stop_id/bus_id, so every composite above degrades to
+    // a full scan.
+    timeIdx: index("arrivals_time_idx").on(t.arrivedAt),
   }),
 );
 
@@ -97,6 +107,10 @@ export const segments = sqliteTable(
       t.dow,
       t.hour,
     ),
+    // Time-leading. Serves the calibrator's 30-day segment window
+    // (`WHERE started_at >= ?`) and the retention sweep. Both filter on
+    // started_at alone, which is the *trailing* column of the composite above.
+    timeIdx: index("segments_time_idx").on(t.startedAt),
   }),
 );
 
@@ -122,6 +136,10 @@ export const predictionsLog = sqliteTable(
       t.toStopId,
       t.predictedAt,
     ),
+    // Time-leading. Both accuracy readers (`/api/accuracy` and the v1-compat
+    // variant) scan `WHERE predicted_at >= ?` with no bus_id — a request-path
+    // query, so it must not be a full scan.
+    timeIdx: index("predictions_time_idx").on(t.predictedAt),
   }),
 );
 

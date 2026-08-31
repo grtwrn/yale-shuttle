@@ -8,6 +8,11 @@ import { openDb } from "./db/client.js";
 import { buildApp } from "./server/app.js";
 
 const PORT = parseInt(process.env.PORT ?? "8092", 10);
+// How long we let in-flight responses finish on SIGTERM. fly.toml sets no
+// kill_timeout, so Fly's 5 s default applies and this MUST stay under it —
+// overshooting means SIGKILL mid-write, which is the very thing we're fixing.
+// Raise `kill_timeout` in fly.toml before raising this.
+const SHUTDOWN_DRAIN_MS = 4_000;
 
 function resolveStaticDir(): string | undefined {
   if (process.env.SHUTTLE_V2_STATIC_DIR) {
@@ -45,12 +50,34 @@ async function main(): Promise<void> {
     }),
   );
 
+  let shuttingDown = false;
   const shutdown = (signal: NodeJS.Signals) => {
+    // Fly re-sends the signal; restarting the drain would reset the clock.
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log(JSON.stringify({ level: "info", msg: "shutting_down", signal }));
-    server.close();
+    // Stop the timers first: no point polling upstream or running a retention
+    // sweep against a database we're about to close.
     collector.stop();
-    bundle.sqlite.close();
-    process.exit(0);
+    // `server.close()` only stops *accepting*; in-flight responses finish on
+    // its callback. The old code closed SQLite and exited synchronously right
+    // here, which severed every live request on every deploy.
+    const drained = new Promise<void>((resolve) => {
+      server.close(() => resolve());
+    });
+    // Idle keep-alive sockets keep the server handle open indefinitely, so
+    // close() alone would always run out the clock below.
+    if ("closeIdleConnections" in server) server.closeIdleConnections();
+    // Bounded, because Fly SIGKILLs after its own grace period: a single stuck
+    // socket must not be the reason we get killed mid-write instead of exiting
+    // cleanly. Everything still open at the deadline is abandoned.
+    const timedOut = new Promise<void>((resolve) => {
+      setTimeout(resolve, SHUTDOWN_DRAIN_MS);
+    });
+    void Promise.race([drained, timedOut]).then(() => {
+      bundle.sqlite.close();
+      process.exit(0);
+    });
   };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);

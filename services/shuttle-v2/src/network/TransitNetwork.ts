@@ -225,7 +225,7 @@ export class TransitNetwork {
 
   /** Stops within `radiusM` of a coordinate, with walking time. */
   stopsNear(point: { lat: number; lon: number }, radiusM: number): WalkTransfer[] {
-    // Linear scan — there are ~30 stops in the whole network, no need for
+    // Linear scan — there are ~170 stops in the whole network, no need for
     // a separate k-d tree for ad-hoc origin/destination queries.
     const out: WalkTransfer[] = [];
     for (const stop of this.stops.values()) {

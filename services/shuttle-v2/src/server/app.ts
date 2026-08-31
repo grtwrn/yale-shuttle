@@ -20,7 +20,7 @@ import {
   type ReportListParams,
 } from "./reports.js";
 import { buildLiveSnapshot } from "./snapshot.js";
-import { buildAccuracyV1, buildBusesPayload, geocodeV1 } from "./v1compat.js";
+import { buildAccuracyV1, createBusesPayloadCache, geocodeV1 } from "./v1compat.js";
 
 /**
  * Build the HTTP app. Owns no state of its own — everything routes through
@@ -41,6 +41,21 @@ const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
 // Longest text we persist for a rider's report body or an operator's
 // resolution note. Matches ReportSubmitSchema's `body` cap in schema/api.ts.
 const REPORT_TEXT_MAX = 2000;
+
+// -- /api/stream limits -------------------------------------------------------
+// No rider client uses SSE today, but every open stream costs a full
+// buildLiveSnapshot + polyline stringify every 5 s on the single event loop
+// shared with the collector, so an accumulation of orphans is expensive.
+// A mobile client behind a NAT that vanishes without FIN/RST never trips
+// `stream.aborted`, so these three are what actually bound the damage.
+const SSE_MAX_CLIENTS = 32;
+const SSE_TICK_MS = 5_000;
+// Recycle streams so a half-open connection can leak for minutes, not forever.
+// Clients reconnect (with Last-Event-ID) on a clean close.
+const SSE_MAX_LIFETIME_MS = 15 * 60_000;
+// A comment line dispatches no event on the client but resets the idle timers
+// of proxies and load balancers in between. Every 4th tick is ample.
+const SSE_HEARTBEAT_EVERY_TICKS = 4;
 
 /**
  * Constant-time string compare, so a token can't be recovered byte-by-byte by
@@ -111,33 +126,81 @@ export function buildApp(opts: AppOptions): Hono {
   // from which the v1 client does its own trip planning and ETA math. See
   // v1compat.ts for the shape and what degrades gracefully.
 
+  // Built once per collector tick and shared by every concurrent request —
+  // see createBusesPayloadCache for why the naive per-request build was the
+  // most expensive thing this process did. Per-app instance so tests that
+  // build several apps over one collector stay independent.
+  const busesJson = createBusesPayloadCache(opts.collector);
+
   app.get("/api/buses", (c) => {
-    const payload = buildBusesPayload(opts.collector);
+    c.header("Content-Type", "application/json");
     c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
-    return c.json(payload);
+    return c.body(busesJson());
   });
 
   // -- Server-Sent Events: push live snapshots ------------------------------
 
-  app.get("/api/stream", (c) => {
-    return streamSSE(c, async (stream) => {
-      // Emit immediately so the client doesn't sit waiting on the first tick.
-      await stream.writeSSE({
-        data: JSON.stringify(buildLiveSnapshot(opts.collector)),
-        event: "snapshot",
-      });
+  let sseClients = 0;
 
-      // ID is monotonic on serverTime so reconnects with Last-Event-ID work.
-      // Hono's streamSSE handles the abort signal — when the client drops,
-      // the loop's next write throws and we exit cleanly.
-      while (!stream.aborted) {
-        await stream.sleep(5_000);
-        const snapshot = buildLiveSnapshot(opts.collector);
+  app.get("/api/stream", (c) => {
+    // Shed past the cap rather than let orphaned streams multiply the per-tick
+    // snapshot cost without bound.
+    if (sseClients >= SSE_MAX_CLIENTS) {
+      return c.json({ error: "too_many_streams" }, 503);
+    }
+    sseClients++;
+    return streamSSE(c, async (stream) => {
+      const deadline = Date.now() + SSE_MAX_LIFETIME_MS;
+      let ticks = 0;
+      // Give the slot back the instant the client goes away. `stream.sleep()`
+      // is not abort-aware, so leaving this to the `finally` alone would hold
+      // a slot for up to a full tick past every disconnect — enough to keep a
+      // reconnecting client bouncing off the cap.
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        sseClients--;
+      };
+      stream.onAbort(release);
+      try {
+        // Emit immediately so the client doesn't sit waiting on the first tick.
         await stream.writeSSE({
-          data: JSON.stringify(snapshot),
+          data: JSON.stringify(buildLiveSnapshot(opts.collector)),
           event: "snapshot",
-          id: String(snapshot.serverTime),
         });
+
+        // ID is monotonic on serverTime so reconnects with Last-Event-ID work.
+        //
+        // `stream.aborted` is the ONLY disconnect signal available here: Hono's
+        // StreamingApi.write wraps the writer in a bare `catch {}`, so a dead
+        // peer never surfaces as a throw. (An earlier comment claimed "the
+        // loop's next write throws and we exit cleanly" — it does not.) And
+        // `aborted` is set from the response readable being cancelled, i.e. a
+        // socket that actually closes: a half-open connection — mobile through
+        // a NAT that vanishes without FIN/RST — never sets it, and the loop
+        // would re-run buildLiveSnapshot + a full polyline stringify every 5 s
+        // forever. The deadline is what bounds that.
+        while (!stream.aborted && !stream.closed && Date.now() < deadline) {
+          await stream.sleep(SSE_TICK_MS);
+          if (stream.aborted || stream.closed) break;
+          const snapshot = buildLiveSnapshot(opts.collector);
+          await stream.writeSSE({
+            data: JSON.stringify(snapshot),
+            event: "snapshot",
+            id: String(snapshot.serverTime),
+          });
+          if (++ticks % SSE_HEARTBEAT_EVERY_TICKS === 0) {
+            await stream.write(": keep-alive\n\n");
+          }
+        }
+      } finally {
+        // Returning from here is what ends the stream: hono's streamSSE closes
+        // it in its own `finally`, so on deadline expiry the client sees a
+        // clean EOF and reconnects rather than a socket that quietly stops
+        // producing. Don't close it here — that would pre-empt hono's error
+        // path, which still wants to emit an `error` event first.
+        release();
       }
     });
   });
@@ -165,6 +228,10 @@ export function buildApp(opts: AppOptions): Hono {
 
   // -- Accuracy -------------------------------------------------------------
 
+  // Always answers `{overall:null,buckets:[],stops:[]}` today: nothing writes
+  // predictions_log, so there is nothing to score. Kept because the frontend
+  // polls it every 2 min per rider; buildAccuracyV1 short-circuits before
+  // touching SQLite. See the block comment above it before wiring up logging.
   app.get("/api/accuracy", (c) => {
     const data = buildAccuracyV1(opts.bundle, opts.collector.ref.get());
     c.header("Cache-Control", "public, max-age=60");

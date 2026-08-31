@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Collector } from "../collector/collector.js";
 import type { UpstreamClient, RawBus } from "../collector/upstream.js";
@@ -114,6 +114,87 @@ describe("GET /api/live", () => {
   });
 });
 
+// /api/buses is memoized on the collector's data version (plus a 1 s
+// wall-clock bound) so 200 riders polling in one collector tick cost one
+// build. These guard the two ways that can go wrong: a changed shape, and a
+// stale answer.
+describe("GET /api/buses", () => {
+  const observe = (busId: number, collectedAt: number) =>
+    (collector as unknown as {
+      updateLivePositions: (o: readonly Record<string, unknown>[]) => void;
+    }).updateLivePositions([
+      {
+        busId,
+        busName: `#${busId}`,
+        routeId: 10,
+        lat: 41.31,
+        lon: -72.93,
+        heading: 0,
+        lastStopId: 1,
+        collectedAt,
+      },
+    ]);
+
+  it("serves the v1 payload shape as JSON", async () => {
+    const res = await app.request("/api/buses");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual([
+      "bus_pace",
+      "buses",
+      "dwells",
+      "dwells_by_bus",
+      "route_paths",
+      "route_peaks",
+      "routes",
+      "segments",
+      "stop_coords",
+      "stop_names",
+    ]);
+    expect(Object.keys(body.stop_names as object).sort()).toEqual(["1", "2", "3"]);
+    expect((body.routes as Record<string, number[]>)["10"]).toEqual([1, 2, 3]);
+  });
+
+  it("rebuilds when the collector observes a new position", async () => {
+    const first = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
+    expect(first.buses).toEqual([]);
+    observe(7, Date.now());
+    const second = (await (await app.request("/api/buses")).json()) as {
+      buses: Array<{ bus_id: number }>;
+    };
+    expect(second.buses.map((b) => b.bus_id)).toEqual([7]);
+  });
+
+  // The version key alone isn't enough: during an upstream outage no poll
+  // lands, so the version never moves — but getLiveBuses() still ages buses
+  // out against the clock, and a version-only cache would serve ghosts.
+  it("drops buses that age out with no further polls", async () => {
+    observe(7, Date.now());
+    const before = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
+    expect(before.buses).toHaveLength(1);
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(Date.now() + 5 * 60_000); // past LIVE_BUS_TTL_MS
+      const after = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
+      expect(after.buses).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// predictions_log has no writers, so this is the only answer the endpoint can
+// give — it just has to give it without touching SQLite.
+describe("GET /api/accuracy", () => {
+  it("returns the empty rollup", async () => {
+    const res = await app.request("/api/accuracy");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ overall: null, buckets: [], stops: [] });
+  });
+});
+
 describe("POST /api/plan", () => {
   it("rejects malformed bodies", async () => {
     const res = await app.request("/api/plan", {
@@ -132,6 +213,22 @@ describe("POST /api/plan", () => {
         from: { lat: 41.31, lon: -72.93 },
         to: { lat: 41.3105, lon: -72.93 }, // ~55 m away
         departAt: null,
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { plans: { badge: string | null }[] };
+    expect(body.plans[0]?.badge).toBe("walk-only");
+  });
+
+  // departAt was required by the schema while the handler had a `?? now()`
+  // fallback, so omitting it — the natural way to say "leaving now" — 400'd.
+  it("treats a missing departAt as 'now'", async () => {
+    const res = await app.request("/api/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        from: { lat: 41.31, lon: -72.93 },
+        to: { lat: 41.3105, lon: -72.93 },
       }),
     });
     expect(res.status).toBe(200);

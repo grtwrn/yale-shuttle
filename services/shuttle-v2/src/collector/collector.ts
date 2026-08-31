@@ -109,6 +109,12 @@ export class Collector {
   private retentionHandle?: NodeJS.Timeout;
 
   private lastStaticRefreshAt = 0;
+  // Monotonic counter over everything the HTTP layer's fat /api/buses payload
+  // is derived from: live positions (every 5 s), calibrated segment/dwell
+  // stats (every 5 min) and the static topology (every 6 h). The server
+  // memoizes on it so 200 riders polling inside one collector tick cost one
+  // payload build, not 200.
+  private version = 0;
   // Liveness: when the poll timer last fired (independent of upstream health).
   // /healthz uses this so a wedged loop trips Fly's restart, while a mere
   // upstream outage (no buses to report) does not.
@@ -262,6 +268,16 @@ export class Collector {
   }
 
   /**
+   * Cache key for anything derived from collector state. Changes on every
+   * live-position update, calibration pass and topology swap — and on nothing
+   * else, so a reader that has already built a view of this version can serve
+   * it unchanged.
+   */
+  dataVersion(): number {
+    return this.version;
+  }
+
+  /**
    * Snapshot of the latest observed position per bus. Read by the HTTP
    * server's /api/live and by the trip planner's wait-time estimator.
    * Returns a freshly-cloned array so consumers can't mutate internal state.
@@ -314,11 +330,15 @@ export class Collector {
     for (const [id, s] of this.states) {
       if (s.lastObservedAt < stateCutoff) this.states.delete(id);
     }
+    this.version++;
   }
 
   private runCalibrate(): void {
     try {
       const stats = calibrate(this.db, this.ref.get());
+      // Calibration mutates the live network's stats in place, so readers
+      // memoizing on dataVersion() must be told the segment/dwell numbers moved.
+      this.version++;
       this.logger.info("collector.calibrated", { ...stats });
     } catch (err) {
       this.logger.error("collector.calibrate_failed", {
@@ -339,6 +359,7 @@ export class Collector {
       const rebuilt = TransitNetwork.build(stops, routes);
       calibrate(this.db, rebuilt);
       this.ref.replace(rebuilt);
+      this.version++;
       this.lastStaticRefreshAt = now;
       this.logger.info("collector.static_refreshed", {
         stops: stops.length,

@@ -60,8 +60,9 @@ export interface PlanInputs {
  *     Wait time is derived from live buses on that route via
  *     {@link expectedWait}; ride time from {@link etaAlongRoute}.
  *
- * For this network (~30 stops, ~16 routes) the candidate set is tiny — a
- * handful of board × alight × route combinations. We sort by total seconds
+ * For this network (~170 stops, ~15 routes) the candidate set stays tiny — the
+ * MAX_WALK_M radius admits only a handful of board × alight × route
+ * combinations regardless of network size. We sort by total seconds
  * (the rider's actual cost) and dedupe; transfers are intentionally out of
  * scope for v1, because empirically they're almost never worth the wait.
  *

@@ -259,11 +259,38 @@ function fmtSchedule(label: string): string {
   ).join(" · ");
 }
 
+// ROUTE_HOURS is published Eastern Time, but `getDay()`/`getHours()` read the
+// DEVICE's timezone. A phone set to UTC — or any visitor whose phone is still
+// on their home zone — mapped ET afternoon into the overnight window, so every
+// weekday route was judged out of service: `isBusInService` dropped the buses
+// and the app showed "😴 No shuttles running right now" while shuttles were
+// visibly running outside. Anchor every schedule comparison to ET instead.
+const ET_TIME_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+});
+const ET_DAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+/** Day-of-week (0=Sun) and minutes-past-midnight for `d`, in America/New_York. */
+function etDayAndMinutes(d: Date): { day: number; mins: number } {
+  const parts = ET_TIME_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = ET_DAY_INDEX[get("weekday")];
+  const hour = parseInt(get("hour"), 10);
+  const minute = parseInt(get("minute"), 10);
+  // Fall back to device-local only if Intl gave us something unusable, which
+  // beats throwing on an ancient browser.
+  if (day === undefined || !Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return { day: d.getDay(), mins: d.getHours() * 60 + d.getMinutes() };
+  }
+  return { day, mins: (hour % 24) * 60 + minute };
+}
+
 function isRouteActiveAt(label: string, d: Date): boolean {
   const wins = ROUTE_HOURS[label];
   if (!wins) return true;                    // unknown → don't filter
-  const day = d.getDay();
-  const mins = d.getHours() * 60 + d.getMinutes();
+  const { day, mins } = etDayAndMinutes(d);
   for (const w of wins) {
     if (w.endMin <= 1440) {
       if (w.days.includes(day) && mins >= w.startMin && mins < w.endMin) return true;
@@ -306,17 +333,17 @@ function nextActiveWindow(label: string, after: Date): Date | null {
   const wins = ROUTE_HOURS[label];
   if (!wins) return null;
   for (let offset = 0; offset < 7; offset++) {
-    const candDay = new Date(after);
-    candDay.setDate(candDay.getDate() + offset);
-    const dow = candDay.getDay();
+    const cand = new Date(after.getTime() + offset * 86_400_000);
+    const { day: dow, mins } = etDayAndMinutes(cand);
     for (const w of wins) {
       if (!w.days.includes(dow)) continue;
-      // Offset 0 = same day: window must still be in the future.
-      const dayStart = new Date(candDay);
-      dayStart.setHours(0, 0, 0, 0);
-      const startAt = new Date(dayStart);
-      startAt.setMinutes(w.startMin);
-      if (offset === 0 && startAt.getTime() <= after.getTime()) continue;
+      // Shift from where the ET wall clock currently sits to the window's
+      // start minute on that same ET day. (A window whose start straddles a
+      // DST changeover lands an hour off; a twice-a-year hour on a "next
+      // active" hint isn't worth carrying a full tz library for.)
+      const startAt = new Date(cand.getTime() + (w.startMin - mins) * 60_000);
+      // Same day: the window must still be in the future.
+      if (startAt.getTime() <= after.getTime()) continue;
       return startAt;
     }
   }
@@ -364,9 +391,15 @@ type GeocodeResult = { display_name: string; lat: number; lon: number; type?: st
 // "Indian River, Forest Heights, Fort Trumbull, Milford, South Central
 // Connecticut Planning Region, Connecticut, United States" — two segments
 // carry all the signal on a phone-width row.
-function suggLabel(g: GeocodeResult): string {
+function suggLabel(g: GeocodeResult, siblings?: GeocodeResult[]): string {
   const parts = g.display_name.split(",").map((s) => s.trim()).filter(Boolean);
-  return parts.slice(0, 2).join(", ");
+  const short = parts.slice(0, 2).join(", ");
+  if (!siblings) return short;
+  // Two distinct results can share their first two segments ("Chapel Street,
+  // New Haven" for both ends of a long street), which renders as duplicate
+  // rows the rider cannot choose between. Widen only the colliding ones.
+  const collides = siblings.some((o) => o !== g && suggLabel(o) === short);
+  return collides ? (parts.slice(0, 3).join(", ") || short) : short;
 }
 // Row icon by result kind so stops and landmarks are scannable at a glance.
 function suggIcon(g: GeocodeResult): string {
@@ -517,6 +550,14 @@ function saveGoTrip(g: GoTrip | null): void {
     else localStorage.removeItem(GO_LS_KEY);
   } catch { /* quota / private mode */ }
 }
+
+// What the From box reads after the rider taps 📍. It is a sentinel, not a
+// geocoded place: the origin should keep tracking live GPS while they walk.
+// The live-origin checks used to test `!fromText`, which is only true when the
+// box is BLANK — so tapping 📍 (which fills in this text) silently froze the
+// origin at the first fix, the exact bug report #19 was about.
+const CURRENT_LOCATION_TEXT = "Current location";
+const isCurrentLocationText = (t: string) => !t || t === CURRENT_LOCATION_TEXT;
 
 const WALK_SPEED_M_S = 1.3;
 // Streets aren't straight lines: crow-flies distance understates real
@@ -838,6 +879,17 @@ function planTrip(
       // "after" the destination in array order and suggest a farther
       // one instead (user report 2026-07-17, Blue). MAX_RIDE_SEC still
       // caps how far around the loop an option can ride.
+      // These two depend only on the BOARD stop, not on how far around the
+      // loop we ride, but they sat inside the alight scan and were recomputed
+      // for every candidate. computeUpcomingArrivals is the expensive one, and
+      // the wrap-around change above roughly doubled the (board, alight) pairs
+      // — so it was running about 4x more often than it used to.
+      const hereBus = futureMode ? undefined : buses.find(
+        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
+      );
+      const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
+        [b], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus,
+      ).filter((a) => a.routeLabel === cfg.label);
       let cumRide = 0;
       for (let step = 1; step < stops.length; step++) {
         const prev = stops[(i + step - 1) % stops.length];
@@ -881,11 +933,7 @@ function planTrip(
           // ETA for its own stop), which is how the planner missed a 10-min
           // fastest route entirely (report #28: bus parked 13 m from the
           // board stop, every pair boarding there discarded).
-          const hereBus = buses.find(
-            (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
-          );
-          const arrivals = computeUpcomingArrivals([b], buses, routeStops, stopCoords, segmentTimes, dwellTimes, dwellsByBus)
-            .filter((a) => a.routeLabel === cfg.label);
+          const arrivals = boardArrivals;
           if (hereBus && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes)) {
             waitSec = 0;
             busName = hereBus.bus_name.replace(/^#/, "");
@@ -2419,13 +2467,13 @@ const TripPlanner: FC<{
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
       setFromLL(userLatLon);
-      setFromText("Current location");
+      setFromText(CURRENT_LOCATION_TEXT);
       setFromSugg([]);
       return;
     }
     // First click: geolocation isn't resolved yet. Request it and flag
     // that we want to auto-apply the result as soon as it arrives.
-    setFromText("Current location");
+    setFromText(CURRENT_LOCATION_TEXT);
     setFromLL(null);
     setFromSugg([]);
     setAwaitingLocation(true);
@@ -2446,7 +2494,7 @@ const TripPlanner: FC<{
     }
     if (userLatLon) {
       setFromLL(userLatLon);
-      setFromText("Current location");
+      setFromText(CURRENT_LOCATION_TEXT);
       setFromSugg([]);
       setAwaitingLocation(false);
     }
@@ -2528,7 +2576,7 @@ const TripPlanner: FC<{
       // via watchPosition as they walk toward the stop. Using the frozen
       // origin made the catchable/"just passed" math think the rider was
       // still back where they started even while standing at the stop.
-      const liveFromLL = (!fromText && userLatLon) ? userLatLon : effectiveFromLL;
+      const liveFromLL = (isCurrentLocationText(fromText) && userLatLon) ? userLatLon : effectiveFromLL;
       const usingLive = liveFromLL !== effectiveFromLL;
       const boardCoords = stopCoords[o.boardStopId];
       const distToBoard = (boardCoords && liveFromLL)
@@ -2599,7 +2647,16 @@ const TripPlanner: FC<{
         match = catchable[0];
         // The planned bus is still in the feed but we can no longer make it —
         // record it as missed so the card can surface "#X just passed".
-        if (pinned && !canCatch(pinned)) missedBus = pinned.busName.replace(/^#/, "");
+        if (pinned && !canCatch(pinned)) {
+          const missed = pinned.busName.replace(/^#/, "");
+          // ...but only if it's genuinely a DIFFERENT vehicle. Arrivals now
+          // include a second lap per bus, so on a single-bus route the next
+          // catchable arrival is usually the same bus a loop later. Naming it
+          // produced "🚌 You can't catch #12 — showing the next bus:" directly
+          // above an ETA for #12, and made the overview draw both a live pin
+          // and a dimmed "just passed" pin on one vehicle.
+          if (missed !== match.busName.replace(/^#/, "")) missedBus = missed;
+        }
       } else {
         match = pinned ?? live[0];
         departed = true;
@@ -2855,7 +2912,7 @@ const TripPlanner: FC<{
     setToSugg([]);
     if (userLatLon) {
       setFromLL(userLatLon);
-      setFromText("Current location");
+      setFromText(CURRENT_LOCATION_TEXT);
       setFromSugg([]);
     }
     onConsumePending();
@@ -2955,7 +3012,7 @@ const TripPlanner: FC<{
   // of an empty From field. Treat empty fromText + userLatLon as valid
   // "use my current GPS" so the user never has to delete a placeholder
   // label to type a new start.
-  const fromIsCurrent = !fromText && (!!fromLL || !!userLatLon);
+  const fromIsCurrent = isCurrentLocationText(fromText) && (!!fromLL || !!userLatLon);
 
   // Once GPS resolves, silently snap From to it when the user hasn't
   // typed anything else. Covers the pending-locate case.
@@ -2983,10 +3040,10 @@ const TripPlanner: FC<{
     // on the awaitingLocation effect below to fill From when it lands.
     if (userLatLon) {
       setFromLL(userLatLon);
-      setFromText("Current location");
+      setFromText(CURRENT_LOCATION_TEXT);
       setFromSugg([]);
     } else {
-      setFromText("Current location");
+      setFromText(CURRENT_LOCATION_TEXT);
       setFromLL(null);
       setFromSugg([]);
       setAwaitingLocation(true);
@@ -3402,7 +3459,7 @@ const TripPlanner: FC<{
                 }}
               >
                 <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g)}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, fromSugg)}</span>
               </div>
             ))}
           </div>
@@ -3576,7 +3633,7 @@ const TripPlanner: FC<{
                 }}
               >
                 <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g)}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, toSugg)}</span>
               </div>
             ))}
           </div>
@@ -3915,9 +3972,19 @@ const TripPlanner: FC<{
             // rider can still compare or switch without ending the trip.
             const _isGoCard = (o: TripOption) =>
               goActive && o.mode === "shuttle" && o.routeLabel === goTrip!.routeLabel;
-            const _visible = goActive
+            const _visibleBase = goActive
               ? [..._sorted.filter(_isGoCard), ..._sorted.filter((o) => !_isGoCard(o))]
               : showAllOptions ? _sorted : _sorted.slice(0, 3);
+            // Keep the open route visible even when it ranks outside the top 3.
+            // `detailOpen` (which hides the search chrome and shows the
+            // "← All routes" bar) tests ALL options, but this list only tested
+            // the visible slice — and ↻ Refresh resets showAllOptions while
+            // staying tappable from the details view. Opening a 4th-ranked
+            // route and refreshing therefore left the chrome in details mode
+            // with the top-3 rows rendered underneath it.
+            const _visible = !goActive && expandedKey && !_visibleBase.some((v) => v.routeLabel === expandedKey)
+              ? [..._visibleBase, ..._sorted.filter((o) => o.routeLabel === expandedKey)]
+              : _visibleBase;
             const _hidden = goActive ? 0 : _sorted.length - _visible.length;
             // Google-Maps pattern: options are divider-separated ROWS of one
             // sheet; tapping a row swaps the list for that route's details
@@ -4588,7 +4655,7 @@ const TripPlanner: FC<{
                       toText: p.name, toLat: p.lat, toLon: p.lon,
                     })}
                     style={{
-                      fontSize: 13, padding: "8px 14px", minHeight: 36,
+                      fontSize: 13, padding: "8px 14px", minHeight: 44,
                       borderRadius: 999, border: "1px solid #e0ddd8",
                       background: "#fff", color: "#263238",
                       cursor: "pointer", fontFamily: "inherit",
@@ -4690,7 +4757,7 @@ const TripPlanner: FC<{
                   onClick={() => applyDestination(t)}
                   title="Tap to plan"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
+                    display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44,
                     padding: "3px 10px", borderRadius: 999,
                     background: "#fff",
                     border: "1px solid #c5e1a5",
@@ -5244,13 +5311,13 @@ const NearbyStopsPicker: FC<{
   }, [text, ll]);
 
   const useCurrent = () => {
-    if (userLatLon) { setLL(userLatLon); setText("Current location"); setSugg([]); return; }
+    if (userLatLon) { setLL(userLatLon); setText(CURRENT_LOCATION_TEXT); setSugg([]); return; }
     setAwaiting(true);
     onRequestLocate();
   };
   useEffect(() => {
     if (awaiting && userLatLon) {
-      setLL(userLatLon); setText("Current location"); setSugg([]); setAwaiting(false);
+      setLL(userLatLon); setText(CURRENT_LOCATION_TEXT); setSugg([]); setAwaiting(false);
     }
   }, [awaiting, userLatLon]);
 
@@ -5339,7 +5406,7 @@ const NearbyStopsPicker: FC<{
               padding: "4px 8px", fontSize: 11, cursor: "pointer",
               borderBottom: i === sugg.length - 1 ? "none" : "1px solid #f0ede8",
             }}>
-              {suggIcon(g)} {suggLabel(g)}
+              {suggIcon(g)} {suggLabel(g, sugg)}
             </div>
           ))}
         </div>
@@ -5444,6 +5511,7 @@ const FavoriteStopsPage: FC<{
                 <button onClick={() => onPlanTrip(t)} style={{
                   fontSize: 11, padding: "3px 10px", border: "1px solid #2E7D32",
                   background: "#fff", color: "#2E7D32", borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
+                  minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>Plan</button>
                 <button onClick={() => setSavedTrips(savedTrips.filter((x) => x.id !== t.id))} style={{
                   border: "none", background: "transparent", color: "#9e9e9e",
@@ -6544,7 +6612,7 @@ function distanceBucket(stopsAhead: number): string | null {
 // and turns red ("Get off NEXT stop!") as the stop approaches. Stateless —
 // recomputes on every root re-render (i.e. every poll), so it stays current.
 // Focused map for the post-boarding view: draws ONLY the boarded route — its
-// path, its stops (board emphasised, alight as 🏁), the live buses on that line
+// path, its stops (board emphasised, alight as 🚏), the live buses on that line
 // (your bus opaque, others faded), and "you are here". Modeled on AllRoutesMap
 // but scoped to one ride so the rider sees just their line and where they are.
 const RideRouteMap: FC<{
@@ -6557,7 +6625,7 @@ const RideRouteMap: FC<{
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   // The rider's actual destination (from the committed Go trip), distinct from
-  // the alight stop — 🏁 marks where you get off, 📍 marks where you're going.
+  // the alight stop — 🚏 marks where you get off, 🏁 marks where you're going.
   dest: { lat: number; lon: number; text: string } | null;
 }> = ({ ride, buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate, dest }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -6590,7 +6658,7 @@ const RideRouteMap: FC<{
   };
 
   // Mount-once (rebuilds when route path data lands): tiles, the boarded route's
-  // polyline, its stops with board emphasised + alight as 🏁, fit to the route.
+  // polyline, its stops with board emphasised + alight as 🚏, fit to the route.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
     const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
@@ -6617,7 +6685,7 @@ const RideRouteMap: FC<{
         const nm = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
         if (sid === ride.alightStopId) {
           L.marker([c.lat, c.lon], {
-            icon: L.divIcon({ className: "alight-marker", html: `<div style="font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));">🏁</div>`, iconSize: [20, 20], iconAnchor: [3, 18] }),
+            icon: L.divIcon({ className: "alight-marker", html: `<div style="font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));">🚏</div>`, iconSize: [20, 20], iconAnchor: [3, 18] }),
             keyboard: false, zIndexOffset: 800,
           }).addTo(map).bindTooltip(`Get off: ${nm}`, { direction: "top", offset: [0, -10] });
         } else {
@@ -6634,8 +6702,9 @@ const RideRouteMap: FC<{
       }
     }
 
-    // Final destination pin (📍) — the place the rider is actually going,
-    // distinct from the 🏁 alight stop. Skipped when it sits on top of the
+    // Final destination pin (🏁) — the place the rider is actually going,
+    // distinct from the 🚏 alight stop. 📍 stays reserved for the rider's own
+    // origin/current location per the project convention. Skipped when it sits on top of the
     // alight stop, where a second marker would just be clutter.
     const alightC = stopCoords[ride.alightStopId];
     if (dest && (!alightC || haversineMeters({ lat: dest.lat, lon: dest.lon }, alightC) > 40)) {
@@ -6645,7 +6714,7 @@ const RideRouteMap: FC<{
         icon: L.divIcon({
           className: "dest-marker",
           html: `<div style="display:flex;flex-direction:column;align-items:center;">
-            <div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));">📍</div>
+            <div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.4));">🏁</div>
             ${label ? `<div style="margin-top:1px;font:600 10px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#C62828;background:rgba(255,255,255,0.92);border-radius:6px;padding:1px 5px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.25);">${esc(label)}</div>` : ""}
           </div>`,
           iconSize: [0, 0],
@@ -6665,7 +6734,6 @@ const RideRouteMap: FC<{
       // Cancel any in-flight pan/zoom animation before teardown —
       // Leaflet's queued animation frame otherwise fires on the removed
       // map and throws "_leaflet_pos of undefined".
-      try { map.stop(); } catch { /* mid-animation teardown */ }
       try { map.stop(); } catch { /* mid-animation teardown */ }
       map.remove();
       mapRef.current = null; busLayerRef.current = null; youMarkerRef.current = null;
@@ -6813,7 +6881,7 @@ const RideStopList: FC<{
           const isAlight = idx === alightIdx;
           const isBoard = idx === boardIdx;
 
-          const icon = isBusCur ? "🚌" : isAlight ? "🏁" : passed ? "✓" : "·";
+          const icon = isBusCur ? "🚌" : isAlight ? "🚏" : passed ? "✓" : "·";
           const dimmed = passed && !isBoard;
           const highlighted = isBusCur || isAlight;
 
@@ -7017,7 +7085,7 @@ const OnBusBanner: FC<{
           flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
           border: "1px solid rgba(255,255,255,0.6)", borderRadius: 6,
           background: "transparent", color: "#fff", cursor: "pointer",
-          fontFamily: "inherit", minHeight: 36,
+          fontFamily: "inherit", minHeight: 44,
         }}
       >
         Done
@@ -7835,6 +7903,7 @@ const TransitMap: FC = () => {
                 padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a",
                 fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
               }}>
                 {legendRoutes.every((r) => hiddenRoutes.has(r.toggleLabel)) ? "Show all" : "Hide all"}
               </button>
@@ -7861,6 +7930,7 @@ const TransitMap: FC = () => {
                   background: activeOnly ? "#1a1a2e" : "#fff",
                   color: activeOnly ? "#fff" : "#546e7a",
                   fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                  minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>
                   {activeOnly ? "✓ Active" : "Active"}
                 </button>
@@ -7874,6 +7944,7 @@ const TransitMap: FC = () => {
                     color: hidden ? "#9e9e9e" : "#fff",
                     fontSize: 10, fontWeight: 600, cursor: "pointer",
                     fontFamily: "inherit", opacity: hidden ? 0.5 : 1,
+                    minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.2s",
                   }}>
                     {r.label}
@@ -7988,6 +8059,7 @@ const TransitMap: FC = () => {
                   border: `1px solid ${cfg.color}`, background: "#fff",
                   color: cfg.color, fontSize: 10, fontWeight: 700,
                   cursor: "pointer", fontFamily: "inherit",
+                  minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}
               >
                 {cfg.label}{hasBuses ? "" : " 💤"}
