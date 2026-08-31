@@ -1,21 +1,17 @@
 import type React from "react";
 
 /**
- * The footer's outbound links: source, and support.
+ * The footer's outbound link to the source.
  *
- * Kept together because they are the pieces of chrome that point off-site, and
- * each needs the same three things — the external-link safety attributes, its
- * own accessible name (an icon button with no text is invisible to a screen
- * reader), and the 44 px touch target this project requires. None of that
- * should be scattered into the footer's layout code, and both should look like
- * a matched pair rather than two ad-hoc links.
+ * Kept as its own component because it is the piece of chrome that points
+ * off-site: it needs the external-link safety attributes, its own accessible
+ * name (an icon button with no text is invisible to a screen reader), and the
+ * 44 px touch target this project requires. `linkStyle` stays factored out so a
+ * second footer link can be added later without either drifting.
  */
 
 /** Where the source lives. */
 export const REPO_URL = "https://github.com/grtwrn/yale-shuttle";
-
-/** Where riders can support the project. */
-export const SUPPORT_URL = "https://buymeacoffee.com/grtwrn";
 
 /**
  * Shared shape for both footer links, so they cannot drift apart visually or
@@ -83,20 +79,3 @@ export function ContributeButton() {
   );
 }
 
-export function SupportButton() {
-  return (
-    <a
-      href={SUPPORT_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Support this project on Buy Me a Coffee (opens in a new tab)"
-      title="Buy me a coffee"
-      style={linkStyle}
-    >
-      <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>
-        ☕
-      </span>
-      <span>Buy me a coffee</span>
-    </a>
-  );
-}

@@ -186,6 +186,15 @@ export const dailyActives = sqliteTable(
     // rest of this schema counts in (see the dow/hour columns above).
     day: text("day").notNull(),
     anonId: text("anon_id").notNull(),
+    // Depth, not identity. First/last sighting bound time-in-app for that day;
+    // the counters distinguish "opened it once" from "used it all week".
+    // Retention itself needs none of these — a row per (day, id) already says
+    // whether a browser came back.
+    firstSeenMs: integer("first_seen_ms"),
+    lastSeenMs: integer("last_seen_ms"),
+    polls: integer("polls").notNull().default(0),
+    // Destination searches: a deliberate action, unlike the automatic poll.
+    searches: integer("searches").notNull().default(0),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.day, t.anonId] }),

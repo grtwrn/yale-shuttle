@@ -47,18 +47,38 @@ if (!res.ok) {
   process.exit(1);
 }
 
-const { riders } = await res.json();
+const { riders: r } = await res.json();
 if (json) {
-  console.log(JSON.stringify(riders));
+  console.log(JSON.stringify(r));
 } else {
-  const row = (label, n) => `  ${label.padEnd(14)}${String(n).padStart(6)}`;
-  console.log("\nUnique browsers using yale-shuttle\n");
-  console.log(row("today", riders.today));
-  console.log(row("last 7 days", riders.last7Days));
-  console.log(row("last 30 days", riders.last30Days));
-  console.log(row("all time", riders.allTime));
+  const row = (label, v) => `  ${label.padEnd(22)}${String(v).padStart(7)}`;
+  const pct = (x) => (x == null ? "n/a" : `${Math.round(x * 100)}%`);
+
+  console.log("\nyale-shuttle — usage\n");
+  console.log(row("today", r.today));
+  console.log(row("  ...new", r.newToday));
+  console.log(row("  ...returning", r.returningToday));
+  console.log(row("last 7 days", r.last7Days));
+  console.log(row("last 30 days", r.last30Days));
+  console.log(row("all time", r.allTime));
+
+  console.log("\ncoming back\n");
+  console.log(row("came back at all", pct(r.repeatRate)));
   console.log(
-    "\n  Counts browsers, not people — phone + laptop is 2, and clearing\n" +
-      "  site data starts a new one. History is kept for 90 days.\n",
+    row("week-1 retention", pct(r.week1Retention)) +
+      (r.week1Cohort ? `   (of ${r.week1Cohort} old enough to judge)` : "   (nobody old enough yet)"),
+  );
+  console.log(row("median days active", r.medianDaysActive));
+
+  console.log("\ndepth\n");
+  console.log(row("median min / day", r.medianMinutesPerDay));
+  console.log(row("searches today", r.searchesToday));
+  console.log(row("searches / rider", r.searchesPerRiderToday));
+
+  console.log(
+    "\n  Browsers, not people — phone + laptop is 2, and clearing site data\n" +
+      "  starts a new one. Week-1 retention counts only browsers that have HAD\n" +
+      "  a week to return, so it is not diluted by yesterday's arrivals.\n" +
+      "  History is kept for 90 days.\n",
   );
 }

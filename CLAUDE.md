@@ -107,8 +107,10 @@ curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
 
 ## Usage metrics
 
-`npm run riders` (or `GET /api/stats` with the same admin token) reports unique
-browsers: today / 7 d / 30 d / all time.
+`npm run riders` (or `GET /api/stats` with the same admin token) reports usage
+and return visits: today (split new vs returning), 7 d / 30 d / all time, the
+share that ever came back, week-1 retention, median days active, median minutes
+per day, and destination searches.
 
 The browser mints a random id (`web/src/anonId.ts`), keeps it in localStorage
 beside the favourites it already stores, and sends it as `x-anon-id` on the
@@ -117,7 +119,18 @@ row per (ET day, id)** into `daily_actives` and nothing else: no IP, no user
 agent, no coordinates, no time of day. 90-day retention, swept at the day
 rollover.
 
-Two things to preserve if you touch it:
+**Retention needed no extra data.** A row per (day, id) already says whether a
+browser came back, when it first appeared, and how many days it has been active.
+The extra columns (`first_seen_ms`, `last_seen_ms`, `polls`, `searches`) buy
+*depth* — time in app and query volume — not identity. A "search" is a
+`/api/geocode` call, i.e. a deliberate destination lookup, as opposed to the
+automatic 5-second poll.
+
+**Week-1 retention only counts browsers that have HAD a week to return**, so it
+is not diluted by yesterday's arrivals; it reports `null`, not 0, when nobody is
+old enough to judge.
+
+Three things to preserve if you touch it:
 
 - **It must never cost a write per request.** `/api/buses` is ~40 req/s at
   launch load; the first sighting of an id writes one row and the id then lives
@@ -125,6 +138,8 @@ Two things to preserve if you touch it:
   `src/server/actives.ts`.
 - **Counting must never break the endpoint.** Every path there is non-throwing;
   a rider with storage disabled is simply uncounted.
+- **Counters accumulate in memory and flush on a timer** (60 s), so tests that
+  inspect rows must `flush()` first — `stats()` flushes for you.
 
 It counts browsers, not people — phone + laptop is two.
 

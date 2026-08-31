@@ -94,7 +94,7 @@ export function buildApp(opts: AppOptions): Hono {
   const app = new Hono();
   // Unique-rider counting. Rides along on the poll the app already makes, so
   // there is no extra request; see actives.ts for the cost and privacy shape.
-  const actives = createActivesTracker(opts.bundle.db);
+  const actives = createActivesTracker(opts.bundle);
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -139,7 +139,7 @@ export function buildApp(opts: AppOptions): Hono {
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a
     // rider exists. `seen` is a Set hit after the first sighting of the day.
-    actives.seen(c.req.header("x-anon-id"), now());
+    actives.seen(c.req.header("x-anon-id"), "poll", now());
     c.header("Content-Type", "application/json");
     c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
     return c.body(busesJson());
@@ -251,6 +251,9 @@ export function buildApp(opts: AppOptions): Hono {
     // Cap the query before it reaches the matcher: the prefix-match tier is
     // O(query tokens x candidate words) per candidate, so an unbounded ?q=
     // would block the single event loop for seconds.
+    // A destination search is a deliberate action, unlike the automatic poll,
+    // so it is the honest measure of "queries".
+    actives.seen(c.req.header("x-anon-id"), "search", now());
     const q = (c.req.query("q") ?? "").slice(0, 100);
     const results = await geocodeV1(opts.collector.ref.get(), q);
     c.header("Cache-Control", "no-store");

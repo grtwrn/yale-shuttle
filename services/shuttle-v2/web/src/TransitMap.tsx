@@ -18,7 +18,7 @@ import {
   dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
-import { ContributeButton, SupportButton } from "./ContributeButton";
+import { ContributeButton } from "./ContributeButton";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
@@ -1623,6 +1623,7 @@ const TripPlanner: FC<{
       // param forces a fresh fetch while the server-side cache still
       // protects upstream geocoders.
       const r = await fetch(`/api/geocode?q=${encodeURIComponent(normalized)}&_=${Date.now()}`, {
+        headers: anonIdHeader(),
         cache: "no-store", signal: controller.signal,
       });
       const d = await r.json();
@@ -3983,6 +3984,7 @@ const NearbyStopsPicker: FC<{
     const norm = q.replace(/\s+(?:and|&)\s+/gi, " ").replace(/\s+/g, " ").trim();
     try {
       const r = await fetch(`/api/geocode?q=${encodeURIComponent(norm)}&_=${Date.now()}`, {
+        headers: anonIdHeader(),
         cache: "no-store", signal: ctrl.signal,
       });
       const d = await r.json();
@@ -6696,7 +6698,6 @@ const TransitMap: FC = () => {
               💬 Send feedback
             </button>
             <ContributeButton />
-            <SupportButton />
             {feedbackStatus && (
               <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
             )}
