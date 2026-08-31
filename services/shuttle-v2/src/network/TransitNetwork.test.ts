@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Route, Stop } from "../schema/api.js";
 
-import { TransitNetwork, WALK_TRANSFER_MAX_M } from "./TransitNetwork.js";
+import { TransitNetwork, WALK_TRANSFER_MAX_M, WALK_M_PER_S } from "./TransitNetwork.js";
 
 // Synthetic 4-stop network: a small loop and a sibling stop ~50 m from stop 1.
 //
@@ -75,7 +75,7 @@ describe("TransitNetwork", () => {
     const toFour = fromOne.find((t) => t.toStopId === 4)!;
     expect(toFour.meters).toBeLessThan(WALK_TRANSFER_MAX_M);
     expect(toFour.meters).toBeGreaterThan(30);
-    expect(toFour.seconds).toBeCloseTo(toFour.meters / 1.4, 1);
+    expect(toFour.seconds).toBeCloseTo(toFour.meters / WALK_M_PER_S, 1);
   });
 
   it("walking transfers are sorted nearest first", () => {

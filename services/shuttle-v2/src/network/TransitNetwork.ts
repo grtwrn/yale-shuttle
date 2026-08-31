@@ -6,8 +6,25 @@ import { distanceMeters, makeProjector } from "./geo.js";
 
 // Tuning constants ------------------------------------------------------------
 
-/** Average walking speed in meters per second (≈5 km/h). */
-export const WALK_M_PER_S = 1.4;
+/**
+ * EFFECTIVE walking rate applied to CROW-FLIES distance, m/s.
+ *
+ * Not a walking speed: every caller here divides straight-line metres by it, so
+ * it has to absorb the street detour as well as the pace. This codebase already
+ * measured that detour against OSRM foot routes over six representative campus
+ * pairs — ratios 1.05–1.38, mean ~1.22. With an unhurried 1.3 m/s pace on the
+ * ground that gives 1.3 / 1.22 ≈ 1.07, rounded to 1.1.
+ *
+ * It was 1.4, which reads as "≈5 km/h" and looks reasonable until you notice
+ * the missing detour: 1.4 m/s over crow-flies is a ~1.7 m/s (6 km/h) pace on
+ * real pavement. Every walk estimate the rider saw was ~25% optimistic, which
+ * matters most at the decision it drives — walk now, or wait for the shuttle.
+ *
+ * The client mirrors this exactly (`WALK_EFFECTIVE_M_S` in web/src/walk.ts) and
+ * its test parses THIS line, so the two cannot drift apart again. Change both
+ * together, starting here.
+ */
+export const WALK_M_PER_S = 1.1;
 
 /**
  * Upper bound for precomputed walking transfers between stops.

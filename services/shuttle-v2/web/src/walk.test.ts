@@ -67,17 +67,22 @@ describe("walkSecFromMeters", () => {
   // rather than buried in a ratio.
   it("pins the estimates riders actually see", () => {
     const minutes = (m: number) => Math.round((walkSecFromMeters(m) / 60) * 10) / 10;
-    expect(minutes(150)).toBe(1.8);    // a stop across the street
-    expect(minutes(400)).toBe(4.8);    // typical walk to a board stop
-    expect(minutes(1_000)).toBe(11.9);
-    expect(minutes(1_500)).toBe(17.9); // MAX_WALK_M, the longest leg allowed
-    expect(minutes(4_300)).toBe(51.2); // report #35's trip — under the cutoff
+    expect(minutes(150)).toBe(2.3);    // a stop across the street
+    expect(minutes(400)).toBe(6.1);    // typical walk to a board stop
+    expect(minutes(1_000)).toBe(15.2);
+    expect(minutes(1_500)).toBe(22.7); // MAX_WALK_M, the longest leg allowed
+    expect(minutes(4_300)).toBe(65.2); // report #35's trip — genuinely an hour+
   });
 
-  it("puts report #35's trip back under the one-hour cutoff", () => {
-    expect(walkSecFromMeters(4_300)).toBeLessThan(WALK_ONLY_MAX_SEC);
-    // The old client model put the same distance well past it.
-    const OLD_EFFECTIVE_M_S = 1.3 / 1.2;
-    expect(4_300 / OLD_EFFECTIVE_M_S).toBeGreaterThan(WALK_ONLY_MAX_SEC);
+  // Report #35 was a 4.3 km trip that rendered "No trip options found". The
+  // fix is NOT to declare such a walk short enough to clear the cutoff — at an
+  // honest pace it really is over an hour, and pretending otherwise is how the
+  // model drifted optimistic in the first place. The guarantee is that the
+  // cutoff may hide a long walk as CLUTTER, never as the rider's only answer;
+  // planTrip keeps it when nothing else matched (see planner.test.ts).
+  it("treats report #35's trip as the hour-plus walk it really is", () => {
+    expect(walkSecFromMeters(4_300)).toBeGreaterThan(WALK_ONLY_MAX_SEC);
+    // Still sane: an hour and five minutes, not two hours.
+    expect(walkSecFromMeters(4_300)).toBeLessThan(1.3 * WALK_ONLY_MAX_SEC);
   });
 });

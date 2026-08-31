@@ -8,10 +8,10 @@
 //
 // The server (src/network/TransitNetwork.ts) is the reference:
 //
-//     WALK_M_PER_S = 1.4;  seconds = crowFliesMeters / WALK_M_PER_S
+//     WALK_M_PER_S = 1.1;  seconds = crowFliesMeters / WALK_M_PER_S
 //
-// i.e. 1.4 m/s is an EFFECTIVE rate applied to straight-line distance, with no
-// separate detour factor. The client used to run its own model — 1.3 m/s over a
+// i.e. an EFFECTIVE rate applied to straight-line distance, absorbing the
+// street detour rather than applying it separately. The client used to run its own model — 1.3 m/s over a
 // 1.2× street detour, an effective 1.083 m/s — which is 29% slower for the same
 // two points. That disagreement is not cosmetic: report #35 was a 4.3 km trip
 // the server called a 53-minute walk and the client called 66 minutes, which is
@@ -24,19 +24,18 @@
 // understates real walking, measured against OSRM foot routes across six
 // representative campus pairs at ratios 1.05–1.38, mean ~1.22.
 //
-// Note what matching the server implies: an effective 1.4 m/s over crow-flies
-// with a 1.22 detour means a ~1.68 m/s pace on the ground (≈6 km/h), which is
-// brisk — a typical unhurried walk is nearer 1.3 m/s. So both ends are now
-// consistently optimistic rather than inconsistently wrong. Slowing the model
-// down is a change that has to happen on the SERVER first (WALK_M_PER_S), with
-// the client following; do not fix it on one side only, which is exactly the
-// bug this replaced.
+// The first pass at this reconciled the client UP to the server's old 1.4,
+// which made both ends agree at a pace nobody walks: 1.4 m/s over crow-flies
+// with a 1.22 detour is ~1.68 m/s (≈6 km/h) on real pavement. The server has
+// since been corrected to 1.1 — an unhurried 1.3 m/s ground pace divided by
+// that measured 1.22 detour — and the client follows it here. Estimates are now
+// both consistent AND honest. Change the server first, never one side alone.
 
 /**
  * Effective walking rate over CROW-FLIES distance, m/s.
  * MUST stay equal to `WALK_M_PER_S` in `src/network/TransitNetwork.ts`.
  */
-export const WALK_EFFECTIVE_M_S = 1.4;
+export const WALK_EFFECTIVE_M_S = 1.1;
 
 /** Street-network detour multiplier over crow-flies distance. */
 export const WALK_DETOUR = 1.2;
