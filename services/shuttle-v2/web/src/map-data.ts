@@ -1,3 +1,10 @@
+// Route colours are NEVER written literally here. `ROUTE_LISTS` in routes.ts
+// is the single source of truth; this file's schematic polylines just say
+// which line they draw. (They used to carry their own hex literals and had
+// already drifted: the route-4 spur and the whole `routeColorMap` painted
+// Blue Weekend and Blue Night in Blue Day's #1565C0.)
+import { ROUTE_COLOR } from "./routes";
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface Station {
@@ -217,7 +224,7 @@ export const routes: Route[] = [
   // RED — northbound (left offset, solid)
   // Court/Olive → Chapel → up east → College/Wall → up Prospect → Winch/Sachem → Canal → Winchester → Division
   {
-    id: "red_nb_south", label: "Red NB", color: "#C62828",
+    id: "red_nb_south", label: "Red NB", color: ROUTE_COLOR["Red"],
     segments: [
       { points: [[484, 1020], [584, 920]] },       // Court/Olive → diag up to Chapel area
       { points: [[584, 920], [584, 860]] },         // up to Chapel
@@ -230,7 +237,7 @@ export const routes: Route[] = [
     arrows: [],
   },
   {
-    id: "red_nb", label: "Red NB", color: "#C62828",
+    id: "red_nb", label: "Red NB", color: ROUTE_COLOR["Red"],
     segments: [
       { points: [[140, 194], [110, 164]] },        // Winch/Sachem → diag to Canal
       { points: [[110, 164], [110, 140]] },         // up to Canal/Munson
@@ -245,7 +252,7 @@ export const routes: Route[] = [
   // and Wall→LEPH columns so the two directions render colinear there.
   // Division → down Prospect → south trunk → LEPH → Cedar → Amistad → Union.
   {
-    id: "red_sb", label: "Red SB", color: "#C62828", dashed: true,
+    id: "red_sb", label: "Red SB", color: ROUTE_COLOR["Red"], dashed: true,
     segments: [
       { points: [[394, 86], [394, 730]] },           // Division → Wall → LEPH
       { points: [[394, 730], [496, 800]] },          // LEPH → Cedar (diag)
@@ -257,7 +264,7 @@ export const routes: Route[] = [
 
   // RED — loop closure: Union → State St → Court/Olive (heading back to NB start)
   {
-    id: "red_loop", label: "Red NB", color: "#C62828",
+    id: "red_loop", label: "Red NB", color: ROUTE_COLOR["Red"],
     segments: [
       { points: [[400, 960], [496, 960]] },         // Union → State St
       { points: [[496, 960], [496, 1020]] },        // State St → Court/Olive
@@ -269,7 +276,7 @@ export const routes: Route[] = [
   // through Sachem to Division. Sits at x=402, immediately adjacent to the
   // Red column at x=394.
   {
-    id: "blue_day_nb", label: "Blue", color: "#1565C0",
+    id: "blue_day_nb", label: "Blue", color: ROUTE_COLOR["Blue Day"],
     segments: [
       { points: [[340, 920], [340, 470]] },   // up York
       { points: [[340, 470], [402, 470]] },   // east to Wall
@@ -282,7 +289,7 @@ export const routes: Route[] = [
   // Shares x=402 with Blue Day NB so the two directions render colinear on
   // the Prospect and Wall columns, adjacent to the Red lines at x=394.
   {
-    id: "blue_day_sb", label: "Blue", color: "#1565C0", dashed: true,
+    id: "blue_day_sb", label: "Blue", color: ROUTE_COLOR["Blue Day"], dashed: true,
     segments: [
       { points: [[402, 74], [634, 74]] },     // Division → across top to Whitney
       { points: [[634, 74], [634, 380]] },    // down Whitney
@@ -300,7 +307,7 @@ export const routes: Route[] = [
   // BLUE NIGHT — NB (solid). Prospect column pushed to x=410 so it sits
   // outside both the Red stack (x=394) and the Blue Day stack (x=402).
   {
-    id: "blue_night_nb", label: "Blue Night", color: "#1E88E5",
+    id: "blue_night_nb", label: "Blue Night", color: ROUTE_COLOR["Blue Night"],
     segments: [
       { points: [[490, 800], [330, 800]] },         // Cedar → 129 York
       { points: [[330, 800], [280, 470]] },          // York → Wall/York (diag)
@@ -312,7 +319,7 @@ export const routes: Route[] = [
     arrows: [],
   },
   {
-    id: "blue_night_sb", label: "Blue Night", color: "#1E88E5", dashed: true,
+    id: "blue_night_sb", label: "Blue Night", color: ROUTE_COLOR["Blue Night"], dashed: true,
     segments: [
       { points: [[640, 300], [580, 470]] },         // Peabody area → Grove (diag)
       { points: [[580, 470], [410, 470]] },          // Grove → Wall
@@ -330,7 +337,7 @@ export const routes: Route[] = [
   // down Orange St → Audubon → Grove → south trunk → Cedar → York loop →
   // up Prospect → east to Whitney.
   {
-    id: "orange_day_out", label: "Orange", color: "#E65100",
+    id: "orange_day_out", label: "Orange", color: ROUTE_COLOR["Orange Day"],
     segments: [
       { points: [[640, 200], [770, 200]] },         // Canner → Orange (via Canner/Livingston)
       { points: [[770, 200], [770, 170]] },         // up to Orange/Willow
@@ -344,7 +351,7 @@ export const routes: Route[] = [
     arrows: [],
   },
   {
-    id: "orange_day_ret", label: "Orange", color: "#E65100", dashed: true,
+    id: "orange_day_ret", label: "Orange", color: ROUTE_COLOR["Orange Day"], dashed: true,
     segments: [
       { points: [[580, 470], [418, 470]] },         // Grove → Wall (Orange offset x=418)
       { points: [[418, 470], [418, 730]] },         // south trunk to LEPH
@@ -364,7 +371,7 @@ export const routes: Route[] = [
   // Orange/Edwards → Bishop → Humphrey → Pearl → Audubon → Grove → south trunk →
   // Crown → George → Amistad → Congress/Cedar.
   {
-    id: "orange_night", label: "Orange Night", color: "#E6810080", dashed: true,
+    id: "orange_night", label: "Orange Night", color: ROUTE_COLOR["Orange Night"] + "80", dashed: true,
     segments: [
       { points: [[490, 800], [330, 800]] },           // Cedar → 129 York
       { points: [[330, 800], [330, 920]] },           // down to Elm/York
@@ -389,7 +396,7 @@ export const routes: Route[] = [
   // Nash/Willow → Nicoll → Olive corridor → Olive/Wooster (Union/Fair) →
   // Union Station.
   {
-    id: "orange_east", label: "Orange East", color: "#E65100",
+    id: "orange_east", label: "Orange East", color: ROUTE_COLOR["Orange East"],
     segments: [
       { points: [[490, 800], [300, 640]] },           // Cedar → York/Chapel
       { points: [[300, 640], [700, 600]] },           // across to Elm/Orange
@@ -410,7 +417,7 @@ export const routes: Route[] = [
   // Amistad → Cedar → York/Chapel → Broadway → Stop&Shop → Elm/York →
   // Wall(N) → Becton → Sachem. (Secondary Blue offset at x=430.)
   {
-    id: "blue_r4", label: "Blue", color: "#1565C0",
+    id: "blue_r4", label: "Blue", color: ROUTE_COLOR["Blue Weekend"],
     segments: [
       { points: [[430, 300], [430, 240]] },           // Sachem → Canner
       { points: [[430, 240], [430, 80]] },            // up Prospect to Huntington
@@ -439,7 +446,7 @@ export const routes: Route[] = [
   // Elm/Lynwood → York/Elm → Ashmun/Lock → Canal/Munson → Mansfield/Division →
   // Pauli Murray → Phelps.
   {
-    id: "blue_west", label: "Blue West", color: "#00838F",
+    id: "blue_west", label: "Blue West", color: ROUTE_COLOR["Blue West"],
     segments: [
       { points: [[490, 800], [180, 720]] },           // Cedar → Howard/Park (long diag)
       { points: [[180, 720], [180, 680]] },           // Howard/Park → Chapel/Dwight
@@ -458,7 +465,7 @@ export const routes: Route[] = [
   // BROWN (route 19): Science Park → Winchester/Sachem → 130 Prospect (S) →
   // Wall(S) → Phelps → Union Station → State St → Humphrey/Whitney → Divinity.
   {
-    id: "brown", label: "Brown", color: "#795548",
+    id: "brown", label: "Brown", color: ROUTE_COLOR["Brown"],
     segments: [
       { points: [[240, 30], [140, 200]] },             // Science Park → Winch/Sachem
       { points: [[140, 200], [400, 360]] },            // across/down to 130 Prospect
@@ -475,7 +482,7 @@ export const routes: Route[] = [
   // PINK (route 8): York/Cedar → LEPH → Congress/Cedar → Congress/Howard →
   // Davenport/Howard → Front/Rt 1 → Quigley → VA Entrance → VA Hospital → loop back.
   {
-    id: "pink", label: "Pink", color: "#AD1457",
+    id: "pink", label: "Pink", color: ROUTE_COLOR["Pink"],
     segments: [
       { points: [[280, 730], [400, 730]] },            // York/Cedar → LEPH
       { points: [[400, 730], [490, 800]] },            // LEPH → Congress/Cedar
@@ -496,7 +503,7 @@ export const routes: Route[] = [
   // Orange (N-side) through Edwards/Lawrence/Avon/Willow → Willow corridor →
   // Whitney/Cottage → Orange stops → West Campus buildings (400/600/750/800/900).
   {
-    id: "green", label: "Green", color: "#43A047",
+    id: "green", label: "Green", color: ROUTE_COLOR["Green"],
     segments: [
       { points: [[770, 350], [770, 170]] },            // Orange/Bishop → up to Willow
       { points: [[770, 170], [680, 150]] },            // Willow/Whitney
@@ -512,7 +519,7 @@ export const routes: Route[] = [
   // PURPLE (route 10): 333 Cedar → 300 George → Church St South → Union(S) →
   // West Haven Station → West Campus buildings → LEPH (back).
   {
-    id: "purple", label: "Purple", color: "#7B1FA2",
+    id: "purple", label: "Purple", color: ROUTE_COLOR["Purple"],
     segments: [
       { points: [[490, 800], [400, 660]] },            // Cedar → 300 George
       { points: [[400, 660], [400, 1020]] },           // George → Church St South
@@ -528,7 +535,7 @@ export const routes: Route[] = [
   // GOLD (route 15): Cedar → Howard/Park → Chapel/Dwight → Howe/Edgewood →
   // Elm/Lynwood → Elm/Orange → Olive corridor → Olive/Wooster → Union.
   {
-    id: "gold", label: "Gold", color: "#F9A825",
+    id: "gold", label: "Gold", color: ROUTE_COLOR["Gold"],
     segments: [
       { points: [[490, 800], [180, 720]] },            // Cedar → Howard/Park
       { points: [[180, 720], [180, 680]] },            // Chapel/Dwight
@@ -545,7 +552,7 @@ export const routes: Route[] = [
 
   // GROCERY — Trader Joe's (route 6): Peabody → Grove/Temple → Wall(S) → Crown → TJ.
   {
-    id: "grocery_tj", label: "Grocery TJ", color: "#5D4037",
+    id: "grocery_tj", label: "Grocery TJ", color: ROUTE_COLOR["Grocery TJ"],
     segments: [
       { points: [[640, 395], [580, 470]] },            // Peabody → Grove
       { points: [[580, 470], [400, 470]] },            // Grove → Wall(S)
@@ -558,7 +565,7 @@ export const routes: Route[] = [
   // GROCERY — Hamden (route 18): Elm/York → Elm/College → Whitney/Humphrey (N) →
   // Whitney/Cottage (N) → Aldi/Walmart → Shop Rite.
   {
-    id: "grocery_ham", label: "Grocery Ham", color: "#8D6E63",
+    id: "grocery_ham", label: "Grocery Ham", color: ROUTE_COLOR["Grocery Ham"],
     segments: [
       { points: [[330, 920], [330, 530]] },            // Elm/York → Elm/College (north)
       { points: [[330, 530], [640, 360]] },            // diag NE to Whitney/Humphrey(N)
@@ -580,10 +587,9 @@ for (const s of stations) {
   }
 }
 
-export const routeColorMap: Record<number, string> = {
-  1: "#1565C0", 3: "#C62828", 4: "#1565C0", 13: "#1565C0", 14: "#E65100",
-  16: "#00838F", 17: "#E65100", 2: "#E65100",
-};
+// (There used to be a hand-written `routeColorMap` here. It covered 8 of the
+// 15 routes and disagreed with ROUTE_LISTS on two of them. Import
+// `ROUTE_COLOR_BY_BUS_ID` from routes.ts instead.)
 
 export const routeNameMap: Record<number, string> = {
   1: "Blue", 3: "Red", 4: "Blue", 13: "Blue", 14: "Orange",

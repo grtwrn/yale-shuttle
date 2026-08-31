@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
-import { rawPositions, segments } from "../db/schema.js";
+import { arrivals, rawPositions, segments } from "../db/schema.js";
 import type { Route, Stop } from "../schema/api.js";
 
 import { Collector, type Logger } from "./collector.js";
@@ -22,10 +22,14 @@ const routes: Route[] = [
   { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3] },
 ];
 
+// `name` tracks `id` unless the caller overrides it: the collector keys its
+// per-vehicle maps on the fleet number, so a fixture whose name never varied
+// would silently put every bus in one slot.
 function bus(over: Partial<RawBus> = {}): RawBus {
+  const id = over.id ?? 7;
   return {
-    id: 7,
-    name: "#7",
+    id,
+    name: `#${id}`,
     lat: 41.31,
     lon: -72.93,
     heading: 90,
@@ -99,8 +103,8 @@ let logs: LogLine[];
 type Internals = {
   runPoll: () => Promise<void>;
   refreshStaticIfNeeded: (force: boolean) => Promise<void>;
-  states: Map<number, BusState>;
-  livePositions: Map<number, unknown>;
+  states: Map<string, BusState>;
+  livePositions: Map<string, unknown>;
   lastPollAttemptAt: number;
 };
 const inner = (): Internals => collector as unknown as Internals;
@@ -206,7 +210,7 @@ describe("runPoll re-entrancy", () => {
     upstream.deliver([bus({ lat: 41.31, lon: -72.93 })]);
     await slow;
 
-    const anchorAfterFirst = inner().states.get(7)!;
+    const anchorAfterFirst = inner().states.get("#7")!;
     expect(anchorAfterFirst.nearestStopId).toBe(1);
 
     // Now a genuinely newer poll advancing the bus to stop 2.
@@ -214,7 +218,7 @@ describe("runPoll re-entrancy", () => {
     await Promise.resolve();
     upstream.deliver([bus({ lat: 41.31, lon: -72.92 })]);
     await next;
-    expect(inner().states.get(7)!.nearestStopId).toBe(2);
+    expect(inner().states.get("#7")!.nearestStopId).toBe(2);
 
     // Exactly one forward transition was recorded — no interleaved rewind.
     const rows = bundle.db.select().from(segments).all();
@@ -284,9 +288,9 @@ describe("state pruning", () => {
     expect(inner().states.size).toBe(1);
 
     // Backdate so the entries are past both TTLs.
-    const state = inner().states.get(21)!;
+    const state = inner().states.get("#21")!;
     state.lastObservedAt = Date.now() - 60 * 60_000;
-    (inner().livePositions.get(21) as { collectedAt: number }).collectedAt =
+    (inner().livePositions.get("#21") as { collectedAt: number }).collectedAt =
       Date.now() - 60 * 60_000;
 
     const p2 = inner().runPoll();
@@ -359,5 +363,109 @@ describe("static refresh", () => {
     expect(logs.some((l) => l.msg === "collector.static_refresh_empty")).toBe(true);
     expect(logs.some((l) => l.msg === "collector.static_retry_scheduled")).toBe(true);
     c.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Upstream's `bus_id` is reissued per service block — measured on production,
+// 1,059 distinct ids for 50 distinct `bus_name`s over 30 days. Both
+// per-vehicle maps are therefore keyed on the fleet number.
+// ---------------------------------------------------------------------------
+
+describe("vehicle identity across an id reissue", () => {
+  async function poll(buses: RawBus[]): Promise<void> {
+    const p = inner().runPoll();
+    await Promise.resolve();
+    upstream.deliver(buses);
+    await p;
+  }
+
+  it("serves one live entry per vehicle when its id is reissued", async () => {
+    // Keyed by bus_id the retired entry lingered for the full 120 s live TTL,
+    // so /api/buses served two rows with the same bus_name and the map drew
+    // two markers for one bus. Three of the 15 reissues in a 6.6 h production
+    // replay had the new id appear inside that window.
+    await poll([{ ...bus({ id: 65531 }), name: "#40" } as RawBus]);
+    expect(collector.getLiveBuses()).toHaveLength(1);
+
+    await poll([{ ...bus({ id: 65540, lon: -72.929 }), name: "#40" } as RawBus]);
+
+    const live = collector.getLiveBuses();
+    expect(live).toHaveLength(1);
+    expect(live[0]).toMatchObject({ busName: "#40", busId: 65540 });
+    expect(inner().livePositions.size).toBe(1);
+    expect(inner().states.size).toBe(1);
+  });
+
+  it("still serves both buses while two ids share one name", async () => {
+    // The pathological case: `#43` was reported by ids 65531 and 65533
+    // simultaneously for 6.7 h. Those are two physical buses and riders must
+    // see both — collapsing them onto the fleet number would hide one.
+    await poll([
+      { ...bus({ id: 65531, lon: -72.93 }), name: "#43" } as RawBus,
+      { ...bus({ id: 65533, lon: -72.91 }), name: "#43" } as RawBus,
+    ]);
+    const live = collector.getLiveBuses();
+    expect(live).toHaveLength(2);
+    expect(live.map((b) => b.busId).sort()).toEqual([65531, 65533]);
+    expect([...inner().states.keys()].sort()).toEqual(["#43#65531", "#43#65533"]);
+    expect(logs.some((l) => l.msg === "collector.bus_name_contended")).toBe(true);
+  });
+
+  it("drops the retired half once the two ids stop colliding", async () => {
+    await poll([
+      { ...bus({ id: 65531, lon: -72.93 }), name: "#43" } as RawBus,
+      { ...bus({ id: 65533, lon: -72.91 }), name: "#43" } as RawBus,
+    ]);
+    expect(collector.getLiveBuses()).toHaveLength(2);
+
+    // 65531 goes out of service. Without the reconcile its entry would sit
+    // there for 120 s as a duplicate `#43`.
+    await poll([{ ...bus({ id: 65533, lon: -72.91 }), name: "#43" } as RawBus]);
+    const live = collector.getLiveBuses();
+    expect(live).toHaveLength(1);
+    expect(live[0]).toMatchObject({ busId: 65533 });
+    expect([...inner().livePositions.keys()]).toEqual(["#43"]);
+  });
+
+  it("keeps a new vehicle's arrival separate from an existing one", async () => {
+    await poll([{ ...bus({ id: 65531 }), name: "#40" } as RawBus]);
+    await poll([
+      { ...bus({ id: 65531 }), name: "#40" } as RawBus,
+      { ...bus({ id: 65999, lon: -72.92 }), name: "#317" } as RawBus,
+    ]);
+    const live = collector.getLiveBuses();
+    expect(live.map((b) => b.busName).sort()).toEqual(["#317", "#40"]);
+    expect(inner().states.get("#317")?.nearestStopId).toBe(2);
+    expect(inner().states.get("#40")?.nearestStopId).toBe(1);
+    // No segment: `#317` has only ever been seen once.
+    expect(
+      bundle.db.select().from(segments).all().filter((r) => r.busName === "#317"),
+    ).toHaveLength(0);
+  });
+
+  it("patches the dwell onto the arrival row written under the old id", async () => {
+    // The arrival was inserted while 65531 was in force; the dwell is emitted
+    // under 65540. Matching the patch on the reporting id would update nothing
+    // and leave a real visit with no departure time.
+    await poll([{ ...bus({ id: 65531 }), name: "#40" } as RawBus]);
+    const arrival = bundle.db.select().from(arrivals).all();
+    expect(arrival).toHaveLength(1);
+    expect(arrival[0]).toMatchObject({ busId: 65531, stopId: 1 });
+
+    // Backdate the visit — both the in-memory anchor and the row it will be
+    // patched onto — so the dwell clears MIN_DWELL_SEC while the reissue still
+    // reads as continuous (under MAX_HANDOFF_GAP_MS). Then move the bus to
+    // stop 2 under its new id.
+    const state = inner().states.get("#40")!;
+    state.enteredAt -= 45_000;
+    state.lastObservedAt -= 45_000;
+    bundle.sqlite.prepare("UPDATE arrivals SET arrived_at = arrived_at - 45000").run();
+    await poll([{ ...bus({ id: 65540, lon: -72.92 }), name: "#40" } as RawBus]);
+
+    const patched = bundle.db.select().from(arrivals).all().find((r) => r.stopId === 1)!;
+    expect(patched.busId).toBe(65531);
+    expect(patched.dwellSec).toBeGreaterThan(0);
+    expect(patched.departedAt).not.toBeNull();
   });
 });

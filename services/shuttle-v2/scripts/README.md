@@ -59,3 +59,39 @@ BOT_SEED=42 npm run mapbot                        # reproducible trip
 BOT_PREFER_SHUTTLE=1 BOT_WATCH_CYCLES=3 npm run mapbot:visual   # full visual + bus watch
 BOT_WATCH_CYCLES=0 npm run mapbot:visual          # fast visual smoke (no watch loop)
 ```
+
+---
+
+# `id-churn-replay.ts` — detector replay for the vehicle-identity fix
+
+Offline, no browser, no server. Replays recorded `raw_positions` through the
+real detector under three keying strategies and prints what each does to the
+calibration tables (segments, legs covered, >60 km/h impossible samples, total
+travel seconds, segments that span a hole in the feed).
+
+Upstream's `bus_id` is reissued per service block — 1,059 distinct ids for 50
+distinct `bus_name`s over 30 days of production, median id lifetime 5.9 h — so
+this is how you check that a change to identity handling helps rather than
+quietly inflating travel times.
+
+```bash
+# 1. Dump the last ~6 h of raw positions from prod, READ-ONLY.
+cat > /tmp/dump.js <<'JS'
+const D = require("/app/node_modules/better-sqlite3"), zlib = require("zlib");
+const db = new D("/data/shuttle-v2.db", { readonly: true });
+process.stdout.write(zlib.gzipSync(Buffer.from(JSON.stringify({
+  stops: db.prepare("SELECT id,name,lat,lon FROM stops").all(),
+  routes: db.prepare("SELECT id,name,short_name shortName,color,stops_json stopsJson FROM routes").all(),
+  pos: db.prepare("SELECT bus_id,bus_name,route_id,lat,lon,heading,last_stop_id,collected_at FROM raw_positions ORDER BY collected_at, id").raw().all(),
+})), { level: 9 }).toString("base64"));
+JS
+cat /tmp/dump.js | ~/.fly/bin/flyctl ssh console -a yale-shuttle -C "node -" \
+  | tr -d '\r\n ' > /tmp/dump.b64
+node -e 'const z=require("zlib"),f=require("fs");f.writeFileSync("/tmp/replay.json",z.gunzipSync(Buffer.from(f.readFileSync("/tmp/dump.b64","utf8"),"base64")))'
+
+# 2. Replay.
+npx tsx scripts/id-churn-replay.ts /tmp/replay.json
+```
+
+`raw_positions` is retained for 6 h, so that is the widest window available;
+`jq` is not installed on the machine, parse with `node -e`.

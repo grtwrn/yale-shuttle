@@ -4,14 +4,18 @@ import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
 import {
+  MAX_HANDOFF_GAP_MS,
   MAX_OBSERVATION_GAP_MS,
   MAX_SEGMENT_SEC,
   MIN_DWELL_SEC,
   MIN_SEGMENT_SEC,
+  planTracks,
+  reconcileTracks,
   step,
   stepMany,
   type BusObservation,
   type BusState,
+  type DetectorEvent,
 } from "./detector.js";
 
 // Three stops in a line going east. Route 1 visits all three in order.
@@ -116,6 +120,8 @@ describe("step", () => {
       nearestIndex: 0,
       enteredAt: T0,
       lastObservedAt: T0,
+      lat: stops[0]!.lat,
+      lon: stops[0]!.lon,
     };
     const obsOnRouteTwo: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 2 };
     const result = step(twoRouteNet, stateOnRouteOne, obsOnRouteTwo);
@@ -132,6 +138,8 @@ describe("step", () => {
       nearestIndex: 0,
       enteredAt: T0,
       lastObservedAt: T0,
+      lat: stops[0]!.lat,
+      lon: stops[0]!.lon,
     };
     const obsOnUnknown: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 999 };
     const result = step(net, stateOnRouteOne, obsOnUnknown);
@@ -170,7 +178,7 @@ describe("step", () => {
   });
 
   it("stepMany processes multi-bus streams independently", () => {
-    const states = new Map<number, BusState>();
+    const states = new Map<string, BusState>();
     const events = stepMany(net, states, [
       obsAt(stops[0]!, T0, 1),
       obsAt(stops[0]!, T0, 2),
@@ -181,8 +189,8 @@ describe("step", () => {
     // emit arrival + dwell + segment.
     expect(events.filter((e) => e.busId === 1 && e.kind === "segment")).toHaveLength(1);
     expect(events.filter((e) => e.busId === 2 && e.kind === "segment")).toHaveLength(1);
-    expect(states.get(1)?.nearestStopId).toBe(2);
-    expect(states.get(2)?.nearestStopId).toBe(3);
+    expect(states.get("#1")?.nearestStopId).toBe(2);
+    expect(states.get("#2")?.nearestStopId).toBe(3);
   });
 });
 
@@ -375,7 +383,7 @@ describe("step: out-and-back route (West Campus)", () => {
     // scored 14 hops and was discarded — 3,256 recorded route-10 segments
     // contained not one sample from the return leg.
     const drive = [26, 25, 24, 23, 22, 23, 24, 25, 26, 72];
-    const states = new Map<number, BusState>();
+    const states = new Map<string, BusState>();
     const events = stepMany(
       wcNet,
       states,
@@ -402,14 +410,228 @@ describe("step: out-and-back route (West Campus)", () => {
   });
 
   it("tracks which visit to a repeated stop the bus is on", () => {
-    const states = new Map<number, BusState>();
+    const states = new Map<string, BusState>();
     stepMany(
       wcNet,
       states,
       [26, 25, 24, 23, 22, 23].map((id, i) => atStop(id, T0 + i * 60_000)),
     );
     // Second visit to stop 23 — index 10, not the first occurrence at 8.
-    expect(states.get(1)?.nearestStopId).toBe(23);
-    expect(states.get(1)?.nearestIndex).toBe(10);
+    expect(states.get("#1")?.nearestStopId).toBe(23);
+    expect(states.get("#1")?.nearestIndex).toBe(10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Vehicle identity. Upstream's `bus_id` is reissued per service block — 1,059
+// distinct ids for 50 distinct `bus_name`s over 30 days of production, a
+// median id lifetime of 5.9 h. Tracking keyed on the id therefore drops a
+// bus's anchor several times a day; tracking keyed naively on the name
+// inherits it across the multi-minute layover the reissue happens during.
+// ---------------------------------------------------------------------------
+
+describe("bus identity across an id reissue", () => {
+  /** One observation for fleet number `name` reported under upstream id `id`. */
+  function seen(
+    stop: Stop,
+    when: number,
+    name: string,
+    id: number,
+  ): BusObservation {
+    return {
+      busId: id,
+      busName: name,
+      routeId: 1,
+      lat: stop.lat,
+      lon: stop.lon,
+      heading: 90,
+      lastStopId: stop.id,
+      collectedAt: when,
+    };
+  }
+
+  it("keeps a bus's anchor when upstream reissues its id", () => {
+    // Keyed by bus_id this is two different buses, so the second poll
+    // re-anchors: `enteredAt` resets and the segment spanning the reissue is
+    // never emitted.
+    const states = new Map<string, BusState>();
+    stepMany(net, states, [seen(stops[0]!, T0, "#40", 65531)]);
+    const events = stepMany(net, states, [
+      seen(stops[1]!, T0 + 45_000, "#40", 65540),
+    ]);
+
+    expect(states.size).toBe(1);
+    expect(states.get("#40")?.busId).toBe(65540);
+    expect(events.map((e) => e.kind)).toEqual(["dwell", "arrival", "segment"]);
+    const segment = events.find((e) => e.kind === "segment")!;
+    expect(segment).toMatchObject({
+      busName: "#40",
+      fromStopId: 1,
+      toStopId: 2,
+      travelSec: 45,
+      startedAt: T0,
+    });
+  });
+
+  it("tells the dwell which id its arrival row was written under", () => {
+    // The arrival being patched was inserted while the OLD id was in force.
+    // Patching on the reporting id would match nothing and silently leave a
+    // real visit with no departure time.
+    const states = new Map<string, BusState>();
+    stepMany(net, states, [seen(stops[0]!, T0, "#40", 65531)]);
+    const events = stepMany(net, states, [
+      seen(stops[1]!, T0 + 45_000, "#40", 65540),
+    ]);
+    const dwell = events.find((e) => e.kind === "dwell")!;
+    expect(dwell).toMatchObject({ busId: 65540, anchorBusId: 65531 });
+  });
+
+  it("re-anchors rather than billing a layover as travel time", () => {
+    // The reason keying on the name is not enough on its own. Every
+    // multi-minute hole in one vehicle's feed observed in a 6.6 h production
+    // replay coincided with an id reissue: the bus goes off the air at a block
+    // boundary and sits still. Inheriting `enteredAt` across it made route
+    // 15's 10→153 leg read 1,149 s instead of 326 s.
+    const states = new Map<string, BusState>();
+    stepMany(net, states, [seen(stops[0]!, T0, "#40", 65531)]);
+    const gone = T0 + MAX_HANDOFF_GAP_MS + 60_000;
+    const events = stepMany(net, states, [seen(stops[0]!, gone, "#40", 65540)]);
+
+    // Identity and the map slot survive; the stopwatch does not.
+    expect(states.get("#40")?.busId).toBe(65540);
+    expect(states.get("#40")?.enteredAt).toBe(gone);
+    expect(events.map((e) => e.kind)).toEqual(["arrival"]);
+
+    // ...so the next leg is timed from the reissue, not from before the gap.
+    const after = stepMany(net, states, [
+      seen(stops[1]!, gone + 45_000, "#40", 65540),
+    ]);
+    expect(after.find((e) => e.kind === "segment")).toMatchObject({
+      travelSec: 45,
+    });
+  });
+
+  it("re-anchors when a reissued id turns up impossibly far away", () => {
+    // Backstop for two live ids sharing one name that never appear in the same
+    // poll, so `planTracks` cannot see the collision. 1,700 m in 5 s is
+    // 1,200 km/h — a different bus, not a shuttle.
+    const states = new Map<string, BusState>();
+    stepMany(net, states, [seen(stops[0]!, T0, "#40", 65531)]);
+    const events = stepMany(net, states, [
+      seen(stops[2]!, T0 + 5_000, "#40", 65540),
+    ]);
+    expect(events.map((e) => e.kind)).toEqual(["arrival"]);
+    expect(states.get("#40")?.enteredAt).toBe(T0 + 5_000);
+  });
+
+  it("starts a genuinely new vehicle clean", () => {
+    const states = new Map<string, BusState>();
+    stepMany(net, states, [seen(stops[0]!, T0, "#40", 65531)]);
+    const events = stepMany(net, states, [
+      seen(stops[0]!, T0 + 5_000, "#40", 65531),
+      seen(stops[1]!, T0 + 5_000, "#317", 65999),
+    ]);
+    expect(states.size).toBe(2);
+    expect(states.get("#317")).toMatchObject({ nearestStopId: 2, enteredAt: T0 + 5_000 });
+    // First sight: an anchor only, never a dwell or a segment inherited from
+    // whatever else happened to be in the map.
+    expect(events.map((e) => e.kind)).toEqual(["arrival"]);
+  });
+});
+
+describe("two live ids sharing one bus name", () => {
+  // Observed in production: `#43` was reported by ids 65531 and 65533
+  // simultaneously for 6.7 h, both on route 1 — one at stop 102 while the
+  // other was at stop 2. Keyed naively on the name they merge into one track
+  // and the anchor thrashes between two physical buses.
+  function seen(stop: Stop, when: number, id: number): BusObservation {
+    return {
+      busId: id,
+      busName: "#43",
+      routeId: 1,
+      lat: stop.lat,
+      lon: stop.lon,
+      heading: 90,
+      lastStopId: stop.id,
+      collectedAt: when,
+    };
+  }
+
+  it("keeps the two streams on separate anchors and emits no segment between them", () => {
+    const states = new Map<string, BusState>();
+    // Bus A works stops 1→2 while bus B works 3→1, each poll carrying both.
+    const drive = [
+      [stops[0]!, stops[2]!],
+      [stops[0]!, stops[2]!],
+      [stops[1]!, stops[0]!],
+    ] as const;
+    const events: DetectorEvent[] = [];
+    drive.forEach(([a, b], i) => {
+      events.push(
+        ...stepMany(net, states, [
+          seen(a, T0 + i * 60_000, 65531),
+          seen(b, T0 + i * 60_000, 65533),
+        ]),
+      );
+    });
+
+    expect([...states.keys()].sort()).toEqual(["#43#65531", "#43#65533"]);
+    expect(states.get("#43#65531")?.nearestStopId).toBe(2);
+    expect(states.get("#43#65533")?.nearestStopId).toBe(1);
+    // Each bus advanced one real hop. Nothing spans the two of them: a merged
+    // anchor would have produced 3→1 / 1→3 flapping every poll.
+    const legs = events
+      .filter((e) => e.kind === "segment")
+      .map((e) => `${e.busId}:${e.fromStopId}->${e.toStopId}`)
+      .sort();
+    expect(legs).toEqual(["65531:1->2", "65533:3->1"]);
+  });
+
+  it("hands the surviving id the name back when the collision ends", () => {
+    const contended = planTracks([
+      { ...({} as BusObservation), busId: 65531, busName: "#43", collectedAt: T0 },
+      { ...({} as BusObservation), busId: 65533, busName: "#43", collectedAt: T0 },
+    ]);
+    expect(contended.contendedNames.has("#43")).toBe(true);
+    expect([...contended.keySet].sort()).toEqual(["#43#65531", "#43#65533"]);
+
+    // 65531 goes out of service; 65533 keeps reporting.
+    const map = new Map([
+      ["#43#65531", { busId: 65531, busName: "#43" }],
+      ["#43#65533", { busId: 65533, busName: "#43" }],
+    ]);
+    const alone = planTracks([
+      { ...({} as BusObservation), busId: 65533, busName: "#43", collectedAt: T0 + 5_000 },
+    ]);
+    reconcileTracks(map, alone);
+    // One entry for one vehicle — the retired half does not linger.
+    expect([...map.keys()]).toEqual(["#43"]);
+    expect(map.get("#43")?.busId).toBe(65533);
+  });
+
+  it("moves an existing track under the qualified key when a collision starts", () => {
+    const map = new Map([["#43", { busId: 65531, busName: "#43" }]]);
+    reconcileTracks(
+      map,
+      planTracks([
+        { ...({} as BusObservation), busId: 65531, busName: "#43", collectedAt: T0 },
+        { ...({} as BusObservation), busId: 65533, busName: "#43", collectedAt: T0 },
+      ]),
+    );
+    // The stream we were tracking keeps its anchor under a longer name; the
+    // newcomer gets no entry at all and will anchor from scratch.
+    expect([...map.keys()]).toEqual(["#43#65531"]);
+  });
+
+  it("leaves buses that are not reporting this poll alone", () => {
+    const map = new Map([["#99", { busId: 1, busName: "#99" }]]);
+    reconcileTracks(
+      map,
+      planTracks([
+        { ...({} as BusObservation), busId: 2, busName: "#40", collectedAt: T0 },
+      ]),
+    );
+    // Not in the poll is not the same as gone — that is the TTL sweep's job.
+    expect([...map.keys()]).toEqual(["#99"]);
   });
 });

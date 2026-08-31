@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, Fragment, type FC } from "
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
-  stations, routes, stopToStation, routeColorMap, routeNameMap,
+  stations, routes, stopToStation, routeNameMap,
   type Station, type Route, type BusData,
 } from "./map-data";
 // Pure logic lives in sibling modules so it is reachable from tests without
@@ -17,7 +17,11 @@ import { haversineMeters, type LatLon } from "./geo";
 import {
   dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
 } from "./planner";
-import { BUS_SPEED_M_S, ROUTE_LISTS } from "./routes";
+import { anonIdHeader } from "./anonId";
+import { ContributeButton } from "./ContributeButton";
+import {
+  BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+} from "./routes";
 import { fmtSchedule, isBusInService } from "./schedule";
 import { walkSecFromMeters } from "./walk";
 
@@ -130,7 +134,7 @@ interface BusMarkerProps {
 }
 
 const BusMarker: FC<BusMarkerProps> = ({ bus, station, nextStation, pulse }) => {
-  const color = routeColorMap[bus.route_id] ?? "#666";
+  const color = ROUTE_COLOR_BY_BUS_ID[bus.route_id] ?? "#666";
   const name = bus.bus_name.replace("#", "");
   const bx = station.x + 20;
   const by = station.y - 18;
@@ -1240,14 +1244,9 @@ const CombinedTripMap: FC<{
   );
 };
 
-// Route color keyed by TransLoc route id (string), derived from ROUTE_LISTS.
-const ROUTE_COLOR_BY_ID: Record<string, string> = (() => {
-  const m: Record<string, string> = {};
-  for (const cfg of ROUTE_LISTS) for (const rid of cfg.routeIds) m[rid] = cfg.color;
-  return m;
-})();
+// Route colour keyed by TransLoc route id — ROUTE_LISTS is the source.
 const routeColorFor = (routeId: number): string =>
-  ROUTE_COLOR_BY_ID[String(routeId)] ?? "#546e7a";
+  ROUTE_COLOR_BY_BUS_ID[routeId] ?? "#546e7a";
 
 // Full system map for the "Map" tab — every route polyline, every stop, and
 // live bus positions on one Leaflet view. Routes/stops are drawn once on
@@ -6193,7 +6192,13 @@ const TransitMap: FC = () => {
       currentController = controller;
       const mySeq = ++seq;
       try {
-        const res = await fetch("/api/buses", { signal: controller.signal });
+        // Rider counting rides along on this poll rather than adding a beacon
+        // of its own — see anonId.ts. Absent when storage is unavailable, which
+        // the server treats as "uncounted", never as an error.
+        const res = await fetch("/api/buses", {
+          signal: controller.signal,
+          headers: anonIdHeader(),
+        });
         const data = await res.json();
         if (stopped || mySeq <= latestApplied) return;
         latestApplied = mySeq;
@@ -6265,24 +6270,12 @@ const TransitMap: FC = () => {
 
   const time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  // Legend uses base labels for toggling
-  const legendRoutes: { label: string; toggleLabel: string; color: string; dashed?: boolean }[] = [
-    { label: "Red",          toggleLabel: "Red",          color: "#C62828" },
-    { label: "Blue Day",     toggleLabel: "Blue",         color: "#1565C0" },
-    { label: "Blue Wknd",    toggleLabel: "Blue Weekend", color: "#42A5F5" },
-    { label: "Blue Night",  toggleLabel: "Blue Night",   color: "#1E88E5" },
-    { label: "Blue West",   toggleLabel: "Blue West",    color: "#00838F" },
-    { label: "Orange",       toggleLabel: "Orange",       color: "#E65100" },
-    { label: "Org Night",    toggleLabel: "Orange Night", color: "#E65100", dashed: true },
-    { label: "Org East",     toggleLabel: "Orange East",  color: "#E65100" },
-    { label: "Brown",        toggleLabel: "Brown",        color: "#795548" },
-    { label: "Pink",         toggleLabel: "Pink",         color: "#AD1457" },
-    { label: "Green",        toggleLabel: "Green",        color: "#43A047" },
-    { label: "Purple",       toggleLabel: "Purple",       color: "#7B1FA2" },
-    { label: "Gold",         toggleLabel: "Gold",         color: "#F9A825" },
-    { label: "Grocery TJ",   toggleLabel: "Grocery TJ",   color: "#5D4037" },
-    { label: "Grocery Ham",  toggleLabel: "Grocery Ham",  color: "#8D6E63" },
-  ];
+  // Legend uses base labels for toggling. This USED to be a second, hand-kept
+  // copy of the palette, and it drifted: three orange lines were pinned to
+  // #E65100 in both tables, so "fix the colour" meant editing two places and
+  // the previous attempt only edited one. It is now derived — the short chip
+  // label and the toggle grouping key live beside the colour in ROUTE_LISTS.
+  const legendRoutes = LEGEND_ROUTES;
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
@@ -6696,6 +6689,7 @@ const TransitMap: FC = () => {
             >
               💬 Send feedback
             </button>
+            <ContributeButton />
             {feedbackStatus && (
               <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
             )}

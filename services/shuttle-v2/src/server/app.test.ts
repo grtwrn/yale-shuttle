@@ -338,6 +338,35 @@ describe("reports", () => {
     expect(reBody.reports[0]?.id).toBe(id);
   });
 
+  // Rider counts are operator-only: an audience number should not be public
+  // just because it happens to be anonymous.
+  it("refuses rider stats without the admin token", async () => {
+    const res = await app.request("/api/stats");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns rider counts with the admin token", async () => {
+    const anon = "11111111-2222-4333-8444-555555555555";
+    // Two polls from one rider must count as one person.
+    await app.request("/api/buses", { headers: { "x-anon-id": anon } });
+    await app.request("/api/buses", { headers: { "x-anon-id": anon } });
+    const res = await app.request("/api/stats", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { riders: { today: number; allTime: number } };
+    expect(body.riders.today).toBe(1);
+    expect(body.riders.allTime).toBe(1);
+  });
+
+  it("serves /api/buses normally when no anon id is sent", async () => {
+    // Counting must be strictly optional — an old client, or one with
+    // localStorage disabled, still gets its data.
+    const res = await app.request("/api/buses");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { buses: unknown[] }).buses).toBeDefined();
+  });
+
   // The triage endpoints served reporter IPs and accepted destructive writes
   // from anyone. Riders never call them; only operator curl and the map-bot do.
   it("refuses to list reports without the admin token", async () => {

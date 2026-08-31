@@ -1,3 +1,4 @@
+import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
 import type { EpochMs } from "../schema/api.js";
 
@@ -14,10 +15,19 @@ export interface BusObservation {
   collectedAt: EpochMs;
 }
 
-// Per-bus state. The detector is a pure reducer over these.
-export interface BusState {
+/**
+ * The identity fields every per-vehicle map entry carries, and the minimum
+ * `reconcileTracks` needs to re-file an entry when its track key moves.
+ */
+export interface TrackedIdentity {
+  /** Upstream's `bus_id`. Reissued per service block — NOT a vehicle identity. */
   busId: number;
+  /** The fleet number riders see (`#40`, `#317`). Stable across id reissues. */
   busName: string;
+}
+
+// Per-bus state. The detector is a pure reducer over these.
+export interface BusState extends TrackedIdentity {
   routeId: number;
   nearestStopId: number;
   /**
@@ -35,6 +45,10 @@ export interface BusState {
   enteredAt: EpochMs;
   /** Most recent observed position (for staleness checks). */
   lastObservedAt: EpochMs;
+  /** Latitude of the most recent observation — the discontinuity check's baseline. */
+  lat: number;
+  /** Longitude of the most recent observation. */
+  lon: number;
 }
 
 // Outputs ---------------------------------------------------------------------
@@ -52,6 +66,14 @@ export interface DwellEvent {
   kind: "dwell";
   busId: number;
   busName: string;
+  /**
+   * The `busId` in force when the bus *arrived* at `stopId`, which is what the
+   * matching `arrivals` row was written under. Usually equal to `busId`, but
+   * upstream reissues a bus's id at every service-block boundary, so a dwell
+   * that spans a reissue is emitted under the new id while the row it patches
+   * carries the old one. Without this the patch silently matches nothing.
+   */
+  anchorBusId: number;
   routeId: number;
   stopId: number;
   enteredAt: EpochMs;
@@ -160,6 +182,175 @@ export const ANCHOR_SLACK_M = 150;
  */
 export const MAX_OBSERVATION_GAP_MS = 10 * 60_000;
 
+// Vehicle identity ------------------------------------------------------------
+
+/**
+ * Longest feed absence across which we will let a *reissued* `busId` inherit
+ * the previous id's anchor.
+ *
+ * Upstream's `bus_id` is not a vehicle identifier: it is reissued per service
+ * block. Measured on production, the last 30 days carried 1,059 distinct
+ * `bus_id` values for 50 distinct `bus_name` values — a median id lifetime of
+ * 5.9 h and roughly 20–30 reissues a day. Tracking by id therefore throws away
+ * a bus's anchor several times a day, which is why {@link trackKeyFor} keys on
+ * `bus_name` instead.
+ *
+ * But identity continuity is not the same as *observational* continuity, and
+ * the recorded data separates the two sharply. Over a 6.6 h replay of 76,134
+ * production positions, a bus's feed gaps while its id was unchanged were 15–30 s
+ * in 96 of 97 cases; EVERY multi-minute absence coincided with an id reissue
+ * (gaps of 75 s to 55 min, with the bus sitting still at a layover point).
+ * A reissue is the bus going off the air at a block boundary, not a bus we
+ * merely mislabelled.
+ *
+ * Inheriting the anchor across that gap is actively harmful: `enteredAt` keeps
+ * pointing at the pre-layover arrival, so the segment emitted when the bus
+ * finally pulls out bills the entire layover as travel time. Replayed naively,
+ * 13 of the window's 15 reissues did exactly that — route 15's 10→153 leg went
+ * from 326 s to 1,149 s, route 19's 145→147 from 300 s to 950 s, injecting
+ * 6,733 s of standing time into the travel-time calibration.
+ *
+ * 60 s is twice the worst same-id gap observed and well under the shortest
+ * dropout reissue (75 s), so it admits the genuinely continuous handoff and
+ * rejects the layovers. Beyond it we re-anchor exactly as before — the bus
+ * keeps its identity and its live-map slot, it just doesn't keep a stale
+ * stopwatch.
+ */
+export const MAX_HANDOFF_GAP_MS = 60_000;
+
+/**
+ * Ceiling on how far a bus may have moved across an id reissue before we call
+ * the two observations different vehicles. Same purpose as
+ * {@link MAX_HANDOFF_GAP_MS} in space rather than time, and the backstop for
+ * the case {@link planTracks} cannot see: two live ids for one `bus_name` that
+ * alternate between polls instead of appearing together.
+ *
+ * A distance floor as well as a speed limit, because at a 5 s poll a pure
+ * speed test is indistinguishable from GPS jitter. 250 m clears the widest
+ * (N)/(S) stop pair on this network (160 m); 25 m/s is 90 km/h, comfortably
+ * above anything a shuttle does on Whalley Ave and far below the kilometres
+ * that separate two buses working opposite halves of the same loop.
+ */
+export const MAX_HANDOFF_JUMP_M = 250;
+export const MAX_HANDOFF_SPEED_MPS = 25;
+
+/**
+ * Track key for a bus: the stable `bus_name`, except while more than one live
+ * `bus_id` is claiming that name in the same poll.
+ *
+ * Name collisions are rare but real — in one 7-day production window `#43` was
+ * reported by ids 65531 and 65533 simultaneously for 6.7 h, both on route 1,
+ * one at stop 102 while the other was at stop 2. Merging those two streams
+ * would thrash a single anchor between two physical buses on opposite sides of
+ * the loop and emit fabricated segments between them. So a contended name
+ * falls back to the id-qualified key, which is precisely the old behaviour —
+ * two independent tracks — for exactly as long as the contention lasts.
+ *
+ * Chosen over a name-plus-generation-counter because a generation counter has
+ * to be invented and maintained by the collector (it is not in the feed), it
+ * makes the key unstable across a process restart, and it cannot by itself
+ * tell a reissue apart from a collision. The name is the identity riders and
+ * the UI already use; qualification by id is only needed when the feed itself
+ * says the name is ambiguous.
+ */
+export function trackKeyFor(busName: string, busId: number, contended: boolean): string {
+  return contended ? `${busName}#${busId}` : busName;
+}
+
+/** How one poll's observations map onto track keys. */
+export interface TrackPlan {
+  /** Track key for each `busId` present in the poll. */
+  keys: ReadonlyMap<number, string>;
+  /** Every key in {@link keys}, for membership tests. */
+  keySet: ReadonlySet<string>;
+  /** Every `busName` present in the poll. */
+  names: ReadonlySet<string>;
+  /** Names carried by more than one `busId` in this poll. */
+  contendedNames: ReadonlySet<string>;
+}
+
+/**
+ * Compute the track keys for a batch of observations.
+ *
+ * A name counts as contended only when two ids report it *at the same
+ * instant* — i.e. within one poll, which is where the ambiguity actually
+ * lives. Two ids for one name at different timestamps is the ordinary reissue
+ * case and must stay on one key. Testing per-instant rather than per-batch
+ * also makes this safe to call on a multi-tick replay stream, not just on the
+ * single poll the collector feeds it.
+ */
+export function planTracks(observations: readonly BusObservation[]): TrackPlan {
+  const idsPerName = new Map<string, Set<number>>();
+  const idsPerNamePerTick = new Map<string, Set<number>>();
+  for (const o of observations) {
+    let ids = idsPerName.get(o.busName);
+    if (!ids) idsPerName.set(o.busName, (ids = new Set()));
+    ids.add(o.busId);
+
+    const tickKey = `${o.collectedAt} ${o.busName}`;
+    let tickIds = idsPerNamePerTick.get(tickKey);
+    if (!tickIds) idsPerNamePerTick.set(tickKey, (tickIds = new Set()));
+    tickIds.add(o.busId);
+  }
+  const contendedNames = new Set<string>();
+  for (const [tickKey, ids] of idsPerNamePerTick) {
+    if (ids.size > 1) contendedNames.add(tickKey.slice(tickKey.indexOf(" ") + 1));
+  }
+
+  const keys = new Map<number, string>();
+  const keySet = new Set<string>();
+  for (const o of observations) {
+    const key = trackKeyFor(o.busName, o.busId, contendedNames.has(o.busName));
+    keys.set(o.busId, key);
+    keySet.add(key);
+  }
+  return { keys, keySet, names: new Set(idsPerName.keys()), contendedNames };
+}
+
+/**
+ * Re-file the entries of a map keyed by track key so its keys agree with
+ * `plan`. Applied to the detector's `states` and to the collector's
+ * `livePositions` so both stay in lockstep.
+ *
+ * Three cases, all driven by the entry's own `busId`:
+ *
+ *  - **The id is in this poll under a different key** — the name just became
+ *    contended (or stopped being). Move the entry rather than drop it: the
+ *    stream we were tracking is still the stream we were tracking, it only
+ *    needs a longer name to stay apart from its twin.
+ *  - **The id is gone but the entry's key is one the poll is filling** — an id
+ *    reissue. Leave it; the new id steps onto the anchor, subject to the
+ *    continuity checks in {@link step}.
+ *  - **The id is gone and the key is not** — a retired half of a name that is
+ *    no longer contended. Drop it, or the map serves two entries for one
+ *    physical bus until the 120 s live TTL expires, which on the map is a
+ *    rider-visible duplicate marker.
+ *
+ * Entries whose `busName` is absent from the poll entirely are left alone;
+ * they are simply buses not reporting right now and belong to the TTL sweep.
+ */
+export function reconcileTracks<T extends TrackedIdentity>(
+  map: Map<string, T>,
+  plan: TrackPlan,
+): void {
+  const drops: string[] = [];
+  const moves: Array<[string, T]> = [];
+  for (const [key, entry] of map) {
+    const want = plan.keys.get(entry.busId);
+    if (want !== undefined) {
+      if (want !== key) {
+        drops.push(key);
+        moves.push([want, entry]);
+      }
+    } else if (plan.names.has(entry.busName) && !plan.keySet.has(key)) {
+      drops.push(key);
+    }
+  }
+  // Deletes before sets: a move's destination can be another entry's old key.
+  for (const key of drops) map.delete(key);
+  for (const [key, entry] of moves) map.set(key, entry);
+}
+
 // Implementation --------------------------------------------------------------
 
 /**
@@ -199,6 +390,24 @@ export function step(
 
   const gap = prev ? obs.collectedAt - prev.lastObservedAt : Infinity;
 
+  // Identity handoff. Because tracking is keyed on the stable `bus_name`
+  // (see `trackKeyFor`), `prev` can have been recorded under a different
+  // `bus_id` than the one now reporting. That is normally the same physical
+  // bus whose id upstream just reissued — but it is also how the two
+  // pathological cases arrive: a bus that dropped off the feed for a whole
+  // layover, and two live buses sharing one name in a feed where they never
+  // appear in the same poll. Inherit the anchor only if the new observation is
+  // continuous with the old one in both time and space; otherwise fall through
+  // to the re-anchor below, which keeps the identity and the live-map slot but
+  // restarts the stopwatch instead of billing the gap as travel time.
+  let discontinuous = false;
+  if (prev && prev.busId !== obs.busId) {
+    const jumpM = distanceMeters(prev, obs);
+    discontinuous =
+      gap > MAX_HANDOFF_GAP_MS ||
+      (jumpM > MAX_HANDOFF_JUMP_M && jumpM > (gap / 1000) * MAX_HANDOFF_SPEED_MPS);
+  }
+
   // Anchor selection. While we are tracking a bus, prefer the closest stop
   // among the few it could plausibly reach next, rather than the closest stop
   // on the whole route — see `nearestStopAheadOnRoute` for why an unbounded
@@ -230,7 +439,11 @@ export function step(
   // row, but we never emit a dwell or segment because we don't trust the
   // missing time window.
   const reanchor =
-    !prev || gap > MAX_OBSERVATION_GAP_MS || prev.routeId !== obs.routeId || !continuous;
+    !prev ||
+    gap > MAX_OBSERVATION_GAP_MS ||
+    prev.routeId !== obs.routeId ||
+    discontinuous ||
+    !continuous;
   if (reanchor) {
     return {
       state: {
@@ -241,6 +454,8 @@ export function step(
         nearestIndex: nearest.index,
         enteredAt: obs.collectedAt,
         lastObservedAt: obs.collectedAt,
+        lat: obs.lat,
+        lon: obs.lon,
       },
       events: [
         {
@@ -259,9 +474,22 @@ export function step(
   // Compared by INDEX, not by stop id — on an out-and-back route the two
   // visits to a stop are different points in the trip, and collapsing them
   // would erase the turnaround.
+  //
+  // `busId`/`busName` are refreshed from the observation, not carried over.
+  // A bus that sits at a stop through an id reissue would otherwise keep the
+  // retired id in its state indefinitely — and every subsequent poll would
+  // look like a fresh handoff, re-running the continuity check forever. (In
+  // the 6.6 h replay that mislabelled 457 observations as handoffs.)
   if (nearest.index === prev.nearestIndex) {
     return {
-      state: { ...prev, lastObservedAt: obs.collectedAt },
+      state: {
+        ...prev,
+        busId: obs.busId,
+        busName: obs.busName,
+        lastObservedAt: obs.collectedAt,
+        lat: obs.lat,
+        lon: obs.lon,
+      },
       events: [],
     };
   }
@@ -275,6 +503,7 @@ export function step(
       kind: "dwell",
       busId: obs.busId,
       busName: obs.busName,
+      anchorBusId: prev.busId,
       routeId: obs.routeId,
       stopId: prev.nearestStopId,
       enteredAt: prev.enteredAt,
@@ -334,6 +563,8 @@ export function step(
       nearestIndex: nearest.index,
       enteredAt: obs.collectedAt,
       lastObservedAt: obs.collectedAt,
+      lat: obs.lat,
+      lon: obs.lon,
     },
     events,
   };
@@ -342,18 +573,27 @@ export function step(
 /**
  * Run the detector across a batch of observations for many buses. Mutates the
  * supplied state map and returns all emitted events in arrival order.
+ *
+ * `states` is keyed by track key (see {@link trackKeyFor}) — the vehicle's
+ * stable fleet number, not upstream's per-service-block `bus_id`. The caller
+ * may pass a `plan` it has already computed so that other per-vehicle maps
+ * (the collector's `livePositions`) key identically; omitted, one is derived
+ * from `observations`.
  */
 export function stepMany(
   network: TransitNetwork,
-  states: Map<number, BusState>,
+  states: Map<string, BusState>,
   observations: readonly BusObservation[],
+  plan: TrackPlan = planTracks(observations),
 ): DetectorEvent[] {
+  reconcileTracks(states, plan);
   const out: DetectorEvent[] = [];
   for (const obs of observations) {
-    const prev = states.get(obs.busId) ?? null;
+    const key = plan.keys.get(obs.busId) ?? obs.busName;
+    const prev = states.get(key) ?? null;
     const { state, events } = step(network, prev, obs);
-    if (state) states.set(obs.busId, state);
-    else states.delete(obs.busId);
+    if (state) states.set(key, state);
+    else states.delete(key);
     for (const e of events) out.push(e);
   }
   return out;

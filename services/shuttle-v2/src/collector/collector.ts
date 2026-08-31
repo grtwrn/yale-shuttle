@@ -14,8 +14,8 @@ import { NetworkRef } from "../network/NetworkRef.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
-import type { BusObservation, BusState, DetectorEvent } from "./detector.js";
-import { stepMany } from "./detector.js";
+import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
+import { planTracks, reconcileTracks, stepMany } from "./detector.js";
 import { UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
 
 // Cadences --------------------------------------------------------------------
@@ -121,8 +121,19 @@ export class Collector {
   private readonly sqlite: Database.Database;
   private readonly upstream: UpstreamClient;
   private readonly logger: Logger;
-  private readonly states = new Map<number, BusState>();
-  private readonly livePositions = new Map<number, BusPosition>();
+  /**
+   * Per-vehicle maps, both keyed by *track key* rather than by upstream's
+   * `bus_id` — see `trackKeyFor` in the detector for why the id is not an
+   * identity. `livePositions` shares the key so that a bus whose id is
+   * reissued replaces its own map entry instead of appearing twice: keyed by
+   * id, the retired entry lingered for the full 120 s live TTL and the map
+   * drew two markers with the same fleet number. Three of the 15 reissues in
+   * a 6.6 h production replay had the new id appear inside that TTL.
+   */
+  private readonly states = new Map<string, BusState>();
+  private readonly livePositions = new Map<string, BusPosition>();
+  /** Names seen carried by two live ids at once, cumulative. */
+  private contendedNameEvents = 0;
 
   private readonly upsertStopStmt: Database.Statement;
   private readonly upsertRouteStmt: Database.Statement;
@@ -201,12 +212,18 @@ export class Collector {
     // Patch dwell metadata onto the most recent matching arrival row.
     // The detector emits dwell on the same tick as the *next* arrival, so the
     // arrival being patched was inserted at least one poll cycle earlier.
+    //
+    // Matched on the dwell's `anchorBusId` — the id in force when the bus
+    // ARRIVED — not on the id reporting now. Upstream reissues a bus's id at
+    // service-block boundaries, and now that tracking survives a reissue a
+    // dwell can span one; matching on the current id would silently patch
+    // nothing and leave `departed_at`/`dwell_sec` null on a real visit.
     this.patchDwellStmt = this.sqlite.prepare(`
       UPDATE arrivals
       SET departed_at = @leftAt, dwell_sec = @dwellSec
       WHERE id = (
         SELECT id FROM arrivals
-        WHERE bus_id = @busId AND stop_id = @stopId
+        WHERE bus_id = @anchorBusId AND stop_id = @stopId
           AND arrived_at <= @enteredAt
         ORDER BY arrived_at DESC LIMIT 1
       )
@@ -311,9 +328,20 @@ export class Collector {
         if (observations.length === 0) return;
 
         this.persistRawPositions(observations);
-        const events = stepMany(this.ref.get(), this.states, observations);
+        // One plan per poll, shared by both per-vehicle maps so their keys can
+        // never diverge — `updateLivePositions` reads `states` by the same key.
+        const plan = planTracks(observations);
+        if (plan.contendedNames.size > 0) {
+          this.contendedNameEvents += plan.contendedNames.size;
+          this.logger.warn("collector.bus_name_contended", {
+            names: [...plan.contendedNames],
+            total: this.contendedNameEvents,
+          });
+        }
+        reconcileTracks(this.livePositions, plan);
+        const events = stepMany(this.ref.get(), this.states, observations, plan);
         if (events.length > 0) this.persistEvents(events);
-        this.updateLivePositions(observations);
+        this.updateLivePositions(observations, plan);
       } catch (err) {
         this.logger.error("collector.poll_process_failed", {
           error: (err as Error).message,
@@ -392,12 +420,12 @@ export class Collector {
    */
   private pruneStale(now: number): void {
     const liveCutoff = now - LIVE_BUS_TTL_MS;
-    for (const [id, b] of this.livePositions) {
-      if (b.collectedAt < liveCutoff) this.livePositions.delete(id);
+    for (const [key, b] of this.livePositions) {
+      if (b.collectedAt < liveCutoff) this.livePositions.delete(key);
     }
     const stateCutoff = now - STATE_TTL_MS;
-    for (const [id, s] of this.states) {
-      if (s.lastObservedAt < stateCutoff) this.states.delete(id);
+    for (const [key, s] of this.states) {
+      if (s.lastObservedAt < stateCutoff) this.states.delete(key);
     }
   }
 
@@ -446,9 +474,15 @@ export class Collector {
     return out;
   }
 
-  private updateLivePositions(observations: readonly BusObservation[]): void {
+  private updateLivePositions(
+    observations: readonly BusObservation[],
+    // `runPoll` passes the plan it already shared with `stepMany`, so both
+    // maps key identically. Defaulted for callers that only have observations.
+    plan: TrackPlan = planTracks(observations),
+  ): void {
     for (const o of observations) {
-      const state = this.states.get(o.busId);
+      const key = plan.keys.get(o.busId) ?? o.busName;
+      const state = this.states.get(key);
       const dwellingForMs = state ? o.collectedAt - state.enteredAt : 0;
       // Consider the bus to be "at" its nearest stop once it's been there
       // long enough that it isn't just passing through. Mirrors the
@@ -467,7 +501,7 @@ export class Collector {
         distanceMeters(o, atStopCandidate) <= AT_STOP_MAX_M
         ? { id: state.nearestStopId, since: state.enteredAt }
         : null;
-      this.livePositions.set(o.busId, {
+      this.livePositions.set(key, {
         busId: o.busId,
         busName: o.busName,
         routeId: o.routeId,
@@ -659,7 +693,7 @@ export class Collector {
       this.patchDwellStmt.run({
         leftAt: e.leftAt,
         dwellSec: e.dwellSec,
-        busId: e.busId,
+        anchorBusId: e.anchorBusId,
         stopId: e.stopId,
         enteredAt: e.enteredAt,
       });

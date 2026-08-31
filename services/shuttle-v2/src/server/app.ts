@@ -19,6 +19,7 @@ import {
   updateReport,
   type ReportListParams,
 } from "./reports.js";
+import { createActivesTracker } from "./actives.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { buildAccuracyV1, createBusesPayloadCache, geocodeV1 } from "./v1compat.js";
 
@@ -91,6 +92,9 @@ export interface AppOptions {
 export function buildApp(opts: AppOptions): Hono {
   const now = opts.now ?? Date.now;
   const app = new Hono();
+  // Unique-rider counting. Rides along on the poll the app already makes, so
+  // there is no extra request; see actives.ts for the cost and privacy shape.
+  const actives = createActivesTracker(opts.bundle.db);
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -133,6 +137,9 @@ export function buildApp(opts: AppOptions): Hono {
   const busesJson = createBusesPayloadCache(opts.collector);
 
   app.get("/api/buses", (c) => {
+    // Every rider polls this every 5 s, so it is the natural place to notice a
+    // rider exists. `seen` is a Set hit after the first sighting of the day.
+    actives.seen(c.req.header("x-anon-id"), now());
     c.header("Content-Type", "application/json");
     c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
     return c.body(busesJson());
@@ -296,6 +303,13 @@ export function buildApp(opts: AppOptions): Hono {
     }
     await next();
   };
+
+  // Rider counts. Operator-only: an audience number is competitive information,
+  // and there is no reason for it to be public just because it is anonymous.
+  app.get("/api/stats", requireAdmin, (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json({ riders: actives.stats(now()) });
+  });
 
   app.get("/api/reports", requireAdmin, (c) => {
     const status = c.req.query("status") as ReportListParams["status"] | undefined;

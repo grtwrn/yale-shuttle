@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -161,6 +161,39 @@ export const reports = sqliteTable("reports", {
   note: text("note"),
 });
 
+/**
+ * One row per (ET calendar day, anonymous client) — the whole basis for
+ * "how many people use this".
+ *
+ * Deliberately the least data that answers the question:
+ *   - `anonId` is a random value the browser generates for itself and keeps in
+ *     localStorage. It is not derived from anything about the person, and it is
+ *     never stored next to an IP, a user agent, a location or a report.
+ *   - No timestamps beyond the day. Two rows tell you someone was active on two
+ *     days; they cannot reconstruct when, where, or what they looked at.
+ *
+ * IP addresses were considered and rejected: they are personal data, this app
+ * just finished removing them from a public endpoint, and on a campus where
+ * everyone shares wifi NAT they would badly undercount anyway.
+ *
+ * The primary key makes the write idempotent, so a rider polling every 5 s for
+ * an hour still produces exactly one row.
+ */
+export const dailyActives = sqliteTable(
+  "daily_actives",
+  {
+    // ET calendar day as "YYYY-MM-DD". ET because that is the service day the
+    // rest of this schema counts in (see the dow/hour columns above).
+    day: text("day").notNull(),
+    anonId: text("anon_id").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.day, t.anonId] }),
+    // Counting a day, and sweeping old days, both scan by day alone.
+    dayIdx: index("daily_actives_day_idx").on(t.day),
+  }),
+);
+
 export type DbStop = typeof stops.$inferSelect;
 export type DbRoute = typeof routes.$inferSelect;
 export type DbRawPosition = typeof rawPositions.$inferSelect;
@@ -168,3 +201,4 @@ export type DbArrival = typeof arrivals.$inferSelect;
 export type DbSegment = typeof segments.$inferSelect;
 export type DbPredictionLog = typeof predictionsLog.$inferSelect;
 export type DbReport = typeof reports.$inferSelect;
+export type DbDailyActive = typeof dailyActives.$inferSelect;
