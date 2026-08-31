@@ -117,6 +117,24 @@ const geoCache = new Map<string, { at: number; results: GeocodeV1Hit[] }>();
 const GEO_TTL_MS = 24 * 60 * 60 * 1000;
 const GEO_CACHE_MAX = 500;
 
+// Nominatim's usage policy caps a single application at 1 request/second.
+// The frontend fires one lookup per debounced keystroke from two call sites,
+// so a few hundred riders typing destinations would blow straight past that
+// and get this machine's egress IP blocked. That failure is *silent* — a
+// block just yields empty results forever, and address search quietly dies —
+// so we throttle ourselves rather than find out the hard way.
+const NOMINATIM_MIN_INTERVAL_MS = 1100;
+// Rather than drop a lookup that arrives inside the interval, hold it for the
+// next slot — a rider typing one address should still get an answer, and the
+// frontend debounces keystrokes so this queue stays shallow in practice. Past
+// this much backlog we shed load and answer from local stops/landmarks alone:
+// degrading beats getting the egress IP banned, which breaks search for good.
+const NOMINATIM_MAX_WAIT_MS = 2_500;
+let nextSlotAt = 0;
+// Collapses concurrent identical lookups (50 riders typing "union station"
+// should cost one outbound request, not 50).
+const nominatimInFlight = new Map<string, Promise<GeocodeV1Hit[]>>();
+
 export async function geocodeV1(network: TransitNetwork, q: string): Promise<GeocodeV1Hit[]> {
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
   const local: GeocodeV1Hit[] = geocode(network, q).map((h) => ({
@@ -148,6 +166,28 @@ async function nominatim(query: string): Promise<GeocodeV1Hit[]> {
   const cached = geoCache.get(query);
   if (cached && Date.now() - cached.at < GEO_TTL_MS) return cached.results;
 
+  // Someone is already fetching this exact query — ride along on their request.
+  const pending = nominatimInFlight.get(query);
+  if (pending) return pending;
+
+  // Claim the next 1-per-second slot. If the backlog is already deeper than
+  // we're willing to make a rider wait, give up on the external lookup and let
+  // the caller answer from local stops and Yale landmarks alone.
+  const nowMs = Date.now();
+  const slotAt = Math.max(nowMs, nextSlotAt);
+  if (slotAt - nowMs > NOMINATIM_MAX_WAIT_MS) return cached?.results ?? [];
+  nextSlotAt = slotAt + NOMINATIM_MIN_INTERVAL_MS;
+
+  const req = (async () => {
+    const delay = slotAt - Date.now();
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    return nominatimFetch(query);
+  })().finally(() => nominatimInFlight.delete(query));
+  nominatimInFlight.set(query, req);
+  return req;
+}
+
+async function nominatimFetch(query: string): Promise<GeocodeV1Hit[]> {
   const url =
     `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5` +
     `&viewbox=${NH_VIEWBOX}&bounded=1&q=${encodeURIComponent(query)}`;
@@ -156,7 +196,10 @@ async function nominatim(query: string): Promise<GeocodeV1Hit[]> {
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "yale-shuttle-v2 (https://yale-shuttle-v2.fly.dev)" },
+      // Nominatim requires a real, reachable contact. This advertised
+      // yale-shuttle-v2.fly.dev, an app destroyed in the v2 migration — a
+      // dead URL invites exactly the block we're trying to avoid.
+      headers: { "User-Agent": "yale-shuttle (https://yale-shuttle.fly.dev)" },
     });
     if (!res.ok) return [];
     const rows = (await res.json()) as Array<{
@@ -181,7 +224,14 @@ async function nominatim(query: string): Promise<GeocodeV1Hit[]> {
         class: r.class ?? "osm",
       });
     }
-    if (geoCache.size >= GEO_CACHE_MAX) geoCache.clear();
+    // Evict oldest-first. Clearing the whole map (the previous behaviour)
+    // threw away the hot queries too, so every flush caused a burst of
+    // re-fetches against the very rate limit we're trying to respect.
+    while (geoCache.size >= GEO_CACHE_MAX) {
+      const oldest = geoCache.keys().next().value;
+      if (oldest === undefined) break;
+      geoCache.delete(oldest);
+    }
     geoCache.set(query, { at: Date.now(), results });
     return results;
   } catch {

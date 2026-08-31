@@ -1,4 +1,5 @@
 import { serveStatic } from "@hono/node-server/serve-static";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Hono, type Context } from "hono";
@@ -34,6 +35,23 @@ const HEALTH_POLL_STALE_MS = 60_000;
 // the DB (report context is stored verbatim).
 const REPORT_BODY_LIMIT = 64 * 1024;
 const PLAN_BODY_LIMIT = 16 * 1024;
+// The triage-update body only ever carries a status and a short note, so it
+// gets a far tighter cap than a rider's free-form report.
+const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
+// Longest text we persist for a rider's report body or an operator's
+// resolution note. Matches ReportSubmitSchema's `body` cap in schema/api.ts.
+const REPORT_TEXT_MAX = 2000;
+
+/**
+ * Constant-time string compare, so a token can't be recovered byte-by-byte by
+ * timing the 401. Length is compared first (and leaks only the length).
+ */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
 
 export interface AppOptions {
   collector: Collector;
@@ -46,6 +64,13 @@ export interface AppOptions {
    * Tests leave this unset to avoid filesystem dependencies.
    */
   staticDir?: string;
+  /**
+   * Shared secret guarding the operator-only triage endpoints. Defaults to
+   * $SHUTTLE_ADMIN_TOKEN. When neither is set those endpoints fail closed
+   * (503) rather than serving reporter IPs to the public — an unconfigured
+   * deploy should be inert, not open.
+   */
+  adminToken?: string;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -149,7 +174,10 @@ export function buildApp(opts: AppOptions): Hono {
   // -- Geocode (v1 shape: {results:[{display_name,lat,lon,type,class}]}) ----
 
   app.get("/api/geocode", async (c) => {
-    const q = c.req.query("q") ?? "";
+    // Cap the query before it reaches the matcher: the prefix-match tier is
+    // O(query tokens x candidate words) per candidate, so an unbounded ?q=
+    // would block the single event loop for seconds.
+    const q = (c.req.query("q") ?? "").slice(0, 100);
     const results = await geocodeV1(opts.collector.ref.get(), q);
     c.header("Cache-Control", "no-store");
     return c.json({ results });
@@ -172,7 +200,9 @@ export function buildApp(opts: AppOptions): Hono {
       return c.json({ error: "invalid_request" }, 400);
     }
     const b = body as Record<string, unknown>;
-    const note = typeof b.note === "string" ? b.note.trim() : "";
+    // ReportSubmitSchema caps `body` at 2000 chars but this handler
+    // hand-parses instead of running it, so enforce the cap here.
+    const note = typeof b.note === "string" ? b.note.trim().slice(0, REPORT_TEXT_MAX) : "";
     const kind: "issue" | "feedback" = b.source === "feedback" ? "feedback" : "issue";
     const routeId = typeof b.routeId === "number" ? b.routeId : null;
     const { id } = submitReport(
@@ -183,7 +213,24 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ ok: true, id });
   });
 
-  app.get("/api/reports", (c) => {
+  // -- Operator triage (not public) -----------------------------------------
+  // These two are the only endpoints no rider client touches: they exist for
+  // curl-based triage (and the map-bot's dedupe check). Left open they served
+  // every reporter's IP address, user agent and free-text complaint to anyone
+  // on the internet, and let anyone rewrite the triage log. Both now require
+  // a shared secret.
+  const adminToken = opts.adminToken ?? process.env.SHUTTLE_ADMIN_TOKEN ?? "";
+  const requireAdmin = async (c: Context, next: () => Promise<void>) => {
+    if (!adminToken) {
+      return c.json({ error: "admin_token_not_configured" }, 503);
+    }
+    if (!safeEqual(c.req.header("x-admin-token") ?? "", adminToken)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    await next();
+  };
+
+  app.get("/api/reports", requireAdmin, (c) => {
     const status = c.req.query("status") as ReportListParams["status"] | undefined;
     const limitStr = c.req.query("limit");
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
@@ -195,7 +242,10 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ reports: listReports(opts.bundle.db, params) });
   });
 
-  app.post("/api/reports/:id/update", async (c) => {
+  app.post("/api/reports/:id/update", requireAdmin, bodyLimit({
+    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
     const id = parseInt(c.req.param("id"), 10);
     if (!Number.isFinite(id)) return c.json({ error: "invalid_id" }, 400);
     const body = (await c.req.json().catch(() => null)) as {
@@ -208,7 +258,7 @@ export function buildApp(opts: AppOptions): Hono {
     const update: { status: "open" | "addressed" | "wontfix"; note?: string } = {
       status: body.status,
     };
-    if (typeof body.note === "string") update.note = body.note;
+    if (typeof body.note === "string") update.note = body.note.slice(0, REPORT_TEXT_MAX);
     const ok = updateReport(opts.bundle.db, id, update);
     if (!ok) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });

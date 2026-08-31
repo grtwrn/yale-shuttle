@@ -864,9 +864,8 @@ function planTrip(
         if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
         const walkToSec = walkSecFromMeters(fromDist[b]);
         const walkFromSec = walkSecFromMeters(toDist[cur]);
-        // Skip options that require more total walking than just walking
-        // direct — no point suggesting a shuttle that leaves you footsore.
-        if (walkToSec + walkFromSec >= directWalkSec) continue;
+        // (The "more walking than walking direct" test used to live here,
+        // before waitSec/rideSec were known. See the dominance check below.)
         // Wait time: for a live plan we need a real bus on the route; for
         // a future plan we use half the published headway since no bus
         // exists yet to time against.
@@ -908,6 +907,15 @@ function planTrip(
           }
         }
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
+        // Drop only options STRICTLY dominated by walking: more walking AND
+        // no faster overall. The old test compared the walking legs alone,
+        // before the ride was known, so it threw away trips that were plainly
+        // better — for report #40 the server's recommended 15.9-min ride was
+        // discarded because its two walk legs summed to ~7 s more than the
+        // 18.5-min direct walk, and the rider was shown walk-only instead.
+        // Options that are merely slower are kept on purpose and labelled
+        // "slower than walking" by the picker (see the note below the loop).
+        if (walkToSec + walkFromSec >= directWalkSec && totalSec >= directWalkSec) continue;
         options.push({
           mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
@@ -955,7 +963,13 @@ function planTrip(
   // suggestion entirely when the direct walk exceeds an hour: nobody
   // plans a 60+ min walk across New Haven, and offering it as a trip
   // option clutters the picker when the only viable choice is a bus.
-  const walkList: TripOption[] = directWalkSec <= 3600
+  // ...unless it's the only thing we have. Report #35: a 4.3 km trip where
+  // the server planner returned a perfectly good 53-min walk, but the client
+  // walk model (crow-flies x 1.2 detour / 1.3 m/s) put it at 66 min — over
+  // this cutoff — so the walk was suppressed, no shuttle matched, and the
+  // rider got a bare "No trip options found between these locations."
+  // Suppressing the clutter is fine; suppressing the last option is not.
+  const walkList: TripOption[] = directWalkSec <= 3600 || dedup.length === 0
     ? [{
         mode: "walk",
         routeLabel: "Walk",
@@ -4245,6 +4259,39 @@ const TripPlanner: FC<{
                         >
                           Stops {showMore ? "▴" : "▾"}
                         </button>
+                        {/* Manual way into ride tracking. Auto-detect (the
+                            "On <route> #N?" offer) is the usual path, but it
+                            needs a GPS fix good enough to place the rider
+                            within 60 m of the board stop — indoors, in a
+                            urban canyon, or with location permission at
+                            city-block precision it simply never fires, and
+                            without this the ride page is unreachable. */}
+                        {o.mode === "shuttle" && (
+                          <>
+                            <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onBoard({
+                                  routeLabel: o.routeLabel, color: o.color,
+                                  busName: o.busName,
+                                  boardStopId: o.boardStopId, alightStopId: o.alightStopId,
+                                  startedAt: Date.now(),
+                                  ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
+                                });
+                              }}
+                              title="Track this ride now — use this if the app didn't notice you boarding"
+                              style={{
+                                fontSize: 13, fontWeight: 500, padding: "0 8px",
+                                minHeight: 44, display: "inline-flex", alignItems: "center",
+                                border: "none", background: "transparent",
+                                color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
+                              }}
+                            >
+                              🚌 I'm on it
+                            </button>
+                          </>
+                        )}
                         <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); reportOption(o); }}

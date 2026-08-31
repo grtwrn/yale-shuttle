@@ -15,10 +15,10 @@
     "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^1.19.17",
     "better-sqlite3": "^11.5.0",
     "drizzle-orm": "^0.36.0",
-    "hono": "^4.6.0",
+    "hono": "^4.13.5",
     "kdbush": "^4.0.2",
     "tsx": "^4.19.0",
     "zod": "^3.23.0"

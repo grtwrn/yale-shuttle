@@ -64,8 +64,28 @@ These came from past bugs/feedback — don't re-litigate them:
 
 Users submit reports via the in-app "🚩 Report issue" / "💬 Send feedback". Workflow:
 
-- `GET /api/reports?status=open` — triage queue
-- `POST /api/reports/{id}/update` with `{"status": "addressed", "note": "..."}` — annotate when fixed
+The two triage endpoints are **operator-only** — they require a shared secret,
+because `GET /api/reports` returns each reporter's IP address alongside their
+free-text complaint, and the update route was otherwise a public write into the
+triage log. The token lives in the `SHUTTLE_ADMIN_TOKEN` Fly secret; a local
+copy is at `~/.yale-shuttle-admin-token` (mode 600, deliberately outside the
+repo). Without a configured token both endpoints fail closed with 503.
+
+```bash
+TOKEN=$(cat ~/.yale-shuttle-admin-token)
+
+# triage queue
+curl -s -H "x-admin-token: $TOKEN" \
+  'https://yale-shuttle.fly.dev/api/reports?status=open'
+
+# annotate when fixed
+curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+  -d '{"status":"addressed","note":"..."}' \
+  https://yale-shuttle.fly.dev/api/reports/{id}/update
+```
+
+`POST /api/report` (rider submissions) stays public and rate-limited.
+`scripts/map-bot-cron.sh` reads the same token file for its dedupe check.
 
 **Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold.
 

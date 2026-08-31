@@ -40,6 +40,10 @@ const routes: Route[] = [
   { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3] },
 ];
 
+// Injected rather than read from $SHUTTLE_ADMIN_TOKEN so the suite doesn't
+// depend on (or leak into) the ambient environment.
+const TEST_ADMIN_TOKEN = "test-admin-token";
+
 let tmpDir: string;
 let bundle: DbBundle;
 let collector: Collector;
@@ -57,7 +61,12 @@ beforeEach(async () => {
   // refreshStaticIfNeeded call below does the static load synchronously.
   await (collector as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> })
     .refreshStaticIfNeeded(true);
-  app = buildApp({ collector, bundle, now: () => 1_700_000_000_000 });
+  app = buildApp({
+    collector,
+    bundle,
+    now: () => 1_700_000_000_000,
+    adminToken: TEST_ADMIN_TOKEN,
+  });
 });
 
 afterEach(() => {
@@ -194,6 +203,7 @@ describe("getLiveBuses staleness", () => {
 
 describe("reports", () => {
   it("submits, lists, and updates a report", async () => {
+    const admin = { "x-admin-token": TEST_ADMIN_TOKEN };
     const submit = await app.request("/api/report", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -203,20 +213,66 @@ describe("reports", () => {
     const { id } = (await submit.json()) as { id: number };
     expect(id).toBeGreaterThan(0);
 
-    const list = await app.request("/api/reports?status=open");
+    const list = await app.request("/api/reports?status=open", { headers: admin });
     const body = (await list.json()) as { reports: Array<{ id: number; status: string }> };
     expect(body.reports[0]?.id).toBe(id);
     expect(body.reports[0]?.status).toBe("open");
 
     const update = await app.request(`/api/reports/${id}/update`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...admin },
       body: JSON.stringify({ status: "addressed", note: "fixed in v2" }),
     });
     expect(update.status).toBe(200);
 
-    const reList = await app.request("/api/reports?status=addressed");
+    const reList = await app.request("/api/reports?status=addressed", { headers: admin });
     const reBody = (await reList.json()) as { reports: Array<{ id: number }> };
     expect(reBody.reports[0]?.id).toBe(id);
+  });
+
+  // The triage endpoints served reporter IPs and accepted destructive writes
+  // from anyone. Riders never call them; only operator curl and the map-bot do.
+  it("refuses to list reports without the admin token", async () => {
+    const res = await app.request("/api/reports?status=open");
+    expect(res.status).toBe(401);
+    // The reporter's IP must not appear in the rejection.
+    expect(await res.text()).not.toContain("clientIp");
+  });
+
+  it("refuses to list reports with a wrong admin token", async () => {
+    const res = await app.request("/api/reports?status=open", {
+      headers: { "x-admin-token": "wrong" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("refuses to update a report without the admin token", async () => {
+    const res = await app.request("/api/reports/1/update", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "addressed" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects an oversized triage-update body with 413", async () => {
+    const res = await app.request("/api/reports/1/update", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": TEST_ADMIN_TOKEN },
+      body: JSON.stringify({ status: "addressed", note: "x".repeat(10_000) }),
+    });
+    expect(res.status).toBe(413);
+  });
+
+  // An unconfigured deploy must be inert, not open.
+  it("fails closed when no admin token is configured", async () => {
+    const openApp = buildApp({
+      collector,
+      bundle,
+      now: () => 1_700_000_000_000,
+      adminToken: "",
+    });
+    const res = await openApp.request("/api/reports?status=open");
+    expect(res.status).toBe(503);
   });
 });
