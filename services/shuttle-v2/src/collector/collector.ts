@@ -326,6 +326,8 @@ export class Collector {
   private staticRetryDelayMs = STATIC_RETRY_BASE_MS;
   /** Upstream rows rejected by `sanitizeObservations`, cumulative. */
   private droppedObservations = 0;
+  /** Last collectedAt stamp handed to observations; enforces strict order. */
+  private lastObservationStampMs = 0;
   // Monotonic counter over everything the HTTP layer's fat /api/buses payload
   // is derived from: live positions (every 5 s), calibrated segment/dwell
   // stats (every 5 min) and the static topology (every 6 h). The server
@@ -514,7 +516,13 @@ export class Collector {
       // single bad tick must never reject the poll promise — that would surface
       // as an unhandledRejection and could take the whole process down.
       try {
-        const now = Date.now();
+        // Strictly monotonic: two polls CAN complete within one millisecond
+        // (observed in tests on fast machines; possible in prod under a burst
+        // of catch-up ticks), and everything downstream that orders
+        // observations by collectedAt treats a timestamp tie as staleness.
+        // Sub-millisecond skew is harmless; an unorderable pair is not.
+        const now = Math.max(Date.now(), this.lastObservationStampMs + 1);
+        this.lastObservationStampMs = now;
         const observations = this.sanitizeObservations(buses, now);
 
         // Prune on every tick, not only on ticks that carried observations.

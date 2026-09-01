@@ -70,6 +70,19 @@ class ControllableUpstream extends UpstreamClient {
   }
 
   /** Settle the oldest outstanding `buses()` call. */
+  /**
+   * Resolve once a poll is actually awaiting buses(). A single
+   * `await Promise.resolve()` used to stand in for this, which encoded an
+   * assumption about how many microtask hops runPoll takes before its fetch —
+   * true on a fast machine, flaky on a loaded Pi and on CI runners.
+   */
+  async untilAwaited(): Promise<void> {
+    for (let i = 0; i < 1000 && this.pending.length === 0; i++) {
+      await Promise.resolve();
+    }
+    if (this.pending.length === 0) throw new Error("poll never called buses()");
+  }
+
   deliver(buses: RawBus[]): void {
     const next = this.pending.shift();
     if (!next) throw new Error("no pending buses() call to deliver");
@@ -201,7 +214,7 @@ describe("runPoll re-entrancy", () => {
     // Drive it through the real detector state by running the two polls in
     // the order the event loop would have resumed them.
     const slow = inner().runPoll(); // tick 1, still awaiting
-    await Promise.resolve();
+    await upstream.untilAwaited();
 
     // Tick 2 is skipped by the guard, so there is exactly one writer.
     await inner().runPoll();
@@ -215,7 +228,7 @@ describe("runPoll re-entrancy", () => {
 
     // Now a genuinely newer poll advancing the bus to stop 2.
     const next = inner().runPoll();
-    await Promise.resolve();
+    await upstream.untilAwaited();
     upstream.deliver([bus({ lat: 41.31, lon: -72.92 })]);
     await next;
     expect(inner().states.get("#7")!.nearestStopId).toBe(2);

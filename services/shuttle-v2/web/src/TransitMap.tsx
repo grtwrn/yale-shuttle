@@ -1446,6 +1446,7 @@ const TripPlanner: FC<{
   onDeleteRecent: (id: string) => void;
   onClearRecents: () => void;
   announcements: ServiceAnnouncement[];
+  onReportSubmitted?: () => void;
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
   // Parent passes a callback so the Accuracy tab can scope its stats to
@@ -1454,7 +1455,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -2173,6 +2174,7 @@ const TripPlanner: FC<{
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       setReportStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
+      onReportSubmitted?.();
     } catch (e) {
       setReportStatus("Couldn't send — try again");
     }
@@ -2661,6 +2663,27 @@ const TripPlanner: FC<{
               }}
             >
               {alreadySaved ? "★" : "☆"}
+            </button>
+          )}
+          {/* Installed-app reload, moved from the floating header spot: a
+              desktop install (Chromebook) has no browser chrome and no touch
+              pull gesture, so this square is its only refresh. Same visual
+              language as the save-star beside it. */}
+          {isStandaloneDisplay && (
+            <button
+              onClick={() => window.location.reload()}
+              title="Refresh the app"
+              aria-label="Refresh the app"
+              style={{
+                ...btnStyle,
+                padding: "6px 8px",
+                cursor: "pointer",
+                border: "1px solid #bbb",
+                background: "#fff",
+                color: "#546e7a",
+              }}
+            >
+              ↻
             </button>
           )}
         </div>
@@ -5823,6 +5846,10 @@ const TransitMap: FC = () => {
   // the seen-status map and calls onAllSeen, which clears both. All state is
   // declared here, BEFORE any effect that reads it (TDZ — see CLAUDE.md).
   const [issuesBadge, setIssuesBadge] = useState(false);
+  // Bumped after any successful report submission so a mounted Issues panel
+  // refetches — submitting from the footer while ON that tab showed nothing
+  // new until a manual reload.
+  const [myReportsBump, setMyReportsBump] = useState(0);
   const [issuesBannerDismissed, setIssuesBannerDismissed] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -5949,6 +5976,7 @@ const TransitMap: FC = () => {
       setFeedbackImage(null);
       setFeedbackPriority("normal");
       setFeedbackOpen(false);
+      setMyReportsBump((b) => b + 1);
       setFeedbackStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
     } catch {
       setFeedbackStatus("Couldn't send — try again");
@@ -6497,27 +6525,6 @@ const TransitMap: FC = () => {
           Yale Shuttle
         </h1>
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
-        {/* Refresh, installed-app only. A browser tab has its own reload and on
-            phones the pull-down gesture works — but a desktop install
-            (Chromebook/Mac/Windows) has neither: no browser chrome, and a
-            trackpad emits no touch events for the pull gesture. */}
-        {isStandaloneDisplay && (
-          <button
-            onClick={() => window.location.reload()}
-            title="Refresh"
-            aria-label="Refresh the app"
-            style={{
-              position: "absolute", right: 12, top: 14,
-              width: 44, height: 44, minHeight: 44,
-              border: "none", borderRadius: 22, background: "transparent",
-              color: "#8a8a9a", fontSize: 18, cursor: "pointer",
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              fontFamily: "inherit",
-            }}
-          >
-            ↻
-          </button>
-        )}
       </div>
 
       {/* View tabs — hidden while on a bus, since the ride page is its own view */}
@@ -6626,7 +6633,7 @@ const TransitMap: FC = () => {
           userLatLon={userLatLon} onRequestLocate={startLocating}
         />
       ) : listView === "issues" ? (
-        <IssuesPanel onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
+        <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
@@ -6642,6 +6649,7 @@ const TransitMap: FC = () => {
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
           onClearRecents={() => saveRecentTrips([])}
           announcements={announcements}
+          onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
           onBoard={(ride) => { setBoardedRide(ride); }}
         />

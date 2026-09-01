@@ -12,7 +12,7 @@ Fetch the untriaged queue (TOKEN=$(cat ~/.yale-shuttle-admin-token)):
 
     curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?status=open'
 
-Untriaged = priority "normal" AND no note AND body not starting with "[map-bot]". Process **at most 3**, oldest first. For each:
+**Process exactly the report ids appended to this prompt by the wrapper — no others.** They are pre-arbitrated (fair rotation across reporters; known-abusive reporters already filtered out). If the appended list is empty or missing, do nothing and exit. For each listed report:
 
 ### 1. Classify priority (always)
 

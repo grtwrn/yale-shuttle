@@ -28,12 +28,25 @@ echo "=== feedback-bot $(date -Is) ==="
 
 TOKEN=$(cat ~/.yale-shuttle-admin-token) || exit 1
 
-# Anything new? Untriaged = open, default priority, no operator note yet,
-# and not the map-bot's own automated reports.
-UNTRIAGED=$(curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?status=open' \
-  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const u=j.reports.filter(r=>r.priority==='normal'&&!r.note&&!r.body.startsWith('[map-bot]'));console.log(u.length)})")
-if [ "${UNTRIAGED:-0}" = "0" ]; then echo "nothing untriaged"; exit 0; fi
-echo "$UNTRIAGED untriaged report(s)"
+# Arbitration: fairness (round-robin per reporter) + reputation (repeat
+# spam/injection submitters get auto-closed without reaching the model).
+QUEUE=$(curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?status=open')
+ARB=$(echo "$QUEUE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.stringify(JSON.parse(s).reports)))" | node scripts/feedback-bot-arbitrate.mjs)
+CHOSEN=$(echo "$ARB" | sed -n 1p)
+BLOCKED=$(echo "$ARB" | sed -n 2p)
+
+# Reputation auto-closes: no model involved, one annotation per report.
+if [ -n "$BLOCKED" ]; then
+  echo "reputation auto-close: $BLOCKED"
+  for id in ${BLOCKED//,/ }; do
+    curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+      -d '{"status":"wontfix","priority":"nice_to_have","note":"automated: ignored (this browser has repeatedly submitted abusive or machine-directed content)"}' \
+      "https://yale-shuttle.fly.dev/api/reports/$id/update" > /dev/null
+  done
+fi
+
+if [ -z "$CHOSEN" ]; then echo "nothing to process after arbitration"; exit 0; fi
+echo "processing report(s): $CHOSEN"
 
 # Snapshot BEFORE state per-file (path + content hash), so enforcement below
 # judges only what THIS run changed. The tree legitimately carries other
@@ -47,7 +60,9 @@ snapshot() { git status --porcelain | awk '{print $2}' | while read -r f; do
   if [ -f "$GITROOT/$f" ]; then echo "$(md5sum "$GITROOT/$f" | cut -d' ' -f1)  $f"; else echo "gone  $f"; fi; done | sort; }
 snapshot > "$SNAP_BEFORE"
 
-timeout 1500 claude -p "$(cat scripts/feedback-bot-prompt.md)" \
+timeout 1500 claude -p "$(cat scripts/feedback-bot-prompt.md)
+
+Process exactly these report ids, no others: $CHOSEN" \
   --allowedTools "Bash,Read,Edit,Write,Grep,Glob" \
   --max-turns 60 || echo "claude run ended (timeout or error)"
 
@@ -78,4 +93,22 @@ if [ -n "$BOT_CHANGED" ]; then
     exit 1
   }
 fi
+# Strike accounting: chosen reports the model closed as spam feed reputation.
+AFTER_RUN=$(curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?limit=200')
+echo "$AFTER_RUN" | CHOSEN="$CHOSEN" node -e '
+const fs=require("fs");
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  const chosen=new Set((process.env.CHOSEN||"").split(",").filter(Boolean).map(Number));
+  const repPath="scripts/.feedback-bot/reputation.json";
+  let rep; try{rep=JSON.parse(fs.readFileSync(repPath,"utf8"));}catch{rep={strikes:{},served:{}};}
+  for(const r of JSON.parse(s).reports){
+    if(!chosen.has(r.id)) continue;
+    if(r.status==="wontfix" && (r.note||"").startsWith("automated:")){
+      const k=r.anonId??"anon";
+      rep.strikes[k]=(rep.strikes[k]??0)+1;
+      console.log("strike for "+k.slice(0,8)+" (now "+rep.strikes[k]+") via #"+r.id);
+    }
+  }
+  fs.writeFileSync(repPath,JSON.stringify(rep,null,2));
+});'
 echo "=== done $(date -Is) ==="

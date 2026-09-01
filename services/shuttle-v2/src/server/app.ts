@@ -274,6 +274,16 @@ export function buildApp(opts: AppOptions): Hono {
 
   // -- Reports --------------------------------------------------------------
 
+  // Push-style hook for the triage bot: one long-lived admin SSE connection
+  // (outbound from the Pi — the app can't reach into it) gets an event per
+  // submitted report. Nothing rider-facing depends on this.
+  const reportListeners = new Set<(id: number) => void>();
+  const notifyReportListeners = (id: number) => {
+    for (const fn of reportListeners) {
+      try { fn(id); } catch { /* listener's problem */ }
+    }
+  };
+
   // Screenshots attached to reports live as files beside the DB, never inside
   // it — a 2 MB blob has no business in a row the triage list scans. The name
   // is random, the extension is decided by US from the verified magic bytes
@@ -352,6 +362,7 @@ export function buildApp(opts: AppOptions): Hono {
       ip,
       anonId,
     );
+    notifyReportListeners(id);
     return c.json({ ok: true, id, attached: Boolean(imageFile) });
   });
 
@@ -495,6 +506,27 @@ export function buildApp(opts: AppOptions): Hono {
     }
     if (limit && Number.isFinite(limit)) params.limit = limit;
     return c.json({ reports: listReports(opts.bundle.db, params) });
+  });
+
+  // New-report event stream for the triage bot. Heartbeats every 25 s so
+  // proxies don't reap the idle connection; the bot reconnects on drop.
+  app.get("/api/reports/stream", requireAdmin, (c) => {
+    return streamSSE(c, async (stream) => {
+      let open = true;
+      const listener = (id: number) => {
+        void stream.writeSSE({ event: "report", data: String(id) });
+      };
+      reportListeners.add(listener);
+      stream.onAbort(() => { open = false; reportListeners.delete(listener); });
+      await stream.writeSSE({ event: "hello", data: "listening" });
+      while (open) {
+        await new Promise((r) => setTimeout(r, 25_000));
+        if (!open) break;
+        try { await stream.writeSSE({ event: "ping", data: String(Date.now()) }); }
+        catch { break; }
+      }
+      reportListeners.delete(listener);
+    });
   });
 
   // The screenshot attached to one report. Admin-only for the same reason the

@@ -40,7 +40,9 @@ function fmtDate(ms: number): string {
 const IssuesPanel: React.FC<{
   /** Called after a successful fetch — the parent clears its badge/banner. */
   onAllSeen: () => void;
-}> = ({ onAllSeen }) => {
+  /** Bumped by the parent after any report submission; triggers a refetch. */
+  refreshSignal?: number;
+}> = ({ onAllSeen, refreshSignal }) => {
   const [reports, setReports] = useState<MyReport[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   // Which report has its reply box open, and its draft text.
@@ -69,7 +71,10 @@ const IssuesPanel: React.FC<{
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  // Mount AND whenever a submission happens elsewhere in the app — without the
+  // signal, reporting from the footer while this tab was open showed nothing
+  // new until a manual reload.
+  useEffect(() => { void load(); }, [load, refreshSignal]);
   const [showArchived, setShowArchived] = useState(false);
 
   const act = async (
