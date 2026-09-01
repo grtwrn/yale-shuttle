@@ -6052,35 +6052,58 @@ const TransitMap: FC = () => {
     }
     setLocating(true);
     setLocateError(null);
+    const applyFix = (pos: GeolocationPosition) => {
+      console.log("[locate] got position", pos.coords);
+      setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      setLocating(false);
+      if (watchIdRef.current == null) {
+        // The LIVE WATCH stays high-accuracy regardless of how the first fix
+        // was obtained — gps-tier-check.mjs asserts exactly this (one watch,
+        // no downgrade). Only the one-shot below is ever allowed to be coarse.
+        gpsPreciseRef.current = true;
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (p) => {
+            setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
+          },
+          () => {},
+          { enableHighAccuracy: true, maximumAge: 5_000 },
+        );
+      }
+    };
+    const fail = (err: GeolocationPositionError) => {
+      console.warn("[locate] error", err.code, err.message);
+      setLocating(false);
+      const msg = err.code === err.PERMISSION_DENIED
+        ? "Location permission denied — enable it in your browser settings"
+        : err.code === err.POSITION_UNAVAILABLE
+        ? "Location unavailable (no GPS / offline?)"
+        : err.code === err.TIMEOUT
+        ? "Location request timed out"
+        : err.message || "Location failed";
+      setLocateError(msg);
+    };
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        console.log("[locate] got position", pos.coords);
-        setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-        setLocating(false);
-        if (watchIdRef.current == null) {
-          gpsPreciseRef.current = true;
-          watchIdRef.current = navigator.geolocation.watchPosition(
-            (p) => {
-              setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-            },
-            () => {},
-            { enableHighAccuracy: true, maximumAge: 5_000 },
-          );
+      applyFix,
+      (err) => {
+        // Report #54 (Chromebook): devices without a GPS radio resolve via the
+        // network provider, which routinely exceeds a cold high-accuracy
+        // timeout. Retry ONCE at low accuracy with a longer budget and a
+        // willingness to take a recent cached fix — a rough position beats a
+        // permanent spinner for picking a boarding stop. Never retried for
+        // PERMISSION_DENIED (asking again cannot help).
+        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+          console.warn("[locate] high-accuracy failed, coarse retry", err.code);
+          navigator.geolocation.getCurrentPosition(applyFix, fail, {
+            enableHighAccuracy: false, timeout: 20_000, maximumAge: 120_000,
+          });
+        } else {
+          fail(err);
         }
       },
-      (err) => {
-        console.warn("[locate] error", err.code, err.message);
-        setLocating(false);
-        const msg = err.code === err.PERMISSION_DENIED
-          ? "Location permission denied — enable it in your browser settings"
-          : err.code === err.POSITION_UNAVAILABLE
-          ? "Location unavailable (no GPS / offline?)"
-          : err.code === err.TIMEOUT
-          ? "Location request timed out"
-          : err.message || "Location failed";
-        setLocateError(msg);
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
+      // maximumAge 30 s: a just-obtained fix is fine for starting a trip plan
+      // and skips the cold acquisition entirely on most taps (the mount watch
+      // usually has one this fresh).
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
     );
   };
 
@@ -6112,6 +6135,13 @@ const TransitMap: FC = () => {
         // only for explicit locate requests. A user who has
         // permissions blocked should still be able to enter a
         // From manually.
+        //
+        // But ALWAYS clear the "Locating…" state (report #54): this handler
+        // used to do nothing for TIMEOUT/POSITION_UNAVAILABLE — and skipped
+        // the clear for PERMISSION_DENIED too — so a rider with no cached
+        // location watched the spinner run forever, and refreshing just
+        // restarted the same doomed watch.
+        setLocating(false);
         if (err.code === err.PERMISSION_DENIED) return;
       },
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
