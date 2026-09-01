@@ -111,8 +111,11 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
     INSERT INTO daily_actives (day, anon_id, first_seen_ms, last_seen_ms, polls, searches)
     VALUES (@day, @anonId, @firstSeen, @lastSeen, @polls, @searches)
     ON CONFLICT(day, anon_id) DO UPDATE SET
-      first_seen_ms = MIN(first_seen_ms, excluded.first_seen_ms),
-      last_seen_ms  = MAX(last_seen_ms,  excluded.last_seen_ms),
+      -- IFNULL first: SQLite's MIN()/MAX() scalars return NULL if ANY argument
+      -- is NULL, so a row written before these columns existed would keep a
+      -- NULL timestamp forever and never contribute a session length.
+      first_seen_ms = MIN(IFNULL(first_seen_ms, excluded.first_seen_ms), excluded.first_seen_ms),
+      last_seen_ms  = MAX(IFNULL(last_seen_ms,  excluded.last_seen_ms),  excluded.last_seen_ms),
       polls         = excluded.polls,
       searches      = excluded.searches
   `);

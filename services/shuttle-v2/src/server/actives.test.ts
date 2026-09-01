@@ -219,3 +219,31 @@ describe("do they come back", () => {
     expect(s.week1Retention).toBeNull();
   });
 });
+
+describe("rows predating the depth columns", () => {
+  // Real case: rows written before first_seen_ms/last_seen_ms existed have
+  // NULL there. SQLite's MIN()/MAX() return NULL if any argument is NULL, so a
+  // naive upsert would leave those rows without a session length forever.
+  it("backfills a NULL timestamp instead of propagating the NULL", () => {
+    bundle.sqlite
+      .prepare("INSERT INTO daily_actives (day, anon_id, polls, searches) VALUES (?,?,0,0)")
+      .run(etDay(T), ID_A);
+    const before = bundle.sqlite
+      .prepare("SELECT first_seen_ms AS f FROM daily_actives")
+      .get() as { f: number | null };
+    expect(before.f).toBeNull();
+
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T);
+    t.seen(ID_A, "poll", T + 5 * 60_000);
+    t.flush(T);
+
+    const after = bundle.sqlite
+      .prepare("SELECT first_seen_ms AS f, last_seen_ms AS l, polls FROM daily_actives")
+      .get() as { f: number; l: number; polls: number };
+    expect(after.f).toBe(T);
+    expect(after.l).toBe(T + 5 * 60_000);
+    expect(after.polls).toBe(2);
+    expect(t.stats(T + 5 * 60_000).medianMinutesPerDay).toBe(5);
+  });
+});

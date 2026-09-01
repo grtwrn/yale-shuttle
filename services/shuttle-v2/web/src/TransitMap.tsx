@@ -13,7 +13,7 @@ import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, suggIcon, suggLabel,
   type GeocodeResult,
 } from "./format";
-import { haversineMeters, type LatLon } from "./geo";
+import { buildStopSequencePolyline, haversineMeters, type LatLon } from "./geo";
 import {
   dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
 } from "./planner";
@@ -357,62 +357,6 @@ const makeDestPin = () => L.divIcon({
 // lines between stops.
 // Globally-nearest path index — only used to anchor the FIRST stop in a
 // sequence. Subsequent stops are matched forward from there (see below).
-function nearestPathIdx(path: [number, number][], t: LatLon): number {
-  let bestIdx = 0, best = Infinity;
-  for (let i = 0; i < path.length; i++) {
-    const d = (path[i][0] - t.lat) ** 2 + (path[i][1] - t.lon) ** 2;
-    if (d < best) { best = d; bestIdx = i; }
-  }
-  return bestIdx;
-}
-// The first close approach to `t` scanning FORWARD from `startIdx` (wrapping
-// once around the loop). Self-overlapping loops (e.g. Green revisits the
-// campus on its way back from the southern Buildings detour) pass within
-// metres of the same stop twice; the globally-nearest point can land on the
-// LATER pass, which is what made slices balloon south and double back. By
-// taking the first pass we reach travelling forward, the slice stays on the
-// arc the bus actually drives between the two stops.
-function forwardNearestIdx(path: [number, number][], t: LatLon, startIdx: number): number {
-  const n = path.length;
-  let bestIdx = -1, bestM = Infinity;
-  let arrived = false;
-  for (let step = 1; step <= n; step++) {
-    const i = (startIdx + step) % n;
-    const m = haversineMeters({ lat: path[i][0], lon: path[i][1] }, t);
-    if (m < bestM) { bestM = m; bestIdx = i; }
-    if (m <= 60) arrived = true;
-    // Once we've made our closest approach on this pass and started pulling
-    // away again, stop — don't roll into a later pass through the same area.
-    if (arrived && m > bestM + 80 && bestIdx !== -1) break;
-  }
-  return bestIdx === -1 ? startIdx : bestIdx;
-}
-function buildStopSequencePolyline(
-  path: [number, number][] | undefined, stops: LatLon[] | undefined,
-): [number, number][] | undefined {
-  if (!path || path.length < 2 || !stops || stops.length < 2) return undefined;
-  // Trace the route polyline in travel order: anchor the first stop globally,
-  // then walk forward stop-by-stop. Forward matching keeps the indices
-  // monotonic, so the "ride" line follows the actual streets between board and
-  // alight without grabbing the wrong loop occurrence (which produced straight
-  // cross-cuts and ~7 km southern detours on Green).
-  let cursor = nearestPathIdx(path, stops[0]);
-  const out: [number, number][] = [];
-  for (let s = 1; s < stops.length; s++) {
-    const nextIdx = forwardNearestIdx(path, stops[s], cursor);
-    let slice = nextIdx >= cursor
-      ? path.slice(cursor, nextIdx + 1)
-      : [...path.slice(cursor), ...path.slice(0, nextIdx + 1)];
-    // Degenerate match (same index) — bridge with a straight segment so the
-    // line never silently vanishes.
-    if (slice.length < 2) slice = [path[cursor], path[nextIdx]];
-    if (s === 1) out.push(...slice);
-    else out.push(...slice.slice(1)); // dedupe junction point
-    cursor = nextIdx;
-  }
-  return out.length >= 2 ? out : undefined;
-}
-
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
 // Foot profile lives on a different public OSRM install — the project-osrm
 // demo router only serves the driving profile, which follows one-ways and
