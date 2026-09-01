@@ -3718,28 +3718,11 @@ const TripPlanner: FC<{
           >
             Clear
           </button>
-          <span style={{ color: "#dadce0", fontSize: 14 }}>·</span>
-          <button
-            onClick={() => {
-              setRefreshKey((k) => k + 1);
-              setRefreshed(true);
-              setTimeout(() => setRefreshed(false), 1500);
-              // Re-request GPS when From is using current location so the
-              // trip re-plans from wherever the user actually is now.
-              if (!fromLL && !fromText) onRequestLocate();
-            }}
-            title="Recompute against the latest bus positions"
-            style={{
-              minHeight: 44, padding: "0 14px", fontSize: 14, fontWeight: 500,
-              border: "none", background: "transparent",
-              color: refreshed ? "#2e7d32" : "#1a73e8",
-              cursor: "pointer", fontFamily: "inherit",
-              display: "inline-flex", alignItems: "center",
-              transition: "color 0.2s",
-            }}
-          >
-            {refreshed ? "✓ Refreshed" : "↻ Refresh"}
-          </button>
+          {/* No manual ↻ Refresh here any more: positions, ETAs and the plan
+              recompute on every 5 s poll and GPS runs as a continuous watch,
+              so the button re-did what was already happening. The one manual
+              re-plan that means something — "my bus left, find me the next
+              one" — lives on the departed card, which keeps refreshKey. */}
         </div>
       )}
 
