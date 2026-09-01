@@ -40,6 +40,17 @@ const RawRouteSchema = z.object({
   path: z.array(numFromString).optional(),
 });
 
+const RawAnnouncementSchema = z.object({
+  id: z.number(),
+  // `title` doubles as the affected-routes list ("Red, Brown"); free text.
+  title: z.string(),
+  message: z.string(),
+  button_text: z.string().nullable().optional(),
+  button_url: z.string().nullable().optional(),
+});
+export type Announcement = z.infer<typeof RawAnnouncementSchema>;
+const AnnouncementsResponseSchema = z.array(RawAnnouncementSchema);
+
 const BusesResponseSchema = z.array(RawBusSchema);
 const StopsResponseSchema = z.array(RawStopSchema);
 const RoutesResponseSchema = z.array(RawRouteSchema);
@@ -82,6 +93,14 @@ export class UpstreamClient {
 
   async buses(): Promise<RawBus[]> {
     return this.fetchValidated("/routes_buses.php", BusesResponseSchema);
+  }
+
+  async announcements(): Promise<Announcement[]> {
+    // The service banners Yale's own map shows (stop relocations, detours).
+    // NOTE: this host answers 200 + the SPA's HTML for any unknown path, so a
+    // vanished endpoint surfaces as a JSON parse error, not a 404 — exactly
+    // what fetchValidated already treats as an UpstreamError.
+    return this.fetchValidated("/routes_announcements.php", AnnouncementsResponseSchema);
   }
 
   async stops(): Promise<Stop[]> {

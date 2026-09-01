@@ -95,3 +95,45 @@ npx tsx scripts/id-churn-replay.ts /tmp/replay.json
 
 `raw_positions` is retained for 6 h, so that is the widest window available;
 `jq` is not installed on the machine, parse with `node -e`.
+
+## `node scripts/derived-path-check.mjs` (route geometry)
+
+Grades the GPS-derived route geometry in `src/network/derivePath.ts` against
+upstream's published `path`, for all 15 routes, on real production data. It
+answers one question — *is the derived line actually better, and is it safe to
+serve?* — and is deliberately adversarial, because a **wrong** route line is
+worse for a rider than a coarse one.
+
+Pulls `raw_positions` / `routes` / `stops` from the production SQLite
+**read-only** over `flyctl ssh console` and caches them to
+`scripts/.cache/derived-path-inputs.json` (45-minute TTL), so repeat runs cost
+nothing and never touch production.
+
+- **Table 1** — stop-to-line distance for upstream vs derived, measured both to
+  the nearest **vertex** (what `stopDistances`/`isBetterThanUpstream` judge, and
+  what the consumer actually snaps to) and to the nearest point **on the
+  polyline**; plus the end-to-end number: how many legs of the stop sequence
+  `buildStopSequencePolyline` draws as a straight cross-block diagonal instead
+  of following the road.
+- **Table 2** — samples, buses, lap length vs the route's own length, poll
+  cadence, the longest unobserved hop, and each shape statistic beside the same
+  statistic measured on upstream's own line.
+- **Adversarial checks** — two laps or a lap plus a deadhead; a lap that took a
+  different road; a straight chord across blocks; a path resting on too few
+  samples or a single odd bus (with cross-bus agreement when a second bus has a
+  full lap); backtracking, self-retracing and out-of-sequence stops; and, for
+  routes 9/10, that the West Campus out-and-back spur is covered, not cut. The
+  shape checks are calibrated against upstream rather than an absolute
+  threshold, because Pink (VA Hospital) and Green/Purple (West Campus)
+  legitimately double back.
+- **Not derived** — says which routes produced nothing and why, and whether
+  their schedule says they should be running. Overnight, "no data" for Blue
+  Weekend / Grocery is the correct answer, not a failure.
+
+**Exit codes:** `0` no accepted path failed a check (routes that are simply not
+running are fine), `1` an accepted path failed an adversarial check — do not
+serve it, `2` the harness itself broke.
+
+Flags: `--refresh` (re-pull), `--route=14`, `--json`, `-v`, `--geojson=13`
+(writes `scripts/.cache/route-13.geojson` with the derived line, upstream's line
+and the stops, for eyeballing on a map).

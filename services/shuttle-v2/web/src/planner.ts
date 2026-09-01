@@ -26,6 +26,15 @@ export type TripOption = {
   // to a later bus. Drives the "#X just passed — next is …" note. Cleared
   // automatically once the missed bus drops out of the live feed.
   missedBus?: string;
+  // The pinned bus's own arrival at the board stop, in seconds remaining as
+  // of `computedAtMs` (0 for a bus dwelling there right now). This — not
+  // walkToSec + waitSec — is what "🚌 in …" must display: waitSec clamps at 0
+  // once the bus will beat the rider to the stop, which freezes the sum at
+  // the constant walk time while the bus visibly closes in (report #48, the
+  // stuck "1:49"). Undefined for walk options and future-mode plans, where no
+  // live bus exists to count down.
+  busEtaSec?: number;
+  computedAtMs?: number;
 };
 
 /** Don't keep looping past a boarding point. */
@@ -54,6 +63,94 @@ export function dwellBoardWindowSec(
     remaining = Math.max(0, d.med - elapsed);
   }
   return Math.max(120, remaining + 60);
+}
+
+// ── Live bus selection for a planned option ────────────────────────────────
+//
+// Once a trip is planned, the option stays pinned to its bus so the card does
+// not flap between vehicles mid-glance. These constants bound that loyalty:
+//
+//   STOP_DWELL_SEC    — a bus dwells ~60 s at a stop, so a rider is catchable
+//                       until eta + 60 s. Shared with planTrip's own pick.
+//   SWITCH_BUFFER_SEC — walking GPS can read 50–100 m long; require the
+//                       overshoot past catchability to exceed 90 s before
+//                       giving up on the planned bus (spurious-flip guard).
+//   PIN_SWITCH_MARGIN_SEC — report #49: loyalty must not survive dominance.
+//                       When the pinned bus passes the rider's stop its next
+//                       arrival is a full lap out (20–40 min), yet a rider
+//                       standing AT the stop made canCatch true for ANY eta
+//                       (0 <= eta + 60), so the card told them to wait for it
+//                       to come back around while a second bus a few minutes
+//                       out was ignored — until an incidental GPS jitter
+//                       re-ran planTrip (the rider's observed ~20 s "lag" was
+//                       that luck, not design). If a DIFFERENT catchable bus
+//                       beats the pinned one by at least this margin, switch
+//                       to it in the same poll. 5 min is far above per-poll
+//                       ETA noise between two live buses (tens of seconds),
+//                       so near-equivalent buses still never trade places,
+//                       and far below any lap time (~25 min+), so the
+//                       passed-bus case always clears it.
+
+export const STOP_DWELL_SEC = 60;
+export const SWITCH_BUFFER_SEC = 90;
+export const PIN_SWITCH_MARGIN_SEC = 5 * 60;
+
+export type LiveArrivalPick<A> = { match: A; departed: boolean; missedBus?: string };
+
+/**
+ * Which live arrival an already-planned option should follow this poll.
+ * `live` is computeUpcomingArrivals output for the board stop (soonest
+ * first, may contain each vehicle twice — this lap and the next);
+ * `pinnedBusName` is the bus the plan pinned; `effectiveWalkToSec` is the
+ * rider's remaining walk. Pure and stateless: called fresh every poll, so
+ * every verdict below is reachable within one poll of the data changing.
+ * Returns null only for an empty `live`.
+ */
+export function pickLiveArrival<A extends { eta: number; busName: string }>(
+  live: readonly A[],
+  pinnedBusName: string,
+  effectiveWalkToSec: number,
+): LiveArrivalPick<A> | null {
+  if (live.length === 0) return null;
+  const norm = (s: string) => s.replace(/^#/, "");
+  const canCatch = (a: A) => effectiveWalkToSec <= a.eta + STOP_DWELL_SEC;
+  const canCatchWithBuffer = (a: A) =>
+    effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
+  const catchable = live.filter(canCatch);
+  const pinned = live.find((a) => norm(a.busName) === norm(pinnedBusName));
+  if (pinned && canCatch(pinned)) {
+    // Dominance check (report #49): stay loyal to the pinned bus unless a
+    // different catchable vehicle beats it by the full margin. Same-name
+    // entries are the same vehicle a lap sooner/later — never a "switch".
+    const better = catchable[0];
+    if (
+      better &&
+      norm(better.busName) !== norm(pinned.busName) &&
+      pinned.eta - better.eta >= PIN_SWITCH_MARGIN_SEC
+    ) {
+      return { match: better, departed: false };
+    }
+    return { match: pinned, departed: false };
+  }
+  if (pinned && canCatchWithBuffer(pinned)) {
+    // Borderline — GPS may be reading long. Stay on the planned bus. (A
+    // sooner catchable alternative cannot exist here: catchable requires
+    // eta >= walk - 60, which in this branch exceeds the pinned eta.)
+    return { match: pinned, departed: false };
+  }
+  if (catchable.length > 0) {
+    const match = catchable[0];
+    // The planned bus is still in the feed but we can no longer make it —
+    // record it as missed so the card can surface "#X just passed"... but
+    // only if it's genuinely a DIFFERENT vehicle. Arrivals include a second
+    // lap per bus, so on a single-bus route the next catchable arrival is
+    // usually the same bus a loop later; naming it produced "You can't
+    // catch #12" directly above an ETA for #12.
+    const missed = pinned ? norm(pinned.busName) : undefined;
+    const missedBus = missed && missed !== norm(match.busName) ? missed : undefined;
+    return { match, departed: false, missedBus };
+  }
+  return { match: pinned ?? live[0], departed: true };
 }
 
 export function planTrip(
@@ -145,6 +242,7 @@ export function planTrip(
         // a future plan we use half the published headway since no bus
         // exists yet to time against.
         let waitSec: number; let busName: string;
+        let busEtaSec: number | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
@@ -159,6 +257,7 @@ export function planTrip(
           const arrivals = boardArrivals;
           if (hereBus && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
+            busEtaSec = 0; // it is AT the stop
             busName = hereBus.bus_name.replace(/^#/, "");
           } else if (arrivals.length === 0) {
             continue;
@@ -170,10 +269,11 @@ export function planTrip(
             // flag it "🚌 #X just passed your stop" the instant a fresh plan
             // rendered. Falls back to the soonest when none is catchable —
             // the option then correctly shows "departed".
-            // STOP_DWELL_SEC mirrors the live options memo's canCatch().
-            const STOP_DWELL_SEC = 60;
+            // STOP_DWELL_SEC is shared with pickLiveArrival's canCatch so
+            // plan-time and live pinning can never disagree.
             const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
             waitSec = Math.max(0, next.eta - walkToSec);
+            busEtaSec = next.eta;
             busName = next.busName;
           }
         }
@@ -199,6 +299,8 @@ export function planTrip(
           walkToSec, waitSec, rideSec: cumRide, walkFromSec,
           totalSec, busName,
           directWalkSec,
+          busEtaSec,
+          computedAtMs: busEtaSec !== undefined ? now : undefined,
         });
       }
     }
@@ -328,4 +430,31 @@ export function findPotentialRoutes(
     return ta - tb;
   });
   return out;
+}
+
+/**
+ * Which of the sorted options the collapsed list shows.
+ *
+ * Two shuttles plus the walk row, and a third shuttle ONLY when it is nearly
+ * as good as the second — riders weigh similar options themselves (from
+ * Prospect/Canner to the Green, Blue ranked one minute behind Orange with a
+ * quarter of the walking, and sat hidden behind "show more": report #46). A
+ * distant third is noise and cedes its slot; the walk row always shows because
+ * it is a different kind of answer, not a competing shuttle.
+ */
+export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
+
+export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
+  const shuttles = sorted.filter((o) => o.mode === "shuttle");
+  const second = shuttles[1];
+  const third = shuttles[2];
+  const keepThird =
+    second !== undefined && third !== undefined &&
+    third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
+  let seen = 0;
+  return sorted.filter((o) => {
+    if (o.mode !== "shuttle") return true;
+    seen++;
+    return seen <= 2 || (seen === 3 && keepThird);
+  });
 }

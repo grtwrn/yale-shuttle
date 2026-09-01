@@ -42,7 +42,7 @@ The frontend computes ETAs client-side from the `/api/buses` payload (positions 
 cd services/shuttle-v2
 
 npm run dev          # backend on :8092 (collector + server, tsx watch)
-npm run typecheck    # backend types (tsc --noEmit) — frontend types are NOT covered by this
+npm run typecheck    # backend AND frontend types (a web/ scope error once shipped a live crash)
 npm test             # vitest — 427 tests, covers src/ AND web/src/
 npm run riders       # how many unique browsers are using the app
 
@@ -54,7 +54,12 @@ cd web && npx vite build   # build = the frontend type/syntax gate
 
 ```bash
 cd services/shuttle-v2
-~/.fly/bin/flyctl deploy --remote-only   # deploys to the yale-shuttle app
+npm run deploy        # THE way to deploy: gates -> local staging -> browser
+                      # smoke -> flyctl -> prod verify. Add -- --stage-only to
+                      # stop before prod. Raw `flyctl deploy` skips every check
+                      # that has caught real bugs (a wrong API-shape assumption,
+                      # and the ReferenceError class that once crashed prod).
+~/.fly/bin/flyctl deploy --remote-only   # escape hatch only
 
 # Health
 curl -s https://yale-shuttle.fly.dev/healthz
@@ -100,7 +105,20 @@ curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
   https://yale-shuttle.fly.dev/api/reports/{id}/update
 ```
 
-`POST /api/report` (rider submissions) stays public and rate-limited.
+`POST /api/report` (rider submissions) stays public and rate-limited. Reports
+may carry a screenshot (client downscales to ≤1280 px JPEG; server verifies
+magic bytes, caps at 2 MB, stores beside the DB in `report-images/`, never in a
+row). View one with:
+
+```bash
+curl -s -H "x-admin-token: $TOKEN" \
+  https://yale-shuttle.fly.dev/api/reports/{id}/image -o report.png
+```
+
+The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
+The service worker is deliberately network-first for everything and never
+caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
+the classic self-bricking failure.
 `scripts/map-bot-cron.sh` reads the same token file for its dedupe check.
 
 **Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold.
@@ -164,6 +182,64 @@ curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
   https://yale-shuttle.fly.dev/api/stats/exclude
 ```
 
+## Route lines: the published geometry is right, drawing it was wrong
+
+Riders reported straight diagonals cutting across the map on Orange, then Green.
+Three explanations were tried and **two were wrong**; the record matters because
+each looked convincing:
+
+1. ~~"Upstream's polyline is too coarse."~~ **False.** Yale's own map draws these
+   exact same published lines perfectly (Purple, Orange Night — checked against
+   screenshots of `yale.downtownerapp.com`). A polyline needs a vertex only
+   where the road turns, so 37 points describe a 9.5 km loop just fine.
+2. ~~"Derive better geometry from stored bus positions."~~ Built, measured, and
+   now barely used — see below. It was solving the wrong problem.
+3. **The consumer was snapping stops to the nearest VERTEX.** A stop mid-block
+   is far from any corner: on Orange Night the median stop is **97 m from the
+   nearest vertex but 6 m from the line itself**. That mis-measured every leg,
+   mis-ordered stops sharing a vertex, and wrapped — and the length guard then
+   replaced the wrap with a straight line through the buildings.
+
+`traceStopLegs` in `web/src/geo.ts` now **projects each stop onto the segments**
+and walks forward from the previous stop's projected position. Result: **98.9%
+of every drawn metre lies exactly on the published route** (13 of 15 routes at
+100.0%), measured by sampling each drawn leg every 15 m and taking its distance
+to the published polyline. That measurement is the right one — counting
+"diagonals" is a proxy and it misled twice.
+
+Two guards remain, and both are set from measurement, not intuition:
+
+- **A leg may not exceed 70% of the loop.** Across all 15 routes the longest
+  legitimate leg is 51.7% (Grocery TJ, five stops far apart); a wrap produces
+  88%+ (Green's one bad leg is 98.2%). At 0.5 it cut Grocery TJ's real legs and
+  drew 1,567 m across open water; at 0.9 it stopped catching a line published in
+  the wrong direction.
+- **No whole-ride backstop.** The old one discarded any ride longer than 2.5x the
+  straight line through its stops — which an out-and-back exceeds by
+  construction, throwing away 38 of 822 correct rides.
+
+Do **not** reintroduce a ratio-of-straight-line rule per leg. Purple's West
+Campus out-and-back legitimately doubles back; that rule scored it 72.8%
+on-street and drew a chord across the water.
+
+### Derived route paths (`src/network/derivePath.ts`)
+
+Rebuilds a route's loop from `raw_positions`. **Not served to riders**: the
+payload sends the operator's published `path` byte-for-byte (verified identical
+to `routes_routes.php` for every route, and to every stop's coordinates and
+sequence), so the map matches yale.downtownerapp.com exactly. Serving derived
+geometry is opt-in via `SHUTTLE_SERVE_DERIVED_PATHS=1`, kept as a safety net
+for a route whose published line becomes untraceable — under the current
+acceptance rules that is 2 of 15 routes (Pink, Green), each with one leg the
+published line cannot supply. Acceptance requires halving the undrawable-leg
+count plus a deadhead gate (Blue Night's buses drive a 2.1 km relief run
+hourly, 996 m off route, past no stops; both buses agree to 1 m, so cross-bus
+agreement cannot catch it).
+
+`node scripts/derived-path-check.mjs` grades the swap against production for
+all 15 routes and exits non-zero on a genuine defect; run it after touching any
+of this.
+
 ## Data-quality invariants
 
 These are load-bearing; several rider-visible bugs traced to them:
@@ -207,7 +283,7 @@ itself is unbiased).
 
 - **Don't deploy from the repo root.** The only live config is `services/shuttle-v2/fly.toml` (app `yale-shuttle`). `fly.v1-archived.toml` at the root is the retired v1 config — leave it dead.
 - **Don't touch `/data/shuttle.db`** on the volume — that's v1's archived history.
-- **Don't run standalone `tsc` against `web/`** — `npx vite build` is the frontend's source of truth (bleeding-edge TS/Vite/React versions). Backend `npm run typecheck` is fine.
+- **`npx vite build` compiles but does NOT type-check** — esbuild strips types. A `ReferenceError` (state used in a child component without threading the prop) shipped to production this way on 2026-09-01 and crashed the app for riders. `npm run typecheck` now runs `tsc` over `web/` too; run it before any frontend deploy. (Note: TS's flow analysis gives up inside the 6.8k-line `TransitMap.tsx` component — guards there sometimes need explicit assertions.)
 - **Don't hand-edit route stop lists or path polylines.** They come from TransLoc upstream.
 - **Don't commit unless the user asks.** The host handles source control. (`services/shuttle-v2/` has been git-tracked since June 2026 — history exists now.)
 - `services/shuttle-collector/` and `services/shuttle-map/` are the archived v1 stack — don't modify or deploy them.

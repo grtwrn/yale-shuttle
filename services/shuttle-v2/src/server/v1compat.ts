@@ -26,6 +26,17 @@ const round1 = (x: number): number => Math.round(x * 10) / 10;
 export function buildBusesPayload(collector: Collector): Record<string, unknown> {
   const net = collector.ref.get();
   const live = collector.getLiveBuses();
+  // Geometry derived from where buses actually drove, best-so-far per route.
+  // Usually empty at first boot and fills in over the following days as each
+  // route is caught running; see `Collector.runDerivePaths`.
+  // Route geometry is served EXACTLY as the operator publishes it, so the map
+  // is byte-for-byte the one on yale.downtownerapp.com. GPS-derived paths are
+  // kept as diagnostics (/api/stats) and as an opt-in safety net for a route
+  // whose published line becomes untraceable — they are not what riders see
+  // unless SHUTTLE_SERVE_DERIVED_PATHS=1 is set deliberately.
+  const derivedPaths = process.env.SHUTTLE_SERVE_DERIVED_PATHS === "1"
+    ? collector.derivedPaths()
+    : new Map<number, readonly [number, number][]>();
 
   const buses = live.map((b) => ({
     bus_id: b.busId,
@@ -59,7 +70,16 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   for (const r of net.routes.values()) {
     const rid = String(r.id);
     routes[rid] = r.stops;
-    if (r.path) route_paths[rid] = r.path;
+    // Prefer the derived line over upstream's published one. Several published
+    // paths are too coarse to locate a stop on — Orange Night ships 37 points
+    // for a 9.5 km loop, putting a stop a median 97 m from its own route — and
+    // this payload is where the map gets the geometry it draws a rider's ride
+    // on. A derived path is only ever present when it measured materially
+    // closer to the stops (see `isBetterThanUpstream`), so preferring it is
+    // never a downgrade; when there is none, upstream is used unchanged.
+    const derived = derivedPaths.get(r.id);
+    if (derived) route_paths[rid] = derived as [number, number][];
+    else if (r.path) route_paths[rid] = r.path;
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
     const n = r.stops.length;
@@ -91,6 +111,11 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     buses,
     routes,
     route_paths,
+    // Service banners from Yale's own map (routes_announcements.php), so a stop
+    // relocation reaches the rider at decision time. `title` names the affected
+    // routes as free text ("Red, Brown"); matching to routes happens client-side
+    // where the route names already live.
+    announcements: collector.announcements(),
     stop_names,
     stop_coords,
     segments,
@@ -120,8 +145,8 @@ const BUSES_CACHE_MAX_AGE_MS = 1_000;
  * event loop that also runs the collector. Now it happens once per collector
  * tick and every concurrent request gets the same string back.
  *
- * Keyed on `collector.dataVersion()`, which covers positions, calibration and
- * topology. The wall-clock bound is the subtle half: during an upstream outage
+ * Keyed on `collector.dataVersion()`, which covers positions, calibration,
+ * topology and newly derived route geometry. The wall-clock bound is the subtle half: during an upstream outage
  * `runPoll` bails before touching live positions, so the version never moves —
  * but `getLiveBuses()` filters on LIVE_BUS_TTL_MS against the clock, so a
  * version-only key would keep serving ghost buses that have aged off the map.

@@ -14,11 +14,15 @@ import { planTrip } from "../planner/planner.js";
 import { PlanRequestSchema } from "../schema/api.js";
 
 import {
+  listMyReports,
   listReports,
+  reportImageFile,
   rateLimitAllow,
+  riderUpdateReport,
   submitReport,
   updateReport,
   type ReportListParams,
+  type RiderAction,
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -36,6 +40,10 @@ const HEALTH_POLL_STALE_MS = 60_000;
 // Cap request bodies so a malicious/oversized POST can't OOM the box or bloat
 // the DB (report context is stored verbatim).
 const REPORT_BODY_LIMIT = 64 * 1024;
+// A report with a screenshot attached. 2 MB of image as base64 is ~2.7 MB of
+// JSON; the client downscales before sending so a normal one is ~100-300 KB.
+const REPORT_WITH_IMAGE_BODY_LIMIT = 3 * 1024 * 1024;
+const REPORT_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const PLAN_BODY_LIMIT = 16 * 1024;
 // The triage-update body only ever carries a status and a short note, so it
 // gets a far tighter cap than a rider's free-form report.
@@ -266,10 +274,35 @@ export function buildApp(opts: AppOptions): Hono {
 
   // -- Reports --------------------------------------------------------------
 
+  // Screenshots attached to reports live as files beside the DB, never inside
+  // it — a 2 MB blob has no business in a row the triage list scans. The name
+  // is random, the extension is decided by US from the verified magic bytes
+  // (nothing user-supplied touches the filesystem path), and the file is only
+  // readable back through the admin-token endpoint below.
+  const imageDir = path.join(
+    path.dirname(process.env.SHUTTLE_V2_DB ??
+      path.join(process.env.SHUTTLE_V2_DB_DIR ?? "./store", "shuttle-v2.db")),
+    "report-images",
+  );
+  const decodeReportImage = (v: unknown): { bytes: Buffer; ext: string } | null => {
+    if (typeof v !== "string") return null;
+    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(v);
+    if (!m) return null;
+    const bytes = Buffer.from(m[2]!, "base64");
+    if (bytes.length < 8 || bytes.length > REPORT_IMAGE_MAX_BYTES) return null;
+    // Trust the magic bytes, not the label.
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return { bytes, ext: "png" };
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return { bytes, ext: "jpg" };
+    if (bytes.subarray(0, 4).toString("latin1") === "RIFF" &&
+        bytes.subarray(8, 12).toString("latin1") === "WEBP") return { bytes, ext: "webp" };
+    return null;
+  };
+
+
   // v1's frontend posts a free-form payload: { note?, source?, option?, ... }.
   // We stash the whole thing as context and return v1's { ok, id } shape.
   app.post("/api/report", bodyLimit({
-    maxSize: REPORT_BODY_LIMIT,
+    maxSize: REPORT_WITH_IMAGE_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     const ip = clientIp(c) ?? "anon";
@@ -286,12 +319,101 @@ export function buildApp(opts: AppOptions): Hono {
     const note = typeof b.note === "string" ? b.note.trim().slice(0, REPORT_TEXT_MAX) : "";
     const kind: "issue" | "feedback" = b.source === "feedback" ? "feedback" : "issue";
     const routeId = typeof b.routeId === "number" ? b.routeId : null;
+
+    // Optional screenshot. The data URL is pulled OUT of the context stash
+    // (2 MB of base64 in a DB row would make every triage query pay for it)
+    // and written beside the DB; the context keeps only the filename. A bad
+    // image never fails the report — the words still matter without it.
+    let imageFile: string | undefined;
+    const img = decodeReportImage(b.image);
+    delete b.image;
+    if (img) {
+      try {
+        fs.mkdirSync(imageDir, { recursive: true });
+        imageFile = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
+        fs.writeFileSync(path.join(imageDir, imageFile), img.bytes);
+      } catch {
+        imageFile = undefined;
+      }
+    }
+    // The reporter's anonymous browser id (same header the /api/buses poll
+    // carries) lets /api/my-reports show them THEIR reports later. Optional:
+    // a rider with storage disabled still gets their report through.
+    const anonHeader = c.req.header("x-anon-id");
+    const anonId = anonHeader && ANON_ID_PATTERN.test(anonHeader) ? anonHeader : null;
     const { id } = submitReport(
       opts.bundle.db,
-      { kind, routeId, body: note || "(report)", context: b },
+      { kind, routeId, body: note || "(report)", context: imageFile ? { ...b, imageFile } : b },
       ip,
+      anonId,
     );
-    return c.json({ ok: true, id });
+    return c.json({ ok: true, id, attached: Boolean(imageFile) });
+  });
+
+  // -- Rider self-service: their own reports --------------------------------
+  // Public, but scoped by the anonymous browser id: you only ever see and
+  // touch reports submitted with YOUR id. Ownership failures are 404, never
+  // 403 — an id that belongs to someone else must look nonexistent. The
+  // rider-facing shape is a strict allowlist (see listMyReports); client_ip
+  // and the raw context snapshot never leave the server.
+
+  const riderAnonId = (c: Context): string | null => {
+    const v = c.req.header("x-anon-id");
+    return v && ANON_ID_PATTERN.test(v) ? v : null;
+  };
+
+  app.get("/api/my-reports", (c) => {
+    c.header("Cache-Control", "no-store");
+    const anonId = riderAnonId(c);
+    // No (valid) id means no reports can be theirs — an empty list, not an
+    // error, so the frontend needs no special case.
+    if (!anonId) return c.json({ reports: [] });
+    // Separate bucket from report submission (a rider refreshing their list
+    // must not eat their submit budget), looser per-minute for the UI.
+    if (!rateLimitAllow(`my:${clientIp(c) ?? "anon"}`, now(), { perMinute: 30, perDay: 2000 })) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    return c.json({ reports: listMyReports(opts.bundle.db, anonId) });
+  });
+
+  app.post("/api/my-reports/:id/update", bodyLimit({
+    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    // Looser than report submission on purpose: archiving a long history is
+    // one tap per row, and a rider tidying 15 old reports in a minute is using
+    // the feature, not abusing it (the bot's first find, from a screenshot of
+    // exactly that failing at row 11).
+    if (!rateLimitAllow(`myupd:${clientIp(c) ?? "anon"}`, now(), { perMinute: 40, perDay: 500 })) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    const body = (await c.req.json().catch(() => null)) as {
+      action?: unknown;
+      text?: unknown;
+    } | null;
+    let action: RiderAction;
+    if (body?.action === "resolve") {
+      action = { action: "resolve" };
+    } else if (body?.action === "archive" || body?.action === "unarchive") {
+      action = { action: body.action };
+    } else if (body?.action === "followup" && typeof body.text === "string" && body.text.trim()) {
+      action = { action: "followup", text: body.text.trim().slice(0, REPORT_TEXT_MAX) };
+    } else {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    const anonId = riderAnonId(c);
+    const id = Number(c.req.param("id"));
+    // A missing id header or malformed id can't own anything; same 404 as a
+    // wrong owner so existence is never confirmed.
+    if (!anonId || !Number.isInteger(id)) return c.json({ error: "not_found" }, 404);
+    const result = riderUpdateReport(opts.bundle.db, id, anonId, action, now());
+    if ("error" in result) {
+      if (result.error === "too_many_followups") {
+        return c.json({ error: "too_many_followups" }, 400);
+      }
+      return c.json({ error: "not_found" }, 404);
+    }
+    return c.json({ ok: true, status: result.status });
   });
 
   // -- Operator triage (not public) -----------------------------------------
@@ -356,8 +478,35 @@ export function buildApp(opts: AppOptions): Hono {
     if (status === "open" || status === "addressed" || status === "wontfix") {
       params.status = status;
     }
+    const priority = c.req.query("priority");
+    if (priority === "urgent" || priority === "normal" || priority === "nice_to_have") {
+      params.priority = priority;
+    }
     if (limit && Number.isFinite(limit)) params.limit = limit;
     return c.json({ reports: listReports(opts.bundle.db, params) });
+  });
+
+  // The screenshot attached to one report. Admin-only for the same reason the
+  // list is: riders' screenshots can contain their location and plans. The
+  // filename comes from the report's own context, never from the URL, so this
+  // cannot be used to read arbitrary files.
+  app.get("/api/reports/:id/image", requireAdmin, (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isInteger(id)) return c.json({ error: "invalid_request" }, 400);
+    const name = reportImageFile(opts.bundle.db, id);
+    if (!name || !/^[a-f0-9]{24}\.(png|jpg|webp)$/.test(name)) {
+      return c.json({ error: "no_image" }, 404);
+    }
+    try {
+      const bytes = fs.readFileSync(path.join(imageDir, name));
+      const type = name.endsWith(".png") ? "image/png"
+        : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
+      c.header("Content-Type", type);
+      c.header("Cache-Control", "private, max-age=3600");
+      return c.body(bytes);
+    } catch {
+      return c.json({ error: "no_image" }, 404);
+    }
   });
 
   app.post("/api/reports/:id/update", requireAdmin, bodyLimit({
@@ -369,6 +518,8 @@ export function buildApp(opts: AppOptions): Hono {
     const body = (await c.req.json().catch(() => null)) as {
       status?: string;
       note?: string;
+      anonId?: string;
+      priority?: string;
     } | null;
     if (!body || (body.status !== "open" && body.status !== "addressed" && body.status !== "wontfix")) {
       return c.json({ error: "invalid_status" }, 400);
@@ -377,7 +528,14 @@ export function buildApp(opts: AppOptions): Hono {
       status: body.status,
     };
     if (typeof body.note === "string") update.note = body.note.slice(0, REPORT_TEXT_MAX);
-    const ok = updateReport(opts.bundle.db, id, update);
+    const update2: typeof update & { anonId?: string; priority?: "urgent" | "normal" | "nice_to_have" } = update;
+    if (typeof body.anonId === "string" && ANON_ID_PATTERN.test(body.anonId)) {
+      update2.anonId = body.anonId;
+    }
+    if (body.priority === "urgent" || body.priority === "normal" || body.priority === "nice_to_have") {
+      update2.priority = body.priority;
+    }
+    const ok = updateReport(opts.bundle.db, id, update2);
     if (!ok) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });
   });

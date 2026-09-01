@@ -8,17 +8,25 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, suggIcon, suggLabel,
+  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
   type GeocodeResult,
 } from "./format";
 import { buildStopSequencePolyline, haversineMeters, type LatLon } from "./geo";
 import {
-  dwellBoardWindowSec, findPotentialRoutes, planTrip, type TripOption,
+  AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
+  findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
+  vibrateAlert, type FiredPings,
+} from "./leaveAlert";
+import { topVisibleOptions,
+  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { ContributeButton } from "./ContributeButton";
+import IssuesPanel from "./IssuesPanel";
+import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
@@ -1427,6 +1435,8 @@ const TripPlanner: FC<{
   recentTrips: SavedTrip[];
   onRecordRecent: (trips: SavedTrip[]) => void;
   onDeleteRecent: (id: string) => void;
+  onClearRecents: () => void;
+  announcements: ServiceAnnouncement[];
   pendingTrip: SavedTrip | null;
   onConsumePending: () => void;
   // Parent passes a callback so the Accuracy tab can scope its stats to
@@ -1435,7 +1445,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, pendingTrip, onConsumePending, onBoard }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -1469,6 +1479,22 @@ const TripPlanner: FC<{
   // collapse it.
   const [detailsKey, setDetailsKey] = useState<string | null>(null);
   useEffect(() => { setDetailsKey(expandedKey); }, [expandedKey]);
+  // ── Leave-time reminder ──────────────────────────────────────────────
+  // At most ONE armed reminder at a time (arming another option replaces
+  // it). Deliberately NOT persisted: an in-page timer cannot fire after
+  // the page dies, so surviving a reload would be a lie to the rider.
+  // Timing/message rules live in leaveAlert.ts (pure, unit-tested); the
+  // engine effect below (after the options memo) feeds it live data.
+  // Declared HERE, before any hook that references it — see the TDZ
+  // warning at the top of this file's conventions.
+  const [reminder, setReminder] = useState<{ routeLabel: string } | null>(null);
+  // In-app fallback banner when a system notification can't be shown
+  // (permission denied, or iOS Safari where the page-context
+  // Notification API doesn't exist at all).
+  const [reminderBanner, setReminderBanner] = useState<string | null>(null);
+  // Which pings already fired for the CURRENT arm. A ref, not state: the
+  // 1 s engine tick must read/write it without re-arming its effect.
+  const reminderFiredRef = useRef<FiredPings>(NO_PINGS_FIRED);
   // Google-Maps-app style: show the route-overview map open by default
   // (rider sees the map first, cards below) — collapsible via the same
   // toggle for anyone who'd rather not see it.
@@ -1730,8 +1756,9 @@ const TripPlanner: FC<{
       // passed" (it could just mean the bus is on the far side of
       // the loop coming toward you). We only flag departed when NO
       // bus on the route is catchable.
+      const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -1789,61 +1816,79 @@ const TripPlanner: FC<{
         // they arrive, so fall through to the normal math.
         const waitSec = 0;
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
-        return { ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false };
+        return {
+          ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
+          busEtaSec: 0, computedAtMs: nowMs,
+        };
       }
 
       if (live.length === 0) {
         // No future arrival and no bus parked at the stop — truly unreachable.
         return { ...o, departed: true };
       }
-      // A bus is catchable if the user arrives at the stop before the bus
-      // finishes dwelling. Bus reaches stop at bus.eta, dwells for
-      // STOP_DWELL_SEC, then departs. User reaches stop at effectiveWalkToSec.
-      // Catchable when: effectiveWalkToSec <= bus.eta + STOP_DWELL_SEC
-      const STOP_DWELL_SEC = 60;
-      // Extra buffer before switching away from the planned bus. Live GPS can
-      // read 50–100 m long while the rider is walking, inflating effectiveWalkToSec
-      // past the catchable threshold and causing a spurious flip to the next shuttle.
-      // Require the overshoot to exceed 90 s (~110 m at walking speed) before giving up.
-      const SWITCH_BUFFER_SEC = 90;
-      const canCatch = (bus: typeof live[number]) =>
-        effectiveWalkToSec <= bus.eta + STOP_DWELL_SEC;
-      const canCatchWithBuffer = (bus: typeof live[number]) =>
-        effectiveWalkToSec <= bus.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
-      const catchable = live.filter(canCatch);
-      const pinned = live.find((a) => a.busName.replace(/^#/, "") === o.busName.replace(/^#/, ""));
-      let match: typeof live[number];
-      let departed = false;
-      let missedBus: string | undefined;
-      if (pinned && canCatch(pinned)) {
-        match = pinned;
-      } else if (pinned && canCatchWithBuffer(pinned)) {
-        // Borderline — GPS may be reading long. Stay on the planned bus; waitSec clamps to 0.
-        match = pinned;
-      } else if (catchable.length > 0) {
-        match = catchable[0];
-        // The planned bus is still in the feed but we can no longer make it —
-        // record it as missed so the card can surface "#X just passed".
-        if (pinned && !canCatch(pinned)) {
-          const missed = pinned.busName.replace(/^#/, "");
-          // ...but only if it's genuinely a DIFFERENT vehicle. Arrivals now
-          // include a second lap per bus, so on a single-bus route the next
-          // catchable arrival is usually the same bus a loop later. Naming it
-          // produced "🚌 You can't catch #12 — showing the next bus:" directly
-          // above an ETA for #12, and made the overview draw both a live pin
-          // and a dimmed "just passed" pin on one vehicle.
-          if (missed !== match.busName.replace(/^#/, "")) missedBus = missed;
-        }
-      } else {
-        match = pinned ?? live[0];
-        departed = true;
-      }
+      // Which arrival to follow — pinned-bus loyalty, its catchability
+      // bounds, the report-#49 dominance switch, and the departed verdict
+      // all live in pickLiveArrival (planner.ts), where they are unit
+      // tested. `live` is non-empty here, so the pick exists.
+      const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
+      if (!picked) return { ...o, departed: true };
+      const { match, departed, missedBus } = picked;
       const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
-      return { ...o, waitSec, totalSec, busName: match.busName, departed, missedBus };
+      return {
+        ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
+        busEtaSec: match.eta, computedAtMs: nowMs,
+      };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  // Latest options for the reminder engine's interval closure — the memo
+  // above rebuilds the array every /api/buses poll, and re-arming the
+  // interval on each poll would reset nothing but still churn; a ref lets
+  // one interval read fresh data.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  // The reminder engine: once armed, check every second (piggybacking on
+  // the same remainingSec countdown the on-screen ETA uses, so the ping
+  // and the number the rider watches always agree). computeLeaveAlert
+  // decides IF a ping fires; this effect only delivers it.
+  useEffect(() => {
+    if (!reminder) return;
+    const { routeLabel } = reminder;
+    const check = () => {
+      const o = findReminderOption(optionsRef.current, routeLabel);
+      if (!o) {
+        // Option gone / departed / no live bus (route stopped running,
+        // plan cleared) — quietly disarm.
+        setReminder(null);
+        return;
+      }
+      const input = {
+        busEtaSec: o.busEtaSec, computedAtMs: o.computedAtMs,
+        walkToSec: o.walkToSec, nowMs: Date.now(),
+      };
+      const ping = computeLeaveAlert(input, reminderFiredRef.current);
+      if (!ping) return;
+      reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
+      const msg = leaveAlertMessage(ping, routeLabel, input);
+      // System notification when possible (SW registration first so it
+      // works backgrounded on Android); otherwise the in-app banner +
+      // vibration. deliverPing never throws.
+      void deliverPing(msg).then((shown) => {
+        if (!shown) {
+          setReminderBanner(msg);
+          vibrateAlert();
+        }
+      });
+      // leave_now is the final ping — the reminder has done its job.
+      if (ping === "leave_now") setReminder(null);
+    };
+    check(); // immediate: a late arm inside a window pings right away
+    const id = setInterval(check, 1000);
+    return () => clearInterval(id);
+  }, [reminder]);
 
   // A shuttle is "slower than walking" only when the time spent actually
   // COMMUTING (walk to stop + ride + walk from stop) exceeds the direct
@@ -2087,7 +2132,7 @@ const TripPlanner: FC<{
     try {
       const res = await fetch("/api/report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...anonIdHeader() },
         body: JSON.stringify({
           note,
           client: {
@@ -2268,6 +2313,33 @@ const TripPlanner: FC<{
   const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
+      {/* In-app fallback for a leave-time ping when a system notification
+          can't be shown (permission denied, or iOS Safari page context
+          where the Notification API doesn't exist). Fixed so it's seen
+          regardless of scroll; stays up until dismissed. */}
+      {reminderBanner && (
+        <div role="alert" style={{
+          position: "fixed", top: 12, left: 12, right: 12, zIndex: 3000,
+          maxWidth: 536, margin: "0 auto",
+          display: "flex", alignItems: "center", gap: 10,
+          background: "#1a73e8", color: "#fff", borderRadius: 12,
+          padding: "10px 6px 10px 14px",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+          fontSize: 15, fontWeight: 600, lineHeight: 1.4,
+        }}>
+          <span aria-hidden>🔔</span>
+          <span style={{ flex: 1 }}>{reminderBanner}</span>
+          <button
+            onClick={() => setReminderBanner(null)}
+            aria-label="Dismiss reminder"
+            style={{
+              minWidth: 44, minHeight: 44, flexShrink: 0,
+              border: "none", background: "transparent", color: "#fff",
+              fontSize: 18, cursor: "pointer", fontFamily: "inherit",
+            }}
+          >✕</button>
+        </div>
+      )}
       {/* Details view: search/plan chrome is hidden (not unmounted — its
           state must survive so ← back restores the same plan). */}
       <div style={{ display: detailOpen ? "none" : undefined }}>
@@ -2796,7 +2868,8 @@ const TripPlanner: FC<{
             // "Show N more routes" toggle) so the map overlays only the routes
             // currently shown to the rider, and grows when they reveal more.
             const _sortedForMap = orderedOptions ?? [];
-            const _visibleForMap = showAllOptions ? _sortedForMap : _sortedForMap.slice(0, 3);
+            // Same rule as the list below — the map shows what the list shows.
+            const _visibleForMap = showAllOptions ? _sortedForMap : topVisibleOptions(_sortedForMap);
             // Route-details view open: the map narrows to just that route,
             // like Google Maps' directions-detail screen.
             const _mapOpts = expandedKey
@@ -2862,10 +2935,14 @@ const TripPlanner: FC<{
                 approach,
                 bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
                 passedBus: passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
-                // Bus reaches the board stop after (walk + wait) — waitSec is
-                // derived as bus-ETA minus walk, so the sum is the bus's own
-                // arrival. Rider steps off at total minus the trailing walk.
-                boardEta: o.departed ? null : fmtMin(o.walkToSec + o.waitSec),
+                // The bus's own arrival at the board stop, counted down from
+                // when it was computed. (walk + wait) is NOT that number:
+                // waitSec clamps at 0 when the bus beats the rider there, so
+                // the sum froze at the walk time — report #48. Rider steps
+                // off at total minus the trailing walk.
+                boardEta: o.departed ? null : fmtMin(
+                  remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
             }
@@ -2939,7 +3016,8 @@ const TripPlanner: FC<{
             // Fastest-first with hysteresis — see orderedOptions above.
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
-            const _visibleBase = showAllOptions ? _sorted : _sorted.slice(0, 3);
+            // Shuttles-plus-walk visibility rule — see topVisibleOptions.
+            const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested
@@ -3106,7 +3184,15 @@ const TripPlanner: FC<{
                     scannable when the user just wants to pick one. */}
                 {o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
                   const { busMatch, stopsAway, normBus } = shuttleCtx;
-                  const busEta = o.walkToSec + o.waitSec;
+                  // The bus's own arrival at the board stop, less whatever has
+                  // elapsed since it was computed. NOT walkToSec + waitSec:
+                  // waitSec clamps at 0 once the bus will beat the rider to
+                  // the stop, which froze this line at the constant walk time
+                  // ("in 1:49" for a full minute) while the bus visibly
+                  // closed in — report #48.
+                  const busEta = remainingSec(
+                    o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs,
+                  );
                   // The bus AFTER the pinned one (user request 2026-07-17) —
                   // lets riders judge "can I skip this one?" at a glance.
                   // Strictly later than the pinned arrival so an earlier,
@@ -3149,7 +3235,7 @@ const TripPlanner: FC<{
                           ? (shuttleCtx.stopsAway === 0
                               ? "🚌 The bus is at your stop — you won't arrive in time, check for the next shuttle"
                               : "🚌 The bus will reach your stop before you arrive — check for the next shuttle")
-                          : `🚌 in ${fmtMin(busEta)}`}
+                          : busEta < 10 ? "🚌 arriving now" : `🚌 in ${fmtMin(busEta)}`}
                         {!o.departed && nextArr && (
                           <span style={{ color: "#9aa0a6" }}>
                             {` · next in ${fmtMin(nextArr.eta)}`}
@@ -3203,6 +3289,22 @@ const TripPlanner: FC<{
                       marginTop: 10, paddingTop: 10,
                       borderTop: "1px solid #dadce0",
                     }} onClick={(e) => e.stopPropagation()}>
+                      {/* Service banners from Yale's own map, shown only when
+                          they name THIS option's line (or name no line at all).
+                          A stop relocation belongs at decision time, in the
+                          card the rider is already reading — not on a page
+                          they'll never visit. */}
+                      {announcementsForRoute(o.routeLabel, announcements).map((a) => (
+                        <div key={a.id} style={{
+                          display: "flex", gap: 6, alignItems: "flex-start",
+                          background: "#FFF8E1", border: "1px solid #FFE082",
+                          borderRadius: 6, padding: "6px 8px", marginBottom: 8,
+                          fontSize: 12.5, color: "#795548", lineHeight: 1.45,
+                        }}>
+                          <span aria-hidden>⚠️</span>
+                          <span>{a.message}</span>
+                        </div>
+                      ))}
                       {/* THE single description of the trip — one chip line,
                           walk › wait › ride › walk (user feedback 2026-07-17:
                           "could be one line"). The colored pill carries the
@@ -3310,6 +3412,47 @@ const TripPlanner: FC<{
                               }}
                             >
                               🚌 I'm on it
+                            </button>
+                          </>
+                        )}
+                        {/* Leave-time reminder. Hidden when the rider is
+                            effectively at the stop already (walk < 60 s —
+                            they can see the bus, a ping is noise) or when
+                            there's no live bus ETA to count down (future
+                            mode / departed). One reminder at a time: arming
+                            here silently replaces any other armed option,
+                            and the button label is the whole armed-state
+                            UI — no modal. */}
+                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && o.walkToSec >= AT_STOP_WALK_SEC && (
+                          <>
+                            <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (reminder?.routeLabel === o.routeLabel) {
+                                  setReminder(null); // tap again to cancel
+                                  return;
+                                }
+                                reminderFiredRef.current = NO_PINGS_FIRED;
+                                setReminderBanner(null);
+                                // Permission ask must come from this tap —
+                                // never on load. Fire-and-forget: if it's
+                                // denied we fall back to the in-app banner.
+                                void ensureNotifyPermission();
+                                setReminder({ routeLabel: o.routeLabel });
+                              }}
+                              title={reminder?.routeLabel === o.routeLabel
+                                ? "Reminding you when it's time to leave — tap to cancel"
+                                : "Ping me 5 min before it's time to leave, and again when it's time to go"}
+                              style={{
+                                fontSize: 13, padding: "0 8px",
+                                minHeight: 44, display: "inline-flex", alignItems: "center",
+                                border: "none", background: "transparent",
+                                color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
+                                fontWeight: reminder?.routeLabel === o.routeLabel ? 700 : 500,
+                              }}
+                            >
+                              {reminder?.routeLabel === o.routeLabel ? "🔔 Reminding you" : "🔔 Remind me"}
                             </button>
                           </>
                         )}
@@ -3751,7 +3894,7 @@ const TripPlanner: FC<{
           }}>
             <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent destinations</span>
             <button
-              onClick={() => recentTrips.forEach((t) => onDeleteRecent(t.id))}
+              onClick={onClearRecents}
               style={{
                 border: "none", background: "transparent",
                 color: "#90a4ae",
@@ -5657,6 +5800,7 @@ const TransitMap: FC = () => {
   // replacing the OSRM driving-directions fallback that occasionally
   // picked the wrong street.
   const [routePaths, setRoutePaths] = useState<Record<string, [number, number][]>>({});
+  const [announcements, setAnnouncements] = useState<ServiceAnnouncement[]>([]);
   // Nested: {bus_name: {route_id: {stop_id: {med, sd, n}}}} — per-bus dwell
   // that we prefer over route-level when computing stall credit.
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
@@ -5674,11 +5818,31 @@ const TransitMap: FC = () => {
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
-  const [listView, setListView] = useState<"all" | "trip" | "map">(() => {
+  const [listView, setListView] = useState<"all" | "trip" | "map" | "favorites" | "issues">(() => {
     const saved = localStorage.getItem("listView");
-    return saved === "all" || saved === "trip" || saved === "map" ? saved : "trip";
+    return saved === "all" || saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
   });
   useEffect(() => { localStorage.setItem("listView", listView); }, [listView]);
+  // "Issues" tab notification: did the operator change the status of one of
+  // this rider's reports since they last opened the tab? Checked ONCE at load
+  // (not on the 5 s poll — status changes are rare, and the poll must stay
+  // cheap). The badge lights the tab; the banner is dismissible per session.
+  // IssuesPanel itself does the marking-seen: on a successful fetch it writes
+  // the seen-status map and calls onAllSeen, which clears both. All state is
+  // declared here, BEFORE any effect that reads it (TDZ — see CLAUDE.md).
+  const [issuesBadge, setIssuesBadge] = useState(false);
+  const [issuesBannerDismissed, setIssuesBannerDismissed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyReports()
+      .then((reports) => {
+        if (!cancelled && reports.length > 0 && hasUnseenChanges(reports, loadSeenStatuses())) {
+          setIssuesBadge(true);
+        }
+      })
+      .catch(() => { /* offline or storage-less — just no badge */ });
+    return () => { cancelled = true; };
+  }, []);
   // All tab defaults to "Active" — a first-time visitor should see the
   // routes running right now, not a wall of 14 diagrams. When nothing is
   // running the filter is moot, so fall back to showing everything
@@ -5694,6 +5858,76 @@ const TransitMap: FC = () => {
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
+  // "Install app" affordance. Three situations, three behaviours:
+  //   - Chrome (Android/desktop): the browser hands us a beforeinstallprompt
+  //     event; the button replays it, which opens the REAL install dialog.
+  //     Chrome stops firing it once installed, so the button self-hides.
+  //   - iOS Safari: Apple exposes no install API at all, so the button can only
+  //     show the two manual steps. Dismissal is remembered — there is no way to
+  //     detect "already installed" from the browser tab on iOS.
+  //   - Running AS the installed app (standalone display mode): hidden.
+  const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<unknown> } | null>(null);
+  const [iosHintOpen, setIosHintOpen] = useState(false);
+  const [installHidden, setInstallHidden] = useState<boolean>(() => {
+    try {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+      if ((navigator as unknown as { standalone?: boolean }).standalone === true) return true;
+      return localStorage.getItem("installHintDismissed") === "1";
+    } catch { return true; }
+  });
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.userAgent.includes("Mac") && navigator.maxTouchPoints > 1);
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as unknown as { prompt: () => Promise<unknown> });
+    };
+    const onInstalled = () => {
+      setInstallHidden(true);
+      try { localStorage.setItem("installHintDismissed", "1"); } catch { /* fine */ }
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const dismissInstallHint = () => {
+    setInstallHidden(true);
+    try { localStorage.setItem("installHintDismissed", "1"); } catch { /* fine */ }
+  };
+  // Only shown when tapping it can actually help: Chrome gave us a prompt to
+  // replay, or we're on iOS where the manual steps are the only route.
+  const showInstall = !installHidden && (installPrompt !== null || isIOS);
+  // Attached screenshot as a JPEG data URL, already downscaled. Phones produce
+  // 12 MP screenshots; nobody triages bugs at 12 MP, and the server caps the
+  // upload at 2 MB, so the browser shrinks to <=1280 px before anything is sent.
+  const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
+  const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
+  const attachScreenshot = (file: File | undefined) => {
+    setFeedbackImageErr(null);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setFeedbackImageErr("That's not an image"); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const g = canvas.getContext("2d");
+      if (!g) { setFeedbackImageErr("Couldn't read the image"); return; }
+      g.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      // ~2 MB decoded is the server's cap; base64 is 4/3 of that.
+      if (dataUrl.length > 2.6 * 1024 * 1024) { setFeedbackImageErr("Image too large"); return; }
+      setFeedbackImage(dataUrl);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); setFeedbackImageErr("Couldn't read the image"); };
+    img.src = url;
+  };
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
     if (!msg) return;
@@ -5702,9 +5936,10 @@ const TransitMap: FC = () => {
     try {
       const res = await fetch("/api/report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...anonIdHeader() },
         body: JSON.stringify({
           note: msg,
+          image: feedbackImage ?? undefined,
           source: "feedback",
           client: {
             userAgent: navigator.userAgent,
@@ -5717,6 +5952,7 @@ const TransitMap: FC = () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json();
       setFeedbackText("");
+      setFeedbackImage(null);
       setFeedbackOpen(false);
       setFeedbackStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
     } catch {
@@ -6095,7 +6331,8 @@ const TransitMap: FC = () => {
     const next = new Set<string>();
     for (const cfg of ROUTE_LISTS) {
       const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-      const isFav = favorites.has(cfg.routeIds[0]);
+      const rid0 = cfg.routeIds[0];
+          const isFav = rid0 !== undefined && favorites.has(rid0);
       if (hasBuses && isFav) continue; // keep visible
       const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
       if (toggle) next.add(toggle);
@@ -6166,6 +6403,7 @@ const TransitMap: FC = () => {
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
         if (data.route_paths) setRoutePaths(data.route_paths);
+        if (Array.isArray(data.announcements)) setAnnouncements(data.announcements as ServiceAnnouncement[]);
       } catch { /* aborted or network error — next tick will retry */ }
     };
     // Adaptive cadence: 5s when the tab is visible (active riders
@@ -6273,7 +6511,7 @@ const TransitMap: FC = () => {
           overflowX: "auto", WebkitOverflowScrolling: "touch",
           justifyContent: "center", flexWrap: "wrap",
         }}>
-          {(["trip", "all", "map"] as const).map((v) => (
+          {(["trip", "all", "map", "issues"] as const).map((v) => (
             <button
               key={v}
               onClick={() => { setListView(v); }}
@@ -6293,10 +6531,50 @@ const TransitMap: FC = () => {
               }}
             >
               {v}
+              {v === "issues" && issuesBadge && (
+                <span style={{
+                  width: 6, height: 6, borderRadius: 3, background: "#e53935",
+                  marginLeft: 5, display: "inline-block", flex: "none",
+                }} />
+              )}
             </button>
           ))}
         </div>
       </div>
+      )}
+
+      {/* Status-change banner: shown on any tab except Issues itself, until
+          dismissed or until the Issues tab marks everything seen. */}
+      {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
+        <div style={{
+          width: "100%", maxWidth: 560, padding: "0 16px", boxSizing: "border-box",
+          margin: "2px auto 6px", display: "flex",
+        }}>
+          <div style={{
+            flex: 1, display: "flex", alignItems: "center", gap: 4,
+            border: "1px solid #e0ddd8", borderRadius: 10, background: "#fff",
+            padding: "0 4px 0 12px",
+          }}>
+            <button
+              onClick={() => setListView("issues")}
+              style={{
+                flex: 1, border: "none", background: "transparent",
+                textAlign: "left", fontSize: 13, color: "#37474f",
+                cursor: "pointer", fontFamily: "inherit", minHeight: 44, padding: 0,
+              }}
+            >
+              📮 Your report was updated — see Issues
+            </button>
+            <button
+              onClick={() => setIssuesBannerDismissed(true)}
+              title="Dismiss"
+              style={{
+                border: "none", background: "transparent", color: "#90a4ae",
+                fontSize: 13, cursor: "pointer", minHeight: 44, minWidth: 44,
+              }}
+            >✕</button>
+          </div>
+        </div>
       )}
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
@@ -6330,6 +6608,8 @@ const TransitMap: FC = () => {
           stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
           userLatLon={userLatLon} onRequestLocate={startLocating}
         />
+      ) : listView === "issues" ? (
+        <IssuesPanel onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
@@ -6343,6 +6623,8 @@ const TransitMap: FC = () => {
           recentTrips={recentTrips}
           onRecordRecent={saveRecentTrips}
           onDeleteRecent={(id) => saveRecentTrips(recentTrips.filter((x) => x.id !== id))}
+          onClearRecents={() => saveRecentTrips([])}
+          announcements={announcements}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
           onBoard={(ride) => { setBoardedRide(ride); }}
         />
@@ -6359,8 +6641,12 @@ const TransitMap: FC = () => {
             cfg.busRouteIds.some((bid) => ROUTE_ID_TO_TOGGLE[bid] === toggle)
           );
           if (!matchingList) { visibleRouteIds.add(r.id); continue; }
-          const hasBuses = buses.some((b) => matchingList.busRouteIds.includes(b.route_id));
-          const isFav = favorites.has(matchingList.routeIds[0]);
+          // TS's flow analysis gives up in a function body this large, so the
+          // guard above doesn't narrow; assert what it just proved.
+          const ml = matchingList as NonNullable<typeof matchingList>;
+          const hasBuses = buses.some((b) => ml.busRouteIds.includes(b.route_id));
+          const mlRid = ml.routeIds[0];
+          const isFav = mlRid !== undefined && favorites.has(mlRid);
           if (listView === "all" && activeOnly && !hasBuses) continue;
           if (listView === "favorites" && !(hasBuses && isFav)) continue;
           visibleRouteIds.add(r.id);
@@ -6368,9 +6654,10 @@ const TransitMap: FC = () => {
 
         for (const cfg of ROUTE_LISTS) {
           const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-          if (toggle && hiddenRoutes.has(toggle)) continue;
+          if (toggle !== undefined && hiddenRoutes.has(toggle!)) continue;
           const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-          const isFav = favorites.has(cfg.routeIds[0]);
+          const rid0 = cfg.routeIds[0];
+          const isFav = rid0 !== undefined && favorites.has(rid0);
           let show = listView === "all";
           if (listView === "all" && activeOnly) show = hasBuses;
           if (listView === "favorites") show = hasBuses && isFav;
@@ -6452,7 +6739,8 @@ const TransitMap: FC = () => {
                   const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
                   if (toggle && hiddenRoutes.has(toggle)) continue;
                   const hasBus = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-                  const isFav = favorites.has(cfg.routeIds[0]);
+                  const rid0 = cfg.routeIds[0];
+          const isFav = rid0 !== undefined && favorites.has(rid0);
                   let show = listView === "all";
                   if (listView === "all" && activeOnly) show = hasBus;
                   if (listView === "favorites") show = hasBus && isFav;
@@ -6481,12 +6769,12 @@ const TransitMap: FC = () => {
               })}
               {listView === "all" && userSvgPos && (
                 <g>
-                  <circle cx={userSvgPos.x} cy={userSvgPos.y} r={18}
+                  <circle cx={userSvgPos!.x} cy={userSvgPos!.y} r={18}
                           fill="#1E88E5" opacity={0.15}>
                     <animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.35;0;0.35" dur="2s" repeatCount="indefinite" />
                   </circle>
-                  <circle cx={userSvgPos.x} cy={userSvgPos.y} r={8}
+                  <circle cx={userSvgPos!.x} cy={userSvgPos!.y} r={8}
                           fill="#1E88E5" stroke="#fff" strokeWidth={2.5} />
                   <title>You are here (approximate)</title>
                 </g>
@@ -6629,6 +6917,24 @@ const TransitMap: FC = () => {
       }}>
         {!feedbackOpen ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            {showInstall && (
+              <button
+                onClick={() => {
+                  if (installPrompt) { void installPrompt.prompt(); setInstallPrompt(null); }
+                  else setIosHintOpen((v) => !v);
+                }}
+                title="Install as an app"
+                style={{
+                  fontSize: 13, padding: "8px 10px", minHeight: 44,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  border: "1px solid #bbb", borderRadius: 6,
+                  background: "#fff", color: "#546e7a",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                📲 Install
+              </button>
+            )}
             <button
               onClick={() => setFeedbackOpen(true)}
               style={{
@@ -6646,7 +6952,22 @@ const TransitMap: FC = () => {
               <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
             )}
           </div>
-        ) : (
+        ) : null}
+        {!feedbackOpen && iosHintOpen && showInstall ? (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            fontSize: 12, color: "#546e7a", padding: "2px 4px", textAlign: "center",
+          }}>
+            <span>Tap <strong>Share</strong> (the ⬆︎ square), then <strong>“Add to Home Screen”</strong></span>
+            <button
+              onClick={() => { setIosHintOpen(false); dismissInstallHint(); }}
+              title="Don't show again"
+              style={{ border: "none", background: "transparent", color: "#90a4ae",
+                fontSize: 13, cursor: "pointer", minHeight: 32, padding: "0 6px" }}
+            >✕</button>
+          </div>
+        ) : null}
+        {feedbackOpen && (
           <div style={{
             border: "1px solid #e0ddd8", borderRadius: 10, background: "#fff",
             padding: 12, display: "flex", flexDirection: "column", gap: 8,
@@ -6669,11 +6990,38 @@ const TransitMap: FC = () => {
                 fontFamily: "inherit", resize: "vertical", minHeight: 80,
               }}
             />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {feedbackImage ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <img src={feedbackImage} alt="attached screenshot"
+                    style={{ height: 44, borderRadius: 4, border: "1px solid #ccc" }} />
+                  <button onClick={() => setFeedbackImage(null)} title="Remove screenshot"
+                    style={{ border: "none", background: "transparent", color: "#c62828",
+                      fontSize: 13, cursor: "pointer", minHeight: 44, padding: "0 6px" }}>
+                    ✕ remove
+                  </button>
+                </div>
+              ) : (
+                <label style={{
+                  fontSize: 13, color: "#1976D2", cursor: "pointer",
+                  minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
+                }}>
+                  📎 Attach screenshot
+                  <input type="file" accept="image/*" hidden
+                    onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              )}
+              {feedbackImageErr && (
+                <span style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 onClick={() => {
                   setFeedbackOpen(false);
                   setFeedbackText("");
+                  setFeedbackImage(null);
+                  setFeedbackImageErr(null);
                 }}
                 style={{
                   fontSize: 13, padding: "8px 14px", minHeight: 40,

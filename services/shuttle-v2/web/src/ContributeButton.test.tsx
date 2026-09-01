@@ -6,7 +6,7 @@ import { ContributeButton, REPO_URL } from "./ContributeButton";
 // inspecting the returned React element keeps this test dependency-free
 // (this project has no jsdom/testing-library setup).
 type El = { type: unknown; props: Record<string, unknown> };
-const render = () => ContributeButton({}) as unknown as El;
+const render = () => ContributeButton() as unknown as El;
 
 describe("ContributeButton", () => {
   it("points at the repository over https", () => {

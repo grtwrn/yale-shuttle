@@ -1,0 +1,751 @@
+<title>Yale Shuttle Launch Readiness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #f6f8fa;
+    --surface:     #ffffff;
+    --surface-alt: #eef1f5;
+    --ink:         #12161c;
+    --ink-soft:    #3d4753;
+    --ink-mute:    #667486;
+    --rule:        #dde3ea;
+    --rule-soft:   #e9edf2;
+    --accent:      #00356B;
+    --accent-soft: #e3ecf6;
+    --ok:          #1a7f5a;
+    --ok-soft:     #e2f2ea;
+    --defer:       #8a6100;
+    --defer-soft:  #f7eeda;
+    --risk:        #b3261e;
+    --risk-soft:   #fbe6e4;
+    --shadow:      0 1px 2px rgba(18,22,28,.06), 0 1px 8px rgba(18,22,28,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0d1117;
+      --surface:     #151b23;
+      --surface-alt: #1c242e;
+      --ink:         #e7ecf2;
+      --ink-soft:    #b6c1cd;
+      --ink-mute:    #8593a3;
+      --rule:        #2a3441;
+      --rule-soft:   #212a35;
+      --accent:      #7fb2e8;
+      --accent-soft: #16283d;
+      --ok:          #5cc79a;
+      --ok-soft:     #123026;
+      --defer:       #e0ac4b;
+      --defer-soft:  #33270f;
+      --risk:        #f08b83;
+      --risk-soft:   #37191a;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 1px 10px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0d1117;
+    --surface:     #151b23;
+    --surface-alt: #1c242e;
+    --ink:         #e7ecf2;
+    --ink-soft:    #b6c1cd;
+    --ink-mute:    #8593a3;
+    --rule:        #2a3441;
+    --rule-soft:   #212a35;
+    --accent:      #7fb2e8;
+    --accent-soft: #16283d;
+    --ok:          #5cc79a;
+    --ok-soft:     #123026;
+    --defer:       #e0ac4b;
+    --defer-soft:  #33270f;
+    --risk:        #f08b83;
+    --risk-soft:   #37191a;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 1px 10px rgba(0,0,0,.28);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 61rem; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+  @media (max-width: 640px) { .wrap { padding: 2.25rem 1.1rem 3.5rem; } }
+
+  /* ---- masthead ---- */
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 1.4rem; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink-mute); margin: 0 0 .7rem;
+  }
+  h1 {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 700; font-size: clamp(2.6rem, 7vw, 4.1rem);
+    line-height: .95; letter-spacing: -.01em; text-wrap: balance;
+    margin: 0 0 .55rem; text-transform: uppercase;
+  }
+  .standfirst {
+    font-size: 1.06rem; color: var(--ink-soft); max-width: 60ch;
+    margin: 0; text-wrap: pretty;
+  }
+
+  /* ---- live status strip ---- */
+  .status {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .55rem .9rem;
+    margin-top: 1.3rem; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .78rem; color: var(--ink-mute);
+  }
+  .dot {
+    width: .5rem; height: .5rem; border-radius: 50%;
+    background: var(--ok); flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--ok-soft);
+  }
+  .status b { color: var(--ink); font-weight: 500; }
+
+  /* ---- stat band ---- */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    border-radius: 10px; overflow: hidden; margin: 2.2rem 0 3rem;
+    box-shadow: var(--shadow);
+  }
+  @media (max-width: 620px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); padding: 1.05rem 1.15rem; }
+  .stat .n {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 700; font-size: 2.3rem; line-height: 1;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+    display: block; margin-bottom: .3rem;
+  }
+  .stat .k {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ---- sections ---- */
+  section { margin-bottom: 3.1rem; }
+  h2 {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .015em;
+    font-size: 1.72rem; line-height: 1.1; margin: 0 0 .35rem;
+    display: flex; align-items: baseline; gap: .7rem;
+  }
+  h2 .count {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; font-weight: 400; letter-spacing: .08em;
+    color: var(--ink-mute); text-transform: none;
+  }
+  .lede {
+    color: var(--ink-soft); margin: 0 0 1.25rem; max-width: 68ch;
+    font-size: .96rem; text-wrap: pretty;
+  }
+
+  /* ---- rows ---- */
+  .rows { display: flex; flex-direction: column; gap: .6rem; }
+  .row {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--bar, var(--rule));
+    border-radius: 8px; padding: .9rem 1.1rem;
+    box-shadow: var(--shadow);
+  }
+  .row.ok    { --bar: var(--ok); }
+  .row.defer { --bar: var(--defer); }
+  .row.risk  { --bar: var(--risk); }
+
+  .row h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 1rem; font-weight: 600; margin: 0 0 .3rem;
+    line-height: 1.35; text-wrap: balance;
+  }
+  .row p { margin: 0; color: var(--ink-soft); font-size: .93rem; text-wrap: pretty; }
+  .row p + p { margin-top: .5rem; }
+
+  .ev {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .78rem; color: var(--ink-mute);
+    margin-top: .55rem; padding-top: .5rem;
+    border-top: 1px dashed var(--rule-soft);
+    display: block; overflow-x: auto; white-space: nowrap;
+  }
+  .ev b { color: var(--ok); font-weight: 500; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .85em; background: var(--surface-alt);
+    padding: .08em .34em; border-radius: 3px; color: var(--ink);
+  }
+
+  /* The chip inherits its row's semantic colour, so a correction reads red
+     rather than borrowing the amber of a deferred item. */
+  .row.risk .why { color: var(--risk); background: var(--risk-soft); }
+  .why {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .67rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--defer); background: var(--defer-soft);
+    padding: .12rem .45rem; border-radius: 3px; margin-right: .45rem;
+    vertical-align: .08em;
+  }
+
+  /* ---- watch list ---- */
+  .watch { display: flex; flex-direction: column; gap: 0; }
+  .watch li {
+    list-style: none; padding: .85rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+    display: grid; grid-template-columns: 8.5rem 1fr; gap: 1rem;
+    align-items: baseline;
+  }
+  .watch li:first-child { padding-top: 0; }
+  .watch li:last-child { border-bottom: none; }
+  @media (max-width: 560px) {
+    .watch li { grid-template-columns: 1fr; gap: .25rem; }
+  }
+  .watch .tag {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .watch .txt { color: var(--ink-soft); font-size: .93rem; text-wrap: pretty; }
+  .watch .txt b { color: var(--ink); font-weight: 600; }
+  ul.watch { margin: 0; padding: 0; }
+
+  /* ---- commits ---- */
+  .commits {
+    border: 1px solid var(--rule); border-radius: 10px;
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .commit {
+    display: grid; grid-template-columns: 5.5rem 1fr;
+    gap: 1rem; padding: .72rem 1.1rem; background: var(--surface);
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: .91rem; align-items: baseline;
+  }
+  .commit:last-child { border-bottom: none; }
+  .commit .sha {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .8rem; color: var(--accent);
+  }
+  @media (max-width: 560px) {
+    .commit { grid-template-columns: 1fr; gap: .15rem; }
+  }
+
+  footer {
+    margin-top: 3.4rem; padding-top: 1.3rem;
+    border-top: 1px solid var(--rule);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; color: var(--ink-mute); line-height: 1.75;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Pre-launch audit &middot; 31 August 2026 &middot; final</p>
+    <h1>Yale Shuttle Launch Readiness</h1>
+    <p class="standfirst">
+      A full audit of <code>services/shuttle-v2</code> ahead of opening the app to roughly
+      200 riders &mdash; what shipped, how each fix was proven, and what was deliberately left
+      alone. Every number here was measured against production or a held-out replay, including
+      the three places the measurement contradicted me.
+    </p>
+    <div class="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span><b>Deployed, pushed &amp; healthy</b></span>
+      <span>&middot;</span>
+      <span>40 concurrent: p50 <b>97&nbsp;ms</b> / p95 <b>299&nbsp;ms</b> / <b>0</b> errors</span>
+      <span>&middot;</span>
+      <span>calibration <b>1058&nbsp;&rarr;&nbsp;332&nbsp;ms</b></span>
+      <span>&middot;</span>
+      <span>0 skipped polls</span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><span class="n">14/14</span><span class="k">Reports closed</span></div>
+    <div class="stat"><span class="n">427</span><span class="k">Tests (was 63)</span></div>
+    <div class="stat"><span class="n">1.3<span style="font-size:1.2rem">min</span></span><span class="k">Median ETA error</span></div>
+    <div class="stat"><span class="n">0.7<span style="font-size:1.2rem">%</span></span><span class="k">Bad samples (was 2.5)</span></div>
+  </div>
+
+  <section>
+    <h2>Ready to scale <span class="count">the 200-user question</span></h2>
+    <p class="lede">
+      Your flyctl settings need no change. 200 riders polling every 5&nbsp;s is 40&nbsp;req/s,
+      and at ~100&nbsp;ms service time that is only about four requests in flight against a
+      concurrency limit of 200. The machine sits at 0.06 load with 128&nbsp;MB of 985&nbsp;MB used.
+      Capacity was never the risk &mdash; correctness was.
+    </p>
+    <div class="rows">
+      <div class="row risk">
+        <h3>Two constraints to know rather than fix</h3>
+        <p>
+          <b>You cannot scale horizontally.</b> SQLite on a single volume, plus a collector that
+          polls upstream every 5&nbsp;s, means a second machine would double-write and corrupt the
+          calibration stats. Growth is vertical only &mdash; which is fine well past 200.
+        </p>
+        <p>
+          <b>Every deploy is a brief outage.</b> One machine, no redundancy. Boot takes ~12&nbsp;s,
+          inside the 15&nbsp;s health-check grace period.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How accurate is the arrival time? <span class="count">measured, two ways</span></h2>
+    <p class="lede">
+      Prospect/Canner &rarr; the New Haven Green, the real 2.2 km trip. Measured
+      independently by watching the live app tell a rider when the bus would come and
+      recording when it actually did, and by replaying 90 days of history. The two
+      methods agree: the estimate is good, and it is <em>systematically optimistic</em>.
+    </p>
+
+    <div class="rows">
+      <div class="row ok">
+        <h3>Live: 45 minutes, 4 real arrivals, 35 scored predictions</h3>
+        <p>
+          A browser sat on the live site with the phone's location at the stop, scraping
+          the ETA a rider is actually shown. A separate 5-second poll of raw bus positions
+          recorded the moment a bus came within 45 m of the stop. Nothing was shared
+          between the two.
+        </p>
+        <span class="ev">median |error| <b>1.26 min</b> &nbsp;·&nbsp; mean |error| 1.44 &nbsp;·&nbsp; p90 2.62 &nbsp;·&nbsp; worst 3.28 &nbsp;·&nbsp; within 2 min: <b>71%</b></span>
+      </div>
+
+      <div class="row ok">
+        <h3>The estimate sharpens as the bus closes in — exactly the right shape</h3>
+        <p>
+          Error is not uniform: it collapses as the bus approaches, which is what a rider
+          checking their phone at the stop actually depends on. But the bias is negative at
+          every horizon and scales with it — roughly a quarter of the remaining time.
+        </p>
+        <span class="ev">
+          under 2 min out: <b>0.51</b> &nbsp;|&nbsp; 2&ndash;5 min: 1.19 &nbsp;|&nbsp; 5&ndash;10 min: 1.96 &nbsp;|&nbsp; 10+ min: 2.95 &nbsp;&nbsp;(mean |error|, minutes)
+        </span>
+      </div>
+
+      <div class="row ok">
+        <h3>Historical: 2,321 real rides over 90 days</h3>
+        <p>
+          The ride leg itself — 13 stops from Prospect/Canner to Temple/Grove. The app
+          predicts <b>12.15 min</b>; buses actually take a median of <b>12.83</b> and a mean
+          of 13.21. And the calibration is earning its keep: the raw sample mean for this
+          time bucket is 11.47 min and the raw median 10.17, so shrinkage pulls the served
+          estimate <em>up</em>, closer to truth than either raw statistic.
+        </p>
+        <span class="ev">error vs median <b>&minus;0.68 min (&minus;5%)</b> &nbsp;·&nbsp; headway at that stop: median 15.5 min, p90 23.6</span>
+      </div>
+
+      <div class="row defer">
+        <h3><span class="why">Bias</span>Both methods say the same thing: it runs fast</h3>
+        <p>
+          &minus;5% on the ride leg, and &minus;20&ndash;25% of the remaining time on the
+          wait. A rider is told the bus is closer than it is. That is the safer direction to
+          be wrong in — you arrive at the stop early rather than watching it pull away — but
+          it is a real bias and worth correcting once the detector fix below has fed cleaner
+          data into the calibration for a week or two.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Shipped and verified</h2>
+    <p class="lede">
+      Every item below was proven against production after deploy, not just reasoned about.
+      Three new browser harnesses live in <code>scripts/</code> so these stay checkable.
+    </p>
+
+    <div class="rows">
+
+      <div class="row ok">
+        <h3>The location dot stopped updating while riders walked to their stop</h3>
+        <p>
+          Four of your fourteen reports were this one bug. A battery saver added for report&nbsp;#23
+          gated high-accuracy GPS on <code>goTrip || boardedRide</code>, which classified
+          <em>walking to the pickup stop</em> &mdash; the single most location-sensitive phase there is
+          &mdash; as idle browsing. Those riders got a coarse fix up to 60&nbsp;seconds stale. Worse, it
+          applied from mount: the high-accuracy watch started, then was immediately torn down and
+          replaced with the coarse one, every session.
+        </p>
+        <span class="ev">before <code>watch(high) → clear → watch(low, 60000)</code> &nbsp;·&nbsp; after <b>one high-accuracy watch, no churn</b></span>
+      </div>
+
+      <div class="row ok">
+        <h3>Buses appeared to travel backwards, and ETAs swung by ten minutes</h3>
+        <p>
+          Reports #32, #37, #38 and #41 share one root cause: <code>at_stop_id</code> was trusted over
+          GPS with no ordering check. Many routes pass two stops that nearly coincide but sit far
+          apart in sequence &mdash; Broadway/York and Elm/York are <b>23&nbsp;m apart yet 2 stops apart</b>;
+          Orange/Pearl (N) and (S) are <b>35&nbsp;m apart yet 9 stops apart</b>. Metres of GPS noise
+          relocated a bus a third of a lap. Fixed in three places: the collector now requires a bus to
+          be within 75&nbsp;m before calling it "at" a stop, and both client anchors now let
+          <code>at_stop_id</code> refine the GPS scan rather than override it.
+        </p>
+        <span class="ev">live buses claiming a stop from 166–558 m: <b>5 of 16 → 0</b> (max now 36 m)</span>
+      </div>
+
+      <div class="row ok">
+        <h3>Two public endpoints were serving reporter IP addresses</h3>
+        <p>
+          <code>GET /api/reports</code> had no auth and returned the <code>clientIp</code> column &mdash;
+          campus IPs alongside each rider's free-text complaint and device details, to anyone who
+          asked. <code>POST /api/reports/{id}/update</code> was worse: no auth, no rate limit, and
+          unlike your other POST routes no body limit, so anyone could wipe the triage log. Both now
+          require a shared secret, compared in constant time, and fail closed when unconfigured.
+        </p>
+        <span class="ev">unauth read <b>401</b> &nbsp;·&nbsp; unauth write <b>401</b> &nbsp;·&nbsp; authed read <b>200</b> &nbsp;·&nbsp; no clientIp in rejection</span>
+      </div>
+
+      <div class="row ok">
+        <h3>A phone on the wrong timezone saw "no shuttles running"</h3>
+        <p>
+          The schedule is published Eastern Time, but the checks read <code>getDay()</code> and
+          <code>getHours()</code> &mdash; the <em>device's</em> timezone. A visitor still on their home
+          zone had every weekday route judged out of service. Separately, comparing the hardcoded
+          windows against 8 days of observed arrivals showed they run <em>narrower</em> than real
+          service (Pink from 04:00, not 06:00; Grocery from 07:00, not 10:00) &mdash; and this filter
+          deletes buses app-wide, so it now fails wide rather than hiding a bus you can see out the window.
+        </p>
+        <span class="ev">identical service state across <b>5 device timezones</b> (ET, UTC, London, Tokyo, LA)</span>
+      </div>
+
+      <div class="row ok">
+        <h3>The trip planner disagreed with your own server &mdash; and the server was right</h3>
+        <p>
+          Both map-bot reports reproduced live. For #35 the server returned a fine 53-minute walk while
+          the UI showed a bare "No trip options found"; the client's walk model put it over an hour and
+          suppressed the only option it had. For #40 a filter discarded any trip whose walking legs
+          alone exceeded the direct walk &mdash; rejecting the server's recommended 15.9-minute ride by
+          about seven seconds of walking. It now tests true dominance, matching the documented intent
+          that slower options are kept and labelled.
+        </p>
+        <span class="ev">#35 now renders a <b>68-min walk</b> instead of a dead end</span>
+      </div>
+
+      <div class="row ok">
+        <h3>Address search would have died silently at launch</h3>
+        <p>
+          <code>/api/geocode</code> proxied Nominatim with no throttle from two debounced call sites.
+          Their policy is 1&nbsp;req/s; a few hundred riders typing destinations would have got this
+          machine's IP banned &mdash; and a ban just returns empty results forever, with no error. Outbound
+          calls now claim a one-per-second slot, identical lookups collapse into one request, and the
+          User-Agent no longer advertises an app you destroyed in the v2 migration.
+        </p>
+        <p>
+          My first attempt <em>dropped</em> lookups instead of queueing them, and four test queries came
+          back empty. Caught and reworked before finishing.
+        </p>
+        <span class="ev">burst of 4 distinct queries: <b>all answer</b>, under 1.2 s</span>
+      </div>
+
+      <div class="row ok">
+        <h3>Ride tracking had no manual way in</h3>
+        <p>
+          Auto-detect needs a fix good enough to place a rider within 60&nbsp;m of the board stop, and
+          the manual control had been removed in a card redesign &mdash; so when detection missed, the
+          ride page was simply unreachable. Restored as an "I'm on it" action on each expanded shuttle option.
+        </p>
+      </div>
+
+      <div class="row ok">
+        <h3>Backend hardening</h3>
+        <p>
+          <code>/api/buses</code> is now memoized as a serialized string &mdash; 74% of that 87&nbsp;KB
+          payload is topology that moves twice a day, and it was rebuilt on all 40&nbsp;req/s. SSE gained a
+          32-stream cap, heartbeat and max lifetime (a half-open mobile connection previously leaked
+          forever). <code>departAt</code> became genuinely optional, so its dead <code>?? now()</code>
+          fallback works again. Shutdown now drains in-flight requests &mdash; sized to 4&nbsp;s because
+          Fly's default kill timeout is 5&nbsp;s.
+        </p>
+        <span class="ev">SSE cap enforced at exactly <b>32</b> in production &nbsp;·&nbsp; hono 4.13.5 &nbsp;·&nbsp; drizzle 0.45.2</span>
+      </div>
+
+      <div class="row ok">
+        <h3>The planner priced an 8.4 km ride at 97 seconds</h3>
+        <p>
+          Route 9's Orange/Bradley &rarr; Building 900 is a genuine 8,204 m hop, the highway
+          run to West Campus. Of its 2,421 recorded samples, <b>2,411 came in under five
+          minutes</b> — a median of 90 s, or 328 km/h — and calibration served that median
+          faithfully. Across 30 days, 2.5% of all segments imply over 60 km/h, concentrated
+          on exactly these long hops. A duration check can't catch it: 90 s is an ordinary
+          segment time until you know the stops are 8 km apart. Samples implying over
+          79 km/h are now dropped before any statistic sees them, including the median —
+          which matters, because here the bad samples are the <em>majority</em>.
+        </p>
+        <span class="ev">that trip: <b>5.1 min &rarr; 17.2 min</b> &nbsp;·&nbsp; ride leg 97 s &rarr; 823 s &nbsp;·&nbsp; 6 segments now fall back to a sane prior</span>
+      </div>
+
+      <div class="row ok">
+        <h3>Bus positions were being discarded on the busiest routes</h3>
+        <p>
+          College/Wall (S) and (N) sit <b>28 m apart but at sequence positions 18 and 28</b>,
+          so a southbound bus flickers between them; the flicker is scored as a 10- or
+          21-stop jump and thrown away, and it leaves the anchor in the wrong place so the
+          <em>next</em> genuine transition is thrown away too. That is why the final leg into
+          the Green was calibrated from a single observation. A windowed anchor, with
+          constants swept against 59,605 recorded positions, fixes it.
+        </p>
+        <span class="ev">legs with samples <b>183/232 &rarr; 224/232</b> &nbsp;·&nbsp; routes 1, 2, 3 reach <b>100%</b> &nbsp;·&nbsp; implausible samples 1.9% &rarr; 0.9%</span>
+      </div>
+
+      <div class="row ok">
+        <h3>The frontend went from 0 tests to 108</h3>
+        <p>
+          <code>TransitMap.tsx</code> <em>is</em> the app and had no coverage at all. Eight
+          pure modules extracted and imported back, behaviour unchanged; every fix from
+          today is now pinned by a test that was mutation-checked — reverted, confirmed
+          failing, restored. The dead Go-trip feature went with it: ~600 unreachable lines,
+          including an <code>/api/accuracy</code> fetch running every 2 minutes for data
+          nothing rendered.
+        </p>
+        <span class="ev">8,309 &rarr; <b>6,763 lines</b> &nbsp;·&nbsp; bundle 505.6 &rarr; 499.0 kB &nbsp;·&nbsp; total suite 63 &rarr; <b>235 tests</b></span>
+      </div>
+
+      <div class="row ok">
+        <h3>Calibration no longer freezes the event loop for a second</h3>
+        <p>
+          Grouping in SQL returns 570 rows instead of ~207,000. Order statistics stay in JS
+          because dwells are median + p90, which don't decompose — the exact SQL median was
+          tried and measured <em>slower</em>. Equivalence was proven, not assumed: 358,104
+          statistic values diffed old against new, 23 differing by at most 1.1e-13 from
+          float summation order.
+        </p>
+        <span class="ev">production <b>1058 ms &rarr; 311 ms</b> every 5 minutes</span>
+      </div>
+
+      <div class="row ok">
+        <h3>Every touch target now meets 44&nbsp;px</h3>
+        <p>
+          Measuring rather than eyeballing turned up something the audit missed: your primary
+          <em>Trip / All / Map</em> navigation was 21&nbsp;px high &mdash; the smallest and most-tapped
+          controls in the app.
+        </p>
+        <span class="ev">30 interactive controls across 3 tabs: <b>0 under 44 px</b></span>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Deliberately not done</h2>
+    <p class="lede">
+      Each of these is a real finding I chose to leave. The reasoning matters more than the list &mdash;
+      all of them are safe to pick up next week, and none should be attempted tonight.
+    </p>
+
+    <div class="rows">
+
+      <div class="row risk">
+        <h3><span class="why">Correction</span>Two things I got wrong, and how they were caught</h3>
+        <p>
+          <b>The report #40 fix was inert.</b> I added <code>&amp;&amp; totalSec &gt;= directWalkSec</code>
+          believing a filter was discarding a faster ride. It is a theorem that it was not: since
+          <code>totalSec = walkTo + wait + ride + walkFrom</code>, walking further than the direct walk
+          <em>always</em> means slower overall, so the conjunct is unreachable and the original filter
+          could never have dropped a faster option. The diagnosis was wrong, not just the code. The
+          guard is back to its single honest condition with the identity written down, and report #40&rsquo;s
+          triage note carries the correction.
+        </p>
+        <p>
+          <b>And my instruction to reconcile the walk model was wrong.</b> I said bring the client in
+          line with the server. Done &mdash; and both then agreed on 1.4&nbsp;m/s over crow-flies, which with
+          this codebase&rsquo;s own OSRM-measured 1.22 detour is a 6&nbsp;km/h pace on real pavement. A 2.17&nbsp;km
+          trip rendered as a 25-minute walk. The old client value was nearly right and the <em>server</em>
+          was wrong. Corrected to 1.1 on the server with the client mirroring it, and
+          <code>walk.test.ts</code> now parses the server&rsquo;s constant out of its source so they cannot
+          drift apart again.
+        </p>
+        <span class="ev">walk estimates: 1 km now <b>15.2 min</b>, was 11.9 &nbsp;&middot;&nbsp; both planners agree, and are honest</span>
+      </div>
+
+      <div class="row defer">
+        <h3><span class="why">Latent</span>West Campus is still modelled out of order in the client</h3>
+        <p>
+          Routes 9 and 10 carry duplicate stop ids for the out-and-back. The <em>server</em> side is now
+          fixed &mdash; index-based traversal with minimum-forward-distance &mdash; but the frontend still
+          dedupes with <code>if (!seen.has(sid))</code> and then calls <code>indexOf</code>. It currently
+          answers West Campus trips sensibly, so this is latent rather than active; fixing it properly
+          means allowing repeated stops in a sequence, which touches every <code>indexOf</code> call site.
+        </p>
+      </div>
+
+      <div class="row defer">
+        <h3><span class="why">Design</span>&ldquo;Plan for later&rdquo; uses right now&rsquo;s travel times</h3>
+        <p>
+          Calibration is bucketed by day-of-week and hour and recomputed every 5 minutes, which is
+          correct &mdash; but <code>segmentTimes</code> carries no time awareness, so a trip planned for
+          8&nbsp;PM is priced with midday numbers. For the main route that is a &plusmn;12% error. At service
+          boundaries it is much worse: route 2&rsquo;s 6&nbsp;AM bucket runs +101% because depot pull-outs are
+          mixed into the samples.
+        </p>
+      </div>
+
+      <div class="row defer">
+        <h3><span class="why">Upstream</span>Blue Night and Orange Night polylines are wrong</h3>
+        <p>
+          Investigating "the green route is wrong" (#33) cleared Green: 4,000 historical positions sit a
+          median 2&nbsp;m off the drawn line, p99 47&nbsp;m. The genuinely bad geometry is Blue Night
+          (60 path points, p90 <b>612&nbsp;m</b> off) and Orange Night. That is upstream under-sampling &mdash;
+          the honest options are to live with it or snap those two lines once and cache. If a
+          "route looks wrong" report recurs, expect one of those two.
+        </p>
+      </div>
+
+      <div class="row defer">
+        <h3><span class="why">Watch</span>Two remaining sources of ETA movement</h3>
+        <p>
+          When the pinned bus becomes uncatchable, the app re-pins to the next arrival &mdash; which on a
+          single-bus route is often the <em>same vehicle a lap later</em>, so the number jumps a full loop.
+          And with the origin box blank, every GPS fix re-runs the planner, which needs a distance
+          hysteresis. Both need judgement about behaviour, not just a patch. Report&nbsp;#34's primary
+          cause (the anchor bug) is fixed; reopen it if drift persists.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Shipped after the audit <span class="count">same day</span></h2>
+    <p class="lede">
+      Work that came out of questions asked once the audit was done &mdash; each one
+      turned up something the audit had not.
+    </p>
+    <div class="rows">
+      <div class="row ok">
+        <h3>You can now see how many people use it</h3>
+        <p>
+          There was no way to know. The app logs no requests, has no analytics, and Fly
+          reports request volume rather than visitors; the only person-shaped data was the
+          IP on a submitted report. <code>npm run riders</code> now reports unique browsers
+          for today / 7 d / 30 d / all time, from one row per (day, random browser id) &mdash;
+          no IP, no user agent, no coordinates, no time of day.
+        </p>
+        <span class="ev">43 requests from 3 riders wrote exactly <b>3 rows</b> &nbsp;&middot;&nbsp; ~200 writes/day, not 3.5M</span>
+      </div>
+
+      <div class="row ok">
+        <h3>The README described software that isn't running</h3>
+        <p>
+          Flagged as one wrong sentence; every claim was wrong, because it described the
+          archived v1 stack &mdash; Python server, MTR schematic, wrong region, wrong database
+          tables. Its deploy section would have walked a contributor into <em>deploying v1
+          over production</em>, which mattered a great deal more once the repo went public.
+        </p>
+      </div>
+
+      <div class="row ok">
+        <h3>Three routes rendered in one colour, from four different tables</h3>
+        <p>
+          Orange Day, Night and East all painted <code>#E65100</code>, and two of them run
+          concurrently. Fixing it found <b>four</b> independent colour tables, two of which had
+          already drifted unnoticed &mdash; painting Blue Weekend and Blue Night in Blue Day's
+          blue. One source of truth now; the rest derive from it.
+        </p>
+        <span class="ev">worst simultaneous pair <b>&Delta;E 0.0 &rarr; 12.2</b>, holding under colour-blindness simulation</span>
+      </div>
+
+      <div class="row ok">
+        <h3>The Yale tracker link is back, and the bus keeps its identity</h3>
+        <p>
+          v1 could open the operator's own view of a route inline; the rewrite lost it. It's
+          back on each route card &mdash; and usefully carries Yale's service alerts, which this
+          app doesn't have. The frame is deliberately <em>not</em> granted geolocation, which v1
+          did.
+        </p>
+        <p>
+          Separately: TransLoc reissues <code>bus_id</code> per service block, so the detector
+          was dropping a running bus's anchor ~31 times a day. It now keys on the vehicle name,
+          guarded &mdash; and against live production data since deploying, samples implying
+          impossible speeds fell from the historical 2.50% to <b>0.70%</b>.
+        </p>
+        <span class="ev">calibrated segments <b>297 &rarr; 319</b> in production &mdash; legs that were being discarded</span>
+      </div>
+
+      <div class="row risk">
+        <h3><span class="why">Correction</span>My estimate was wrong, and the obvious fix was worse than the bug</h3>
+        <p>
+          I put the id-reissue cost at ~31 lost segments a day. Replaying 76,134 real positions
+          showed every multi-minute feed gap <em>coincides with</em> a reissue &mdash; a bus going
+          off the air at a shift boundary, not a mislabelled one. So naive name-keying inherits
+          the anchor across the layover and bills standing time as travel: <b>+6,733 s and 12
+          corrupted samples in 6.6 hours</b>. The honest gain from correct keying is ~4 a day.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Launch-day watch list</h2>
+    <p class="lede">Where to look first if something feels wrong tomorrow.</p>
+    <ul class="watch">
+      <li>
+        <span class="tag">Usage</span>
+        <span class="txt"><code>npm run riders</code> &mdash; unique browsers, today / 7 d / 30 d / all time. <b>Counts browsers, not people</b>: phone + laptop is two.</span>
+      </li>
+      <li>
+        <span class="tag">Health</span>
+        <span class="txt"><code>curl -s https://yale-shuttle.fly.dev/healthz</code> &mdash; watch <b>collectorLagMs</b>, and <b>pollSkipped</b>, which is the only outward sign upstream latency has crossed the poll interval.</span>
+      </li>
+      <li>
+        <span class="tag">Unproven</span>
+        <span class="txt">The <b>bus-id reissue path has never run in production</b>. Reissues happen ~31&times;/day; none occurred in the observation window. Well tested and guarded, but the first real one is worth watching.</span>
+      </li>
+      <li>
+        <span class="tag">Visible</span>
+        <span class="txt">Walk times are <b>~25% longer</b> than yesterday. Correct &mdash; the old model implied a 6&nbsp;km/h pavement pace &mdash; but returning riders will notice.</span>
+      </li>
+      <li>
+        <span class="tag">Known</span>
+        <span class="txt">Wait predictions run <b>optimistic by 20&ndash;25%</b> of the remaining time, so the bus arrives later than promised. Safer direction to be wrong; needs cleaner post-fix data before correcting.</span>
+      </li>
+      <li>
+        <span class="tag">Triage</span>
+        <span class="txt">The queue needs your token, in <code>~/.yale-shuttle-admin-token</code>. Commands are in <b>CLAUDE.md</b>. Annotate after every fix &mdash; that log is the next session's starting point.</span>
+      </li>
+      <li>
+        <span class="tag">Deploys</span>
+        <span class="txt">One machine, so each deploy is a ~10&nbsp;s outage. Ship between class changes.</span>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What landed</h2>
+    <div class="commits">
+      <div class="commit"><span class="sha">4345829</span><span>Restore the Yale tracker link, add support link, rewrite the README</span></div>
+      <div class="commit"><span class="sha">26d343c</span><span>Count unique riders, split the three oranges, keep bus tracking across id reissues</span></div>
+      <div class="commit"><span class="sha">6367004</span><span>Audit routes, stops, hours and landmarks against real data</span></div>
+      <div class="commit"><span class="sha">011fb33</span><span>Reject physically impossible segment samples during calibration</span></div>
+      <div class="commit"><span class="sha">0277f5f</span><span>Correct the walk model on both sides, not just make them agree</span></div>
+      <div class="commit"><span class="sha">a66231e</span><span>Extract and test the frontend, fix route modelling, cut calibrator stall 2.5x</span></div>
+      <div class="commit"><span class="sha">16162bd</span><span>Fix buses appearing to travel backwards, ETA swings, and hidden service</span></div>
+      <div class="commit"><span class="sha">5449d56</span><span>Launch hardening: payload cache, SSE limits, ET schedule, indexes, a11y</span></div>
+      <div class="commit"><span class="sha">340576b</span><span>Harden triage endpoints, throttle Nominatim, fix planner walk handling</span></div>
+      <div class="commit"><span class="sha">0d16082</span><span>Baseline: capture six weeks of shipped work + fix frozen location dot</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Verified with 63 vitest tests, backend typecheck and vite build, plus four browser harnesses run
+    against production: <code>gps-tier-check</code>, <code>walk-fallback-check</code>,
+    <code>timezone-check</code> and the existing <code>map-bot</code>.<br>
+    One advisory remains open &mdash; an esbuild dev-server issue that only affects Windows, reached
+    through tsx. Not applicable here.
+  </footer>
+
+</div>

@@ -24,6 +24,9 @@ import { geocode, LANDMARKS } from "./geocode.js";
 // reference points, not to mirror the whole 172-stop network.
 const REFERENCE_STOPS: Stop[] = [
   { id: 4, name: "130 Prospect Street (S)", lat: 41.315161, lon: -72.924729 },
+  { id: 119, name: "Trader Joe's", lat: 41.251375, lon: -73.018082 },
+  { id: 169, name: "Shop Rite", lat: 41.36879, lon: -72.92047 },
+  { id: 170, name: "Aldi/Walmart", lat: 41.37512, lon: -72.91709 },
   { id: 10, name: "333 Cedar", lat: 41.303254, lon: -72.934247 },
   { id: 20, name: "Becton / 15 Prospect", lat: 41.312609, lon: -72.925331 },
   { id: 33, name: "Chapel / York", lat: 41.30842, lon: -72.931341 },
@@ -70,7 +73,10 @@ function nearestStop(p: { lat: number; lon: number }): { stop: Stop; meters: num
 describe("landmark coordinates", () => {
   // Generous enough to admit anywhere the Downtowner runs, tight enough that a
   // sign flip, a dropped digit, or a transposition lands outside it.
-  const NEW_HAVEN_BBOX = { minLat: 41.24, maxLat: 41.36, minLon: -72.99, maxLon: -72.88 };
+  // The SERVICE AREA box, not city limits: the weekend grocery runs
+  // legitimately leave New Haven (Trader Joe's is in Milford, ShopRite and
+  // Aldi/Walmart in Hamden), and their landmark entries sit on those stops.
+  const NEW_HAVEN_BBOX = { minLat: 41.24, maxLat: 41.38, minLon: -73.03, maxLon: -72.88 };
 
   it.each(LANDMARKS.map((l) => [l.label, l] as const))(
     "%s is inside the New Haven bounding box",
@@ -128,6 +134,9 @@ describe("landmark coordinates", () => {
    */
   const ANCHORS: ReadonlyArray<[label: string, stopName: string]> = [
     ["Old Campus", "Phelps Gate"],
+    ["Trader Joe's (Milford)", "Trader Joe's"],
+    ["ShopRite (Hamden)", "Shop Rite"],
+    ["Aldi / Walmart (Hamden)", "Aldi/Walmart"],
     ["Davenport College", "Elm / York (TYCO)"],
     ["Payne Whitney Gym", "Payne Whitney Gym"],
     ["Yale Health Center", "Ashmun / Lock"],
@@ -197,9 +206,46 @@ describe("landmark search", () => {
     expect(distanceMeters(hit!, REFERENCE_STOPS.find((s) => s.id === 96)!)).toBeLessThan(200);
   });
 
-  it("still ranks shuttle stops above landmarks on an exact stop-name match", () => {
+  it("still ranks the stop's location first on an exact stop-name match", () => {
+    // Since the landmark/stop dedup, a stop that hosts a curated landmark is
+    // one merged entry: the stop's RANK (first, for an exact name hit) with
+    // the landmark's more informative label.
     const hits = geocode(network, "SOM");
-    expect(hits[0]?.kind).toBe("stop");
-    expect(hits[0]?.label).toBe("SOM");
+    expect(hits[0]?.label).toBe("School of Management (SOM)");
+    // The place itself is still the stop's coordinates.
+    const stop = [...network.stops.values()].find((st) => st.name === "SOM")!;
+    expect(Math.abs(hits[0]!.lat - stop.lat)).toBeLessThan(6e-4);
+  });
+});
+
+describe("apostrophe-insensitive matching (report #45)", () => {
+  it("finds Trader Joe's without the apostrophe", () => {
+    const hits = geocode(network, "trader joes");
+    expect(hits.some((h) => h.label.startsWith("Trader Joe's"))).toBe(true);
+  });
+
+  it("still finds it with the apostrophe, and with the curly variant", () => {
+    for (const q of ["trader joe's", "trader joe\u2019s"]) {
+      const hits = geocode(network, q);
+      expect(hits.some((h) => h.label.startsWith("Trader Joe's"))).toBe(true);
+    }
+  });
+
+  it("finds the Hamden groceries by store name", () => {
+    expect(geocode(network, "shoprite").some((h) => h.label === "ShopRite (Hamden)")).toBe(true);
+    expect(geocode(network, "aldi").some((h) => h.label === "Aldi / Walmart (Hamden)")).toBe(true);
+  });
+});
+
+describe("landmark/stop dedup", () => {
+  it("returns one entry when a landmark sits on its serving stop", () => {
+    for (const q of ["trader joes", "shoprite", "aldi"]) {
+      const hits = geocode(network, q);
+      for (const h of hits) {
+        const twins = hits.filter((k) =>
+          Math.abs(k.lat - h.lat) < 6e-4 && Math.abs(k.lon - h.lon) < 8e-4);
+        expect(twins).toHaveLength(1);
+      }
+    }
   });
 });

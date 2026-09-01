@@ -106,12 +106,68 @@ describe("GET /healthz", () => {
 
 describe("body limits", () => {
   it("rejects an oversized report payload with 413", async () => {
+    // The limit is sized for a downscaled screenshot (3 MB); anything past it
+    // is refused before parsing.
     const res = await app.request("/api/report", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ note: "x".repeat(70_000) }),
+      body: JSON.stringify({ note: "x".repeat(3 * 1024 * 1024 + 1024) }),
     });
     expect(res.status).toBe(413);
+  });
+});
+
+describe("report screenshots", () => {
+  // 1x1 red PNG — a real one, since the server verifies magic bytes.
+  const PNG_1PX =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==";
+
+  it("stores an attached screenshot and serves it back to the operator", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "map is blank", image: PNG_1PX, source: "feedback" }),
+    });
+    expect(submit.status).toBe(200);
+    const d = (await submit.json()) as { ok: boolean; id: number; attached: boolean };
+    expect(d.attached).toBe(true);
+
+    const img = await app.request(`/api/reports/${d.id}/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(img.status).toBe(200);
+    expect(img.headers.get("content-type")).toBe("image/png");
+    const bytes = new Uint8Array(await img.arrayBuffer());
+    expect(bytes[0]).toBe(0x89); // PNG magic survived the round trip
+
+    // ...and never to anyone without the token.
+    const anon = await app.request(`/api/reports/${d.id}/image`);
+    expect(anon.status).toBe(401);
+  });
+
+  it("keeps the report when the image is garbage", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "real words", image: "data:image/png;base64,AAAA" }),
+    });
+    expect(submit.status).toBe(200);
+    const d = (await submit.json()) as { ok: boolean; attached: boolean };
+    expect(d.ok).toBe(true);
+    expect(d.attached).toBe(false); // words kept, junk image dropped
+  });
+
+  it("404s for a report with no screenshot", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "no image here" }),
+    });
+    const d = (await submit.json()) as { id: number };
+    const img = await app.request(`/api/reports/${d.id}/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(img.status).toBe(404);
   });
 });
 
@@ -152,6 +208,7 @@ describe("GET /api/buses", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const body = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual([
+      "announcements",
       "bus_pace",
       "buses",
       "dwells",
@@ -411,5 +468,357 @@ describe("reports", () => {
     });
     const res = await openApp.request("/api/reports?status=open");
     expect(res.status).toBe(503);
+  });
+});
+
+describe("rider self-service (my-reports)", () => {
+  const OWNER = "11111111-2222-4333-8444-555555555555";
+  const OTHER = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+  // The rate-limit buckets are module-level and the test clock is frozen, so
+  // every request from the default "anon" IP shares one never-expiring
+  // bucket across the whole file. A fresh IP per request keeps these tests
+  // about reports, not rate limits.
+  let ipCounter = 0;
+  const freshIp = () => {
+    ipCounter += 1;
+    return { "fly-client-ip": `10.9.${ipCounter >> 8}.${ipCounter & 255}` };
+  };
+
+  async function submit(anonId: string | null, note: string): Promise<number> {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      ...freshIp(),
+    };
+    if (anonId) headers["x-anon-id"] = anonId;
+    const res = await app.request("/api/report", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ note, source: "feedback" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; id: number; attached: boolean };
+    // The v1 payload contract must survive the anon-id capture untouched.
+    expect(body.ok).toBe(true);
+    expect(body.attached).toBe(false);
+    return body.id;
+  }
+
+  it("stores the submitter's anon id when present and valid", async () => {
+    const id = await submit(OWNER, "wheel fell off");
+    const row = bundle.sqlite
+      .prepare("SELECT anon_id FROM reports WHERE id = ?")
+      .get(id) as { anon_id: string | null };
+    expect(row.anon_id).toBe(OWNER);
+  });
+
+  it("stores null for a missing or implausible anon id", async () => {
+    const noHeader = await submit(null, "no header");
+    const res = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": "not-a-uuid", ...freshIp() },
+      body: JSON.stringify({ note: "bad header" }),
+    });
+    const badHeader = ((await res.json()) as { id: number }).id;
+    const rows = bundle.sqlite
+      .prepare("SELECT id, anon_id FROM reports WHERE id IN (?, ?)")
+      .all(noHeader, badHeader) as Array<{ anon_id: string | null }>;
+    expect(rows).toHaveLength(2);
+    for (const r of rows) expect(r.anon_id).toBeNull();
+  });
+
+  it("returns only the owner's reports, newest first, in the contract shape", async () => {
+    const first = await submit(OWNER, "mine, older");
+    const second = await submit(OWNER, "mine, newer");
+    await submit(OTHER, "someone else's");
+    await submit(null, "anonymous");
+
+    const res = await app.request("/api/my-reports", {
+      headers: { "x-anon-id": OWNER, ...freshIp() },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const body = (await res.json()) as { reports: Array<Record<string, unknown>> };
+    expect(body.reports).toHaveLength(2);
+    expect(body.reports.map((r) => r.id)).toEqual([second, first]);
+
+    const r = body.reports[0]!;
+    // Exact contract with the frontend: these keys and no others.
+    expect(Object.keys(r).sort()).toEqual(
+      ["archived", "body", "createdAt", "followups", "hasImage", "id", "kind", "note", "priority", "status"],
+    );
+    expect(r.kind).toBe("feedback");
+    expect(r.body).toBe("mine, newer");
+    expect(r.status).toBe("open");
+    expect(r.note).toBeNull();
+    expect(r.hasImage).toBe(false);
+    expect(r.followups).toEqual([]);
+    expect(typeof r.createdAt).toBe("number");
+    // Leak check on the raw payload: nothing internal escapes.
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("client_ip");
+    expect(raw).not.toContain("clientIp");
+    expect(raw).not.toContain("context");
+    expect(raw).not.toContain(OTHER);
+  });
+
+  it("reports hasImage for a report submitted with a screenshot", async () => {
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]);
+    const res = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": OWNER, ...freshIp() },
+      body: JSON.stringify({
+        note: "see attached",
+        image: `data:image/png;base64,${png.toString("base64")}`,
+      }),
+    });
+    expect(((await res.json()) as { attached: boolean }).attached).toBe(true);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER } });
+    const body = (await list.json()) as { reports: Array<{ hasImage: boolean }> };
+    expect(body.reports[0]!.hasImage).toBe(true);
+    // hasImage is a boolean, not the filename — the file stays admin-only.
+    expect(JSON.stringify(body)).not.toContain("imageFile");
+  });
+
+  it("returns an empty list without a valid anon id", async () => {
+    await submit(OWNER, "exists");
+    for (const headers of [freshIp(), { "x-anon-id": "zzz", ...freshIp() }, { "x-anon-id": "", ...freshIp() }]) {
+      const res = await app.request("/api/my-reports", { headers });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ reports: [] });
+    }
+  });
+
+  it("lets the reporter mark their report resolved without touching the operator note", async () => {
+    const id = await submit(OWNER, "eta was wrong");
+    // Operator triages it first with a note.
+    await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: "investigating" }),
+    });
+
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({ action: "resolve" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, status: "addressed" });
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER } });
+    const body = (await list.json()) as {
+      reports: Array<{ status: string; note: string | null; followups: Array<{ text: string; at: number }> }>;
+    };
+    expect(body.reports[0]!.status).toBe("addressed");
+    // Append, don't replace: the operator's note survives.
+    expect(body.reports[0]!.note).toBe("investigating");
+    expect(body.reports[0]!.followups).toHaveLength(1);
+    expect(body.reports[0]!.followups[0]!.text).toMatch(/resolved/i);
+    expect(body.reports[0]!.followups[0]!.at).toBe(1_700_000_000_000);
+  });
+
+  it("reopens an addressed report when the reporter follows up", async () => {
+    const id = await submit(OWNER, "bus vanished");
+    await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "addressed", note: "fixed in deploy" }),
+    });
+
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({ action: "followup", text: "still happening today" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, status: "open" });
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER } });
+    const body = (await list.json()) as {
+      reports: Array<{ status: string; note: string | null; followups: Array<{ text: string; at: number }> }>;
+    };
+    expect(body.reports[0]!.status).toBe("open");
+    expect(body.reports[0]!.note).toBe("fixed in deploy");
+    expect(body.reports[0]!.followups).toEqual([
+      { text: "still happening today", at: 1_700_000_000_000 },
+    ]);
+  });
+
+  it("404s a rider update for a report they do not own", async () => {
+    const id = await submit(OWNER, "not yours");
+    for (const headers of [
+      { "x-anon-id": OTHER, "content-type": "application/json", ...freshIp() },
+      { "content-type": "application/json", ...freshIp() }, // no id at all
+    ]) {
+      const res = await app.request(`/api/my-reports/${id}/update`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "resolve" }),
+      });
+      expect(res.status).toBe(404);
+      // Existence is never confirmed: same body as a nonexistent id.
+      expect(await res.json()).toEqual({ error: "not_found" });
+    }
+    // ...and the report is untouched.
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER } });
+    const body = (await list.json()) as { reports: Array<{ status: string }> };
+    expect(body.reports[0]!.status).toBe("open");
+  });
+
+  it("rejects a malformed rider update", async () => {
+    const id = await submit(OWNER, "hello");
+    for (const bad of [
+      {},
+      { action: "delete" },
+      { action: "followup" }, // no text
+      { action: "followup", text: "   " },
+    ]) {
+      const res = await app.request(`/api/my-reports/${id}/update`, {
+        method: "POST",
+        headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+        body: JSON.stringify(bad),
+      });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("caps follow-up text at 2000 chars", async () => {
+    const id = await submit(OWNER, "long one");
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({ action: "followup", text: "y".repeat(5000) }),
+    });
+    expect(res.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER } });
+    const body = (await list.json()) as { reports: Array<{ followups: Array<{ text: string }> }> };
+    expect(body.reports[0]!.followups[0]!.text).toHaveLength(2000);
+  });
+});
+
+describe("operator ownership backfill", () => {
+  const ANON = "7a3dbbac-0000-4000-8000-000000000001";
+  it("links a pre-anon-id report to a browser, but never overwrites", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "old report" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+
+    const link = await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", anonId: ANON }),
+    });
+    expect(link.status).toBe(200);
+    const mine = await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } });
+    const d = (await mine.json()) as { reports: Array<{ id: number }> };
+    expect(d.reports.some((r) => r.id === id)).toBe(true);
+
+    // A second backfill with a different id must NOT steal the report.
+    await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", anonId: "9a9a9a9a-0000-4000-8000-000000000009" }),
+    });
+    const still = await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } });
+    expect(((await still.json()) as { reports: Array<{ id: number }> }).reports.some((r) => r.id === id)).toBe(true);
+  });
+});
+
+describe("rider archive", () => {
+  const ANON = "cafe0001-0000-4000-8000-00000000cafe";
+  it("archives and unarchives without touching triage status", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON },
+      body: JSON.stringify({ note: "old one" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+
+    const arch = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON },
+      body: JSON.stringify({ action: "archive" }),
+    });
+    expect(arch.status).toBe(200);
+    let mine = (await (await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } })).json()) as
+      { reports: Array<{ id: number; archived: boolean; status: string }> };
+    let r = mine.reports.find((x) => x.id === id)!;
+    expect(r.archived).toBe(true);
+    expect(r.status).toBe("open"); // archive is list-tidying, not resolution
+
+    await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON },
+      body: JSON.stringify({ action: "unarchive" }),
+    });
+    mine = (await (await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } })).json()) as typeof mine;
+    expect(mine.reports.find((x) => x.id === id)!.archived).toBe(false);
+  });
+
+  it("cannot archive someone else's report", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON },
+      body: JSON.stringify({ note: "mine" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": "dead0002-0000-4000-8000-00000000beef" },
+      body: JSON.stringify({ action: "archive" }),
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("report priority", () => {
+  it("operator sets it; list filters by it; the rider sees it", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": "beef0003-0000-4000-8000-0000000000ff" },
+      body: JSON.stringify({ note: "brakes on fire" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+
+    const up = await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", priority: "urgent" }),
+    });
+    expect(up.status).toBe(200);
+
+    const filtered = await app.request("/api/reports?priority=urgent", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const list = (await filtered.json()) as { reports: Array<{ id: number; priority: string }> };
+    expect(list.reports.some((r) => r.id === id)).toBe(true);
+    expect(list.reports.every((r) => r.priority === "urgent")).toBe(true);
+
+    const mine = await app.request("/api/my-reports", {
+      headers: { "x-anon-id": "beef0003-0000-4000-8000-0000000000ff" },
+    });
+    const d = (await mine.json()) as { reports: Array<{ id: number; priority: string }> };
+    expect(d.reports.find((r) => r.id === id)?.priority).toBe("urgent");
+  });
+
+  it("garbage priority values are ignored, not stored", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "x" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+    await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", priority: "DEFCON 1; DROP TABLE reports" }),
+    });
+    const list = (await (await app.request("/api/reports?limit=5", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).json()) as
+      { reports: Array<{ id: number; priority: string }> };
+    expect(list.reports.find((r) => r.id === id)?.priority).toBe("normal");
   });
 });

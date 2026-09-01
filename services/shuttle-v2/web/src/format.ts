@@ -7,20 +7,39 @@ export type GeocodeResult = {
 };
 
 /**
- * Countdown to an event. Floors for minutes ≥ 2 so "7 min" honestly means
- * "at least 7 min left" (Math.round would call 6:31 "7 min" and then jump to
- * "6 min" at 6:30 — felt stuck). Under 2 min, show MM:SS so the final
- * countdown ticks visibly each poll. Under 10 s, just "now".
- * "min" (not "m") everywhere so readers don't confuse it with miles.
+ * Countdown to an event. Floors so "7 min" honestly means "at least 7 min
+ * left" (Math.round would call 6:31 "7 min" and then jump to "6 min" at
+ * 6:30 — felt stuck). Under 60 s, "<1 min" (the formatEtaRange idiom);
+ * under 10 s, just "now". "min" (not "m") everywhere so readers don't
+ * confuse it with miles.
+ *
+ * There used to be an MM:SS branch under 2 min ("1:49"), inherited from v1,
+ * meant as a final-approach countdown that ticks each poll. It backfired:
+ * the value it was fed is only minute-accurate and can legitimately hold
+ * still between polls, so the second-precision display read as a frozen
+ * stopwatch (report #48), and it violated the "minutes are spelled min"
+ * convention besides. Sub-minute is a state ("<1 min", "now"), not a timer.
  */
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
-  if (s < 120) {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${String(sec).padStart(2, "0")}`;
-  }
+  if (s < 60) return "<1 min";
   return `${Math.floor(s / 60)} min`;
+}
+
+/**
+ * A live ETA is a snapshot: `etaSec` seconds remaining as of `computedAtMs`.
+ * By render time some of it has already elapsed — subtract it (clamped at 0)
+ * so the number a rider watches keeps moving even when no fresh poll has
+ * landed (report #48: the card sat on one value while the bus visibly
+ * approached). Callers without a timestamp get the value unchanged.
+ */
+export function remainingSec(
+  etaSec: number,
+  computedAtMs?: number,
+  nowMs: number = Date.now(),
+): number {
+  const elapsed = computedAtMs != null ? Math.max(0, (nowMs - computedAtMs) / 1000) : 0;
+  return Math.max(0, etaSec - elapsed);
 }
 
 /**

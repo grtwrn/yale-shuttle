@@ -43,6 +43,14 @@ export const rawPositions = sqliteTable(
     // `WHERE collected_at < ? LIMIT n` with no bus_id, so the composite above
     // can't serve it and SQLite falls back to a full covering scan.
     timeIdx: index("raw_positions_time_idx").on(t.collectedAt),
+    // Route-leading. The path-derivation job asks for one route's recent
+    // samples; neither index above can answer that, so it degraded to a scan of
+    // every row in the retention window (~66k in production) even for a route
+    // that has not run all day. With this index an idle route costs 0.02 ms
+    // instead of 21 ms, and the busiest route's fetch drops 36 ms -> 24 ms.
+    // The cost is one more index to maintain on the 5-second insert batch,
+    // measured at 0.10 ms for 16 rows.
+    routeTimeIdx: index("raw_positions_route_time_idx").on(t.routeId, t.collectedAt),
   }),
 );
 
@@ -158,7 +166,16 @@ export const reports = sqliteTable("reports", {
   status: text("status", { enum: ["open", "addressed", "wontfix"] })
     .notNull()
     .default("open"),
+  // Triage priority, set by the operator or the feedback bot — never by the
+  // submitting rider (self-declared urgency would make everything urgent).
+  priority: text("priority", { enum: ["urgent", "normal", "nice_to_have"] })
+    .notNull()
+    .default("normal"),
   note: text("note"),
+  // The reporter's anonymous browser id (see daily_actives above), captured so
+  // a rider can later see the status of THEIR OWN reports via /api/my-reports.
+  // Nullable: older rows, and riders with storage disabled, have none.
+  anonId: text("anon_id"),
 });
 
 /**
@@ -223,6 +240,61 @@ export const excludedAnonIds = sqliteTable("excluded_anon_ids", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/**
+ * Route geometry derived from where buses actually drove — one row per route,
+ * the survivor of everything the raw samples that produced it cannot outlive.
+ *
+ * Upstream publishes a `path` per route and several are far too coarse to draw
+ * with: Orange Night ships 37 points for a 9.5 km loop, so a stop sits a median
+ * 97 m from its own route line. `raw_positions` holds thousands of real points
+ * along the actual roads for the same loop — but it is swept after 6 h, so a
+ * derivation has to be persisted or it dies with its inputs, and every restart
+ * would redraw the map from upstream's polyline again.
+ *
+ * That retention window is also why this table has to *accumulate*. A route can
+ * only be derived while it is running: Green and Purple stop by ~19:30, the
+ * night routes run 18:00–01:00, Grocery only at weekends. At any instant most
+ * routes have no usable samples at all, so the job keeps the best result it has
+ * ever seen and simply leaves the rest alone until their buses come back out.
+ *
+ * The quality columns are what make "best" decidable without re-deriving:
+ * `medianStopM` / `maxStopM` are how far this route's stops sit from this line,
+ * which is the one property the drawing code needs, and they let a later
+ * candidate be compared against the incumbent (re-measured against the current
+ * stop list, so an upstream stop move can't leave a stale figure standing).
+ */
+export const derivedPaths = sqliteTable("derived_paths", {
+  // One derivation per route; the upsert makes re-derivation idempotent.
+  routeId: integer("route_id").primaryKey(),
+  // Simplified polyline as a JSON [[lat, lon], ...] array, matching the shape
+  // `routes.path_json` already stores so both sides can be parsed identically.
+  pathJson: text("path_json").notNull(),
+  pointCount: integer("point_count").notNull(),
+  // How many stops the quality figures below were measured over. A change here
+  // means upstream reshaped the route, and the stored geometry is for a
+  // different loop than the one we would draw today.
+  stopCount: integer("stop_count").notNull(),
+  medianStopM: real("median_stop_m").notNull(),
+  // The tail, and the reason it is here: the line is used to locate each stop
+  // on it, so one stop stranded 280 m away breaks that leg's geometry however
+  // comfortable the median is. `derivePath` selects on this, and so does the
+  // rule that decides whether a later candidate displaces this row.
+  p90StopM: real("p90_stop_m").notNull(),
+  maxStopM: real("max_stop_m").notNull(),
+  lengthM: real("length_m").notNull(),
+  // Legs of the route that could not be traced along this line when it was
+  // stored — the measure the accept/replace decisions actually turn on, kept so
+  // the operator can see why a path is still in place without re-deriving it.
+  traceFailures: integer("trace_failures").notNull(),
+  // Which vehicle's trace won. Purely diagnostic — useful when a derivation
+  // looks wrong and the question is whether one bus took a detour.
+  busId: integer("bus_id").notNull(),
+  // How many raw samples were on the table when this was derived, and when.
+  // Together they answer "is this the best we can do, or was it a thin night?"
+  sampleCount: integer("sample_count").notNull(),
+  derivedAt: integer("derived_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 export type DbStop = typeof stops.$inferSelect;
 export type DbRoute = typeof routes.$inferSelect;
 export type DbRawPosition = typeof rawPositions.$inferSelect;
@@ -232,3 +304,4 @@ export type DbPredictionLog = typeof predictionsLog.$inferSelect;
 export type DbReport = typeof reports.$inferSelect;
 export type DbDailyActive = typeof dailyActives.$inferSelect;
 export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;
+export type DbDerivedPath = typeof derivedPaths.$inferSelect;

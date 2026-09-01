@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { distanceToSegmentM, haversineMeters, progressAlongSegment, buildStopSequencePolyline, polylineMeters } from "./geo";
+import { distanceToSegmentM, haversineMeters, progressAlongSegment, buildStopSequencePolyline, polylineMeters, traceStopLegs } from "./geo";
 import { at, STOP } from "./__fixtures__/payload";
 
 describe("haversineMeters", () => {
@@ -191,18 +191,96 @@ describe("buildStopSequencePolyline: per-leg validation", () => {
   });
 
   it("keeps a short leg's real geometry instead of flattening it", () => {
-    // Two stops ~120 m apart: 2x would be 240 m, under the 250 m floor, so the
-    // road going around a corner must still be allowed.
-    const dense: [number, number][] = [
-      [41.3100, -72.9300], [41.3105, -72.9300],
-      [41.3105, -72.9310], [41.3110, -72.9310],
-    ];
-    const stops = [
-      { lat: 41.3100, lon: -72.9300 },
-      { lat: 41.3110, lon: -72.9310 },
-    ];
-    const line = buildStopSequencePolyline(dense, stops);
+    // Two stops one block apart, with the road turning a corner between them.
+    // The corner must survive: flattening it draws a line through the block.
+    const line = buildStopSequencePolyline(loop, [
+      { lat: 41.310, lon: -72.930 },
+      { lat: 41.330, lon: -72.920 },
+    ]);
     expect(line).toBeDefined();
     expect(line!.length).toBeGreaterThan(2); // not flattened to a straight line
+  });
+
+  // Stops sit mid-block far more often than on a corner, and a published
+  // polyline carries a vertex only where the road turns. Snapping a stop to the
+  // nearest VERTEX was the bug behind every straight diagonal: on Orange Night
+  // the median stop is 97 m from a vertex but 6 m from the line itself.
+  it("starts and ends a leg at the stop's own place on the line, not at a corner", () => {
+    const stops = [
+      { lat: 41.315, lon: -72.930 }, // mid-block, between two corners
+      { lat: 41.330, lon: -72.915 }, // mid-block on another side
+    ];
+    const line = buildStopSequencePolyline(loop, stops)!;
+    expect(line).toBeDefined();
+    for (const [i, stop] of stops.entries()) {
+      const end = i === 0 ? line[0]! : line[line.length - 1]!;
+      expect(haversineMeters({ lat: end[0], lon: end[1] }, stop)).toBeLessThan(30);
+    }
+  });
+});
+
+describe("buildStopSequencePolyline: the drawn line IS the published route", () => {
+  const loop: [number, number][] = [
+    [41.3100, -72.9300], [41.3120, -72.9300], [41.3140, -72.9300],
+    [41.3140, -72.9260], [41.3140, -72.9220], [41.3100, -72.9220],
+    [41.3100, -72.9260],
+  ];
+
+  /** Distance from a point to the polyline itself — segments, not vertices. */
+  const toLine = (lat: number, lon: number): number => {
+    let best = Infinity;
+    for (let i = 1; i < loop.length; i++) {
+      const a = loop[i - 1]!;
+      const b = loop[i]!;
+      const kx = 111_320 * Math.cos((lat * Math.PI) / 180);
+      const ax = a[1] * kx, ay = a[0] * 111_320;
+      const bx = b[1] * kx, by = b[0] * 111_320;
+      const px = lon * kx, py = lat * 111_320;
+      const dx = bx - ax, dy = by - ay;
+      const l2 = dx * dx + dy * dy;
+      let t = l2 < 1e-9 ? 0 : ((px - ax) * dx + (py - ay) * dy) / l2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const d = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+      if (d < best) best = d;
+    }
+    return best;
+  };
+
+  // The invariant that replaced counting diagonals. Measured the same way
+  // against production, 99.1% of every drawn metre lands on a published street.
+  it("draws no metre that is not on the published line", () => {
+    for (let i = 0; i < loop.length; i++) {
+      for (const span of [1, 2, 3]) {
+        const stops = [
+          { lat: loop[i]![0], lon: loop[i]![1] },
+          { lat: loop[(i + span) % loop.length]![0], lon: loop[(i + span) % loop.length]![1] },
+        ];
+        const legs = traceStopLegs(loop, stops);
+        for (const leg of legs) {
+          if (leg.bridged) continue; // a straight bridge is off-route by design
+          for (const [lat, lon] of leg.slice) {
+            expect(toLine(lat, lon)).toBeLessThan(25);
+          }
+        }
+      }
+    }
+  });
+
+  // The guard that remains. A wrap is the one failure projection cannot rule
+  // out, and it is bounded by geometry rather than a tuned ratio: no leg
+  // between consecutive stops covers the whole loop.
+  it("bridges rather than drawing nearly the entire loop for one leg", () => {
+    const loopM = polylineMeters(loop);
+    for (let i = 0; i < loop.length; i++) {
+      for (let j = 0; j < loop.length; j++) {
+        const legs = traceStopLegs(loop, [
+          { lat: loop[i]![0], lon: loop[i]![1] },
+          { lat: loop[j]![0], lon: loop[j]![1] },
+        ]);
+        for (const leg of legs) {
+          expect(polylineMeters(leg.slice)).toBeLessThanOrEqual(loopM * 0.9 + 1);
+        }
+      }
+    }
   });
 });

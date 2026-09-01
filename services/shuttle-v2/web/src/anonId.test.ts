@@ -78,7 +78,7 @@ describe("anonIdHeader", () => {
   });
 
   it("spreads into a fetch init without disturbing other headers", () => {
-    const headers = { "content-type": "application/json", ...anonIdHeader() };
+    const headers: Record<string, string> = { "content-type": "application/json", ...anonIdHeader() };
     expect(headers["content-type"]).toBe("application/json");
     expect(headers["x-anon-id"]).toMatch(UUID);
   });

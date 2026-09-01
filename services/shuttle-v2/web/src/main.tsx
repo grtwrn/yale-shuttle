@@ -34,6 +34,19 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 const params = new URLSearchParams(window.location.search);
 const Page = params.get("review") === "minimap" ? MinimapReview : TransitMap;
 
+// Installable-app support. Registered after load so it never competes with the
+// first paint; failures are silently ignored — the app works identically
+// without it, the SW only adds the offline shell and installability.
+// Installed-app pull-to-refresh: standalone mode has no browser chrome, so
+// Safari's native gesture is gone. No-op in a normal tab.
+import("./pullToRefresh").then((m) => m.installPullToRefresh()).catch(() => {});
+
+if ("serviceWorker" in navigator && !import.meta.env.DEV) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>

@@ -8,12 +8,13 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "mapbot": "node scripts/map-bot.mjs",
     "mapbot:visual": "node scripts/map-bot-visual.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "riders": "node scripts/riders.mjs"
+    "riders": "node scripts/riders.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",
@@ -28,7 +29,7 @@
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.28.0",
-    "playwright-core": "^1.61.1",
+    "playwright-core": "^1.62.1",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

@@ -77,89 +77,166 @@ function forwardNearestIdx(path: [number, number][], t: LatLon, startIdx: number
   }
   return bestIdx === -1 ? startIdx : bestIdx;
 }
-export function buildStopSequencePolyline(
-  path: [number, number][] | undefined, stops: LatLon[] | undefined,
-): [number, number][] | undefined {
-  if (!path || path.length < 2 || !stops || stops.length < 2) return undefined;
-  // Trace the route polyline in travel order: anchor the first stop globally,
-  // then walk forward stop-by-stop. Forward matching keeps the indices
-  // monotonic, so the "ride" line follows the actual streets between board and
-  // alight without grabbing the wrong loop occurrence (which produced straight
-  // cross-cuts and ~7 km southern detours on Green).
-  let cursor = nearestPathIdx(path, stops[0]);
-  const out: [number, number][] = [];
-  for (let s = 1; s < stops.length; s++) {
-    const nextIdx = forwardNearestIdx(path, stops[s], cursor);
-    let slice = nextIdx >= cursor
-      ? path.slice(cursor, nextIdx + 1)
-      : [...path.slice(cursor), ...path.slice(0, nextIdx + 1)];
-    // Degenerate match (same index) — bridge with a straight segment so the
-    // line never silently vanishes.
-    if (slice.length < 2) slice = [path[cursor], path[nextIdx]];
+/**
+ * Where a stop sits ON the route line, as a position along it.
+ *
+ * `seg + t` is a linear coordinate: segment index plus the fraction along it,
+ * so positions compare and subtract like distances-along-the-route.
+ */
+interface PathPos { seg: number; t: number; lat: number; lon: number; m: number }
 
-    // Validate THIS leg before accepting it. Two consecutive stops are a block
-    // or two apart; the road between them wanders, but not several times the
-    // straight-line distance. When it does, `nextIdx` matched the wrong point
-    // and the wrap branch above has just appended most of the loop.
+/** Project a point onto one segment, in local metres. */
+function projectSeg(a: [number, number], b: [number, number], p: LatLon): { t: number; lat: number; lon: number; m: number } {
+  const kx = 111_320 * Math.cos((p.lat * Math.PI) / 180);
+  const ky = 111_320;
+  const ax = a[1] * kx, ay = a[0] * ky;
+  const bx = b[1] * kx, by = b[0] * ky;
+  const px = p.lon * kx, py = p.lat * ky;
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 < 1e-9 ? 0 : ((px - ax) * dx + (py - ay) * dy) / l2;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const lat = a[0] + (b[0] - a[0]) * t;
+  const lon = a[1] + (b[1] - a[1]) * t;
+  return { t, lat, lon, m: haversineMeters({ lat, lon }, p) };
+}
+
+/**
+ * The first place, travelling forward from `fromSeg`, where the line comes
+ * closest to `stop` — projected onto the SEGMENTS, not snapped to a vertex.
+ *
+ * Snapping to vertices was the bug behind every straight diagonal. A published
+ * polyline only needs a vertex where the road turns, so a stop mid-block can be
+ * hundreds of metres from the nearest vertex while sitting right on the line:
+ * on Orange Night the median stop is 97 m from a vertex and 6 m from the line.
+ * Slicing between vertices therefore measured the wrong distance, mis-ordered
+ * stops that shared a vertex, and wrapped — dragging in most of the loop, which
+ * the length guard then replaced with a straight line through the buildings.
+ *
+ * Yale's own map draws these same published lines correctly, which was the
+ * clue: the geometry was never coarse, the consumer was.
+ */
+function forwardProject(path: [number, number][], stop: LatLon, fromSeg: number): PathPos {
+  const n = path.length;
+  let best: PathPos | null = null;
+  let arrived = false;
+  for (let step = 0; step < n; step++) {
+    const i = (fromSeg + step) % n;
+    const a = path[i]!;
+    const b = path[(i + 1) % n]!;
+    const r = projectSeg(a, b, stop);
+    if (!best || r.m < best.m) best = { seg: i, t: r.t, lat: r.lat, lon: r.lon, m: r.m };
+    if (r.m <= 60) arrived = true;
+    // Once past the closest approach on this pass, stop — do not roll on into a
+    // later pass through the same area. Routes 9 and 10 visit West Campus stops
+    // twice and the second pass is a different leg.
+    if (arrived && best && r.m > best.m + 80) break;
+  }
+  return best ?? { seg: fromSeg, t: 0, lat: path[fromSeg]![0], lon: path[fromSeg]![1], m: Infinity };
+}
+
+/** The piece of the line between two positions, following travel order. */
+function sliceBetween(path: [number, number][], from: PathPos, to: PathPos): [number, number][] {
+  const n = path.length;
+  const out: [number, number][] = [[from.lat, from.lon]];
+  const sameSeg = from.seg === to.seg && to.t >= from.t;
+  if (!sameSeg) {
+    let i = (from.seg + 1) % n;
+    for (let guard = 0; guard <= n; guard++) {
+      out.push([path[i]![0], path[i]![1]]);
+      if (i === to.seg) break;
+      i = (i + 1) % n;
+    }
+  }
+  out.push([to.lat, to.lon]);
+  return out;
+}
+
+/** One drawn leg, and whether the route line could actually supply it. */
+export interface TracedLeg { slice: [number, number][]; bridged: boolean }
+
+/**
+ * The legs between consecutive stops, in travel order. Exported so the drawn
+ * result can be measured leg-by-leg — "how often do we give up on the route and
+ * draw a straight line through the buildings" is the number that matters, and
+ * it is not visible in the concatenated polyline.
+ */
+export function traceStopLegs(
+  path: [number, number][] | undefined, stops: LatLon[] | undefined,
+): TracedLeg[] {
+  if (!path || path.length < 2 || !stops || stops.length < 2) return [];
+  const legs: TracedLeg[] = [];
+  const loopM = polylineMeters(path);
+  let cursor = forwardProject(path, stops[0], 0);
+  for (let s = 1; s < stops.length; s++) {
+    const next = forwardProject(path, stops[s], cursor.seg);
+    let slice = sliceBetween(path, cursor, next);
+    let bridged = false;
+
+    // Backstop, not the mechanism, and deliberately loose.
     //
-    // Checking per leg rather than per trace matters: the failure is local, so
-    // discarding the whole trace throws away every good leg with it. Bridging
-    // only the bad leg keeps real road geometry everywhere else.
-    const legDirect = haversineMeters(stops[s - 1], stops[s]);
-    if (polylineMeters(slice) > Math.max(MIN_LEG_ALLOWANCE_M, legDirect * MAX_LEG_DETOUR)) {
+    // The old rule — a leg may not exceed twice the straight line between its
+    // stops — was measuring the wrong thing. On Purple's West Campus
+    // out-and-back the route genuinely doubles back, so consecutive stops sit
+    // close together while the road between them runs out to the turnaround and
+    // returns. That is real route, and the rule was replacing it with a chord
+    // through the water: only 73% of Purple's drawn metres landed on a
+    // published street, one of them 1,151 m off.
+    //
+    // What is actually wrong is a leg that wrapped: the forward walk missed its
+    // stop and carried on round the loop. That is bounded by geometry, not by a
+    // tuned ratio — no leg between two consecutive stops covers half the loop.
+    if (slice.length < 2 || polylineMeters(slice) > loopM * MAX_LEG_LOOP_FRACTION) {
       slice = [
         [stops[s - 1].lat, stops[s - 1].lon],
         [stops[s].lat, stops[s].lon],
       ];
+      bridged = true;
     }
+    legs.push({ slice, bridged });
+    cursor = next;
+  }
+  return legs;
+}
 
-    if (s === 1) out.push(...slice);
+export function buildStopSequencePolyline(
+  path: [number, number][] | undefined, stops: LatLon[] | undefined,
+): [number, number][] | undefined {
+  const legs = traceStopLegs(path, stops);
+  if (legs.length === 0) return undefined;
+  const out: [number, number][] = [];
+  for (let i = 0; i < legs.length; i++) {
+    const slice = legs[i]!.slice;
+    if (i === 0) out.push(...slice);
     else out.push(...slice.slice(1)); // dedupe junction point
-    cursor = nextIdx;
   }
   if (out.length < 2) return undefined;
 
-  // Sanity-check the trace before trusting it.
-  //
-  // Tracing assumes the polyline is fine-grained enough that each stop maps to
-  // a distinct, monotonically advancing point on it. Several upstream polylines
-  // are not: Orange Night publishes 37 points for 26 stops (227 m median
-  // spacing), so stops land 380-430 m from the nearest point, four of them
-  // collapse onto the same index, and the mapping inverts. Each inversion takes
-  // the wrap branch above and appends most of the loop, which rendered as the
-  // whole route drawn solid in the rider's colour — measured at a median 83% of
-  // the loop for Orange Night and up to 400% for Green.
-  //
-  // No threshold tuning fixes that, because the resolution simply is not there.
-  // So compare what we traced against the straight-line path through the same
-  // stops: a real road route wanders, but not several times further than the
-  // stops themselves. Beyond that, the trace is wrong, and returning undefined
-  // makes the caller fall back to straight segments between stops — visibly
-  // simpler, but honest about where the bus goes.
-  const traced = polylineMeters(out);
-  const direct = polylineMeters(stops.map((c) => [c.lat, c.lon] as [number, number]));
-  if (direct > 0 && traced > direct * MAX_TRACE_DETOUR) return undefined;
+  // No whole-ride backstop any more. It compared the traced ride against the
+  // straight line through its stops and discarded anything past 2.5x — which
+  // an out-and-back exceeds by construction, so it was throwing away 38 of 822
+  // correct rides and drawing them as chords instead. It existed to catch a
+  // tracer that could wander; this one cannot, because every leg it emits is
+  // either a slice of the published route or a bounded straight bridge.
   return out;
 }
 
 /**
- * How far a single leg's traced road may exceed the straight line between its
- * two stops before we stop believing it. Real routes measure ~1.1-1.4x.
+ * The share of the whole loop a single leg may cover before it is certainly a
+ * wrap rather than a leg.
+ *
+ * Set from the routes, not from intuition, and there is a wide gap to sit in.
+ * Measured across all 15 published lines, the longest legitimate leg is 51.7%
+ * of the loop (Grocery TJ, five stops far apart); most are under 20%. A leg
+ * produced by a wrap is 88% or more, because it covers everything except the
+ * hop it should have drawn — Green's one bad leg measures 98.2%.
+ *
+ * Both edges matter. At 0.5 the bound cut Grocery TJ's real legs and drew a
+ * 1,567 m line across open water; at 0.9 it stopped catching a line published
+ * in the wrong direction, which draws 88% of the loop for every leg and is the
+ * "whole route painted solid" bug the rider first reported.
  */
-const MAX_LEG_DETOUR = 2;
-
-/**
- * Floor for the above, so a pair of stops 40 m apart is still allowed to go
- * around a block instead of being flattened to a straight line.
- */
-const MIN_LEG_ALLOWANCE_M = 250;
-
-/**
- * Backstop on the assembled ride. Per-leg checking catches the failure at
- * source, so this rarely fires — it exists for a shape the per-leg rule cannot
- * see, e.g. many legs each individually plausible but collectively absurd.
- */
-const MAX_TRACE_DETOUR = 2.5;
+const MAX_LEG_LOOP_FRACTION = 0.7;
 
 export function polylineMeters(pts: readonly [number, number][]): number {
   let m = 0;

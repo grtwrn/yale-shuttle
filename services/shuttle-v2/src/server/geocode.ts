@@ -34,6 +34,13 @@ export interface GeocodeHit {
  * and add its anchor to that test** — do not eyeball it.
  */
 export const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
+  // -- Weekend grocery runs (report #45 asked for these by name) ------------
+  // Coordinates are copied from the serving shuttle stops themselves (ids
+  // 119, 169, 170), not hand-entered; the anchor test pins them there.
+  { label: "Trader Joe's (Milford)", lat: 41.251375, lon: -73.018082 },
+  { label: "ShopRite (Hamden)", lat: 41.36879, lon: -72.92047 },
+  { label: "Aldi / Walmart (Hamden)", lat: 41.37512, lon: -72.91709 },
+
   // -- Central campus / downtown --------------------------------------------
   { label: "Sterling Memorial Library", lat: 41.3115, lon: -72.9282 },
   { label: "Beinecke Library", lat: 41.3115, lon: -72.9272 },
@@ -116,12 +123,31 @@ export function geocode(network: TransitNetwork, rawQuery: string): GeocodeHit[]
   }
 
   out.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
-  return out.slice(0, MAX_RESULTS);
+
+  // A curated landmark that IS a shuttle stop (the grocery destinations sit on
+  // the stops' own coordinates) would otherwise appear twice — a rider typing
+  // "trader joes" saw two identical options. When a landmark and a stop share
+  // a spot, the LANDMARK survives regardless of score: its label carries more
+  // information ("Trader Joe's (Milford)" vs "Trader Joe's"), and several
+  // curated entries sit on their serving stops by design (SOM, Divinity).
+  const near = (a: GeocodeHit, b: GeocodeHit) =>
+    Math.abs(a.lat - b.lat) < 6e-4 && Math.abs(a.lon - b.lon) < 8e-4;
+  const deduped: GeocodeHit[] = [];
+  for (const h of out) {
+    const twinIdx = deduped.findIndex((k) => near(k, h));
+    if (twinIdx === -1) deduped.push(h);
+    else if (h.kind === "landmark" && deduped[twinIdx]!.kind === "stop") deduped[twinIdx] = h;
+  }
+  return deduped.slice(0, MAX_RESULTS);
 }
 
 function normalize(s: string): string {
   return s
     .toLowerCase()
+    // Apostrophes are deleted, not collapsed to spaces: "Joe's" must equal
+    // "Joes", not "joe s" — a rider typing without the apostrophe found
+    // nothing (report #45).
+    .replace(/['\u2019]/g, "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ")

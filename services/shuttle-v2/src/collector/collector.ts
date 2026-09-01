@@ -9,21 +9,98 @@ import {
   segments,
   stops as stopsTable,
 } from "../db/schema.js";
-import { distanceMeters } from "../network/geo.js";
+import {
+  derivePath,
+  isBetterThanUpstream,
+  traceFailures,
+  type Sample,
+} from "../network/derivePath.js";
+import { distanceMeters, type LatLon } from "../network/geo.js";
 import { NetworkRef } from "../network/NetworkRef.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
 import { planTracks, reconcileTracks, stepMany } from "./detector.js";
-import { UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
+import {
+  PathStore,
+  shouldReplacePath,
+  stopFitM,
+  toStoredPath,
+  upstreamNowBeats,
+  type StoredPath,
+} from "./pathStore.js";
+import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
 
 // Cadences --------------------------------------------------------------------
 
 const POLL_INTERVAL_MS = 5_000;
 const CALIBRATE_INTERVAL_MS = 5 * 60_000;
 const STATIC_REFRESH_INTERVAL_MS = 6 * 60 * 60_000;
+// Service banners change on a human timescale (a construction notice lives for
+// weeks), but when one appears riders should see it the same trip, not six
+// hours later. Five minutes is frequent enough and costs one tiny GET.
+const ANNOUNCEMENTS_INTERVAL_MS = 5 * 60_000;
 const RETENTION_INTERVAL_MS = 60 * 60_000;
+
+/**
+ * Path derivation: one route per tick, every minute.
+ *
+ * The work is a SQLite fetch of a route's recent samples plus O(samples x
+ * stops) distance arithmetic, and it runs on the same synchronous connection
+ * and the same event loop as the poll and the HTTP server. Measured against a
+ * production-sized `raw_positions` (66,375 rows) on the slowest machine
+ * involved — the Raspberry Pi this is developed on, comfortably slower than the
+ * Fly machine — the busiest route costs 24 ms to fetch and 26 ms to derive; a
+ * route with no samples costs 0.02 ms, because the new (route_id, collected_at)
+ * index turns "has this route run?" into an index probe. So the worst tick is
+ * ~50 ms and the typical tick is a rounding error. That is a hundredth of the
+ * 5 s poll interval and two orders of magnitude below the 1.1 s stall the
+ * calibrator used to cause.
+ *
+ * One route per tick rather than all fifteen is the whole reason those numbers
+ * stay small: the same sweep done at once would be a ~200 ms freeze in the
+ * middle of a poll, and there is nothing to gain from it. A sweep therefore
+ * takes ~15 min, which is the right timescale anyway — service windows are
+ * hours long (the night routes run 18:00-01:00), so a route gets dozens of
+ * attempts every day it runs, and a route that is idle costs nothing to skip.
+ */
+const DERIVE_INTERVAL_MS = 60_000;
+
+/**
+ * How far back to look for samples. Matched to the raw-position retention
+ * window: anything older has already been swept, so a longer window would only
+ * widen the index range for no extra rows.
+ */
+const DERIVE_WINDOW_MS = 6 * 60 * 60_000;
+
+/**
+ * Don't bother fetching unless the route has at least this many recent samples.
+ * A derivation needs one lap covering every stop, and a lap is 20-40 min of
+ * 5-second polls, so anything under ~20 minutes' worth cannot produce one.
+ * Checked with a COUNT against the index (sub-millisecond) so the common case —
+ * a route that is not running — never touches the rows at all.
+ */
+const DERIVE_MIN_SAMPLES = 240;
+
+/**
+ * Ceiling on rows pulled into memory for one derivation. Six hours of 5 s polls
+ * across four buses is ~17k rows, so this is not reached in normal operation;
+ * it exists because retention is a best-effort hourly sweep, and a few failed
+ * sweeps must not turn this job into an unbounded read.
+ */
+const DERIVE_MAX_SAMPLES = 20_000;
+
+/**
+ * After a route's path is stored, leave it alone for this long. A stored path
+ * is already an improvement over upstream; refining it is worth doing, but not
+ * every 15 minutes, and every replacement rewrites geometry the map is drawing.
+ * Half an hour still gives a night route a dozen chances per service window.
+ */
+const DERIVE_STORE_COOLDOWN_MS = 30 * 60_000;
+
+/** Log a tick that took longer than this — the budget above is ~50 ms. */
+const DERIVE_SLOW_MS = 250;
 
 /**
  * How soon to retry a failed static refresh, and the ceiling for the
@@ -96,6 +173,46 @@ const consoleLogger: Logger = {
 
 // Implementation --------------------------------------------------------------
 
+/** One route's derived geometry, as the operator sees it. */
+export interface DerivedPathRouteStat {
+  routeId: number;
+  shortName: string | null;
+  points: number;
+  stopCount: number;
+  /** Stop-to-line distance as measured when this was derived. */
+  medianStopM: number;
+  p90StopM: number;
+  maxStopM: number;
+  /** Re-measured against the stop list in force now; null if the route is gone. */
+  currentMedianStopM: number | null;
+  currentP90StopM: number | null;
+  lengthM: number;
+  /** Legs that cannot be drawn along this line — the decisive measure. */
+  traceFailures: number;
+  busId: number;
+  sampleCount: number;
+  derivedAt: number;
+  ageHours: number;
+  /** What upstream's published polyline offers instead, for comparison. */
+  upstreamPoints: number | null;
+  upstreamMedianStopM: number | null;
+  upstreamP90StopM: number | null;
+  upstreamTraceFailures: number | null;
+}
+
+export interface DerivedPathStats {
+  /** Routes in the network, and how many of them have a derived path stored. */
+  routes: number;
+  derived: number;
+  /** Ticks that got as far as looking at a route, and ticks that stored one. */
+  runs: number;
+  stores: number;
+  lastRunAt: number | null;
+  lastRunMs: number | null;
+  maxRunMs: number;
+  paths: DerivedPathRouteStat[];
+}
+
 export interface CollectorOptions {
   upstream?: UpstreamClient;
   logger?: Logger;
@@ -104,12 +221,13 @@ export interface CollectorOptions {
 /**
  * Long-lived orchestrator. Owns the in-memory `TransitNetwork` (via a
  * `NetworkRef` so static refreshes can swap topology atomically) and the
- * per-bus `BusState` map. Runs four independent timers:
+ * per-bus `BusState` map. Runs five independent timers:
  *
  *  - poll        every 5 s   — fetch buses, run detector, persist events
  *  - calibrate   every 5 min — recompute segment/dwell stats from SQLite
  *  - static      every 6 h   — refresh stops/routes from upstream
  *  - retention   every 1 h   — batched-delete old raw_positions
+ *  - derive      every 1 min — one route's geometry from observed positions
  *
  * The HTTP server in the same process holds the same `NetworkRef` and reads
  * live state directly — no IPC, no cross-process cache invalidation.
@@ -139,13 +257,52 @@ export class Collector {
   private readonly upsertRouteStmt: Database.Statement;
   private readonly patchDwellStmt: Database.Statement;
   private readonly trimStmts = new Map<string, Database.Statement>();
+  private readonly countRouteSamplesStmt: Database.Statement;
+  private readonly selectRouteSamplesStmt: Database.Statement;
+
+  /**
+   * Route geometry derived from observed GPS, best-so-far per route.
+   *
+   * Loaded from `derived_paths` at construction and only ever added to or
+   * upgraded — never cleared. That is deliberate and load-bearing: a route can
+   * only be derived while it is running, and `raw_positions` is swept after six
+   * hours, so for most of the day most routes have nothing to derive from. If
+   * this map tracked "what can we derive right now" instead of "the best we
+   * have ever derived", every night route's geometry would vanish each morning.
+   */
+  private readonly derivedPathsByRoute: Map<number, StoredPath>;
+  private readonly pathStore: PathStore;
+  /** Round-robin position in the route list — one route considered per tick. */
+  private deriveCursor = 0;
+  /** Per-route "don't try again before" for routes whose path was just stored. */
+  private readonly deriveNextAttemptAt = new Map<number, number>();
+  /**
+   * Which static refresh a route's stored path was last checked against. The
+   * check below (has upstream's published path overtaken ours?) only has a new
+   * answer when the topology has been refreshed, so this reduces it from every
+   * tick to once per route per six hours.
+   *
+   * A counter rather than `lastStaticRefreshAt`: two refreshes inside the same
+   * millisecond are indistinguishable by timestamp, and the failure mode is
+   * silent — the check is skipped and the route keeps a path upstream has
+   * overtaken.
+   */
+  private readonly deriveValidatedGeneration = new Map<number, number>();
+  private deriveRuns = 0;
+  private deriveStores = 0;
+  private deriveLastAt: number | null = null;
+  private deriveLastMs: number | null = null;
+  private deriveMaxMs = 0;
 
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
   private staticHandle?: NodeJS.Timeout;
   private retentionHandle?: NodeJS.Timeout;
+  private deriveHandle?: NodeJS.Timeout;
 
   private lastStaticRefreshAt = 0;
+  /** Bumped by every successful static refresh; see deriveValidatedGeneration. */
+  private staticGeneration = 0;
   /**
    * True from the moment `runPoll` starts until it finishes, including across
    * every `await`. The poll timer fires every 5 s but the upstream fetch is
@@ -161,6 +318,10 @@ export class Collector {
   /** Ticks dropped because the previous poll was still running. */
   private pollSkipped = 0;
   private staticRefreshInFlight = false;
+  // Last successfully fetched service banners; kept on fetch failure so a
+  // flaky upstream never blanks a live construction notice.
+  private announcementsList: Announcement[] = [];
+  private announcementsHandle: ReturnType<typeof setInterval> | null = null;
   private staticRetryHandle: NodeJS.Timeout | undefined;
   private staticRetryDelayMs = STATIC_RETRY_BASE_MS;
   /** Upstream rows rejected by `sanitizeObservations`, cumulative. */
@@ -228,6 +389,21 @@ export class Collector {
         ORDER BY arrived_at DESC LIMIT 1
       )
     `);
+    // Both hit raw_positions_route_time_idx. The COUNT is the cheap gate that
+    // keeps an idle route (the usual case) from ever reading a row; the fetch
+    // takes the MOST RECENT samples under the cap, hence DESC — `derivePath`
+    // sorts each bus's trace by time itself, so the row order here is free.
+    this.countRouteSamplesStmt = this.sqlite.prepare(
+      "SELECT COUNT(*) AS n FROM raw_positions WHERE route_id = ? AND collected_at >= ?",
+    );
+    this.selectRouteSamplesStmt = this.sqlite.prepare(
+      "SELECT bus_id AS busId, lat, lon, collected_at AS collectedAt " +
+        "FROM raw_positions WHERE route_id = ? AND collected_at >= ? " +
+        "ORDER BY collected_at DESC LIMIT ?",
+    );
+    this.pathStore = new PathStore(this.sqlite);
+    this.derivedPathsByRoute = this.pathStore.loadAll();
+
     for (const table of ["raw_positions", "arrivals", "segments"] as const) {
       const col = retentionColumn(table);
       this.trimStmts.set(
@@ -265,7 +441,23 @@ export class Collector {
       STATIC_REFRESH_INTERVAL_MS,
     );
     this.retentionHandle = setInterval(() => this.runRetention(), RETENTION_INTERVAL_MS);
-    for (const h of [this.pollHandle, this.calibrateHandle, this.staticHandle, this.retentionHandle]) {
+    // Deliberately not run once at startup: boot already does a static refresh
+    // and a full calibration before the health check can pass, and the first
+    // sweep costs nothing to wait a minute for.
+    this.deriveHandle = setInterval(() => this.runDerivePaths(), DERIVE_INTERVAL_MS);
+    void this.refreshAnnouncements();
+    this.announcementsHandle = setInterval(
+      () => void this.refreshAnnouncements(),
+      ANNOUNCEMENTS_INTERVAL_MS,
+    );
+    for (const h of [
+      this.pollHandle,
+      this.calibrateHandle,
+      this.staticHandle,
+      this.retentionHandle,
+      this.deriveHandle,
+      this.announcementsHandle,
+    ]) {
       h?.unref();
     }
 
@@ -274,7 +466,14 @@ export class Collector {
   }
 
   stop(): void {
-    for (const h of [this.pollHandle, this.calibrateHandle, this.staticHandle, this.retentionHandle]) {
+    for (const h of [
+      this.pollHandle,
+      this.calibrateHandle,
+      this.staticHandle,
+      this.retentionHandle,
+      this.deriveHandle,
+      this.announcementsHandle,
+    ]) {
       if (h) clearInterval(h);
     }
     this.cancelStaticRetry();
@@ -534,6 +733,27 @@ export class Collector {
     }
   }
 
+  /** The service banners Yale's own map shows. Failure keeps the last batch. */
+  announcements(): readonly Announcement[] {
+    return this.announcementsList;
+  }
+
+  private async refreshAnnouncements(): Promise<void> {
+    try {
+      const fresh = await this.upstream.announcements();
+      const changed = JSON.stringify(fresh) !== JSON.stringify(this.announcementsList);
+      this.announcementsList = fresh;
+      if (changed) {
+        // The /api/buses payload embeds these and is memoized on dataVersion().
+        this.version++;
+        this.logger.info("collector.announcements_changed", { count: fresh.length });
+      }
+    } catch {
+      // Not worth a log line per failure: the endpoint answers HTML during
+      // upstream deploys. The banner riders saw stays up, which is right.
+    }
+  }
+
   private async refreshStaticIfNeeded(force: boolean): Promise<void> {
     // Same overlap hazard as the poll loop: two concurrent refreshes would
     // each build a network and race to `ref.replace`, and the loser's
@@ -563,6 +783,7 @@ export class Collector {
       this.ref.replace(rebuilt);
       this.version++;
       this.lastStaticRefreshAt = now;
+      this.staticGeneration++;
       this.cancelStaticRetry();
       this.logger.info("collector.static_refreshed", {
         stops: stops.length,
@@ -627,6 +848,228 @@ export class Collector {
     } catch (err) {
       this.logger.error("collector.retention_failed", { error: (err as Error).message });
     }
+  }
+
+  /**
+   * Try to derive one route's geometry from the positions buses actually
+   * reported, and keep it if it is the best we have seen.
+   *
+   * Upstream publishes a `path` per route and several are far too coarse to
+   * draw a rider's ride on: Orange Night ships 37 points for a 9.5 km loop, so
+   * a stop sits a median 97 m from its own route line. The samples this
+   * collector already writes put the same stops a median 24 m away. This is the
+   * job that turns the second number into something the map can serve.
+   *
+   * Three properties matter more than the arithmetic:
+   *
+   *  - **It is opportunistic, and most attempts find nothing.** A route can
+   *    only be derived while it is running. At 03:00 fourteen of fifteen routes
+   *    have no samples at all, and the correct behaviour is to skip them
+   *    cheaply and leave what is already stored completely alone.
+   *  - **It never trades down.** A candidate must beat upstream
+   *    (`isBetterThanUpstream`) *and* beat the incumbent by a clear margin
+   *    (`shouldReplacePath`) before anything is written.
+   *  - **It cannot throw.** This runs in a bare `setInterval`, where an
+   *    exception is an uncaughtException and takes the process with it. A
+   *    failed tick is simply a tick that derived nothing.
+   */
+  private runDerivePaths(): void {
+    const startedAt = Date.now();
+    let routeId: number | undefined;
+    try {
+      const net = this.ref.get();
+      // Sorted so the sweep order is stable across topology refreshes; the
+      // cursor then means the same thing from one tick to the next.
+      const routeIds = [...net.routes.keys()].sort((a, b) => a - b);
+      if (routeIds.length === 0) return;
+
+      // Exactly one route per tick, in a fixed rotation. That bound is the
+      // whole cost argument, so the cooldown below is a reason to do nothing
+      // with this tick — never a reason to take a second route instead.
+      routeId = routeIds[this.deriveCursor % routeIds.length]!;
+      this.deriveCursor = (this.deriveCursor + 1) % routeIds.length;
+
+      const route = net.routes.get(routeId);
+      if (!route) return;
+      // Two different views of the same stops, and both are needed. The
+      // distance figures want each place once; the traced-leg count wants the
+      // sequence verbatim, duplicates included, because on routes 9 and 10 the
+      // second visit to a West Campus stop IS the route.
+      const stops = uniqueRouteStopCoords(net, route);
+      const sequence = routeStopSequence(net, route);
+      if (stops.length < 2) return;
+
+      // Before the cooldown, not after: a route that has just been derived is
+      // precisely the one that would otherwise sit on a superseded path for
+      // half an hour. Self-gated on the static generation, so it is a map
+      // lookup on all but one tick per route per topology refresh.
+      this.dropIfUpstreamOvertook(routeId, route, stops, sequence);
+
+      // Recently stored: leave it alone. Refining a path that is already an
+      // improvement is worth doing, but not every quarter of an hour.
+      if ((this.deriveNextAttemptAt.get(routeId) ?? 0) > startedAt) return;
+
+      this.deriveRuns++;
+      const cutoff = startedAt - DERIVE_WINDOW_MS;
+      const { n } = this.countRouteSamplesStmt.get(routeId, cutoff) as { n: number };
+      if (n < DERIVE_MIN_SAMPLES) return;
+
+      const samples = this.selectRouteSamplesStmt.all(
+        routeId,
+        cutoff,
+        DERIVE_MAX_SAMPLES,
+      ) as Sample[];
+
+      const derived = derivePath(samples, stops);
+      // null is the ordinary answer for a route that ran only partially inside
+      // the window — half a lap covers no complete loop.
+      if (!derived) return;
+      if (!isBetterThanUpstream(derived, route.path, stops, sequence)) return;
+
+      const stored = this.derivedPathsByRoute.get(routeId);
+      if (!shouldReplacePath(stored, derived, stops, sequence, startedAt)) return;
+
+      const row = toStoredPath(routeId, derived, sequence, samples.length, startedAt);
+      this.pathStore.put(row);
+      this.derivedPathsByRoute.set(routeId, row);
+      // The fat /api/buses payload embeds route_paths and is memoized on
+      // dataVersion(). Without this bump riders keep the upstream line until
+      // something else moves the version — and the version is driven by live
+      // positions, which is exactly what a route that has just stopped running
+      // (the moment its best lap becomes derivable) no longer produces.
+      this.version++;
+      this.deriveStores++;
+      this.deriveNextAttemptAt.set(routeId, startedAt + DERIVE_STORE_COOLDOWN_MS);
+      this.logger.info("collector.path_derived", {
+        routeId,
+        shortName: route.shortName,
+        points: row.pointCount,
+        medianStopM: row.medianStopM,
+        p90StopM: row.p90StopM,
+        maxStopM: row.maxStopM,
+        lengthM: row.lengthM,
+        traceFailures: row.traceFailures,
+        samples: row.sampleCount,
+        replacedP90StopM: stored ? stored.p90StopM : null,
+        upstreamPoints: route.path?.length ?? 0,
+        upstreamTraceFailures: route.path ? traceFailures(route.path, sequence) : null,
+      });
+    } catch (err) {
+      this.logger.error("collector.derive_path_failed", {
+        routeId: routeId ?? null,
+        error: (err as Error).message,
+      });
+    } finally {
+      const ms = Date.now() - startedAt;
+      this.deriveLastAt = startedAt;
+      this.deriveLastMs = ms;
+      if (ms > this.deriveMaxMs) this.deriveMaxMs = ms;
+      if (ms > DERIVE_SLOW_MS) {
+        // The event loop this blocks also runs the 5 s poll and every rider's
+        // request, so a tick drifting past its budget is worth seeing before it
+        // becomes the calibrator's 1.1 s stall again.
+        this.logger.warn("collector.derive_path_slow", { routeId: routeId ?? null, ms });
+      }
+    }
+  }
+
+  /**
+   * Give a route back to upstream if upstream's published path has overtaken
+   * ours.
+   *
+   * Everything else here is one-directional — a derivation is only ever
+   * replaced by a better derivation — which would leave a stale line in place
+   * forever if upstream ever fixed the geometry this feature exists to work
+   * around. Checked once per route per static refresh rather than per tick,
+   * because a 6-hourly topology fetch is the only thing that can change the
+   * answer.
+   */
+  private dropIfUpstreamOvertook(
+    routeId: number,
+    route: Route,
+    stops: readonly LatLon[],
+    sequence: readonly LatLon[],
+  ): void {
+    const stored = this.derivedPathsByRoute.get(routeId);
+    if (!stored) return;
+    if (this.deriveValidatedGeneration.get(routeId) === this.staticGeneration) return;
+    this.deriveValidatedGeneration.set(routeId, this.staticGeneration);
+    if (!upstreamNowBeats(stored, route.path, stops, sequence)) return;
+    this.pathStore.drop(routeId);
+    this.derivedPathsByRoute.delete(routeId);
+    this.version++;
+    this.logger.info("collector.path_derived_dropped", {
+      routeId,
+      shortName: route.shortName,
+      reason: "upstream_overtook",
+      upstreamPoints: route.path?.length ?? 0,
+    });
+  }
+
+  /**
+   * Best-so-far derived geometry per route, for callers that would otherwise
+   * draw upstream's polyline. Empty for a route we have never caught running.
+   */
+  derivedPaths(): ReadonlyMap<number, readonly [number, number][]> {
+    const out = new Map<number, readonly [number, number][]>();
+    for (const [routeId, p] of this.derivedPathsByRoute) out.set(routeId, p.path);
+    return out;
+  }
+
+  /**
+   * Operator view of the derivation job: what it has stored, how good each
+   * stored line is against the stops it has to serve, and what upstream's
+   * polyline would have scored instead. Admin-only — it is a diagnostic, and it
+   * re-measures every stored path against the live stop list, which is a few
+   * thousand distance calculations rather than a lookup.
+   */
+  derivedPathStats(): DerivedPathStats {
+    const net = this.ref.get();
+    const paths: DerivedPathRouteStat[] = [];
+    const finite = (x: number): number | null => (Number.isFinite(x) ? Math.round(x) : null);
+    for (const [routeId, p] of this.derivedPathsByRoute) {
+      const route = net.routes.get(routeId);
+      const stops = route ? uniqueRouteStopCoords(net, route) : [];
+      const sequence = route ? routeStopSequence(net, route) : [];
+      const upstream = route?.path;
+      const fit = stops.length ? stopFitM(p.path, stops) : null;
+      const upFit = upstream && stops.length ? stopFitM(upstream, stops) : null;
+      paths.push({
+        routeId,
+        shortName: route?.shortName ?? null,
+        points: p.pointCount,
+        stopCount: p.stopCount,
+        // As stored (what it measured when derived) and as it stands today —
+        // the two differ once upstream moves a stop.
+        medianStopM: p.medianStopM,
+        p90StopM: p.p90StopM,
+        maxStopM: p.maxStopM,
+        currentMedianStopM: fit ? finite(fit.medianM) : null,
+        currentP90StopM: fit ? finite(fit.p90M) : null,
+        lengthM: p.lengthM,
+        traceFailures: sequence.length >= 2 ? traceFailures(p.path, sequence) : p.traceFailures,
+        busId: p.busId,
+        sampleCount: p.sampleCount,
+        derivedAt: p.derivedAt,
+        ageHours: Math.round((Date.now() - p.derivedAt) / 3_600_000),
+        upstreamPoints: upstream?.length ?? null,
+        upstreamMedianStopM: upFit ? finite(upFit.medianM) : null,
+        upstreamP90StopM: upFit ? finite(upFit.p90M) : null,
+        upstreamTraceFailures:
+          upstream && sequence.length >= 2 ? traceFailures(upstream, sequence) : null,
+      });
+    }
+    paths.sort((a, b) => a.routeId - b.routeId);
+    return {
+      routes: net.routes.size,
+      derived: this.derivedPathsByRoute.size,
+      runs: this.deriveRuns,
+      stores: this.deriveStores,
+      lastRunAt: this.deriveLastAt,
+      lastRunMs: this.deriveLastMs,
+      maxRunMs: this.deriveMaxMs,
+      paths,
+    };
   }
 
   // -- Persistence helpers ---------------------------------------------------
@@ -783,6 +1226,43 @@ function loadStaticRoutes(db: DB): Route[] {
       ...(path ? { path } : {}),
     };
   });
+}
+
+/**
+ * A route's stop coordinates, de-duplicated.
+ *
+ * Routes 9 and 10 visit the same stop twice for the West Campus out-and-back.
+ * The sequence has to stay verbatim everywhere it describes travel, but here we
+ * are only asking "how far is each stop from this line", and a stop listed
+ * twice is one place — counting it twice would weight it double in the median
+ * and inflate the coverage requirement inside `derivePath` for nothing.
+ */
+function uniqueRouteStopCoords(net: TransitNetwork, route: Route): LatLon[] {
+  const seen = new Set<number>();
+  const out: LatLon[] = [];
+  for (const id of route.stops) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const stop = net.stops.get(id);
+    if (stop) out.push({ lat: stop.lat, lon: stop.lon });
+  }
+  return out;
+}
+
+/**
+ * A route's stop coordinates in order, duplicates included.
+ *
+ * The counterpart to `uniqueRouteStopCoords`, and the distinction matters:
+ * routes 9 and 10 visit West Campus stops twice, and it is precisely that
+ * second visit the traced-leg count is checking the line can draw.
+ */
+function routeStopSequence(net: TransitNetwork, route: Route): LatLon[] {
+  const out: LatLon[] = [];
+  for (const id of route.stops) {
+    const stop = net.stops.get(id);
+    if (stop) out.push({ lat: stop.lat, lon: stop.lon });
+  }
+  return out;
 }
 
 function retentionColumn(table: "raw_positions" | "arrivals" | "segments"): string {

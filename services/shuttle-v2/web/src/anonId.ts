@@ -7,7 +7,10 @@
  *
  * What it deliberately is not:
  *   - not derived from anything about the person (no IP, no fingerprinting)
- *   - never sent alongside a location, a route, or a submitted report
+ *   - never sent alongside a location or a route
+ *   - sent with a submitted report SINCE 2026-09-01, by design: the Issues tab
+ *     shows riders their own reports, which requires linking a report to the
+ *     browser that sent it. The id remains random and maps to nothing else.
  *   - never read back by the app; nothing here changes what a rider sees
  *
  * The server keeps one row per (day, id) and nothing else, so the data can

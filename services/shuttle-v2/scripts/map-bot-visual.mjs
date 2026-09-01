@@ -32,6 +32,8 @@ import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { seedTestId } from "./testId.mjs";
+
 // Pick the chromium binary: explicit override wins, else the system chromium on
 // this arm64 Pi (Playwright ships no bundled browser here), else undefined so
 // Playwright uses its bundled chromium (the x86 cloud case). Zero-config in both.
@@ -110,6 +112,12 @@ async function main() {
     geolocation: { latitude: trip.trip.from.lat, longitude: trip.trip.from.lon },
     permissions: ["geolocation"],
   });
+  // Mark this browser as test traffic BEFORE the first goto. Without it the bot
+  // mints a fresh anonymous id on every cron run — twice a day, for ever — and
+  // each one looks like a rider who visited once and never came back, which is
+  // exactly what drags week-1 retention toward zero.
+  await seedTestId(context);
+
   const page = await context.newPage();
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => { pageCrashed = true; consoleErrors.push(`PAGEERROR: ${e.message}`); });

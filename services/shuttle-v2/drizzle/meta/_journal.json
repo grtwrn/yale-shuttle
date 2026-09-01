@@ -36,6 +36,27 @@
       "when": 1788226062495,
       "tag": "0004_hesitant_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788229051090,
+      "tag": "0005_free_frightful_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788275672109,
+      "tag": "0006_special_blonde_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788281063147,
+      "tag": "0007_salty_prism",
+      "breakpoints": true
     }
   ]
 }
