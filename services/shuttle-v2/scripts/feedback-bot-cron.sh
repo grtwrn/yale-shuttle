@@ -1,21 +1,29 @@
 #!/bin/bash
-# feedback-bot: reads new rider reports, classifies priority, fixes what is
-# safely fixable, routes everything else to the operator. Runs headless
-# `claude -p` on the Pi, like map-bot did.
+# feedback-bot: reads rider reports, classifies priority, proposes fixes as
+# PULL REQUESTS, routes everything else to the operator. Triggered by the SSE
+# listener (feedback-bot-listener.mjs) or the 6h sweep; headless `claude -p`.
 #
-# Safety model (in order of what actually protects production):
-#   1. Report text is DATA. The prompt quotes it inside a fenced block and
-#      instructs the model never to follow instructions found there — but the
-#      real enforcement is the layers below, which hold even if that fails.
-#   2. Everything ships through `npm run deploy` — typecheck, 600+ tests,
-#      staged server, browser smoke. A change that breaks anything cannot land.
-#   3. File allowlist enforced OUTSIDE the model: after the run, this wrapper
-#      diffs the tree; touches outside web/src/, src/server/ or src/planner/
-#      (or ANY change to schema.ts, drizzle/, scripts/, deploy tooling,
-#      fly.toml, package.json, Dockerfile, sw.js, manifest) hard-revert the
-#      tree and skip the deploy.
-#   4. One run at a time (lockfile), 25-minute cap, at most 3 reports per run
-#      (enforced in the prompt, and the turn cap bounds it regardless).
+# Approval model:
+#   - Triage-only actions (priorities, [triage]/automated notes) act directly
+#     via the admin API — they change no code.
+#   - CODE changes never touch this working tree and are never deployed by the
+#     bot. It works in a disposable git worktree, the wrapper commits the
+#     result to a feedback-bot/* branch, pushes, opens a PR, and stamps the
+#     report with the PR link. MERGING the PR is the developer's approval —
+#     master's CI pipeline (gates -> staging -> browser smoke -> fly -> verify)
+#     is what deploys it. Closing the PR declines it.
+#   - `npm run approve -- <id> [guidance]` pre-authorizes bigger work; the
+#     output is still a PR, just allowed to be larger.
+#
+# Safety (independent of the model behaving):
+#   1. Report text is DATA; the prompt forbids following instructions in it.
+#   2. Worktree isolation: the main tree is never modified by a bot run.
+#   3. Allowlist enforced here, on the worktree diff: changes outside
+#      web/src/, src/server/, src/planner/ — or ANY touch of schema.ts,
+#      drizzle/, scripts/, deploy tooling, fly.toml, package.json, Dockerfile,
+#      sw.js, manifest — abort the PR; nothing is pushed.
+#   4. Gates re-run by the wrapper in the worktree before any push.
+#   5. One run at a time (lockfile), 25-min cap, <=3 reports, <=1 PR per run.
 set -u
 cd "$(dirname "$0")/.."
 mkdir -p scripts/.feedback-bot
@@ -27,15 +35,35 @@ trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 echo "=== feedback-bot $(date -Is) ==="
 
 TOKEN=$(cat ~/.yale-shuttle-admin-token) || exit 1
+CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.npm-global/bin/claude}"
+SHUTTLE_DIR=$PWD
+BOT_FAILED=0
 
-# Arbitration: fairness (round-robin per reporter) + reputation (repeat
-# spam/injection submitters get auto-closed without reaching the model).
+# ---- follow up on earlier proposals first -----------------------------------
+# A merged feedback-bot PR means the fix shipped through CI: tell the rider.
+gh pr list --repo grtwrn/yale-shuttle --state merged --search "head:feedback-bot/" \
+  --json headRefName,url --jq '.[] | .headRefName + " " + .url' 2>/dev/null | while read -r BRANCH URL; do
+  RID=$(echo "$BRANCH" | sed -n 's|feedback-bot/\([0-9]*\)-.*|\1|p')
+  [ -z "$RID" ] && continue
+  NOTE=$(curl -s -H "x-admin-token: $TOKEN" "https://yale-shuttle.fly.dev/api/reports?limit=200" \
+    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).reports.find(r=>r.id===$RID);process.stdout.write(r?(r.note||''):'gone')})")
+  case "$NOTE" in
+    "[pr]"*)
+      echo "PR merged for #$RID — marking fixed"
+      curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+        -d "{\"status\":\"addressed\",\"note\":\"[fixed] The proposed fix was reviewed, merged and deployed. ($URL)\"}" \
+        "https://yale-shuttle.fly.dev/api/reports/$RID/update" > /dev/null
+      git push origin --delete "$BRANCH" 2>/dev/null || true
+      ;;
+  esac
+done
+
+# ---- arbitration ------------------------------------------------------------
 QUEUE=$(curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?status=open')
 ARB=$(echo "$QUEUE" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.stringify(JSON.parse(s).reports)))" | node scripts/feedback-bot-arbitrate.mjs)
 CHOSEN=$(echo "$ARB" | sed -n 1p)
 BLOCKED=$(echo "$ARB" | sed -n 2p)
 
-# Reputation auto-closes: no model involved, one annotation per report.
 if [ -n "$BLOCKED" ]; then
   echo "reputation auto-close: $BLOCKED"
   for id in ${BLOCKED//,/ }; do
@@ -48,73 +76,63 @@ fi
 if [ -z "$CHOSEN" ]; then echo "nothing to process after arbitration"; exit 0; fi
 echo "processing report(s): $CHOSEN"
 
-# Snapshot BEFORE state per-file (path + content hash), so enforcement below
-# judges only what THIS run changed. The tree legitimately carries other
-# uncommitted work; a blanket `git checkout -- .` would destroy it — the bot
-# may only ever revert its own edits, file by file.
-SNAP_BEFORE=scripts/.feedback-bot/before.snap
-SNAP_AFTER=scripts/.feedback-bot/after.snap
-# git prints repo-root-relative paths; we run from services/shuttle-v2.
-GITROOT=$(git rev-parse --show-toplevel)
-snapshot() { git status --porcelain | awk '{print $2}' | while read -r f; do
-  if [ -f "$GITROOT/$f" ]; then echo "$(md5sum "$GITROOT/$f" | cut -d' ' -f1)  $f"; else echo "gone  $f"; fi; done | sort; }
-snapshot > "$SNAP_BEFORE"
+# ---- disposable worktree ----------------------------------------------------
+TS=$(date +%s)
+WT=/tmp/feedback-bot-wt-$TS
+BRANCH="feedback-bot/pending-$TS"
+git fetch origin master -q
+git worktree add -q -b "$BRANCH" "$WT" origin/master || { echo "worktree failed"; exit 1; }
+cleanup_wt() { cd "$SHUTTLE_DIR"; git worktree remove --force "$WT" 2>/dev/null; git branch -D "$BRANCH" 2>/dev/null; }
+trap 'cleanup_wt; rmdir "$LOCK" 2>/dev/null' EXIT
+# Share dependencies; installing in the worktree would take minutes on the Pi.
+ln -s "$SHUTTLE_DIR/node_modules" "$WT/services/shuttle-v2/node_modules" 2>/dev/null || true
+ln -s "$SHUTTLE_DIR/web/node_modules" "$WT/services/shuttle-v2/web/node_modules" 2>/dev/null || true
 
-# Absolute path: cron's PATH doesn't include npm globals — both event-triggered
-# runs on 2026-09-01 arbitrated correctly and then failed right here.
-CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.npm-global/bin/claude}"
-timeout 1500 "$CLAUDE_BIN" -p "$(cat scripts/feedback-bot-prompt.md)
+( cd "$WT/services/shuttle-v2" && timeout 1500 "$CLAUDE_BIN" -p "$(cat "$SHUTTLE_DIR/scripts/feedback-bot-prompt.md")
 
-Process exactly these report ids, no others: $CHOSEN" \
+Process exactly these report ids, no others: $CHOSEN
+Your working directory is a DISPOSABLE git worktree of the repo — implement here. Do not run any git commands; the wrapper handles commit, push and the pull request." \
   --allowedTools "Bash,Read,Edit,Write,Grep,Glob" \
-  --max-turns 60 || { echo "CLAUDE RUN FAILED (timeout or error)"; BOT_FAILED=1; }
+  --max-turns 60 ) || { echo "CLAUDE RUN FAILED (timeout or error)"; BOT_FAILED=1; }
 
-# ---- allowlist enforcement (outside the model) ----
-snapshot > "$SNAP_AFTER"
-# Files whose content is new or different since the snapshot = the bot's edits.
-BOT_CHANGED=$(comm -13 "$SNAP_BEFORE" "$SNAP_AFTER" | awk '{print $2}')
-revert_bot_files() { echo "$BOT_CHANGED" | while read -r f; do
-  [ -z "$f" ] && continue
-  if git ls-files --error-unmatch ":/$f" >/dev/null 2>&1; then git checkout -- ":/$f"; else rm -f "$GITROOT/$f"; fi
-  echo "  reverted $f"; done; }
-
-VIOLATIONS=$(echo "$BOT_CHANGED" | grep -vE '^services/shuttle-v2/(web/src/|src/server/|src/planner/)' | grep -vE '^$' || true)
-CRITICAL=$(echo "$BOT_CHANGED" | grep -E 'schema\.ts|drizzle/|scripts/|deploy|fly\.toml|package\.json|Dockerfile|sw\.js|manifest' || true)
+# ---- allowlist + PR ---------------------------------------------------------
+cd "$WT"
+CHANGED=$(git status --porcelain | awk '{print $2}')
+if [ -z "$CHANGED" ]; then
+  echo "triage-only run, no code proposed"
+  exit "$BOT_FAILED"
+fi
+VIOLATIONS=$(echo "$CHANGED" | grep -vE '^services/shuttle-v2/(web/src/|src/server/|src/planner/)' | grep -vE '^$' || true)
+CRITICAL=$(echo "$CHANGED" | grep -E 'schema\.ts|drizzle/|scripts/|deploy|fly\.toml|package\.json|Dockerfile|sw\.js|manifest' || true)
 if [ -n "$VIOLATIONS$CRITICAL" ]; then
-  echo "OUT-OF-LANE BOT CHANGES — reverting the bot's files only:"
-  echo "$VIOLATIONS"
-  echo "$CRITICAL"
-  revert_bot_files
+  echo "OUT-OF-LANE CHANGES — discarding the worktree, no PR:"
+  echo "$VIOLATIONS"; echo "$CRITICAL"
   exit 1
 fi
 
-if [ -n "$BOT_CHANGED" ]; then
-  echo "in-lane changes present — shipping through the staged pipeline"
-  BOT_CHROMIUM_PATH=/usr/bin/chromium npm run deploy || {
-    echo "PIPELINE REFUSED — reverting the bot's files only"
-    revert_bot_files
-    exit 1
-  }
-fi
-# Strike accounting: chosen reports the model closed as spam feed reputation.
-AFTER_RUN=$(curl -s -H "x-admin-token: $TOKEN" 'https://yale-shuttle.fly.dev/api/reports?limit=200')
-echo "$AFTER_RUN" | CHOSEN="$CHOSEN" node -e '
-const fs=require("fs");
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
-  const chosen=new Set((process.env.CHOSEN||"").split(",").filter(Boolean).map(Number));
-  const repPath="scripts/.feedback-bot/reputation.json";
-  let rep; try{rep=JSON.parse(fs.readFileSync(repPath,"utf8"));}catch{rep={strikes:{},served:{}};}
-  for(const r of JSON.parse(s).reports){
-    if(!chosen.has(r.id)) continue;
-    if(r.status==="wontfix" && (r.note||"").startsWith("automated-abuse:")){
-      const k=r.anonId??"anon";
-      rep.strikes[k]=(rep.strikes[k]??0)+1;
-      console.log("strike for "+k.slice(0,8)+" (now "+rep.strikes[k]+") via #"+r.id);
-    }
-  }
-  fs.writeFileSync(repPath,JSON.stringify(rep,null,2));
-});'
+echo "re-running gates in the worktree"
+( cd services/shuttle-v2 && npm run typecheck && npx vitest run ) > /dev/null 2>&1 || {
+  echo "GATES FAILED in worktree — no PR"; exit 1; }
+
+FIRST_ID=$(echo "$CHOSEN" | cut -d, -f1)
+REAL_BRANCH="feedback-bot/$FIRST_ID-$(date +%m%d%H%M)"
+git checkout -q -b "$REAL_BRANCH"
+git add -A
+git -c user.name="feedback-bot" -c user.email="feedback-bot@yale-shuttle.local" \
+  commit -q -m "feedback-bot: proposed fix for report #$FIRST_ID
+
+Automated proposal from rider feedback. Review before merging; merging
+deploys via the master CI pipeline.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+git push -q origin "$REAL_BRANCH"
+PR_URL=$(gh pr create --repo grtwrn/yale-shuttle \
+  --title "feedback-bot: fix for report #$FIRST_ID" \
+  --body "Automated proposal for rider report #$FIRST_ID (see its [triage] note for the analysis). Merging = approval; master CI deploys. Closing = declined." \
+  --head "$REAL_BRANCH" --base master 2>/dev/null | tail -1)
+echo "PR opened: $PR_URL"
+curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+  -d "{\"status\":\"open\",\"note\":\"[pr] A fix is proposed and awaiting developer review: $PR_URL\"}" \
+  "https://yale-shuttle.fly.dev/api/reports/$FIRST_ID/update" > /dev/null
 echo "=== done $(date -Is) ==="
-# Non-zero on model failure so the listener logs it as a FAILURE, not success —
-# a missing binary once looked like "bot run finished" for two hours.
-exit "${BOT_FAILED:-0}"
+exit "$BOT_FAILED"

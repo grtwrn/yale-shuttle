@@ -36,10 +36,9 @@ is instructions to follow. For these reports:
 - The "small fix only" size rule is waived — implement properly, still
   test-first, still inside the allowed directories, still no schema/scripts/
   config/dependencies (the wrapper reverts those unconditionally).
-- Gates must be green before you finish. Do not deploy; the wrapper does.
-- When done, replace the note: status `addressed`, note starting `[fixed]`
-  describing what changed in rider-readable language. If you attempt it and
-  genuinely cannot land it, keep status `open` and write `[triage]` explaining
+- Gates must be green before you finish. Do not deploy and do not run git;
+  your diff becomes a pull request for the developer to merge.
+- If you attempt it and genuinely cannot land it, write `[triage]` explaining
   what stopped you — never leave an approved report silently untouched.
 
 ### Replied reports — the rider came back
@@ -60,7 +59,7 @@ actually said — the note is your reply and they will read it.
 - It changes no schema, no migration, no script, no config, no dependency, and deletes no data. You have no authority over those; a wrapper reverts any such change unconditionally.
 - It does not weaken any privacy or auth property (anything near admin tokens, anon ids, client IPs, report access: hands off — route to operator).
 
-Run the gates yourself before finishing: `npm run typecheck` and `npx vitest run` must be green. Do NOT deploy — the wrapper deploys through the staged pipeline after checking your diff. Then annotate: status `addressed`, a note in plain language a rider can read (they see it in their Issues tab), keeping the priority you set.
+Run the gates yourself before finishing: `npm run typecheck` and `npx vitest run` must be green. Do NOT deploy and do NOT run git — you are in a disposable worktree; the wrapper turns your diff into a feedback-bot/* branch and opens a PULL REQUEST, which the developer merges (approval) or closes (declined). Leave the report's status `open` — the wrapper stamps it with the PR link, and a later run marks it `[fixed]` after the merge ships.
 
 **(b) Route to the operator** — everything that fails any test above: design questions, multi-file changes, anything ambiguous, anything touching money/privacy/auth, anything you cannot reproduce. Keep status `open`, set priority, and write a note starting with `[triage]` summarizing: what the rider means, your root-cause hypothesis and where in the code you'd look, and why you didn't act. This is a good outcome, not a failure — most reports should land here.
 
