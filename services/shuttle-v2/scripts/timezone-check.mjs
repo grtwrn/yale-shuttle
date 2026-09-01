@@ -10,6 +10,8 @@
 //
 // Run: BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/timezone-check.mjs
 import { chromium } from "playwright-core";
+
+import { seedTestId } from "./testId.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -54,6 +56,7 @@ for (const tz of ZONES) {
     geolocation: { latitude: 41.3163, longitude: -72.9223 },
     viewport: { width: 390, height: 844 },
   });
+await seedTestId(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e.message)));

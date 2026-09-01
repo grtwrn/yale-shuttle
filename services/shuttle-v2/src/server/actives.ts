@@ -29,6 +29,13 @@ import type { DbBundle } from "../db/client.js";
 const RETAIN_DAYS = 90;
 
 /**
+ * The id every verification harness uses. Seeded into `excluded_anon_ids` on
+ * startup, so a browser-driving script never has to remember to clean up after
+ * itself — and a new harness is excluded the moment it uses this id.
+ */
+export const TEST_ANON_ID = "00000000-0000-4000-8000-000000000000";
+
+/**
  * How often accumulated counters reach the database. Long enough that writes
  * stay negligible, short enough that a crash loses at most this much of the
  * current day's counts (the row itself, and therefore the rider's presence,
@@ -157,6 +164,14 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
     }
   }
 
+  // Make the harness id excluded from the first run, without a manual step.
+  try {
+    db.run(sql`INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note)
+               VALUES (${TEST_ANON_ID}, 'verification harnesses')`);
+  } catch {
+    /* pre-migration database — the next boot seeds it */
+  }
+
   const timer = setInterval(() => flush(), FLUSH_MS);
   // Never hold the process open on account of analytics.
   timer.unref?.();
@@ -198,14 +213,22 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
       const one = <T>(rows: T[]): T | undefined => rows[0];
       const num = (v: unknown) => (typeof v === "number" ? v : 0);
 
+      // Every figure below excludes flagged browsers. Written as a raw
+      // fragment rather than repeated in each query so a new statistic cannot
+      // silently forget it.
+      const notExcluded = sql`anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
+
       const distinct = (from?: string) =>
         num(
           one(
             from
               ? db.all<{ n: number }>(
-                  sql`SELECT COUNT(DISTINCT anon_id) AS n FROM daily_actives WHERE day >= ${from}`,
+                  sql`SELECT COUNT(DISTINCT anon_id) AS n FROM daily_actives
+                      WHERE day >= ${from} AND ${notExcluded}`,
                 )
-              : db.all<{ n: number }>(sql`SELECT COUNT(DISTINCT anon_id) AS n FROM daily_actives`),
+              : db.all<{ n: number }>(
+                  sql`SELECT COUNT(DISTINCT anon_id) AS n FROM daily_actives WHERE ${notExcluded}`,
+                ),
           )?.n,
         );
 
@@ -214,7 +237,7 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
         one(
           db.all<{ n: number }>(sql`
             SELECT COUNT(*) AS n FROM (
-              SELECT anon_id FROM daily_actives WHERE day = ${day}
+              SELECT anon_id FROM daily_actives WHERE day = ${day} AND ${notExcluded}
               INTERSECT
               SELECT anon_id FROM daily_actives WHERE day < ${day}
             )`),
@@ -226,7 +249,8 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
         one(
           db.all<{ n: number }>(sql`
             SELECT COUNT(*) AS n FROM (
-              SELECT anon_id FROM daily_actives GROUP BY anon_id HAVING COUNT(DISTINCT day) >= 2
+              SELECT anon_id FROM daily_actives WHERE ${notExcluded}
+              GROUP BY anon_id HAVING COUNT(DISTINCT day) >= 2
             )`),
         )?.n,
       );
@@ -235,6 +259,7 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
       const weekAgo = etDay(now - 7 * 86_400_000);
       const cohort = db.all<{ anon_id: string; first_day: string }>(sql`
         SELECT anon_id, MIN(day) AS first_day FROM daily_actives
+        WHERE ${notExcluded}
         GROUP BY anon_id HAVING first_day <= ${weekAgo}`);
       let returnedInWeek = 0;
       for (const c of cohort) {
@@ -255,17 +280,25 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
       };
 
       const daysActive = db
-        .all<{ n: number }>(sql`SELECT COUNT(DISTINCT day) AS n FROM daily_actives GROUP BY anon_id`)
+        .all<{ n: number }>(
+          sql`SELECT COUNT(DISTINCT day) AS n FROM daily_actives
+              WHERE ${notExcluded} GROUP BY anon_id`,
+        )
         .map((r) => num(r.n));
 
       const minutes = db
         .all<{ ms: number }>(sql`
           SELECT (last_seen_ms - first_seen_ms) AS ms FROM daily_actives
-          WHERE last_seen_ms > first_seen_ms`)
+          WHERE last_seen_ms > first_seen_ms AND ${notExcluded}`)
         .map((r) => num(r.ms) / 60_000);
 
       const searchesToday = num(
-        one(db.all<{ n: number }>(sql`SELECT SUM(searches) AS n FROM daily_actives WHERE day = ${day}`))?.n,
+        one(
+          db.all<{ n: number }>(
+            sql`SELECT SUM(searches) AS n FROM daily_actives
+                WHERE day = ${day} AND ${notExcluded}`,
+          ),
+        )?.n,
       );
 
       return {

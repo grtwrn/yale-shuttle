@@ -203,6 +203,26 @@ export const dailyActives = sqliteTable(
   }),
 );
 
+/**
+ * Browsers whose activity should never appear in the usage numbers.
+ *
+ * Verification harnesses drive a real browser against the live site, so they
+ * mint real ids and would otherwise show up as riders — and worse, as riders
+ * who never return, dragging retention toward zero for a month. Excluding
+ * rather than deleting keeps it reversible and auditable: the rows stay, the
+ * counts ignore them, and `note` records why.
+ *
+ * Scripts use the fixed id in TEST_ANON_ID (scripts/testId.mjs) so a new
+ * harness is excluded automatically instead of needing a cleanup afterwards.
+ */
+export const excludedAnonIds = sqliteTable("excluded_anon_ids", {
+  anonId: text("anon_id").primaryKey(),
+  note: text("note"),
+  addedMs: integer("added_ms")
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export type DbStop = typeof stops.$inferSelect;
 export type DbRoute = typeof routes.$inferSelect;
 export type DbRawPosition = typeof rawPositions.$inferSelect;
@@ -211,3 +231,4 @@ export type DbSegment = typeof segments.$inferSelect;
 export type DbPredictionLog = typeof predictionsLog.$inferSelect;
 export type DbReport = typeof reports.$inferSelect;
 export type DbDailyActive = typeof dailyActives.$inferSelect;
+export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;

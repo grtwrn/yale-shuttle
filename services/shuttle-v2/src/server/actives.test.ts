@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
 
-import { createActivesTracker, etDay } from "./actives.js";
+import { createActivesTracker, etDay, TEST_ANON_ID } from "./actives.js";
 
 const ID_A = "11111111-2222-4333-8444-555555555555";
 const ID_B = "66666666-7777-4888-8999-aaaaaaaaaaaa";
@@ -245,5 +245,64 @@ describe("rows predating the depth columns", () => {
     expect(after.l).toBe(T + 5 * 60_000);
     expect(after.polls).toBe(2);
     expect(t.stats(T + 5 * 60_000).medianMinutesPerDay).toBe(5);
+  });
+});
+
+describe("excluding test traffic", () => {
+  const exclude = (id: string, note = "test") =>
+    bundle.sqlite
+      .prepare("INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note) VALUES (?,?)")
+      .run(id, note);
+
+  it("seeds the harness id so a browser check never counts", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(TEST_ANON_ID, "poll", T);
+    t.seen(TEST_ANON_ID, "search", T);
+    t.seen(ID_A, "poll", T);
+    const s = t.stats(T);
+    expect(s.today).toBe(1);      // only the real browser
+    expect(s.allTime).toBe(1);
+    expect(s.searchesToday).toBe(0);
+  });
+
+  // Excluding must not delete: the rows stay for audit, the counts ignore them.
+  it("keeps the underlying rows", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(TEST_ANON_ID, "poll", T);
+    t.flush(T);
+    expect(rowCount()).toBe(1);
+    expect(t.stats(T).today).toBe(0);
+  });
+
+  it("excludes a flagged browser from every figure, not just the headline", () => {
+    const t = createActivesTracker(bundle);
+    // A "tester" active on two days would otherwise inflate repeat rate,
+    // retention, days-active and session length.
+    t.seen(ID_B, "poll", T - 10 * DAY_MS);
+    t.seen(ID_B, "poll", T - 8 * DAY_MS);
+    t.seen(ID_B, "poll", T);
+    t.seen(ID_A, "poll", T);
+    t.flush(T);
+    exclude(ID_B, "pre-launch testing");
+
+    const s = t.stats(T);
+    expect(s.today).toBe(1);
+    expect(s.returningToday).toBe(0);
+    expect(s.newToday).toBe(1);
+    expect(s.repeatRate).toBe(0);
+    expect(s.week1Cohort).toBe(0);
+    expect(s.week1Retention).toBeNull();
+    expect(s.medianDaysActive).toBe(1);
+  });
+
+  it("still counts a real browser after others are excluded", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T);
+    t.seen(ID_B, "poll", T);
+    t.seen(ID_C, "poll", T);
+    t.flush(T);
+    exclude(ID_A);
+    exclude(ID_B);
+    expect(t.stats(T).today).toBe(1);
   });
 });

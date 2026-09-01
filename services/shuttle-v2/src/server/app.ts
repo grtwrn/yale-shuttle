@@ -2,6 +2,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -42,6 +43,9 @@ const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
 // Longest text we persist for a rider's report body or an operator's
 // resolution note. Matches ReportSubmitSchema's `body` cap in schema/api.ts.
 const REPORT_TEXT_MAX = 2000;
+
+/** Same shape the tracker accepts, so a typo can't silently insert junk. */
+const ANON_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // -- /api/stream limits -------------------------------------------------------
 // No rider client uses SSE today, but every open stream costs a full
@@ -312,6 +316,36 @@ export function buildApp(opts: AppOptions): Hono {
   app.get("/api/stats", requireAdmin, (c) => {
     c.header("Cache-Control", "no-store");
     return c.json({ riders: actives.stats(now()) });
+  });
+
+  // Flag browsers as test traffic so they stop counting. Non-destructive: the
+  // rows stay, the statistics ignore them. `all: true` sweeps every browser
+  // seen so far, which is how a pre-launch database gets cleaned in one call.
+  app.post("/api/stats/exclude", requireAdmin, bodyLimit({
+    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as
+      | { anonId?: string; all?: boolean; note?: string }
+      | null;
+    if (!body) return c.json({ error: "invalid_request" }, 400);
+    const note = (typeof body.note === "string" ? body.note : "manual").slice(0, 200);
+    const db = opts.bundle.db;
+    if (body.all === true) {
+      db.run(sql`
+        INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note)
+        SELECT DISTINCT anon_id, ${note} FROM daily_actives`);
+    } else if (typeof body.anonId === "string" && ANON_ID_PATTERN.test(body.anonId)) {
+      db.run(sql`
+        INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note)
+        VALUES (${body.anonId}, ${note})`);
+    } else {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    const n = opts.bundle.sqlite
+      .prepare("SELECT COUNT(*) AS n FROM excluded_anon_ids")
+      .get() as { n: number };
+    return c.json({ ok: true, excluded: n.n, riders: actives.stats(now()) });
   });
 
   app.get("/api/reports", requireAdmin, (c) => {

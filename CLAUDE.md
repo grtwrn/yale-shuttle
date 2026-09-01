@@ -143,6 +143,27 @@ Three things to preserve if you touch it:
 
 It counts browsers, not people — phone + laptop is two.
 
+**Test traffic is excluded, not deleted.** Browser harnesses drive the live
+site, so they mint real ids and would otherwise appear as riders who never
+return — dragging week-1 retention toward zero for a month. `excluded_anon_ids`
+lists ids the statistics ignore; the rows stay for audit. Every harness in
+`scripts/` seeds `TEST_ANON_ID` (`scripts/testId.mjs`) before its first `goto`,
+and the server seeds that id into the table at startup, so a NEW harness is
+excluded automatically — call `seedTestId(ctx)` and there is no cleanup step to
+forget. To flag traffic manually:
+
+```bash
+TOKEN=$(cat ~/.yale-shuttle-admin-token)
+# one browser
+curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+  -d '{"anonId":"<uuid>","note":"why"}' \
+  https://yale-shuttle.fly.dev/api/stats/exclude
+# every browser seen so far (how a pre-launch database gets zeroed)
+curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
+  -d '{"all":true,"note":"pre-launch testing"}' \
+  https://yale-shuttle.fly.dev/api/stats/exclude
+```
+
 ## Data-quality invariants
 
 These are load-bearing; several rider-visible bugs traced to them:

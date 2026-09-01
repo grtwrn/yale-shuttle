@@ -9,6 +9,8 @@
 //
 // Run: BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/gps-tier-check.mjs
 import { chromium } from "playwright-core";
+
+import { seedTestId } from "./testId.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -50,6 +52,7 @@ const ctx = await browser.newContext({
   geolocation: { latitude: 41.3163, longitude: -72.9223 },
   viewport: { width: 390, height: 844 },
 });
+await seedTestId(ctx);
 
 // Instrument BEFORE app code runs.
 await ctx.addInitScript(() => {

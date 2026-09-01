@@ -19,6 +19,8 @@
 // Run: BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/eta-accuracy.mjs
 // Env: RUN_MIN (default 35), BOT_BASE_URL
 import { chromium } from "playwright-core";
+
+import { seedTestId } from "./testId.mjs";
 import fs from "node:fs";
 
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
@@ -122,6 +124,7 @@ const ctx = await browser.newContext({
   timezoneId: "America/New_York",
   viewport: { width: 390, height: 900 },
 });
+await seedTestId(ctx);
 const page = await ctx.newPage();
 const pageErrors = [];
 page.on("pageerror", (e) => pageErrors.push(String(e.message)));

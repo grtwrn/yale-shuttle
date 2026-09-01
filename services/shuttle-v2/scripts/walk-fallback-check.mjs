@@ -9,6 +9,8 @@
 // Run: BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/walk-fallback-check.mjs
 import { chromium } from "playwright-core";
 
+import { seedTestId } from "./testId.mjs";
+
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
 const ORIGIN = { latitude: 41.318154, longitude: -72.911633 }; // Foster / Lawrence
 const DEST = "41.296105,-72.955812";                           // Front / Rt 1 (N), Allingtown
@@ -24,6 +26,7 @@ const ctx = await browser.newContext({
   geolocation: ORIGIN,
   viewport: { width: 390, height: 844 },
 });
+await seedTestId(ctx);
 const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e.message)));
