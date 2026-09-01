@@ -97,7 +97,9 @@ Your working directory is a DISPOSABLE git worktree of the repo — implement he
 
 # ---- allowlist + PR ---------------------------------------------------------
 cd "$WT"
-CHANGED=$(git status --porcelain | awk '{print $2}')
+# node_modules entries are the wrapper's own dependency symlinks, not bot
+# changes — counting them made a triage-only run look out-of-lane.
+CHANGED=$(git status --porcelain | awk '{print $2}' | grep -v "node_modules" || true)
 if [ -z "$CHANGED" ]; then
   echo "triage-only run, no code proposed"
   exit "$BOT_FAILED"
