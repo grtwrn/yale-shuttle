@@ -14,7 +14,7 @@ import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
   type GeocodeResult,
 } from "./format";
-import { buildStopSequencePolyline, haversineMeters, type LatLon } from "./geo";
+import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import {
   AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
   findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
@@ -551,8 +551,10 @@ const TripMap: FC<{
       // down and rebuilding the whole map each poll.
 
       // Only the board/alight markers are rendered on the ride segment —
-      // intermediate stop dots were noise. The colored polyline still
-      // shows the ride's shape.
+      // intermediate stop dots were noise at this size. The colored polyline
+      // still shows the ride's shape. (The details map the rider actually
+      // sees, CombinedTripMap, does draw them, faded, via rideStopDots: the
+      // objection was to their prominence, not their existence — report #47.)
       for (const s of shuttleStops.slice(1, -1)) {
         points.push([s.lat, s.lon]);
       }
@@ -976,6 +978,18 @@ const CombinedTripMap: FC<{
       L.polyline(road, { color: o.color, weight: 5, opacity: 0.9 }).addTo(map);
       const board = o.segCoords[0];
       const alight = o.segCoords[o.segCoords.length - 1];
+      // Stops the bus calls at along the way, as small faded dots — the same
+      // style the upstream (pre-pickup) stops already use. A rider could read
+      // them in the list but not see them on the map (report #47). Details
+      // view only: one route's dots are information, five routes' worth is
+      // the "web of connectors" the walking legs below are also kept out of.
+      if (options.length === 1) {
+        for (const s of rideStopDots(o.segCoords)) {
+          L.circleMarker([s.lat, s.lon], {
+            radius: 2.5, color: o.color, fillColor: o.color, fillOpacity: 0.5, weight: 0,
+          }).addTo(map);
+        }
+      }
       // Plain rings with hover labels — the permanent time chips are a
       // separate zoom-clustered layer (see rebuildChips above).
       L.circleMarker([board.lat, board.lon], {

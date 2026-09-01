@@ -222,6 +222,35 @@ export function buildStopSequencePolyline(
 }
 
 /**
+ * How close an intermediate stop may come to the board or alight stop before
+ * its dot is dropped as a duplicate. Well under the 28 m between College/Wall
+ * (N) and (S) — two genuinely different stops that both deserve a dot — so
+ * only a stop the ride literally calls at twice is filtered out.
+ */
+const RIDE_DOT_ENDPOINT_M = 8;
+
+/**
+ * The stops a rider passes between boarding and getting off, i.e. everything
+ * the ride calls at that is not an endpoint. Drawn as small faded dots on the
+ * trip map so "which stops are along this route" is answerable there and not
+ * only in the list below it (report #47). The board/alight rings stay
+ * dominant — these are ornaments, not markers.
+ *
+ * Routes 9 and 10 repeat stops for the West Campus out-and-back, so a ride can
+ * pass its own board or alight stop mid-segment; such a dot would sit under a
+ * ring and muddy it, so it is dropped.
+ */
+export function rideStopDots(segCoords: readonly LatLon[]): LatLon[] {
+  if (segCoords.length < 3) return [];
+  const board = segCoords[0]!;
+  const alight = segCoords[segCoords.length - 1]!;
+  return segCoords.slice(1, -1).filter(
+    (s) => haversineMeters(s, board) >= RIDE_DOT_ENDPOINT_M
+      && haversineMeters(s, alight) >= RIDE_DOT_ENDPOINT_M,
+  );
+}
+
+/**
  * The share of the whole loop a single leg may cover before it is certainly a
  * wrap rather than a leg.
  *
