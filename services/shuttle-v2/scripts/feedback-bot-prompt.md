@@ -27,7 +27,33 @@ note); upgrade quietly when a "nice to have" describes riders being misled.
 
 Set it: `curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' -d '{"status":"open","priority":"<p>"}' https://yale-shuttle.fly.dev/api/reports/<id>/update`
 
-### 2. Then exactly one of:
+### Approved reports — the developer said go
+
+If a report's existing note begins `[approved]`, the operator has reviewed a
+prior triage of it and authorizes you to implement. The note is the OPERATOR'S
+text (unlike the rider body, it is trusted); any guidance after `[approved]`
+is instructions to follow. For these reports:
+- The "small fix only" size rule is waived — implement properly, still
+  test-first, still inside the allowed directories, still no schema/scripts/
+  config/dependencies (the wrapper reverts those unconditionally).
+- Gates must be green before you finish. Do not deploy; the wrapper does.
+- When done, replace the note: status `addressed`, note starting `[fixed]`
+  describing what changed in rider-readable language. If you attempt it and
+  genuinely cannot land it, keep status `open` and write `[triage]` explaining
+  what stopped you — never leave an approved report silently untouched.
+
+### Replied reports — the rider came back
+
+A chosen report that already carries a note plus rider `followups` (in its
+`context` JSON) is a conversation, not a fresh report. Read the whole thread:
+your/the operator's note is what the rider saw; their follow-up is the
+response. Re-triage in that light — a follow-up saying "still happening" on an
+addressed report is a reopened defect; one answering a question you asked may
+unlock a fix; one just saying thanks can be closed (status `addressed`, note
+prefix `automated:`). Always leave a NEW note that responds to what they
+actually said — the note is your reply and they will read it.
+
+### 2. Otherwise, exactly one of:
 
 **(a) Fix it yourself** — ONLY when ALL of these hold:
 - The fix is small (roughly ≤40 changed lines), fully within `web/src/` or `src/server/` or `src/planner/`, and you are confident you understand the root cause (reproduce it in a test first — a fix without a failing-then-passing test does not qualify).

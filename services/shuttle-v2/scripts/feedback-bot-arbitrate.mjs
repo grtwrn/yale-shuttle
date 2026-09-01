@@ -38,21 +38,55 @@ process.stdin.on("end", () => {
   const reports = JSON.parse(input);
   const rep = load();
 
-  // Untriaged = nobody (operator or bot) has written a note yet. Priority is
-  // NOT part of this test any more: riders set their own at submission, so an
-  // urgent rider report must not look "already triaged".
+  // Two ways into a run:
+  //   untriaged — nobody has written a note yet (priority is NOT part of this
+  //     test: riders set their own, so an urgent submission must not look
+  //     "already triaged"), or
+  //   approved — the operator reviewed the bot's [triage] analysis and wrote a
+  //     note starting "[approved]", authorizing implementation. These jump
+  //     every tier: an explicit human instruction outranks all arbitration.
   const untriaged = reports.filter(
     (r) => r.status === "open" && !r.note && !r.body.startsWith("[map-bot]"),
   );
+  const approved = reports.filter(
+    (r) => r.status === "open" && (r.note ?? "").startsWith("[approved]"),
+  );
+  // Replied: a rider followed up after triage. Detected by a followup newer
+  // than our per-report watermark (kept locally — the server has no
+  // "note written at" field to compare against). Re-enters the normal pool at
+  // the report's priority; the watermark advances when we choose it, so one
+  // reply means one revisit, not a loop.
+  const followupsOf = (r) => {
+    try { return JSON.parse(r.context ?? "{}").followups ?? []; } catch { return []; }
+  };
+  rep.handledFollowups = rep.handledFollowups ?? {};
+  const replied = reports.filter((r) => {
+    if (r.status !== "open" || !r.note || (r.note ?? "").startsWith("[approved]")) return false;
+    const fu = followupsOf(r).filter((f) => f.text !== "Reporter marked this as resolved.");
+    if (fu.length === 0) return false;
+    const newest = Math.max(...fu.map((f) => f.at));
+    return newest > (rep.handledFollowups[r.id] ?? 0);
+  });
+  for (const r of replied) {
+    const fu = followupsOf(r);
+    rep.handledFollowups[r.id] = Math.max(...fu.map((f) => f.at));
+  }
 
   const keyOf = (r) => r.anonId ?? "anon";
-  const blocked = untriaged.filter((r) => (rep.strikes[keyOf(r)] ?? 0) >= STRIKE_LIMIT);
-  const eligible = untriaged.filter((r) => (rep.strikes[keyOf(r)] ?? 0) < STRIKE_LIMIT);
+  const pool = [...untriaged, ...replied];
+  const blocked = pool.filter((r) => (rep.strikes[keyOf(r)] ?? 0) >= STRIKE_LIMIT);
+  const eligible = pool.filter((r) => (rep.strikes[keyOf(r)] ?? 0) < STRIKE_LIMIT);
 
   // Priority tiers first (an urgent report beats everyone's normals), then
   // the fairness rotation WITHIN each tier — a flood of one user's urgents
   // still yields to another user's urgent, but not to anyone's nice-to-have.
   const chosen = [];
+  // Operator-approved work first, oldest approval first, no fairness cap —
+  // the developer asked for exactly this to happen.
+  for (const r of approved.sort((a, b) => a.createdAt - b.createdAt)) {
+    if (chosen.length >= MAX_PER_RUN) break;
+    chosen.push(r);
+  }
   for (const tier of ["urgent", "normal", "nice_to_have"]) {
     if (chosen.length >= MAX_PER_RUN) break;
     const inTier = eligible.filter((r) => r.priority === tier);

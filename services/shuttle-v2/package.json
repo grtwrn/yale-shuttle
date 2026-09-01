@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "riders": "node scripts/riders.mjs",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "approve": "node scripts/approve.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",

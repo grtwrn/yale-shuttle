@@ -435,6 +435,10 @@ export function buildApp(opts: AppOptions): Hono {
       }
       return c.json({ error: "not_found" }, 404);
     }
+    // A follow-up is a rider continuing the conversation — wake the triage
+    // bot for it just like a fresh submission. Resolve/archive/priority are
+    // administrative and wake nothing.
+    if (action.action === "followup") notifyReportListeners(id);
     return c.json({ ok: true, status: result.status });
   });
 
