@@ -2581,6 +2581,25 @@ const TripPlanner: FC<{
           >
             {alreadySaved ? "★" : "☆"}
           </button>
+          {/* Installed-app reload. Post-search only: before a destination
+              exists there is nothing on screen worth refreshing, and desktop
+              installs (no browser chrome, no touch pull gesture) have no
+              other way to reload. Same square language as the star. */}
+          {isStandaloneDisplay && (
+            <button
+              onClick={(e) => { e.stopPropagation(); window.location.reload(); }}
+              title="Refresh the app"
+              aria-label="Refresh the app"
+              style={{
+                minHeight: 44, padding: "6px 14px", fontSize: 15,
+                borderRadius: 6, border: "1px solid #bbb",
+                background: "#fff", color: "#546e7a",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              ↻
+            </button>
+          )}
         </div>
       ) : (
       <div style={{ marginBottom: 8 }}>
@@ -2663,27 +2682,6 @@ const TripPlanner: FC<{
               }}
             >
               {alreadySaved ? "★" : "☆"}
-            </button>
-          )}
-          {/* Installed-app reload, moved from the floating header spot: a
-              desktop install (Chromebook) has no browser chrome and no touch
-              pull gesture, so this square is its only refresh. Same visual
-              language as the save-star beside it. */}
-          {isStandaloneDisplay && (
-            <button
-              onClick={() => window.location.reload()}
-              title="Refresh the app"
-              aria-label="Refresh the app"
-              style={{
-                ...btnStyle,
-                padding: "6px 8px",
-                cursor: "pointer",
-                border: "1px solid #bbb",
-                background: "#fff",
-                color: "#546e7a",
-              }}
-            >
-              ↻
             </button>
           )}
         </div>
