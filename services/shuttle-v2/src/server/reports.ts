@@ -76,7 +76,7 @@ export function rateLimitAllow(
 
 export function submitReport(
   db: DB,
-  submission: ReportSubmit,
+  submission: ReportSubmit & { priority?: "urgent" | "normal" | "nice_to_have" },
   clientIp: string | null,
   anonId: string | null = null,
 ): { id: number } {
@@ -86,6 +86,7 @@ export function submitReport(
       kind: submission.kind,
       routeId: submission.routeId,
       body: submission.body,
+      ...(submission.priority ? { priority: submission.priority } : {}),
       context:
         submission.context !== undefined
           ? JSON.stringify(submission.context)
@@ -266,7 +267,8 @@ export type RiderAction =
   // Archive is the rider tidying their own list; it never touches the triage
   // status, and unarchive undoes it. Stored as context.riderArchived.
   | { action: "archive" }
-  | { action: "unarchive" };
+  | { action: "unarchive" }
+  | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" };
 
 export type RiderUpdateResult =
   | { ok: true; status: "open" | "addressed" | "wontfix" }
@@ -298,6 +300,14 @@ export function riderUpdateReport(
   if (!row) return { error: "not_found" };
   const ctx = parseContext(row.context);
   const followups = followupsOf(ctx);
+
+  if (action.action === "set_priority") {
+    db.update(reports)
+      .set({ priority: action.priority })
+      .where(and(eq(reports.id, id), eq(reports.anonId, anonId)))
+      .run();
+    return { ok: true, status: row.status };
+  }
 
   if (action.action === "archive" || action.action === "unarchive") {
     ctx.riderArchived = action.action === "archive";

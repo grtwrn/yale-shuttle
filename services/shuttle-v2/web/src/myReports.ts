@@ -109,7 +109,8 @@ export async function postReportAction(
     | { action: "resolve" }
     | { action: "followup"; text: string }
     | { action: "archive" }
-    | { action: "unarchive" },
+    | { action: "unarchive" }
+    | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },
 ): Promise<void> {
   const res = await fetch(`/api/my-reports/${id}/update`, {
     method: "POST",

@@ -822,3 +822,39 @@ describe("report priority", () => {
     expect(list.reports.find((r) => r.id === id)?.priority).toBe("normal");
   });
 });
+
+describe("rider-set priority", () => {
+  const ANON = "abcd0004-0000-4000-8000-0000000000aa";
+  it("takes the rider's priority at submission and lets them change it later", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON, "fly-client-ip": "10.9.0.1" },
+      body: JSON.stringify({ note: "shuttle on fire", priority: "urgent" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+    let mine = (await (await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } })).json()) as
+      { reports: Array<{ id: number; priority: string }> };
+    expect(mine.reports.find((r) => r.id === id)?.priority).toBe("urgent");
+
+    const set = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON },
+      body: JSON.stringify({ action: "set_priority", priority: "nice_to_have" }),
+    });
+    expect(set.status).toBe(200);
+    mine = (await (await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } })).json()) as typeof mine;
+    expect(mine.reports.find((r) => r.id === id)?.priority).toBe("nice_to_have");
+  });
+
+  it("junk priority at submission falls back to normal", async () => {
+    const submit = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": ANON, "fly-client-ip": "10.9.0.2" },
+      body: JSON.stringify({ note: "x", priority: "MAXIMUM OVERDRIVE" }),
+    });
+    const { id } = (await submit.json()) as { id: number };
+    const mine = (await (await app.request("/api/my-reports", { headers: { "x-anon-id": ANON } })).json()) as
+      { reports: Array<{ id: number; priority: string }> };
+    expect(mine.reports.find((r) => r.id === id)?.priority).toBe("normal");
+  });
+});

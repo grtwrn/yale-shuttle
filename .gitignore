@@ -13,3 +13,6 @@ __pycache__/
 *.log
 /tmp/
 .venv/
+# bot working state and measurement caches — never source
+services/shuttle-v2/scripts/.feedback-bot/
+services/shuttle-v2/scripts/.cache/

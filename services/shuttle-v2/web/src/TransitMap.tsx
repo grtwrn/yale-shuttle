@@ -5904,6 +5904,7 @@ const TransitMap: FC = () => {
   // 12 MP screenshots; nobody triages bugs at 12 MP, and the server caps the
   // upload at 2 MB, so the browser shrinks to <=1280 px before anything is sent.
   const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
+  const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
   const attachScreenshot = (file: File | undefined) => {
     setFeedbackImageErr(null);
@@ -5940,6 +5941,7 @@ const TransitMap: FC = () => {
         body: JSON.stringify({
           note: msg,
           image: feedbackImage ?? undefined,
+          priority: feedbackPriority,
           source: "feedback",
           client: {
             userAgent: navigator.userAgent,
@@ -5953,6 +5955,7 @@ const TransitMap: FC = () => {
       const d = await res.json();
       setFeedbackText("");
       setFeedbackImage(null);
+      setFeedbackPriority("normal");
       setFeedbackOpen(false);
       setFeedbackStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
     } catch {
@@ -6990,6 +6993,27 @@ const TransitMap: FC = () => {
                 fontFamily: "inherit", resize: "vertical", minHeight: 80,
               }}
             />
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>
+                How urgent?
+              </span>
+              {([["urgent", "🔴 Urgent"], ["normal", "Normal"], ["nice_to_have", "💡 Nice to have"]] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setFeedbackPriority(v)}
+                  style={{
+                    fontSize: 12, padding: "6px 10px", minHeight: 36,
+                    border: feedbackPriority === v ? "1.5px solid #1976D2" : "1px solid #ccc",
+                    borderRadius: 14,
+                    background: feedbackPriority === v ? "#E3F2FD" : "#fff",
+                    color: feedbackPriority === v ? "#1565C0" : "#546e7a",
+                    cursor: "pointer", fontFamily: "inherit", fontWeight: feedbackPriority === v ? 600 : 400,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {feedbackImage ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

@@ -319,6 +319,11 @@ export function buildApp(opts: AppOptions): Hono {
     const note = typeof b.note === "string" ? b.note.trim().slice(0, REPORT_TEXT_MAX) : "";
     const kind: "issue" | "feedback" = b.source === "feedback" ? "feedback" : "issue";
     const routeId = typeof b.routeId === "number" ? b.routeId : null;
+    // Rider-declared priority (operator/bot can re-triage later).
+    const priority =
+      b.priority === "urgent" || b.priority === "nice_to_have" || b.priority === "normal"
+        ? b.priority
+        : "normal";
 
     // Optional screenshot. The data URL is pulled OUT of the context stash
     // (2 MB of base64 in a DB row would make every triage query pay for it)
@@ -343,7 +348,7 @@ export function buildApp(opts: AppOptions): Hono {
     const anonId = anonHeader && ANON_ID_PATTERN.test(anonHeader) ? anonHeader : null;
     const { id } = submitReport(
       opts.bundle.db,
-      { kind, routeId, body: note || "(report)", context: imageFile ? { ...b, imageFile } : b },
+      { kind, routeId, body: note || "(report)", priority, context: imageFile ? { ...b, imageFile } : b },
       ip,
       anonId,
     );
@@ -390,12 +395,18 @@ export function buildApp(opts: AppOptions): Hono {
     const body = (await c.req.json().catch(() => null)) as {
       action?: unknown;
       text?: unknown;
+      priority?: unknown;
     } | null;
     let action: RiderAction;
     if (body?.action === "resolve") {
       action = { action: "resolve" };
     } else if (body?.action === "archive" || body?.action === "unarchive") {
       action = { action: body.action };
+    } else if (
+      body?.action === "set_priority" &&
+      (body.priority === "urgent" || body.priority === "normal" || body.priority === "nice_to_have")
+    ) {
+      action = { action: "set_priority", priority: body.priority };
     } else if (body?.action === "followup" && typeof body.text === "string" && body.text.trim()) {
       action = { action: "followup", text: body.text.trim().slice(0, REPORT_TEXT_MAX) };
     } else {

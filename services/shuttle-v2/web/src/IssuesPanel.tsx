@@ -78,7 +78,8 @@ const IssuesPanel: React.FC<{
       | { action: "resolve" }
       | { action: "followup"; text: string }
       | { action: "archive" }
-      | { action: "unarchive" },
+      | { action: "unarchive" }
+      | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },
   ) => {
     setBusyId(id);
     setActionError(null);
@@ -256,6 +257,22 @@ const IssuesPanel: React.FC<{
                   >
                     Reply
                   </button>
+                  <select
+                    value={r.priority}
+                    onChange={(e) => void act(r.id, { action: "set_priority", priority: e.target.value as "urgent" | "normal" | "nice_to_have" })}
+                    disabled={busy}
+                    title="How urgent is this to you?"
+                    style={{
+                      fontSize: 13, padding: "8px 6px", minHeight: 44,
+                      border: "1px solid #bbb", borderRadius: 6,
+                      background: "#fff", color: r.priority === "urgent" ? "#c62828" : "#546e7a",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <option value="urgent">🔴 Urgent</option>
+                    <option value="normal">Normal</option>
+                    <option value="nice_to_have">💡 Nice to have</option>
+                  </select>
                   <button
                     onClick={() => void act(r.id, { action: r.archived ? "unarchive" : "archive" })}
                     disabled={busy}
