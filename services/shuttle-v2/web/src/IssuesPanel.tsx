@@ -236,7 +236,10 @@ const IssuesPanel: React.FC<{
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  {r.status === "open" && (
+                  {/* Available on ANY live card — an addressed report is
+                      exactly the one a rider wants to confirm. Hidden only
+                      once they've already confirmed. */}
+                  {!r.followups.some((f) => f.text === "Reporter marked this as resolved.") && (
                     <button
                       onClick={() => void act(r.id, { action: "resolve" })}
                       disabled={busy}

@@ -60,11 +60,14 @@ snapshot() { git status --porcelain | awk '{print $2}' | while read -r f; do
   if [ -f "$GITROOT/$f" ]; then echo "$(md5sum "$GITROOT/$f" | cut -d' ' -f1)  $f"; else echo "gone  $f"; fi; done | sort; }
 snapshot > "$SNAP_BEFORE"
 
-timeout 1500 claude -p "$(cat scripts/feedback-bot-prompt.md)
+# Absolute path: cron's PATH doesn't include npm globals — both event-triggered
+# runs on 2026-09-01 arbitrated correctly and then failed right here.
+CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.npm-global/bin/claude}"
+timeout 1500 "$CLAUDE_BIN" -p "$(cat scripts/feedback-bot-prompt.md)
 
 Process exactly these report ids, no others: $CHOSEN" \
   --allowedTools "Bash,Read,Edit,Write,Grep,Glob" \
-  --max-turns 60 || echo "claude run ended (timeout or error)"
+  --max-turns 60 || { echo "CLAUDE RUN FAILED (timeout or error)"; BOT_FAILED=1; }
 
 # ---- allowlist enforcement (outside the model) ----
 snapshot > "$SNAP_AFTER"
@@ -103,7 +106,7 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   let rep; try{rep=JSON.parse(fs.readFileSync(repPath,"utf8"));}catch{rep={strikes:{},served:{}};}
   for(const r of JSON.parse(s).reports){
     if(!chosen.has(r.id)) continue;
-    if(r.status==="wontfix" && (r.note||"").startsWith("automated:")){
+    if(r.status==="wontfix" && (r.note||"").startsWith("automated-abuse:")){
       const k=r.anonId??"anon";
       rep.strikes[k]=(rep.strikes[k]??0)+1;
       console.log("strike for "+k.slice(0,8)+" (now "+rep.strikes[k]+") via #"+r.id);
@@ -112,3 +115,6 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   fs.writeFileSync(repPath,JSON.stringify(rep,null,2));
 });'
 echo "=== done $(date -Is) ==="
+# Non-zero on model failure so the listener logs it as a FAILURE, not success —
+# a missing binary once looked like "bot run finished" for two hours.
+exit "${BOT_FAILED:-0}"
