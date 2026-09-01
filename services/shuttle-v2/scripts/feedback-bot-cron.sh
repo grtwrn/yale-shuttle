@@ -119,6 +119,9 @@ echo "re-running gates in the worktree"
 FIRST_ID=$(echo "$CHOSEN" | cut -d, -f1)
 REAL_BRANCH="feedback-bot/$FIRST_ID-$(date +%m%d%H%M)"
 git checkout -q -b "$REAL_BRANCH"
+# The dependency symlinks are wrapper plumbing — they must never be committed
+# (they are absolute paths into this machine; they rode into PR #1 once).
+rm -f services/shuttle-v2/node_modules services/shuttle-v2/web/node_modules
 git add -A
 git -c user.name="feedback-bot" -c user.email="feedback-bot@yale-shuttle.local" \
   commit -q -m "feedback-bot: proposed fix for report #$FIRST_ID
