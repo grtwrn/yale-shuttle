@@ -38,39 +38,45 @@ process.stdin.on("end", () => {
   const reports = JSON.parse(input);
   const rep = load();
 
+  // Untriaged = nobody (operator or bot) has written a note yet. Priority is
+  // NOT part of this test any more: riders set their own at submission, so an
+  // urgent rider report must not look "already triaged".
   const untriaged = reports.filter(
-    (r) => r.status === "open" && r.priority === "normal" && !r.note && !r.body.startsWith("[map-bot]"),
+    (r) => r.status === "open" && !r.note && !r.body.startsWith("[map-bot]"),
   );
 
   const keyOf = (r) => r.anonId ?? "anon";
   const blocked = untriaged.filter((r) => (rep.strikes[keyOf(r)] ?? 0) >= STRIKE_LIMIT);
   const eligible = untriaged.filter((r) => (rep.strikes[keyOf(r)] ?? 0) < STRIKE_LIMIT);
 
-  // Group by reporter; within a reporter, oldest first.
-  const byUser = new Map();
-  for (const r of eligible.sort((a, b) => a.createdAt - b.createdAt)) {
-    if (!byUser.has(keyOf(r))) byUser.set(keyOf(r), []);
-    byUser.get(keyOf(r)).push(r);
-  }
-  // Reporters ordered by least-recently-served.
-  const users = [...byUser.keys()].sort(
-    (a, b) => (rep.served[a] ?? 0) - (rep.served[b] ?? 0),
-  );
-
+  // Priority tiers first (an urgent report beats everyone's normals), then
+  // the fairness rotation WITHIN each tier — a flood of one user's urgents
+  // still yields to another user's urgent, but not to anyone's nice-to-have.
   const chosen = [];
-  // One per user first; only if fewer users than slots does anyone get a second.
-  for (let round = 0; chosen.length < MAX_PER_RUN; round++) {
-    let took = false;
-    for (const u of users) {
-      if (chosen.length >= MAX_PER_RUN) break;
-      const q = byUser.get(u);
-      if (q && q.length > round) {
-        chosen.push(q[round]);
-        rep.served[u] = Date.now();
-        took = true;
-      }
+  for (const tier of ["urgent", "normal", "nice_to_have"]) {
+    if (chosen.length >= MAX_PER_RUN) break;
+    const inTier = eligible.filter((r) => r.priority === tier);
+    const byUser = new Map();
+    for (const r of inTier.sort((a, b) => a.createdAt - b.createdAt)) {
+      if (!byUser.has(keyOf(r))) byUser.set(keyOf(r), []);
+      byUser.get(keyOf(r)).push(r);
     }
-    if (!took) break;
+    const users = [...byUser.keys()].sort(
+      (a, b) => (rep.served[a] ?? 0) - (rep.served[b] ?? 0),
+    );
+    for (let round = 0; chosen.length < MAX_PER_RUN; round++) {
+      let took = false;
+      for (const u of users) {
+        if (chosen.length >= MAX_PER_RUN) break;
+        const q = byUser.get(u);
+        if (q && q.length > round) {
+          chosen.push(q[round]);
+          rep.served[u] = Date.now();
+          took = true;
+        }
+      }
+      if (!took) break;
+    }
   }
 
   save(rep);

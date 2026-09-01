@@ -16,6 +16,11 @@ Fetch the untriaged queue (TOKEN=$(cat ~/.yale-shuttle-admin-token)):
 
 ### 1. Classify priority (always)
 
+The report arrives with the RIDER'S self-rated priority — treat it as a signal,
+not a verdict. Honor it when the content supports it; downgrade an "urgent"
+that is plainly a preference or feature wish (and say so neutrally in your
+note); upgrade quietly when a "nice to have" describes riders being misled.
+
 - `urgent` — riders are actively misled or the app is broken for them: wrong ETAs systematically, a route drawn wrong, a crash, safety-relevant confusion.
 - `normal` — a real defect with a workaround, or unclear reproduction.
 - `nice_to_have` — feature requests, polish, preferences.
