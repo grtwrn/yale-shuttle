@@ -24,6 +24,15 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+
+// True when running as an installed app (home-screen/desktop install). Fixed
+// for the life of the page, so a module constant, not state.
+const isStandaloneDisplay = (() => {
+  try {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+  } catch { return false; }
+})();
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
@@ -6499,11 +6508,33 @@ const TransitMap: FC = () => {
       <div className="app-header" style={{
         width: "100%", maxWidth: 1200, padding: "20px 24px 6px",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+        position: "relative",
       }}>
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
           Yale Shuttle
         </h1>
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
+        {/* Refresh, installed-app only. A browser tab has its own reload and on
+            phones the pull-down gesture works — but a desktop install
+            (Chromebook/Mac/Windows) has neither: no browser chrome, and a
+            trackpad emits no touch events for the pull gesture. */}
+        {isStandaloneDisplay && (
+          <button
+            onClick={() => window.location.reload()}
+            title="Refresh"
+            aria-label="Refresh the app"
+            style={{
+              position: "absolute", right: 12, top: 14,
+              width: 44, height: 44, minHeight: 44,
+              border: "none", borderRadius: 22, background: "transparent",
+              color: "#8a8a9a", fontSize: 18, cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              fontFamily: "inherit",
+            }}
+          >
+            ↻
+          </button>
+        )}
       </div>
 
       {/* View tabs — hidden while on a bus, since the ride page is its own view */}
