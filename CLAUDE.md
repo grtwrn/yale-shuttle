@@ -120,6 +120,14 @@ curl -s -H "x-admin-token: $TOKEN" \
   https://yale-shuttle.fly.dev/api/reports/{id}/image -o report.png
 ```
 
+**There is no All tab.** The route cards live under the map on the Map tab
+(operator, 2026-09-02): the map answers "where is everything" and the cards
+answer "when does my line reach my stop", which is one page, not two. A
+rider whose stored tab was `all` is migrated to `map` on load. `StopList`
+still takes `listView="all"` internally — that is the card-list mode, not a
+tab. With every line switched off the map keeps a basemap centred on New
+Haven rather than rendering a grey void.
+
 The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
 above the map toggles each route, and the choice is remembered in
 localStorage as the HIDDEN toggle labels — so a route added upstream appears

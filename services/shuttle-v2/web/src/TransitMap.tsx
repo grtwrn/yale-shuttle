@@ -1342,6 +1342,12 @@ const AllRoutesMap: FC<{
       busFitDoneRef.current = true;
     } else if (pts.length) {
       map.fitBounds(L.latLngBounds(pts), { padding: [24, 24] });
+    } else {
+      // Nothing to fit — every line switched off. A Leaflet map with no view
+      // set renders as a grey void; the rider should still see New Haven
+      // under the (empty) overlay, so the page reads as "no lines shown"
+      // rather than "the map is broken".
+      map.setView([SERVICE_CENTER.lat, SERVICE_CENTER.lon], 13);
     }
     // The tab mounts hidden-then-shown, so the container can have 0 height at
     // init — recompute size a couple of times after layout settles or the
@@ -5842,7 +5848,10 @@ const TransitMap: FC = () => {
   const [listView, setListView] = useState<"all" | "trip" | "map" | "favorites" | "issues">(() => {
     try {
       const saved = localStorage.getItem("listView");
-      return saved === "all" || saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
+      // "all" is retired — its content lives under the map now. A rider whose
+      // last tab was All lands where that content went, not back at Trip.
+      if (saved === "all") return "map";
+      return saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
     } catch { return "trip"; }
   });
   useEffect(() => {
@@ -6574,7 +6583,10 @@ const TransitMap: FC = () => {
           overflowX: "auto", WebkitOverflowScrolling: "touch",
           justifyContent: "center", flexWrap: "wrap",
         }}>
-          {(["trip", "all", "map", "issues"] as const).map((v) => (
+          {/* Three tabs, not four: the route cards moved under the map
+              (operator, 2026-09-02), so "All" and "Map" were two halves of
+              one page. */}
+          {(["trip", "map", "issues"] as const).map((v) => (
             <button
               key={v}
               onClick={() => { setListView(v); }}
@@ -6723,11 +6735,55 @@ const TransitMap: FC = () => {
             </div>
           )}
           <AllRoutesMap
+            // Shorter here than it was as a whole page: the route cards sit
+            // below it now and must be reachable without a long scroll.
+            height="min(46vh, 420px)"
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
             hiddenRoutes={mapHidden}
             userLatLon={userLatLon} onRequestLocate={startLocating}
           />
+
+          {/* The route cards, under the map (operator, 2026-09-02). They were
+              a tab of their own; the map above answers "where is everything"
+              and these answer "when does MY line reach MY stop", which is one
+              page, not two. The line filter above governs both. */}
+          <div style={{
+            padding: "8px 16px 4px", display: "flex", justifyContent: "center",
+            gap: 6, alignItems: "center", flexWrap: "wrap",
+          }}>
+            {([[false, "All routes"], [true, "Running now"]] as const).map(([v, label]) => (
+              <button key={label} onClick={() => setActiveOnly(v)} style={{
+                padding: "4px 16px", borderRadius: 12, minHeight: 44,
+                border: activeOnly === v ? "1px solid #1a1a2e" : "1px solid #bbb",
+                background: activeOnly === v ? "#1a1a2e" : "#fff",
+                color: activeOnly === v ? "#fff" : "#546e7a",
+                fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                {label}
+              </button>
+            ))}
+            {activeOnly && buses.length === 0 && (
+              <span style={{ fontSize: 11, color: "#78909c", width: "100%", textAlign: "center" }}>
+                No shuttles running right now — showing every route
+              </span>
+            )}
+          </div>
+          <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
+            <StopList
+              buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+              routePaths={routePaths}
+              segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
+              routeHours={routeHours} tick={tick}
+              listView="all" activeOnly={activeOnly && buses.length > 0}
+              // One filter for the page: the chips above already say which
+              // lines the rider cares about, and they persist between visits.
+              hiddenRoutes={mapHidden}
+              favorites={favorites} onToggleFavorite={toggleFavorite}
+              savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
+              userLatLon={userLatLon} onRequestLocate={startLocating}
+            />
+          </div>
         </>
       ) : listView === "issues" ? (
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
@@ -6752,6 +6808,9 @@ const TransitMap: FC = () => {
           onBoard={(ride) => { setBoardedRide(ride); }}
         />
       ) : (
+      // Unreachable: the tab bar offers trip/map/issues only, and a stored
+      // "all" is migrated to "map" above. Kept as the favourites/accuracy
+      // shell it also serves.
       <>
       {false && (() => {
         const visibleRouteIds = new Set<string>();
