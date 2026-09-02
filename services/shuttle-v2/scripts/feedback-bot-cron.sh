@@ -101,7 +101,7 @@ cd "$WT"
 # changes — counting them made a triage-only run look out-of-lane.
 # pr-preview.json is the bot's screenshot recipe for the wrapper (see below),
 # not part of the proposed change.
-CHANGED=$(git status --porcelain | awk '{print $2}' | grep -v "node_modules" | grep -v "pr-preview.json" || true)
+CHANGED=$(git status --porcelain | awk '{print $2}' | grep -v "node_modules" | grep -v "pr-preview.json" | grep -v "pr-report-id" || true)
 if [ -z "$CHANGED" ]; then
   echo "triage-only run, no code proposed"
   exit "$BOT_FAILED"
@@ -118,7 +118,26 @@ echo "re-running gates in the worktree"
 ( cd services/shuttle-v2 && npm run typecheck && npx vitest run ) > /dev/null 2>&1 || {
   echo "GATES FAILED in worktree — no PR"; exit 1; }
 
+# WHICH report this PR is for. The wrapper used to assume the first arbitrated
+# id, which was wrong whenever the bot triaged one report and wrote code for
+# another in the same run: PR #14 went out branded report #64 while fixing #65,
+# and PR #20 branded #65 while implementing #66 — and since the "[fixed]"
+# follow-up keys on the branch name, merging either would have told the wrong
+# rider their problem was solved. The bot now states the id it actually
+# implemented in pr-report-id, and the first arbitrated id is only the
+# fallback.
 FIRST_ID=$(echo "$CHOSEN" | cut -d, -f1)
+if [ -f services/shuttle-v2/pr-report-id ]; then
+  CLAIMED=$(tr -cd '0-9' < services/shuttle-v2/pr-report-id | head -c 9)
+  # Only honour an id the arbitration actually handed it, so a confused run
+  # cannot address a report it never read.
+  case ",$CHOSEN," in
+    *",$CLAIMED,"*) [ -n "$CLAIMED" ] && FIRST_ID="$CLAIMED" ;;
+    *) [ -n "$CLAIMED" ] && echo "WARNING: bot claimed report #$CLAIMED, not in $CHOSEN — using $FIRST_ID" ;;
+  esac
+fi
+rm -f services/shuttle-v2/pr-report-id
+echo "PR is for report #$FIRST_ID"
 REAL_BRANCH="feedback-bot/$FIRST_ID-$(date +%m%d%H%M)"
 git checkout -q -b "$REAL_BRANCH"
 

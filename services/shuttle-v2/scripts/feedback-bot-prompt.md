@@ -107,6 +107,14 @@ Write the rider note as you would for any report ("Good idea — we've built
 this and it's waiting for a final check.") — the wrapper appends the PR link
 to the operator half.
 
+**Say which report the code is for.** When you write code, put that report's
+id — digits only — in `pr-report-id` in the working directory, before you
+finish. The wrapper names the branch, the PR and the rider's "[fixed]" reply
+from it. You may be handed up to three reports and triage two while fixing
+one; without this file the PR is filed against the first id in the list, which
+has already sent two riders a fix that was not theirs. The file is deleted
+before the commit and is not part of your change.
+
 **Leave a screenshot recipe.** The developer approves PRs by looking at a
 screenshot first, so whenever you change anything visible write
 `pr-preview.json` in the working directory (`services/shuttle-v2/`). The

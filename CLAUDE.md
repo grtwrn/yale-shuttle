@@ -174,7 +174,15 @@ declines**. `npm run approve -- <id> [guidance]` pre-authorizes bigger work
 wishes alike — rather than `[triage]` them; `[triage]` is for policy/design
 questions and anything near privacy, auth, schema or config. The wrapper enforces a file allowlist on the worktree diff and
 re-runs the gates before any push; report bodies are treated as untrusted data
-throughout (`feedback-bot-prompt.md`). **Every bot PR carries a screenshot**:
+throughout (`feedback-bot-prompt.md`). **A bot PR is filed against the report the bot names in `pr-report-id`**, not
+the first id arbitration handed it — the wrapper used to assume those were the
+same, and two PRs went out branded the wrong report (a geolocation fix labelled
+as an ETA complaint, a Celsius change labelled as the geolocation one). Since
+the `[fixed]` follow-up keys on the branch name, that would have closed an
+urgent report with someone else's work. The claimed id is honoured only if it
+is in the arbitrated set.
+
+**Every bot PR carries a screenshot**:
 the wrapper stages the PR's own build on :8096, runs `scripts/pr-preview.mjs`
 (phone-sized headless chromium; the bot's `pr-preview.json` recipe mocks the
 API responses that make the feature visible, e.g. a rainy forecast), commits
