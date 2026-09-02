@@ -4,7 +4,8 @@ import {
   alightNoteText,
   CLOSER_STOP_MIN_GAIN_M,
   findAlightNote,
-  LOOK_AHEAD_STOPS,
+  LOOK_AHEAD_SEC,
+  MIN_EXTRA_SEC,
 } from "./alightNote";
 import type { LatLon } from "./geo";
 
@@ -125,39 +126,60 @@ describe("findAlightNote — when there is nothing to explain", () => {
   });
 });
 
-describe("findAlightNote — structure", () => {
-  it("drops the layover clause when the alight stop is an ordinary stop", () => {
+describe("findAlightNote — says nothing unless it has a reason", () => {
+  it("is silent when the alight stop is an ordinary stop", () => {
+    // Without a layover the sentence could only restate arithmetic the card
+    // already shows, which was 80% of what this printed.
     const ordinary = { ...RED_DWELLS, "11": { med: 45, sd: 20, n: 13 } };
-    const note = findAlightNote(
+    expect(findAlightNote(
       RED_STOPS, 11, DEST_517_PROSPECT, RED_COORDS, RED_SEGS, ordinary,
-    )!;
-    expect(note.layoverSec).toBeNull();
-    const text = alightNoteText(note, "Division / Prospect");
-    expect(text).not.toContain("rests");
-    expect(text).toContain("Division/Prospect");
+    )).toBeNull();
   });
 
   it("ignores a thinly-sampled dwell rather than calling it a layover", () => {
     const thin = { ...RED_DWELLS, "11": { med: 460.1, sd: 277.2, n: 2 } };
-    const note = findAlightNote(
+    expect(findAlightNote(
       RED_STOPS, 11, DEST_517_PROSPECT, RED_COORDS, RED_SEGS, thin,
-    )!;
-    expect(note.layoverSec).toBeNull();
+    )).toBeNull();
   });
 
-  it("does not look further than LOOK_AHEAD_STOPS around the loop", () => {
-    // A long tail of stops far from the destination, with the nearest one
-    // parked just past the horizon.
-    const stops = [11, 900, 901, 902, 903, 904, 905, 48];
-    const coords: Record<number, LatLon> = { 11: RED_COORDS[11], 48: RED_COORDS[48] };
-    for (const sid of [900, 901, 902, 903, 904, 905]) {
-      coords[sid] = { lat: 41.30, lon: -72.95 };
-    }
-    expect(stops.indexOf(48) - stops.indexOf(11)).toBeGreaterThan(LOOK_AHEAD_STOPS);
-    expect(findAlightNote(stops, 11, DEST_517_PROSPECT, coords, {}, {})).toBeNull();
+  it("stays quiet when the margin is inside the app's own ETA error", () => {
+    // A 13-second difference rounded up to "about 1 min" on a quarter of the
+    // notes this used to print.
+    const near = { ...RED_COORDS };
+    // Put the "closer" stop just far enough to clear the distance gate but
+    // near enough in time that riding on is barely worse.
+    const stops = [11, 48];
+    const coords: Record<number, LatLon> = {
+      11: RED_COORDS[11],
+      48: { lat: DEST_517_PROSPECT.lat + 0.0012, lon: DEST_517_PROSPECT.lon },
+    };
+    const segs = { "11-48": { avg: 20, n: 30 } };
+    const note = findAlightNote(stops, 11, DEST_517_PROSPECT, coords, segs, RED_DWELLS);
+    if (note) expect(note.extraSec).toBeGreaterThanOrEqual(MIN_EXTRA_SEC);
+    void near;
   });
 
-  it("keeps the margin constant above zero so near-ties stay quiet", () => {
+  it("looks a few minutes ahead, not a fixed number of stops around the loop", () => {
+    // Six stops is most of a 5-stop grocery loop and a fifth of Red's. The
+    // horizon is ride time, so a stop 20 min further on is never described.
+    const stops = [11, 900, 48];
+    const coords: Record<number, LatLon> = {
+      11: RED_COORDS[11], 48: RED_COORDS[48], 900: { lat: 41.30, lon: -72.95 },
+    };
+    // The layover itself does not count against the horizon (it is time spent
+    // sitting, not distance), so the fixture puts real moving time past it.
+    const far = { "11-900": { avg: 460 + LOOK_AHEAD_SEC + 60, n: 30 }, "900-48": { avg: 60, n: 30 } };
+    expect(findAlightNote(stops, 11, DEST_517_PROSPECT, coords, far, RED_DWELLS)).toBeNull();
+    // The same geometry within the horizon does produce the note.
+    const near = { "11-900": { avg: 460 + 30, n: 30 }, "900-48": { avg: 60, n: 30 } };
+    expect(findAlightNote(stops, 11, DEST_517_PROSPECT, coords, near, RED_DWELLS)).not.toBeNull();
+  });
+
+  it("has a time floor, not just a distance floor", () => {
     expect(CLOSER_STOP_MIN_GAIN_M).toBeGreaterThan(0);
+    // The near-tie that reaches the rider is a tie in TIME; the old test
+    // asserted only that a distance constant was positive.
+    expect(MIN_EXTRA_SEC).toBeGreaterThanOrEqual(120);
   });
 });
