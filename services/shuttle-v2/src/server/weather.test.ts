@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  budgetMs,
   createWeatherService,
+  MIN_ATTEMPT_MS,
   parseForecast,
+  parseNwsForecast,
   WEATHER_MAX_AGE_MS,
   WEATHER_TTL_MS,
 } from "./weather.js";
@@ -139,5 +142,107 @@ describe("createWeatherService", () => {
     fail = true;
     t += WEATHER_MAX_AGE_MS + 1;
     await expect(svc.get()).resolves.toEqual({ available: false });
+  });
+});
+
+describe("the National Weather Service fallback", () => {
+  // Open-Meteo's free tier sheds load: on 2026-09-02 it returned
+  // 503 "The service is overloaded" to the production machine for minutes at
+  // a time, long enough that a restart left the cache cold and riders saw no
+  // weather at all, then recovered by itself. The fallback is what makes the
+  // next such spell invisible.
+  const NWS_POINT = { properties: { forecastHourly: "https://api.weather.gov/gridpoints/OKX/66,75/forecast/hourly" } };
+  const NWS_HOURLY = {
+    properties: {
+      periods: [
+        { startTime: "2026-09-02T16:00:00-04:00", temperature: 72, temperatureUnit: "F", probabilityOfPrecipitation: { value: 25 }, shortForecast: "Chance Rain Showers" },
+        { startTime: "2026-09-02T17:00:00-04:00", temperature: 70, temperatureUnit: "F", probabilityOfPrecipitation: { value: null }, shortForecast: "Cloudy" },
+      ],
+    },
+  };
+
+  const jsonRes = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+  it("parses the NWS shape into the same buckets", () => {
+    const hours = parseNwsForecast(NWS_HOURLY)!;
+    expect(hours).toHaveLength(2);
+    expect(hours[0]).toMatchObject({
+      timeMs: Date.parse("2026-09-02T16:00:00-04:00"),
+      probability: 25,
+      temperatureF: 72,
+    });
+    // A null probability means "nothing worth reporting", not "unknown".
+    expect(hours[1]!.probability).toBe(0);
+    // No condition code from this source — better absent than invented.
+    expect(hours[0]!.weatherCode).toBeUndefined();
+  });
+
+  it("converts a Celsius period rather than trusting the unit", () => {
+    const c = { properties: { periods: [{ startTime: "2026-09-02T16:00:00-04:00", temperature: 20, temperatureUnit: "C", probabilityOfPrecipitation: { value: 10 } }] } };
+    expect(parseNwsForecast(c)![0]!.temperatureF).toBe(68);
+  });
+
+  it("returns null for a shape it does not recognise", () => {
+    expect(parseNwsForecast(null)).toBeNull();
+    expect(parseNwsForecast({})).toBeNull();
+    expect(parseNwsForecast({ properties: { periods: [] } })).toBeNull();
+    expect(parseNwsForecast({ properties: { periods: [{ startTime: "nonsense" }] } })).toBeNull();
+  });
+
+  it("falls back when Open-Meteo refuses, and serves the result", async () => {
+    const calls: string[] = [];
+    const fetchImpl = (async (u: string | URL) => {
+      const url = String(u);
+      calls.push(url);
+      if (url.includes("open-meteo")) return jsonRes({ reason: "The service is overloaded", error: true }, 503);
+      if (url.includes("/points/")) return jsonRes(NWS_POINT);
+      return jsonRes(NWS_HOURLY);
+    }) as unknown as typeof fetch;
+    const svc = createWeatherService({ fetchImpl, now: () => 1_000_000 });
+    const payload = await svc.get();
+    expect(payload.available).toBe(true);
+    if (payload.available) expect(payload.hourly[0]!.temperatureF).toBe(72);
+    expect(calls[0]).toContain("open-meteo");
+    expect(calls.some((c) => c.includes("/points/"))).toBe(true);
+  });
+
+  it("resolves the NWS grid URL once, not on every refresh", async () => {
+    let points = 0;
+    const fetchImpl = (async (u: string | URL) => {
+      const url = String(u);
+      if (url.includes("open-meteo")) return jsonRes({}, 503);
+      if (url.includes("/points/")) { points += 1; return jsonRes(NWS_POINT); }
+      return jsonRes(NWS_HOURLY);
+    }) as unknown as typeof fetch;
+    let t = 1_000_000;
+    const svc = createWeatherService({ fetchImpl, now: () => t });
+    await svc.get();
+    t += WEATHER_TTL_MS + 1;
+    await svc.get();
+    await svc.get();
+    expect(points).toBe(1);
+  });
+
+  it("still answers unavailable, never throws, when both sources are down", async () => {
+    const fetchImpl = (async () => { throw new Error("network down"); }) as unknown as typeof fetch;
+    const svc = createWeatherService({ fetchImpl, now: () => 1_000_000 });
+    await expect(svc.get()).resolves.toEqual({ available: false });
+  });
+});
+
+describe("the whole refresh shares one timeout budget", () => {
+  // Chaining two providers at a fresh 5 s each blocked the first cold request
+  // for 10 s, and single-flight makes every concurrent rider wait with it.
+  it("hands the second provider what is left, not another full timeout", () => {
+    const deadline = 10_000;
+    expect(budgetMs(deadline, 0)).toBe(10_000);
+    expect(budgetMs(deadline, 6_000)).toBe(4_000);
+  });
+
+  it("never hands out a zero or negative timeout", () => {
+    expect(budgetMs(10_000, 10_000)).toBe(MIN_ATTEMPT_MS);
+    expect(budgetMs(10_000, 99_999)).toBe(MIN_ATTEMPT_MS);
+    expect(budgetMs(NaN, 0)).toBe(MIN_ATTEMPT_MS);
   });
 });
