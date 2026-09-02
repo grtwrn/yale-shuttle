@@ -113,9 +113,16 @@ export function leaveAlertMessage(
  * live bus ETA (walk options, future-mode plans, route stopped running).
  */
 export function findReminderOption<
-  T extends { mode: string; routeLabel: string; departed?: boolean; busEtaSec?: number },
->(options: readonly T[] | null | undefined, routeLabel: string): (T & { busEtaSec: number }) | null {
-  const o = options?.find((x) => x.mode === "shuttle" && x.routeLabel === routeLabel);
+  T extends { mode: string; departed?: boolean; busEtaSec?: number },
+>(
+  options: readonly T[] | null | undefined,
+  // Identity, not route label: one route can offer two itineraries (report
+  // #55), and matching on the label armed the reminder on whichever came
+  // first — a rider who set it on the "board at Whitney/Canner" card was
+  // pinged for the bus reaching the stop they had walked away from.
+  matches: (o: T) => boolean,
+): (T & { busEtaSec: number }) | null {
+  const o = options?.find((x) => x.mode === "shuttle" && matches(x));
   if (!o || o.departed || o.busEtaSec == null) return null;
   return o as T & { busEtaSec: number };
 }

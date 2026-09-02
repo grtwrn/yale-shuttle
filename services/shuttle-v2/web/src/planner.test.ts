@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { remainingSec } from "./format";
-import { haversineMeters } from "./geo";
+import { haversineMeters, type LatLon } from "./geo";
+import type { BusData } from "./map-data";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import {
+  ALT_PICKUP_MIN_GAIN_SEC, alternatePickup, dwellBoardWindowSec, findPotentialRoutes, MAX_ALTERNATES,
+  MAX_RIDE_SEC, optionKey, optionKeyLabel, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip,
+  publishedWindowFor, routeHoursCaption, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
+  type TripOption,
+} from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -548,5 +554,256 @@ describe("topVisibleOptions", () => {
   it("handles fewer than three shuttles", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
+  });
+});
+
+// Report #55: "sometimes the shuttle loops around my pickup location so
+// multiple stops could work — if I miss the Blue at Prospect/Canner I could
+// pick it up on Whitney/Canner." Blue Day runs 100 → 102 → 105 → 69 → 139 →
+// 136 → 130 → 129: seven stops and ~401 s of driving between two stops 512 m
+// apart on the ground. planTrip scores both and keeps one; the live layer then
+// re-derives against the FROZEN board stop and only ever switches vehicle. So a
+// rider who watches the bus leave Prospect/Canner is told to wait a lap.
+describe("report #55: alternate board stops on the same route", () => {
+  const PROSPECT_CANNER = 100;
+  const WHITNEY_CANNER = 129;
+  const PROSPECT_HIGHLAND = 102;
+  const DIVINITY = 47;
+  /** `m` metres east of a stop — down Canner St, toward Whitney. */
+  const eastOf = (stopId: number, m: number) =>
+    ({ lat: at(stopId).lat, lon: at(stopId).lon + m / 84_000 });
+  /** A Blue Day bus a fraction `t` of the way from stop `a` to stop `b`. */
+  const between = (a: number, b: number, t: number, over: Partial<BusData> = {}) => makeBus({
+    lat: at(a).lat + (at(b).lat - at(a).lat) * t,
+    lon: at(a).lon + (at(b).lon - at(a).lon) * t,
+    route_id: 1, last_stop_id: a, bus_name: "#101", ...over,
+  });
+  const from = eastOf(PROSPECT_CANNER, 150);
+  const to = { lat: at(STOP.phelpsGate).lat, lon: at(STOP.phelpsGate).lon - 0.001 };
+  /**
+   * Plan while the bus is still four stops up the line (Prospect/Sachem →
+   * Chemistry, ~3.4 min out): Prospect/Canner is catchable, so it is kept.
+   */
+  const approaching = () => between(STOP.prospectSachemN, 34, 0.5);
+  const blueOption = (buses = [approaching()]) => {
+    const o = plan(from, to, buses).find((x) => x.mode === "shuttle" && x.routeLabel === "Blue Day");
+    expect(o).toBeDefined();
+    expect(o!.boardStopId).toBe(PROSPECT_CANNER);
+    return o!;
+  };
+  /**
+   * What the live layer in TransitMap does each poll: re-derive wait/total for
+   * the option's frozen board stop against the buses now in the feed.
+   */
+  const liveState = (o: TripOption, buses: BusData[]): TripOption => {
+    const live = computeUpcomingArrivals([o.boardStopId], buses, routeStops, stopCoords, segmentTimes, NOW)
+      .filter((a) => a.routeLabel === o.routeLabel);
+    const picked = pickLiveArrival(live, o.busName, o.walkToSec);
+    if (!picked) return { ...o, departed: true };
+    const waitSec = Math.max(0, picked.match.eta - o.walkToSec);
+    return {
+      ...o, waitSec, totalSec: o.walkToSec + waitSec + o.rideSec + o.walkFromSec,
+      busName: picked.match.busName, departed: picked.departed, missedBus: picked.missedBus,
+      busEtaSec: picked.match.eta, computedAtMs: NOW,
+    };
+  };
+  const alt = (o: TripOption, buses: BusData[], liveFrom?: LatLon) =>
+    alternatePickup(o, buses, routeStops, stopCoords, segmentTimes, dwellTimes, NOW, liveFrom);
+
+  describe("planTrip keeps the losing same-route board stops", () => {
+    it("lists Whitney/Canner as an alternate to Prospect/Canner with its real walk", () => {
+      const o = blueOption();
+      const whitney = o.alternates?.find((a) => a.boardStopId === WHITNEY_CANNER);
+      expect(whitney).toBeDefined();
+      expect(whitney!.walkToSec).toBeCloseTo(walkSecFromMeters(haversineMeters(from, at(WHITNEY_CANNER))), 6);
+      // A ride from seven stops further round the loop is shorter by that much.
+      expect(whitney!.rideSec).toBeLessThan(o.rideSec);
+      expect(whitney!.alightStopId).toBe(o.alightStopId);
+    });
+
+    it("alternates are distinct other stops, nearest walk first, capped", () => {
+      const o = blueOption();
+      const ids = o.alternates!.map((a) => a.boardStopId);
+      expect(ids).not.toContain(o.boardStopId);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids.length).toBeLessThanOrEqual(MAX_ALTERNATES);
+      const walks = o.alternates!.map((a) => a.walkToSec);
+      expect([...walks].sort((a, b) => a - b)).toEqual(walks);
+      expect(ids).toEqual([DIVINITY, PROSPECT_HIGHLAND, WHITNEY_CANNER]);
+    });
+
+    it("keeps the ranking and the one-option-per-route shape unchanged", () => {
+      const options = plan(from, to, [approaching()]);
+      const labels = options.filter((o) => o.mode === "shuttle").map((o) => o.routeLabel);
+      expect(new Set(labels).size).toBe(labels.length);
+      expect(options.map((o) => o.totalSec)).toEqual([...options.map((o) => o.totalSec)].sort((a, b) => a - b));
+      expect(options.find((o) => o.mode === "walk")!.alternates).toBeUndefined();
+    });
+
+    it("has no alternates when the route offers a single board stop", () => {
+      // Far enough north that exactly one Blue Day stop is within MAX_WALK_M.
+      const lonely = northOf(105, 1_490);
+      const reachable = routeStops["1"].filter((s) => haversineMeters(lonely, at(s)) <= MAX_WALK_M);
+      expect(reachable).toEqual([105]);
+      const o = plan(lonely, to, [approaching()])
+        .find((x) => x.mode === "shuttle" && x.routeLabel === "Blue Day");
+      expect(o).toBeDefined();
+      expect(o!.boardStopId).toBe(105);
+      expect(o!.alternates).toBeUndefined();
+    });
+  });
+
+  describe("alternatePickup", () => {
+    it("names Whitney/Canner once the bus has left Prospect/Canner", () => {
+      const planned = blueOption();
+      const justPast = [between(PROSPECT_CANNER, PROSPECT_HIGHLAND, 0.1)];
+      const o = liveState(planned, justPast);
+      // The single-bus state the departed/missedBus flags never see: the card
+      // now quietly promises the same bus a full lap later.
+      expect(o.departed).toBe(false);
+      expect(o.missedBus).toBeUndefined();
+      expect(o.busEtaSec!).toBeGreaterThan(30 * 60);
+
+      const pick = alt(o, justPast);
+      expect(pick).not.toBeNull();
+      expect(pick!.stopId).toBe(WHITNEY_CANNER);
+      expect(pick!.busName).toBe("101");
+      // The rider must be able to reach it: eta + dwell slack covers the walk.
+      expect(pick!.walkSec).toBeLessThanOrEqual(pick!.busEtaSec + 60);
+      expect(pick!.walkSec).toBeCloseTo(walkSecFromMeters(haversineMeters(from, at(WHITNEY_CANNER))), 6);
+      expect(pick!.busEtaSec).toBeLessThan(8 * 60);
+      // ...and it beats staying put by well over the margin.
+      const whitney = planned.alternates!.find((a) => a.boardStopId === WHITNEY_CANNER)!;
+      const viaWhitney = Math.max(pick!.walkSec, pick!.busEtaSec) + whitney.rideSec + whitney.walkFromSec;
+      expect(o.totalSec - viaWhitney).toBeGreaterThan(ALT_PICKUP_MIN_GAIN_SEC);
+      expect(pick!.computedAtMs).toBe(NOW);
+    });
+
+    it("declines a departed option rather than compare against a stale total", () => {
+      // departed = nothing catchable within the 90-min horizon, so the option's
+      // totalSec is plan-time data and no alternate can be judged against it.
+      // Without this the nearest alternate (Divinity, bus a lap away) "won".
+      const justPast = [between(PROSPECT_CANNER, PROSPECT_HIGHLAND, 0.1)];
+      const o = { ...liveState(blueOption(), justPast), departed: true };
+      expect(alt(o, justPast)).toBeNull();
+    });
+
+    it("is null when the bus is already past every alternate too", () => {
+      const planned = blueOption();
+      const gone = [between(140, 133, 0.5)]; // past Whitney/Canner, heading to Cottage
+      const o = liveState(planned, gone);
+      expect(alt(o, gone)).toBeNull();
+    });
+
+    it("is null when the walk to the alternate is too long to make the bus", () => {
+      const planned = blueOption();
+      const justPast = [between(PROSPECT_CANNER, PROSPECT_HIGHLAND, 0.1)];
+      const o = liveState(planned, justPast);
+      // The rider's live position has drifted 700 m west: Whitney/Canner is
+      // now a 1.2 km walk against a ~6.5 min bus.
+      const farWest = { lat: at(PROSPECT_CANNER).lat, lon: at(PROSPECT_CANNER).lon - 700 / 84_000 };
+      expect(walkSecFromMeters(haversineMeters(farWest, at(WHITNEY_CANNER)))).toBeGreaterThan(10 * 60);
+      expect(alt(o, justPast, farWest)).toBeNull();
+      // Same feed, rider where they planned from: it fires.
+      expect(alt(o, justPast, from)?.stopId).toBe(WHITNEY_CANNER);
+    });
+
+    it("stays quiet while the pinned bus is still catchable at the rider's stop", () => {
+      const feed = [approaching()];
+      const o = liveState(blueOption(feed), feed);
+      expect(o.departed).toBe(false);
+      expect(alt(o, feed)).toBeNull();
+    });
+
+    it("is null for options without alternates and for the walk", () => {
+      const options = plan(from, to, [between(PROSPECT_CANNER, PROSPECT_HIGHLAND, 0.1)]);
+      const walk = options.find((o) => o.mode === "walk")!;
+      expect(alt(walk, [])).toBeNull();
+      const bare = { ...blueOption(), alternates: undefined };
+      expect(alt(bare, [between(PROSPECT_CANNER, PROSPECT_HIGHLAND, 0.1)])).toBeNull();
+    });
+  });
+});
+
+describe("report #55: alternates skip stops the loop visits twice", () => {
+  it("offers no alternate at a repeated stop", () => {
+    // Synthetic out-and-back on Blue Day's id: York/Chapel is listed twice,
+    // so an alternate there could not say which pass the bus is on.
+    const stops = routeStops["1"]!;
+    const twice = [...stops, STOP.yorkChapel];
+    const from = northOf(STOP.phelpsGate, 110);
+    const to = { lat: at(STOP.cedar333).lat, lon: at(STOP.cedar333).lon - 0.002 };
+    const bus = makeBus({ route_id: 1, bus_name: "#77", ...at(stops[stops.length - 3]!) });
+    const opts = planTrip(from, to, [bus], { ...routeStops, "1": twice }, stopCoords, segmentTimes, dwellTimes, undefined, NOW);
+    const blue = opts.find((o) => o.mode === "shuttle" && o.routeLabel === "Blue Day");
+    if (blue?.alternates) {
+      expect(blue.alternates.map((a) => a.boardStopId)).not.toContain(STOP.yorkChapel);
+    }
+    // Sanity: the same trip on the unmodified list may offer York/Chapel.
+    const plain = planTrip(from, to, [bus], routeStops, stopCoords, segmentTimes, dwellTimes, undefined, NOW)
+      .find((o) => o.mode === "shuttle" && o.routeLabel === "Blue Day");
+    expect(plain).toBeDefined();
+  });
+});
+
+describe("report #55: switching the itinerary to an alternate stop", () => {
+  const base = {
+    mode: "shuttle" as const, routeLabel: "Blue Day", color: "#1a56db",
+    boardStopId: 100, alightStopId: 38, walkToSec: 120, waitSec: 1500, rideSec: 780, walkFromSec: 60,
+    totalSec: 2460, busName: "901", directWalkSec: 2400, departed: false, missedBus: "901",
+    busEtaSec: 1500, computedAtMs: 1, alternatePickup: { stopId: 129, walkSec: 360, busName: "901", busEtaSec: 380, computedAtMs: 1 },
+    alternates: [
+      { boardStopId: 129, alightStopId: 38, walkToSec: 330, walkFromSec: 60, rideSec: 600 },
+      { boardStopId: 102, alightStopId: 38, walkToSec: 400, walkFromSec: 60, rideSec: 720 },
+    ],
+  };
+  it("re-plans through the chosen stop and keeps the original as a way back", () => {
+    const sw = switchToAlternate(base, 129)!;
+    expect(sw.boardStopId).toBe(129);
+    expect(sw.walkToSec).toBe(330);
+    expect(sw.rideSec).toBe(600);
+    expect(sw.totalSec).toBe(330 + 600 + 60);
+    expect(sw.waitSec).toBe(0);
+    // The miss-state bookkeeping belongs to the old itinerary.
+    expect(sw.missedBus).toBeUndefined();
+    expect(sw.alternatePickup).toBeUndefined();
+    expect(sw.busEtaSec).toBeUndefined();
+    expect(sw.alternates!.map((a) => a.boardStopId)).toEqual([100, 102]);
+    // Its own card, distinguishable from the original's.
+    expect(sw.viaAlternate).toBe(true);
+    expect(optionKey(sw)).toBe("Blue Day via 129");
+    expect(optionKey(base)).toBe("Blue Day");
+    expect(optionKeyLabel(optionKey(sw))).toBe("Blue Day");
+  });
+  it("returns null for a stop that is not an alternate", () => {
+    expect(switchToAlternate(base, 999)).toBeNull();
+    expect(switchToAlternate({ ...base, mode: "walk" as const }, 129)).toBeNull();
+  });
+});
+
+describe("report #55: a same-route alternate does not evict another route", () => {
+  const opt = (label: string, totalSec: number, extra: Record<string, unknown> = {}) =>
+    ({ mode: "shuttle", routeLabel: label, totalSec, ...extra } as unknown as TripOption);
+
+  it("lets the alternate ride along with its parent instead of taking a slot", () => {
+    const sorted = [
+      opt("Blue Day", 16 * 60),
+      opt("Blue Day", 28 * 60, { viaAlternate: true, boardStopId: 129 }),
+      opt("Green", 20 * 60),
+      opt("Orange Day", 34 * 60), // far behind: the usual third-slot rule drops it
+      { mode: "walk", routeLabel: "Walk", totalSec: 40 * 60 } as unknown as TripOption,
+    ];
+    const visible = topVisibleOptions(sorted).map((o) => o.routeLabel);
+    // Two routes plus the alternate plus the walk — Green keeps its slot
+    // rather than being pushed behind "show more" by a second way of riding
+    // Blue Day.
+    expect(visible).toEqual(["Blue Day", "Blue Day", "Green", "Walk"]);
+  });
+
+  it("still caps distinct routes at two (plus a near-tie third)", () => {
+    const sorted = [
+      opt("Red", 10 * 60), opt("Green", 12 * 60), opt("Purple", 30 * 60),
+    ];
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Red", "Green"]);
   });
 });

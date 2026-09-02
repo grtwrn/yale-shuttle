@@ -1,0 +1,23 @@
+{
+  "caption": "After the fixes: the alternate keeps its place, the faster card ranks first, and both board labels name their stop",
+  "base": "http://127.0.0.1:8093",
+  "trip": {
+    "board": 100,
+    "dest": 38,
+    "from": {
+      "lat": 41.325351,
+      "lon": -72.921105
+    }
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/wt-alt/pr-preview/alt-pickup/trip.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

@@ -38,7 +38,44 @@ export type TripOption = {
   // live bus exists to count down.
   busEtaSec?: number;
   computedAtMs?: number;
+  // The OTHER board stops on this same route that planTrip scored for this
+  // trip and discarded when it kept one option per route (report #55: a loop
+  // passes Prospect/Canner and, seven stops and a 7-min walk later,
+  // Whitney/Canner — a rider who misses the bus at the first can still catch
+  // the same bus at the second). Distinct boardStopId, nearest walk first,
+  // best (lowest total) alight for each; pure data, never ranked or rendered
+  // by itself — `alternatePickup` reads it after a miss. Absent when the
+  // route offered no second board stop.
+  alternates?: TripAlternate[];
+  // Filled by the live layer from `alternates` when walking to another stop
+  // beats waiting where the rider is (see alternatePickup). Undefined
+  // otherwise. When set, the live layer also lists that itinerary as its
+  // own card (`viaAlternate`), so the rider sees both and taps either.
+  alternatePickup?: AlternatePickup;
+  // This card IS the alternate itinerary derived from another option of the
+  // same route (switchToAlternate): it boards at a different stop. Keeps its
+  // own card key (optionKey) so both can be listed and expanded independently,
+  // and is never itself a source of further alternates.
+  viaAlternate?: boolean;
 };
+
+export type TripAlternate = {
+  boardStopId: number; alightStopId: number;
+  walkToSec: number; walkFromSec: number; rideSec: number;
+};
+
+export type AlternatePickup = {
+  stopId: number;
+  /** Walk from the rider (live position when known) to `stopId`. */
+  walkSec: number;
+  busName: string;
+  /** That bus's arrival at `stopId`, seconds from `computedAtMs`. */
+  busEtaSec: number;
+  computedAtMs: number;
+};
+
+/** planTrip keeps at most this many alternate board stops per route. */
+export const MAX_ALTERNATES = 3;
 
 /** Don't keep looping past a boarding point. */
 export const MAX_RIDE_SEC = 25 * 60;
@@ -332,7 +369,34 @@ export function planTrip(
     const minTotal = Math.min(...group.map((o) => o.totalSec));
     const nearBest = group.filter((o) => o.totalSec <= minTotal + TOTAL_TIE_SEC);
     nearBest.sort((a, b) => a.walkToSec - b.walkToSec || a.totalSec - b.totalSec);
-    bestPerRoute.set(label, nearBest[0]);
+    const kept = nearBest[0];
+    // Remember the route's other board stops (best alight for each) so the
+    // live layer can offer one after a miss. Same-route candidates only —
+    // dedup and ranking above are untouched by this.
+    //
+    // Stops the loop visits twice (Green/Purple's West Campus out-and-back
+    // lists Buildings 400–900 in both directions) are left out: an alternate
+    // is keyed by stop id, so its ride time would come from one occurrence
+    // and the live arrival from whichever the bus reaches first — the bus
+    // heading AWAY — and the two would be summed as one trip. Ambiguous, so
+    // never offered.
+    const altCfg = ROUTE_LISTS.find((c) => c.label === label);
+    const altStops = altCfg ? mergedRouteStops(altCfg, routeStops) : [];
+    const repeated = new Set(altStops.filter((sid, i) => altStops.indexOf(sid) !== i));
+    const bestByBoard = new Map<number, TripOption>();
+    for (const o of group) {
+      if (o.boardStopId === kept.boardStopId || repeated.has(o.boardStopId)) continue;
+      const prev = bestByBoard.get(o.boardStopId);
+      if (!prev || o.totalSec < prev.totalSec) bestByBoard.set(o.boardStopId, o);
+    }
+    const alternates: TripAlternate[] = [...bestByBoard.values()]
+      .sort((a, b) => a.walkToSec - b.walkToSec)
+      .slice(0, MAX_ALTERNATES)
+      .map((o) => ({
+        boardStopId: o.boardStopId, alightStopId: o.alightStopId,
+        walkToSec: o.walkToSec, walkFromSec: o.walkFromSec, rideSec: o.rideSec,
+      }));
+    bestPerRoute.set(label, alternates.length > 0 ? { ...kept, alternates } : kept);
   }
   // Sort the chosen options by total time for display.
   const dedup = [...bestPerRoute.values()]
@@ -364,6 +428,142 @@ export function planTrip(
       }]
     : [];
   return [...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
+}
+
+// ── Alternate pickup after a miss (report #55) ─────────────────────────────
+//
+// "The shuttle loops around my pickup location, so multiple stops could work:
+// if I miss the Blue at Prospect/Canner I could pick it up on Whitney/Canner."
+// planTrip already scored that second stop and dropped it (one option per
+// route); the live layer then re-derives the card against the FROZEN board
+// stop and pickLiveArrival switches VEHICLE only. So after a miss the card
+// says "next in 25 min" and never that an 8-min walk catches the same bus.
+//
+// The test is arrival at the DESTINATION, not boarding time: on the same bus
+// a rider boards sooner at an upstream stop yet arrives exactly when they
+// would have — walking back buys nothing, and comparing boarding times would
+// have suggested it. Comparing totals also makes the helper safe to run in
+// every live state: while the pinned bus is still catchable at the rider's
+// stop no downstream stop can beat it (the bus gets there later, the ride is
+// shorter by the same amount), so it stays quiet until a miss — including the
+// single-bus case the departed/missedBus flags never see, where the pinned
+// bus's ETA silently jumps to a full lap.
+//
+// The gain must clear PIN_SWITCH_MARGIN_SEC: pickLiveArrival deliberately
+// tolerates a different bus up to that much better at the rider's own stop
+// (loyalty beats flapping), and this line must not undercut that by naming
+// the same near-equivalent bus one stop over.
+
+export const ALT_PICKUP_MIN_GAIN_SEC = PIN_SWITCH_MARGIN_SEC;
+
+/**
+ * The option re-planned through one of its alternates: the rider walks to
+ * that stop instead and rides from there. Used when the rider taps the
+ * alternate-pickup line; the live layer then re-derives wait/ETA against the
+ * NEW board stop exactly as for any option, so the map, the step list and the
+ * countdown all follow without special cases. The original board stop joins
+ * the alternates, so the line can offer the way back if that turns better.
+ * Null when `stopId` is not one of the option's alternates.
+ */
+/**
+ * The identity of an option card. One card per route, except a same-route
+ * alternate itinerary (report #55), which is keyed by its board stop so the
+ * two can be listed, expanded and mapped independently.
+ */
+export function optionKey(o: Pick<TripOption, "routeLabel" | "boardStopId" | "viaAlternate">): string {
+  return o.viaAlternate ? `${o.routeLabel} via ${o.boardStopId}` : o.routeLabel;
+}
+
+/** The route label behind an option key (see optionKey). */
+export function optionKeyLabel(key: string): string {
+  return key.split(" via ")[0]!;
+}
+
+export function switchToAlternate(
+  option: TripOption,
+  stopId: number,
+  /** The walk measured from the rider's LIVE position, when the caller has it. */
+  liveWalkSec?: number,
+): TripOption | null {
+  const alt = option.alternates?.find((a) => a.boardStopId === stopId);
+  if (!alt || option.mode !== "shuttle") return null;
+  const {
+    alternatePickup: _pickup, departed: _departed, missedBus: _missed,
+    busEtaSec: _eta, computedAtMs: _at, alternates, ...rest
+  } = option;
+  const original: TripAlternate = {
+    boardStopId: option.boardStopId, alightStopId: option.alightStopId,
+    walkToSec: option.walkToSec, walkFromSec: option.walkFromSec, rideSec: option.rideSec,
+  };
+  const others = (alternates ?? []).filter((a) => a.boardStopId !== stopId);
+  return {
+    ...rest,
+    viaAlternate: true,
+    boardStopId: alt.boardStopId, alightStopId: alt.alightStopId,
+    // Plan-time walk unless the live layer measured one: the offer line was
+    // computed from where the rider is NOW, and the card it opens must not
+    // contradict it by minutes.
+    walkToSec: liveWalkSec ?? alt.walkToSec,
+    rideSec: alt.rideSec, walkFromSec: alt.walkFromSec,
+    waitSec: 0,
+    totalSec: (liveWalkSec ?? alt.walkToSec) + alt.rideSec + alt.walkFromSec,
+    alternates: [original, ...others].sort((a, b) => a.walkToSec - b.walkToSec).slice(0, MAX_ALTERNATES),
+  };
+}
+
+export function alternatePickup(
+  option: TripOption,
+  buses: BusData[],
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  segmentTimes: SegmentTimes,
+  dwellTimes: DwellTimes,
+  now = Date.now(),
+  liveFrom?: LatLon | null,
+): AlternatePickup | null {
+  if (option.mode !== "shuttle" || !option.alternates?.length) return null;
+  // `departed` is not "the bus just left" — arrivals include each bus a lap
+  // later, so a bus that just left still yields a (long) catchable ETA and the
+  // card simply shows it. departed means NO arrival within the 90-min horizon
+  // was catchable, and the option's totalSec is then stale plan-time data:
+  // there is no honest rival to compare an alternate against, so say nothing
+  // rather than send a rider to the nearest stop to wait for a lap.
+  if (option.departed) return null;
+  const cfg = ROUTE_LISTS.find((c) => c.label === option.routeLabel);
+  if (!cfg) return null;
+  const norm = (s: string) => s.replace(/^#/, "");
+  // When the rider reaches the destination if they stay put — what the card
+  // shows now, computed against the frozen board stop by the live layer.
+  const stayTotal = option.totalSec;
+  // Alternates are nearest-walk first; the first one that works is the answer
+  // — a rider who just missed a bus wants the closest stop that saves them,
+  // not a farther one that shaves another minute.
+  for (const alt of option.alternates) {
+    const coords = stopCoords[alt.boardStopId];
+    const walkSec = liveFrom && coords
+      ? walkSecFromMeters(haversineMeters(liveFrom, coords))
+      : alt.walkToSec;
+    let boardSec: number; let busName: string; let busEtaSec: number;
+    // Same two rules planTrip uses to call a bus catchable at a board stop:
+    // a bus dwelling there right now is boardable inside its dwell window;
+    // otherwise the rider must reach the stop before eta + STOP_DWELL_SEC.
+    const hereBus = buses.find(
+      (b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === alt.boardStopId,
+    );
+    if (hereBus && walkSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], alt.boardStopId, dwellTimes, now)) {
+      boardSec = walkSec; busName = norm(hereBus.bus_name); busEtaSec = 0;
+    } else {
+      const next = computeUpcomingArrivals(
+        [alt.boardStopId], buses, routeStops, stopCoords, segmentTimes, now,
+      ).find((a) => a.routeLabel === option.routeLabel && walkSec <= a.eta + STOP_DWELL_SEC);
+      if (!next) continue;
+      boardSec = Math.max(walkSec, next.eta); busName = next.busName; busEtaSec = next.eta;
+    }
+    const total = boardSec + alt.rideSec + alt.walkFromSec;
+    if (total > stayTotal - ALT_PICKUP_MIN_GAIN_SEC) continue;
+    return { stopId: alt.boardStopId, walkSec, busName, busEtaSec, computedAtMs: now };
+  }
+  return null;
 }
 
 // Routes that geographically connect from→to (a stop within walking
@@ -502,16 +702,31 @@ export function findPotentialRoutes(
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 
 export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
-  const shuttles = sorted.filter((o) => o.mode === "shuttle");
-  const second = shuttles[1];
-  const third = shuttles[2];
+  // The cap counts ROUTES, not cards: a same-route alternate (report #55)
+  // rides along with its parent instead of pushing a genuinely different
+  // route behind "Show more" — it is another way to ride a line already
+  // shown, not another line.
+  // One entry per ROUTE, in display order, for the slack comparison.
+  const byRoute: TripOption[] = [];
+  for (const o of sorted) {
+    if (o.mode !== "shuttle") continue;
+    if (!byRoute.some((x) => x.routeLabel === o.routeLabel)) byRoute.push(o);
+  }
+  const second = byRoute[1];
+  const third = byRoute[2];
   const keepThird =
     second !== undefined && third !== undefined &&
     third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
-  let seen = 0;
+  const shown = new Set<string>();
   return sorted.filter((o) => {
     if (o.mode !== "shuttle") return true;
-    seen++;
-    return seen <= 2 || (seen === 3 && keepThird);
+    // Already showing this route: its other itinerary rides along free.
+    if (shown.has(o.routeLabel)) return true;
+    const rank = shown.size + 1;
+    if (rank <= 2 || (rank === 3 && keepThird)) {
+      shown.add(o.routeLabel);
+      return true;
+    }
+    return false;
   });
 }

@@ -22,7 +22,8 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
+  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, optionKey, optionKeyLabel,
+  pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, switchToAlternate, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -820,6 +821,8 @@ const TripMap: FC<{
 // pin per matched bus, and no per-option upstream/walk ornamentation.
 type OverviewOption = {
   label: string;
+  /** Board-stop name, shown on the map only when two cards share a route. */
+  boardName?: string;
   color: string;
   segCoords: LatLon[];
   // Pre-sliced road polyline from the route's full path (when available).
@@ -865,9 +868,18 @@ const CombinedTripMap: FC<{
     if (!map || !grp) return;
     type Chip = {
       lat: number; lon: number; kind: "board" | "alight"; label: string;
+      /** Which endpoint this chip belongs to — part of its identity. */
+      end: string;
       part: string; w: number; x: number; y: number;
     };
     const chips: Chip[] = [];
+    // Where the rider's own dot sits on screen, so labels can step around it.
+    const youPt = (() => {
+      try { return map.latLngToContainerPoint([from.lat, from.lon]); } catch { return null; }
+    })();
+    // Screen y of a cluster's label, given which side of the stop it sits on.
+    const cy = (members: Chip[], d: "top" | "bottom") =>
+      members.reduce((sum, m) => sum + m.y, 0) / members.length + (d === "top" ? -12 : 12);
     for (const o of optionsRef.current) {
       if (o.segCoords.length < 2) continue;
       const ends = [
@@ -880,9 +892,23 @@ const CombinedTripMap: FC<{
         // "(B) 4 min" — route-initial tag so a time is attributable to
         // its route even without judging the text color (user request
         // 2026-07-17; also helps color-blind riders).
-        const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
+        // With two itineraries on one route (report #55) the board chips
+        // read "(B) 4 min" and "(B) 21 min" — same tag, different stops, and
+        // when they merge the rider cannot tell which time belongs where
+        // (operator, 2026-09-02). Name the stop on the board chip in exactly
+        // that case; one card per route keeps the short form.
+        const shared = optionsRef.current.filter((x) => x.label === o.label).length > 1;
+        const tagged = shared && e.kind === "board" && o.boardName
+          ? `(${o.label.charAt(0).toUpperCase()}) ${e.text} · ${o.boardName}`
+          : `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
+          // Two itineraries on one route (report #55) produced two chips with
+          // the same route label. Keyed on the label alone they collided: the
+          // second overwrote the first in chipMarkersRef and one of the two
+          // times silently disappeared from the map whenever they did not
+          // merge. The endpoint's own coordinates make each chip distinct.
+          end: `${e.c.lat.toFixed(5)},${e.c.lon.toFixed(5)}`,
           part: `<span style="color:${o.color}">${tagged}</span>`,
           // Estimated label footprint: emoji + padding + ~6 px/char at
           // the chip's 10 px bold face. Merge decisions use these
@@ -928,8 +954,23 @@ const CombinedTripMap: FC<{
       if (alights.length) lines.push(stack("🏁", alights.map((m) => m.part)));
       const lat = members.reduce((s, m) => s + m.lat, 0) / members.length;
       const lon = members.reduce((s, m) => s + m.lon, 0) / members.length;
-      const dir: "top" | "bottom" = boards.length ? "top" : "bottom";
-      const sig = members.map((m) => `${m.kind[0]}:${m.label}`).sort().join("|");
+      let dir: "top" | "bottom" = boards.length ? "top" : "bottom";
+      // The rider's own blue dot is usually a few metres from the board stop,
+      // so a board label drawn above the stop lands right on top of it
+      // (operator, 2026-09-02). When the label's box would cover the dot, put
+      // it on the other side of the stop instead — the label moves, never the
+      // dot, because the dot is the thing being looked for.
+      if (youPt) {
+        const cx = members.reduce((sum, m) => sum + m.x, 0) / members.length;
+        const boxW = Math.max(...members.map((m) => m.w));
+        const labelY = cy(members, dir);
+        if (Math.abs(cx - youPt.x) < boxW / 2 + 12 && Math.abs(labelY - youPt.y) < 26) {
+          dir = dir === "top" ? "bottom" : "top";
+        }
+      }
+      // `dir` is part of the identity: a tooltip cannot change direction after
+      // binding, so a flipped label is a new marker and the old one is swept.
+      const sig = members.map((m) => `${m.kind[0]}:${m.label}@${m.end}`).sort().join("|") + `|${dir}`;
       seen.add(sig);
       const html = lines.join("<br/>");
       const existing = chipMarkersRef.current[sig];
@@ -1212,7 +1253,9 @@ const CombinedTripMap: FC<{
         boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
         display: "flex", flexDirection: "column", gap: 2,
       }}>
-        {options.map((o, i) => (
+        {/* One legend row per route: two itineraries on the same line
+            (report #55) share a colour and a name. */}
+        {options.filter((o, i) => options.findIndex((p) => p.label === o.label) === i).map((o, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 10, height: 3, background: o.color, borderRadius: 1 }} />
             <span style={{ fontWeight: 600, color: o.color }}>{o.label}</span>
@@ -1517,7 +1560,9 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string } | null>(null);
+  // Keyed by option identity (optionKey), so a reminder armed on one of a
+  // route's two itineraries follows THAT one.
+  const [reminder, setReminder] = useState<{ key: string } | null>(null);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -1791,8 +1836,16 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Alternate board stops already offered for this plan, per route (see the
+  // options memo). A ref, not state: it must not itself trigger a re-render,
+  // and it is cleared whenever a new trip is planned.
+  const altStopRef = useRef<Record<string, number>>({});
+
   // Collapse the "show more" list whenever a new trip is planned.
-  useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
+  useEffect(() => {
+    setShowAllOptions(false);
+    altStopRef.current = {};
+  }, [stableOptions]);
 
   // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
   // 07:02 before the first bus reported and nothing re-ran it when the bus
@@ -1830,7 +1883,9 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions;
-    return stableOptions.map((o) => {
+    // One planned option in, its live-refreshed self out. Applied to every
+    // card, including the same-route alternate itineraries derived below.
+    const deriveLive = (o: TripOption): TripOption => {
       if (o.mode !== "shuttle") return o;
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
@@ -1916,10 +1971,43 @@ const TripPlanner: FC<{
       const { match, departed, missedBus } = picked;
       const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
-      return {
+      const next: TripOption = {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
         busEtaSec: match.eta, computedAtMs: nowMs,
       };
+      // Report #55: the board stop above is FROZEN from plan time, and
+      // pickLiveArrival only ever switches vehicle — so once the bus has left
+      // the rider's stop the card promises the next one (or the same bus a
+      // lap later) and never that a short walk to the next stop round the
+      // loop catches the bus they just missed. alternatePickup checks the
+      // route's other board stops against the live feed and is null unless
+      // the trip via one of them genuinely arrives sooner; the card then adds
+      // one line. Judged from the rider's live position when we have it.
+      if (next.viaAlternate) return next; // an alternate never spawns alternates
+      const alt = alternatePickup(
+        next, buses, routeStops, stopCoords, segmentTimes, dwellTimes, nowMs, liveFromLL,
+      );
+      return alt ? { ...next, alternatePickup: alt } : next;
+    };
+    return stableOptions.flatMap((planned) => {
+      const live = deriveLive(planned);
+      // Report #55: the alternate itinerary is its own card, listed right
+      // beside the original, so the rider sees both ways to ride this route
+      // and taps either — nothing to guess at. It is refreshed live against
+      // its own board stop exactly like any other card.
+      //
+      // STICKY once shown. alternatePickup() is a live verdict that flickers
+      // as a bus moves, and a card that vanishes mid-walk is worse than one
+      // that is briefly redundant: it ejected a rider from the details page
+      // of the very itinerary they were walking to, with no explanation. So
+      // the offered stop is remembered for this plan, and only a NEW plan
+      // (stableOptions changes, which clears the ref) drops it.
+      const remembered = altStopRef.current[planned.routeLabel];
+      const stopId = live.alternatePickup?.stopId ?? remembered;
+      if (stopId == null) return [live];
+      if (live.alternatePickup) altStopRef.current[planned.routeLabel] = stopId;
+      const via = switchToAlternate(live, stopId, live.alternatePickup?.walkSec);
+      return via ? [live, deriveLive(via)] : [live];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
@@ -1937,9 +2025,12 @@ const TripPlanner: FC<{
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
     if (!reminder) return;
-    const { routeLabel } = reminder;
+    const { key } = reminder;
     const check = () => {
-      const o = findReminderOption(optionsRef.current, routeLabel);
+      const o = findReminderOption(
+        optionsRef.current as (TripOption & { busEtaSec?: number })[] | null,
+        (x) => optionKey(x) === key,
+      );
       if (!o) {
         // Option gone / departed / no live bus (route stopped running,
         // plan cleared) — quietly disarm.
@@ -1953,7 +2044,7 @@ const TripPlanner: FC<{
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
-      const msg = leaveAlertMessage(ping, routeLabel, input, rainRef.current.likely);
+      const msg = leaveAlertMessage(ping, o.routeLabel, input, rainRef.current.likely);
       // System notification when possible (SW registration first so it
       // works backgrounded on Android); otherwise the in-app banner +
       // vibration. deliverPing never throws.
@@ -1977,8 +2068,11 @@ const TripPlanner: FC<{
   // rider can spend the wait at their desk and leave at the leave-by
   // time. Only judged when walking is a real alternative (direct walk
   // ≤ 60 min — the walk card itself is suppressed beyond that).
+  // An alternate itinerary (report #55) is exempt: it front-loads a walk on
+  // purpose, so this rule demoted a 16-min option below the 28-min one it was
+  // offered as an improvement on, and never corrected.
   const slowerThanWalk = (o: TripOption) =>
-    o.mode === "shuttle" && !o.departed &&
+    o.mode === "shuttle" && !o.departed && !o.viaAlternate &&
     o.directWalkSec <= 3600 &&
     o.walkToSec + o.rideSec + o.walkFromSec > o.directWalkSec;
   // Shared row/map order: competitive / slower-than-walk / departed,
@@ -2001,9 +2095,11 @@ const TripPlanner: FC<{
       orderDestRef.current = destKey;
       displayOrderRef.current = [];
     }
-    const byKey = new Map(options.map((o) => [o.routeLabel, o]));
+    // Keyed by card identity, not route label: a same-route alternate
+    // itinerary (report #55) is its own card and must not replace the original.
+    const byKey = new Map(options.map((o) => [optionKey(o), o]));
     const kept = displayOrderRef.current.filter((k) => byKey.has(k));
-    const fresh = sortOptions(options.filter((o) => !kept.includes(o.routeLabel))).map((o) => o.routeLabel);
+    const fresh = sortOptions(options.filter((o) => !kept.includes(optionKey(o)))).map((o) => optionKey(o));
     const arr = [...kept, ...fresh];
     const HYST_SEC = 90;
     let changed = true;
@@ -2392,7 +2488,15 @@ const TripPlanner: FC<{
   const showFromRow = !!toLL || fromExpanded;
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
-  const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
+  const detailOpen = !!expandedKey && !!options?.some((o) => optionKey(o) === expandedKey);
+  // If the open card disappears (its route stopped running, the plan was
+  // re-derived), close the details view deliberately instead of leaving the
+  // rider on a page whose content silently reverted to the search screen.
+  useEffect(() => {
+    if (expandedKey && options && !options.some((o) => optionKey(o) === expandedKey)) {
+      setExpandedKey(null);
+    }
+  }, [expandedKey, options]);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -2973,7 +3077,9 @@ const TripPlanner: FC<{
               Published hours first, ROUTE_HOURS as the fallback (same
               precedence as the All tab); nothing when neither knows the route. */}
           {detailOpen && (() => {
-            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
+            // expandedKey is an option key ("Blue Day via 129" for an
+            // alternate itinerary), so resolve the route behind it.
+            const cfg = ROUTE_LISTS.find((c) => c.label === optionKeyLabel(expandedKey ?? ""));
             const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
             if (!cfg || !caption) return null;
             return (
@@ -2999,7 +3105,7 @@ const TripPlanner: FC<{
             // Route-details view open: the map narrows to just that route,
             // like Google Maps' directions-detail screen.
             const _mapOpts = expandedKey
-              ? _visibleForMap.filter((o) => o.routeLabel === expandedKey)
+              ? _visibleForMap.filter((o) => optionKey(o) === expandedKey)
               : _visibleForMap;
             for (const o of _mapOpts) {
               if (o.mode !== "shuttle") continue;
@@ -3037,7 +3143,7 @@ const TripPlanner: FC<{
               // Single-route detail view: dashed approach from the bus's
               // current anchor to the pickup stop.
               let approach: [number, number][] | undefined;
-              if (expandedKey === o.routeLabel && busMatch) {
+              if (expandedKey === optionKey(o) && busMatch) {
                 const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
@@ -3055,6 +3161,7 @@ const TripPlanner: FC<{
               const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords);
               overviewOpts.push({
                 label: o.routeLabel,
+                boardName: (stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/"),
                 color: o.color,
                 segCoords,
                 road,
@@ -3076,12 +3183,15 @@ const TripPlanner: FC<{
             // "All N routes" was a lie whenever options sat behind "Show N
             // more routes" (map-bot report #28: header said ALL 2 ROUTES over
             // a 5-option list). Only claim "all" when the list really is.
-            const _totalShuttle = _sortedForMap.filter((o) => o.mode === "shuttle").length;
+            // Counted by route, not by card: a same-route alternate itinerary
+            // (report #55) is a second card on the same line.
+            const _totalShuttle = new Set(_sortedForMap.filter((o) => o.mode === "shuttle").map((o) => o.routeLabel)).size;
+            const _shownRoutes = new Set(overviewOpts.map((o) => o.label)).size;
             const _overviewLabel = expandedKey
-              ? `${expandedKey} route`
-              : overviewOpts.length < _totalShuttle
-                ? `Overview — top ${overviewOpts.length} of ${_totalShuttle} routes`
-                : `Overview — all ${overviewOpts.length} route${overviewOpts.length === 1 ? "" : "s"}`;
+              ? `${optionKeyLabel(expandedKey)} route`
+              : _shownRoutes < _totalShuttle
+                ? `Overview — top ${_shownRoutes} of ${_totalShuttle} routes`
+                : `Overview — all ${_shownRoutes} route${_shownRoutes === 1 ? "" : "s"}`;
             return (
               <div style={{
                 marginBottom: 12,
@@ -3151,14 +3261,14 @@ const TripPlanner: FC<{
             // staying tappable from the details view. Opening a 4th-ranked
             // route and refreshing therefore left the chrome in details mode
             // with the top-3 rows rendered underneath it.
-            const _visible = expandedKey && !_visibleBase.some((v) => v.routeLabel === expandedKey)
-              ? [..._visibleBase, ..._sorted.filter((o) => o.routeLabel === expandedKey)]
+            const _visible = expandedKey && !_visibleBase.some((v) => optionKey(v) === expandedKey)
+              ? [..._visibleBase, ..._sorted.filter((o) => optionKey(o) === expandedKey)]
               : _visibleBase;
             const _hidden = _sorted.length - _visible.length;
             // Google-Maps pattern: options are divider-separated ROWS of one
             // sheet; tapping a row swaps the list for that route's details
             // view (← All routes restores the list).
-            const _detailOpen = _visible.some((v) => v.routeLabel === expandedKey);
+            const _detailOpen = _visible.some((v) => optionKey(v) === expandedKey);
             // Reassure rather than confuse: when every shuttle option got
             // demoted below walking, say so up front — otherwise the grey
             // tags read like the app is broken.
@@ -3179,10 +3289,13 @@ const TripPlanner: FC<{
           {_visible.map((o, i) => {
             // Details mode: only the tapped route renders; the other rows
             // hide until the rider taps ← back.
-            if (_detailOpen && o.routeLabel !== expandedKey) return null;
+            if (_detailOpen && optionKey(o) !== expandedKey) return null;
             // Stable identity for expansion state — one option per route,
             // so the label alone is unique ("Walk" for the walk option).
-            const oKey = o.routeLabel;
+            const oKey = optionKey(o);
+            // Which stop this option picks up at (operator request): shown on
+            // the walk chip, so it names the stop without a second row.
+            const boardName = (stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/");
             const isExpanded = expandedKey === oKey;
             const showMore = detailsKey === oKey;
             // Shared shuttle context: bus pinned to this option + how
@@ -3273,8 +3386,14 @@ const TripPlanner: FC<{
                     Collapsed rows ONLY: the details view's step list
                     carries the same durations + route pill, so chips
                     there were pure repetition (user feedback 2026-07-17). */}
+                {/* One line, always: naming the board stop must not cost the
+                    card a row (operator, 2026-09-02), so the chips never wrap
+                    — the stop name ellipsizes instead. */}
                 {!isExpanded && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap",
+                  marginTop: 6, marginBottom: 8, overflow: "hidden",
+                }}>
                   {o.mode === "walk" ? (
                     <span style={{
                       fontSize: 13, fontWeight: 600, color: "#5f6368",
@@ -3283,22 +3402,43 @@ const TripPlanner: FC<{
                     }}>🚶 Walk</span>
                   ) : (
                     <>
-                      {o.walkToSec > 0 && (
+                      {/* The board stop rides ALONG the walk chip rather than
+                          on a line of its own: naming the stop cost every card
+                          a second row, and the walk and the stop are one fact
+                          ("walk 6 min to Whitney/Canner"). Truncates rather
+                          than wraps, so a long stop name never grows the card. */}
+                      {o.walkToSec > 0 ? (
                         <>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                          <span style={{
+                            fontSize: 13, color: "#5f6368",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                          }}>
+                            🚶 {fmtWalk(o.walkToSec)} to {boardName}
+                          </span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{
+                            fontSize: 13, color: "#5f6368",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                          }}>
+                            at {boardName}
+                          </span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
                         </>
                       )}
                       <span style={{
                         fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
-                        borderRadius: 6, padding: "2px 8px",
+                        borderRadius: 6, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap",
                       }}>{o.routeLabel}</span>
                       {o.walkFromSec > 0 && (
                         <>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
+                          <span style={{ fontSize: 13, color: "#5f6368", flexShrink: 0, whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
                       )}
+
                     </>
                   )}
                 </div>
@@ -3369,6 +3509,34 @@ const TripPlanner: FC<{
                         )}
                       </div>
                       )}
+                      {/* Report #55: the bus left this stop but the loop
+                          brings it past another stop the rider can still
+                          walk to. The alternate is its own card in the list;
+                          on this DETAILS page (where other cards are hidden)
+                          one tappable line opens it. Collapsed cards carry
+                          nothing extra. */}
+                      {isExpanded && o.alternatePickup && (() => {
+                        const ap = o.alternatePickup;
+                        const name = (stopNames[ap.stopId] ?? `Stop ${ap.stopId}`).replace(/\s*\/\s*/g, "/");
+                        const eta = remainingSec(ap.busEtaSec, ap.computedAtMs);
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedKey(`${o.routeLabel} via ${ap.stopId}`);
+                            }}
+                            style={{
+                              display: "block", width: "100%", textAlign: "left",
+                              fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "#1a73e8",
+                              background: "#f3f7fd", border: "1px solid #d6e3f0", borderRadius: 8,
+                              padding: "10px 12px", minHeight: 44, marginTop: 4,
+                              cursor: "pointer", fontFamily: "inherit",
+                            }}
+                          >
+                            🚶 Walk {fmtWalk(ap.walkSec)} to {name} instead — catch #{ap.busName} there {eta < 10 ? "now" : `in ${fmtMin(eta)}`} ›
+                          </button>
+                        );
+                      })()}
                       {o.departed && (
                         <div style={{ fontSize: 12, marginTop: 6 }}>
                           <button
@@ -3555,7 +3723,7 @@ const TripPlanner: FC<{
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (reminder?.routeLabel === o.routeLabel) {
+                                if (reminder?.key === oKey) {
                                   setReminder(null); // tap again to cancel
                                   return;
                                 }
@@ -3565,9 +3733,9 @@ const TripPlanner: FC<{
                                 // never on load. Fire-and-forget: if it's
                                 // denied we fall back to the in-app banner.
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel });
+                                setReminder({ key: oKey });
                               }}
-                              title={reminder?.routeLabel === o.routeLabel
+                              title={reminder?.key === oKey
                                 ? "Reminding you when it's time to leave — tap to cancel"
                                 : "Ping me 5 min before it's time to leave, and again when it's time to go"}
                               style={{
@@ -3575,10 +3743,10 @@ const TripPlanner: FC<{
                                 minHeight: 44, display: "inline-flex", alignItems: "center",
                                 border: "none", background: "transparent",
                                 color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                                fontWeight: reminder?.routeLabel === o.routeLabel ? 700 : 500,
+                                fontWeight: reminder?.key === oKey ? 700 : 500,
                               }}
                             >
-                              {reminder?.routeLabel === o.routeLabel ? "🔔 Reminding you" : "🔔 Remind me"}
+                              {reminder?.key === oKey ? "🔔 Reminding you" : "🔔 Remind me"}
                             </button>
                           </>
                         )}

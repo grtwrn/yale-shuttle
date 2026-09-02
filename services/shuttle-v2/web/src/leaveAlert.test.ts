@@ -222,27 +222,37 @@ describe("leaveAlertMessage", () => {
 describe("findReminderOption — disarm when the bus/option disappears", () => {
   const shuttle = { mode: "shuttle", routeLabel: "Blue Day", busEtaSec: 300, walkToSec: 180 };
   const walkOpt = { mode: "walk", routeLabel: "Walk", walkToSec: 0 };
+  const isBlue = (o: { routeLabel: string }) => o.routeLabel === "Blue Day";
 
   it("returns the armed shuttle option while it is live", () => {
-    expect(findReminderOption([walkOpt, shuttle], "Blue Day")).toBe(shuttle);
+    expect(findReminderOption([walkOpt, shuttle], isBlue)).toBe(shuttle);
+  });
+
+  it("follows the option it was armed on, not the first with that route label", () => {
+    // Report #55 puts two itineraries of one route in the list. Matching on
+    // the label pinged the rider for the stop they had walked away from.
+    const atProspect = { mode: "shuttle", routeLabel: "Blue Day", boardStopId: 100, busEtaSec: 2400, walkToSec: 120 };
+    const viaWhitney = { mode: "shuttle", routeLabel: "Blue Day", boardStopId: 129, busEtaSec: 360, walkToSec: 360 };
+    const armed = (o: { boardStopId?: number }) => o.boardStopId === 129;
+    expect(findReminderOption([atProspect, viaWhitney], armed)).toBe(viaWhitney);
   });
 
   it("null when the option is gone from the plan (route stopped running)", () => {
-    expect(findReminderOption([walkOpt], "Blue Day")).toBeNull();
-    expect(findReminderOption([], "Blue Day")).toBeNull();
-    expect(findReminderOption(null, "Blue Day")).toBeNull();
-    expect(findReminderOption(undefined, "Blue Day")).toBeNull();
+    expect(findReminderOption([walkOpt], isBlue)).toBeNull();
+    expect(findReminderOption([], isBlue)).toBeNull();
+    expect(findReminderOption<typeof shuttle>(null, isBlue)).toBeNull();
+    expect(findReminderOption<typeof shuttle>(undefined, isBlue)).toBeNull();
   });
 
   it("null when the option is flagged departed", () => {
-    expect(findReminderOption([{ ...shuttle, departed: true }], "Blue Day")).toBeNull();
+    expect(findReminderOption([{ ...shuttle, departed: true }], isBlue)).toBeNull();
   });
 
   it("null when the option has no live bus ETA (future mode / no bus)", () => {
-    expect(findReminderOption([{ ...shuttle, busEtaSec: undefined }], "Blue Day")).toBeNull();
+    expect(findReminderOption([{ ...shuttle, busEtaSec: undefined }], isBlue)).toBeNull();
   });
 
   it("never follows a walk option even under the armed label", () => {
-    expect(findReminderOption([{ ...walkOpt, routeLabel: "Blue Day" }], "Blue Day")).toBeNull();
+    expect(findReminderOption([{ ...walkOpt, routeLabel: "Blue Day" }], isBlue)).toBeNull();
   });
 });
