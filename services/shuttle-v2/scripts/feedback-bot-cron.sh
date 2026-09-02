@@ -133,6 +133,7 @@ git checkout -q -b "$REAL_BRANCH"
 # says so and the log stays in this run's output.
 PREVIEW_DIR="pr-preview/$FIRST_ID"
 PREVIEW_STATUS="no preview: frontend build failed"
+DRAFT=""
 STAGE_PORT=8096
 STAGE_TMP=$(mktemp -d /tmp/feedback-bot-stage-XXXXXX)
 if ( cd services/shuttle-v2/web && npx vite build ) > "$STAGE_TMP/build.log" 2>&1; then
@@ -172,13 +173,17 @@ git push -q origin "$REAL_BRANCH"
 # after merge (the commit stays reachable through the PR).
 SHA=$(git rev-parse HEAD)
 BODY="Automated proposal for rider report #$FIRST_ID (see its [triage] note for the analysis). Merging = approval; master CI deploys. Closing = declined."
-if ls "$PREVIEW_DIR"/*.png > /dev/null 2>&1; then
+# A *-failed.png is the harness photographing its own failure. It must never
+# be embedded as the feature (PR #7 did exactly that and the operator caught
+# it), so count only the real shots.
+GOOD_SHOTS=$(ls "$PREVIEW_DIR"/*.png 2>/dev/null | grep -v -- "-failed\.png$" || true)
+if [ -n "$GOOD_SHOTS" ]; then
   CAPTION=$(node -e 'try{const p=require(process.argv[1]);process.stdout.write(p.caption||"")}catch{}' "$PWD/$PREVIEW_DIR/preview.json")
   BODY="$BODY
 
 ## Preview
 $CAPTION"
-  for png in "$PREVIEW_DIR"/*.png; do
+  for png in $GOOD_SHOTS; do
     BODY="$BODY
 
 <img src=\"https://raw.githubusercontent.com/grtwrn/yale-shuttle/$SHA/$png\" width=\"390\" alt=\"$(basename "$png" .png) view\">"
@@ -187,11 +192,14 @@ $CAPTION"
 
 ⚠️ $PREVIEW_STATUS"
 else
-  BODY="$BODY
+  # No usable screenshot: open as a DRAFT so it cannot be merged on a glance,
+  # and say so first, not in a footnote.
+  DRAFT=--draft
+  BODY="⚠️ **No working preview screenshot** — $PREVIEW_STATUS. Opened as a draft: the feature has not been seen running.
 
-_No preview screenshot: $PREVIEW_STATUS._"
+$BODY"
 fi
-PR_URL=$(gh pr create --repo grtwrn/yale-shuttle \
+PR_URL=$(gh pr create --repo grtwrn/yale-shuttle ${DRAFT:-} \
   --title "feedback-bot: fix for report #$FIRST_ID" \
   --body "$BODY" \
   --head "$REAL_BRANCH" --base master 2>/dev/null | tail -1)
