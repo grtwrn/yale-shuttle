@@ -361,6 +361,19 @@ These are load-bearing; several rider-visible bugs traced to them:
   majority). Without it the planner priced an 8.4 km ride at 97 seconds.
 - **Routes 9 and 10 repeat stops** for the West Campus out-and-back. Keep the
   sequence verbatim and index by position; de-duplicating loses real legs.
+- **The feed repeats a position rather than interpolating**: 53.6% of
+  consecutive samples are identical coordinates (runs of 15 s typically, up to
+  28 min). Anything derived from consecutive positions must account for it —
+  naive speed reads 0 mph on 54% of samples and calls a *moving* bus stopped
+  on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
+  records why a Kalman filter is not the answer.
+
+## Investigations that did not become code
+
+- `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
+  trailing window beats a constant-velocity Kalman filter on this feed, and
+  the number is only informative about two minutes ahead, so it must never
+  feed the ETA. Not built; read it before building it.
 
 ## Verification harnesses
 
