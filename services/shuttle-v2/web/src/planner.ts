@@ -447,6 +447,37 @@ export function planTrip(
 
 export const ALT_PICKUP_MIN_GAIN_SEC = PIN_SWITCH_MARGIN_SEC;
 
+/**
+ * The option re-planned through one of its alternates: the rider walks to
+ * that stop instead and rides from there. Used when the rider taps the
+ * alternate-pickup line; the live layer then re-derives wait/ETA against the
+ * NEW board stop exactly as for any option, so the map, the step list and the
+ * countdown all follow without special cases. The original board stop joins
+ * the alternates, so the line can offer the way back if that turns better.
+ * Null when `stopId` is not one of the option's alternates.
+ */
+export function switchToAlternate(option: TripOption, stopId: number): TripOption | null {
+  const alt = option.alternates?.find((a) => a.boardStopId === stopId);
+  if (!alt || option.mode !== "shuttle") return null;
+  const {
+    alternatePickup: _pickup, departed: _departed, missedBus: _missed,
+    busEtaSec: _eta, computedAtMs: _at, alternates, ...rest
+  } = option;
+  const original: TripAlternate = {
+    boardStopId: option.boardStopId, alightStopId: option.alightStopId,
+    walkToSec: option.walkToSec, walkFromSec: option.walkFromSec, rideSec: option.rideSec,
+  };
+  const others = (alternates ?? []).filter((a) => a.boardStopId !== stopId);
+  return {
+    ...rest,
+    boardStopId: alt.boardStopId, alightStopId: alt.alightStopId,
+    walkToSec: alt.walkToSec, rideSec: alt.rideSec, walkFromSec: alt.walkFromSec,
+    waitSec: 0,
+    totalSec: alt.walkToSec + alt.rideSec + alt.walkFromSec,
+    alternates: [original, ...others].sort((a, b) => a.walkToSec - b.walkToSec).slice(0, MAX_ALTERNATES),
+  };
+}
+
 export function alternatePickup(
   option: TripOption,
   buses: BusData[],

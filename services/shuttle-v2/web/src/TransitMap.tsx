@@ -22,7 +22,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, type TripOption,
+  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, switchToAlternate, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -1786,8 +1786,14 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Report #55: the board stop the rider chose to walk to instead, per route
+  // label, after tapping the alternate-pickup line. Applied before the live
+  // re-derive below so everything downstream sees the new itinerary. A new
+  // plan clears it.
+  const [switchedBoard, setSwitchedBoard] = useState<Record<string, number>>({});
+
   // Collapse the "show more" list whenever a new trip is planned.
-  useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
+  useEffect(() => { setShowAllOptions(false); setSwitchedBoard({}); }, [stableOptions]);
 
   // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
   // 07:02 before the first bus reported and nothing re-ran it when the bus
@@ -1825,7 +1831,11 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions;
-    return stableOptions.map((o) => {
+    return stableOptions.map((planned) => {
+      // Report #55: the rider may have switched this route's itinerary to
+      // one of its alternate board stops; from here on it is just an option.
+      const switched = switchedBoard[planned.routeLabel];
+      const o = switched != null ? (switchToAlternate(planned, switched) ?? planned) : planned;
       if (o.mode !== "shuttle") return o;
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
@@ -1929,7 +1939,7 @@ const TripPlanner: FC<{
       return alt ? { ...next, alternatePickup: alt } : next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, switchedBoard, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   // Latest options for the reminder engine's interval closure — the memo
   // above rebuilds the array every /api/buses poll, and re-arming the
@@ -3359,19 +3369,33 @@ const TripPlanner: FC<{
                       )}
                       {/* Report #55: the bus left this stop but the loop
                           brings it past another stop the rider can still
-                          walk to. One line on the DETAILS page only (the
-                          collapsed card keeps its single status line, and
-                          bus numbers stay off it — the ride pill here
-                          carries the number), only when alternatePickup
-                          found a genuinely sooner trip. */}
+                          walk to. One tappable line on the DETAILS page
+                          only (the collapsed card keeps its single status
+                          line, and bus numbers stay off it — the ride pill
+                          here carries the number), only when alternatePickup
+                          found a genuinely sooner trip. Tapping it re-plans
+                          the card through that stop: the map, the steps and
+                          the countdown all switch to the new route. */}
                       {isExpanded && o.alternatePickup && (() => {
                         const ap = o.alternatePickup;
                         const name = (stopNames[ap.stopId] ?? `Stop ${ap.stopId}`).replace(/\s*\/\s*/g, "/");
                         const eta = remainingSec(ap.busEtaSec, ap.computedAtMs);
                         return (
-                          <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4, marginTop: 2 }}>
-                            🚶 Walk {fmtWalk(ap.walkSec)} to {name} instead — catch #{ap.busName} there {eta < 10 ? "now" : `in ${fmtMin(eta)}`}
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSwitchedBoard((m) => ({ ...m, [o.routeLabel]: ap.stopId }));
+                            }}
+                            style={{
+                              display: "block", width: "100%", textAlign: "left",
+                              fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "#1a73e8",
+                              background: "#f3f7fd", border: "1px solid #d6e3f0", borderRadius: 8,
+                              padding: "10px 12px", minHeight: 44, marginTop: 4,
+                              cursor: "pointer", fontFamily: "inherit",
+                            }}
+                          >
+                            🚶 Walk {fmtWalk(ap.walkSec)} to {name} instead — catch #{ap.busName} there {eta < 10 ? "now" : `in ${fmtMin(eta)}`} ›
+                          </button>
                         );
                       })()}
                       {o.departed && (

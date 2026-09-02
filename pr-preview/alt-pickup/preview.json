@@ -1,5 +1,5 @@
 {
-  "caption": "Missed the bus at Prospect/Canner: the details page offers the same bus at the next reachable stop",
+  "caption": "Missed the bus at Prospect/Canner: tap the offer and the card re-plans through Whitney/Canner",
   "base": "http://127.0.0.1:8098",
   "trip": {
     "board": 100,

@@ -6,7 +6,7 @@ import type { BusData } from "./map-data";
 import { computeUpcomingArrivals } from "./arrivals";
 import {
   ALT_PICKUP_MIN_GAIN_SEC, alternatePickup, dwellBoardWindowSec, findPotentialRoutes, MAX_ALTERNATES,
-  MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
+  MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
   type TripOption,
 } from "./planner";
 import { HEADWAY_MIN } from "./schedule";
@@ -657,5 +657,35 @@ describe("report #55: alternates skip stops the loop visits twice", () => {
     const plain = planTrip(from, to, [bus], routeStops, stopCoords, segmentTimes, dwellTimes, undefined, NOW)
       .find((o) => o.mode === "shuttle" && o.routeLabel === "Blue Day");
     expect(plain).toBeDefined();
+  });
+});
+
+describe("report #55: switching the itinerary to an alternate stop", () => {
+  const base = {
+    mode: "shuttle" as const, routeLabel: "Blue Day", color: "#1a56db",
+    boardStopId: 100, alightStopId: 38, walkToSec: 120, waitSec: 1500, rideSec: 780, walkFromSec: 60,
+    totalSec: 2460, busName: "901", directWalkSec: 2400, departed: false, missedBus: "901",
+    busEtaSec: 1500, computedAtMs: 1, alternatePickup: { stopId: 129, walkSec: 360, busName: "901", busEtaSec: 380, computedAtMs: 1 },
+    alternates: [
+      { boardStopId: 129, alightStopId: 38, walkToSec: 330, walkFromSec: 60, rideSec: 600 },
+      { boardStopId: 102, alightStopId: 38, walkToSec: 400, walkFromSec: 60, rideSec: 720 },
+    ],
+  };
+  it("re-plans through the chosen stop and keeps the original as a way back", () => {
+    const sw = switchToAlternate(base, 129)!;
+    expect(sw.boardStopId).toBe(129);
+    expect(sw.walkToSec).toBe(330);
+    expect(sw.rideSec).toBe(600);
+    expect(sw.totalSec).toBe(330 + 600 + 60);
+    expect(sw.waitSec).toBe(0);
+    // The miss-state bookkeeping belongs to the old itinerary.
+    expect(sw.missedBus).toBeUndefined();
+    expect(sw.alternatePickup).toBeUndefined();
+    expect(sw.busEtaSec).toBeUndefined();
+    expect(sw.alternates!.map((a) => a.boardStopId)).toEqual([100, 102]);
+  });
+  it("returns null for a stop that is not an alternate", () => {
+    expect(switchToAlternate(base, 999)).toBeNull();
+    expect(switchToAlternate({ ...base, mode: "walk" as const }, 129)).toBeNull();
   });
 });
