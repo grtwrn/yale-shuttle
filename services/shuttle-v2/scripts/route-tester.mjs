@@ -275,6 +275,11 @@ while (Date.now() - started < RUN_MS) {
     const n = await pollOnce();
     if (Date.now() - lastScrape >= SCRAPE_MS) {
       lastScrape = Date.now();
+      // Checkpoint the raw record every scrape: a 50-min watch that dies
+      // (the Pi rebooted mid-run once) still leaves its evidence behind.
+      try {
+        fs.writeFileSync(OUT, JSON.stringify({ partial: true, route: LABEL, origin: BOARD.name, destination: DEST.name, startedAt: clock(started), predictions, arrivals, offRoute: offRoute.slice(0, 200), atStopMismatch: atStopMismatch.slice(0, 50), stuck, pageErrors, consoleErrors, tracePolls: trace.length, log }, null, 1));
+      } catch { /* best effort */ }
       const text = await page.evaluate(() => document.body.innerText);
       const p = parsePlan(text);
       if (p.mine) {
