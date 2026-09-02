@@ -1,6 +1,6 @@
 {
-  "caption": "Every shuttle card says which stop it picks up at; with two Blue Day itineraries the map names the stop on each board label",
-  "base": "http://127.0.0.1:8095",
+  "caption": "After the fixes: the alternate keeps its place, the faster card ranks first, and both board labels name their stop",
+  "base": "http://127.0.0.1:8093",
   "trip": {
     "board": 100,
     "dest": 38,

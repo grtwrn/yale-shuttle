@@ -479,7 +479,12 @@ export function optionKeyLabel(key: string): string {
   return key.split(" via ")[0]!;
 }
 
-export function switchToAlternate(option: TripOption, stopId: number): TripOption | null {
+export function switchToAlternate(
+  option: TripOption,
+  stopId: number,
+  /** The walk measured from the rider's LIVE position, when the caller has it. */
+  liveWalkSec?: number,
+): TripOption | null {
   const alt = option.alternates?.find((a) => a.boardStopId === stopId);
   if (!alt || option.mode !== "shuttle") return null;
   const {
@@ -495,9 +500,13 @@ export function switchToAlternate(option: TripOption, stopId: number): TripOptio
     ...rest,
     viaAlternate: true,
     boardStopId: alt.boardStopId, alightStopId: alt.alightStopId,
-    walkToSec: alt.walkToSec, rideSec: alt.rideSec, walkFromSec: alt.walkFromSec,
+    // Plan-time walk unless the live layer measured one: the offer line was
+    // computed from where the rider is NOW, and the card it opens must not
+    // contradict it by minutes.
+    walkToSec: liveWalkSec ?? alt.walkToSec,
+    rideSec: alt.rideSec, walkFromSec: alt.walkFromSec,
     waitSec: 0,
-    totalSec: alt.walkToSec + alt.rideSec + alt.walkFromSec,
+    totalSec: (liveWalkSec ?? alt.walkToSec) + alt.rideSec + alt.walkFromSec,
     alternates: [original, ...others].sort((a, b) => a.walkToSec - b.walkToSec).slice(0, MAX_ALTERNATES),
   };
 }
@@ -693,16 +702,31 @@ export function findPotentialRoutes(
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 
 export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
-  const shuttles = sorted.filter((o) => o.mode === "shuttle");
-  const second = shuttles[1];
-  const third = shuttles[2];
+  // The cap counts ROUTES, not cards: a same-route alternate (report #55)
+  // rides along with its parent instead of pushing a genuinely different
+  // route behind "Show more" — it is another way to ride a line already
+  // shown, not another line.
+  // One entry per ROUTE, in display order, for the slack comparison.
+  const byRoute: TripOption[] = [];
+  for (const o of sorted) {
+    if (o.mode !== "shuttle") continue;
+    if (!byRoute.some((x) => x.routeLabel === o.routeLabel)) byRoute.push(o);
+  }
+  const second = byRoute[1];
+  const third = byRoute[2];
   const keepThird =
     second !== undefined && third !== undefined &&
     third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
-  let seen = 0;
+  const shown = new Set<string>();
   return sorted.filter((o) => {
     if (o.mode !== "shuttle") return true;
-    seen++;
-    return seen <= 2 || (seen === 3 && keepThird);
+    // Already showing this route: its other itinerary rides along free.
+    if (shown.has(o.routeLabel)) return true;
+    const rank = shown.size + 1;
+    if (rank <= 2 || (rank === 3 && keepThird)) {
+      shown.add(o.routeLabel);
+      return true;
+    }
+    return false;
   });
 }

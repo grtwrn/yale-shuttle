@@ -868,6 +868,8 @@ const CombinedTripMap: FC<{
     if (!map || !grp) return;
     type Chip = {
       lat: number; lon: number; kind: "board" | "alight"; label: string;
+      /** Which endpoint this chip belongs to — part of its identity. */
+      end: string;
       part: string; w: number; x: number; y: number;
     };
     const chips: Chip[] = [];
@@ -901,6 +903,12 @@ const CombinedTripMap: FC<{
           : `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
+          // Two itineraries on one route (report #55) produced two chips with
+          // the same route label. Keyed on the label alone they collided: the
+          // second overwrote the first in chipMarkersRef and one of the two
+          // times silently disappeared from the map whenever they did not
+          // merge. The endpoint's own coordinates make each chip distinct.
+          end: `${e.c.lat.toFixed(5)},${e.c.lon.toFixed(5)}`,
           part: `<span style="color:${o.color}">${tagged}</span>`,
           // Estimated label footprint: emoji + padding + ~6 px/char at
           // the chip's 10 px bold face. Merge decisions use these
@@ -962,7 +970,7 @@ const CombinedTripMap: FC<{
       }
       // `dir` is part of the identity: a tooltip cannot change direction after
       // binding, so a flipped label is a new marker and the old one is swept.
-      const sig = members.map((m) => `${m.kind[0]}:${m.label}`).sort().join("|") + `|${dir}`;
+      const sig = members.map((m) => `${m.kind[0]}:${m.label}@${m.end}`).sort().join("|") + `|${dir}`;
       seen.add(sig);
       const html = lines.join("<br/>");
       const existing = chipMarkersRef.current[sig];
@@ -1552,7 +1560,9 @@ const TripPlanner: FC<{
   // engine effect below (after the options memo) feeds it live data.
   // Declared HERE, before any hook that references it — see the TDZ
   // warning at the top of this file's conventions.
-  const [reminder, setReminder] = useState<{ routeLabel: string } | null>(null);
+  // Keyed by option identity (optionKey), so a reminder armed on one of a
+  // route's two itineraries follows THAT one.
+  const [reminder, setReminder] = useState<{ key: string } | null>(null);
   // In-app fallback banner when a system notification can't be shown
   // (permission denied, or iOS Safari where the page-context
   // Notification API doesn't exist at all).
@@ -1826,8 +1836,16 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
+  // Alternate board stops already offered for this plan, per route (see the
+  // options memo). A ref, not state: it must not itself trigger a re-render,
+  // and it is cleared whenever a new trip is planned.
+  const altStopRef = useRef<Record<string, number>>({});
+
   // Collapse the "show more" list whenever a new trip is planned.
-  useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
+  useEffect(() => {
+    setShowAllOptions(false);
+    altStopRef.current = {};
+  }, [stableOptions]);
 
   // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
   // 07:02 before the first bus reported and nothing re-ran it when the bus
@@ -1973,13 +1991,22 @@ const TripPlanner: FC<{
     };
     return stableOptions.flatMap((planned) => {
       const live = deriveLive(planned);
-      const ap = live.alternatePickup;
-      if (!ap) return [live];
       // Report #55: the alternate itinerary is its own card, listed right
       // beside the original, so the rider sees both ways to ride this route
       // and taps either — nothing to guess at. It is refreshed live against
       // its own board stop exactly like any other card.
-      const via = switchToAlternate(live, ap.stopId);
+      //
+      // STICKY once shown. alternatePickup() is a live verdict that flickers
+      // as a bus moves, and a card that vanishes mid-walk is worse than one
+      // that is briefly redundant: it ejected a rider from the details page
+      // of the very itinerary they were walking to, with no explanation. So
+      // the offered stop is remembered for this plan, and only a NEW plan
+      // (stableOptions changes, which clears the ref) drops it.
+      const remembered = altStopRef.current[planned.routeLabel];
+      const stopId = live.alternatePickup?.stopId ?? remembered;
+      if (stopId == null) return [live];
+      if (live.alternatePickup) altStopRef.current[planned.routeLabel] = stopId;
+      const via = switchToAlternate(live, stopId, live.alternatePickup?.walkSec);
       return via ? [live, deriveLive(via)] : [live];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1998,9 +2025,12 @@ const TripPlanner: FC<{
   // decides IF a ping fires; this effect only delivers it.
   useEffect(() => {
     if (!reminder) return;
-    const { routeLabel } = reminder;
+    const { key } = reminder;
     const check = () => {
-      const o = findReminderOption(optionsRef.current, routeLabel);
+      const o = findReminderOption(
+        optionsRef.current as (TripOption & { busEtaSec?: number })[] | null,
+        (x) => optionKey(x) === key,
+      );
       if (!o) {
         // Option gone / departed / no live bus (route stopped running,
         // plan cleared) — quietly disarm.
@@ -2014,7 +2044,7 @@ const TripPlanner: FC<{
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
-      const msg = leaveAlertMessage(ping, routeLabel, input, rainRef.current.likely);
+      const msg = leaveAlertMessage(ping, o.routeLabel, input, rainRef.current.likely);
       // System notification when possible (SW registration first so it
       // works backgrounded on Android); otherwise the in-app banner +
       // vibration. deliverPing never throws.
@@ -2038,8 +2068,11 @@ const TripPlanner: FC<{
   // rider can spend the wait at their desk and leave at the leave-by
   // time. Only judged when walking is a real alternative (direct walk
   // ≤ 60 min — the walk card itself is suppressed beyond that).
+  // An alternate itinerary (report #55) is exempt: it front-loads a walk on
+  // purpose, so this rule demoted a 16-min option below the 28-min one it was
+  // offered as an improvement on, and never corrected.
   const slowerThanWalk = (o: TripOption) =>
-    o.mode === "shuttle" && !o.departed &&
+    o.mode === "shuttle" && !o.departed && !o.viaAlternate &&
     o.directWalkSec <= 3600 &&
     o.walkToSec + o.rideSec + o.walkFromSec > o.directWalkSec;
   // Shared row/map order: competitive / slower-than-walk / departed,
@@ -2456,6 +2489,14 @@ const TripPlanner: FC<{
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
   const detailOpen = !!expandedKey && !!options?.some((o) => optionKey(o) === expandedKey);
+  // If the open card disappears (its route stopped running, the plan was
+  // re-derived), close the details view deliberately instead of leaving the
+  // rider on a page whose content silently reverted to the search screen.
+  useEffect(() => {
+    if (expandedKey && options && !options.some((o) => optionKey(o) === expandedKey)) {
+      setExpandedKey(null);
+    }
+  }, [expandedKey, options]);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -3036,7 +3077,9 @@ const TripPlanner: FC<{
               Published hours first, ROUTE_HOURS as the fallback (same
               precedence as the All tab); nothing when neither knows the route. */}
           {detailOpen && (() => {
-            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
+            // expandedKey is an option key ("Blue Day via 129" for an
+            // alternate itinerary), so resolve the route behind it.
+            const cfg = ROUTE_LISTS.find((c) => c.label === optionKeyLabel(expandedKey ?? ""));
             const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
             if (!cfg || !caption) return null;
             return (
@@ -3680,7 +3723,7 @@ const TripPlanner: FC<{
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (reminder?.routeLabel === o.routeLabel) {
+                                if (reminder?.key === oKey) {
                                   setReminder(null); // tap again to cancel
                                   return;
                                 }
@@ -3690,9 +3733,9 @@ const TripPlanner: FC<{
                                 // never on load. Fire-and-forget: if it's
                                 // denied we fall back to the in-app banner.
                                 void ensureNotifyPermission();
-                                setReminder({ routeLabel: o.routeLabel });
+                                setReminder({ key: oKey });
                               }}
-                              title={reminder?.routeLabel === o.routeLabel
+                              title={reminder?.key === oKey
                                 ? "Reminding you when it's time to leave — tap to cancel"
                                 : "Ping me 5 min before it's time to leave, and again when it's time to go"}
                               style={{
@@ -3700,10 +3743,10 @@ const TripPlanner: FC<{
                                 minHeight: 44, display: "inline-flex", alignItems: "center",
                                 border: "none", background: "transparent",
                                 color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                                fontWeight: reminder?.routeLabel === o.routeLabel ? 700 : 500,
+                                fontWeight: reminder?.key === oKey ? 700 : 500,
                               }}
                             >
-                              {reminder?.routeLabel === o.routeLabel ? "🔔 Reminding you" : "🔔 Remind me"}
+                              {reminder?.key === oKey ? "🔔 Reminding you" : "🔔 Remind me"}
                             </button>
                           </>
                         )}

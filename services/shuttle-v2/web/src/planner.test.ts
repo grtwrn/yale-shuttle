@@ -780,3 +780,30 @@ describe("report #55: switching the itinerary to an alternate stop", () => {
     expect(switchToAlternate({ ...base, mode: "walk" as const }, 129)).toBeNull();
   });
 });
+
+describe("report #55: a same-route alternate does not evict another route", () => {
+  const opt = (label: string, totalSec: number, extra: Record<string, unknown> = {}) =>
+    ({ mode: "shuttle", routeLabel: label, totalSec, ...extra } as unknown as TripOption);
+
+  it("lets the alternate ride along with its parent instead of taking a slot", () => {
+    const sorted = [
+      opt("Blue Day", 16 * 60),
+      opt("Blue Day", 28 * 60, { viaAlternate: true, boardStopId: 129 }),
+      opt("Green", 20 * 60),
+      opt("Orange Day", 34 * 60), // far behind: the usual third-slot rule drops it
+      { mode: "walk", routeLabel: "Walk", totalSec: 40 * 60 } as unknown as TripOption,
+    ];
+    const visible = topVisibleOptions(sorted).map((o) => o.routeLabel);
+    // Two routes plus the alternate plus the walk — Green keeps its slot
+    // rather than being pushed behind "show more" by a second way of riding
+    // Blue Day.
+    expect(visible).toEqual(["Blue Day", "Blue Day", "Green", "Walk"]);
+  });
+
+  it("still caps distinct routes at two (plus a near-tie third)", () => {
+    const sorted = [
+      opt("Red", 10 * 60), opt("Green", 12 * 60), opt("Purple", 30 * 60),
+    ];
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Red", "Green"]);
+  });
+});
