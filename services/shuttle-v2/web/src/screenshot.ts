@@ -43,6 +43,13 @@ export function attachErrorText(error: "not_an_image" | "unreadable" | "too_larg
 export function imageFromTransfer(data: DataTransfer | null | undefined): File | null {
   if (!data) return null;
   try {
+    // Text wins. Copying a spreadsheet range or rich text publishes a bitmap
+    // flavour ALONGSIDE the text, so taking the image whenever one exists
+    // silently ate the rider's paste — they typed nothing and got a picture
+    // of a table instead. An image-only clipboard is the attach case; a
+    // clipboard that also carries words is a text paste, as everywhere else.
+    const text = data.getData?.("text/plain");
+    if (text && text.length > 0) return null;
     const files = data.files;
     if (files) {
       for (const f of Array.from(files)) {
@@ -61,6 +68,32 @@ export function imageFromTransfer(data: DataTransfer | null | undefined): File |
     /* a clipboard we are not allowed to read is the same as an empty one */
   }
   return null;
+}
+
+/**
+ * Whether a DRAG carries a file, from what a browser exposes mid-drag.
+ *
+ * During dragenter/dragover the drag data store is in protected mode: the
+ * files are not readable and getAsFile() returns null, so asking
+ * imageFromTransfer here always said no and the dragover handler never called
+ * preventDefault(). Only `types` is available, which is enough to decide
+ * whether to accept the drop.
+ */
+export function dragCarriesFile(data: DataTransfer | null | undefined): boolean {
+  if (!data) return false;
+  try {
+    const types = data.types;
+    if (types && Array.from(types).includes("Files")) return true;
+    const items = data.items;
+    if (items) {
+      for (const it of Array.from(items)) {
+        if (it.kind === "file" && (!it.type || it.type.startsWith("image/"))) return true;
+      }
+    }
+  } catch {
+    /* protected or hostile — treat as "not a file drag" */
+  }
+  return false;
 }
 
 /**

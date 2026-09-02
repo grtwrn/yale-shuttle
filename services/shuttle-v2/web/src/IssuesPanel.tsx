@@ -6,7 +6,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { attachErrorText, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
+import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import {
   fetchMyReports,
   markAllSeen,
@@ -53,6 +53,21 @@ const IssuesPanel: React.FC<{
   // with the draft, so switching reports never carries a picture across.
   const [replyImage, setReplyImage] = useState<string | null>(null);
   const [replyImageErr, setReplyImageErr] = useState<string | null>(null);
+  /** A pasted screenshot is still being downscaled; Send waits for it. */
+  const [replyAttaching, setReplyAttaching] = useState(false);
+
+  // One attach path for the file picker, the paste and the drop — the three
+  // had grown identical copies of this.
+  const attachReplyScreenshot = (file: File | undefined | null) => {
+    setReplyImageErr(null);
+    if (!file) return;
+    setReplyAttaching(true);
+    void downscaleToDataUrl(file).then((res) => {
+      setReplyAttaching(false);
+      if ("error" in res) setReplyImageErr(attachErrorText(res.error));
+      else setReplyImage(res.dataUrl);
+    });
+  };
   const [replyText, setReplyText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<number | null>(null);
@@ -100,6 +115,7 @@ const IssuesPanel: React.FC<{
       setReplyText("");
       setReplyImage(null);
       setReplyImageErr(null);
+      setReplyAttaching(false);
       await load();
     } catch {
       setActionError(id);
@@ -213,22 +229,14 @@ const IssuesPanel: React.FC<{
                       const file = imageFromTransfer(e.clipboardData);
                       if (!file) return;
                       e.preventDefault();
-                      setReplyImageErr(null);
-                      void downscaleToDataUrl(file).then((res) => {
-                        if ("error" in res) setReplyImageErr(attachErrorText(res.error));
-                        else setReplyImage(res.dataUrl);
-                      });
+                      attachReplyScreenshot(file);
                     }}
-                    onDragOver={(e) => { if (imageFromTransfer(e.dataTransfer)) e.preventDefault(); }}
+                    onDragOver={(e) => { if (dragCarriesFile(e.dataTransfer)) e.preventDefault(); }}
                     onDrop={(e) => {
                       const file = imageFromTransfer(e.dataTransfer);
                       if (!file) return;
                       e.preventDefault();
-                      setReplyImageErr(null);
-                      void downscaleToDataUrl(file).then((res) => {
-                        if ("error" in res) setReplyImageErr(attachErrorText(res.error));
-                        else setReplyImage(res.dataUrl);
-                      });
+                      attachReplyScreenshot(file);
                     }}
                     placeholder="Add anything that helps…"
                     autoFocus
@@ -254,11 +262,7 @@ const IssuesPanel: React.FC<{
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
-                        setReplyImageErr(null);
-                        void downscaleToDataUrl(file).then((res) => {
-                          if ("error" in res) setReplyImageErr(attachErrorText(res.error));
-                          else setReplyImage(res.dataUrl);
-                        });
+                        attachReplyScreenshot(file);
                       }}
                     />
                     <span style={{
@@ -294,7 +298,7 @@ const IssuesPanel: React.FC<{
                     <button
                       onClick={() => {
                         setReplyFor(null); setReplyText("");
-                        setReplyImage(null); setReplyImageErr(null);
+                        setReplyImage(null); setReplyImageErr(null); setReplyAttaching(false);
                       }}
                       style={{
                         fontSize: 13, padding: "8px 14px", minHeight: 44,
@@ -311,17 +315,17 @@ const IssuesPanel: React.FC<{
                         text: replyText.trim(),
                         ...(replyImage ? { image: replyImage } : {}),
                       })}
-                      disabled={busy || !replyText.trim()}
+                      disabled={busy || replyAttaching || !replyText.trim()}
                       style={{
                         fontSize: 13, padding: "8px 14px", minHeight: 44,
                         border: "1px solid #1976D2", borderRadius: 6,
-                        background: busy || !replyText.trim() ? "#90CAF9" : "#1976D2",
+                        background: busy || replyAttaching || !replyText.trim() ? "#90CAF9" : "#1976D2",
                         color: "#fff", fontWeight: 600,
-                        cursor: busy || !replyText.trim() ? "default" : "pointer",
+                        cursor: busy || replyAttaching || !replyText.trim() ? "default" : "pointer",
                         fontFamily: "inherit", flex: 1,
                       }}
                     >
-                      {busy ? "Sending…" : "Send"}
+                      {busy ? "Sending…" : replyAttaching ? "Attaching…" : "Send"}
                     </button>
                   </div>
                   {actionError === r.id && (
