@@ -25,6 +25,7 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 // True when running as an installed app (home-screen/desktop install). Fixed
 // for the life of the page, so a module constant, not state.
@@ -1236,9 +1237,16 @@ const AllRoutesMap: FC<{
   stopCoords: Record<number, LatLon>;
   stopNames: Record<number, string>;
   routeStops: Record<string, number[]>;
+  /**
+   * CSS height of the map. The Map tab fills the screen; embedded in a route
+   * card it must not, or the stop list below lands off the bottom — report
+   * #21, "the stop list is below the fold", which RideRouteMap already caps
+   * at min(32vh, 300px) for the same reason.
+   */
+  height?: string;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate }) => {
+}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, height, userLatLon, onRequestLocate }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busLayerRef = useRef<L.LayerGroup | null>(null);
@@ -1415,7 +1423,7 @@ const AllRoutesMap: FC<{
       <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
       <div style={{ position: "relative", width: "100%" }}>
         <div ref={ref} style={{
-          position: "relative", width: "100%", height: "72vh", borderRadius: 8,
+          position: "relative", width: "100%", height: height ?? "72vh", borderRadius: 8,
           border: "1px solid #e0ddd8", overflow: "hidden",
         }} />
         {/* "Locate me" — sits above the Leaflet panes (z-index 1000 matches
@@ -4658,11 +4666,70 @@ const StopGroupsSummary: FC<{
   );
 };
 
+// The collapsed route card lists only the soonest arrivals; the whole stop
+// list is one tap away on the isolated view.
+const MAX_CARD_ARRIVALS = 4;
+
+// One route's thumbnail map: the published line, its stops and its live buses
+// as a flat inline SVG. Deliberately NOT Leaflet — fifteen tiled map instances
+// on one phone page is unshippable, and the All tab needs these to paint
+// instantly. The maths is in routeThumb.ts (pure, unit-tested); this only
+// draws. Colour comes from the caller's ROUTE_LISTS entry, never from here.
+const RouteThumb: FC<{
+  thumb: RouteThumbShape;
+  color: string;
+  label: string;
+  dashed?: boolean;
+}> = ({ thumb, color, label, dashed }) => {
+  const busNames = thumb.buses.map((b) => b.name).join(", ");
+  const caption = `${label} route map: ${thumb.stops.length} stops, `
+    + (thumb.buses.length === 0
+      ? "no buses running"
+      : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} live (${busNames})`);
+  return (
+    <svg
+      viewBox={thumb.viewBox}
+      role="img"
+      aria-label={caption}
+      preserveAspectRatio="xMidYMid meet"
+      style={{
+        // The viewBox carries the aspect ratio, so height follows width and
+        // the drawing is never squashed; the cap keeps it a thumbnail on a
+        // wide screen (meet letterboxes what is left).
+        display: "block", width: "100%", height: "auto", maxHeight: 200,
+        background: "#faf9f7", borderRadius: 8, border: "1px solid #ece9e4",
+      }}
+    >
+      {/* Without this the thumbnail is a silent picture to a screen reader. */}
+      <title>{caption}</title>
+      <path
+        d={thumb.path}
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        strokeDasharray={dashed ? "6 4" : undefined}
+        opacity={0.9}
+      />
+      {thumb.stops.map((s, i) => (
+        <circle key={`s${i}`} cx={s.x} cy={s.y} r={2} fill="#fff" stroke={color} strokeWidth={1} />
+      ))}
+      {thumb.buses.map((b, i) => (
+        <circle key={`b${i}`} cx={b.x} cy={b.y} r={4.5} fill={color} stroke="#fff" strokeWidth={1.5} />
+      ))}
+    </svg>
+  );
+};
+
 const StopList: FC<{
   buses: BusData[];
   stopNames: Record<number, string>;
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
+  // Published polylines, keyed by route id — the thumbnails' geometry and, on
+  // the isolated view, the real Leaflet map's.
+  routePaths?: Record<string, [number, number][]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   routePeaks?: Record<string, number>;
@@ -4677,7 +4744,15 @@ const StopList: FC<{
   onToggleFavorite: (routeId: string) => void;
   savedStops: Set<number>;
   onToggleSavedStop: (stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
+  userLatLon?: LatLon | null;
+  onRequestLocate?: () => void;
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
+  // Which route the rider has tapped into, by primary route id. Local state on
+  // purpose: leaving the tab unmounts this list, so isolation never survives a
+  // visit. The effect covers the case where the view changes underneath us
+  // without an unmount.
+  const [isolatedRouteId, setIsolatedRouteId] = useState<string | null>(null);
+  useEffect(() => { setIsolatedRouteId(null); }, [listView]);
 
   // GPS-based: find nearest route stop for each bus
   function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
@@ -4719,10 +4794,25 @@ const StopList: FC<{
 
   return (
     <div style={{
-      display: "flex", gap: 4, overflowX: "auto",
-      padding: "4px 8px", fontSize: 10.5, color: "#455a64",
-      maxWidth: "100%",
+      display: "flex", flexDirection: "column", gap: 10,
+      width: "100%", maxWidth: 640,
+      padding: "4px 0", fontSize: 13, color: "#455a64",
     }}>
+      {/* Isolated view leads with the way back — same control as the trip
+          details page, so "back" reads the same everywhere in the app. */}
+      {isolatedRouteId && (
+        <button
+          onClick={() => setIsolatedRouteId(null)}
+          title="Back to all routes"
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 15, fontWeight: 600, color: "#1a73e8",
+            background: "transparent", border: "none", padding: "0 2px 4px",
+            minHeight: 44, cursor: "pointer", fontFamily: "inherit",
+            alignSelf: "flex-start",
+          }}
+        >← All routes</button>
+      )}
       {ROUTE_LISTS.map((cfg, listIdx) => {
         // Merge stops from all route IDs in this config (deduplicated, preserving order)
         const seen = new Set<number>();
@@ -4741,282 +4831,422 @@ const StopList: FC<{
         const hasBuses = Object.keys(busMap).length > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
+        const isolated = isolatedRouteId === primaryRouteId;
 
-        // Filter by view
-        if (activeOnly && !hasBuses) return null;
-        if (listView === "favorites") {
-          if (!hasBuses) return null;
-          if (favoriteStopIds && favoriteStopIds.size > 0) {
-            const hitsFav = stops.some((sid) => favoriteStopIds.has(sid));
-            if (!hitsFav) return null;
-          } else if (!isFav) {
-            return null;
+        // The isolated card ignores the filters: a bus vanishing mid-read (or
+        // a chip being toggled) must not blank the page the rider is on.
+        if (!isolated) {
+          if (isolatedRouteId) return null;
+          // Filter by view
+          if (activeOnly && !hasBuses) return null;
+          if (listView === "favorites") {
+            if (!hasBuses) return null;
+            if (favoriteStopIds && favoriteStopIds.size > 0) {
+              const hitsFav = stops.some((sid) => favoriteStopIds.has(sid));
+              if (!hitsFav) return null;
+            } else if (!isFav) {
+              return null;
+            }
+          }
+          if (hiddenRoutes) {
+            const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+            if (toggle && hiddenRoutes.has(toggle)) return null;
           }
         }
-        if (hiddenRoutes) {
-          const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-          if (toggle && hiddenRoutes.has(toggle)) return null;
-        }
         const blinkOn = tick % 2 === 0;
+        const routeBuses = buses.filter((b) => cfg.busRouteIds.includes(b.route_id));
+
+        // ── Subtitle: loop duration, live/peak bus count, published hours ──
+        // Prefer learned segment averages; fall back to straight-line distance
+        // over BUS_SPEED_M_S for any missing segment. This keeps the line
+        // populated for routes like Red that currently have no calibrated data
+        // in the DB, as long as we know the stop coordinates.
+        const loopSegs = segmentTimes[primaryRouteId] ?? {};
+        let loopSec = 0;
+        let hasAnyLoopData = false;
+        for (let k = 0; k < stops.length; k++) {
+          const prev = stops[k];
+          const cur = stops[(k + 1) % stops.length];
+          const seg = loopSegs[`${prev}-${cur}`];
+          if (seg && seg.n >= 1) {
+            loopSec += seg.avg;
+            hasAnyLoopData = true;
+          } else {
+            const pc = stopCoords[prev], cc = stopCoords[cur];
+            if (pc && cc) {
+              loopSec += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+            }
+          }
+        }
+        const busCount = routeBuses.length;
+        const peak = Math.max(
+          busCount,
+          ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
+        );
+        const loopMin = Math.round(loopSec / 60);
+        // Published hours when the server parsed them; ROUTE_HOURS (the wider
+        // in-service gate) only as a fallback.
+        const published = publishedWindowFor(cfg, routeHours);
+        const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
+          + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
+
+        // ── ETAs: cumulative from each bus to the stops ahead of it ──
+        const routeSegs = segmentTimes[primaryRouteId] ?? {};
+        const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
+        const avgSeg = segValues.length > 0
+          ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
+          : 0;
+
+        const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
+        for (const [sid, b] of Object.entries(busMap)) {
+          const busIdx = stops.indexOf(Number(sid));
+          if (busIdx === -1) continue;
+          let cumulative = 0;
+          let cumulativeVar = 0;
+          let hasAnyData = false;
+          const totalStops = stops.length;
+          const fallbackSd = avgSeg * 0.5;
+          // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
+          for (let step = 1; step < totalStops; step++) {
+            const prevIdx = (busIdx + step - 1) % totalStops;
+            const curIdx = (busIdx + step) % totalStops;
+
+            const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
+            if (seg && seg.n >= 1) {
+              cumulative += seg.avg;
+              cumulativeVar += (seg.sd ?? 0) ** 2;
+              hasAnyData = true;
+            } else if (avgSeg > 0) {
+              cumulative += avgSeg;
+              cumulativeVar += fallbackSd * fallbackSd;
+            } else {
+              // No calibration at all — a fresh database, or a route the
+              // collector has not yet learned. Price the hop by distance at
+              // bus speed, exactly as planTrip and the loop-time line above
+              // already do, rather than giving up: this loop used to `break`,
+              // and the card that reads from it then showed a route with two
+              // running buses and not one stop.
+              const pc = stopCoords[stops[prevIdx]], cc = stopCoords[stops[curIdx]];
+              if (!pc || !cc) break;
+              const est = Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+              cumulative += est;
+              cumulativeVar += (est * 0.5) ** 2;
+            }
+            if (cumulative > 0) {
+              const sd = Math.sqrt(cumulativeVar);
+              const existing = etaAtStop[stops[curIdx]];
+              if (!existing || cumulative < existing.eta) {
+                etaAtStop[stops[curIdx]] = {
+                  eta: cumulative,
+                  low: Math.max(0, cumulative - sd),
+                  high: cumulative + sd,
+                  busName: (b as BusData).bus_name,
+                  estimated: !hasAnyData,
+                };
+              }
+            }
+          }
+        }
+
+        // One stop row. Shared by the collapsed card (a handful of them, in
+        // arrival order) and the isolated view (all of them, in route order),
+        // so a stop reads identically either way — and stays tappable as a
+        // favourite in both.
+        const stopRow = (stopId: number, key: string) => {
+          const name = stopNames[stopId] ?? `Stop ${stopId}`;
+          const bus = busMap[stopId];
+          const isNext = nextSet.has(stopId);
+          const isSaved = savedStops.has(stopId);
+          const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
+          // Only surface significant timing-point dwells (>= 5 min typical).
+          const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
+          const dwellLabel = longDwell
+            ? (() => {
+                const lo = Math.max(1, Math.round(longDwell.med / 60));
+                const hi = Math.round((longDwell.med + longDwell.sd) / 60);
+                return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
+              })()
+            : null;
+
+          return (
+            <div
+              key={key}
+              onClick={() => onToggleSavedStop(stopId)}
+              title={isSaved ? "Remove from saved stops" : "Save this stop"}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "6px 10px", minHeight: 44, boxSizing: "border-box",
+                cursor: "pointer",
+                background: bus ? `${cfg.color}18`
+                  : isNext && blinkOn ? `${cfg.color}0D`
+                  : isSaved ? "#2E7D3220" : "transparent",
+                fontWeight: bus ? 600 : isSaved ? 700 : isNext ? 500 : 400,
+                transition: "background 0.3s",
+                borderLeft: isSaved ? "4px solid #2E7D32" : "4px solid transparent",
+                borderRadius: isSaved ? 4 : 0,
+                margin: isSaved ? "2px 0" : 0,
+                boxShadow: isSaved ? "0 1px 4px rgba(46,125,50,0.15)" : "none",
+              }}
+            >
+              <div style={{
+                width: isSaved ? 10 : 7, height: isSaved ? 10 : 7,
+                borderRadius: "50%", flexShrink: 0,
+                background: bus ? cfg.color
+                  : isNext && blinkOn ? cfg.color
+                  : isSaved ? "#2E7D32" : "#fff",
+                border: `${isSaved ? 2 : 1.5}px solid ${isSaved ? "#2E7D32" : cfg.color}`,
+                boxShadow: isSaved ? "0 0 6px rgba(46,125,50,0.4)"
+                  : isNext && blinkOn ? `0 0 6px ${cfg.color}` : "none",
+                transition: "all 0.3s",
+              }} />
+              {/* Full width now, so the whole stop name is shown — no
+                  ellipsis, no stripped (N)/(S) suffix (stops 28 m apart
+                  differ only by it). */}
+              <span style={{
+                flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.25,
+                color: isNext ? cfg.color : isSaved ? "#2E7D32" : "#37474f",
+              }}>
+                {name}
+                {longDwell && dwellLabel && !(bus && bus.at_stop_id === stopId) && (
+                  <span title={`Often pauses here ~${dwellLabel} (n=${longDwell.n})`}
+                        style={{
+                          marginLeft: 5, fontSize: 9, color: "#fff",
+                          background: "#FFA726", borderRadius: 4, padding: "1px 4px",
+                          fontWeight: 700, whiteSpace: "nowrap",
+                        }}>
+                    ⏸ {dwellLabel}
+                  </span>
+                )}
+              </span>
+              {etaAtStop[stopId] && !bus && (() => {
+                const e = etaAtStop[stopId];
+                const lo = Math.round(e.low / 60);
+                return (
+                  <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
+                      {e.estimated ? "~" : ""}{lo} min
+                    </span>
+                    <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
+                      {fmtClock(e.eta)}
+                    </span>
+                  </span>
+                );
+              })()}
+              {isSaved && !bus && !isNext && (
+                <span style={{ fontSize: 10, color: "#2E7D32", opacity: 0.6 }}>★</span>
+              )}
+              {bus && (() => {
+                // If bus is parked at a known-dwell stop, count up how long it's been sitting
+                // and show next to the expected dwell: "X:XX / ~Y min"
+                let countdown: string | null = null;
+                if (longDwell && dwellLabel && bus.at_stop_id === stopId && bus.at_stop_since) {
+                  const elapsedSec = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
+                  const totalSec = Math.floor(elapsedSec);
+                  const mm = Math.floor(totalSec / 60);
+                  const ss = totalSec % 60;
+                  const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
+                  countdown = `${elapsed} / ~${dwellLabel}`;
+                }
+                return (
+                  <>
+                    {countdown && (
+                      <span title={longDwell ? `Sitting / typical pause (n=${longDwell.n})` : undefined}
+                            style={{
+                              fontSize: 9.5, fontWeight: 700, color: "#fff",
+                              background: "#FFA726", borderRadius: 6, padding: "1px 5px",
+                              marginRight: 3, whiteSpace: "nowrap",
+                            }}>
+                        ⏸ {countdown}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "#fff",
+                      background: cfg.color, borderRadius: 6, padding: "1px 6px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {bus.bus_name.replace("#", "")}
+                    </span>
+                  </>
+                );
+              })()}
+              {isNext && !bus && (
+                <span style={{
+                  fontSize: 8.5, fontWeight: 700, color: cfg.color,
+                  opacity: blinkOn ? 1 : 0.3,
+                  transition: "opacity 0.3s",
+                }}>
+                  NEXT
+                </span>
+              )}
+            </div>
+          );
+        };
+
+        // Collapsed card: only the stops a bus is actually heading to, soonest
+        // first. The full list is one tap away, so the card stays a card.
+        const arriving: { sid: number; eta: number }[] = [];
+        for (const sid of stops) {
+          const e = etaAtStop[sid];
+          if (e) arriving.push({ sid, eta: e.eta });
+        }
+        arriving.sort((a, b) => a.eta - b.eta);
+        // A saved stop always makes the card. The star exists so the stop the
+        // rider cares about is the one they see without tapping; sorting
+        // purely by ETA silently disabled it.
+        const savedFirst = arriving.filter((a) => savedStops.has(a.sid));
+        const rest = arriving.filter((a) => !savedStops.has(a.sid));
+        // The rest are spread across the loop rather than clustered in front
+        // of the buses: on a three-bus route the four soonest arrivals were
+        // four stops within a minute of each other, useless to anyone not
+        // already standing at one. One per bus first, then by ETA.
+        const perBus = new Map<string, { sid: number; eta: number }>();
+        for (const a of rest) {
+          const name = etaAtStop[a.sid]?.busName ?? "";
+          if (!perBus.has(name)) perBus.set(name, a);
+        }
+        const spread = [...perBus.values()];
+        const filler = rest.filter((a) => !spread.includes(a));
+        const upcoming = [...savedFirst, ...spread, ...filler]
+          .slice(0, MAX_CARD_ARRIVALS)
+          .sort((a, b) => a.eta - b.eta);
+        const moreStops = stops.length - upcoming.length;
+
+        // The thumbnail's geometry: the published line for this route, its
+        // stops, and its live buses. Null when upstream has no polyline for
+        // the route — the card then simply has no picture.
+        const thumb = buildRouteThumb(
+          routePaths?.[primaryRouteId],
+          stops.map((sid) => stopCoords[sid]).filter(Boolean),
+          routeBuses.map((b) => ({ lat: b.lat, lon: b.lon, name: b.bus_name })),
+        );
+
+        // Only this route's geometry reaches the isolated Leaflet map.
+        const isolatedPaths: Record<string, [number, number][]> = {};
+        const isolatedStops: Record<string, number[]> = {};
+        if (isolated) {
+          for (const rid of cfg.routeIds) {
+            const p = routePaths?.[rid];
+            if (p) isolatedPaths[rid] = p;
+            const s = routeStops[rid];
+            if (s) isolatedStops[rid] = s;
+          }
+        }
 
         return (
-          <div key={`${cfg.routeIds.join("-")}-${listIdx}`} style={{
-            minWidth: 145, maxWidth: 170, flexShrink: 0,
-          }}>
+          <div
+            key={`${cfg.routeIds.join("-")}-${listIdx}`}
+            id={`route-card-${cfg.label}`}
+            style={{
+              width: "100%", boxSizing: "border-box", scrollMarginTop: 8,
+              border: "1px solid #e8e5e0", borderRadius: 10, background: "#fff",
+              overflow: "hidden",
+            }}
+          >
             <div style={{
-              fontSize: 10, fontWeight: 700, color: cfg.color,
-              padding: "4px 10px", letterSpacing: 1, textTransform: "uppercase",
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "0 10px",
               borderBottom: cfg.dashed
                 ? `2px dashed ${cfg.color}`
                 : `2px solid ${cfg.color}`,
-              marginBottom: 2,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
-              <span>{cfg.label}</span>
-              <span
+              <button
+                onClick={() => setIsolatedRouteId(isolated ? null : primaryRouteId)}
+                title={isolated ? "Back to all routes" : `Show only ${cfg.label}`}
+                style={{
+                  flex: 1, minWidth: 0, textAlign: "left",
+                  background: "transparent", border: "none", padding: "6px 0",
+                  minHeight: 44, cursor: "pointer", fontFamily: "inherit",
+                  fontSize: 15, fontWeight: 700, color: cfg.color,
+                  letterSpacing: 0.6, textTransform: "uppercase",
+                  // Full name, wrapped if it must be — never truncated.
+                  whiteSpace: "normal", overflowWrap: "anywhere", lineHeight: 1.2,
+                }}
+              >
+                {cfg.label}
+              </button>
+              <button
                 onClick={(e) => { e.stopPropagation(); onToggleFavorite(primaryRouteId); }}
-                style={{ cursor: "pointer", fontSize: 12, opacity: isFav ? 1 : 0.25 }}
+                aria-label={isFav ? `Unfavourite ${cfg.label}` : `Favourite ${cfg.label}`}
+                title={isFav ? "Remove from favourites" : "Add to favourites"}
+                style={{
+                  width: 44, height: 44, flexShrink: 0, padding: 0,
+                  background: "transparent", border: "none", cursor: "pointer",
+                  fontSize: 18, lineHeight: 1, color: cfg.color,
+                  opacity: isFav ? 1 : 0.25, fontFamily: "inherit",
+                }}
               >
                 ★
-              </span>
+              </button>
             </div>
-            {(() => {
-              // Route subtitle: estimated loop duration + live bus count.
-              // Prefer learned segment averages; fall back to straight-line
-              // distance over BUS_SPEED_M_S for any missing segment. This
-              // keeps the line populated for routes like Red that currently
-              // have no calibrated data in the DB (collector hasn't logged
-              // them yet, or they've been trimmed), as long as we know the
-              // stop coordinates.
-              const loopSegs = segmentTimes[primaryRouteId] ?? {};
-              let loopSec = 0;
-              let hasAny = false;
-              const n = stops.length;
-              for (let k = 0; k < n; k++) {
-                const prev = stops[k];
-                const cur = stops[(k + 1) % n];
-                const seg = loopSegs[`${prev}-${cur}`];
-                if (seg && seg.n >= 1) {
-                  loopSec += seg.avg;
-                  hasAny = true;
-                } else {
-                  const pc = stopCoords[prev], cc = stopCoords[cur];
-                  if (pc && cc) {
-                    loopSec += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
-                  }
-                }
-              }
-              const busCount = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).length;
-              const peak = Math.max(
-                busCount,
-                ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
-              );
-              const loopMin = Math.round(loopSec / 60);
-              // Published hours when the server parsed them; ROUTE_HOURS
-              // (the wider in-service gate) only as a fallback.
-              const published = publishedWindowFor(cfg, routeHours);
-              const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
-              if (!loopSec && !busCount && !peak && !schedule) return null;
-              return (
-                <>
-                  <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 2px", display: "flex", justifyContent: "space-between" }}>
-                    <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin} min` : ""}</span>
-                    <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
-                  </div>
-                  {schedule && (
-                    <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px" }}>
-                      {schedule}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-            {(() => {
-              // Pre-compute cumulative ETAs from each bus to downstream stops
-              const routeSegs = segmentTimes[primaryRouteId] ?? {};
-              const routeDwells = dwellTimes[primaryRouteId] ?? {};
 
-              // Compute average segment time for this route as fallback
-              const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
-              const avgSeg = segValues.length > 0
-                ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
-                : 0;
+            {(loopSec > 0 || busCount > 0 || peak > 0 || schedule) && (
+              <div style={{
+                display: "flex", justifyContent: "space-between", gap: 8,
+                flexWrap: "wrap", fontSize: 11, color: "#78909c",
+                padding: "4px 10px 6px",
+              }}>
+                <span>
+                  {loopSec > 0 ? `${hasAnyLoopData ? "" : "~"}loop ${loopMin} min` : ""}
+                  {loopSec > 0 && schedule ? " · " : ""}
+                  {schedule}
+                </span>
+                <span>{busLabel}</span>
+              </div>
+            )}
 
-              const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
-              for (const [sid, b] of Object.entries(busMap)) {
-                const busIdx = stops.indexOf(Number(sid));
-                if (busIdx === -1) continue;
-                let cumulative = 0;
-                let cumulativeVar = 0;
-                let hasAnyData = false;
-                const totalStops = stops.length;
-                const fallbackSd = avgSeg * 0.5;
-                // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-                for (let step = 1; step < totalStops; step++) {
-                  const prevIdx = (busIdx + step - 1) % totalStops;
-                  const curIdx = (busIdx + step) % totalStops;
-
-                  const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-                  if (seg && seg.n >= 1) {
-                    cumulative += seg.avg;
-                    cumulativeVar += (seg.sd ?? 0) ** 2;
-                    hasAnyData = true;
-                  } else if (avgSeg > 0) {
-                    cumulative += avgSeg;
-                    cumulativeVar += fallbackSd * fallbackSd;
-                  } else {
-                    break;
-                  }
-                  if (cumulative > 0) {
-                    const sd = Math.sqrt(cumulativeVar);
-                    const existing = etaAtStop[stops[curIdx]];
-                    if (!existing || cumulative < existing.eta) {
-                      etaAtStop[stops[curIdx]] = {
-                        eta: cumulative,
-                        low: Math.max(0, cumulative - sd),
-                        high: cumulative + sd,
-                        busName: (b as BusData).bus_name,
-                        estimated: !hasAnyData,
-                      };
-                    }
-                  }
-                }
-              }
-
-              return stops.map((stopId, i) => {
-              const name = stopNames[stopId] ?? `Stop ${stopId}`;
-              const shortName = name.replace(/ \([NS]\)$/, "").replace(/^\d+ /, "");
-              const bus = busMap[stopId];
-              const isNext = nextSet.has(stopId);
-
-              const isSaved = savedStops.has(stopId);
-              const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
-              // Only surface significant timing-point dwells (>= 5 min typical).
-              const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
-              const dwellLabel = longDwell
-                ? (() => {
-                    const lo = Math.max(1, Math.round(longDwell.med / 60));
-                    const hi = Math.round((longDwell.med + longDwell.sd) / 60);
-                    return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
-                  })()
-                : null;
-
-              return (<React.Fragment key={`${primaryRouteId}-${stopId}-${i}`}>
-                <div
-                  onClick={() => onToggleSavedStop(stopId)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: isSaved ? "4px 10px" : "2px 10px",
-                    cursor: "pointer",
-                    background: bus ? `${cfg.color}18`
-                      : isNext && blinkOn ? `${cfg.color}0D`
-                      : isSaved ? "#2E7D3220" : "transparent",
-                    fontWeight: bus ? 600 : isSaved ? 700 : isNext ? 500 : 400,
-                    transition: "all 0.3s",
-                    borderLeft: isSaved ? "4px solid #2E7D32" : "4px solid transparent",
-                    borderRadius: isSaved ? 4 : 0,
-                    margin: isSaved ? "2px 0" : 0,
-                    boxShadow: isSaved ? "0 1px 4px rgba(46,125,50,0.15)" : "none",
-                  }}
-                >
-                  <div style={{
-                    width: isSaved ? 10 : 6, height: isSaved ? 10 : 6,
-                    borderRadius: "50%", flexShrink: 0,
-                    background: bus ? cfg.color
-                      : isNext && blinkOn ? cfg.color
-                      : isSaved ? "#2E7D32" : "#fff",
-                    border: `${isSaved ? 2 : 1.5}px solid ${isSaved ? "#2E7D32" : cfg.color}`,
-                    boxShadow: isSaved ? "0 0 6px rgba(46,125,50,0.4)"
-                      : isNext && blinkOn ? `0 0 6px ${cfg.color}` : "none",
-                    transition: "all 0.3s",
-                  }} />
-                  <span style={{
-                    flex: 1, overflow: "hidden", textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontSize: isSaved ? 11.5 : 10,
-                    color: isNext ? cfg.color : isSaved ? "#2E7D32" : undefined,
-                  }}>
-                    {shortName}
-                    {longDwell && dwellLabel && !(bus && bus.at_stop_id === stopId) && (
-                      <span title={`Often pauses here ~${dwellLabel} (n=${longDwell.n})`}
-                            style={{
-                              marginLeft: 4, fontSize: 7.5, color: "#fff",
-                              background: "#FFA726", borderRadius: 4, padding: "0 3px",
-                              fontWeight: 700, verticalAlign: "middle",
-                            }}>
-                        ⏸ {dwellLabel}
-                      </span>
-                    )}
-                  </span>
-                  {etaAtStop[stopId] && !bus && (
-                    <span style={{ display: "flex", gap: 3, flexShrink: 0, alignItems: "center" }}>
-                      {(() => {
-                        const e = etaAtStop[stopId];
-                        const lo = Math.round(e.low / 60);
-                        const label = `${lo} min`;
-                        return (
-                          <>
-                            <span style={{ fontSize: 8, color: cfg.color, fontWeight: 600, opacity: e.estimated ? 0.5 : 1 }}>
-                              {e.estimated ? "~" : ""}{label}
-                            </span>
-                            <span style={{ fontSize: 8, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
-                              {fmtClock(e.eta)}
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </span>
-                  )}
-                  {isSaved && !bus && !isNext && (
-                    <span style={{ fontSize: 8, color: "#2E7D32", opacity: 0.6 }}>★</span>
-                  )}
-                  {bus && (() => {
-                    // If bus is parked at a known-dwell stop, count up how long it's been sitting
-                    // and show next to the expected dwell: "X:XX / ~Ym"
-                    let countdown: string | null = null;
-                    if (longDwell && dwellLabel && bus.at_stop_id === stopId && bus.at_stop_since) {
-                      const elapsedSec = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-                      const totalSec = Math.floor(elapsedSec);
-                      const mm = Math.floor(totalSec / 60);
-                      const ss = totalSec % 60;
-                      const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
-                      countdown = `${elapsed} / ~${dwellLabel}`;
-                    }
-                    return (
-                      <>
-                        {countdown && (
-                          <span title={longDwell ? `Sitting / typical pause (n=${longDwell.n})` : undefined}
-                                style={{
-                                  fontSize: 8, fontWeight: 700, color: "#fff",
-                                  background: "#FFA726", borderRadius: 6, padding: "0 4px",
-                                  lineHeight: "14px", marginRight: 3,
-                                }}>
-                            ⏸ {countdown}
-                          </span>
-                        )}
-                        <span style={{
-                          fontSize: 8, fontWeight: 700, color: "#fff",
-                          background: cfg.color, borderRadius: 6, padding: "0 4px",
-                          lineHeight: "14px",
-                        }}>
-                          {bus.bus_name.replace("#", "")}
-                        </span>
-                      </>
-                    );
-                  })()}
-                  {isNext && !bus && (
-                    <span style={{
-                      fontSize: 7, fontWeight: 600, color: cfg.color,
-                      opacity: blinkOn ? 1 : 0.3,
-                      transition: "opacity 0.3s",
-                    }}>
-                      NEXT
-                    </span>
-                  )}
+            {isolated ? (
+              <>
+                {/* The real map for the one route the rider asked for. */}
+                <AllRoutesMap
+                  key={primaryRouteId}
+                  height="min(38vh, 320px)"
+                  buses={routeBuses}
+                  routePaths={isolatedPaths}
+                  stopCoords={stopCoords}
+                  stopNames={stopNames}
+                  routeStops={isolatedStops}
+                  userLatLon={userLatLon ?? null}
+                  onRequestLocate={onRequestLocate ?? (() => {})}
+                />
+                <div style={{ padding: "0 0 6px" }}>
+                  {stops.map((sid, i) => stopRow(sid, `${primaryRouteId}-${sid}-${i}`))}
                 </div>
-              </React.Fragment>);
-              });
-            })()}
+              </>
+            ) : (
+              <>
+                {thumb && (
+                  <div
+                    onClick={() => setIsolatedRouteId(primaryRouteId)}
+                    title={`Show only ${cfg.label}`}
+                    style={{ padding: "0 10px 6px", cursor: "pointer" }}
+                  >
+                    <RouteThumb
+                      thumb={thumb}
+                      color={cfg.color}
+                      label={cfg.label}
+                      dashed={cfg.dashed}
+                    />
+                  </div>
+                )}
+                {upcoming.map(({ sid }, i) => stopRow(sid, `${primaryRouteId}-${sid}-${i}`))}
+                {(upcoming.length === 0 || moreStops > 0) && (
+                  <button
+                    onClick={() => setIsolatedRouteId(primaryRouteId)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left",
+                      fontSize: 12, color: "#546e7a", padding: "10px",
+                      minHeight: 44, background: "none", border: "none",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {upcoming.length > 0
+                      ? `and ${moreStops} more stops ›`
+                      : `${stops.length} stops${hasBuses ? "" : " · no buses en route"} ›`}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         );
       })}
@@ -5024,416 +5254,6 @@ const StopList: FC<{
   );
 };
 
-// ── Track loop visualization ───────────────────────────────────────────────
-
-const TRACK_W = 520;
-const TRACK_H = 340;
-const TRACK_RX = 60;       // corner radius
-const TRACK_PAD = 80;      // room for outward labels
-
-/** Compute tangent angle (degrees) at a given t — direction of travel */
-function trackTangent(t: number): number {
-  const [x1, y1] = trackPoint(t);
-  const [x2, y2] = trackPoint((t + 0.001) % 1);
-  return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-}
-
-/** Compute outward normal direction (away from center) at a given t */
-function trackNormal(t: number): [number, number] {
-  const [x, y] = trackPoint(t);
-  const cx = TRACK_W / 2, cy = TRACK_H / 2;
-  const dx = x - cx, dy = y - cy;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  return [dx / len, dy / len];
-}
-
-/** Compute a point along a rounded-rectangle perimeter (0–1 = full loop) */
-function trackPoint(t: number): [number, number] {
-  const w = TRACK_W - TRACK_PAD * 2;
-  const h = TRACK_H - TRACK_PAD * 2;
-  const straight = (w - TRACK_RX * 2) * 2 + (h - TRACK_RX * 2) * 2;
-  const curve = 2 * Math.PI * TRACK_RX;
-  const perimeter = straight + curve;
-  let d = ((t % 1) + 1) % 1 * perimeter;
-
-  const cx = TRACK_PAD, cy = TRACK_PAD;
-  const topLen = w - TRACK_RX * 2;
-  const rightLen = h - TRACK_RX * 2;
-
-  // Top straight (left to right)
-  if (d < topLen) return [cx + TRACK_RX + d, cy];
-  d -= topLen;
-  // Top-right curve
-  const qCurve = Math.PI * TRACK_RX / 2;
-  if (d < qCurve) {
-    const a = -Math.PI / 2 + (d / qCurve) * (Math.PI / 2);
-    return [cx + w - TRACK_RX + Math.cos(a) * TRACK_RX, cy + TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Right straight (top to bottom)
-  if (d < rightLen) return [cx + w, cy + TRACK_RX + d];
-  d -= rightLen;
-  // Bottom-right curve
-  if (d < qCurve) {
-    const a = (d / qCurve) * (Math.PI / 2);
-    return [cx + w - TRACK_RX + Math.cos(a) * TRACK_RX, cy + h - TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Bottom straight (right to left)
-  if (d < topLen) return [cx + w - TRACK_RX - d, cy + h];
-  d -= topLen;
-  // Bottom-left curve
-  if (d < qCurve) {
-    const a = Math.PI / 2 + (d / qCurve) * (Math.PI / 2);
-    return [cx + TRACK_RX + Math.cos(a) * TRACK_RX, cy + h - TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Left straight (bottom to top)
-  if (d < rightLen) return [cx, cy + h - TRACK_RX - d];
-  d -= rightLen;
-  // Top-left curve (from left at (cx, cy+TRACK_RX) to top at (cx+TRACK_RX, cy))
-  if (d < qCurve) {
-    const a = Math.PI + (d / qCurve) * (Math.PI / 2);
-    return [cx + TRACK_RX + Math.cos(a) * TRACK_RX, cy + TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  return [cx + TRACK_RX, cy];
-}
-
-interface TrackLoopProps {
-  label: string;
-  color: string;
-  stops: number[];
-  stopNames: Record<number, string>;
-  stopCoords: Record<number, { lat: number; lon: number }>;
-  buses: BusData[];
-  savedStops: Set<number>;
-  tick: number;
-}
-
-const TrackLoop: FC<TrackLoopProps & {
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  routeId: string;
-}> = (
-  { label, color, stops, stopNames, stopCoords, buses, savedStops, tick, segmentTimes, dwellTimes, routeId }
-) => {
-  if (stops.length === 0) return null;
-
-  const n = stops.length;
-
-  // Find northernmost stop and use it as offset so it appears at the top of the loop
-  let northIdx = 0;
-  let maxLat = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const coord = stopCoords[stops[i]];
-    if (coord && coord.lat > maxLat) {
-      maxLat = coord.lat;
-      northIdx = i;
-    }
-  }
-  // Offset function: rotate stop positions so northIdx maps to t=0 (top of track)
-  const toT = (idx: number) => ((idx - northIdx + n) % n) / n;
-
-  // Segment data for this route
-  const routeSegs = segmentTimes[routeId] ?? {};
-  const segValues = Object.values(routeSegs).filter((s) => s.n >= 1);
-  const avgSeg = segValues.length > 0 ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length : 0;
-
-  // Find buses on this route — use GPS to find the nearest route stop
-  // (more accurate than last_stop_id which can be stale or zero)
-  const busPositions: Array<{ name: string; idx: number; t: number; stationary: boolean; dwellElapsed: number | null; dwellExpected: number | null }> = [];
-  for (const bus of buses) {
-    let bestIdx = -1;
-    if (bus.lat && bus.lon) {
-      let bestD2 = Infinity;
-      for (let i = 0; i < stops.length; i++) {
-        const sc = stopCoords[stops[i]];
-        if (!sc) continue;
-        const dLat = bus.lat - sc.lat;
-        const dLon = bus.lon - sc.lon;
-        const d2 = dLat * dLat + dLon * dLon;
-        if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
-      }
-    }
-    if (bestIdx === -1) {
-      if (bus.last_stop_id === 0) continue;
-      bestIdx = stops.indexOf(bus.last_stop_id);
-      if (bestIdx === -1) continue;
-    }
-    // Count up elapsed sitting time if bus is parked at a known long-dwell stop
-    let dwellElapsed: number | null = null;
-    let dwellExpected: number | null = null;
-    const atStopId = bus.at_stop_id ?? stops[bestIdx];
-    const atStopIdx = stops.indexOf(atStopId);
-    const dw = (dwellTimes[routeId] ?? {})[String(atStopId)];
-    if (dw && dw.n >= 3 && dw.med >= 300 && bus.at_stop_since && atStopIdx === bestIdx) {
-      dwellElapsed = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-      dwellExpected = dw.med;
-    }
-    busPositions.push({
-      name: bus.bus_name.replace("#", ""),
-      idx: bestIdx, t: toT(bestIdx),
-      stationary: !!bus.stationary,
-      dwellElapsed,
-      dwellExpected,
-    });
-  }
-
-  // Compute ETA (+ over/under range) from nearest upstream bus for EVERY stop
-  const routeDwells = dwellTimes[routeId] ?? {};
-  const stopEtas: Record<number, { eta: number; low: number; high: number }> = {};
-  const fallbackSd = avgSeg * 0.5;
-  // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-  for (const bp of busPositions) {
-    let cumulative = 0;
-    let cumulativeVar = 0;
-    for (let step = 1; step < n; step++) {
-      const prevIdx = (bp.idx + step - 1) % n;
-      const curIdx = (bp.idx + step) % n;
-
-      const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-      if (seg && seg.n >= 1) {
-        cumulative += seg.avg;
-        cumulativeVar += (seg.sd ?? 0) ** 2;
-      } else {
-        const a = avgSeg > 0 ? avgSeg : 60;
-        cumulative += a;
-        cumulativeVar += fallbackSd * fallbackSd;
-      }
-      const sd = Math.sqrt(cumulativeVar);
-      const existing = stopEtas[stops[curIdx]];
-      if (!existing || cumulative < existing.eta) {
-        stopEtas[stops[curIdx]] = {
-          eta: cumulative,
-          low: Math.max(0, cumulative - sd),
-          high: cumulative + sd,
-        };
-      }
-    }
-  }
-
-  // Stops currently hosting a parked bus whose dwell pill is being rendered —
-  // suppress the stop-level ⏸Xm hint there to avoid duplication.
-  const parkedDwellIdxs = new Set<number>();
-  for (const bp of busPositions) {
-    if (bp.dwellExpected !== null) parkedDwellIdxs.add(bp.idx);
-  }
-
-  // Label ALL stops. Collapse only adjacent N/S twins (back-to-back same-name
-  // stops look like one); leave non-adjacent twins labeled so opposite-side
-  // occurrences don't turn into unlabeled gaps.
-  const labeledStops: Array<{ idx: number; t: number; name: string; saved: boolean; eta: string | null; dwellMin: number | null }> = [];
-  let lastLabeledName: string | null = null;
-  for (let i = 0; i < n; i++) {
-    const rawName = stopNames[stops[i]] ?? `Stop ${stops[i]}`;
-    const shortName = rawName.replace(/ \([NS]\)$/, "").replace(/\s*\/\s*/g, "/").trim().slice(0, 16);
-    const isSaved = savedStops.has(stops[i]);
-    if (shortName === lastLabeledName && !isSaved) continue;
-    lastLabeledName = shortName;
-    const e = stopEtas[stops[i]];
-    let etaStr: string | null = null;
-    if (e) {
-      if (e.eta < 60) {
-        etaStr = "<1 min";
-      } else {
-        etaStr = `${Math.round(e.low / 60)} min`;
-      }
-    }
-    const dw = routeDwells[String(stops[i])];
-    const dwellMin = dw && dw.n >= 3 && dw.med >= 300 && !parkedDwellIdxs.has(i) ? Math.round(dw.med / 60) : null;
-    labeledStops.push({ idx: i, t: toT(i), name: shortName, saved: isSaved, eta: etaStr, dwellMin });
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%", maxWidth: TRACK_W }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color, letterSpacing: 1, textTransform: "uppercase" }}>{label}</div>
-      <svg viewBox={`0 0 ${TRACK_W} ${TRACK_H}`} style={{ width: "100%", maxWidth: TRACK_W, height: "auto", display: "block" }}>
-        {/* Track outline */}
-        <rect
-          x={TRACK_PAD} y={TRACK_PAD}
-          width={TRACK_W - TRACK_PAD * 2} height={TRACK_H - TRACK_PAD * 2}
-          rx={TRACK_RX} fill="none" stroke={color} strokeWidth={3} opacity={0.15}
-        />
-
-        {/* Stop tick marks */}
-        {stops.map((_, i) => {
-          const [x, y] = trackPoint(toT(i));
-          return <circle key={i} cx={x} cy={y} r={1.5} fill={color} opacity={0.25} />;
-        })}
-
-        {/* Labeled stops — radial, text pointing outward from center */}
-        {labeledStops.map((ls) => {
-          const [x, y] = trackPoint(ls.t);
-          const [nx, ny] = trackNormal(ls.t);
-          // More spacing on top/bottom (vertical normal) than sides
-          const isVertical = Math.abs(ny) > Math.abs(nx) * 0.5;
-          const offset = isVertical ? 12 : 8;
-          const lx = x + nx * offset;
-          const ly = y + ny * offset;
-
-          // All angled labels use the same angle: -45° (up-and-to-the-right tilt).
-          // Which side of the text touches the loop depends on the dot's position:
-          //   top of loop    → anchor=start (text extends up-right, LEFT edge at dot)
-          //   bottom of loop → anchor=end   (text extends down-left, RIGHT edge at dot)
-          //   right side     → anchor=start (horizontal, LEFT edge at dot)
-          //   left side      → anchor=end   (horizontal, RIGHT edge at dot)
-          const onBottom = ny > 0;
-          const onLeft = nx < 0;
-          const isAngled = Math.abs(ny) > Math.abs(nx) * 0.5;
-          const angle = isAngled ? -45 : 0;
-          // Pick anchor: end for bottom labels and left-side labels
-          const textAnchor = (isAngled ? onBottom : onLeft) ? "end" : "start";
-
-          return (
-            <g key={`l${ls.idx}`}>
-              <circle cx={x} cy={y} r={ls.saved ? 5 : 3}
-                      fill={ls.saved ? "#2E7D32" : "#fff"}
-                      stroke={ls.saved ? "#fff" : color}
-                      strokeWidth={ls.saved ? 2 : 1.5} />
-              {ls.dwellMin && (
-                <g>
-                  <title>Often pauses ~{ls.dwellMin} min here</title>
-                  <circle cx={x} cy={y} r={ls.saved ? 9 : 7} fill="none"
-                          stroke="#FFA726" strokeWidth={1.5} strokeDasharray="2 2" opacity={0.8} />
-                  <text x={x - 8} y={y - 8} textAnchor="end" dominantBaseline="central"
-                        fontSize={9} fontWeight={700} fill="#E65100">
-                    ⏸{ls.dwellMin}m
-                  </text>
-                </g>
-              )}
-              <text
-                x={lx} y={ly}
-                textAnchor={textAnchor}
-                dominantBaseline="central"
-                transform={`rotate(${angle}, ${lx}, ${ly})`}
-                fontSize={11}
-                fill={ls.saved ? "#2E7D32" : "#78909C"}>
-                {(() => {
-                  const parts = ls.name.split("/").map((p) => p.trim()).filter(Boolean);
-                  const nameColor = ls.saved ? "#2E7D32" : "#455a64";
-                  const nameWeight = ls.saved ? 700 : 500;
-                  const line1 = parts[0];
-                  const line2 = parts.slice(1).join("/");
-                  const multiline = parts.length > 1;
-                  return (
-                    <>
-                      <tspan fontWeight={nameWeight} fill={nameColor}>{line1}</tspan>
-                      {multiline && (
-                        <tspan x={lx} dy="1em" dx={textAnchor === "start" ? 6 : -6}
-                               fontWeight={nameWeight} fill={nameColor}>
-                          {line2}
-                        </tspan>
-                      )}
-                    </>
-                  );
-                })()}
-              </text>
-              {ls.eta && (() => {
-                // Place ETA on the inside of the loop (opposite side of the dot from the label).
-                const etaOffset = 8;
-                const ex = x - nx * etaOffset;
-                const ey = y - ny * etaOffset;
-                const etaAnchor = textAnchor === "start" ? "end" : "start";
-                const etaSize = ls.saved ? 11 : 9;
-                const etaWeight = ls.saved ? 800 : 700;
-                return (
-                  <text x={ex} y={ey} textAnchor={etaAnchor} dominantBaseline="central"
-                        transform={`rotate(${angle}, ${ex}, ${ey})`}
-                        fontSize={etaSize} fontWeight={etaWeight} fill={color}>
-                    {ls.eta}
-                  </text>
-                );
-              })()}
-            </g>
-          );
-        })}
-
-        {/* Direction arrows */}
-        {[0.15, 0.65].map((t, i) => {
-          const [ax, ay] = trackPoint(t);
-          const [bx, by] = trackPoint(t + 0.01);
-          const angle = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
-          return (
-            <g key={`arr${i}`} transform={`translate(${ax},${ay}) rotate(${angle})`}>
-              <polygon points="5,0 -3,-3 -3,3" fill={color} opacity={0.35} />
-            </g>
-          );
-        })}
-
-        {/* Bus dots — offset when multiple buses at same stop */}
-        {busPositions.map((bp, i) => {
-          const [x, y] = trackPoint(bp.t);
-          // Count how many buses at the same idx, and which offset this one is
-          const sameStopBuses = busPositions.filter((b) => b.idx === bp.idx);
-          const orderAtStop = sameStopBuses.findIndex((b) => b.name === bp.name);
-          // Offset perpendicular to track using normal direction
-          const [nx, ny] = trackNormal(bp.t);
-          const spacing = 15;
-          const offset = sameStopBuses.length > 1
-            ? (orderAtStop - (sameStopBuses.length - 1) / 2) * spacing
-            : 0;
-          const bx = x + nx * offset;
-          const by = y + ny * offset;
-          return (
-            <g key={`b${bp.name}`}>
-              <g opacity={bp.stationary ? 0.45 : 1}>
-                {!bp.stationary && (
-                  <circle cx={bx} cy={by} r={8} fill={color} opacity={0.15}>
-                    <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
-                  </circle>
-                )}
-                <circle cx={bx} cy={by} r={8}
-                        fill={bp.stationary ? "#999" : color}
-                        stroke="#fff" strokeWidth={1.5}
-                        strokeDasharray={bp.stationary ? "2 2" : undefined} />
-                <text x={bx} y={by} textAnchor="middle" dominantBaseline="central"
-                      fontSize={9} fontWeight={700} fill="#fff">{bp.name}</text>
-              </g>
-              {bp.dwellElapsed !== null && (() => {
-                const s = Math.floor(bp.dwellElapsed);
-                const mm = Math.floor(s / 60);
-                const ss = s % 60;
-                const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
-                const expMin = bp.dwellExpected !== null ? Math.max(1, Math.round(bp.dwellExpected / 60)) : null;
-                const label = expMin !== null ? `${elapsed}/~${expMin} min` : elapsed;
-                const width = expMin !== null ? 66 : 48;
-                return (
-                  <g>
-                    <rect x={bx - width / 2} y={by + 10} width={width} height={14}
-                          rx={3} fill="#FFA726" opacity={0.95} />
-                    <text x={bx} y={by + 17} textAnchor="middle" dominantBaseline="central"
-                          fontSize={9.5} fontWeight={700} fill="#fff">⏸ {label}</text>
-                  </g>
-                );
-              })()}
-            </g>
-          );
-        })}
-
-        {/* Center label — count placed vs unplaced */}
-        {(() => {
-          const placed = busPositions.length;
-          const unplaced = buses.length - placed;
-          return (
-            <>
-              <text x={TRACK_W / 2} y={TRACK_H / 2 - 4} textAnchor="middle" dominantBaseline="central"
-                    fontSize={11} fontWeight={600} fill={color} opacity={0.5}>
-                {placed > 0 ? `${placed} bus${placed > 1 ? "es" : ""}` : "no buses"}
-              </text>
-              {unplaced > 0 && (
-                <text x={TRACK_W / 2} y={TRACK_H / 2 + 10} textAnchor="middle" dominantBaseline="central"
-                      fontSize={8} fill="#999">
-                  +{unplaced} off-route
-                </text>
-              )}
-            </>
-          );
-        })()}
-      </svg>
-    </div>
-  );
-};
 
 
 // On-bus tracking banner. Appears once the rider taps "I'm on this bus";
@@ -7001,7 +6821,7 @@ const TransitMap: FC = () => {
       )}
 
       {/* Route jump index: one chip per visible route, scrolls to that
-          route's loop diagram — the page is thousands of pixels tall. */}
+          route's card — the page is thousands of pixels tall. */}
       {listView === "all" && (
         <div style={{
           padding: "0 16px 6px", display: "flex", gap: 6, flexWrap: "wrap",
@@ -7015,8 +6835,8 @@ const TransitMap: FC = () => {
             return (
               <button
                 key={cfg.label}
-                onClick={() => document.getElementById(`loop-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                title={`Jump to the ${cfg.label} route diagram`}
+                onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                title={`Jump to the ${cfg.label} route`}
                 style={{
                   padding: "3px 10px", borderRadius: 10,
                   border: `1px solid ${cfg.color}`, background: "#fff",
@@ -7032,61 +6852,21 @@ const TransitMap: FC = () => {
         </div>
       )}
 
-      {/* Stop list (all view — below the map) */}
+      {/* Route cards (all view): one full-width card per route — name, hours,
+          an SVG thumbnail of the line and its soonest arrivals. Tapping a card
+          isolates that route (real Leaflet map + every stop). */}
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+            routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
             listView={listView} activeOnly={activeFilter}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}
             savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
+            userLatLon={userLatLon} onRequestLocate={startLocating}
           />
-        </div>
-      )}
-
-      {/* Track loops (bottom of all view) — honor the same visibility filters
-          the stop list and map use: hidden routes hide, active-only collapses
-          to routes with buses. */}
-      {listView === "all" && (
-        <div style={{
-          width: "100%", padding: "8px 16px", display: "flex",
-          gap: 8, flexWrap: "wrap", justifyContent: "center",
-        }}>
-          {ROUTE_LISTS.map((cfg, idx) => {
-            const routeBuses = buses.filter((b) => cfg.busRouteIds.includes(b.route_id));
-            const hasBuses = routeBuses.length > 0;
-            if (activeFilter && !hasBuses) return null;
-            const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-            if (toggle && hiddenRoutes.has(toggle)) return null;
-            const allStops: number[] = [];
-            const seen = new Set<number>();
-            for (const rid of cfg.routeIds) {
-              for (const sid of (routeStops[rid] ?? [])) {
-                if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-              }
-            }
-            if (allStops.length < 2) return null;
-            return (
-              // Anchor for the jump-index chips above the list.
-              <div key={idx} id={`loop-${cfg.label}`} style={{ scrollMarginTop: 8 }}>
-                <TrackLoop
-                  label={cfg.label}
-                  color={cfg.color}
-                  stops={allStops}
-                  stopNames={stopNames}
-                  stopCoords={stopCoords}
-                  buses={routeBuses}
-                  savedStops={savedStops}
-                  tick={tick}
-                  segmentTimes={segmentTimes}
-                  dwellTimes={dwellTimes}
-                  routeId={cfg.routeIds[0]}
-                />
-              </div>
-            );
-          })}
         </div>
       )}
       </>
