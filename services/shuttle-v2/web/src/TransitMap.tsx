@@ -1335,9 +1335,14 @@ const AllRoutesMap: FC<{
     // shuttles reduced to a downtown speck. Fall back to route bounds
     // until the first bus poll lands (the buses effect below refits once).
     const fitBuses = buses.filter((b) => shown(b.route_id));
+    // Padding scaled to the box. 48 px on each side of a 388 px embedded map
+    // eats a quarter of it and cost the fit a whole zoom level, turning the
+    // downtown fleet into overlapping discs; on the old full-height map the
+    // same number was fine.
+    const fitPad: [number, number] = height ? [16, 16] : [48, 48];
     if (fitBuses.length > 0) {
       map.fitBounds(L.latLngBounds(fitBuses.map((b) => [b.lat, b.lon] as [number, number])), {
-        padding: [48, 48], maxZoom: 15,
+        padding: fitPad, maxZoom: 15,
       });
       busFitDoneRef.current = true;
     } else if (pts.length) {
@@ -6171,9 +6176,17 @@ const TransitMap: FC = () => {
   // any trip has been started — as idle browsing. Those riders got
   // enableHighAccuracy:false with maximumAge:60_000, i.e. a coarse fix up to
   // a minute stale, and watched their dot sit still while they walked
-  // (reports #36, #39, #43, #44). Only the passive "all routes" list is
-  // genuinely idle; the trip and map views both render a live dot.
-  const tripActiveForGps = !!boardedRide || listView !== "all";
+  // (reports #36, #39, #43, #44). The trip view and a ride in progress render
+  // a live dot and need the precise tier.
+  //
+  // This used to read `listView !== "all"`, naming the tab that held the
+  // passive route list. That tab is gone — its cards live under the map — so
+  // the predicate became a tautology and the coarse tier was unreachable:
+  // a rider browsing route cards got a continuous high-accuracy watch. It now
+  // names the condition instead of the tab, and the map tab is precise only
+  // once the rider asks to be located.
+  const tripActiveForGps =
+    !!boardedRide || listView === "trip" || (listView === "map" && (locating || userLatLon !== null));
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     if (watchIdRef.current == null) return; // nothing running yet — mount effect owns the first start
@@ -6737,7 +6750,7 @@ const TransitMap: FC = () => {
           <AllRoutesMap
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
-            height="min(46vh, 420px)"
+            height="min(48vh, 430px)"
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
             hiddenRoutes={mapHidden}
@@ -6748,26 +6761,56 @@ const TransitMap: FC = () => {
               a tab of their own; the map above answers "where is everything"
               and these answer "when does MY line reach MY stop", which is one
               page, not two. The line filter above governs both. */}
+          {/* One control row above the cards: the "running now" filter, then
+              the jump index. Two stacked rows pushed the first card entirely
+              off a phone screen. It scrolls sideways rather than wrapping, so
+              fifteen routes cost the same height as three.
+              The jump index earns its place because the page is thousands of
+              pixels tall and a swipe starting on the map pans the map instead
+              of scrolling the page — report #21 is the same complaint about a
+              list sitting too low. */}
           <div style={{
-            padding: "8px 16px 4px", display: "flex", justifyContent: "center",
-            gap: 6, alignItems: "center", flexWrap: "wrap",
+            // Same shape as the line-filter row above the map: a sideways
+            // scroller must be width-constrained or it widens the PAGE, and a
+            // page that scrolls sideways on a phone feels broken.
+            width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
+            padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
+            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
           }}>
-            {([[false, "All routes"], [true, "Running now"]] as const).map(([v, label]) => (
-              <button key={label} onClick={() => setActiveOnly(v)} style={{
-                padding: "4px 16px", borderRadius: 12, minHeight: 44,
-                border: activeOnly === v ? "1px solid #1a1a2e" : "1px solid #bbb",
-                background: activeOnly === v ? "#1a1a2e" : "#fff",
-                color: activeOnly === v ? "#fff" : "#546e7a",
+            <button
+              onClick={() => setActiveOnly(!activeOnly)}
+              style={{
+                padding: "4px 14px", borderRadius: 12, minHeight: 44, flexShrink: 0,
+                border: activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
+                background: activeOnly ? "#1a1a2e" : "#fff",
+                color: activeOnly ? "#fff" : "#546e7a", whiteSpace: "nowrap",
                 fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-              }}>
-                {label}
-              </button>
-            ))}
-            {activeOnly && buses.length === 0 && (
-              <span style={{ fontSize: 11, color: "#78909c", width: "100%", textAlign: "center" }}>
-                No shuttles running right now — showing every route
-              </span>
-            )}
+              }}
+            >
+              {activeOnly ? "Running now" : "Every route"}
+            </button>
+            {ROUTE_LISTS.map((cfg) => {
+              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+              if (activeOnly && buses.length > 0 && !hasBuses) return null;
+              const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+              if (toggle && mapHidden.has(toggle)) return null;
+              return (
+                <button
+                  key={cfg.label}
+                  onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  title={`Jump to the ${cfg.label} route`}
+                  style={{
+                    padding: "3px 10px", borderRadius: 10, minHeight: 44,
+                    border: `1px solid ${cfg.color}`, background: "#fff",
+                    color: cfg.color, fontSize: 10, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })}
           </div>
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
