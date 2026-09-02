@@ -6,7 +6,7 @@ import type { BusData } from "./map-data";
 import { computeUpcomingArrivals } from "./arrivals";
 import {
   ALT_PICKUP_MIN_GAIN_SEC, alternatePickup, dwellBoardWindowSec, findPotentialRoutes, MAX_ALTERNATES,
-  MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
+  MAX_RIDE_SEC, optionKey, optionKeyLabel, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
   type TripOption,
 } from "./planner";
 import { HEADWAY_MIN } from "./schedule";
@@ -683,6 +683,11 @@ describe("report #55: switching the itinerary to an alternate stop", () => {
     expect(sw.alternatePickup).toBeUndefined();
     expect(sw.busEtaSec).toBeUndefined();
     expect(sw.alternates!.map((a) => a.boardStopId)).toEqual([100, 102]);
+    // Its own card, distinguishable from the original's.
+    expect(sw.viaAlternate).toBe(true);
+    expect(optionKey(sw)).toBe("Blue Day via 129");
+    expect(optionKey(base)).toBe("Blue Day");
+    expect(optionKeyLabel(optionKey(sw))).toBe("Blue Day");
   });
   it("returns null for a stop that is not an alternate", () => {
     expect(switchToAlternate(base, 999)).toBeNull();

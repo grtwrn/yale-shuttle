@@ -46,8 +46,14 @@ export type TripOption = {
   alternates?: TripAlternate[];
   // Filled by the live layer from `alternates` when walking to another stop
   // beats waiting where the rider is (see alternatePickup). Undefined
-  // otherwise — the card shows nothing extra.
+  // otherwise. When set, the live layer also lists that itinerary as its
+  // own card (`viaAlternate`), so the rider sees both and taps either.
   alternatePickup?: AlternatePickup;
+  // This card IS the alternate itinerary derived from another option of the
+  // same route (switchToAlternate): it boards at a different stop. Keeps its
+  // own card key (optionKey) so both can be listed and expanded independently,
+  // and is never itself a source of further alternates.
+  viaAlternate?: boolean;
 };
 
 export type TripAlternate = {
@@ -456,6 +462,20 @@ export const ALT_PICKUP_MIN_GAIN_SEC = PIN_SWITCH_MARGIN_SEC;
  * the alternates, so the line can offer the way back if that turns better.
  * Null when `stopId` is not one of the option's alternates.
  */
+/**
+ * The identity of an option card. One card per route, except a same-route
+ * alternate itinerary (report #55), which is keyed by its board stop so the
+ * two can be listed, expanded and mapped independently.
+ */
+export function optionKey(o: Pick<TripOption, "routeLabel" | "boardStopId" | "viaAlternate">): string {
+  return o.viaAlternate ? `${o.routeLabel} via ${o.boardStopId}` : o.routeLabel;
+}
+
+/** The route label behind an option key (see optionKey). */
+export function optionKeyLabel(key: string): string {
+  return key.split(" via ")[0]!;
+}
+
 export function switchToAlternate(option: TripOption, stopId: number): TripOption | null {
   const alt = option.alternates?.find((a) => a.boardStopId === stopId);
   if (!alt || option.mode !== "shuttle") return null;
@@ -470,6 +490,7 @@ export function switchToAlternate(option: TripOption, stopId: number): TripOptio
   const others = (alternates ?? []).filter((a) => a.boardStopId !== stopId);
   return {
     ...rest,
+    viaAlternate: true,
     boardStopId: alt.boardStopId, alightStopId: alt.alightStopId,
     walkToSec: alt.walkToSec, rideSec: alt.rideSec, walkFromSec: alt.walkFromSec,
     waitSec: 0,

@@ -22,7 +22,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, switchToAlternate, type TripOption,
+  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, optionKey, optionKeyLabel, pickLiveArrival, planTrip, switchToAlternate, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -1210,7 +1210,9 @@ const CombinedTripMap: FC<{
         boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
         display: "flex", flexDirection: "column", gap: 2,
       }}>
-        {options.map((o, i) => (
+        {/* One legend row per route: two itineraries on the same line
+            (report #55) share a colour and a name. */}
+        {options.filter((o, i) => options.findIndex((p) => p.label === o.label) === i).map((o, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 10, height: 3, background: o.color, borderRadius: 1 }} />
             <span style={{ fontWeight: 600, color: o.color }}>{o.label}</span>
@@ -1786,14 +1788,8 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
-  // Report #55: the board stop the rider chose to walk to instead, per route
-  // label, after tapping the alternate-pickup line. Applied before the live
-  // re-derive below so everything downstream sees the new itinerary. A new
-  // plan clears it.
-  const [switchedBoard, setSwitchedBoard] = useState<Record<string, number>>({});
-
   // Collapse the "show more" list whenever a new trip is planned.
-  useEffect(() => { setShowAllOptions(false); setSwitchedBoard({}); }, [stableOptions]);
+  useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
   // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
   // 07:02 before the first bus reported and nothing re-ran it when the bus
@@ -1831,11 +1827,9 @@ const TripPlanner: FC<{
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions;
-    return stableOptions.map((planned) => {
-      // Report #55: the rider may have switched this route's itinerary to
-      // one of its alternate board stops; from here on it is just an option.
-      const switched = switchedBoard[planned.routeLabel];
-      const o = switched != null ? (switchToAlternate(planned, switched) ?? planned) : planned;
+    // One planned option in, its live-refreshed self out. Applied to every
+    // card, including the same-route alternate itineraries derived below.
+    const deriveLive = (o: TripOption): TripOption => {
       if (o.mode !== "shuttle") return o;
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
@@ -1933,13 +1927,25 @@ const TripPlanner: FC<{
       // route's other board stops against the live feed and is null unless
       // the trip via one of them genuinely arrives sooner; the card then adds
       // one line. Judged from the rider's live position when we have it.
+      if (next.viaAlternate) return next; // an alternate never spawns alternates
       const alt = alternatePickup(
         next, buses, routeStops, stopCoords, segmentTimes, dwellTimes, nowMs, liveFromLL,
       );
       return alt ? { ...next, alternatePickup: alt } : next;
+    };
+    return stableOptions.flatMap((planned) => {
+      const live = deriveLive(planned);
+      const ap = live.alternatePickup;
+      if (!ap) return [live];
+      // Report #55: the alternate itinerary is its own card, listed right
+      // beside the original, so the rider sees both ways to ride this route
+      // and taps either — nothing to guess at. It is refreshed live against
+      // its own board stop exactly like any other card.
+      const via = switchToAlternate(live, ap.stopId);
+      return via ? [live, deriveLive(via)] : [live];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, switchedBoard, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   // Latest options for the reminder engine's interval closure — the memo
   // above rebuilds the array every /api/buses poll, and re-arming the
@@ -2018,9 +2024,11 @@ const TripPlanner: FC<{
       orderDestRef.current = destKey;
       displayOrderRef.current = [];
     }
-    const byKey = new Map(options.map((o) => [o.routeLabel, o]));
+    // Keyed by card identity, not route label: a same-route alternate
+    // itinerary (report #55) is its own card and must not replace the original.
+    const byKey = new Map(options.map((o) => [optionKey(o), o]));
     const kept = displayOrderRef.current.filter((k) => byKey.has(k));
-    const fresh = sortOptions(options.filter((o) => !kept.includes(o.routeLabel))).map((o) => o.routeLabel);
+    const fresh = sortOptions(options.filter((o) => !kept.includes(optionKey(o)))).map((o) => optionKey(o));
     const arr = [...kept, ...fresh];
     const HYST_SEC = 90;
     let changed = true;
@@ -2409,7 +2417,7 @@ const TripPlanner: FC<{
   const showFromRow = !!toLL || fromExpanded;
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
-  const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
+  const detailOpen = !!expandedKey && !!options?.some((o) => optionKey(o) === expandedKey);
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {/* In-app fallback for a leave-time ping when a system notification
@@ -2997,7 +3005,7 @@ const TripPlanner: FC<{
             // Route-details view open: the map narrows to just that route,
             // like Google Maps' directions-detail screen.
             const _mapOpts = expandedKey
-              ? _visibleForMap.filter((o) => o.routeLabel === expandedKey)
+              ? _visibleForMap.filter((o) => optionKey(o) === expandedKey)
               : _visibleForMap;
             for (const o of _mapOpts) {
               if (o.mode !== "shuttle") continue;
@@ -3035,7 +3043,7 @@ const TripPlanner: FC<{
               // Single-route detail view: dashed approach from the bus's
               // current anchor to the pickup stop.
               let approach: [number, number][] | undefined;
-              if (expandedKey === o.routeLabel && busMatch) {
+              if (expandedKey === optionKey(o) && busMatch) {
                 const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
@@ -3074,12 +3082,15 @@ const TripPlanner: FC<{
             // "All N routes" was a lie whenever options sat behind "Show N
             // more routes" (map-bot report #28: header said ALL 2 ROUTES over
             // a 5-option list). Only claim "all" when the list really is.
-            const _totalShuttle = _sortedForMap.filter((o) => o.mode === "shuttle").length;
+            // Counted by route, not by card: a same-route alternate itinerary
+            // (report #55) is a second card on the same line.
+            const _totalShuttle = new Set(_sortedForMap.filter((o) => o.mode === "shuttle").map((o) => o.routeLabel)).size;
+            const _shownRoutes = new Set(overviewOpts.map((o) => o.label)).size;
             const _overviewLabel = expandedKey
-              ? `${expandedKey} route`
-              : overviewOpts.length < _totalShuttle
-                ? `Overview — top ${overviewOpts.length} of ${_totalShuttle} routes`
-                : `Overview — all ${overviewOpts.length} route${overviewOpts.length === 1 ? "" : "s"}`;
+              ? `${optionKeyLabel(expandedKey)} route`
+              : _shownRoutes < _totalShuttle
+                ? `Overview — top ${_shownRoutes} of ${_totalShuttle} routes`
+                : `Overview — all ${_shownRoutes} route${_shownRoutes === 1 ? "" : "s"}`;
             return (
               <div style={{
                 marginBottom: 12,
@@ -3149,14 +3160,14 @@ const TripPlanner: FC<{
             // staying tappable from the details view. Opening a 4th-ranked
             // route and refreshing therefore left the chrome in details mode
             // with the top-3 rows rendered underneath it.
-            const _visible = expandedKey && !_visibleBase.some((v) => v.routeLabel === expandedKey)
-              ? [..._visibleBase, ..._sorted.filter((o) => o.routeLabel === expandedKey)]
+            const _visible = expandedKey && !_visibleBase.some((v) => optionKey(v) === expandedKey)
+              ? [..._visibleBase, ..._sorted.filter((o) => optionKey(o) === expandedKey)]
               : _visibleBase;
             const _hidden = _sorted.length - _visible.length;
             // Google-Maps pattern: options are divider-separated ROWS of one
             // sheet; tapping a row swaps the list for that route's details
             // view (← All routes restores the list).
-            const _detailOpen = _visible.some((v) => v.routeLabel === expandedKey);
+            const _detailOpen = _visible.some((v) => optionKey(v) === expandedKey);
             // Reassure rather than confuse: when every shuttle option got
             // demoted below walking, say so up front — otherwise the grey
             // tags read like the app is broken.
@@ -3177,10 +3188,10 @@ const TripPlanner: FC<{
           {_visible.map((o, i) => {
             // Details mode: only the tapped route renders; the other rows
             // hide until the rider taps ← back.
-            if (_detailOpen && o.routeLabel !== expandedKey) return null;
+            if (_detailOpen && optionKey(o) !== expandedKey) return null;
             // Stable identity for expansion state — one option per route,
             // so the label alone is unique ("Walk" for the walk option).
-            const oKey = o.routeLabel;
+            const oKey = optionKey(o);
             const isExpanded = expandedKey === oKey;
             const showMore = detailsKey === oKey;
             // Shared shuttle context: bus pinned to this option + how
@@ -3297,6 +3308,13 @@ const TripPlanner: FC<{
                           <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
                       )}
+                      {/* Report #55: this card is the same route boarded at a
+                          different stop than the card next to it — say which. */}
+                      {o.viaAlternate && (
+                        <span style={{ fontSize: 12, color: "#78909c", whiteSpace: "nowrap" }}>
+                          · boarding at {(stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/")}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -3369,13 +3387,10 @@ const TripPlanner: FC<{
                       )}
                       {/* Report #55: the bus left this stop but the loop
                           brings it past another stop the rider can still
-                          walk to. One tappable line on the DETAILS page
-                          only (the collapsed card keeps its single status
-                          line, and bus numbers stay off it — the ride pill
-                          here carries the number), only when alternatePickup
-                          found a genuinely sooner trip. Tapping it re-plans
-                          the card through that stop: the map, the steps and
-                          the countdown all switch to the new route. */}
+                          walk to. The alternate is its own card in the list;
+                          on this DETAILS page (where other cards are hidden)
+                          one tappable line opens it. Collapsed cards carry
+                          nothing extra. */}
                       {isExpanded && o.alternatePickup && (() => {
                         const ap = o.alternatePickup;
                         const name = (stopNames[ap.stopId] ?? `Stop ${ap.stopId}`).replace(/\s*\/\s*/g, "/");
@@ -3384,7 +3399,7 @@ const TripPlanner: FC<{
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSwitchedBoard((m) => ({ ...m, [o.routeLabel]: ap.stopId }));
+                              setExpandedKey(`${o.routeLabel} via ${ap.stopId}`);
                             }}
                             style={{
                               display: "block", width: "100%", textAlign: "left",
