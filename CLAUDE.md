@@ -120,6 +120,24 @@ curl -s -H "x-admin-token: $TOKEN" \
   https://yale-shuttle.fly.dev/api/reports/{id}/image -o report.png
 ```
 
+The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
+above the map toggles each route, and the choice is remembered in
+localStorage as the HIDDEN toggle labels — so a route added upstream appears
+by default rather than staying invisible. It is deliberately separate state
+from `hiddenRoutes`, which every view change resets (that reset exists so the
+favourites filter cannot leak into the All page, and it would wipe the map's
+filter on every tab switch). Every storage touch is guarded; blocked storage
+means the filter simply does not persist.
+
+The weather line above the trip options is ALWAYS shown when a forecast
+exists (`web/src/weather.ts`): temperature, condition and the chance of rain
+within the hour, quiet by default and an amber "Take an umbrella" past 70%.
+It was rain-only and hidden below 50%, which meant nobody learned to look for
+it. It never reorders or hides an option — a shuttle is not faster in the
+rain, only drier at the ends. Temperature and the WMO code are optional all
+the way through, so an upstream that stops sending them degrades to the
+rain-only wording rather than to no line.
+
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never
 caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
@@ -161,7 +179,10 @@ the wrapper stages the PR's own build on :8096, runs `scripts/pr-preview.mjs`
 (phone-sized headless chromium; the bot's `pr-preview.json` recipe mocks the
 API responses that make the feature visible, e.g. a rainy forecast), commits
 the PNGs under `pr-preview/<id>/` on the PR branch and embeds them in the PR
-body — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
+body. **A view that never opened is a failed preview**: the harness records it
+in `preview.json`, exits non-zero, and its `*-failed.png` is never embedded —
+a PR with no usable screenshot opens as a DRAFT saying so, because one shipped
+with a screenshot of its own failure and the operator had to catch it — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
 feature to see it before approving?". To preview any branch by hand: build
 `web/`, run the server on a spare port with a throwaway `SHUTTLE_V2_DB`, then
 `BASE=http://127.0.0.1:<port> RECIPE=recipe.json OUT=/tmp/shots node

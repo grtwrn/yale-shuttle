@@ -9,7 +9,10 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
-import { rainLikelyFrom, rainMessage, type WeatherPayload } from "./weather";
+import {
+  rainLikelyFrom, rainMessage, weatherEmoji, weatherMessage, weatherTone,
+  type WeatherPayload,
+} from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
@@ -25,6 +28,7 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 // True when running as an installed app (home-screen/desktop install). Fixed
@@ -1244,9 +1248,14 @@ const AllRoutesMap: FC<{
    * at min(32vh, 300px) for the same reason.
    */
   height?: string;
+  /** Toggle labels the rider has switched off; remembered across visits. */
+  hiddenRoutes: Set<string>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, height, userLatLon, onRequestLocate }) => {
+}> = ({
+  buses, routePaths, stopCoords, stopNames, routeStops, height, hiddenRoutes,
+  userLatLon, onRequestLocate,
+}) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busLayerRef = useRef<L.LayerGroup | null>(null);
@@ -1291,13 +1300,23 @@ const AllRoutesMap: FC<{
     }).addTo(map);
 
     const pts: [number, number][] = [];
+    // Only the lines the rider left switched on (operator request): fifteen
+    // routes over one downtown is unreadable when you ride two of them.
+    const shown = (rid: number | string) => {
+      const toggle = ROUTE_ID_TO_TOGGLE[Number(rid)];
+      return !toggle || !hiddenRoutes.has(toggle);
+    };
     for (const [rid, path] of Object.entries(routePaths)) {
-      if (!path || path.length < 2) continue;
+      if (!path || path.length < 2 || !shown(rid)) continue;
       L.polyline(path, { color: routeColorFor(Number(rid)), weight: 4, opacity: 0.85 }).addTo(map);
       for (const p of path) pts.push(p);
     }
+    // Stops follow their routes: a lone dot from a hidden line is noise.
     const stopIds = new Set<number>();
-    for (const ids of Object.values(routeStops)) for (const s of ids) stopIds.add(s);
+    for (const [rid, ids] of Object.entries(routeStops)) {
+      if (!shown(rid)) continue;
+      for (const s of ids) stopIds.add(s);
+    }
     for (const sid of stopIds) {
       const c = stopCoords[sid];
       if (!c) continue;
@@ -1315,8 +1334,9 @@ const AllRoutesMap: FC<{
     // zoomed the default view out to the whole metro area with the actual
     // shuttles reduced to a downtown speck. Fall back to route bounds
     // until the first bus poll lands (the buses effect below refits once).
-    if (buses.length > 0) {
-      map.fitBounds(L.latLngBounds(buses.map((b) => [b.lat, b.lon] as [number, number])), {
+    const fitBuses = buses.filter((b) => shown(b.route_id));
+    if (fitBuses.length > 0) {
+      map.fitBounds(L.latLngBounds(fitBuses.map((b) => [b.lat, b.lon] as [number, number])), {
         padding: [48, 48], maxZoom: 15,
       });
       busFitDoneRef.current = true;
@@ -1341,7 +1361,10 @@ const AllRoutesMap: FC<{
       youMarkerRef.current = null; // died with the map
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(Object.keys(routePaths).sort())]);
+    // Rebuilt when the filter changes too: the lines and stops are drawn once
+    // at mount, so a toggle has to re-run this effect to take effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
   useEffect(() => {
@@ -1349,6 +1372,8 @@ const AllRoutesMap: FC<{
     if (!grp) return;
     grp.clearLayers();
     for (const b of buses) {
+      const toggle = ROUTE_ID_TO_TOGGLE[b.route_id];
+      if (toggle && hiddenRoutes.has(toggle)) continue;
       const color = routeColorFor(b.route_id);
       const label = b.bus_name.replace(/^#/, "");
       const dwelling = b.at_stop_id != null;
@@ -1420,9 +1445,16 @@ const AllRoutesMap: FC<{
     // Leaflet container inside it) to ~0 width, collapsing the map to a
     // vertical line.
     <div style={{ width: "100%", maxWidth: 1000, margin: "0 auto", padding: "0 8px 12px", boxSizing: "border-box" }}>
-      <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
+      <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }
+        /* A grey basemap, so the routes are the only colour on the page
+           (operator, 2026-09-02). The filter hits the TILE pane only: lines,
+           bus discs and the you-dot live in overlay panes and keep their
+           colour, which is the point. A filter rather than a different tile
+           host — no new external dependency, no second attribution, and
+           OpenStreetMap's own tiles stay the source. */
+        .map-grey .leaflet-tile-pane { filter: grayscale(1) contrast(1.04) brightness(1.03); }`}</style>
       <div style={{ position: "relative", width: "100%" }}>
-        <div ref={ref} style={{
+        <div ref={ref} className="map-grey" style={{
           position: "relative", width: "100%", height: height ?? "72vh", borderRadius: 8,
           border: "1px solid #e0ddd8", overflow: "hidden",
         }} />
@@ -2894,6 +2926,37 @@ const TripPlanner: FC<{
         </div>
       )}
 
+      {/* The weather, always on (operator request, 2026-09-02): a rider
+          deciding whether to walk a leg wants it whatever it says, and a line
+          that only appeared when it rained was one nobody learned to look
+          for. It sits ABOVE the options because it colours the choice between
+          them; it never reorders or hides an option, because a shuttle is not
+          faster in the rain, only drier at the ends. Loud only when it earns
+          it: amber and "Take an umbrella" past 70%. */}
+      {(() => {
+        const tone = weatherTone(rain);
+        if (tone === "hidden") return null;
+        const warn = tone === "warning";
+        return (
+          <div
+            role="status"
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              fontSize: 13, fontWeight: warn ? 600 : 400,
+              color: warn ? "#8a5300" : "#546e7a",
+              padding: warn ? "10px 12px" : "6px 10px",
+              marginBottom: 8,
+              background: warn ? "#fff4e0" : "#f5f6f7",
+              border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
+              borderRadius: 10,
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
+            <span>{weatherMessage(rain)}</span>
+          </div>
+        );
+      })()}
+
       {/* Results */}
       {options && options.length === 0 && (
         <div style={{ fontSize: 14, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
@@ -3812,25 +3875,6 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {/* Rain warning. One compact line UNDER the options: it informs the
-          trip, it doesn't change it — the options are neither reordered,
-          hidden nor re-ranked, because a shuttle isn't faster in the rain,
-          it's just drier at the ends. Absent entirely when the forecast is
-          dry or unavailable. */}
-      {options && options.length > 0 && rain.likely && (
-        <div
-          role="status"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            fontSize: 13, color: "#37474f",
-            padding: "10px 12px", marginTop: 4,
-            background: "#eef4fb", border: "1px solid #d6e3f0",
-            borderRadius: 10,
-          }}
-        >
-          {rainMessage(rain)}
-        </div>
-      )}
 
       {/* Trip actions: Clear wipes the destination (returns the page to
           Saved/Recent); Refresh re-runs planTrip against the latest
@@ -4670,6 +4714,9 @@ const StopGroupsSummary: FC<{
 // list is one tap away on the isolated view.
 const MAX_CARD_ARRIVALS = 4;
 
+/** Stable empty set — a fresh one each render would remount the map. */
+const EMPTY_HIDDEN: Set<string> = new Set();
+
 // One route's thumbnail map: the published line, its stops and its live buses
 // as a flat inline SVG. Deliberately NOT Leaflet — fifteen tiled map instances
 // on one phone page is unshippable, and the All tab needs these to paint
@@ -5201,6 +5248,9 @@ const StopList: FC<{
                 <AllRoutesMap
                   key={primaryRouteId}
                   height="min(38vh, 320px)"
+                  // The rider asked for exactly this route; the Map tab's
+                  // line filter has no say here.
+                  hiddenRoutes={EMPTY_HIDDEN}
                   buses={routeBuses}
                   routePaths={isolatedPaths}
                   stopCoords={stopCoords}
@@ -5775,6 +5825,16 @@ const TransitMap: FC = () => {
   // While a ride is active, the dedicated ride page (map + stop list) replaces
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
+  // The Map tab's own filter, remembered between visits (operator request,
+  // 2026-09-02). Deliberately NOT `hiddenRoutes` above: that one is reset on
+  // every view change to keep the favourites filter from leaking into the All
+  // page, which would wipe this the moment the rider switched tabs.
+  const [mapHidden, setMapHidden] = useState<Set<string>>(() =>
+    loadHiddenRoutes(LEGEND_ROUTES.map((r) => r.toggleLabel)));
+  const setMapHiddenPersisted = (next: Set<string>) => {
+    setMapHidden(next);
+    saveHiddenRoutes(next);
+  };
   const [showMap, setShowMap] = useState(false);
   // Every storage touch in the shell is guarded: with site data blocked (iOS
   // "Block All Cookies", a QR scanner's in-app WebView) `localStorage` THROWS
@@ -6607,11 +6667,69 @@ const TransitMap: FC = () => {
           />
         </>
       ) : listView === "map" ? (
-        <AllRoutesMap
-          buses={buses} routePaths={routePaths}
-          stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-          userLatLon={userLatLon} onRequestLocate={startLocating}
-        />
+        <>
+          {/* Line filter, remembered between visits. Above the map, not on it:
+              a rider hunting one route should not have to find a control
+              floating over the thing they are trying to read. */}
+          <div style={{
+            width: "100%", maxWidth: 800, margin: "0 auto",
+            padding: "0 12px 6px", display: "flex", gap: 6,
+            // One scrolling row, not four wrapped ones: fifteen 44 px chips
+            // wrapped push the map itself off a phone screen, and the map is
+            // what the tab is for.
+            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
+            alignItems: "center",
+          }}>
+            <button
+              onClick={() => setMapHiddenPersisted(
+                toggleAll(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden))}
+              style={{
+                padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
+                background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit", minHeight: 44,
+                display: "inline-flex", alignItems: "center",
+                flexShrink: 0, whiteSpace: "nowrap",
+              }}
+            >
+              {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? "Show all" : "Hide all"}
+            </button>
+            {LEGEND_ROUTES.map((r) => {
+              const off = mapHidden.has(r.toggleLabel);
+              return (
+                <button
+                  key={r.toggleLabel}
+                  onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
+                  aria-pressed={!off}
+                  style={{
+                    padding: "3px 10px", borderRadius: 10,
+                    border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
+                    background: off ? "#fff" : r.color,
+                    color: off ? "#90a4ae" : "#fff",
+                    fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                    minHeight: 44, display: "inline-flex", alignItems: "center",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto",
+              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
+            }}>
+              Every line is switched off — tap one above to put it back on the map.
+            </div>
+          )}
+          <AllRoutesMap
+            buses={buses} routePaths={routePaths}
+            stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
+            hiddenRoutes={mapHidden}
+            userLatLon={userLatLon} onRequestLocate={startLocating}
+          />
+        </>
       ) : listView === "issues" ? (
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
