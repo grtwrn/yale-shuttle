@@ -48,7 +48,7 @@ import {
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
-import { attachErrorText, downscaleToDataUrl } from "./screenshot";
+import { attachErrorText, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -7064,6 +7064,25 @@ const TransitMap: FC = () => {
             <textarea
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
+              // Paste or drop a screenshot straight in (operator request,
+              // 2026-09-02): a phone screenshot is already on the clipboard,
+              // and making the rider save it and then find it in a file
+              // picker is the step that stops them attaching one at all. A
+              // text paste is untouched — imageFromTransfer returns null and
+              // the event runs as normal.
+              onPaste={(e) => {
+                const file = imageFromTransfer(e.clipboardData);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
+              onDragOver={(e) => { if (imageFromTransfer(e.dataTransfer)) e.preventDefault(); }}
+              onDrop={(e) => {
+                const file = imageFromTransfer(e.dataTransfer);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
               placeholder="Anything on your mind — bugs, ideas, confusing bits…"
               autoFocus
               rows={4}
@@ -7110,7 +7129,7 @@ const TransitMap: FC = () => {
                   fontSize: 13, color: "#1976D2", cursor: "pointer",
                   minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
                 }}>
-                  📎 Attach screenshot
+                  📎 Attach screenshot <span style={{ color: "#90a4ae" }}>&nbsp;or paste one</span>
                   <input type="file" accept="image/*" hidden
                     onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>

@@ -6,7 +6,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { attachErrorText, downscaleToDataUrl } from "./screenshot";
+import { attachErrorText, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import {
   fetchMyReports,
   markAllSeen,
@@ -206,6 +206,30 @@ const IssuesPanel: React.FC<{
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
+                    // Same as the feedback box: paste or drop a screenshot
+                    // rather than hunting for it in a file picker. A text
+                    // paste is untouched.
+                    onPaste={(e) => {
+                      const file = imageFromTransfer(e.clipboardData);
+                      if (!file) return;
+                      e.preventDefault();
+                      setReplyImageErr(null);
+                      void downscaleToDataUrl(file).then((res) => {
+                        if ("error" in res) setReplyImageErr(attachErrorText(res.error));
+                        else setReplyImage(res.dataUrl);
+                      });
+                    }}
+                    onDragOver={(e) => { if (imageFromTransfer(e.dataTransfer)) e.preventDefault(); }}
+                    onDrop={(e) => {
+                      const file = imageFromTransfer(e.dataTransfer);
+                      if (!file) return;
+                      e.preventDefault();
+                      setReplyImageErr(null);
+                      void downscaleToDataUrl(file).then((res) => {
+                        if ("error" in res) setReplyImageErr(attachErrorText(res.error));
+                        else setReplyImage(res.dataUrl);
+                      });
+                    }}
                     placeholder="Add anything that helps…"
                     autoFocus
                     rows={3}
@@ -241,7 +265,7 @@ const IssuesPanel: React.FC<{
                       border: "1px solid #bbb", borderRadius: 6,
                       padding: "8px 12px", background: "#fff",
                     }}>
-                      📎 {replyImage ? "Screenshot attached" : "Add screenshot"}
+                      📎 {replyImage ? "Screenshot attached" : "Add screenshot or paste one"}
                     </span>
                   </label>
                   {replyImage && (

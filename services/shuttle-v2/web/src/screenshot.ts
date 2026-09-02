@@ -32,6 +32,38 @@ export function attachErrorText(error: "not_an_image" | "unreadable" | "too_larg
 }
 
 /**
+ * The image in a paste or a drop, if there is one.
+ *
+ * A phone screenshot copied from the share sheet, or a desktop
+ * screenshot on the clipboard, arrives as a `File` in `clipboardData.items`
+ * — the rider should not have to save it somewhere and then go find it in a
+ * file picker. Returns null for a plain text paste, which must keep its
+ * normal behaviour.
+ */
+export function imageFromTransfer(data: DataTransfer | null | undefined): File | null {
+  if (!data) return null;
+  try {
+    const files = data.files;
+    if (files) {
+      for (const f of Array.from(files)) {
+        if (f && f.type.startsWith("image/")) return f;
+      }
+    }
+    const items = data.items;
+    if (items) {
+      for (const it of Array.from(items)) {
+        if (it.kind !== "file" || !it.type.startsWith("image/")) continue;
+        const f = it.getAsFile();
+        if (f) return f;
+      }
+    }
+  } catch {
+    /* a clipboard we are not allowed to read is the same as an empty one */
+  }
+  return null;
+}
+
+/**
  * Downscale a picked file to a JPEG data URL. Never throws: every failure
  * comes back as an `error`, because a screenshot that will not load must not
  * cost the rider the words they already typed.
