@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { distanceToSegmentM, haversineMeters, progressAlongSegment, buildStopSequencePolyline, polylineMeters, traceStopLegs } from "./geo";
+import { distanceToSegmentM, haversineMeters, progressAlongSegment, buildStopSequencePolyline, polylineMeters, rideStopDots, traceStopLegs } from "./geo";
 import { at, STOP } from "./__fixtures__/payload";
 
 describe("haversineMeters", () => {
@@ -282,5 +282,41 @@ describe("buildStopSequencePolyline: the drawn line IS the published route", () 
         }
       }
     }
+  });
+});
+
+// The stops a rider passes between boarding and getting off. Report #47
+// asked to see them on the trip map ("I could see them in the list but no
+// dots on the map").
+describe("rideStopDots", () => {
+  it("is empty when the rider boards and alights with nothing in between", () => {
+    expect(rideStopDots([at(STOP.phelpsGate), at(STOP.cedar333)])).toEqual([]);
+  });
+
+  it("is empty for a degenerate ride", () => {
+    expect(rideStopDots([])).toEqual([]);
+    expect(rideStopDots([at(STOP.phelpsGate)])).toEqual([]);
+  });
+
+  it("returns the in-between stops, in ride order", () => {
+    const ride = [at(STOP.phelpsGate), at(STOP.elmYork), at(STOP.york129), at(STOP.cedar333)];
+    expect(rideStopDots(ride)).toEqual([at(STOP.elmYork), at(STOP.york129)]);
+  });
+
+  it("drops a stop the ride passes twice — it would sit under the board ring", () => {
+    // Routes 9 and 10 repeat stops for the West Campus out-and-back, so the
+    // board stop can appear again mid-ride. A faded dot under the board
+    // marker just muddies the marker that has to stay dominant.
+    const ride = [at(STOP.phelpsGate), at(STOP.elmYork), at(STOP.phelpsGate), at(STOP.cedar333)];
+    expect(rideStopDots(ride)).toEqual([at(STOP.elmYork)]);
+  });
+
+  it("keeps distinct stops that are only metres apart", () => {
+    // College/Wall (N) and (S) are 28 m apart but are two real stops — the
+    // endpoint filter must not swallow near neighbours (see CLAUDE.md).
+    const collegeWallS = at(42);
+    expect(haversineMeters(at(STOP.collegeWallN), collegeWallS)).toBeLessThan(30);
+    const ride = [at(STOP.phelpsGate), at(STOP.collegeWallN), collegeWallS, at(STOP.cedar333)];
+    expect(rideStopDots(ride)).toEqual([at(STOP.collegeWallN), collegeWallS]);
   });
 });
