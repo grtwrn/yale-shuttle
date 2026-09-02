@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="same-origin" />
+<title>Shuttle riders</title>
+<!--
+  Operator-only dashboard for https://yale-shuttle.fly.dev/stats
+
+  Deliberately standalone: no React, no build step, no CDN, no fonts, no
+  network requests beyond this app's own /api/stats and /api/stats/history.
+  It is a page the operator opens on a phone to answer "how many riders now?",
+  so it must work when nothing else does.
+
+  It is NOT linked from the rider app, and it never stores the admin token —
+  the token is exchanged once for the HttpOnly stats_session cookie (see
+  src/server/app.ts) and then forgotten.
+-->
+<style>
+  /* Every colour is a token so dark mode is a redefinition, not a filter. */
+  :root {
+    color-scheme: light dark;
+    --surface: #fcfcfb;
+    --raised: #ffffff;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --grid: #e6e5e2;
+    --line: #e6e5e2;
+    --series-new: #2a78d6;
+    --series-returning: #eb6834;
+    --danger: #b3261e;
+    --focus: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #1a1a19;
+      --raised: #222220;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --grid: #34332f;
+      --line: #34332f;
+      --series-new: #3987e5;
+      --series-returning: #d95926;
+      --danger: #f2b8b5;
+      --focus: #3987e5;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    /* No webfont: a dashboard that waits on a download is a dashboard that
+       shows nothing on a bad connection. */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    /* The chart scrolls inside its own container; the page never does. */
+    overflow-x: hidden;
+  }
+  body {
+    font-size: 16px;
+    line-height: 1.4;
+    -webkit-text-size-adjust: 100%;
+    padding: 16px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 0;
+  }
+
+  button {
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 16px;
+    cursor: pointer;
+  }
+  button:active { background: var(--grid); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* -- Hero: the one number the page exists for. ------------------------- */
+  .hero-value {
+    font-size: 64px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-label { font-size: 15px; color: var(--ink-2); margin-bottom: 6px; }
+  .hero-split { font-size: 16px; color: var(--ink-2); margin-top: 10px; }
+  .stamp { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+
+  /* -- Tiles ------------------------------------------------------------- */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 24px 0;
+  }
+  @media (min-width: 560px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .tile {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 0;
+  }
+  .tile-label { font-size: 13px; color: var(--ink-2); }
+  .tile-value {
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile-note { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+
+  /* -- Chart ------------------------------------------------------------- */
+  .chart-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .chip { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .chip-new { background: var(--series-new); }
+  .chip-returning { background: var(--series-returning); }
+  /* The y axis lives outside the scroller, so the tick values stay put when
+     the plot is scrolled to today. */
+  .chart-row { display: flex; align-items: flex-start; max-width: 100%; }
+  #chart-axis { flex: 0 0 auto; }
+  #chart-axis svg { display: block; }
+  /* The one element allowed to scroll sideways. */
+  .chart-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+  .chart-scroll svg { display: block; }
+  .empty { font-size: 14px; color: var(--ink-2); padding: 24px 0; }
+
+  /* -- Login / error states --------------------------------------------- */
+  .panel {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  label { display: block; font-size: 14px; color: var(--ink-2); margin-bottom: 8px; }
+  input[type="password"] {
+    /* >= 16px or iOS zooms the whole page on focus. */
+    font: inherit;
+    font-size: 16px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .msg { font-size: 14px; color: var(--danger); margin-top: 10px; }
+  .hint { font-size: 13px; color: var(--ink-2); margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Shuttle riders</h1>
+  <button id="refresh" type="button">Refresh</button>
+</header>
+
+<main id="main">
+  <div id="loading" class="hint">Loading…</div>
+
+  <!-- Sign in: shown only after the API says 401. -->
+  <form id="login" class="panel" hidden autocomplete="off">
+    <label for="token">Admin token</label>
+    <input id="token" type="password" autocomplete="off" autocapitalize="off"
+           autocorrect="off" spellcheck="false" inputmode="text" />
+    <div class="row"><button type="submit">Sign in</button></div>
+    <div id="login-msg" class="msg" hidden></div>
+    <p class="hint">
+      Exchanged once for a session cookie scoped to the stats endpoints.
+      The token itself is never stored in this browser.
+    </p>
+  </form>
+
+  <!-- Any fetch failure lands here rather than on a blank page. -->
+  <div id="error" class="panel" hidden>
+    <div id="error-msg" class="msg"></div>
+    <div class="row"><button id="retry" type="button">Retry</button></div>
+  </div>
+
+  <div id="dash" hidden>
+    <section>
+      <div class="hero-label">Riders today</div>
+      <div class="hero-value" id="hero">—</div>
+      <div class="hero-split" id="hero-split"></div>
+      <div class="stamp" id="stamp"></div>
+      <div class="stamp" id="since"></div>
+    </section>
+
+    <section class="tiles" id="tiles"></section>
+
+    <section>
+      <div class="chart-head">
+        <h2>Daily riders, last 30 days</h2>
+        <div class="legend">
+          <span><i class="chip chip-new"></i>New</span>
+          <span><i class="chip chip-returning"></i>Returning</span>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div id="chart-axis"></div>
+        <div class="chart-scroll" id="chart-scroll">
+          <div id="chart"></div>
+        </div>
+      </div>
+      <div id="chart-empty" class="empty" hidden>No days with riders yet.</div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var REFRESH_MS = 60000;
+  var HISTORY_DAYS = 30;
+
+  var el = {
+    loading: document.getElementById("loading"),
+    login: document.getElementById("login"),
+    loginMsg: document.getElementById("login-msg"),
+    token: document.getElementById("token"),
+    error: document.getElementById("error"),
+    errorMsg: document.getElementById("error-msg"),
+    retry: document.getElementById("retry"),
+    dash: document.getElementById("dash"),
+    hero: document.getElementById("hero"),
+    heroSplit: document.getElementById("hero-split"),
+    stamp: document.getElementById("stamp"),
+    tiles: document.getElementById("tiles"),
+    chart: document.getElementById("chart"),
+    chartAxis: document.getElementById("chart-axis"),
+    chartEmpty: document.getElementById("chart-empty"),
+    since: document.getElementById("since"),
+    chartScroll: document.getElementById("chart-scroll"),
+    refresh: document.getElementById("refresh")
+  };
+
+  // -- formatting -----------------------------------------------------------
+  // Everything time-related is resolved in Eastern Time explicitly: the
+  // operator's phone may be anywhere, and the server's days are ET days.
+  var ET = "America/New_York";
+
+  function num(n) {
+    return typeof n === "number" && isFinite(n) ? n.toLocaleString("en-US") : "—";
+  }
+
+  function pct(v) {
+    return typeof v === "number" && isFinite(v) ? Math.round(v * 100) + "%" : "n/a";
+  }
+
+  function clockET(ms) {
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: ET, hour: "numeric", minute: "2-digit"
+      }).format(new Date(ms));
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // "2026-09-02" -> "Tue Sep 2". The day is already an ET calendar day, so it
+  // is read at UTC noon and formatted in UTC: never re-interpreted in the
+  // phone's timezone, which would slide it a day.
+  function dayParts(day) {
+    var ms = Date.parse(day + "T12:00:00Z");
+    if (!isFinite(ms)) return { full: day, short: day };
+    var d = new Date(ms);
+    function f(opts) {
+      opts.timeZone = "UTC";
+      return new Intl.DateTimeFormat("en-US", opts).format(d);
+    }
+    return {
+      full: f({ weekday: "short", month: "short", day: "numeric" }),
+      short: f({ month: "numeric", day: "numeric" })
+    };
+  }
+
+  // -- data -----------------------------------------------------------------
+  var pending = false;
+
+  function getJson(url) {
+    return fetch(url, {
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+      cache: "no-store"
+    }).then(function (res) {
+      if (res.status === 401) {
+        var unauth = new Error("unauthorized");
+        unauth.unauthorized = true;
+        throw unauth;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  function show(which) {
+    el.loading.hidden = which !== "loading";
+    el.login.hidden = which !== "login";
+    el.error.hidden = which !== "error";
+    // The dashboard stays visible behind a refresh failure when it already
+    // has numbers on it — a stale count beats an empty screen.
+    if (which === "dash") el.dash.hidden = false;
+  }
+
+  function load() {
+    if (pending) return;
+    pending = true;
+    Promise.all([
+      getJson("/api/stats"),
+      getJson("/api/stats/history?days=" + HISTORY_DAYS)
+    ]).then(function (both) {
+      pending = false;
+      render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
+      show("dash");
+      parkChartAtToday();
+    }).catch(function (err) {
+      pending = false;
+      if (err && err.unauthorized) {
+        el.dash.hidden = true;
+        show("login");
+        try { el.token.focus(); } catch (e) { /* focus is a nicety */ }
+        return;
+      }
+      if (!el.dash.hidden) {
+        // Keep the numbers already on screen; say the refresh failed.
+        el.error.hidden = false;
+        el.loading.hidden = true;
+        el.login.hidden = true;
+      } else {
+        show("error");
+      }
+      el.errorMsg.textContent =
+        "Could not load the numbers (" + ((err && err.message) || "network error") + ").";
+    });
+  }
+
+  // -- render ---------------------------------------------------------------
+  function tile(label, value, note) {
+    var d = document.createElement("div");
+    d.className = "tile";
+    var l = document.createElement("div");
+    l.className = "tile-label";
+    l.textContent = label;
+    var v = document.createElement("div");
+    v.className = "tile-value";
+    v.textContent = value;
+    d.appendChild(l);
+    d.appendChild(v);
+    if (note) {
+      var n = document.createElement("div");
+      n.className = "tile-note";
+      n.textContent = note;
+      d.appendChild(n);
+    }
+    return d;
+  }
+
+  function render(r, history, since) {
+    r = r || {};
+    // Say what the numbers count, so "all time" is never read as "ever".
+    el.since.textContent = since ? "counting from " + dayParts(since).full : "";
+    el.since.hidden = !since;
+    el.hero.textContent = num(r.today);
+    el.heroSplit.textContent = num(r.newToday) + " new · " + num(r.returningToday) + " returning";
+    el.stamp.textContent = "as of " + clockET(Date.now()) + " ET";
+
+    var week1 = r.week1Retention === null || r.week1Retention === undefined
+      ? "n/a" : pct(r.week1Retention);
+    var cohort = typeof r.week1Cohort === "number" ? r.week1Cohort : 0;
+
+    el.tiles.textContent = "";
+    [
+      tile("Last 7 days", num(r.last7Days)),
+      tile("Last 30 days", num(r.last30Days)),
+      tile("All time", num(r.allTime)),
+      tile("Came back at all", pct(r.repeatRate)),
+      tile("Week-1 retention", week1,
+        cohort ? "of " + num(cohort) + " browsers old enough" : "no browser is a week old yet"),
+      tile("Median min/day", num(r.medianMinutesPerDay)),
+      tile("Searches today", num(r.searchesToday),
+        typeof r.searchesPerRiderToday === "number"
+          ? r.searchesPerRiderToday + " per rider" : ""),
+      tile("Median days active", num(r.medianDaysActive))
+    ].forEach(function (t) { el.tiles.appendChild(t); });
+
+    drawChart(history);
+  }
+
+  // -- chart ----------------------------------------------------------------
+  function svgEl(name, attrs) {
+    var n = document.createElementNS(SVG_NS, name);
+    for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) {
+      n.setAttribute(k, String(attrs[k]));
+    }
+    return n;
+  }
+
+  // A rect with the two top corners rounded and a square baseline, per the
+  // mark spec. Only ever applied to the topmost segment of a stack.
+  function topRoundedPath(x, y, w, h, r) {
+    var rr = Math.max(0, Math.min(r, w / 2, h));
+    return "M" + x + "," + (y + h) +
+      "L" + x + "," + (y + rr) +
+      "Q" + x + "," + y + " " + (x + rr) + "," + y +
+      "L" + (x + w - rr) + "," + y +
+      "Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + rr) +
+      "L" + (x + w) + "," + (y + h) + "Z";
+  }
+
+  // Round the axis top to a clean number so the ticks read 0 / 10 / 20.
+  // Axis steps for a COUNT OF BROWSERS: whole numbers only. The usual
+  // decimal-magnitude scale gives step 0.5 once the tallest bar is 1 or 2,
+  // and "1.5 riders" is not a thing.
+  function niceScale(maxValue) {
+    if (!(maxValue > 0)) return { max: 4, step: 1 };
+    var raw = maxValue / 4;
+    var mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+    var norm = raw / mag;
+    var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    step = Math.max(1, Math.round(step));
+    return { max: Math.ceil(maxValue / step) * step, step: step };
+  }
+
+  function drawChart(history) {
+    el.chart.textContent = "";
+    el.chartAxis.textContent = "";
+    if (!history || history.length === 0) {
+      el.chartEmpty.hidden = false;
+      return;
+    }
+    el.chartEmpty.hidden = true;
+
+    var AXIS_W = 32, PAD_R = 16, PAD_T = 26, PAD_B = 24;
+    var SLOT = 24, BAR = 16, GAP = 2, RADIUS = 4, PLOT_H = 180;
+    var n = history.length;
+    var width = n * SLOT + PAD_R;
+    var height = PAD_T + PLOT_H + PAD_B;
+
+    var max = 0;
+    for (var i = 0; i < n; i++) max = Math.max(max, history[i].riders || 0);
+    var scale = niceScale(max);
+    var y = function (v) { return PAD_T + PLOT_H - (v / scale.max) * PLOT_H; };
+
+    var svg = svgEl("svg", {
+      width: width, height: height,
+      viewBox: "0 0 " + width + " " + height,
+      role: "img",
+      "aria-label": "Daily riders over the last " + n + " days, split into new and returning browsers."
+    });
+    var axis = svgEl("svg", {
+      width: AXIS_W, height: height, viewBox: "0 0 " + AXIS_W + " " + height,
+      "aria-hidden": "true"
+    });
+
+    // Gridlines first, so the data sits on top of them.
+    for (var v = 0; v <= scale.max + 1e-9; v += scale.step) {
+      var gy = y(v);
+      svg.appendChild(svgEl("line", {
+        x1: 0, x2: width - PAD_R + 4, y1: gy, y2: gy,
+        stroke: "var(--grid)", "stroke-width": 1
+      }));
+      var lab = svgEl("text", {
+        x: AXIS_W - 6, y: gy + 4, "text-anchor": "end",
+        "font-size": 11, fill: "var(--ink-2)"
+      });
+      lab.textContent = String(v);
+      axis.appendChild(lab);
+    }
+    el.chartAxis.appendChild(axis);
+
+    // Which bars earn a printed value: the most recent, and the tallest.
+    // Never every bar — a number on each one stops being read.
+    var lastIdx = n - 1, tallIdx = 0;
+    for (var j = 0; j < n; j++) {
+      if ((history[j].riders || 0) > (history[tallIdx].riders || 0)) tallIdx = j;
+    }
+
+    for (var k = 0; k < n; k++) {
+      var d = history[k];
+      var riders = d.riders || 0;
+      var newer = d.newRiders || 0;
+      var back = d.returningRiders || 0;
+      var x = k * SLOT + (SLOT - BAR) / 2;
+      var base = PAD_T + PLOT_H;
+      var total = riders > 0 ? (base - y(riders)) : 0;
+
+      var g = svgEl("g", {});
+      var title = svgEl("title", {});
+      title.textContent = dayParts(d.day).full + " — " + riders + " riders (" +
+        newer + " new, " + back + " returning)";
+      g.appendChild(title);
+
+      if (riders > 0) {
+        var hBack = riders ? (total * back) / riders : 0;
+        var hNew = total - hBack;
+        var bothPresent = back > 0 && newer > 0;
+
+        // Returning sits on the baseline; new stacks on top of it. The 2 px
+        // separation is carved OUT of the lower segment so the bar's overall
+        // height still reads as the day's total.
+        if (back > 0) {
+          var backH = bothPresent ? Math.max(0, hBack - GAP) : hBack;
+          var backY = base - backH;
+          if (newer > 0) {
+            g.appendChild(svgEl("rect", {
+              x: x, y: backY, width: BAR, height: backH, fill: "var(--series-returning)"
+            }));
+          } else {
+            // Returning is the topmost segment, so it takes the rounded cap.
+            g.appendChild(svgEl("path", {
+              d: topRoundedPath(x, backY, BAR, backH, RADIUS),
+              fill: "var(--series-returning)"
+            }));
+          }
+        }
+        if (newer > 0) {
+          var newY = base - hBack - hNew;
+          g.appendChild(svgEl("path", {
+            d: topRoundedPath(x, newY, BAR, hNew, RADIUS),
+            fill: "var(--series-new)"
+          }));
+        }
+
+        if (k === lastIdx || k === tallIdx) {
+          var val = svgEl("text", {
+            x: x + BAR / 2, y: base - total - 7, "text-anchor": "middle",
+            "font-size": 11, "font-weight": 600, fill: "var(--ink)"
+          });
+          val.textContent = String(riders);
+          svg.appendChild(val);
+        }
+      }
+      svg.appendChild(g);
+
+      // An x label every fifth day plus the last one, or the axis is a smear.
+      if (k === lastIdx || (lastIdx - k) % 5 === 0) {
+        var xl = svgEl("text", {
+          x: x + BAR / 2, y: base + 16, "text-anchor": "middle",
+          "font-size": 11, fill: "var(--ink-2)"
+        });
+        xl.textContent = dayParts(d.day).short;
+        svg.appendChild(xl);
+      }
+    }
+
+    el.chart.appendChild(svg);
+  }
+
+  // Open on the most recent days, which is what the operator came for. Done
+  // once, after the dashboard is visible — a hidden container measures zero —
+  // and never again, so a 60 s refresh cannot yank the view back while the
+  // operator is reading an older week.
+  var chartParked = false;
+  function parkChartAtToday() {
+    if (chartParked) return;
+    chartParked = true;
+    requestAnimationFrame(function () {
+      try { el.chartScroll.scrollLeft = el.chartScroll.scrollWidth; } catch (e) { /* nicety */ }
+    });
+  }
+
+  // -- sign in --------------------------------------------------------------
+  el.login.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var token = el.token.value;
+    if (!token) return;
+    el.loginMsg.hidden = true;
+    fetch("/api/stats/session", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: token })
+    }).then(function (res) {
+      // The token lives no longer than this call: not in localStorage, not in
+      // a variable that outlives the handler, not in the DOM.
+      el.token.value = "";
+      token = "";
+      if (res.ok) {
+        show("loading");
+        load();
+        return;
+      }
+      el.loginMsg.hidden = false;
+      el.loginMsg.textContent = res.status === 429
+        ? "Too many attempts. Wait a minute and try again."
+        : res.status === 503
+          ? "No admin token is configured on the server."
+          : "That token was not accepted.";
+    }).catch(function () {
+      el.token.value = "";
+      el.loginMsg.hidden = false;
+      el.loginMsg.textContent = "Could not reach the server.";
+    });
+  });
+
+  el.refresh.addEventListener("click", function () { load(); });
+  el.retry.addEventListener("click", function () {
+    el.error.hidden = true;
+    if (el.dash.hidden) show("loading");
+    load();
+  });
+
+  // Auto-refresh, but only while the tab is actually being looked at: a
+  // backgrounded phone tab polling every minute is pure battery cost.
+  setInterval(function () {
+    if (!document.hidden && el.dash && !el.dash.hidden) load();
+  }, REFRESH_MS);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && el.dash && !el.dash.hidden) load();
+  });
+
+  // Nothing above may take the page down with it: an uncaught error still
+  // leaves a message and a Retry, never a white screen.
+  window.addEventListener("error", function () {
+    el.loading.hidden = true;
+    if (el.dash.hidden && el.login.hidden) {
+      el.error.hidden = false;
+      el.errorMsg.textContent = "Something went wrong rendering the dashboard.";
+    }
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

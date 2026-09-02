@@ -6,12 +6,14 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { attachErrorText, downscaleToDataUrl } from "./screenshot";
 import {
   fetchMyReports,
   markAllSeen,
   postReportAction,
   saveSeenStatuses,
   statusChip,
+  threadOf,
   type MyReport,
 } from "./myReports";
 
@@ -47,6 +49,10 @@ const IssuesPanel: React.FC<{
   const [loadError, setLoadError] = useState(false);
   // Which report has its reply box open, and its draft text.
   const [replyFor, setReplyFor] = useState<number | null>(null);
+  // A screenshot on the reply, already downscaled (see screenshot.ts). Cleared
+  // with the draft, so switching reports never carries a picture across.
+  const [replyImage, setReplyImage] = useState<string | null>(null);
+  const [replyImageErr, setReplyImageErr] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<number | null>(null);
@@ -81,7 +87,7 @@ const IssuesPanel: React.FC<{
     id: number,
     action:
       | { action: "resolve" }
-      | { action: "followup"; text: string }
+      | { action: "followup"; text: string; image?: string }
       | { action: "archive" }
       | { action: "unarchive" }
       | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },
@@ -92,6 +98,8 @@ const IssuesPanel: React.FC<{
       await postReportAction(id, action);
       setReplyFor(null);
       setReplyText("");
+      setReplyImage(null);
+      setReplyImageErr(null);
       await load();
     } catch {
       setActionError(id);
@@ -159,32 +167,38 @@ const IssuesPanel: React.FC<{
                 {r.body}
               </div>
 
-              {r.note && (
-                <div style={{
-                  borderLeft: "3px solid #c8e6c9", background: "#f6faf6",
-                  borderRadius: "0 6px 6px 0", padding: "8px 10px",
-                  display: "flex", flexDirection: "column", gap: 2,
-                }}>
-                  <span style={{ ...SECTION_LABEL, fontSize: 10 }}>Reply</span>
-                  <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
-                    {r.note}
-                  </span>
-                </div>
-              )}
-
-              {r.followups.map((f, i) => (
-                <div key={i} style={{
-                  alignSelf: "flex-end", maxWidth: "85%",
-                  background: "#f0eeea", borderRadius: "10px 10px 2px 10px",
-                  padding: "6px 10px", display: "flex", flexDirection: "column", gap: 1,
-                }}>
-                  <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
-                    {f.text}
-                  </span>
-                  <span style={{ fontSize: 10, color: "#8a8a9a", alignSelf: "flex-end" }}>
-                    {fmtDate(f.at)}
-                  </span>
-                </div>
+              {/* The conversation, in order. Our replies used to be a single
+                  box that each new note overwrote, so a rider answered twice
+                  saw only the last one — every reply is its own bubble now,
+                  interleaved with what they wrote back. */}
+              {threadOf(r).map((e, i) => (
+                e.from === "us" ? (
+                  <div key={i} style={{
+                    alignSelf: "flex-start", maxWidth: "85%",
+                    borderLeft: "3px solid #c8e6c9", background: "#f6faf6",
+                    borderRadius: "0 10px 10px 2px", padding: "8px 10px",
+                    display: "flex", flexDirection: "column", gap: 2,
+                  }}>
+                    <span style={{ ...SECTION_LABEL, fontSize: 10 }}>Reply</span>
+                    <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                      {e.text}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#8a8a9a" }}>{fmtDate(e.at)}</span>
+                  </div>
+                ) : (
+                  <div key={i} style={{
+                    alignSelf: "flex-end", maxWidth: "85%",
+                    background: "#f0eeea", borderRadius: "10px 10px 2px 10px",
+                    padding: "6px 10px", display: "flex", flexDirection: "column", gap: 1,
+                  }}>
+                    <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+                      {e.text}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#8a8a9a", alignSelf: "flex-end" }}>
+                      {e.hasImage ? "📎 " : ""}{fmtDate(e.at)}
+                    </span>
+                  </div>
+                )
               ))}
 
               {replyFor === r.id ? (
@@ -201,9 +215,63 @@ const IssuesPanel: React.FC<{
                       fontFamily: "inherit", resize: "vertical", minHeight: 64,
                     }}
                   />
+                  {/* A follow-up can carry a screenshot too: "here's what I
+                      meant" is usually a picture, and making the rider file a
+                      second report to attach one loses the thread. */}
+                  <label style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    fontSize: 13, color: "#546e7a", cursor: "pointer",
+                    minHeight: 44, alignSelf: "flex-start",
+                  }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        setReplyImageErr(null);
+                        void downscaleToDataUrl(file).then((res) => {
+                          if ("error" in res) setReplyImageErr(attachErrorText(res.error));
+                          else setReplyImage(res.dataUrl);
+                        });
+                      }}
+                    />
+                    <span style={{
+                      border: "1px solid #bbb", borderRadius: 6,
+                      padding: "8px 12px", background: "#fff",
+                    }}>
+                      📎 {replyImage ? "Screenshot attached" : "Add screenshot"}
+                    </span>
+                  </label>
+                  {replyImage && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <img
+                        src={replyImage}
+                        alt="Attached screenshot"
+                        style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid #ddd" }}
+                      />
+                      <button
+                        onClick={() => { setReplyImage(null); setReplyImageErr(null); }}
+                        style={{
+                          fontSize: 13, padding: "8px 12px", minHeight: 44,
+                          border: "1px solid #bbb", borderRadius: 6, background: "#fff",
+                          color: "#546e7a", cursor: "pointer", fontFamily: "inherit",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  {replyImageErr && (
+                    <span style={{ fontSize: 12, color: "#c62828" }}>{replyImageErr}</span>
+                  )}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      onClick={() => { setReplyFor(null); setReplyText(""); }}
+                      onClick={() => {
+                        setReplyFor(null); setReplyText("");
+                        setReplyImage(null); setReplyImageErr(null);
+                      }}
                       style={{
                         fontSize: 13, padding: "8px 14px", minHeight: 44,
                         border: "1px solid #bbb", borderRadius: 6,
@@ -214,7 +282,11 @@ const IssuesPanel: React.FC<{
                       Cancel
                     </button>
                     <button
-                      onClick={() => void act(r.id, { action: "followup", text: replyText.trim() })}
+                      onClick={() => void act(r.id, {
+                        action: "followup",
+                        text: replyText.trim(),
+                        ...(replyImage ? { image: replyImage } : {}),
+                      })}
                       disabled={busy || !replyText.trim()}
                       style={{
                         fontSize: 13, padding: "8px 14px", minHeight: 44,

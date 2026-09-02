@@ -5,6 +5,7 @@ import type { UpstreamClient, RawBus } from "../collector/upstream.js";
 import { openDb, type DbBundle } from "../db/client.js";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import path from "node:path";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 
@@ -27,6 +28,7 @@ function fakeUpstream(buses: RawBus[], stops: Stop[], routes: Route[]): Upstream
         shortName: r.shortName,
         color: r.color,
         stops: r.stops,
+        ...(r.description !== undefined ? { description: r.description } : {}),
       })),
   } as UpstreamClient;
 }
@@ -38,7 +40,11 @@ const stops: Stop[] = [
 ];
 
 const routes: Route[] = [
-  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3] },
+  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F" },
+  // A description the parser cannot read: must be absent from route_hours,
+  // never a crash or a half-parsed window.
+  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website" },
+  { id: 12, name: "Bare", shortName: "B", color: "#222", stops: [1, 3] },
 ];
 
 // Injected rather than read from $SHUTTLE_ADMIN_TOKEN so the suite doesn't
@@ -67,6 +73,8 @@ beforeEach(async () => {
     bundle,
     now: () => 1_700_000_000_000,
     adminToken: TEST_ADMIN_TOKEN,
+    // The clock here is frozen in 2023; count from before it.
+    statsSinceDay: "2000-01-01",
   });
   // Per-browser budgets now key on the anon id, which the tests reuse across
   // the file; with the frozen clock a bucket never expires on its own.
@@ -217,6 +225,7 @@ describe("GET /api/buses", () => {
       "buses",
       "dwells",
       "dwells_by_bus",
+      "route_hours",
       "route_paths",
       "route_peaks",
       "routes",
@@ -226,6 +235,20 @@ describe("GET /api/buses", () => {
     ]);
     expect(Object.keys(body.stop_names as object).sort()).toEqual(["1", "2", "3"]);
     expect((body.routes as Record<string, number[]>)["10"]).toEqual([1, 2, 3]);
+  });
+
+  it("publishes the operator's timetable per route as route_hours", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as {
+      route_hours: Record<string, { days: number[]; startMin: number; endMin: number; text: string }>;
+      routes: Record<string, number[]>;
+    };
+    // Every route is in the topology…
+    expect(Object.keys(body.routes).sort()).toEqual(["10", "11", "12"]);
+    // …but only the one whose description parsed carries hours. Keyed by
+    // route id, as the client's ROUTE_LISTS.routeIds are.
+    expect(body.route_hours).toEqual({
+      "10": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
+    });
   });
 
   it("rebuilds when the collector observes a new position", async () => {
@@ -549,12 +572,13 @@ describe("rider self-service (my-reports)", () => {
     const r = body.reports[0]!;
     // Exact contract with the frontend: these keys and no others.
     expect(Object.keys(r).sort()).toEqual(
-      ["archived", "body", "createdAt", "followups", "hasImage", "id", "kind", "note", "priority", "status"],
+      ["archived", "body", "createdAt", "followups", "hasImage", "id", "kind", "note", "priority", "replies", "status"],
     );
     expect(r.kind).toBe("feedback");
     expect(r.body).toBe("mine, newer");
     expect(r.status).toBe("open");
     expect(r.note).toBeNull();
+    expect(r.replies).toEqual([]);
     expect(r.hasImage).toBe(false);
     expect(r.followups).toEqual([]);
     expect(typeof r.createdAt).toBe("number");
@@ -701,6 +725,99 @@ describe("rider self-service (my-reports)", () => {
     const row = bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string };
     expect(row.context.length).toBeLessThan(1024);
     expect(JSON.parse(row.context)).toMatchObject({ note: "huge", contextTruncated: true });
+  });
+
+  it("keeps every reply as its own thread entry instead of overwriting", async () => {
+    // The rider was watching one bubble get rewritten: answered twice, they
+    // only ever saw the second answer.
+    const id = await submit(OWNER, "bus never came");
+    const note = (text: string) => app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: text }),
+    });
+    await note("[triage] Looking into it.\n---\noperator log one");
+    await note("[triage] Looking into it.\n---\noperator log one"); // re-stamp: not a new bubble
+    await note("[fixed] Fixed now.\n---\noperator log two");
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as {
+      reports: Array<{ note: string | null; replies: Array<{ text: string; at: number }> }>;
+    };
+    const r = body.reports[0]!;
+    expect(r.replies.map((x) => x.text)).toEqual(["Looking into it.", "Fixed now."]);
+    // Rider-facing filtering still applies to every entry, not just the last.
+    expect(JSON.stringify(r.replies)).not.toContain("operator log");
+    // `note` still carries the latest for older clients.
+    expect(r.note).toBe("Fixed now.");
+    // The operator keeps the full text of the latest note.
+    const admin = await app.request("/api/reports?limit=50", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    const all = (await admin.json()) as { reports: Array<{ id: number; note: string }> };
+    expect(all.reports.find((x) => x.id === id)!.note).toContain("operator log two");
+  });
+
+  it("shows a single reply for a report answered before the thread existed", async () => {
+    const id = await submit(OWNER, "older report");
+    // Simulate the pre-thread world: a note on the row, no history in context.
+    bundle.sqlite.prepare("UPDATE reports SET note = ? WHERE id = ?").run("Thanks, sorted.", id);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as { reports: Array<{ id: number; replies: Array<{ text: string }> }> };
+    const r = body.reports.find((x) => x.id === id)!;
+    expect(r.replies.map((x) => x.text)).toEqual(["Thanks, sorted."]);
+  });
+
+  it("accepts a screenshot on a follow-up and keeps it admin-only", async () => {
+    const id = await submit(OWNER, "the map looked wrong");
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({
+        action: "followup",
+        text: "here is what I meant",
+        image: `data:image/png;base64,${png.toString("base64")}`,
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as {
+      reports: Array<{ followups: Array<{ text: string; hasImage?: boolean }> }>;
+    };
+    const f = body.reports[0]!.followups[0]!;
+    expect(f.text).toBe("here is what I meant");
+    expect(f.hasImage).toBe(true);
+    // A boolean, never the filename — the file is admin-only, like the
+    // report's own screenshot.
+    expect(JSON.stringify(body)).not.toContain("imageFile");
+    expect(JSON.stringify(body)).not.toMatch(/[a-f0-9]{24}\.png/);
+
+    const img = await app.request(`/api/reports/${id}/followups/0/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(img.status).toBe(200);
+    expect(img.headers.get("content-type")).toBe("image/png");
+    const unauth = await app.request(`/api/reports/${id}/followups/0/image`);
+    expect(unauth.status).toBe(401);
+    const missing = await app.request(`/api/reports/${id}/followups/9/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  it("still records a follow-up when the attachment is unusable", async () => {
+    const id = await submit(OWNER, "words matter more than the picture");
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({ action: "followup", text: "still broken", image: "data:text/plain;base64,aGk=" }),
+    });
+    expect(res.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as { reports: Array<{ followups: Array<{ text: string; hasImage?: boolean }> }> };
+    const f = body.reports[0]!.followups[0]!;
+    expect(f.text).toBe("still broken");
+    expect(f.hasImage).toBeUndefined();
   });
 
   it("404s a rider update for a report they do not own", async () => {
@@ -947,5 +1064,219 @@ describe("GET /api/weather", () => {
     const res = await withWeather(async () => ({ available: false })).request("/api/weather");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ available: false });
+  });
+});
+
+// The dashboard at /stats must not keep the admin token in the browser: one
+// XSS, or one borrowed phone, would otherwise hand over the triage log with
+// every reporter's IP address in it. The token is exchanged once for an
+// HttpOnly cookie scoped to /api/stats and nothing else.
+describe("operator stats session", () => {
+  const FROZEN = 1_700_000_000_000;
+  const ANON = "11111111-2222-4333-8444-555555555555";
+
+  /** Mint a cookie value the way the server does, to forge good and bad ones. */
+  const mint = (expiryMs: number, key = TEST_ADMIN_TOKEN) =>
+    `${expiryMs}.${crypto.createHmac("sha256", key).update(String(expiryMs)).digest("hex")}`;
+
+  const login = async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    expect(res.status).toBe(200);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    const value = /stats_session=([^;]+)/.exec(setCookie)?.[1] ?? "";
+    return { setCookie, cookie: `stats_session=${value}` };
+  };
+
+  it("issues an HttpOnly, Strict, /api/stats-scoped cookie for the right token", async () => {
+    const { setCookie } = await login();
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Strict");
+    // Scoped so the cookie is never even sent to the report routes.
+    expect(setCookie).toContain("Path=/api/stats");
+    expect(setCookie).toContain(`Max-Age=${30 * 24 * 60 * 60}`);
+  });
+
+  it("rejects a wrong token with a generic 401 and no cookie", async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "not-the-token" }),
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // The body must say nothing that helps a guesser.
+    expect(await res.text()).not.toContain(TEST_ADMIN_TOKEN);
+  });
+
+  // Otherwise the endpoint is a brute-force oracle for the admin token.
+  it("rate-limits repeated login attempts", async () => {
+    let last = 200;
+    for (let i = 0; i < 12; i++) {
+      const res = await app.request("/api/stats/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: "guess" }),
+      });
+      last = res.status;
+    }
+    expect(last).toBe(429);
+  });
+
+  it("accepts the session cookie on both stats routes", async () => {
+    await app.request("/api/buses", { headers: { "x-anon-id": ANON } });
+    const { cookie } = await login();
+
+    const stats = await app.request("/api/stats", { headers: { cookie } });
+    expect(stats.status).toBe(200);
+    expect(((await stats.json()) as { riders: { today: number } }).riders.today).toBe(1);
+
+    const history = await app.request("/api/stats/history", { headers: { cookie } });
+    expect(history.status).toBe(200);
+    const body = (await history.json()) as { history: { day: string; newRiders: number }[] };
+    expect(body.history).toHaveLength(1);
+    expect(body.history[0]!.newRiders).toBe(1);
+  });
+
+  // The whole point of scoping the cookie: it must not unlock the triage log.
+  it("does not unlock the report routes", async () => {
+    const { cookie } = await login();
+    expect((await app.request("/api/reports?status=open", { headers: { cookie } })).status).toBe(401);
+    expect((await app.request("/api/reports/1/image", { headers: { cookie } })).status).toBe(401);
+    const exclude = await app.request("/api/stats/exclude", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ anonId: ANON, note: "nope" }),
+    });
+    expect(exclude.status).toBe(401);
+  });
+
+  it("rejects a tampered or forged cookie", async () => {
+    const good = mint(FROZEN + 60_000);
+    const flipped = `${good.slice(0, -1)}${good.endsWith("a") ? "b" : "a"}`;
+    for (const value of [
+      flipped,
+      // Expiry rewritten without re-signing.
+      `${FROZEN + 999_999_999}.${good.split(".")[1]}`,
+      // Signed with a different key.
+      mint(FROZEN + 60_000, "some-other-token"),
+      "garbage",
+      `${FROZEN + 60_000}.`,
+      ".deadbeef",
+    ]) {
+      const res = await app.request("/api/stats", {
+        headers: { cookie: `stats_session=${value}` },
+      });
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it("rejects an expired cookie and accepts an unexpired one", async () => {
+    const expired = await app.request("/api/stats", {
+      headers: { cookie: `stats_session=${mint(FROZEN - 1)}` },
+    });
+    expect(expired.status).toBe(401);
+
+    const live = await app.request("/api/stats", {
+      headers: { cookie: `stats_session=${mint(FROZEN + 60_000)}` },
+    });
+    expect(live.status).toBe(200);
+  });
+
+  it("still refuses both stats routes with no auth at all", async () => {
+    expect((await app.request("/api/stats")).status).toBe(401);
+    expect((await app.request("/api/stats/history")).status).toBe(401);
+  });
+
+  it("still accepts the admin header on both stats routes", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    expect((await app.request("/api/stats", { headers })).status).toBe(200);
+    const res = await app.request("/api/stats/history", { headers });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("clamps the history window to 1..90 days", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const q of ["?days=0", "?days=-3", "?days=9999", "?days=abc", ""]) {
+      const res = await app.request(`/api/stats/history${q}`, { headers });
+      expect(res.status).toBe(200);
+      expect(Array.isArray(((await res.json()) as { history: unknown[] }).history)).toBe(true);
+    }
+  });
+
+  it("fails closed when no admin token is configured", async () => {
+    const openApp = buildApp({ collector, bundle, now: () => FROZEN, adminToken: "" });
+    expect((await openApp.request("/api/stats/history")).status).toBe(503);
+    const res = await openApp.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "anything" }),
+    });
+    expect(res.status).toBe(503);
+  });
+});
+
+describe("static routes", () => {
+  // Vite copies web/public/* verbatim, so stats.html lands beside index.html.
+  // The extensionless /stats needs its own route — and must not cost the SPA
+  // its fallback.
+  const withStatic = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-v2-static-"));
+    fs.writeFileSync(path.join(dir, "index.html"), "<html>rider app</html>");
+    fs.writeFileSync(path.join(dir, "stats.html"), "<html>operator dashboard</html>");
+    return {
+      dir,
+      app: buildApp({
+        collector,
+        bundle,
+        now: () => 1_700_000_000_000,
+        adminToken: TEST_ADMIN_TOKEN,
+        staticDir: dir,
+      }),
+    };
+  };
+
+  it("serves the dashboard at both /stats and /stats.html", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      const bare = await withDir.request("/stats");
+      expect(bare.status).toBe(200);
+      expect(await bare.text()).toContain("operator dashboard");
+      expect(bare.headers.get("cache-control")).toBe("no-store");
+
+      const explicit = await withDir.request("/stats.html");
+      expect(explicit.status).toBe(200);
+      expect(await explicit.text()).toContain("operator dashboard");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("still falls back to the rider app for unknown paths", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      const res = await withDir.request("/plan/somewhere");
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("rider app");
+      // And an API path is never answered with HTML.
+      expect((await withDir.request("/api/stats")).status).toBe(401);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the stats payload names its counting epoch", () => {
+  it("returns `since` so the dashboard can say what it counts", async () => {
+    const res = await app.request("/api/stats", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { since: string; riders: { today: number } };
+    expect(body.since).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(typeof body.riders.today).toBe("number");
   });
 });

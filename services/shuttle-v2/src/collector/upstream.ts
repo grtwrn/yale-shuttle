@@ -151,6 +151,9 @@ export class UpstreamClient {
         color: normalizeHexColor(r.color),
         stops: r.stops,
         ...(path ? { path } : {}),
+        // Kept verbatim (trimmed) so the timetable riders see is the one the
+        // operator publishes, not our hand-maintained ROUTE_HOURS table.
+        ...(r.description.trim() ? { description: r.description.trim() } : {}),
       };
     });
   }

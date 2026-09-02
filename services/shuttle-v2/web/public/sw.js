@@ -22,6 +22,9 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
   // Live data is never cached: a stale bus position is worse than none.
   if (url.pathname.startsWith("/api/")) return;
+  // Nor the operator dashboard: it is a numbers page opened to see NOW, and
+  // it is not part of the rider shell this cache exists to keep installable.
+  if (url.pathname === "/stats" || url.pathname === "/stats.html") return;
 
   e.respondWith(
     fetch(e.request)

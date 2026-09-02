@@ -42,3 +42,24 @@ describe("UpstreamClient.buses validates each row on its own", () => {
     await expect(clientFor([], 503).buses()).rejects.toBeInstanceOf(UpstreamError);
   });
 });
+
+describe("UpstreamClient.routes keeps the published timetable", () => {
+  const route = {
+    id: 3, name: "Red", short_name: "R", color: "C62828", stops: [1, 2, 3],
+    path: [41.31, -72.93, 41.32, -72.92],
+  };
+
+  it("threads a trimmed description through", async () => {
+    const client = clientFor([{ ...route, description: "  7am - 6pm, M - F " }]);
+    const [r] = await client.routes();
+    expect(r!.description).toBe("7am - 6pm, M - F");
+    expect(r!.path).toEqual([[41.31, -72.93], [41.32, -72.92]]);
+  });
+
+  it("omits the field when upstream publishes nothing", async () => {
+    const [blank] = await clientFor([{ ...route, description: "   " }]).routes();
+    expect(blank).not.toHaveProperty("description");
+    const [absent] = await clientFor([route]).routes();
+    expect(absent).not.toHaveProperty("description");
+  });
+});

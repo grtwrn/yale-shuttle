@@ -27,6 +27,11 @@ export const RouteSchema = z.object({
   stops: z.array(z.number().int()),
   // [lat, lon] polyline from upstream. Optional because older imports may lack it.
   path: z.array(z.tuple([z.number(), z.number()])).optional(),
+  // The operator's free-text timetable ("7am - 6pm, M - F") from
+  // routes_routes.php. In-memory only: the `routes` table has no column for it,
+  // so a route loaded from the DB fallback simply lacks it. Parsed by
+  // server/publishedHours.ts into the `route_hours` riders are shown.
+  description: z.string().optional(),
 });
 export type Route = z.infer<typeof RouteSchema>;
 

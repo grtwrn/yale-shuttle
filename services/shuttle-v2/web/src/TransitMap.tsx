@@ -22,7 +22,8 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, optionKey, optionKeyLabel, pickLiveArrival, planTrip, switchToAlternate, type TripOption,
+  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, optionKey, optionKeyLabel,
+  pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, switchToAlternate, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -41,7 +42,9 @@ import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
-import { fmtSchedule, isBusInService } from "./schedule";
+import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
+import type { PublishedWindow } from "./schedule";
+import { attachErrorText, downscaleToDataUrl } from "./screenshot";
 import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -1450,6 +1453,9 @@ const TripPlanner: FC<{
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
+  // Operator-published timetable per route id (`/api/buses` `route_hours`);
+  // what the "Shuttles that go there" panel prints and judges "running" by.
+  routeHours: Record<string, PublishedWindow>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -1472,7 +1478,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -1818,9 +1824,9 @@ const TripPlanner: FC<{
     const after = targetDate && targetDate.getTime() > Date.now()
       ? targetDate
       : new Date();
-    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after);
+    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, refreshKey]);
+  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, refreshKey]);
   const options: TripOption[] | null = useMemo(() => {
     if (!stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
@@ -2955,6 +2961,9 @@ const TripPlanner: FC<{
                     {p.schedule && (
                       <div>Runs {p.schedule}</div>
                     )}
+                    {/* activeNow is judged against the PUBLISHED timetable
+                        when the server supplied one, so this reads "the
+                        published schedule says running". */}
                     {p.activeNow ? (
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
@@ -2988,6 +2997,22 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
+          {/* Report #57: the line's operating hours at the top of its details
+              page. One caption line, no box — this page has been de-cluttered
+              twice on rider feedback, and the overview header directly below
+              already names the route, so the caption is the hours alone.
+              Published hours first, ROUTE_HOURS as the fallback (same
+              precedence as the All tab); nothing when neither knows the route. */}
+          {detailOpen && (() => {
+            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
+            const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
+            if (!cfg || !caption) return null;
+            return (
+              <div style={{ fontSize: 12, color: "#78909c", padding: "0 2px 8px", lineHeight: 1.3 }}>
+                {caption}
+              </div>
+            );
+          })()}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -4710,6 +4735,8 @@ const StopList: FC<{
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   routePeaks?: Record<string, number>;
+  // Operator-published timetable per route id; the All tab's schedule line.
+  routeHours?: Record<string, PublishedWindow>;
   tick: number;
   listView: "all" | "favorites" | "accuracy";
   activeOnly?: boolean;
@@ -4719,7 +4746,7 @@ const StopList: FC<{
   onToggleFavorite: (routeId: string) => void;
   savedStops: Set<number>;
   onToggleSavedStop: (stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, routePeaks, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
 
   // GPS-based: find nearest route stop for each bus
   function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
@@ -4854,7 +4881,10 @@ const StopList: FC<{
                 ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
               );
               const loopMin = Math.round(loopSec / 60);
-              const schedule = fmtSchedule(cfg.label);
+              // Published hours when the server parsed them; ROUTE_HOURS
+              // (the wider in-service gate) only as a fallback.
+              const published = publishedWindowFor(cfg, routeHours);
+              const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
               if (!loopSec && !busCount && !peak && !schedule) return null;
               return (
                 <>
@@ -5968,6 +5998,10 @@ const TransitMap: FC = () => {
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
   const [dwellTimes, setDwellTimes] = useState<Record<string, Record<string, { med: number; sd: number; n: number }>>>({});
   const [routePeaks, setRoutePeaks] = useState<Record<string, number>>({});
+  // Operator-published timetable per route id, parsed server-side from the
+  // route description (`route_hours`). Riders are shown THIS; the in-service
+  // gate (isBusInService) stays on ROUTE_HOURS. Empty until the first poll.
+  const [routeHours, setRouteHours] = useState<Record<string, PublishedWindow>>({});
   // Full per-route polyline from downtownerapp's routes_routes.php
   // `path` field. Used to draw exact bus-route shapes on the trip map,
   // replacing the OSRM driving-directions fallback that occasionally
@@ -6091,28 +6125,15 @@ const TransitMap: FC = () => {
   const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
+  // Shared with the Issues tab's reply box — one downscale, one set of
+  // limits, one wording for the failures (web/src/screenshot.ts).
   const attachScreenshot = (file: File | undefined) => {
     setFeedbackImageErr(null);
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setFeedbackImageErr("That's not an image"); return; }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const g = canvas.getContext("2d");
-      if (!g) { setFeedbackImageErr("Couldn't read the image"); return; }
-      g.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-      // ~2 MB decoded is the server's cap; base64 is 4/3 of that.
-      if (dataUrl.length > 2.6 * 1024 * 1024) { setFeedbackImageErr("Image too large"); return; }
-      setFeedbackImage(dataUrl);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); setFeedbackImageErr("Couldn't read the image"); };
-    img.src = url;
+    void downscaleToDataUrl(file).then((res) => {
+      if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
+      else setFeedbackImage(res.dataUrl);
+    });
   };
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
@@ -6624,6 +6645,9 @@ const TransitMap: FC = () => {
         if (data.dwells) setDwellTimes(data.dwells);
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
+        if (data.route_hours && typeof data.route_hours === "object" && !Array.isArray(data.route_hours)) {
+          setRouteHours(data.route_hours as Record<string, PublishedWindow>);
+        }
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
         if (data.route_paths) {
           // Before setBuses' consumers run: isBusOnRoute measures against
@@ -6843,6 +6867,7 @@ const TransitMap: FC = () => {
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
+          routeHours={routeHours}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}
@@ -7081,7 +7106,7 @@ const TransitMap: FC = () => {
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
-            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} tick={tick}
+            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
             listView={listView} activeOnly={activeFilter}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}

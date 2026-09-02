@@ -6,10 +6,11 @@ import type { BusData } from "./map-data";
 import { computeUpcomingArrivals } from "./arrivals";
 import {
   ALT_PICKUP_MIN_GAIN_SEC, alternatePickup, dwellBoardWindowSec, findPotentialRoutes, MAX_ALTERNATES,
-  MAX_RIDE_SEC, optionKey, optionKeyLabel, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
+  MAX_RIDE_SEC, optionKey, optionKeyLabel, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip,
+  publishedWindowFor, routeHoursCaption, switchToAlternate, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions,
   type TripOption,
 } from "./planner";
-import { HEADWAY_MIN } from "./schedule";
+import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
   at, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -422,6 +423,91 @@ describe("findPotentialRoutes", () => {
       { lat: 41.20, lon: -72.90 }, { lat: 41.25, lon: -72.90 },
       routeStops, stopCoords, new Date(NOW),
     )).toEqual([]);
+  });
+
+  // Riders are shown the operator's PUBLISHED timetable, not ROUTE_HOURS —
+  // that table is the in-service gate and was widened on purpose, so Red read
+  // "5:40a–7p" while Yale publishes 7am–6pm. When `/api/buses` carries a
+  // parsed window for the route, it drives the text, "Next:" and "should be
+  // running"; ROUTE_HOURS stays the fallback.
+  describe("with published hours", () => {
+    // Blue Day's fixture routes (id "1") stand in for Red: the fixture payload
+    // only maps stops for Blue Day / Blue Weekend. The window is the one Yale
+    // publishes for Red, which disagrees with the gate table at both ends.
+    const publishedHours = {
+      "1": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
+    };
+    const wed0610 = new Date("2026-09-02T06:10:00-04:00");
+    const wed0710 = new Date("2026-09-02T07:10:00-04:00");
+
+    it("prefers the published window for text, activeNow and nextActive", () => {
+      // Sanity: the gate table for Red says 05:40 — a rider at 06:10 would
+      // otherwise be told the route "should be running".
+      expect(fmtSchedule("Red")).toBe("M–F 5:40a–7p");
+      expect(isRouteActiveAt("Red", wed0610)).toBe(true);
+
+      const early = findPotentialRoutes(from, to, routeStops, stopCoords, wed0610, publishedHours);
+      const day = early.find((r) => r.label === "Blue Day")!;
+      expect(day.schedule).toBe("M–F 7a–6p");
+      expect(day.activeNow).toBe(false);
+      expect(day.nextActive!.toISOString()).toBe(new Date("2026-09-02T07:00:00-04:00").toISOString());
+
+      const later = findPotentialRoutes(from, to, routeStops, stopCoords, wed0710, publishedHours);
+      expect(later.find((r) => r.label === "Blue Day")!.activeNow).toBe(true);
+    });
+
+    it("falls back to ROUTE_HOURS for routes without a published window", () => {
+      const found = findPotentialRoutes(from, to, routeStops, stopCoords, wed0610, publishedHours);
+      const weekend = found.find((r) => r.label === "Blue Weekend")!;
+      expect(weekend.schedule).toBe(fmtSchedule("Blue Weekend"));
+      expect(weekend.activeNow).toBe(false);
+    });
+
+    it("is byte-identical to the old behaviour when nothing is published", () => {
+      for (const at of [wed0610, wed0710, new Date(NOW)]) {
+        const without = findPotentialRoutes(from, to, routeStops, stopCoords, at);
+        expect(findPotentialRoutes(from, to, routeStops, stopCoords, at, {})).toEqual(without);
+        expect(findPotentialRoutes(from, to, routeStops, stopCoords, at, undefined)).toEqual(without);
+        const day = without.find((r) => r.label === "Blue Day")!;
+        expect(day.schedule).toBe(fmtSchedule("Blue Day"));
+        expect(day.activeNow).toBe(isRouteActiveAt("Blue Day", at));
+      }
+    });
+  });
+});
+
+describe("publishedWindowFor", () => {
+  const w = { days: [1], startMin: 0, endMin: 60 };
+  it("looks up routeIds first, then the bus route ids", () => {
+    const cfg = { routeIds: ["3"], busRouteIds: [3, 30] };
+    expect(publishedWindowFor(cfg, { "3": w })).toBe(w);
+    expect(publishedWindowFor(cfg, { "30": w })).toBe(w);
+    expect(publishedWindowFor(cfg, { "4": w })).toBeUndefined();
+    expect(publishedWindowFor(cfg, undefined)).toBeUndefined();
+    expect(publishedWindowFor(cfg, {})).toBeUndefined();
+  });
+});
+
+describe("routeHoursCaption (report #57: hours atop the route details page)", () => {
+  const blueDay = { label: "Blue Day", routeIds: ["3"], busRouteIds: [30] };
+  const published = { days: [1, 2, 3, 4, 5], startMin: 8 * 60, endMin: 17 * 60 + 30, text: "8am - 5:30pm, M - F" };
+
+  it("prefers the operator's published window over ROUTE_HOURS", () => {
+    expect(routeHoursCaption(blueDay, { "3": published })).toBe("Runs M–F 8a–5:30p");
+    // Looked up by busRouteIds too, like the All tab.
+    expect(routeHoursCaption(blueDay, { "30": published })).toBe("Runs M–F 8a–5:30p");
+  });
+
+  it("falls back to the ROUTE_HOURS table when nothing is published for the route", () => {
+    expect(routeHoursCaption(blueDay, undefined)).toBe(`Runs ${fmtSchedule("Blue Day")}`);
+    expect(routeHoursCaption(blueDay, { "4": published })).toBe(`Runs ${fmtSchedule("Blue Day")}`);
+    expect(fmtSchedule("Blue Day")).not.toBe("");
+  });
+
+  it("is null when neither source knows the route, so the caption is not drawn", () => {
+    const unknown = { label: "Route That Does Not Exist", routeIds: ["999"], busRouteIds: [9990] };
+    expect(routeHoursCaption(unknown, undefined)).toBeNull();
+    expect(routeHoursCaption(unknown, { "3": published })).toBeNull();
   });
 });
 

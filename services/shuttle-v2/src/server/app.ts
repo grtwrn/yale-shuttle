@@ -5,6 +5,7 @@ import path from "node:path";
 import { sql } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 
@@ -16,6 +17,7 @@ import { PlanRequestSchema } from "../schema/api.js";
 import {
   listMyReports,
   listReports,
+  followupImageFile,
   reportImageFile,
   rateLimitAllow,
   riderUpdateReport,
@@ -49,6 +51,23 @@ const PLAN_BODY_LIMIT = 16 * 1024;
 // The triage-update body only ever carries a status and a short note, so it
 // gets a far tighter cap than a rider's free-form report.
 const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
+// The stats-login body is one token and nothing else.
+const STATS_SESSION_BODY_LIMIT = 2 * 1024;
+
+// -- Operator stats session ---------------------------------------------------
+// The dashboard at /stats needs to re-authenticate on every load without the
+// operator's phone holding the admin token: a token in localStorage is one XSS
+// (or one borrowed phone) away from full triage access, including reporter IPs.
+// So the token is exchanged ONCE for a cookie that is (a) HttpOnly, so no
+// script can read it back, (b) scoped to /api/stats, so it is never even sent
+// to the report routes, and (c) STATELESS — "<expiryMs>.<hmac>" signed with
+// the admin token itself, so the server stores no session table and a restart
+// does not log the operator out.
+const STATS_COOKIE = "stats_session";
+const STATS_SESSION_MAX_AGE_S = 30 * 24 * 60 * 60;
+/** Trend window bounds for /api/stats/history. 90 = the row retention. */
+const HISTORY_MAX_DAYS = 90;
+const HISTORY_DEFAULT_DAYS = 30;
 // Longest text we persist for a rider's report body or an operator's
 // resolution note. Matches ReportSubmitSchema's `body` cap in schema/api.ts.
 const REPORT_TEXT_MAX = 2000;
@@ -83,6 +102,11 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export interface AppOptions {
+  /**
+   * First ET day the operator statistics count (see the counting epoch in
+   * actives.ts). Tests that freeze the clock in the past set their own.
+   */
+  statsSinceDay?: string;
   collector: Collector;
   bundle: DbBundle;
   /** Used by /healthz and a few other endpoints; injectable for tests. */
@@ -112,7 +136,10 @@ export function buildApp(opts: AppOptions): Hono {
   const app = new Hono();
   // Unique-rider counting. Rides along on the poll the app already makes, so
   // there is no extra request; see actives.ts for the cost and privacy shape.
-  const actives = createActivesTracker(opts.bundle);
+  const actives = createActivesTracker(
+    opts.bundle,
+    opts.statsSinceDay ? { sinceDay: opts.statsSinceDay } : {},
+  );
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -433,8 +460,11 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ reports: listMyReports(opts.bundle.db, anonId) });
   });
 
+  // A follow-up may carry a screenshot, so this shares the report-submission
+  // limit rather than the 8 KB triage-note one. The image is pulled out of the
+  // body and written beside the DB exactly as a new report's is.
   app.post("/api/my-reports/:id/update", bodyLimit({
-    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    maxSize: REPORT_WITH_IMAGE_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     // Looser than report submission on purpose: archiving a long history is
@@ -448,6 +478,7 @@ export function buildApp(opts: AppOptions): Hono {
       action?: unknown;
       text?: unknown;
       priority?: unknown;
+      image?: unknown;
     } | null;
     let action: RiderAction;
     if (body?.action === "resolve") {
@@ -461,6 +492,25 @@ export function buildApp(opts: AppOptions): Hono {
       action = { action: "set_priority", priority: body.priority };
     } else if (body?.action === "followup" && typeof body.text === "string" && body.text.trim()) {
       action = { action: "followup", text: body.text.trim().slice(0, REPORT_TEXT_MAX) };
+      // An attached screenshot is written before the follow-up is recorded, so
+      // a failed write simply means a message without a picture — the words
+      // still matter, exactly as on a new report.
+      const img = body.image === undefined ? null : decodeReportImage(body.image);
+      if (img) {
+        // A separate, tighter budget than the text-only actions above: a
+        // chatty rider archiving rows is cheap, a rider posting 3 MB is not.
+        if (!rateLimitAllow(`myimg:${clientIp(c) ?? "anon"}`, now(), { perMinute: 4, perDay: 40 })) {
+          return c.json({ error: "rate_limited" }, 429);
+        }
+        try {
+          fs.mkdirSync(imageDir, { recursive: true });
+          const name = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
+          fs.writeFileSync(path.join(imageDir, name), img.bytes);
+          action.imageFile = name;
+        } catch {
+          /* no screenshot; the follow-up still goes through */
+        }
+      }
     } else {
       return c.json({ error: "invalid_request" }, 400);
     }
@@ -500,11 +550,102 @@ export function buildApp(opts: AppOptions): Hono {
     await next();
   };
 
+  /**
+   * Mint a stats-session cookie value. The signature covers the expiry stamp,
+   * so a client cannot extend its own session by editing the number.
+   */
+  const statsMac = (stamp: string): string =>
+    crypto.createHmac("sha256", adminToken).update(stamp).digest("hex");
+
+  const mintStatsSession = (expiryMs: number): string => {
+    const stamp = String(expiryMs);
+    return `${stamp}.${statsMac(stamp)}`;
+  };
+
+  /** Verify a cookie value: well-formed, correctly signed, and unexpired. */
+  const statsSessionValid = (value: string | undefined, nowMs: number): boolean => {
+    if (!adminToken || !value) return false;
+    const dot = value.indexOf(".");
+    if (dot <= 0) return false;
+    const stamp = value.slice(0, dot);
+    // Bound the parse before touching it: an unbounded digit string would
+    // otherwise reach Number() and the HMAC.
+    if (!/^[0-9]{1,15}$/.test(stamp)) return false;
+    const expiryMs = Number(stamp);
+    if (!Number.isFinite(expiryMs) || expiryMs <= nowMs) return false;
+    // Sign the stamp exactly as it arrived, so a re-rendered number (leading
+    // zeros, say) can never be compared against a different string than the
+    // one that was actually signed.
+    return safeEqual(value.slice(dot + 1), statsMac(stamp));
+  };
+
+  /**
+   * Read-only usage numbers accept EITHER the admin header or the session
+   * cookie. Every other admin route keeps requiring the header: the cookie
+   * rides along on requests the browser makes and must never be able to
+   * unlock /api/reports, which serves reporters' IP addresses.
+   */
+  const requireStatsAuth = async (c: Context, next: () => Promise<void>) => {
+    if (!adminToken) {
+      return c.json({ error: "admin_token_not_configured" }, 503);
+    }
+    const header = c.req.header("x-admin-token") ?? "";
+    if (safeEqual(header, adminToken) || statsSessionValid(getCookie(c, STATS_COOKIE), now())) {
+      await next();
+      return;
+    }
+    return c.json({ error: "unauthorized" }, 401);
+  };
+
+  // Exchange the admin token for the cookie above. Rate-limited per IP so the
+  // endpoint cannot be used as a brute-force oracle, and the failure body says
+  // nothing about why.
+  app.post("/api/stats/session", bodyLimit({
+    maxSize: STATS_SESSION_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    if (!adminToken) {
+      return c.json({ error: "admin_token_not_configured" }, 503);
+    }
+    const ip = clientIp(c) ?? "anon";
+    if (!rateLimitAllow(`statslogin:${ip}`, now(), { perMinute: 10, perDay: 200 })) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    const body = (await c.req.json().catch(() => null)) as { token?: unknown } | null;
+    const token = body && typeof body.token === "string" ? body.token : "";
+    if (!safeEqual(token, adminToken)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    const expiryMs = now() + STATS_SESSION_MAX_AGE_S * 1000;
+    setCookie(c, STATS_COOKIE, mintStatsSession(expiryMs), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+      path: "/api/stats",
+      maxAge: STATS_SESSION_MAX_AGE_S,
+    });
+    c.header("Cache-Control", "no-store");
+    return c.json({ ok: true });
+  });
+
   // Rider counts. Operator-only: an audience number is competitive information,
   // and there is no reason for it to be public just because it is anonymous.
-  app.get("/api/stats", requireAdmin, (c) => {
+  app.get("/api/stats", requireStatsAuth, (c) => {
     c.header("Cache-Control", "no-store");
-    return c.json({ riders: actives.stats(now()) });
+    // `since` travels with the numbers so the dashboard can say what it is
+    // counting from without hard-coding a date of its own.
+    return c.json({ riders: actives.stats(now()), since: actives.sinceDay() });
+  });
+
+  // Per-day trend behind the dashboard chart. Days with no rows are absent
+  // rather than zero — see actives.history().
+  app.get("/api/stats/history", requireStatsAuth, (c) => {
+    const raw = parseInt(c.req.query("days") ?? "", 10);
+    const days = Number.isFinite(raw)
+      ? Math.max(1, Math.min(HISTORY_MAX_DAYS, raw))
+      : HISTORY_DEFAULT_DAYS;
+    c.header("Cache-Control", "no-store");
+    return c.json({ history: actives.history(days, now()) });
   });
 
   // Flag browsers as test traffic so they stop counting. Non-destructive: the
@@ -578,6 +719,30 @@ export function buildApp(opts: AppOptions): Hono {
   // list is: riders' screenshots can contain their location and plans. The
   // filename comes from the report's own context, never from the URL, so this
   // cannot be used to read arbitrary files.
+  // The screenshot on one of a report's follow-ups, by index. Same admin gate
+  // and same filename validation as the report's own image below.
+  app.get("/api/reports/:id/followups/:index/image", requireAdmin, (c) => {
+    const id = Number(c.req.param("id"));
+    const index = Number(c.req.param("index"));
+    if (!Number.isInteger(id) || !Number.isInteger(index) || index < 0) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    const name = followupImageFile(opts.bundle.db, id, index);
+    if (!name || !/^[a-f0-9]{24}\.(png|jpg|webp)$/.test(name)) {
+      return c.json({ error: "no_image" }, 404);
+    }
+    try {
+      const bytes = fs.readFileSync(path.join(imageDir, name));
+      const type = name.endsWith(".png") ? "image/png"
+        : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
+      c.header("Content-Type", type);
+      c.header("Cache-Control", "private, max-age=3600");
+      return c.body(bytes);
+    } catch {
+      return c.json({ error: "no_image" }, 404);
+    }
+  });
+
   app.get("/api/reports/:id/image", requireAdmin, (c) => {
     const id = Number(c.req.param("id"));
     if (!Number.isInteger(id)) return c.json({ error: "invalid_request" }, 400);
@@ -623,7 +788,7 @@ export function buildApp(opts: AppOptions): Hono {
     if (body.priority === "urgent" || body.priority === "normal" || body.priority === "nice_to_have") {
       update2.priority = body.priority;
     }
-    const ok = updateReport(opts.bundle.db, id, update2);
+    const ok = updateReport(opts.bundle.db, id, update2, now());
     if (!ok) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });
   });
@@ -639,6 +804,26 @@ export function buildApp(opts: AppOptions): Hono {
         const indexPath = path.join(opts.staticDir!, "index.html");
         try {
           const html = await fs.promises.readFile(indexPath, "utf8");
+          c.header("Cache-Control", "no-store");
+          return c.html(html);
+        } catch {
+          return c.notFound();
+        }
+      });
+    }
+
+    // The operator dashboard is a standalone page in web/public, which Vite
+    // copies verbatim; serveStatic already answers /stats.html, and this makes
+    // the extensionless /stats work too. Registered before the SPA fallback so
+    // it isn't swallowed by index.html. Deliberately unlinked from the rider app.
+    // Both spellings answer identically — /stats.html would otherwise fall to
+    // serveStatic with no Cache-Control at all and be heuristically cached,
+    // so a bookmark to it could show yesterday's dashboard after a deploy.
+    for (const route of ["/stats", "/stats.html"]) {
+      app.get(route, async (c) => {
+        const statsPath = path.join(opts.staticDir!, "stats.html");
+        try {
+          const html = await fs.promises.readFile(statsPath, "utf8");
           c.header("Cache-Control", "no-store");
           return c.html(html);
         } catch {
