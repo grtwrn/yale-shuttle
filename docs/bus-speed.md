@@ -8,7 +8,14 @@ was unnecessary.
 Measured 2026-09-02 against 75,570 `raw_positions` rows (08:48–15:17 ET, 23
 bus names across 8 routes) plus a 6-minute live poll of `routes_buses.php`.
 One weekday daytime, 8 of 15 routes running: no night routes, no rush hour,
-no bad weather. Every number below is from that sample.
+no bad weather.
+
+**Independently re-derived** on a different 88,274-row window the same day
+(10:08–17:42 ET, 24 bus names, 10 routes) by a reviewer who was trying to
+break it. The feed-stutter figures reproduced within a tenth of a point
+(53.7% identical coordinates against 53.6%; 20.1% of samples calling a moving
+bus stopped against 21%). The estimator table did not fully reproduce, and is
+annotated below where it does not.
 
 ## The feed does not move smoothly, and that is the whole problem
 
@@ -43,15 +50,29 @@ Compared on the same 55,926 samples, truth being the centred ±30 s path speed:
 |---|---|---|---|---|
 | naive Δd/Δt | 4.8 | 12.4 | 16.8 | 20.4% |
 | **30 s trailing window** | **2.3** | **7.1** | **4.1** | **3.6%** |
-| median of last 6 naive | 2.9 | 8.9 | 7.1 | 14.4% |
 | along-route over 30 s | 2.6 | 11.6 | 6.8 | (MAE 22.1) |
 | constant-velocity Kalman, best of 32 tunings | 2.29 | 7.5 | 4.2 | 4.8% |
 
-The filter ties a plain trailing window and never beats it; against a ±20 s
-truth it is 2.01 vs the window's 2.03. Skipping duplicate fixes made the
-filter *worse* (7.3). Along-route projection is actively harmful, because
-routes 9 and 10's out-and-back mis-projects: 11.3% of its readings exceed
-45 mph against the window's 4.0%.
+**Read that table as a ranking, not as accuracy.** The "truth" is the centred
+±30 s path speed, which shares half its distance sum with the trailing window
+being graded, so the absolute figures flatter every window-shaped estimator.
+Graded against a disjoint NEXT 30 s instead, the window's median error is
+about 4.6 mph — and every window length from 10 s to 60 s scores the same,
+so there is nothing to tune.
+
+On this data the filter and the window are the same estimator wearing
+different clothes: they tie on the median, the window wins on p90 and on
+calling a moving bus stopped, and a second reviewer found the filter ahead
+(2.03 vs 2.55) when graded against a shorter ±20 s truth — where a 20 s
+window in turn beats both at 1.93. In other words the winner is whichever
+estimator's horizon matches the question, which is the argument against the
+filter: it costs tuning, state and explanation to land in the same place. Feed
+it only changed fixes and it gets clearly worse (median 4.6 against the
+window's 2.3).
+
+Along-route projection is actively harmful, because routes 9 and 10's
+out-and-back mis-projects: 11.3% of its readings exceed 45 mph against the
+window's 4.0%.
 
 The lesson generalises: the error here is a stuttering sensor, not Gaussian
 process noise, and a filter tuned for the latter has nothing to work with.
@@ -61,11 +82,16 @@ process noise, and a filter tuned for the latter has nothing to work with.
 Current 30 s speed as a predictor of the bus's mean speed over the next N
 seconds, against the route's own long-run average as the baseline:
 
+Truth is the bus's forward path distance ÷ elapsed over the next N seconds;
+the baseline is that route's mean of the same measure. Two independent runs
+over different windows agree on the shape and differ on the magnitudes, so
+read the columns as a comparison and not as absolute error:
+
 | horizon | correlation | speed error | route-average error | winner |
 |---|---|---|---|---|
-| 60 s | 0.754 | 4.57 mph | 5.89 mph | speed |
-| 120 s | — | 4.61 | 4.72 | tie |
-| 300 s | — | 5.43 | 3.61 | route average |
+| 60 s | 0.75 | 4.6–6.1 mph | 5.9–7.4 mph | speed |
+| 120 s | — | 4.6–6.2 | 4.7–6.5 | tie |
+| 300 s | — | 5.4–7.3 | 3.6–5.5 | route average |
 
 So the number is informative for about two minutes and anti-informative past
 that. Riders usually wait longer than that, which is why **it must never feed
