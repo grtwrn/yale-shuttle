@@ -1,0 +1,21 @@
+{
+  "caption": "Report #59 reproduced: Red to 517 Prospect. The trip view shows the shuttle dropping you at 344 Winchester with an 8 min walk while Division/Prospect sits 200 m from the door. Expand the Red option and the new line under GET OFF explains why: \"Closer to Division/Prospect? The shuttle rests about 8 min here, so walking from this stop gets you there about 3 min sooner.\" (/api/buses mocked with production Red calibration — a throwaway staging DB has no segment or dwell stats, so the layover the note depends on would not exist.)",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 120,
+    "dest": 100
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788358582/pr-preview/59/trip.png",
+    "/tmp/feedback-bot-wt-1788358582/pr-preview/59/map.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
