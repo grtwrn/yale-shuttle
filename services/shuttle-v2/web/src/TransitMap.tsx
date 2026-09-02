@@ -28,6 +28,8 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { BIKE_OVERHEAD_SEC, bikeOption, bikeTravelSecFromMeters, withBikeOption } from "./bike";
+import { loadBikePref, saveBikePref } from "./bikePref";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -383,10 +385,19 @@ const makeDestPin = () => L.divIcon({
 // Globally-nearest path index — only used to anchor the FIRST stop in a
 // sequence. Subsequent stops are matched forward from there (see below).
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
-// Foot profile lives on a different public OSRM install — the project-osrm
-// demo router only serves the driving profile, which follows one-ways and
-// avoids footpaths, i.e. wrong for walking legs.
+// Foot and bike profiles live on a different public OSRM install — the
+// project-osrm demo router only serves the driving profile, which follows
+// one-ways and avoids footpaths, i.e. wrong for walking legs. The bike
+// profile matters for the same reason in reverse: a bike is not allowed on
+// the footpaths a foot route happily cuts through, and it IS bound by the
+// one-ways a foot route ignores.
 const OSRM_FOOT_BASE = "https://routing.openstreetmap.de/routed-foot/route/v1/foot";
+const OSRM_BIKE_BASE = "https://routing.openstreetmap.de/routed-bike/route/v1/bike";
+// Which router draws a leg. "drive" is the shuttle's own road geometry.
+type SegProfile = "drive" | "foot" | "bike";
+const OSRM_FOR: Record<SegProfile, string> = {
+  drive: OSRM_BASE, foot: OSRM_FOOT_BASE, bike: OSRM_BIKE_BASE,
+};
 const LS_KEY = "shuttle-segment-geoms-v1";
 type SegGeom = [number, number][]; // [lat, lon][]
 function loadSegCache(): Record<string, SegGeom> {
@@ -400,16 +411,19 @@ function saveSegCache(cache: Record<string, SegGeom>) {
 }
 const segCache: Record<string, SegGeom> = loadSegCache();
 const segInFlight = new Set<string>();
-const segKey = (a: LatLon, b: LatLon, foot = false) =>
-  `${foot ? "F|" : ""}${a.lat.toFixed(5)},${a.lon.toFixed(5)}|${b.lat.toFixed(5)},${b.lon.toFixed(5)}`;
+// "" and "F|" are the prefixes this cache has always used; keep them so a
+// device that has already paid for its geometry does not re-fetch every leg.
+const SEG_PREFIX: Record<SegProfile, string> = { drive: "", foot: "F|", bike: "B|" };
+const segKey = (a: LatLon, b: LatLon, profile: SegProfile = "drive") =>
+  `${SEG_PREFIX[profile]}${a.lat.toFixed(5)},${a.lon.toFixed(5)}|${b.lat.toFixed(5)},${b.lon.toFixed(5)}`;
 
-async function fetchSegGeom(a: LatLon, b: LatLon, foot = false): Promise<SegGeom | null> {
-  const key = segKey(a, b, foot);
+async function fetchSegGeom(a: LatLon, b: LatLon, profile: SegProfile = "drive"): Promise<SegGeom | null> {
+  const key = segKey(a, b, profile);
   if (segCache[key]) return segCache[key];
   if (segInFlight.has(key)) return null;
   segInFlight.add(key);
   try {
-    const url = `${foot ? OSRM_FOOT_BASE : OSRM_BASE}/${a.lon},${a.lat};${b.lon},${b.lat}?geometries=geojson&overview=full`;
+    const url = `${OSRM_FOR[profile]}/${a.lon},${a.lat};${b.lon},${b.lat}?geometries=geojson&overview=full`;
     const r = await fetch(url);
     const d = await r.json();
     if (d.code !== "Ok" || !d.routes?.[0]?.geometry?.coordinates) return null;
@@ -497,7 +511,12 @@ const TripMap: FC<{
   // the one you missed" next to the live catchable bus.
   passedBus?: { lat: number; lon: number; name?: string } | null;
   color: string;
-}> = ({ from, to, shuttleStops, upcomingStops, shuttleRoad, upcomingRoad, bus, passedBus, color }) => {
+  // How the door-to-door leg is drawn when there is no shuttle: a bike is
+  // routed on the road network, not the footpaths, so it needs its own
+  // profile and its own solid line. Ignored once shuttleStops are given —
+  // the legs either side of a ride are always walked.
+  directMode?: "walk" | "bike";
+}> = ({ from, to, shuttleStops, upcomingStops, shuttleRoad, upcomingRoad, bus, passedBus, color, directMode = "walk" }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
@@ -527,23 +546,30 @@ const TripMap: FC<{
     // the street-following foot route once OSRM answers (cached per device,
     // so after the first view it's routed from the start). setLatLngs keeps
     // the fitted bounds — no refit jump when the geometry lands.
-    const walkLeg = (a: LatLon, b: LatLon) => {
-      const cached = segCache[segKey(a, b, true)];
+    const selfPoweredLeg = (a: LatLon, b: LatLon, profile: SegProfile = "foot") => {
+      const cached = segCache[segKey(a, b, profile)];
+      // Dashed for a walk, solid for a ride: the bike leg is one continuous
+      // movement on the road, and drawing it in the walk's dashes made it
+      // read as another approach leg rather than the whole trip.
       const line = L.polyline(cached ?? [[a.lat, a.lon], [b.lat, b.lon]], {
-        color: "#546e7a", weight: 2, dashArray: "4 6", opacity: 0.85,
+        color: profile === "bike" ? color : "#546e7a",
+        weight: profile === "bike" ? 4 : 2,
+        dashArray: profile === "bike" ? undefined : "4 6",
+        opacity: profile === "bike" ? 0.8 : 0.85,
       }).addTo(map);
       if (!cached) {
         const apply = (g: SegGeom | null | undefined) => {
           if (g && mapRef.current === map) line.setLatLngs(g);
         };
-        fetchSegGeom(a, b, true).then((pts) => {
+        fetchSegGeom(a, b, profile).then((pts) => {
           if (pts) apply(pts);
           // null can mean "another mount is already fetching this key" —
           // check the cache again once that request has had time to land.
-          else setTimeout(() => apply(segCache[segKey(a, b, true)]), 3000);
+          else setTimeout(() => apply(segCache[segKey(a, b, profile)]), 3000);
         });
       }
     };
+    const walkLeg = (a: LatLon, b: LatLon) => selfPoweredLeg(a, b, "foot");
 
     startMarkerRef.current = L.marker([from.lat, from.lon], { icon: makeYouIcon(), zIndexOffset: 500 })
       .addTo(map).bindTooltip("You", { direction: "top" });
@@ -579,7 +605,7 @@ const TripMap: FC<{
       walkLeg(alight, to);
       points.push([board.lat, board.lon], [alight.lat, alight.lon]);
     } else {
-      walkLeg(from, to);
+      selfPoweredLeg(from, to, directMode === "bike" ? "bike" : "foot");
     }
 
     map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 16 });
@@ -602,7 +628,7 @@ const TripMap: FC<{
     // the whole map and refit bounds every 5 seconds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    to.lat, to.lon, color,
+    to.lat, to.lon, color, directMode,
     JSON.stringify(shuttleStops?.map((s) => [s.lat, s.lon])),
     // upcomingStops intentionally NOT in deps — it shrinks as the bus
     // passes stops, and re-including it would rebuild the whole map
@@ -1602,6 +1628,10 @@ const TripPlanner: FC<{
   // toggle for anyone who'd rather not see it.
   const [overviewExpanded, setOverviewExpanded] = useState(true);
   const [showAllOptions, setShowAllOptions] = useState(false);
+  // Whether the picker offers a bike row. Read through the guarded loader —
+  // an unguarded localStorage access in a state initialiser throws (and
+  // blank-screens) with site data blocked. See bikePref.ts.
+  const [bikeOn, setBikeOn] = useState<boolean>(loadBikePref);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -1825,10 +1855,25 @@ const TripPlanner: FC<{
 
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
-      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
+      // The bike row is folded in HERE rather than in the live `options`
+      // memo below, so it keeps one identity across polls — the display
+      // order is keyed by routeLabel and remembers where each row sat.
+      ? withBikeOption(
+          planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate),
+          effectiveFromLL, toLL, bikeOn,
+        )
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey, bikeOn],
+  );
+  // Whether biking this trip is worth suggesting AT ALL — independent of the
+  // rider's preference, because the toggle has to stay on screen while it is
+  // off. Null for trips too short to beat walking or too far to be a campus
+  // errand; there the toggle is simply not rendered.
+  const bikeIsRelevant = useMemo(
+    () => !!(effectiveFromLL && toLL && bikeOption(effectiveFromLL, toLL)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon],
   );
 
   // Collapse the "show more" list whenever a new trip is planned.
@@ -2972,7 +3017,7 @@ const TripPlanner: FC<{
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && !options.some((o) => o.mode === "shuttle") && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {potentialRoutes.some((p) => p.activeNow)
@@ -3194,9 +3239,11 @@ const TripPlanner: FC<{
               </div>
             );
           })()}
-          {options.length === 1 && options[0].mode === "walk" && (
+          {options.length > 0 && !options.some((o) => o.mode === "shuttle") && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking beats every shuttle here — no bus nearby saves time.
+              {options.some((o) => o.mode === "bike")
+                ? "No shuttle helps here — walking or biking gets you there sooner."
+                : "Walking beats every shuttle here — no bus nearby saves time."}
             </div>
           )}
           {(() => {
@@ -3234,11 +3281,19 @@ const TripPlanner: FC<{
             // tags read like the app is broken.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
+              _sorted.every((o) => o.mode !== "shuttle" || _tier(o) > 0);
+            // Which self-powered option is actually winning. Saying "walking
+            // wins" above a bike row that is ten minutes quicker than the walk
+            // reads as a banner that has not looked at its own list.
+            const _bikeBeatsWalk =
+              (_sorted.find((o) => o.mode === "bike")?.totalSec ?? Infinity) <
+              (_sorted.find((o) => o.mode === "walk")?.totalSec ?? Infinity);
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride.
+              {_bikeBeatsWalk
+                ? "Walking or biking beats every shuttle right now — the routes are listed in case you'd rather ride."
+                : "Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride."}
             </div>
           )}
           <div style={{
@@ -3345,12 +3400,16 @@ const TripPlanner: FC<{
                     there were pure repetition (user feedback 2026-07-17). */}
                 {!isExpanded && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
-                  {o.mode === "walk" ? (
+                  {/* Walk and bike get the same OUTLINED chip, never a
+                      route-coloured pill: they are answers of a different
+                      kind, and colouring them like a line would put them in
+                      competition with the shuttles rather than beside them. */}
+                  {o.mode !== "shuttle" ? (
                     <span style={{
                       fontSize: 13, fontWeight: 600, color: "#5f6368",
                       background: "transparent", border: "1px solid #dadce0",
                       borderRadius: 6, padding: "2px 8px",
-                    }}>🚶 Walk</span>
+                    }}>{o.mode === "bike" ? "🚲 Bike" : "🚶 Walk"}</span>
                   ) : (
                     <>
                       {o.walkToSec > 0 && (
@@ -3372,6 +3431,17 @@ const TripPlanner: FC<{
                     </>
                   )}
                 </div>
+                )}
+                {/* The bike row's number is door-to-door, and the part of
+                    it a rider would assume we forgot is the lock. Say so —
+                    an estimate that quietly includes two minutes of standing
+                    still reads as a wrong estimate otherwise. */}
+                {!isExpanded && o.mode === "bike" && (
+                  <div style={{ fontSize: 13, color: "#5f6368", marginBottom: 8 }}>
+                    {fmtWalk(bikeTravelSecFromMeters(haversineMeters(
+                      fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL!, toLL!,
+                    )))} riding, plus {Math.round(BIKE_OVERHEAD_SEC / 60)} min to unlock and park
+                  </div>
                 )}
                 {/* Collapsed preview: a single summary line. For shuttle
                     options it's "#bus · N stops before yours · arrives
@@ -3679,9 +3749,14 @@ const TripPlanner: FC<{
                     </div>
                   );
                 })()}
-                {isExpanded && o.mode === "walk" && effectiveFromLL && toLL && (
+                {isExpanded && o.mode !== "shuttle" && effectiveFromLL && toLL && (
                   <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                    <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
+                    <TripMap
+                      from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL}
+                      to={toLL}
+                      color={o.color}
+                      directMode={o.mode === "bike" ? "bike" : "walk"}
+                    />
                   </div>
                 )}
                 {isExpanded && showMore && o.mode === "shuttle" && (() => {
@@ -3857,6 +3932,22 @@ const TripPlanner: FC<{
             );
           })}
           </div>
+            {bikeIsRelevant && !_detailOpen && (
+              <button
+                onClick={() => { const next = !bikeOn; setBikeOn(next); saveBikePref(next); }}
+                aria-pressed={bikeOn}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  width: "100%", minHeight: 44, padding: "10px 14px",
+                  background: "transparent", border: "none",
+                  fontSize: 14, fontWeight: 500,
+                  color: bikeOn ? "#5f6368" : "#1a73e8",
+                  cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                }}
+              >
+                {bikeOn ? "🚲 Hide the bike option" : "🚲 Show the bike option"}
+              </button>
+            )}
             {_hidden > 0 && !_detailOpen && (
               <button
                 onClick={() => setShowAllOptions(true)}

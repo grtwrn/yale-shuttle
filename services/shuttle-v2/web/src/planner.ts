@@ -14,7 +14,11 @@ import type { PublishedWindow } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 
 export type TripOption = {
-  mode: "shuttle" | "walk";
+  // "bike" rows are built by bike.ts and folded in after planTrip; nothing in
+  // here produces one. Everything that branches on mode must treat a non-
+  // "shuttle" row as an alternative to the whole trip, with no legs, no bus
+  // and no live recompute — testing `!== "shuttle"` rather than `=== "walk"`.
+  mode: "shuttle" | "walk" | "bike";
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;

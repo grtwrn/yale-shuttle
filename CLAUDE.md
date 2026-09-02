@@ -138,6 +138,23 @@ rain, only drier at the ends. Temperature and the WMO code are optional all
 the way through, so an upstream that stops sending them degrades to the
 rain-only wording rather than to no line.
 
+The trip picker offers a **bike row** beside the walk row (`web/src/bike.ts`,
+`web/src/bikePref.ts`). It is a whole alternative trip, never a leg of one —
+the Downtowner has no racks, so bike-then-ride is not a thing that can be
+suggested. The model is deliberately unheroic: 14.4 km/h on the ground (a city
+average, lights included) over a 1.25 detour, **plus a flat 2 min to unlock and
+park**, which is what stops a 400 m hop from "saving" four minutes. A bike is
+offered only when it beats the direct walk by 5 min (~700 m) and stays under
+45 min, and it sorts honestly among the shuttles — burying it would repeat the
+weather line's mistake. On by default, because an option nobody sees is an
+option nobody has; the rider who has no bike taps "🚲 Hide the bike option" in
+the options card footer once and the choice sticks. The toggle stays in that
+footer either way, so the row is never gone with no way back. Unlike the walk
+model there is nothing on the server to mirror — `/api/plan` plans shuttles and
+walking only. Its expanded map draws an OSRM **bike** route (a third profile
+beside driving and foot; bikes are barred from the footpaths a foot route cuts
+through), solid rather than the walk's dashes.
+
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never
 caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
