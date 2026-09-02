@@ -230,6 +230,7 @@
       <div class="hero-value" id="hero">—</div>
       <div class="hero-split" id="hero-split"></div>
       <div class="stamp" id="stamp"></div>
+      <div class="stamp" id="since"></div>
     </section>
 
     <section class="tiles" id="tiles"></section>
@@ -277,6 +278,7 @@
     chart: document.getElementById("chart"),
     chartAxis: document.getElementById("chart-axis"),
     chartEmpty: document.getElementById("chart-empty"),
+    since: document.getElementById("since"),
     chartScroll: document.getElementById("chart-scroll"),
     refresh: document.getElementById("refresh")
   };
@@ -357,7 +359,7 @@
       getJson("/api/stats/history?days=" + HISTORY_DAYS)
     ]).then(function (both) {
       pending = false;
-      render(both[0] && both[0].riders, (both[1] && both[1].history) || []);
+      render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -402,8 +404,11 @@
     return d;
   }
 
-  function render(r, history) {
+  function render(r, history, since) {
     r = r || {};
+    // Say what the numbers count, so "all time" is never read as "ever".
+    el.since.textContent = since ? "counting from " + dayParts(since).full : "";
+    el.since.hidden = !since;
     el.hero.textContent = num(r.today);
     el.heroSplit.textContent = num(r.newToday) + " new · " + num(r.returningToday) + " returning";
     el.stamp.textContent = "as of " + clockET(Date.now()) + " ET";

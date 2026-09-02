@@ -218,6 +218,16 @@ in `src/server/app.ts` and answers `/stats.html` identically (both `no-store`
 cached). **Not linked from the rider app**, and `sw.js` skips both paths, so
 the dashboard is never served from the rider shell's cache.
 
+**The statistics count from a fixed epoch**, `DEFAULT_STATS_SINCE_DAY` in
+`src/server/actives.ts` (2026-08-31, the Monday of launch week; override with
+`SHUTTLE_STATS_SINCE_DAY`, or `statsSinceDay` on `buildApp` — the app tests
+freeze the clock in 2023 and set their own). Rows before it are stored but not
+counted, and — this is the point — a browser seen only before the epoch does
+not make its owner's first real visit read as "returning". The floor lives in
+the shared `notExcluded` fragment beside the flagged-id filter, so a new
+statistic cannot forget it. `/api/stats` returns the epoch as `since`, which
+the dashboard prints under the hero ("counting from Mon Aug 31").
+
 It reads `GET /api/stats` and `GET /api/stats/history?days=N` (1..90, default
 30; days with no rows are absent, not zero). Both accept EITHER the
 `x-admin-token` header or a `stats_session` cookie; **every other admin route

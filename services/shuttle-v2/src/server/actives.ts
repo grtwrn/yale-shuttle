@@ -72,6 +72,12 @@ interface DayState {
 
 export type Activity = "poll" | "search";
 
+/**
+ * First ET day the operator statistics count. Monday of launch week: the app
+ * went to riders the next day, so everything before it is development traffic.
+ */
+export const DEFAULT_STATS_SINCE_DAY = "2026-08-31";
+
 export interface RiderStats {
   /** Distinct browsers over trailing windows. */
   today: number;
@@ -114,6 +120,8 @@ export interface DayHistory {
 export interface ActivesTracker {
   /** Record activity. Cheap and idempotent; safe on every request. */
   seen(anonId: string | undefined | null, kind?: Activity, now?: number): void;
+  /** First ET day the statistics count (see the counting epoch). */
+  sinceDay(): string;
   /** Usage and return-visit numbers. */
   stats(now?: number): RiderStats;
   /**
@@ -127,7 +135,16 @@ export interface ActivesTracker {
   stop(): void;
 }
 
-export function createActivesTracker(bundle: DbBundle): ActivesTracker {
+export interface ActivesOptions {
+  /**
+   * First ET day ("YYYY-MM-DD") the statistics count. Defaults to
+   * SHUTTLE_STATS_SINCE_DAY, then DEFAULT_STATS_SINCE_DAY. Tests that seed a
+   * synthetic history pass their own.
+   */
+  sinceDay?: string;
+}
+
+export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}): ActivesTracker {
   const db = bundle.db;
   let currentDay = "";
   let today = new Map<string, DayState>();
@@ -183,10 +200,25 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
   }
 
   /**
-   * Every figure the tracker reports excludes flagged browsers. Defined once,
-   * at tracker scope, so a new statistic cannot silently forget it.
+   * Every figure the tracker reports excludes flagged browsers AND anything
+   * before the counting epoch. Defined once, at tracker scope, so a new
+   * statistic cannot silently forget either half.
+   *
+   * The epoch exists because the operator's numbers should describe the
+   * SERVICE, not the build: sightings from before the app was in riders'
+   * hands are development traffic, and a browser that only appears there must
+   * not make its owner's first real visit read as "returning". Rows before it
+   * are still stored (the 90-day sweep owns deletion); they are simply not
+   * counted. Override with SHUTTLE_STATS_SINCE_DAY=YYYY-MM-DD.
    */
-  const notExcluded = sql`anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
+  const SINCE_DAY = (() => {
+    for (const raw of [opts.sinceDay?.trim(), process.env.SHUTTLE_STATS_SINCE_DAY?.trim()]) {
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    }
+    return DEFAULT_STATS_SINCE_DAY;
+  })();
+  const notExcluded = sql`day >= ${SINCE_DAY}
+    AND anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
 
   const median = (xs: number[]): number => {
     if (xs.length === 0) return 0;
@@ -301,6 +333,10 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
       });
     },
 
+    sinceDay() {
+      return SINCE_DAY;
+    },
+
     stats(now = Date.now()) {
       // Make in-memory counters visible to the queries below.
       flush(now);
@@ -329,7 +365,7 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
             SELECT COUNT(*) AS n FROM (
               SELECT anon_id FROM daily_actives WHERE day = ${day} AND ${notExcluded}
               INTERSECT
-              SELECT anon_id FROM daily_actives WHERE day < ${day}
+              SELECT anon_id FROM daily_actives WHERE day < ${day} AND day >= ${SINCE_DAY}
             )`),
         )?.n,
       );

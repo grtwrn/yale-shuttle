@@ -73,6 +73,8 @@ beforeEach(async () => {
     bundle,
     now: () => 1_700_000_000_000,
     adminToken: TEST_ADMIN_TOKEN,
+    // The clock here is frozen in 2023; count from before it.
+    statsSinceDay: "2000-01-01",
   });
   // Per-browser budgets now key on the anon id, which the tests reuse across
   // the file; with the frozen clock a bucket never expires on its own.
@@ -1172,5 +1174,15 @@ describe("static routes", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the stats payload names its counting epoch", () => {
+  it("returns `since` so the dashboard can say what it counts", async () => {
+    const res = await app.request("/api/stats", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { since: string; riders: { today: number } };
+    expect(body.since).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(typeof body.riders.today).toBe("number");
   });
 });

@@ -101,6 +101,11 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export interface AppOptions {
+  /**
+   * First ET day the operator statistics count (see the counting epoch in
+   * actives.ts). Tests that freeze the clock in the past set their own.
+   */
+  statsSinceDay?: string;
   collector: Collector;
   bundle: DbBundle;
   /** Used by /healthz and a few other endpoints; injectable for tests. */
@@ -130,7 +135,10 @@ export function buildApp(opts: AppOptions): Hono {
   const app = new Hono();
   // Unique-rider counting. Rides along on the poll the app already makes, so
   // there is no extra request; see actives.ts for the cost and privacy shape.
-  const actives = createActivesTracker(opts.bundle);
+  const actives = createActivesTracker(
+    opts.bundle,
+    opts.statsSinceDay ? { sinceDay: opts.statsSinceDay } : {},
+  );
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -600,7 +608,9 @@ export function buildApp(opts: AppOptions): Hono {
   // and there is no reason for it to be public just because it is anonymous.
   app.get("/api/stats", requireStatsAuth, (c) => {
     c.header("Cache-Control", "no-store");
-    return c.json({ riders: actives.stats(now()) });
+    // `since` travels with the numbers so the dashboard can say what it is
+    // counting from without hard-coding a date of its own.
+    return c.json({ riders: actives.stats(now()), since: actives.sinceDay() });
   });
 
   // Per-day trend behind the dashboard chart. Days with no rows are absent
