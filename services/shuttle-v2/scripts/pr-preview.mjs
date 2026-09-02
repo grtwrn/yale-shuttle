@@ -86,6 +86,7 @@ for (const [pathname, body] of Object.entries(mocks)) {
 
 fs.mkdirSync(OUT, { recursive: true });
 const taken = [];
+const failedViews = [];
 async function shot(name) {
   const file = path.join(OUT, `${name}.png`);
   if (typeof recipe.focus === "string" && recipe.focus) {
@@ -120,17 +121,26 @@ for (const view of views) {
     }
     await shot(view);
   } catch (e) {
+    // A view that never opened is a FAILED preview, not a preview of a
+    // failure: PR #7 shipped a `trip-failed.png` embedded as if it were the
+    // feature, and the operator had to catch it. Recorded and, below, made
+    // fatal — a screenshot nobody can trust is worse than none.
     console.error(`view ${view}: ${e.message}`);
+    failedViews.push({ view, error: String(e.message).slice(0, 300) });
     await shot(`${view}-failed`).catch(() => {});
   }
 }
 const body = await page.evaluate(() => document.body.innerText).catch(() => "");
 const crashed = body.includes("App crashed");
 fs.writeFileSync(path.join(OUT, "preview.json"), JSON.stringify({
-  caption: recipe.caption ?? null, base: BASE, trip, views, mocked: Object.keys(mocks), shots: taken, pageErrors, crashed,
+  caption: recipe.caption ?? null, base: BASE, trip, views, mocked: Object.keys(mocks),
+  shots: taken, failedViews, pageErrors, crashed,
 }, null, 2));
 console.log(`preview: ${taken.length} screenshot(s) in ${OUT}` + (recipe.caption ? ` — ${recipe.caption}` : ""));
 if (pageErrors.length || crashed) { console.error(`PAGE ERRORS: ${pageErrors.join(" | ")}${crashed ? " (App crashed)" : ""}`); }
+if (failedViews.length) {
+  console.error(`VIEWS THAT NEVER OPENED: ${failedViews.map((f) => `${f.view} (${f.error})`).join(" | ")}`);
+}
 await ctx.close();
 await browser.close();
-process.exit(pageErrors.length || crashed ? 1 : 0);
+process.exit(pageErrors.length || crashed || failedViews.length ? 1 : 0);

@@ -161,7 +161,10 @@ the wrapper stages the PR's own build on :8096, runs `scripts/pr-preview.mjs`
 (phone-sized headless chromium; the bot's `pr-preview.json` recipe mocks the
 API responses that make the feature visible, e.g. a rainy forecast), commits
 the PNGs under `pr-preview/<id>/` on the PR branch and embeds them in the PR
-body — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
+body. **A view that never opened is a failed preview**: the harness records it
+in `preview.json`, exits non-zero, and its `*-failed.png` is never embedded —
+a PR with no usable screenshot opens as a DRAFT saying so, because one shipped
+with a screenshot of its own failure and the operator had to catch it — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
 feature to see it before approving?". To preview any branch by hand: build
 `web/`, run the server on a spare port with a throwaway `SHUTTLE_V2_DB`, then
 `BASE=http://127.0.0.1:<port> RECIPE=recipe.json OUT=/tmp/shots node
