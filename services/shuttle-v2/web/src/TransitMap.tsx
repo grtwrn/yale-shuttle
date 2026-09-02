@@ -7,7 +7,7 @@ import {
 } from "./map-data";
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
-import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
@@ -1756,6 +1756,25 @@ const TripPlanner: FC<{
   // Collapse the "show more" list whenever a new trip is planned.
   useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
 
+  // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
+  // 07:02 before the first bus reported and nothing re-ran it when the bus
+  // appeared, so the rider kept reading "not running now" while it drove
+  // past. Re-plan when the roster of in-service buses changes and the
+  // current plan has no shuttle in it. Rosters change a few times an hour;
+  // plans with a shuttle already re-derive their waits live and are left alone.
+  const busRoster = useMemo(
+    () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(","),
+    [buses],
+  );
+  const prevRosterRef = useRef(busRoster);
+  useEffect(() => {
+    if (prevRosterRef.current === busRoster) return;
+    prevRosterRef.current = busRoster;
+    if (stableOptions && !stableOptions.some((o) => o.mode === "shuttle")) {
+      setRefreshKey((k) => k + 1);
+    }
+  }, [busRoster, stableOptions]);
+
   // "Routes that could get you there, but aren't running right now"
   // — displayed when planTrip yields only Walk. Recomputed alongside
   // stableOptions because it depends on the same endpoint + targetDate.
@@ -2754,10 +2773,10 @@ const TripPlanner: FC<{
                 value={tripTime}
                 onChange={(e) => setTripTime(e.target.value)}
                 style={{
-                  fontSize: 14, padding: "8px 10px", borderRadius: 6,
+                  fontSize: 16, padding: "8px 10px", borderRadius: 6, // ≥16 px: no iOS zoom-on-focus
                   border: "1px solid #cfd8dc", background: "#fff",
                   fontFamily: "inherit", color: "#263238", flex: 1, minWidth: 0,
-                  minHeight: 40,
+                  minHeight: 44,
                 }}
               />
               <button onClick={() => setTripTime("")} style={{
@@ -2847,7 +2866,9 @@ const TripPlanner: FC<{
       {options && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
-            Shuttles that go there — not running now
+            {potentialRoutes.some((p) => p.activeNow)
+              ? "Shuttles that go there — none on the map yet"
+              : "Shuttles that go there — not running now"}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {potentialRoutes.map((p) => {
@@ -2871,7 +2892,11 @@ const TripPlanner: FC<{
                     {p.schedule && (
                       <div>Runs {p.schedule}</div>
                     )}
-                    {nextStr && (
+                    {p.activeNow ? (
+                      <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
+                        Should be running now — no bus reporting yet
+                      </div>
+                    ) : nextStr && (
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Next: {nextStr}
                       </div>
@@ -5845,11 +5870,19 @@ const TransitMap: FC = () => {
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
   const [showMap, setShowMap] = useState(false);
+  // Every storage touch in the shell is guarded: with site data blocked (iOS
+  // "Block All Cookies", a QR scanner's in-app WebView) `localStorage` THROWS
+  // on access, and an unguarded read in a state initialiser blank-screened
+  // the whole app ("App crashed — The operation is insecure").
   const [listView, setListView] = useState<"all" | "trip" | "map" | "favorites" | "issues">(() => {
-    const saved = localStorage.getItem("listView");
-    return saved === "all" || saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
+    try {
+      const saved = localStorage.getItem("listView");
+      return saved === "all" || saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
+    } catch { return "trip"; }
   });
-  useEffect(() => { localStorage.setItem("listView", listView); }, [listView]);
+  useEffect(() => {
+    try { localStorage.setItem("listView", listView); } catch { /* storage blocked */ }
+  }, [listView]);
   // "Issues" tab notification: did the operator change the status of one of
   // this rider's reports since they last opened the tab? Checked ONCE at load
   // (not on the 5 s poll — status changes are rare, and the poll must stay
@@ -6291,7 +6324,7 @@ const TransitMap: FC = () => {
   });
   const saveStopGroups = (g: StopGroup[]) => {
     setStopGroups(g);
-    localStorage.setItem("shuttle-stop-groups", JSON.stringify(g));
+    try { localStorage.setItem("shuttle-stop-groups", JSON.stringify(g)); } catch { /* quota / blocked */ }
   };
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>(() => {
     try {
@@ -6301,7 +6334,7 @@ const TransitMap: FC = () => {
   });
   const saveSavedTrips = (t: SavedTrip[]) => {
     setSavedTrips(t);
-    localStorage.setItem("shuttle-saved-trips", JSON.stringify(t));
+    try { localStorage.setItem("shuttle-saved-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
   };
   const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(() => {
     try {
@@ -6311,7 +6344,7 @@ const TransitMap: FC = () => {
   });
   const saveRecentTrips = (t: SavedTrip[]) => {
     setRecentTrips(t);
-    localStorage.setItem("shuttle-recent-trips", JSON.stringify(t));
+    try { localStorage.setItem("shuttle-recent-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
   };
   // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
   // on mount / prop change and applies the from+to fields.
@@ -6362,7 +6395,7 @@ const TransitMap: FC = () => {
       const next = new Set(prev);
       if (next.has(routeId)) next.delete(routeId);
       else next.add(routeId);
-      localStorage.setItem("shuttle-favorites", JSON.stringify([...next]));
+      try { localStorage.setItem("shuttle-favorites", JSON.stringify([...next])); } catch { /* quota / blocked */ }
       return next;
     });
   };
@@ -6379,7 +6412,7 @@ const TransitMap: FC = () => {
       const next = new Set(prev);
       if (next.has(stopId)) next.delete(stopId);
       else next.add(stopId);
-      localStorage.setItem("shuttle-saved-stops", JSON.stringify([...next]));
+      try { localStorage.setItem("shuttle-saved-stops", JSON.stringify([...next])); } catch { /* quota / blocked */ }
       return next;
     });
   };
@@ -6453,6 +6486,10 @@ const TransitMap: FC = () => {
           signal: controller.signal,
           headers: anonIdHeader(),
         });
+        // A failed poll must not be mistaken for an empty fleet: the server
+        // answers 5xx as JSON `{error}`, and applying that as `buses ?? []`
+        // flipped a live page to "No shuttles running" for one tick.
+        if (!res.ok) return;
         const data = await res.json();
         if (stopped || mySeq <= latestApplied) return;
         latestApplied = mySeq;
@@ -6467,7 +6504,12 @@ const TransitMap: FC = () => {
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.dwells_by_bus) setDwellsByBus(data.dwells_by_bus);
-        if (data.route_paths) setRoutePaths(data.route_paths);
+        if (data.route_paths) {
+          // Before setBuses' consumers run: isBusOnRoute measures against
+          // these polylines (long stopless legs on Purple/Green).
+          registerRoutePaths(data.route_paths);
+          setRoutePaths(data.route_paths);
+        }
         if (Array.isArray(data.announcements)) setAnnouncements(data.announcements as ServiceAnnouncement[]);
       } catch { /* aborted or network error — next tick will retry */ }
     };
@@ -7052,7 +7094,7 @@ const TransitMap: FC = () => {
               autoFocus
               rows={4}
               style={{
-                width: "100%", fontSize: 15, padding: "10px 12px",
+                width: "100%", fontSize: 16, padding: "10px 12px", // ≥16 px: no iOS zoom-on-focus
                 border: "1px solid #ccc", borderRadius: 6,
                 fontFamily: "inherit", resize: "vertical", minHeight: 80,
               }}

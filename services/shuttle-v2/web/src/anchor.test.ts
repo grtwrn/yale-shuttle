@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute, OFF_ROUTE_THRESHOLD_M,
+  registerRoutePaths,
 } from "./anchor";
 import { haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
@@ -172,5 +173,38 @@ describe("isBusOnRoute", () => {
 
   it("does not filter a bus with no GPS", () => {
     expect(isBusOnRoute({ lat: 0, lon: 0 }, blueWeekend, stopCoords)).toBe(true);
+  });
+});
+
+describe("isBusOnRoute measures against the road polyline when one is registered", () => {
+  // Purple's Building 900 → LEPH leg is 6.7 km with no stop in between: a
+  // bus honestly on the highway sits > 500 m from every stop for half its
+  // lap. Model that with a two-stop route and a path that detours 3 km out.
+  const a = at(STOP.elmYorkTyco);
+  const far = { lat: a.lat + 0.03, lon: a.lon + 0.03 }; // ~4.4 km away
+  const apex = { lat: a.lat + 0.03, lon: a.lon };       // 3.3 km north of `a`
+  const coords = { 1: a, 2: far };
+  const stops = [1, 2];
+  const path: [number, number][] = [[a.lat, a.lon], [apex.lat, apex.lon], [far.lat, far.lon]];
+  const onHighway = { lat: a.lat + 0.015, lon: a.lon, route_id: 10 }; // halfway up the first leg
+
+  afterEach(() => registerRoutePaths(null));
+
+  it("keeps a bus on a long stopless leg that the stop test would drop", () => {
+    expect(isBusOnRoute(onHighway, stops, coords)).toBe(false); // the old behaviour
+    registerRoutePaths({ "10": path });
+    expect(isBusOnRoute(onHighway, stops, coords)).toBe(true);
+  });
+
+  it("still rejects a depot ghost far from the polyline", () => {
+    registerRoutePaths({ "10": path });
+    const ghost = { lat: a.lat + 0.015, lon: a.lon - 0.03, route_id: 10 }; // 2.5 km west of the leg
+    expect(isBusOnRoute(ghost, stops, coords)).toBe(false);
+  });
+
+  it("falls back to the stop test for a route with no registered path", () => {
+    registerRoutePaths({ "10": path });
+    expect(isBusOnRoute({ ...onHighway, route_id: 3 }, stops, coords)).toBe(false);
+    expect(isBusOnRoute({ ...a, route_id: 3 }, stops, coords)).toBe(true);
   });
 });

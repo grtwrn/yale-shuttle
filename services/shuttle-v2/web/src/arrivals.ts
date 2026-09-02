@@ -123,15 +123,25 @@ export function computeUpcomingArrivals(
         if (seg && seg.n >= 1) {
           segAvg = seg.avg;
           segVar = (seg.sd ?? 0) ** 2;
-        } else if (avgSeg > 0) {
-          segAvg = avgSeg;
-          segVar = fallbackSd * fallbackSd;
         } else {
+          // Unmeasured hop. The route-average segment time is a fair guess
+          // for a typical block-to-block hop, but never for a long one:
+          // Purple's Building 900 → LEPH leg (6.7 km, n:0 after a quiet
+          // week) was priced at the 2.9 min route average and the board
+          // promised a 19-min ride in 3. Take whichever is longer — the
+          // straight-line distance at bus speed is a floor the bus cannot
+          // beat, and the planner already prices the same case that way.
           const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
-          segAvg = pc && cc
+          const byDistance = pc && cc
             ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S)
-            : 90;
-          segVar = (segAvg * 0.5) ** 2;
+            : 0;
+          if (avgSeg > 0 && avgSeg >= byDistance) {
+            segAvg = avgSeg;
+            segVar = fallbackSd * fallbackSd;
+          } else {
+            segAvg = byDistance || 90;
+            segVar = (segAvg * 0.5) ** 2;
+          }
         }
         // Burn stall credit on the first segment only, capped by the
         // segment itself so we don't go negative.

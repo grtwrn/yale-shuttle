@@ -376,6 +376,14 @@ export interface PotentialRoute {
   alightStopId: number;
   schedule: string;
   nextActive: Date | null;
+  /**
+   * The schedule says this route should be running at `after`, yet no bus
+   * produced a trip — the feed is empty (first bus not out yet, a dropout)
+   * or the bus is off its route. The rider must read "should be running,
+   * no bus reporting", never "Next: tomorrow 7:00 AM", which is what
+   * `nextActive` alone says at 07:02 on a school morning.
+   */
+  activeNow: boolean;
 }
 
 export function findPotentialRoutes(
@@ -421,10 +429,13 @@ export function findPotentialRoutes(
       alightStopId: bestAlight,
       schedule: fmtSchedule(cfg.label),
       nextActive: nextActiveWindow(cfg.label, after),
+      activeNow: isRouteActiveAt(cfg.label, after),
     });
   }
-  // Sort by next-active — soonest first, routes with no schedule last.
+  // Routes that should be running now first, then by next-active — soonest
+  // first, routes with no schedule last.
   out.sort((a, b) => {
+    if (a.activeNow !== b.activeNow) return a.activeNow ? -1 : 1;
     const ta = a.nextActive ? a.nextActive.getTime() : Infinity;
     const tb = b.nextActive ? b.nextActive.getTime() : Infinity;
     return ta - tb;

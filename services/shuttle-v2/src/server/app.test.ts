@@ -11,6 +11,7 @@ import os from "node:os";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { buildApp } from "./app.js";
+import { resetRateLimits } from "./reports.js";
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -67,6 +68,9 @@ beforeEach(async () => {
     now: () => 1_700_000_000_000,
     adminToken: TEST_ADMIN_TOKEN,
   });
+  // Per-browser budgets now key on the anon id, which the tests reuse across
+  // the file; with the frozen clock a bucket never expires on its own.
+  resetRateLimits();
 });
 
 afterEach(() => {
@@ -643,6 +647,60 @@ describe("rider self-service (my-reports)", () => {
     expect(body.reports[0]!.followups).toEqual([
       { text: "still happening today", at: 1_700_000_000_000 },
     ]);
+  });
+
+  it("shows the rider only the part of a note above the --- rule, tag stripped", async () => {
+    const id = await submit(OWNER, "rain warning please");
+    await app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({
+        status: "open",
+        note: "[pr] Thanks — a fix is in the works!\n---\nPR: https://github.com/x/y/pull/2 (planner.ts:218)",
+      }),
+    });
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as { reports: Array<{ note: string | null }> };
+    expect(body.reports[0]!.note).toBe("Thanks — a fix is in the works!");
+    expect(JSON.stringify(body)).not.toContain("github");
+    // The operator still sees the whole note.
+    const admin = await app.request("/api/reports?limit=50", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    const all = (await admin.json()) as { reports: Array<{ id: number; note: string }> };
+    expect(all.reports.find((r) => r.id === id)!.note).toContain("github");
+  });
+
+  it("budgets report submissions per browser, not per shared IP", async () => {
+    // A whole building behind one campus NAT address: browser A exhausting
+    // its 10/min must not lock browser B out, and vice versa.
+    const ip = { "fly-client-ip": "10.200.0.1" };
+    const A = "aaaaaaaa-0000-4000-8000-000000000001";
+    const B = "aaaaaaaa-0000-4000-8000-000000000002";
+    const post = (anon: string) => app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": anon, ...ip },
+      body: JSON.stringify({ note: "x", source: "feedback" }),
+    });
+    for (let i = 0; i < 10; i++) expect((await post(A)).status).toBe(200);
+    expect((await post(A)).status).toBe(429);
+    expect((await post(B)).status).toBe(200);
+    // The list endpoint likewise: A's budget is A's alone.
+    const list = (anon: string) => app.request("/api/my-reports", { headers: { "x-anon-id": anon, ...ip } });
+    for (let i = 0; i < 30; i++) expect((await list(A)).status).toBe(200);
+    expect((await list(A)).status).toBe(429);
+    expect((await list(B)).status).toBe(200);
+  });
+
+  it("does not store an oversized context snapshot", async () => {
+    const res = await app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": OWNER, ...freshIp() },
+      body: JSON.stringify({ note: "huge", source: "feedback", junk: "z".repeat(200 * 1024) }),
+    });
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: number };
+    const row = bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string };
+    expect(row.context.length).toBeLessThan(1024);
+    expect(JSON.parse(row.context)).toMatchObject({ note: "huge", contextTruncated: true });
   });
 
   it("404s a rider update for a report they do not own", async () => {

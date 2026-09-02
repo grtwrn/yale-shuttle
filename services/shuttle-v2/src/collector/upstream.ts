@@ -51,7 +51,13 @@ const RawAnnouncementSchema = z.object({
 export type Announcement = z.infer<typeof RawAnnouncementSchema>;
 const AnnouncementsResponseSchema = z.array(RawAnnouncementSchema);
 
-const BusesResponseSchema = z.array(RawBusSchema);
+// The bus list is validated PER ROW. One malformed vehicle (a bus logged in
+// but unassigned reports `route: null`; a dead GPS reports `lat: null`) used
+// to fail the whole array, so every tick threw, `getLiveBuses()` emptied
+// after the TTL, and riders read "no shuttles" while the other 20 buses ran.
+// Bad rows are dropped and counted (`lastDroppedRows`) so the collector can
+// log them; the good rows keep flowing.
+const BusesResponseSchema = z.array(z.unknown());
 const StopsResponseSchema = z.array(RawStopSchema);
 const RoutesResponseSchema = z.array(RawRouteSchema);
 
@@ -91,8 +97,20 @@ export class UpstreamClient {
     this.fetchImpl = opts.fetchImpl ?? fetch;
   }
 
+  /** Rows of the last `buses()` response that failed validation and were dropped. */
+  lastDroppedRows = 0;
+
   async buses(): Promise<RawBus[]> {
-    return this.fetchValidated("/routes_buses.php", BusesResponseSchema);
+    const rows = await this.fetchValidated("/routes_buses.php", BusesResponseSchema);
+    const out: RawBus[] = [];
+    let dropped = 0;
+    for (const row of rows) {
+      const parsed = RawBusSchema.safeParse(row);
+      if (parsed.success) out.push(parsed.data);
+      else dropped += 1;
+    }
+    this.lastDroppedRows = dropped;
+    return out;
   }
 
   async announcements(): Promise<Announcement[]> {

@@ -316,14 +316,27 @@ export function buildApp(opts: AppOptions): Hono {
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     const ip = clientIp(c) ?? "anon";
-    if (!rateLimitAllow(ip, now())) {
+    // The reporter's anonymous browser id (same header the /api/buses poll
+    // carries) lets /api/my-reports show them THEIR reports later. Optional:
+    // a rider with storage disabled still gets their report through.
+    const anonHeader = c.req.header("x-anon-id");
+    const anonId = anonHeader && ANON_ID_PATTERN.test(anonHeader) ? anonHeader : null;
+    // Budget per BROWSER when we can tell browsers apart, because campus
+    // Wi-Fi puts a whole building behind one NAT address: 10 reports a
+    // minute per IP was a per-building cap on the first school morning. The
+    // IP still carries a looser flood guard so one box minting fresh ids
+    // cannot outrun it.
+    if (!rateLimitAllow(anonId ? `rep:${anonId}` : ip, now())) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    if (!rateLimitAllow(`repip:${ip}`, now(), { perMinute: 60, perDay: 1500 })) {
       return c.json({ error: "rate_limited" }, 429);
     }
     const body = await c.req.json().catch(() => null);
     if (!body || typeof body !== "object") {
       return c.json({ error: "invalid_request" }, 400);
     }
-    const b = body as Record<string, unknown>;
+    let b = body as Record<string, unknown>;
     // ReportSubmitSchema caps `body` at 2000 chars but this handler
     // hand-parses instead of running it, so enforce the cap here.
     const note = typeof b.note === "string" ? b.note.trim().slice(0, REPORT_TEXT_MAX) : "";
@@ -351,11 +364,13 @@ export function buildApp(opts: AppOptions): Hono {
         imageFile = undefined;
       }
     }
-    // The reporter's anonymous browser id (same header the /api/buses poll
-    // carries) lets /api/my-reports show them THEIR reports later. Optional:
-    // a rider with storage disabled still gets their report through.
-    const anonHeader = c.req.header("x-anon-id");
-    const anonId = anonHeader && ANON_ID_PATTERN.test(anonHeader) ? anonHeader : null;
+    // The body limit above is sized for the screenshot, which has just been
+    // pulled out; what remains is stored verbatim in the row, so cap it at
+    // the text-only limit — a legitimate context snapshot is ~2 KB, and
+    // 3 MB × 200/day of it would fill the 1 GB volume in two days.
+    if (JSON.stringify(b).length > REPORT_BODY_LIMIT) {
+      b = { note, source: b.source, contextTruncated: true };
+    }
     const { id } = submitReport(
       opts.bundle.db,
       { kind, routeId, body: note || "(report)", priority, context: imageFile ? { ...b, imageFile } : b },
@@ -385,8 +400,14 @@ export function buildApp(opts: AppOptions): Hono {
     // error, so the frontend needs no special case.
     if (!anonId) return c.json({ reports: [] });
     // Separate bucket from report submission (a rider refreshing their list
-    // must not eat their submit budget), looser per-minute for the UI.
-    if (!rateLimitAllow(`my:${clientIp(c) ?? "anon"}`, now(), { perMinute: 30, perDay: 2000 })) {
+    // must not eat their submit budget), looser per-minute for the UI. Keyed
+    // by browser, not IP: the app fetches this once per load, and a campus
+    // NAT address serves hundreds of loads a minute at 8 AM. The IP guard is
+    // only there to bound a flood of invented ids from one machine.
+    if (!rateLimitAllow(`my:${anonId}`, now(), { perMinute: 30, perDay: 2000 })) {
+      return c.json({ error: "rate_limited" }, 429);
+    }
+    if (!rateLimitAllow(`myip:${clientIp(c) ?? "anon"}`, now(), { perMinute: 600, perDay: 50_000 })) {
       return c.json({ error: "rate_limited" }, 429);
     }
     return c.json({ reports: listMyReports(opts.bundle.db, anonId) });

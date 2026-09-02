@@ -399,6 +399,19 @@ describe("findPotentialRoutes", () => {
     expect([...times].sort((a, b) => a - b)).toEqual(times);
   });
 
+  it("flags a route the schedule says is running right now", () => {
+    // 07:02 on a Wednesday: Blue Day opened two minutes ago and no bus is in
+    // the feed yet. The panel must say "should be running", not "Next: Thu".
+    const wed0702 = new Date("2026-09-02T07:02:00-04:00");
+    const found = findPotentialRoutes(from, to, routeStops, stopCoords, wed0702);
+    const day = found.find((r) => r.label === "Blue Day")!;
+    const weekend = found.find((r) => r.label === "Blue Weekend")!;
+    expect(day.activeNow).toBe(true);
+    expect(weekend.activeNow).toBe(false);
+    // Active-now routes lead the list even though their nextActive is later.
+    expect(found[0]!.activeNow).toBe(true);
+  });
+
   it("returns nothing for a destination no route reaches", () => {
     expect(findPotentialRoutes(
       { lat: 41.20, lon: -72.90 }, { lat: 41.25, lon: -72.90 },

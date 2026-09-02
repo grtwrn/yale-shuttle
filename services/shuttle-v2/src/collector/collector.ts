@@ -511,6 +511,13 @@ export class Collector {
         this.logUpstreamError("poll", err);
         return;
       }
+      if (this.upstream.lastDroppedRows > 0) {
+        this.droppedObservations += this.upstream.lastDroppedRows;
+        this.logger.warn("collector.upstream_rows_dropped", {
+          dropped: this.upstream.lastDroppedRows,
+          kept: buses.length,
+        });
+      }
 
       // Persistence + detector can throw (SQLite locked/full, bad geometry). A
       // single bad tick must never reject the poll promise — that would surface

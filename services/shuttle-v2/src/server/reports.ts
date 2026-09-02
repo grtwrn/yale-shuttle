@@ -40,6 +40,11 @@ function sweepRateLimits(now: number): void {
  * rider refreshing their report list must not eat their report-submission
  * budget. Callers must use consistent limits for a given key prefix.
  */
+/** Test hook: the buckets are module state and tests run on a frozen clock. */
+export function resetRateLimits(): void {
+  rateLimits.clear();
+}
+
 export function rateLimitAllow(
   key: string,
   now: number = Date.now(),
@@ -227,6 +232,36 @@ function followupsOf(ctx: Record<string, unknown>): ReportFollowup[] {
   return out;
 }
 
+/**
+ * The part of an operator/bot note a rider should read.
+ *
+ * A note is one record with two audiences. The line(s) ABOVE a `---` rule are
+ * the reply the rider sees in their Issues card — plain, short, no jargon.
+ * Everything from the rule down is the triage log for the operator and the
+ * bot (root-cause notes, file paths, PR links) and never leaves `/api/reports`.
+ * Machine tags the tooling keys on (`[triage]`, `[pr]`, `[approved]`,
+ * `[fixed]`, `automated:`, `automated-abuse:`) stay in the stored note and are
+ * stripped here, so a rider reads "Thanks — a fix is in the works!" rather
+ * than "[pr] A fix is proposed and awaiting developer review: https://github…".
+ *
+ * Notes written before this convention have no rule and show in full; a note
+ * that is nothing but tags or log shows as no reply at all.
+ */
+export function riderFacingNote(note: string | null): string | null {
+  if (note == null) return null;
+  let text = note.replace(/\r\n/g, "\n");
+  const rule = text.search(/^[ \t]*-{3,}[ \t]*$/m);
+  if (rule >= 0) text = text.slice(0, rule);
+  text = text.trim();
+  // Leading machine tags, possibly several ("[approved] [triage] …").
+  for (;;) {
+    const next = text.replace(/^(?:\[[a-z-]+\]|automated(?:-abuse)?:)\s*/i, "");
+    if (next === text) break;
+    text = next.trimStart();
+  }
+  return text.length > 0 ? text : null;
+}
+
 export function listMyReports(db: DB, anonId: string): MyReport[] {
   const rows = db
     .select({
@@ -252,7 +287,7 @@ export function listMyReports(db: DB, anonId: string): MyReport[] {
       kind: r.kind,
       body: r.body,
       status: r.status,
-      note: r.note,
+      note: riderFacingNote(r.note),
       hasImage: typeof ctx.imageFile === "string",
       archived: ctx.riderArchived === true,
       priority: r.priority,

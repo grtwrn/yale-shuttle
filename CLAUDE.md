@@ -126,7 +126,16 @@ caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
 the classic self-bricking failure.
 `scripts/map-bot-cron.sh` reads the same token file for its dedupe check.
 
-**Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold. Note prefixes are load-bearing: `[triage]` = bot analysis awaiting the operator, `[approved]` = operator authorizes the bot to implement, `[pr]` = a feedback-bot PR awaits review, `[fixed]` = shipped, `automated:` = benign auto-close, `automated-abuse:` = spam close that earns a reputation strike.
+**Notes have two readers.** A rider sees the note as the "Reply" under their
+report, so every note is `<one or two plain sentences for the rider>`, a line
+`---`, then the technical log for the operator. The server (`riderFacingNote`
+in `src/server/reports.ts`) shows riders only the text above the rule with the
+machine tag stripped; `/api/reports` returns the whole thing. No jargon above
+the rule — no file names, PR links, "triage". (The user's ask, 2026-09-01:
+"the bot responses to issues is way too technical … even if it's just 'good
+idea! looking into it'".)
+
+**Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold. Note prefixes are load-bearing (they go FIRST, before the rider text): `[triage]` = bot analysis awaiting the operator, `[approved]` = operator authorizes the bot to implement, `[pr]` = a feedback-bot PR awaits review, `[fixed]` = shipped, `automated:` = benign auto-close, `automated-abuse:` = spam close that earns a reputation strike.
 
 ### The feedback bot (autonomous triage)
 
@@ -143,7 +152,9 @@ pardon). The bot triages/replies directly via the admin API, but CODE changes
 happen in a disposable git worktree and become a `feedback-bot/*` branch + PR
 — **merging the PR is the approval and deploys via master CI; closing
 declines**. `npm run approve -- <id> [guidance]` pre-authorizes bigger work
-(still a PR). The wrapper enforces a file allowlist on the worktree diff and
+(still a PR). The bot is told to PR simple requests — bugs and small feature
+wishes alike — rather than `[triage]` them; `[triage]` is for policy/design
+questions and anything near privacy, auth, schema or config. The wrapper enforces a file allowlist on the worktree diff and
 re-runs the gates before any push; report bodies are treated as untrusted data
 throughout (`feedback-bot-prompt.md`). Riders see everything in the in-app
 Issues tab (`/api/my-reports`): statuses, notes (which are replies to them),

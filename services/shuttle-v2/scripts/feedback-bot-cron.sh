@@ -51,7 +51,7 @@ gh pr list --repo grtwrn/yale-shuttle --state merged --search "head:feedback-bot
     "[pr]"*)
       echo "PR merged for #$RID — marking fixed"
       curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
-        -d "{\"status\":\"addressed\",\"note\":\"[fixed] The proposed fix was reviewed, merged and deployed. ($URL)\"}" \
+        -d "{\"status\":\"addressed\",\"note\":\"[fixed] This should be fixed now — thanks for flagging it! Tell us if you still see it.\\n---\\nThe proposed fix was reviewed, merged and deployed. ($URL)\"}" \
         "https://yale-shuttle.fly.dev/api/reports/$RID/update" > /dev/null
       git push origin --delete "$BRANCH" 2>/dev/null || true
       ;;
@@ -68,7 +68,7 @@ if [ -n "$BLOCKED" ]; then
   echo "reputation auto-close: $BLOCKED"
   for id in ${BLOCKED//,/ }; do
     curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
-      -d '{"status":"wontfix","priority":"nice_to_have","note":"automated: ignored (this browser has repeatedly submitted abusive or machine-directed content)"}' \
+      -d '{"status":"wontfix","priority":"nice_to_have","note":"automated: Closed.\n---\nignored (this browser has repeatedly submitted abusive or machine-directed content)"}' \
       "https://yale-shuttle.fly.dev/api/reports/$id/update" > /dev/null
   done
 fi
@@ -137,7 +137,7 @@ PR_URL=$(gh pr create --repo grtwrn/yale-shuttle \
   --head "$REAL_BRANCH" --base master 2>/dev/null | tail -1)
 echo "PR opened: $PR_URL"
 curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
-  -d "{\"status\":\"open\",\"note\":\"[pr] A fix is proposed and awaiting developer review: $PR_URL\"}" \
+  -d "{\"status\":\"open\",\"note\":\"[pr] Thanks — a fix is in the works and waiting for a final check.\\n---\\nA fix is proposed and awaiting developer review: $PR_URL\"}" \
   "https://yale-shuttle.fly.dev/api/reports/$FIRST_ID/update" > /dev/null
 echo "=== done $(date -Is) ==="
 exit "$BOT_FAILED"

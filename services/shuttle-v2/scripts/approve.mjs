@@ -24,7 +24,10 @@ if (!Number.isInteger(id)) {
 }
 
 const TOKEN = fs.readFileSync(path.join(os.homedir(), ".yale-shuttle-admin-token"), "utf8").trim();
-const note = "[approved] " + (guidance.join(" ") || "Implement per your triage analysis.");
+// Rider-facing line first (they see it as the reply), operator guidance for
+// the bot below the rule — see riderFacingNote in src/server/reports.ts.
+const note = "[approved] Good idea — we're on it!\n---\n" +
+  (guidance.join(" ") || "Implement per your triage analysis.");
 
 const res = await fetch(`https://yale-shuttle.fly.dev/api/reports/${id}/update`, {
   method: "POST",
