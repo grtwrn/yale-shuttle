@@ -138,22 +138,39 @@ rain, only drier at the ends. Temperature and the WMO code are optional all
 the way through, so an upstream that stops sending them degrades to the
 rain-only wording rather than to no line.
 
-The trip picker offers a **bike row** beside the walk row (`web/src/bike.ts`,
-`web/src/bikePref.ts`). It is a whole alternative trip, never a leg of one —
-the Downtowner has no racks, so bike-then-ride is not a thing that can be
-suggested. The model is deliberately unheroic: 14.4 km/h on the ground (a city
-average, lights included) over a 1.25 detour, **plus a flat 2 min to unlock and
+The walk row is really a **self-powered row**: it carries a bike alongside the
+walk (`web/src/bike.ts`, `web/src/bikePref.ts`). Biking is a whole alternative
+trip, never a leg of one — the Downtowner has no racks, so bike-then-ride is
+not a thing that can be suggested.
+
+**The two share ONE row, and that is deliberate.** They are the same answer to
+the same question, and as two rows they could not even sit together: honest
+sorting puts a shuttle between a 9-minute bike and a 22-minute walk, so the
+picker showed one kind of answer twice with an unrelated one wedged between.
+The merged row **ranks on the bike** (`totalSec` is the sooner arrival; the
+walk's own time is always `directWalkSec`), because the top row is the
+picker's recommendation — but both times are printed on their own chips, so a
+rider with no bike reads the walk in the same glance. Chips use `fmtMin`, not
+`fmtWalk`: the bike chip and the headline are the same number, and a row
+reading "9 min" beside "Bike 10 min" reads as a bug. Expanding the row gives a
+two-way switch (the map draws a bike route or a foot route — different roads),
+and the headline follows the half that is selected. When the walk row has been
+suppressed (a walk over an hour) the bike stands alone under `mode: "bike"` —
+which is the trip where it is worth the most.
+
+The model is deliberately unheroic: 14.4 km/h on the ground (a city average,
+lights included) over a 1.25 detour — worse than walking's 1.2, since a bike
+cannot take the footpath cut-throughs — **plus a flat 2 min to unlock and
 park**, which is what stops a 400 m hop from "saving" four minutes. A bike is
 offered only when it beats the direct walk by 5 min (~700 m) and stays under
-45 min, and it sorts honestly among the shuttles — burying it would repeat the
-weather line's mistake. On by default, because an option nobody sees is an
-option nobody has; the rider who has no bike taps "🚲 Hide the bike option" in
-the options card footer once and the choice sticks. The toggle stays in that
-footer either way, so the row is never gone with no way back. Unlike the walk
-model there is nothing on the server to mirror — `/api/plan` plans shuttles and
-walking only. Its expanded map draws an OSRM **bike** route (a third profile
-beside driving and foot; bikes are barred from the footpaths a foot route cuts
-through), solid rather than the walk's dashes.
+45 min. On by default, because an option nobody sees is an option nobody has;
+the rider who has no bike taps "🚲 Hide the bike option" in the options card
+footer once and the choice sticks. The toggle stays in that footer either way,
+so the row is never gone with no way back. Unlike the walk model there is
+nothing on the server to mirror — `/api/plan` plans shuttles and walking only.
+The OSRM helper takes a **profile** (drive / foot / bike) rather than a `foot`
+boolean; the drive and foot cache keys are unchanged, so no device re-fetches
+geometry it already has.
 
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never

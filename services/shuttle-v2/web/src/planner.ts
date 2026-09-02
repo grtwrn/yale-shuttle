@@ -11,6 +11,7 @@ import {
   fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
+import type { BikeLeg } from "./bike";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 
 export type TripOption = {
@@ -42,6 +43,11 @@ export type TripOption = {
   // live bus exists to count down.
   busEtaSec?: number;
   computedAtMs?: number;
+  // Present on the self-powered row when biking this trip is also worth
+  // offering (bike.ts attaches it after planTrip; nothing in here sets it).
+  // The row then RANKS on the bike — `totalSec` is the sooner of the two
+  // arrivals — while the walk's own time stays readable as `directWalkSec`.
+  bike?: BikeLeg;
 };
 
 /** Don't keep looping past a boarding point. */

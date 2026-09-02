@@ -82,42 +82,57 @@ export const BIKE_MAX_SEC = 45 * 60;
  */
 export const BIKE_COLOR = "#00796B";
 
-/** The label that identifies the bike row. Option identity is the label. */
+/**
+ * Label for the standalone row, used only when there is no walk row to join.
+ * Option identity is the label, so it must not collide with a line.
+ */
 export const BIKE_LABEL = "Bike";
 
 /**
- * The bike option for this trip, or null when biking it is not worth
- * suggesting (too short to beat walking, or too far to be a campus errand).
- *
- * Legs are all zero and the time lives in `totalSec`, exactly as the walk row
- * does it: there is no walk-to/wait/ride to break out, and the sum-of-legs
- * identity is already not something non-shuttle rows carry.
+ * The bike half of the self-powered row: what a rider needs to be told about
+ * riding this trip, with the lock broken out because the row prints it.
  */
-export function bikeOption(from: LatLon, to: LatLon): TripOption | null {
+export type BikeLeg = {
+  /** Door to door, including the lock at both ends. What the row ranks on. */
+  totalSec: number;
+  /** Seconds in the saddle. */
+  travelSec: number;
+  /** Unlock + park + lock. */
+  overheadSec: number;
+};
+
+/**
+ * The bike leg for this trip, or null when biking it is not worth suggesting
+ * (too short to beat walking, or too far to be a campus errand).
+ */
+export function bikeLegFor(from: LatLon, to: LatLon): BikeLeg | null {
   const meters = haversineMeters(from, to);
   const totalSec = bikeSecFromMeters(meters);
   if (totalSec > BIKE_MAX_SEC) return null;
-  const directWalkSec = walkSecFromMeters(meters);
-  if (directWalkSec - totalSec < BIKE_MIN_SAVING_SEC) return null;
-  return {
-    mode: "bike",
-    routeLabel: BIKE_LABEL,
-    color: BIKE_COLOR,
-    boardStopId: 0, alightStopId: 0,
-    walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
-    totalSec, busName: "",
-    directWalkSec,
-  };
+  if (walkSecFromMeters(meters) - totalSec < BIKE_MIN_SAVING_SEC) return null;
+  return { totalSec, travelSec: bikeTravelSecFromMeters(meters), overheadSec: BIKE_OVERHEAD_SEC };
 }
 
 /**
- * `options` with the bike row folded in and the list re-sorted by total time.
+ * `options` with the bike folded in, re-sorted by total time.
  *
- * Sorting it honestly, alongside everything else, is the point: a bike really
- * does beat the shuttle across most of campus, and a picker that knew this and
- * buried it would be the weather line all over again — present, correct, and
- * never read. Riders without a bike turn the row off once (see bikePref.ts)
- * and it stays off.
+ * The bike JOINS THE WALK ROW rather than taking a row of its own. Walking and
+ * biking are the same answer to the same question — "get there yourself" — and
+ * as two rows they could not even sit together: honest sorting puts a shuttle
+ * between a 9-minute bike and a 22-minute walk, so the picker showed one kind
+ * of answer in two places with an unrelated one wedged between them. One row
+ * carrying both times reads as the single choice it actually is, and costs a
+ * row of a list a rider is scanning on a phone.
+ *
+ * The merged row RANKS ON THE BIKE, because that is the soonest a rider can
+ * get there under their own power and the picker's whole contract is that the
+ * top row is the fastest. The walk time is not hidden by this — it is printed
+ * on the same row, in its own chip — so a rider with no bike reads both
+ * numbers in one glance instead of hunting for the second one further down.
+ *
+ * When the walk row has been suppressed (a walk over an hour) there is nothing
+ * to join, and the bike becomes a row of its own — which is exactly the trip
+ * where it is worth the most: too far to walk, and under the 45-minute cap.
  *
  * Pure, and a no-op when disabled or when the trip does not warrant a bike, so
  * callers can apply it unconditionally.
@@ -129,7 +144,25 @@ export function withBikeOption(
   enabled: boolean,
 ): TripOption[] {
   if (!enabled) return options;
-  const bike = bikeOption(from, to);
+  const bike = bikeLegFor(from, to);
   if (!bike) return options;
-  return [...options, bike].sort((a, b) => a.totalSec - b.totalSec);
+  const walkIdx = options.findIndex((o) => o.mode === "walk");
+  const merged = walkIdx >= 0
+    ? options.map((o, i) => (i === walkIdx
+        // totalSec is the row's RANK and its headline, so it takes the sooner
+        // of the two arrivals. The walk's own time is never lost with it: it
+        // is `directWalkSec`, which every option already carries.
+        ? { ...o, bike, totalSec: Math.min(o.totalSec, bike.totalSec) }
+        : o))
+    : [...options, {
+        mode: "bike" as const,
+        routeLabel: BIKE_LABEL,
+        color: BIKE_COLOR,
+        boardStopId: 0, alightStopId: 0,
+        walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
+        totalSec: bike.totalSec, busName: "",
+        directWalkSec: walkSecFromMeters(haversineMeters(from, to)),
+        bike,
+      }];
+  return [...merged].sort((a, b) => a.totalSec - b.totalSec);
 }
