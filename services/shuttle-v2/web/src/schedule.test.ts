@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  etDayAndMinutes, fmtSchedule, fmtScheduleDays, fmtScheduleTime,
-  isBusInService, isRouteActiveAt, nextActiveWindow, ROUTE_HOURS, SERVICE_GRACE_MS,
+  etDayAndMinutes, fmtSchedule, fmtScheduleDays, fmtScheduleTime, fmtWindows,
+  isBusInService, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
+  ROUTE_HOURS, SERVICE_GRACE_MS,
 } from "./schedule";
 import { ROUTE_LISTS } from "./routes";
 import { makeBus } from "./__fixtures__/payload";
@@ -346,5 +347,69 @@ describe("ROUTE_HOURS vs observed service", () => {
     expect(SERVICE_GRACE_MS).toBeGreaterThanOrEqual(65 * 60 * 1000);
     expect(isRouteActiveAt("Blue Day", et(FRI, 19, 5))).toBe(false);
     expect(isBusInService(blueDay, et(FRI, 19, 5).getTime())).toBe(true);
+  });
+});
+
+// The published-hours generalisations: ROUTE_HOURS is the gate riders are NOT
+// shown; these take any window list, so the operator's parsed description
+// (`/api/buses` `route_hours`) renders and is judged the same way.
+describe("fmtWindows / isWindowActiveAt / nextWindowStart", () => {
+  const redPublished = { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" };
+  const nightPublished = { days: [0, 1, 2, 3, 4, 5, 6], startMin: 18 * 60, endMin: 24 * 60, text: "6pm - 12am, Daily" };
+
+  it("renders published windows in the house style", () => {
+    expect(fmtWindows([redPublished])).toBe("M–F 7a–6p");
+    expect(fmtWindows([nightPublished])).toBe("Daily 6p–12a");
+    expect(fmtWindows([{ days: [0, 1, 2, 3, 4, 5, 6], startMin: 5 * 60 + 30, endMin: 23 * 60 + 45 }])).toBe("Daily 5:30a–11:45p");
+    expect(fmtWindows([{ days: [0, 6], startMin: 7 * 60, endMin: 17 * 60 }])).toBe("Sa/Su 7a–5p");
+    expect(fmtWindows([])).toBe("");
+  });
+
+  it("fmtSchedule is the same formatter over ROUTE_HOURS", () => {
+    for (const label of Object.keys(ROUTE_HOURS)) {
+      expect(fmtSchedule(label)).toBe(fmtWindows(ROUTE_HOURS[label]!));
+    }
+    // And the gate table really does disagree with what Yale publishes — the
+    // reason the display was split off from it.
+    expect(fmtSchedule("Red")).toBe("M–F 5:40a–7p");
+    expect(fmtWindows([redPublished])).toBe("M–F 7a–6p");
+  });
+
+  it("judges an instant against the supplied windows, in ET", () => {
+    // Wednesday 2026-09-02, 06:10 ET: inside the ROUTE_HOURS gate (05:40 open)
+    // but before the published 07:00.
+    const wed0610 = new Date("2026-09-02T06:10:00-04:00");
+    const wed0710 = new Date("2026-09-02T07:10:00-04:00");
+    expect(isRouteActiveAt("Red", wed0610)).toBe(true);
+    expect(isWindowActiveAt([redPublished], wed0610)).toBe(false);
+    expect(isWindowActiveAt([redPublished], wed0710)).toBe(true);
+    // 12am end: 23:59 in, 00:00 out.
+    expect(isWindowActiveAt([nightPublished], new Date("2026-09-02T23:59:00-04:00"))).toBe(true);
+    expect(isWindowActiveAt([nightPublished], new Date("2026-09-03T00:00:00-04:00"))).toBe(false);
+    expect(isWindowActiveAt([], wed0710)).toBe(false);
+  });
+
+  it("finds the next opening of the supplied windows", () => {
+    const wed0610 = new Date("2026-09-02T06:10:00-04:00");
+    expect(nextWindowStart([redPublished], wed0610)?.toISOString()).toBe(new Date("2026-09-02T07:00:00-04:00").toISOString());
+    // Friday 19:00 → Monday 07:00.
+    const fri1900 = new Date("2026-09-04T19:00:00-04:00");
+    expect(nextWindowStart([redPublished], fri1900)?.toISOString()).toBe(new Date("2026-09-07T07:00:00-04:00").toISOString());
+    expect(nextWindowStart([], wed0610)).toBeNull();
+  });
+
+  it("the ROUTE_HOURS wrappers are unchanged: identical answers to the generalisations", () => {
+    const instants = [
+      MON_1630_ET,
+      new Date("2026-08-31T10:30:00Z"),
+      new Date("2026-09-01T04:30:00Z"),
+      new Date("2026-09-05T16:00:00Z"),
+    ];
+    for (const label of Object.keys(ROUTE_HOURS)) {
+      for (const d of instants) {
+        expect(isRouteActiveAt(label, d)).toBe(isWindowActiveAt(ROUTE_HOURS[label]!, d));
+        expect(nextActiveWindow(label, d)?.getTime()).toBe(nextWindowStart(ROUTE_HOURS[label]!, d)?.getTime());
+      }
+    }
   });
 });

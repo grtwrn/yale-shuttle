@@ -27,6 +27,7 @@ function fakeUpstream(buses: RawBus[], stops: Stop[], routes: Route[]): Upstream
         shortName: r.shortName,
         color: r.color,
         stops: r.stops,
+        ...(r.description !== undefined ? { description: r.description } : {}),
       })),
   } as UpstreamClient;
 }
@@ -38,7 +39,11 @@ const stops: Stop[] = [
 ];
 
 const routes: Route[] = [
-  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3] },
+  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F" },
+  // A description the parser cannot read: must be absent from route_hours,
+  // never a crash or a half-parsed window.
+  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website" },
+  { id: 12, name: "Bare", shortName: "B", color: "#222", stops: [1, 3] },
 ];
 
 // Injected rather than read from $SHUTTLE_ADMIN_TOKEN so the suite doesn't
@@ -217,6 +222,7 @@ describe("GET /api/buses", () => {
       "buses",
       "dwells",
       "dwells_by_bus",
+      "route_hours",
       "route_paths",
       "route_peaks",
       "routes",
@@ -226,6 +232,20 @@ describe("GET /api/buses", () => {
     ]);
     expect(Object.keys(body.stop_names as object).sort()).toEqual(["1", "2", "3"]);
     expect((body.routes as Record<string, number[]>)["10"]).toEqual([1, 2, 3]);
+  });
+
+  it("publishes the operator's timetable per route as route_hours", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as {
+      route_hours: Record<string, { days: number[]; startMin: number; endMin: number; text: string }>;
+      routes: Record<string, number[]>;
+    };
+    // Every route is in the topology…
+    expect(Object.keys(body.routes).sort()).toEqual(["10", "11", "12"]);
+    // …but only the one whose description parsed carries hours. Keyed by
+    // route id, as the client's ROUTE_LISTS.routeIds are.
+    expect(body.route_hours).toEqual({
+      "10": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
+    });
   });
 
   it("rebuilds when the collector observes a new position", async () => {

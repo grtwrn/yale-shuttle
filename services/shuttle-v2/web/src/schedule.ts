@@ -29,6 +29,25 @@ import { ROUTE_ID_LABEL } from "./routes";
 // observed and the ±90 min SERVICE_GRACE_MS still covers the published time.
 export type ScheduleWindow = { days: number[]; startMin: number; endMin: number };
 
+// A route's PUBLISHED timetable as served in `/api/buses` `route_hours`, keyed
+// by route id: the server parses the operator's free-text description
+// ("7am - 6pm, M - F", src/server/publishedHours.ts) into this shape. `text`
+// is that original description. Same clock conventions as ScheduleWindow.
+export type PublishedWindow = ScheduleWindow & { text?: string };
+
+// ⚠️ ROUTE_HOURS is the in-service GATE, not what riders are shown.
+//
+// It decides whether a reported bus is real (`isBusInService`, ±90 min grace)
+// and whether a route counts as running for future-date planning. That job
+// wants the window WIDE — hiding a bus the rider can see is the worse failure —
+// so these values were widened against 13 weeks of observed arrivals and are
+// not the operator's timetable (Red below opens 05:40; Yale publishes 7am).
+//
+// The hours riders READ ("Runs M–F 7a–6p" in the trip panel and the All tab)
+// come from `/api/buses` `route_hours`, i.e. the operator's own published
+// description parsed server-side, and only fall back to this table when a
+// route's description could not be parsed. Do not narrow this table to match
+// what is displayed; change the display source instead.
 export const ROUTE_HOURS: Record<string, ScheduleWindow[]> = {
   // Observed M–F 06:30–18:30; the published window is wider at both ends, and
   // wider is the safe direction. 1 arrival on 13 Sundays confirms M–F (#30).
@@ -103,12 +122,18 @@ export function fmtScheduleDays(days: number[]): string {
   return [...days].sort().map((d) => names[d]).join("/");
 }
 
-export function fmtSchedule(label: string): string {
-  const wins = ROUTE_HOURS[label];
-  if (!wins || wins.length === 0) return "";
+/** "M–F 7a–6p", "Daily 5:30a–11:45p", "Sa/Su 7a–5p", "Daily 6p–12a". */
+export function fmtWindows(wins: ScheduleWindow[]): string {
   return wins.map((w) =>
     `${fmtScheduleDays(w.days)} ${fmtScheduleTime(w.startMin)}–${fmtScheduleTime(w.endMin)}`
   ).join(" · ");
+}
+
+/** ROUTE_HOURS rendered as text — the fallback when no published window exists. */
+export function fmtSchedule(label: string): string {
+  const wins = ROUTE_HOURS[label];
+  if (!wins || wins.length === 0) return "";
+  return fmtWindows(wins);
 }
 
 // ROUTE_HOURS is published Eastern Time, but `getDay()`/`getHours()` read the
@@ -140,9 +165,8 @@ export function etDayAndMinutes(d: Date): { day: number; mins: number } {
   return { day, mins: (hour % 24) * 60 + minute };
 }
 
-export function isRouteActiveAt(label: string, d: Date): boolean {
-  const wins = ROUTE_HOURS[label];
-  if (!wins) return true;                    // unknown → don't filter
+/** Is the ET instant `d` inside any of `wins`? False for an empty list. */
+export function isWindowActiveAt(wins: readonly ScheduleWindow[], d: Date): boolean {
   const { day, mins } = etDayAndMinutes(d);
   for (const w of wins) {
     if (w.endMin <= 1440) {
@@ -155,6 +179,12 @@ export function isRouteActiveAt(label: string, d: Date): boolean {
     }
   }
   return false;
+}
+
+export function isRouteActiveAt(label: string, d: Date): boolean {
+  const wins = ROUTE_HOURS[label];
+  if (!wins) return true;                    // unknown → don't filter
+  return isWindowActiveAt(wins, d);
 }
 
 // A bus reported on a route far outside that route's published operating
@@ -197,6 +227,11 @@ export function isBusInService(b: BusData, now = Date.now()): boolean {
 export function nextActiveWindow(label: string, after: Date): Date | null {
   const wins = ROUTE_HOURS[label];
   if (!wins) return null;
+  return nextWindowStart(wins, after);
+}
+
+/** Next instant strictly after `after` at which one of `wins` opens; null if none within a week. */
+export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date): Date | null {
   for (let offset = 0; offset < 7; offset++) {
     const cand = new Date(after.getTime() + offset * 86_400_000);
     const { day: dow, mins } = etDayAndMinutes(cand);
