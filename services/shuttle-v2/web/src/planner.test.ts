@@ -520,6 +520,25 @@ describe("topVisibleOptions", () => {
       .toEqual(["Red", "Walk", "Orange Day", "Blue Day"]);
   });
 
+  it("keeps a third shuttle seven minutes behind the second (reports #67, #68)", () => {
+    // Both riders tapped "Show 1 more route", found the third shuttle and
+    // asked for it by default. Report #68's trip:
+    const sixtyEight = [
+      opt("shuttle", "Green", 19 * 60), opt("walk", "Walk", 14 * 60),
+      opt("shuttle", "Blue Day", 28 * 60), opt("shuttle", "Orange Day", 35 * 60),
+    ];
+    expect(topVisibleOptions(sixtyEight).map((o) => o.routeLabel))
+      .toEqual(["Green", "Walk", "Blue Day", "Orange Day"]);
+    // Report #67's trip — same 7-minute gap, and a fourth route that stays
+    // hidden because three shuttles is still the cap.
+    const sixtySeven = [
+      opt("shuttle", "Red", 19 * 60), opt("shuttle", "Orange Day", 31 * 60),
+      opt("shuttle", "Blue Day", 38 * 60), opt("shuttle", "Brown", 44 * 60),
+    ];
+    expect(topVisibleOptions(sixtySeven).map((o) => o.routeLabel))
+      .toEqual(["Red", "Orange Day", "Blue Day"]);
+  });
+
   it("drops a distant third shuttle", () => {
     const sorted = [
       opt("shuttle", "Red", 17 * 60), opt("walk", "Walk", 31 * 60),

@@ -1,0 +1,23 @@
+{
+  "caption": "Trip options on a live trip — a third shuttle now stays in the list when it is within 10 min of the second (was 5), so riders no longer have to tap \"Show 1 more route\" to find it. How many routes appear depends on live ETAs.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 155,
+    "dest": 159
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788385142/pr-preview/68/trip-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

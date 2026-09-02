@@ -498,8 +498,16 @@ export function findPotentialRoutes(
  * quarter of the walking, and sat hidden behind "show more": report #46). A
  * distant third is noise and cedes its slot; the walk row always shows because
  * it is a different kind of answer, not a competing shuttle.
+ *
+ * "Nearly as good" was 5 min and that was too tight. Two riders separately
+ * expanded "Show 1 more route", found the third shuttle and asked for it by
+ * default — Green 19 / Blue 28 / Orange 35 (report #68) and Red 19 / Orange 31
+ * / Blue 38 (report #67). Both third shuttles were SEVEN minutes behind the
+ * second, and both riders rated the hidden one a route they would ride. Ten
+ * minutes covers those with headroom while still dropping a third that is
+ * genuinely in another class (the 21-min-behind case in the tests).
  */
-export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
+export const THIRD_SHUTTLE_SLACK_SEC = 10 * 60;
 
 export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
   const shuttles = sorted.filter((o) => o.mode === "shuttle");
