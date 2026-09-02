@@ -156,7 +156,16 @@ declines**. `npm run approve -- <id> [guidance]` pre-authorizes bigger work
 wishes alike — rather than `[triage]` them; `[triage]` is for policy/design
 questions and anything near privacy, auth, schema or config. The wrapper enforces a file allowlist on the worktree diff and
 re-runs the gates before any push; report bodies are treated as untrusted data
-throughout (`feedback-bot-prompt.md`). Riders see everything in the in-app
+throughout (`feedback-bot-prompt.md`). **Every bot PR carries a screenshot**:
+the wrapper stages the PR's own build on :8096, runs `scripts/pr-preview.mjs`
+(phone-sized headless chromium; the bot's `pr-preview.json` recipe mocks the
+API responses that make the feature visible, e.g. a rainy forecast), commits
+the PNGs under `pr-preview/<id>/` on the PR branch and embeds them in the PR
+body — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
+feature to see it before approving?". To preview any branch by hand: build
+`web/`, run the server on a spare port with a throwaway `SHUTTLE_V2_DB`, then
+`BASE=http://127.0.0.1:<port> RECIPE=recipe.json OUT=/tmp/shots node
+scripts/pr-preview.mjs`. Riders see everything in the in-app
 Issues tab (`/api/my-reports`): statuses, notes (which are replies to them),
 follow-ups (these reopen + wake the bot), archive, and self-rated priority.
 

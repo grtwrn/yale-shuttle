@@ -99,7 +99,9 @@ Your working directory is a DISPOSABLE git worktree of the repo — implement he
 cd "$WT"
 # node_modules entries are the wrapper's own dependency symlinks, not bot
 # changes — counting them made a triage-only run look out-of-lane.
-CHANGED=$(git status --porcelain | awk '{print $2}' | grep -v "node_modules" || true)
+# pr-preview.json is the bot's screenshot recipe for the wrapper (see below),
+# not part of the proposed change.
+CHANGED=$(git status --porcelain | awk '{print $2}' | grep -v "node_modules" | grep -v "pr-preview.json" || true)
 if [ -z "$CHANGED" ]; then
   echo "triage-only run, no code proposed"
   exit "$BOT_FAILED"
@@ -119,6 +121,40 @@ echo "re-running gates in the worktree"
 FIRST_ID=$(echo "$CHOSEN" | cut -d, -f1)
 REAL_BRANCH="feedback-bot/$FIRST_ID-$(date +%m%d%H%M)"
 git checkout -q -b "$REAL_BRANCH"
+
+# ---- preview screenshot -----------------------------------------------------
+# The developer judges a PR by eye before reading it. Stage the PR's OWN build
+# on a spare port (throwaway DB, real collector) and screenshot the feature the
+# way a rider sees it on a phone. Features that depend on the world (rain in
+# the forecast, an announcement) are made visible by the bot's recipe,
+# services/shuttle-v2/pr-preview.json (mock these endpoints, plan this trip,
+# scroll to this text). Shots land in pr-preview/<id>/ on the PR branch and are
+# embedded in the PR body. A failed preview never blocks the PR — the body
+# says so and the log stays in this run's output.
+PREVIEW_DIR="pr-preview/$FIRST_ID"
+PREVIEW_STATUS="no preview: frontend build failed"
+STAGE_PORT=8096
+STAGE_TMP=$(mktemp -d /tmp/feedback-bot-stage-XXXXXX)
+if ( cd services/shuttle-v2/web && npx vite build ) > "$STAGE_TMP/build.log" 2>&1; then
+  ( cd services/shuttle-v2 && PORT=$STAGE_PORT SHUTTLE_V2_DB="$STAGE_TMP/stage.db" TZ=America/New_York \
+      npx tsx src/index.ts ) > "$STAGE_TMP/server.log" 2>&1 &
+  STAGE_PID=$!
+  for _ in $(seq 1 60); do curl -sf "http://127.0.0.1:$STAGE_PORT/healthz" > /dev/null 2>&1 && break; sleep 1; done
+  sleep 8  # a few collector polls so live buses exist for the trip
+  if BASE="http://127.0.0.1:$STAGE_PORT" RECIPE="$PWD/services/shuttle-v2/pr-preview.json" \
+       OUT="$PWD/$PREVIEW_DIR" BOT_CHROMIUM_PATH=/usr/bin/chromium \
+       timeout 180 node "$SHUTTLE_DIR/scripts/pr-preview.mjs" > "$STAGE_TMP/preview.log" 2>&1; then
+    PREVIEW_STATUS="ok"
+  else
+    PREVIEW_STATUS="preview reported a problem (page error or crash) — see the shots"
+    echo "PREVIEW PROBLEM:"; cat "$STAGE_TMP/preview.log"
+  fi
+  kill "$STAGE_PID" 2>/dev/null; wait "$STAGE_PID" 2>/dev/null
+fi
+echo "preview: $PREVIEW_STATUS"
+rm -f services/shuttle-v2/pr-preview.json
+rm -rf "$STAGE_TMP"
+
 # The dependency symlinks are wrapper plumbing — they must never be committed
 # (they are absolute paths into this machine; they rode into PR #1 once).
 rm -f services/shuttle-v2/node_modules services/shuttle-v2/web/node_modules
@@ -131,9 +167,33 @@ deploys via the master CI pipeline.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 git push -q origin "$REAL_BRANCH"
+
+# Images are referenced by commit SHA so they survive the branch's deletion
+# after merge (the commit stays reachable through the PR).
+SHA=$(git rev-parse HEAD)
+BODY="Automated proposal for rider report #$FIRST_ID (see its [triage] note for the analysis). Merging = approval; master CI deploys. Closing = declined."
+if ls "$PREVIEW_DIR"/*.png > /dev/null 2>&1; then
+  CAPTION=$(node -e 'try{const p=require(process.argv[1]);process.stdout.write(p.caption||"")}catch{}' "$PWD/$PREVIEW_DIR/preview.json")
+  BODY="$BODY
+
+## Preview
+$CAPTION"
+  for png in "$PREVIEW_DIR"/*.png; do
+    BODY="$BODY
+
+<img src=\"https://raw.githubusercontent.com/grtwrn/yale-shuttle/$SHA/$png\" width=\"390\" alt=\"$(basename "$png" .png) view\">"
+  done
+  [ "$PREVIEW_STATUS" = "ok" ] || BODY="$BODY
+
+⚠️ $PREVIEW_STATUS"
+else
+  BODY="$BODY
+
+_No preview screenshot: $PREVIEW_STATUS._"
+fi
 PR_URL=$(gh pr create --repo grtwrn/yale-shuttle \
   --title "feedback-bot: fix for report #$FIRST_ID" \
-  --body "Automated proposal for rider report #$FIRST_ID (see its [triage] note for the analysis). Merging = approval; master CI deploys. Closing = declined." \
+  --body "$BODY" \
   --head "$REAL_BRANCH" --base master 2>/dev/null | tail -1)
 echo "PR opened: $PR_URL"
 curl -s -X POST -H "x-admin-token: $TOKEN" -H 'content-type: application/json' \
