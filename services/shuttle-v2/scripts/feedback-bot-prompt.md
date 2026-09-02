@@ -107,6 +107,29 @@ Write the rider note as you would for any report ("Good idea — we've built
 this and it's waiting for a final check.") — the wrapper appends the PR link
 to the operator half.
 
+**Leave a screenshot recipe.** The developer approves PRs by looking at a
+screenshot first, so whenever you change anything visible write
+`pr-preview.json` in the working directory (`services/shuttle-v2/`). The
+wrapper stages your build, drives it in a phone-sized browser and screenshots
+it; the recipe makes the feature SHOW UP. It is deleted before the commit and
+is not part of your change. Fields, all optional:
+
+    {
+      "caption": "Rain line under the trip options (forecast mocked at 80%)",
+      "mock":  { "/api/weather": { "available": true, "hourly": [
+                 { "timeMs": "${now}", "probability": 80 } ] } },
+      "trip":  { "board": 118, "dest": 38 },
+      "views": ["trip"],
+      "focus": "chance of rain"
+    }
+
+`mock` replaces the JSON the browser receives for those paths — the way to
+make weather, announcements or a rider's report list say what the feature
+needs. `"${now}"` and `"${now+3600000}"` become epoch ms at run time.
+`trip` is board/destination stop ids (omit for a live route's stops);
+`views` is any of trip, map, favorites, issues; `focus` is text to scroll
+into view. Without a recipe the wrapper still shoots the trip and map views.
+
 Run the gates yourself before finishing: `npm run typecheck` and `npx vitest run` must be green. Do NOT deploy and do NOT run git — you are in a disposable worktree; the wrapper turns your diff into a feedback-bot/* branch and opens a PULL REQUEST, which the developer merges (approval) or closes (declined). Leave the report's status `open` — the wrapper stamps it with the PR link, and a later run marks it `[fixed]` after the merge ships.
 
 **(b) Route to the operator** — what fails a test above: design or policy questions, sprawling changes, anything ambiguous, anything touching money/privacy/auth, anything you cannot reproduce. Keep status `open`, set priority, and write a note starting with `[triage]`: a friendly one-liner for the rider above the rule, and below it what the rider means, your root-cause hypothesis and where in the code you'd look, and why you didn't act. This is a fine outcome — but a simple, clear request should not land here just to be safe; make the PR.
