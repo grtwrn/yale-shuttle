@@ -48,7 +48,7 @@ import {
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
-import { attachErrorText, downscaleToDataUrl } from "./screenshot";
+import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -5935,12 +5935,18 @@ const TransitMap: FC = () => {
   const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
+  /** A pasted screenshot is still being downscaled; Send waits for it. */
+  const [feedbackAttaching, setFeedbackAttaching] = useState(false);
   // Shared with the Issues tab's reply box — one downscale, one set of
   // limits, one wording for the failures (web/src/screenshot.ts).
-  const attachScreenshot = (file: File | undefined) => {
+  const attachScreenshot = (file: File | undefined | null) => {
     setFeedbackImageErr(null);
     if (!file) return;
+    // Decoding a 12 MP screenshot takes long enough on a phone that a rider
+    // can tap Send first and post a report with no picture and no warning.
+    setFeedbackAttaching(true);
     void downscaleToDataUrl(file).then((res) => {
+      setFeedbackAttaching(false);
       if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
       else setFeedbackImage(res.dataUrl);
     });
@@ -7064,6 +7070,25 @@ const TransitMap: FC = () => {
             <textarea
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
+              // Paste or drop a screenshot straight in (operator request,
+              // 2026-09-02): a phone screenshot is already on the clipboard,
+              // and making the rider save it and then find it in a file
+              // picker is the step that stops them attaching one at all. A
+              // text paste is untouched — imageFromTransfer returns null and
+              // the event runs as normal.
+              onPaste={(e) => {
+                const file = imageFromTransfer(e.clipboardData);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
+              onDragOver={(e) => { if (dragCarriesFile(e.dataTransfer)) e.preventDefault(); }}
+              onDrop={(e) => {
+                const file = imageFromTransfer(e.dataTransfer);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
               placeholder="Anything on your mind — bugs, ideas, confusing bits…"
               autoFocus
               rows={4}
@@ -7110,7 +7135,7 @@ const TransitMap: FC = () => {
                   fontSize: 13, color: "#1976D2", cursor: "pointer",
                   minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
                 }}>
-                  📎 Attach screenshot
+                  📎 Attach screenshot <span style={{ color: "#90a4ae" }}>&nbsp;or paste one</span>
                   <input type="file" accept="image/*" hidden
                     onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>
@@ -7138,17 +7163,17 @@ const TransitMap: FC = () => {
               </button>
               <button
                 onClick={sendFeedback}
-                disabled={feedbackSending || !feedbackText.trim()}
+                disabled={feedbackSending || feedbackAttaching || !feedbackText.trim()}
                 style={{
                   fontSize: 13, padding: "8px 14px", minHeight: 40,
                   border: "1px solid #1976D2", borderRadius: 6,
-                  background: feedbackSending || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
+                  background: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
                   color: "#fff",
-                  cursor: feedbackSending || !feedbackText.trim() ? "default" : "pointer",
+                  cursor: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "default" : "pointer",
                   fontFamily: "inherit", fontWeight: 600, flex: 1,
                 }}
               >
-                {feedbackSending ? "Sending…" : "Send"}
+                {feedbackSending ? "Sending…" : feedbackAttaching ? "Attaching…" : "Send"}
               </button>
             </div>
           </div>
