@@ -16,6 +16,7 @@ import { PlanRequestSchema } from "../schema/api.js";
 import {
   listMyReports,
   listReports,
+  followupImageFile,
   reportImageFile,
   rateLimitAllow,
   riderUpdateReport,
@@ -433,8 +434,11 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ reports: listMyReports(opts.bundle.db, anonId) });
   });
 
+  // A follow-up may carry a screenshot, so this shares the report-submission
+  // limit rather than the 8 KB triage-note one. The image is pulled out of the
+  // body and written beside the DB exactly as a new report's is.
   app.post("/api/my-reports/:id/update", bodyLimit({
-    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    maxSize: REPORT_WITH_IMAGE_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
   }), async (c) => {
     // Looser than report submission on purpose: archiving a long history is
@@ -448,6 +452,7 @@ export function buildApp(opts: AppOptions): Hono {
       action?: unknown;
       text?: unknown;
       priority?: unknown;
+      image?: unknown;
     } | null;
     let action: RiderAction;
     if (body?.action === "resolve") {
@@ -461,6 +466,25 @@ export function buildApp(opts: AppOptions): Hono {
       action = { action: "set_priority", priority: body.priority };
     } else if (body?.action === "followup" && typeof body.text === "string" && body.text.trim()) {
       action = { action: "followup", text: body.text.trim().slice(0, REPORT_TEXT_MAX) };
+      // An attached screenshot is written before the follow-up is recorded, so
+      // a failed write simply means a message without a picture — the words
+      // still matter, exactly as on a new report.
+      const img = body.image === undefined ? null : decodeReportImage(body.image);
+      if (img) {
+        // A separate, tighter budget than the text-only actions above: a
+        // chatty rider archiving rows is cheap, a rider posting 3 MB is not.
+        if (!rateLimitAllow(`myimg:${clientIp(c) ?? "anon"}`, now(), { perMinute: 4, perDay: 40 })) {
+          return c.json({ error: "rate_limited" }, 429);
+        }
+        try {
+          fs.mkdirSync(imageDir, { recursive: true });
+          const name = `${crypto.randomBytes(12).toString("hex")}.${img.ext}`;
+          fs.writeFileSync(path.join(imageDir, name), img.bytes);
+          action.imageFile = name;
+        } catch {
+          /* no screenshot; the follow-up still goes through */
+        }
+      }
     } else {
       return c.json({ error: "invalid_request" }, 400);
     }
@@ -578,6 +602,30 @@ export function buildApp(opts: AppOptions): Hono {
   // list is: riders' screenshots can contain their location and plans. The
   // filename comes from the report's own context, never from the URL, so this
   // cannot be used to read arbitrary files.
+  // The screenshot on one of a report's follow-ups, by index. Same admin gate
+  // and same filename validation as the report's own image below.
+  app.get("/api/reports/:id/followups/:index/image", requireAdmin, (c) => {
+    const id = Number(c.req.param("id"));
+    const index = Number(c.req.param("index"));
+    if (!Number.isInteger(id) || !Number.isInteger(index) || index < 0) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    const name = followupImageFile(opts.bundle.db, id, index);
+    if (!name || !/^[a-f0-9]{24}\.(png|jpg|webp)$/.test(name)) {
+      return c.json({ error: "no_image" }, 404);
+    }
+    try {
+      const bytes = fs.readFileSync(path.join(imageDir, name));
+      const type = name.endsWith(".png") ? "image/png"
+        : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
+      c.header("Content-Type", type);
+      c.header("Cache-Control", "private, max-age=3600");
+      return c.body(bytes);
+    } catch {
+      return c.json({ error: "no_image" }, 404);
+    }
+  });
+
   app.get("/api/reports/:id/image", requireAdmin, (c) => {
     const id = Number(c.req.param("id"));
     if (!Number.isInteger(id)) return c.json({ error: "invalid_request" }, 400);

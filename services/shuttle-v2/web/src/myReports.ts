@@ -10,7 +10,12 @@ import { anonIdHeader } from "./anonId";
 
 export type ReportStatus = "open" | "addressed" | "wontfix";
 
-export type MyReportFollowup = { text: string; at: number };
+export type MyReportFollowup = {
+  text: string;
+  at: number;
+  /** The rider attached a screenshot to this message (admin-only to view). */
+  hasImage?: boolean;
+};
 
 export type MyReport = {
   id: number;
@@ -28,7 +33,13 @@ export type MyReport = {
   followups: MyReportFollowup[];
 };
 
-export type ThreadEntry = { from: "us" | "rider"; text: string; at: number };
+export type ThreadEntry = {
+  from: "us" | "rider";
+  text: string;
+  at: number;
+  /** Only a rider's own message can carry one. */
+  hasImage?: boolean;
+};
 
 /**
  * The report's conversation in order: our replies and the rider's follow-ups
@@ -51,7 +62,10 @@ export function threadOf(r: MyReport): ThreadEntry[] {
     ...replies.map((n) => ({ from: "us" as const, text: n.text, at: n.at })),
     ...(Array.isArray(r.followups) ? r.followups : [])
       .filter((f) => f && typeof f.text === "string" && Number.isFinite(f.at))
-      .map((f) => ({ from: "rider" as const, text: f.text, at: f.at })),
+      .map((f) => ({
+        from: "rider" as const, text: f.text, at: f.at,
+        ...(f.hasImage ? { hasImage: true } : {}),
+      })),
   ];
   // Stable: equal stamps keep our reply first, since a rider's follow-up is
   // always a response to it.
@@ -143,7 +157,9 @@ export async function postReportAction(
   id: number,
   action:
     | { action: "resolve" }
-    | { action: "followup"; text: string }
+    // `image` is a downscaled JPEG data URL (see screenshot.ts); the server
+    // writes it beside the database and keeps only the filename.
+    | { action: "followup"; text: string; image?: string }
     | { action: "archive" }
     | { action: "unarchive" }
     | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },

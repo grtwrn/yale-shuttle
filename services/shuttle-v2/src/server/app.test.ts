@@ -763,6 +763,60 @@ describe("rider self-service (my-reports)", () => {
     expect(r.replies.map((x) => x.text)).toEqual(["Thanks, sorted."]);
   });
 
+  it("accepts a screenshot on a follow-up and keeps it admin-only", async () => {
+    const id = await submit(OWNER, "the map looked wrong");
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({
+        action: "followup",
+        text: "here is what I meant",
+        image: `data:image/png;base64,${png.toString("base64")}`,
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as {
+      reports: Array<{ followups: Array<{ text: string; hasImage?: boolean }> }>;
+    };
+    const f = body.reports[0]!.followups[0]!;
+    expect(f.text).toBe("here is what I meant");
+    expect(f.hasImage).toBe(true);
+    // A boolean, never the filename — the file is admin-only, like the
+    // report's own screenshot.
+    expect(JSON.stringify(body)).not.toContain("imageFile");
+    expect(JSON.stringify(body)).not.toMatch(/[a-f0-9]{24}\.png/);
+
+    const img = await app.request(`/api/reports/${id}/followups/0/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(img.status).toBe(200);
+    expect(img.headers.get("content-type")).toBe("image/png");
+    const unauth = await app.request(`/api/reports/${id}/followups/0/image`);
+    expect(unauth.status).toBe(401);
+    const missing = await app.request(`/api/reports/${id}/followups/9/image`, {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(missing.status).toBe(404);
+  });
+
+  it("still records a follow-up when the attachment is unusable", async () => {
+    const id = await submit(OWNER, "words matter more than the picture");
+    const res = await app.request(`/api/my-reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-anon-id": OWNER, "content-type": "application/json", ...freshIp() },
+      body: JSON.stringify({ action: "followup", text: "still broken", image: "data:text/plain;base64,aGk=" }),
+    });
+    expect(res.status).toBe(200);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as { reports: Array<{ followups: Array<{ text: string; hasImage?: boolean }> }> };
+    const f = body.reports[0]!.followups[0]!;
+    expect(f.text).toBe("still broken");
+    expect(f.hasImage).toBeUndefined();
+  });
+
   it("404s a rider update for a report they do not own", async () => {
     const id = await submit(OWNER, "not yours");
     for (const headers of [
