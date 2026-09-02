@@ -871,6 +871,13 @@ const CombinedTripMap: FC<{
       part: string; w: number; x: number; y: number;
     };
     const chips: Chip[] = [];
+    // Where the rider's own dot sits on screen, so labels can step around it.
+    const youPt = (() => {
+      try { return map.latLngToContainerPoint([from.lat, from.lon]); } catch { return null; }
+    })();
+    // Screen y of a cluster's label, given which side of the stop it sits on.
+    const cy = (members: Chip[], d: "top" | "bottom") =>
+      members.reduce((sum, m) => sum + m.y, 0) / members.length + (d === "top" ? -12 : 12);
     for (const o of optionsRef.current) {
       if (o.segCoords.length < 2) continue;
       const ends = [
@@ -939,8 +946,23 @@ const CombinedTripMap: FC<{
       if (alights.length) lines.push(stack("🏁", alights.map((m) => m.part)));
       const lat = members.reduce((s, m) => s + m.lat, 0) / members.length;
       const lon = members.reduce((s, m) => s + m.lon, 0) / members.length;
-      const dir: "top" | "bottom" = boards.length ? "top" : "bottom";
-      const sig = members.map((m) => `${m.kind[0]}:${m.label}`).sort().join("|");
+      let dir: "top" | "bottom" = boards.length ? "top" : "bottom";
+      // The rider's own blue dot is usually a few metres from the board stop,
+      // so a board label drawn above the stop lands right on top of it
+      // (operator, 2026-09-02). When the label's box would cover the dot, put
+      // it on the other side of the stop instead — the label moves, never the
+      // dot, because the dot is the thing being looked for.
+      if (youPt) {
+        const cx = members.reduce((sum, m) => sum + m.x, 0) / members.length;
+        const boxW = Math.max(...members.map((m) => m.w));
+        const labelY = cy(members, dir);
+        if (Math.abs(cx - youPt.x) < boxW / 2 + 12 && Math.abs(labelY - youPt.y) < 26) {
+          dir = dir === "top" ? "bottom" : "top";
+        }
+      }
+      // `dir` is part of the identity: a tooltip cannot change direction after
+      // binding, so a flipped label is a new marker and the old one is swept.
+      const sig = members.map((m) => `${m.kind[0]}:${m.label}`).sort().join("|") + `|${dir}`;
       seen.add(sig);
       const html = lines.join("<br/>");
       const existing = chipMarkersRef.current[sig];
@@ -3228,6 +3250,9 @@ const TripPlanner: FC<{
             // Stable identity for expansion state — one option per route,
             // so the label alone is unique ("Walk" for the walk option).
             const oKey = optionKey(o);
+            // Which stop this option picks up at (operator request): shown on
+            // the walk chip, so it names the stop without a second row.
+            const boardName = (stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/");
             const isExpanded = expandedKey === oKey;
             const showMore = detailsKey === oKey;
             // Shared shuttle context: bus pinned to this option + how
@@ -3318,8 +3343,14 @@ const TripPlanner: FC<{
                     Collapsed rows ONLY: the details view's step list
                     carries the same durations + route pill, so chips
                     there were pure repetition (user feedback 2026-07-17). */}
+                {/* One line, always: naming the board stop must not cost the
+                    card a row (operator, 2026-09-02), so the chips never wrap
+                    — the stop name ellipsizes instead. */}
                 {!isExpanded && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap",
+                  marginTop: 6, marginBottom: 8, overflow: "hidden",
+                }}>
                   {o.mode === "walk" ? (
                     <span style={{
                       fontSize: 13, fontWeight: 600, color: "#5f6368",
@@ -3328,31 +3359,43 @@ const TripPlanner: FC<{
                     }}>🚶 Walk</span>
                   ) : (
                     <>
-                      {o.walkToSec > 0 && (
+                      {/* The board stop rides ALONG the walk chip rather than
+                          on a line of its own: naming the stop cost every card
+                          a second row, and the walk and the stop are one fact
+                          ("walk 6 min to Whitney/Canner"). Truncates rather
+                          than wraps, so a long stop name never grows the card. */}
+                      {o.walkToSec > 0 ? (
                         <>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                          <span style={{
+                            fontSize: 13, color: "#5f6368",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                          }}>
+                            🚶 {fmtWalk(o.walkToSec)} to {boardName}
+                          </span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{
+                            fontSize: 13, color: "#5f6368",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                          }}>
+                            at {boardName}
+                          </span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
                         </>
                       )}
                       <span style={{
                         fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
-                        borderRadius: 6, padding: "2px 8px",
+                        borderRadius: 6, padding: "2px 8px", flexShrink: 0, whiteSpace: "nowrap",
                       }}>{o.routeLabel}</span>
                       {o.walkFromSec > 0 && (
                         <>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
+                          <span style={{ fontSize: 13, color: "#9aa0a6", flexShrink: 0 }}>›</span>
+                          <span style={{ fontSize: 13, color: "#5f6368", flexShrink: 0, whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
                       )}
-                      {/* Which stop it picks up at, on EVERY shuttle card
-                          (operator request, 2026-09-02). It was only on the
-                          same-route alternates, which is precisely when the
-                          reader most needs to compare — but a rider deciding
-                          between two different routes wants it too, and it is
-                          the one fact the chips row could not answer. */}
-                      <span style={{ fontSize: 12, color: "#78909c", whiteSpace: "nowrap" }}>
-                        · from {(stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/")}
-                      </span>
+
                     </>
                   )}
                 </div>
