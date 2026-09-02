@@ -569,12 +569,13 @@ describe("rider self-service (my-reports)", () => {
     const r = body.reports[0]!;
     // Exact contract with the frontend: these keys and no others.
     expect(Object.keys(r).sort()).toEqual(
-      ["archived", "body", "createdAt", "followups", "hasImage", "id", "kind", "note", "priority", "status"],
+      ["archived", "body", "createdAt", "followups", "hasImage", "id", "kind", "note", "priority", "replies", "status"],
     );
     expect(r.kind).toBe("feedback");
     expect(r.body).toBe("mine, newer");
     expect(r.status).toBe("open");
     expect(r.note).toBeNull();
+    expect(r.replies).toEqual([]);
     expect(r.hasImage).toBe(false);
     expect(r.followups).toEqual([]);
     expect(typeof r.createdAt).toBe("number");
@@ -721,6 +722,45 @@ describe("rider self-service (my-reports)", () => {
     const row = bundle.sqlite.prepare("SELECT context FROM reports WHERE id = ?").get(id) as { context: string };
     expect(row.context.length).toBeLessThan(1024);
     expect(JSON.parse(row.context)).toMatchObject({ note: "huge", contextTruncated: true });
+  });
+
+  it("keeps every reply as its own thread entry instead of overwriting", async () => {
+    // The rider was watching one bubble get rewritten: answered twice, they
+    // only ever saw the second answer.
+    const id = await submit(OWNER, "bus never came");
+    const note = (text: string) => app.request(`/api/reports/${id}/update`, {
+      method: "POST",
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" },
+      body: JSON.stringify({ status: "open", note: text }),
+    });
+    await note("[triage] Looking into it.\n---\noperator log one");
+    await note("[triage] Looking into it.\n---\noperator log one"); // re-stamp: not a new bubble
+    await note("[fixed] Fixed now.\n---\noperator log two");
+
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as {
+      reports: Array<{ note: string | null; replies: Array<{ text: string; at: number }> }>;
+    };
+    const r = body.reports[0]!;
+    expect(r.replies.map((x) => x.text)).toEqual(["Looking into it.", "Fixed now."]);
+    // Rider-facing filtering still applies to every entry, not just the last.
+    expect(JSON.stringify(r.replies)).not.toContain("operator log");
+    // `note` still carries the latest for older clients.
+    expect(r.note).toBe("Fixed now.");
+    // The operator keeps the full text of the latest note.
+    const admin = await app.request("/api/reports?limit=50", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    const all = (await admin.json()) as { reports: Array<{ id: number; note: string }> };
+    expect(all.reports.find((x) => x.id === id)!.note).toContain("operator log two");
+  });
+
+  it("shows a single reply for a report answered before the thread existed", async () => {
+    const id = await submit(OWNER, "older report");
+    // Simulate the pre-thread world: a note on the row, no history in context.
+    bundle.sqlite.prepare("UPDATE reports SET note = ? WHERE id = ?").run("Thanks, sorted.", id);
+    const list = await app.request("/api/my-reports", { headers: { "x-anon-id": OWNER, ...freshIp() } });
+    const body = (await list.json()) as { reports: Array<{ id: number; replies: Array<{ text: string }> }> };
+    const r = body.reports.find((x) => x.id === id)!;
+    expect(r.replies.map((x) => x.text)).toEqual(["Thanks, sorted."]);
   });
 
   it("404s a rider update for a report they do not own", async () => {

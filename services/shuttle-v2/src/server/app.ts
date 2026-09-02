@@ -623,7 +623,7 @@ export function buildApp(opts: AppOptions): Hono {
     if (body.priority === "urgent" || body.priority === "normal" || body.priority === "nice_to_have") {
       update2.priority = body.priority;
     }
-    const ok = updateReport(opts.bundle.db, id, update2);
+    const ok = updateReport(opts.bundle.db, id, update2, now());
     if (!ok) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });
   });

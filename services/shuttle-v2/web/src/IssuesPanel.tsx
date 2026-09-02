@@ -12,6 +12,7 @@ import {
   postReportAction,
   saveSeenStatuses,
   statusChip,
+  threadOf,
   type MyReport,
 } from "./myReports";
 
@@ -159,32 +160,38 @@ const IssuesPanel: React.FC<{
                 {r.body}
               </div>
 
-              {r.note && (
-                <div style={{
-                  borderLeft: "3px solid #c8e6c9", background: "#f6faf6",
-                  borderRadius: "0 6px 6px 0", padding: "8px 10px",
-                  display: "flex", flexDirection: "column", gap: 2,
-                }}>
-                  <span style={{ ...SECTION_LABEL, fontSize: 10 }}>Reply</span>
-                  <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
-                    {r.note}
-                  </span>
-                </div>
-              )}
-
-              {r.followups.map((f, i) => (
-                <div key={i} style={{
-                  alignSelf: "flex-end", maxWidth: "85%",
-                  background: "#f0eeea", borderRadius: "10px 10px 2px 10px",
-                  padding: "6px 10px", display: "flex", flexDirection: "column", gap: 1,
-                }}>
-                  <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
-                    {f.text}
-                  </span>
-                  <span style={{ fontSize: 10, color: "#8a8a9a", alignSelf: "flex-end" }}>
-                    {fmtDate(f.at)}
-                  </span>
-                </div>
+              {/* The conversation, in order. Our replies used to be a single
+                  box that each new note overwrote, so a rider answered twice
+                  saw only the last one — every reply is its own bubble now,
+                  interleaved with what they wrote back. */}
+              {threadOf(r).map((e, i) => (
+                e.from === "us" ? (
+                  <div key={i} style={{
+                    alignSelf: "flex-start", maxWidth: "85%",
+                    borderLeft: "3px solid #c8e6c9", background: "#f6faf6",
+                    borderRadius: "0 10px 10px 2px", padding: "8px 10px",
+                    display: "flex", flexDirection: "column", gap: 2,
+                  }}>
+                    <span style={{ ...SECTION_LABEL, fontSize: 10 }}>Reply</span>
+                    <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                      {e.text}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#8a8a9a" }}>{fmtDate(e.at)}</span>
+                  </div>
+                ) : (
+                  <div key={i} style={{
+                    alignSelf: "flex-end", maxWidth: "85%",
+                    background: "#f0eeea", borderRadius: "10px 10px 2px 10px",
+                    padding: "6px 10px", display: "flex", flexDirection: "column", gap: 1,
+                  }}>
+                    <span style={{ fontSize: 13, color: "#37474f", whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+                      {e.text}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#8a8a9a", alignSelf: "flex-end" }}>
+                      {fmtDate(e.at)}
+                    </span>
+                  </div>
+                )
               ))}
 
               {replyFor === r.id ? (

@@ -6,6 +6,7 @@ import {
   markAllSeen,
   saveSeenStatuses,
   statusChip,
+  threadOf,
   type MyReport,
 } from "./myReports";
 
@@ -149,5 +150,57 @@ describe("statusChip", () => {
     const chips = [statusChip("open"), statusChip("addressed"), statusChip("wontfix")];
     expect(new Set(chips.map((c) => c.bg)).size).toBe(3);
     expect(new Set(chips.map((c) => c.fg)).size).toBe(3);
+  });
+});
+
+describe("threadOf — the report's conversation in order", () => {
+  const base: MyReport = {
+    id: 1, createdAt: 1000, kind: "issue", body: "bus never came",
+    status: "open", note: null, hasImage: false, archived: false,
+    priority: "normal", followups: [],
+  };
+
+  it("interleaves every reply with the rider's follow-ups by time", () => {
+    // The bug: two replies used to collapse into one box showing only the
+    // last, and the rider's own message sat below both regardless of when.
+    const r: MyReport = {
+      ...base,
+      note: "Fixed now.",
+      replies: [{ text: "Looking into it.", at: 2000 }, { text: "Fixed now.", at: 4000 }],
+      followups: [{ text: "still broken", at: 3000 }],
+    };
+    expect(threadOf(r)).toEqual([
+      { from: "us", text: "Looking into it.", at: 2000 },
+      { from: "rider", text: "still broken", at: 3000 },
+      { from: "us", text: "Fixed now.", at: 4000 },
+    ]);
+  });
+
+  it("falls back to the single note when the server sends no history", () => {
+    expect(threadOf({ ...base, note: "Thanks!" })).toEqual([
+      { from: "us", text: "Thanks!", at: base.createdAt },
+    ]);
+    expect(threadOf(base)).toEqual([]);
+  });
+
+  it("puts our reply before a follow-up written in the same millisecond", () => {
+    const r: MyReport = {
+      ...base,
+      replies: [{ text: "Any details?", at: 5000 }],
+      followups: [{ text: "sure", at: 5000 }],
+    };
+    expect(threadOf(r).map((e) => e.from)).toEqual(["us", "rider"]);
+  });
+
+  it("drops malformed entries instead of rendering junk", () => {
+    const r = {
+      ...base,
+      replies: [{ text: "ok", at: 1 }, { text: 5, at: 2 }, null, { text: "x", at: "nope" }],
+      followups: [{ text: "hi", at: 3 }, undefined],
+    } as unknown as MyReport;
+    expect(threadOf(r)).toEqual([
+      { from: "us", text: "ok", at: 1 },
+      { from: "rider", text: "hi", at: 3 },
+    ]);
   });
 });
