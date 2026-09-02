@@ -3019,22 +3019,6 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
-          {/* Report #57: the line's operating hours at the top of its details
-              page. One caption line, no box — this page has been de-cluttered
-              twice on rider feedback, and the overview header directly below
-              already names the route, so the caption is the hours alone.
-              Published hours first, ROUTE_HOURS as the fallback (same
-              precedence as the All tab); nothing when neither knows the route. */}
-          {detailOpen && (() => {
-            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
-            const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
-            if (!cfg || !caption) return null;
-            return (
-              <div style={{ fontSize: 12, color: "#78909c", padding: "0 2px 8px", lineHeight: 1.3 }}>
-                {caption}
-              </div>
-            );
-          })()}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -3135,6 +3119,14 @@ const TripPlanner: FC<{
               : overviewOpts.length < _totalShuttle
                 ? `Overview — top ${overviewOpts.length} of ${_totalShuttle} routes`
                 : `Overview — all ${overviewOpts.length} route${overviewOpts.length === 1 ? "" : "s"}`;
+            // Report #57's hours ride WITH the route name rather than on a
+            // line of their own (operator, 2026-09-02): they describe the
+            // route, and this page has been de-cluttered twice on rider
+            // feedback. Published hours first, ROUTE_HOURS as the fallback.
+            const _hoursCfg = expandedKey
+              ? ROUTE_LISTS.find((c) => c.label === expandedKey)
+              : undefined;
+            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours) : null;
             return (
               <div style={{
                 marginBottom: 12,
@@ -3157,8 +3149,15 @@ const TripPlanner: FC<{
                   <span style={{
                     fontSize: 10, color: "#78909c",
                     textTransform: "uppercase", letterSpacing: 1,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    minWidth: 0, textAlign: "left",
                   }}>
                     {_overviewLabel}
+                    {_hours && (
+                      <span style={{ textTransform: "none", letterSpacing: 0, color: "#90a4ae" }}>
+                        {" · "}{_hours}
+                      </span>
+                    )}
                   </span>
                   <span style={{ fontSize: 12, color: "#90a4ae" }}>
                     {overviewExpanded ? "▴" : "▾"}
