@@ -72,6 +72,12 @@ interface DayState {
 
 export type Activity = "poll" | "search";
 
+/**
+ * First ET day the operator statistics count. Monday of launch week: the app
+ * went to riders the next day, so everything before it is development traffic.
+ */
+export const DEFAULT_STATS_SINCE_DAY = "2026-08-31";
+
 export interface RiderStats {
   /** Distinct browsers over trailing windows. */
   today: number;
@@ -99,17 +105,46 @@ export interface RiderStats {
   searchesPerRiderToday: number;
 }
 
+/** One ET day of the trend series behind the operator dashboard. */
+export interface DayHistory {
+  /** ET calendar day, "YYYY-MM-DD". */
+  day: string;
+  riders: number;
+  /** Browsers whose FIRST ever day is this day (not merely new to the window). */
+  newRiders: number;
+  returningRiders: number;
+  searches: number;
+  medianMinutesPerDay: number;
+}
+
 export interface ActivesTracker {
   /** Record activity. Cheap and idempotent; safe on every request. */
   seen(anonId: string | undefined | null, kind?: Activity, now?: number): void;
+  /** First ET day the statistics count (see the counting epoch). */
+  sinceDay(): string;
   /** Usage and return-visit numbers. */
   stats(now?: number): RiderStats;
+  /**
+   * Per-day trend, oldest first, over the trailing `days` ET days. Only days
+   * that actually have rows appear — a day before the first sighting is
+   * absent, not a zero, so a chart cannot imply a launch that never happened.
+   */
+  history(days?: number, now?: number): DayHistory[];
   /** Write accumulated counters through. Called on a timer and at shutdown. */
   flush(now?: number): void;
   stop(): void;
 }
 
-export function createActivesTracker(bundle: DbBundle): ActivesTracker {
+export interface ActivesOptions {
+  /**
+   * First ET day ("YYYY-MM-DD") the statistics count. Defaults to
+   * SHUTTLE_STATS_SINCE_DAY, then DEFAULT_STATS_SINCE_DAY. Tests that seed a
+   * synthetic history pass their own.
+   */
+  sinceDay?: string;
+}
+
+export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}): ActivesTracker {
   const db = bundle.db;
   let currentDay = "";
   let today = new Map<string, DayState>();
@@ -164,6 +199,39 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
     }
   }
 
+  /**
+   * Every figure the tracker reports excludes flagged browsers AND anything
+   * before the counting epoch. Defined once, at tracker scope, so a new
+   * statistic cannot silently forget either half.
+   *
+   * The epoch exists because the operator's numbers should describe the
+   * SERVICE, not the build: sightings from before the app was in riders'
+   * hands are development traffic, and a browser that only appears there must
+   * not make its owner's first real visit read as "returning". Rows before it
+   * are still stored (the 90-day sweep owns deletion); they are simply not
+   * counted. Override with SHUTTLE_STATS_SINCE_DAY=YYYY-MM-DD.
+   */
+  const SINCE_DAY = (() => {
+    for (const raw of [opts.sinceDay?.trim(), process.env.SHUTTLE_STATS_SINCE_DAY?.trim()]) {
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    }
+    return DEFAULT_STATS_SINCE_DAY;
+  })();
+  const notExcluded = sql`day >= ${SINCE_DAY}
+    AND anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
+
+  const median = (xs: number[]): number => {
+    if (xs.length === 0) return 0;
+    const s = [...xs].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+  };
+
+  const oneDecimal = (v: number) => Math.round(v * 10) / 10;
+
+  const one = <T>(rows: T[]): T | undefined => rows[0];
+  const num = (v: unknown) => (typeof v === "number" ? v : 0);
+
   // Make the harness id excluded from the first run, without a manual step.
   try {
     db.run(sql`INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note)
@@ -205,18 +273,76 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
       flush();
     },
 
+    history(days = 30, now = Date.now()) {
+      // Same reason stats() flushes: today's counters live in memory until the
+      // timer fires, and the dashboard asks for today.
+      flush(now);
+      const requested = Number.isFinite(days) ? Math.floor(days) : 30;
+      // Never look past the retention horizon: rows older than that are swept,
+      // so a wider window would only ever add days that cannot have data.
+      const span = Math.max(1, Math.min(RETAIN_DAYS, requested));
+      const from = etDay(now - (span - 1) * 86_400_000);
+
+      // One pass for the counts. `firsts` is computed over ALL history rather
+      // than the window, so "new" means first ever seen: a browser whose first
+      // day predates the window is returning, not new. It aliases anon_id to
+      // `fid` so the joined query's bare `anon_id` (and therefore the shared
+      // exclusion fragment) is unambiguous.
+      const rows = db.all<{
+        day: string;
+        riders: number;
+        newRiders: number;
+        searches: number;
+      }>(sql`
+        WITH firsts AS (
+          SELECT anon_id AS fid, MIN(day) AS first_day FROM daily_actives
+          WHERE ${notExcluded}
+          GROUP BY anon_id
+        )
+        SELECT day,
+               COUNT(*) AS riders,
+               SUM(CASE WHEN first_day = day THEN 1 ELSE 0 END) AS newRiders,
+               COALESCE(SUM(searches), 0) AS searches
+        FROM daily_actives JOIN firsts ON fid = anon_id
+        WHERE day >= ${from} AND ${notExcluded}
+        GROUP BY day
+        ORDER BY day`);
+
+      // SQLite has no median, so the per-day session lengths come back raw and
+      // are folded here — one extra statement, not one per day.
+      const perDay = new Map<string, number[]>();
+      for (const r of db.all<{ day: string; ms: number }>(sql`
+        SELECT day, (last_seen_ms - first_seen_ms) AS ms FROM daily_actives
+        WHERE day >= ${from} AND last_seen_ms > first_seen_ms AND ${notExcluded}`)) {
+        const bucket = perDay.get(r.day);
+        if (bucket) bucket.push(num(r.ms) / 60_000);
+        else perDay.set(r.day, [num(r.ms) / 60_000]);
+      }
+
+      return rows.map((r) => {
+        const riders = num(r.riders);
+        const newRiders = num(r.newRiders);
+        return {
+          day: r.day,
+          riders,
+          newRiders,
+          returningRiders: riders - newRiders,
+          searches: num(r.searches),
+          medianMinutesPerDay: oneDecimal(median(perDay.get(r.day) ?? [])),
+        };
+      });
+    },
+
+    sinceDay() {
+      return SINCE_DAY;
+    },
+
     stats(now = Date.now()) {
       // Make in-memory counters visible to the queries below.
       flush(now);
       const day = etDay(now);
       const since = (days: number) => etDay(now - (days - 1) * 86_400_000);
-      const one = <T>(rows: T[]): T | undefined => rows[0];
-      const num = (v: unknown) => (typeof v === "number" ? v : 0);
 
-      // Every figure below excludes flagged browsers. Written as a raw
-      // fragment rather than repeated in each query so a new statistic cannot
-      // silently forget it.
-      const notExcluded = sql`anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
 
       const distinct = (from?: string) =>
         num(
@@ -239,7 +365,7 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
             SELECT COUNT(*) AS n FROM (
               SELECT anon_id FROM daily_actives WHERE day = ${day} AND ${notExcluded}
               INTERSECT
-              SELECT anon_id FROM daily_actives WHERE day < ${day}
+              SELECT anon_id FROM daily_actives WHERE day < ${day} AND day >= ${SINCE_DAY}
             )`),
         )?.n,
       );
@@ -271,13 +397,6 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
         );
         if (num(hit?.n) > 0) returnedInWeek++;
       }
-
-      const median = (xs: number[]) => {
-        if (xs.length === 0) return 0;
-        const s = [...xs].sort((a, b) => a - b);
-        const m = Math.floor(s.length / 2);
-        return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
-      };
 
       const daysActive = db
         .all<{ n: number }>(
@@ -312,7 +431,7 @@ export function createActivesTracker(bundle: DbBundle): ActivesTracker {
         week1Retention: cohort.length ? returnedInWeek / cohort.length : null,
         week1Cohort: cohort.length,
         medianDaysActive: median(daysActive),
-        medianMinutesPerDay: Math.round(median(minutes) * 10) / 10,
+        medianMinutesPerDay: oneDecimal(median(minutes)),
         searchesToday,
         searchesPerRiderToday: todayCount ? Math.round((searchesToday / todayCount) * 10) / 10 : 0,
       };
