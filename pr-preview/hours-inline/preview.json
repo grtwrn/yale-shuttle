@@ -1,0 +1,18 @@
+{
+  "caption": "The line's hours now sit beside the route name in the map header, not on a line of their own",
+  "base": "http://127.0.0.1:8087",
+  "trip": {
+    "board": 118,
+    "dest": 38
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/wt-hours/pr-preview/hours-inline/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
