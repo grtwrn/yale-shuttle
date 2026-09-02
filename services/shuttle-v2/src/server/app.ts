@@ -26,6 +26,7 @@ import {
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
 import { buildLiveSnapshot } from "./snapshot.js";
+import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import { buildAccuracyV1, createBusesPayloadCache, geocodeV1 } from "./v1compat.js";
 
 /**
@@ -99,6 +100,11 @@ export interface AppOptions {
    * deploy should be inert, not open.
    */
   adminToken?: string;
+  /**
+   * Cached rain forecast behind /api/weather. Injectable so tests never reach
+   * the network; the default talks to Open-Meteo (see weather.ts).
+   */
+  weather?: WeatherService;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -270,6 +276,20 @@ export function buildApp(opts: AppOptions): Hono {
     const results = await geocodeV1(opts.collector.ref.get(), q);
     c.header("Cache-Control", "no-store");
     return c.json({ results });
+  });
+
+  // -- Weather (rain warning for the walk legs) -----------------------------
+  // Proxied rather than called from the browser so Open-Meteo sees ONE request
+  // per 10 minutes no matter how many riders are looking. Never fails: a bad
+  // upstream answers `{available:false}` and the client simply shows no line.
+
+  const weather = opts.weather ?? createWeatherService({ now });
+
+  app.get("/api/weather", async (c) => {
+    const data = await weather.get(now());
+    // Riders share one forecast; let any intermediary hold it as long as we do.
+    c.header("Cache-Control", `public, max-age=${Math.floor(WEATHER_TTL_MS / 1000)}`);
+    return c.json(data);
   });
 
   // -- Reports --------------------------------------------------------------

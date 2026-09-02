@@ -9,6 +9,7 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
+import { rainLikelyFrom, rainMessage, type WeatherPayload } from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
@@ -1519,6 +1520,38 @@ const TripPlanner: FC<{
   // Which pings already fired for the CURRENT arm. A ref, not state: the
   // 1 s engine tick must read/write it without re-arming its effect.
   const reminderFiredRef = useRef<FiredPings>(NO_PINGS_FIRED);
+  // ── Rain warning (rider request: "alert me if there's a high chance of
+  // rain so I don't get caught in it") ─────────────────────────────────
+  // Every trip here begins and ends with a walk leg, so a wet next hour is
+  // worth one line. The forecast comes from OUR server (cached 10 min for
+  // everyone — the browser never talks to the weather provider) and is
+  // strictly additive: if the fetch fails, `weather` stays null, rainLikely
+  // reports no rain, and the app behaves exactly as it did before. The
+  // decision rule itself lives in weather.ts, pure and unit-tested.
+  const [weather, setWeather] = useState<WeatherPayload | null>(null);
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/weather");
+        if (!res.ok) return;
+        const data = (await res.json()) as WeatherPayload;
+        if (!stopped) setWeather(data);
+      } catch { /* no forecast is a fine outcome — never surface this */ }
+    };
+    void load();
+    // Matches the server's cache TTL: polling faster only re-reads the
+    // same cached answer.
+    const id = setInterval(() => void load(), 10 * 60_000);
+    return () => { stopped = true; clearInterval(id); };
+  }, []);
+  // Recomputed each render (the /api/buses poll re-renders every 5 s), so
+  // the line disappears on its own once the wet hour has passed.
+  const rain = rainLikelyFrom(weather, Date.now());
+  // The reminder engine's 1 s tick runs inside a closure that must not
+  // re-arm on every forecast change — same ref pattern as `optionsRef`.
+  const rainRef = useRef(rain);
+  rainRef.current = rain;
   // Google-Maps-app style: show the route-overview map open by default
   // (rider sees the map first, cards below) — collapsible via the same
   // toggle for anyone who'd rather not see it.
@@ -1915,7 +1948,7 @@ const TripPlanner: FC<{
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
       reminderFiredRef.current = markFired(reminderFiredRef.current, ping);
-      const msg = leaveAlertMessage(ping, routeLabel, input);
+      const msg = leaveAlertMessage(ping, routeLabel, input, rainRef.current.likely);
       // System notification when possible (SW registration first so it
       // works backgrounded on Android); otherwise the in-app banner +
       // vibration. deliverPing never throws.
@@ -3744,6 +3777,26 @@ const TripPlanner: FC<{
               </button>
             )}
             </>;})()}
+        </div>
+      )}
+
+      {/* Rain warning. One compact line UNDER the options: it informs the
+          trip, it doesn't change it — the options are neither reordered,
+          hidden nor re-ranked, because a shuttle isn't faster in the rain,
+          it's just drier at the ends. Absent entirely when the forecast is
+          dry or unavailable. */}
+      {options && options.length > 0 && rain.likely && (
+        <div
+          role="status"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            fontSize: 13, color: "#37474f",
+            padding: "10px 12px", marginTop: 4,
+            background: "#eef4fb", border: "1px solid #d6e3f0",
+            borderRadius: 10,
+          }}
+        >
+          {rainMessage(rain)}
         </div>
       )}
 
