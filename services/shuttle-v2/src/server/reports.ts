@@ -132,13 +132,74 @@ export interface ReportUpdate {
   priority?: "urgent" | "normal" | "nice_to_have";
 }
 
+/**
+ * Every note ever written on a report, oldest first — the operator/bot side of
+ * the conversation the rider reads in their Issues tab.
+ *
+ * `reports.note` holds the LATEST note and keeps doing so: the triage tooling
+ * keys on its prefix ([triage], [pr], [fixed], automated:) and the arbitration
+ * queue reads it. But a rider was watching one bubble get rewritten each time
+ * we replied, so the earlier answers vanished — this keeps them, in context,
+ * where the rider's own follow-ups already live.
+ */
+function repliesOf(ctx: Record<string, unknown>): ReportFollowup[] {
+  const raw = ctx.noteHistory;
+  if (!Array.isArray(raw)) return [];
+  const out: ReportFollowup[] = [];
+  for (const n of raw) {
+    if (
+      n && typeof n === "object" &&
+      typeof (n as { text?: unknown }).text === "string" &&
+      typeof (n as { at?: unknown }).at === "number"
+    ) {
+      out.push({ text: (n as { text: string }).text, at: (n as { at: number }).at });
+    }
+  }
+  return out;
+}
+
+/** Bounds context growth; the operator's own view reads the column, not this. */
+const MAX_NOTE_HISTORY = 50;
+
 /** Returns true if the row existed and was updated, false otherwise. */
-export function updateReport(db: DB, id: number, update: ReportUpdate): boolean {
+export function updateReport(
+  db: DB,
+  id: number,
+  update: ReportUpdate,
+  now = Date.now(),
+): boolean {
+  // Appending the note to the history needs the row first. One extra read per
+  // triage action — triage is a human (or a bot on a 6 h sweep), not traffic.
+  let contextPatch: { context: string } | Record<string, never> = {};
+  if (update.note !== undefined) {
+    const row = db
+      .select({ context: reports.context, note: reports.note })
+      .from(reports)
+      .where(eq(reports.id, id))
+      .get();
+    if (row) {
+      const ctx = parseContext(row.context);
+      const history = repliesOf(ctx);
+      // Don't record a no-op: the bot re-stamps the same note when it
+      // re-processes a report, and that must not fill the thread with copies.
+      const last = history.at(-1);
+      if (!last || last.text !== update.note) {
+        history.push({ text: update.note, at: now });
+      }
+      contextPatch = {
+        context: JSON.stringify({
+          ...ctx,
+          noteHistory: history.slice(-MAX_NOTE_HISTORY),
+        }),
+      };
+    }
+  }
   const result = db
     .update(reports)
     .set({
       status: update.status,
       ...(update.note !== undefined ? { note: update.note } : {}),
+      ...contextPatch,
       // Ownership backfill: reports predating the anon_id column (2026-09-01)
       // can be linked to the submitting browser after the fact, so the rider's
       // Issues tab shows their history. Only ever fills a blank — an id a
@@ -151,6 +212,21 @@ export function updateReport(db: DB, id: number, update: ReportUpdate): boolean 
     .where(eq(reports.id, id))
     .run();
   return result.changes > 0;
+}
+
+/**
+ * The stored screenshot filename for one of a report's follow-ups (0-based),
+ * if that message carried one. Same admin-only path as the report's own image.
+ */
+export function followupImageFile(db: DB, id: number, index: number): string | null {
+  const row = db
+    .select({ context: reports.context })
+    .from(reports)
+    .where(eq(reports.id, id))
+    .get();
+  if (!row) return null;
+  const f = followupsOf(parseContext(row.context))[index];
+  return f && typeof f.imageFile === "string" ? f.imageFile : null;
 }
 
 /** The stored screenshot filename for one report, if it has one. */
@@ -180,6 +256,16 @@ export function reportImageFile(db: DB, id: number): string | null {
 export interface ReportFollowup {
   text: string;
   at: number;
+  /** A screenshot the rider attached to this message. Rider-facing shape gets a boolean. */
+  imageFile?: string;
+}
+
+/** One message in the rider's half of the thread, as the frontend sees it. */
+export interface MyReportFollowup {
+  text: string;
+  at: number;
+  /** True when the rider attached a screenshot to this message. */
+  hasImage?: boolean;
 }
 
 /** What GET /api/my-reports returns per report. Contract with the frontend. */
@@ -189,11 +275,18 @@ export interface MyReport {
   kind: "issue" | "feedback";
   body: string;
   status: "open" | "addressed" | "wontfix";
+  /** The latest reply, kept for older clients; `replies` is the whole thread. */
   note: string | null;
+  /**
+   * Every reply the rider has been sent, oldest first — each one its own
+   * bubble in the Issues tab, interleaved with `followups` by time. Older
+   * reports whose notes predate the history show their single latest reply.
+   */
+  replies: ReportFollowup[];
   hasImage: boolean;
   archived: boolean;
   priority: "urgent" | "normal" | "nice_to_have";
-  followups: ReportFollowup[];
+  followups: MyReportFollowup[];
 }
 
 const MY_REPORTS_LIMIT = 50;
@@ -226,7 +319,12 @@ function followupsOf(ctx: Record<string, unknown>): ReportFollowup[] {
       typeof (f as { text?: unknown }).text === "string" &&
       typeof (f as { at?: unknown }).at === "number"
     ) {
-      out.push({ text: (f as { text: string }).text, at: (f as { at: number }).at });
+      const img = (f as { imageFile?: unknown }).imageFile;
+      out.push({
+        text: (f as { text: string }).text,
+        at: (f as { at: number }).at,
+        ...(typeof img === "string" ? { imageFile: img } : {}),
+      });
     }
   }
   return out;
@@ -288,17 +386,31 @@ export function listMyReports(db: DB, anonId: string): MyReport[] {
       body: r.body,
       status: r.status,
       note: riderFacingNote(r.note),
+      replies: (() => {
+        const history = repliesOf(ctx)
+          .map((n) => ({ text: riderFacingNote(n.text), at: n.at }))
+          .filter((n): n is ReportFollowup => n.text !== null);
+        if (history.length > 0) return history;
+        // Reports answered before the history existed: one bubble, stamped
+        // with the report's own time so the ordering stays sane.
+        const only = riderFacingNote(r.note);
+        return only ? [{ text: only, at: r.createdAt.getTime() }] : [];
+      })(),
       hasImage: typeof ctx.imageFile === "string",
       archived: ctx.riderArchived === true,
       priority: r.priority,
-      followups: followupsOf(ctx),
+      // hasImage, never the filename: the file is only readable through the
+      // admin endpoint, exactly as the report's own screenshot is.
+      followups: followupsOf(ctx).map((f) => ({
+        text: f.text, at: f.at, ...(f.imageFile ? { hasImage: true } : {}),
+      })),
     };
   });
 }
 
 export type RiderAction =
   | { action: "resolve" }
-  | { action: "followup"; text: string }
+  | { action: "followup"; text: string; imageFile?: string }
   // Archive is the rider tidying their own list; it never touches the triage
   // status, and unarchive undoes it. Stored as context.riderArchived.
   | { action: "archive" }
@@ -362,7 +474,11 @@ export function riderUpdateReport(
     // A follow-up means it is not settled for the reporter, whatever the
     // triage log said — an addressed/wontfix report reopens.
     status = "open";
-    followups.push({ text: action.text, at: now });
+    followups.push({
+      text: action.text,
+      at: now,
+      ...(action.imageFile ? { imageFile: action.imageFile } : {}),
+    });
   }
   ctx.followups = followups;
   db.update(reports)

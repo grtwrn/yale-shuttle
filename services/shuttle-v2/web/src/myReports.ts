@@ -10,7 +10,12 @@ import { anonIdHeader } from "./anonId";
 
 export type ReportStatus = "open" | "addressed" | "wontfix";
 
-export type MyReportFollowup = { text: string; at: number };
+export type MyReportFollowup = {
+  text: string;
+  at: number;
+  /** The rider attached a screenshot to this message (admin-only to view). */
+  hasImage?: boolean;
+};
 
 export type MyReport = {
   id: number;
@@ -18,12 +23,57 @@ export type MyReport = {
   kind: "issue" | "feedback";
   body: string;
   status: ReportStatus;
+  /** The latest reply. `replies` carries the whole thread; this stays for the badge. */
   note: string | null;
+  /** Every reply the rider has been sent, oldest first. Absent on an old server. */
+  replies?: MyReportFollowup[];
   hasImage: boolean;
   archived: boolean;
   priority: "urgent" | "normal" | "nice_to_have";
   followups: MyReportFollowup[];
 };
+
+export type ThreadEntry = {
+  from: "us" | "rider";
+  text: string;
+  at: number;
+  /** Only a rider's own message can carry one. */
+  hasImage?: boolean;
+};
+
+/**
+ * The report's conversation in order: our replies and the rider's follow-ups
+ * interleaved by time.
+ *
+ * Both sides used to be rendered separately, and our side was ONE box that got
+ * rewritten with each new note — so a rider who was answered twice saw only
+ * the second answer, and never in sequence with what they had written. The
+ * server now sends every reply; `note` alone is the fallback for a cached
+ * bundle talking to a new server, or the reverse.
+ */
+export function threadOf(r: MyReport): ThreadEntry[] {
+  const replies = (Array.isArray(r.replies) && r.replies.length > 0
+    ? r.replies
+    : r.note
+      ? [{ text: r.note, at: r.createdAt }]
+      : []
+  ).filter((n) => n && typeof n.text === "string" && Number.isFinite(n.at));
+  const out: ThreadEntry[] = [
+    ...replies.map((n) => ({ from: "us" as const, text: n.text, at: n.at })),
+    ...(Array.isArray(r.followups) ? r.followups : [])
+      .filter((f) => f && typeof f.text === "string" && Number.isFinite(f.at))
+      .map((f) => ({
+        from: "rider" as const, text: f.text, at: f.at,
+        ...(f.hasImage ? { hasImage: true } : {}),
+      })),
+  ];
+  // Stable: equal stamps keep our reply first, since a rider's follow-up is
+  // always a response to it.
+  return out
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => a.e.at - b.e.at || a.i - b.i)
+    .map(({ e }) => e);
+}
 
 /** localStorage key for {reportId: lastSeenStatus}. */
 const SEEN_KEY = "issuesSeenStatuses";
@@ -107,7 +157,9 @@ export async function postReportAction(
   id: number,
   action:
     | { action: "resolve" }
-    | { action: "followup"; text: string }
+    // `image` is a downscaled JPEG data URL (see screenshot.ts); the server
+    // writes it beside the database and keeps only the filename.
+    | { action: "followup"; text: string; image?: string }
     | { action: "archive" }
     | { action: "unarchive" }
     | { action: "set_priority"; priority: "urgent" | "normal" | "nice_to_have" },

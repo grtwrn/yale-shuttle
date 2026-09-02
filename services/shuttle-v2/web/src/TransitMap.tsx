@@ -43,6 +43,7 @@ import {
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
+import { attachErrorText, downscaleToDataUrl } from "./screenshot";
 import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -6055,28 +6056,15 @@ const TransitMap: FC = () => {
   const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
+  // Shared with the Issues tab's reply box — one downscale, one set of
+  // limits, one wording for the failures (web/src/screenshot.ts).
   const attachScreenshot = (file: File | undefined) => {
     setFeedbackImageErr(null);
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setFeedbackImageErr("That's not an image"); return; }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const g = canvas.getContext("2d");
-      if (!g) { setFeedbackImageErr("Couldn't read the image"); return; }
-      g.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-      // ~2 MB decoded is the server's cap; base64 is 4/3 of that.
-      if (dataUrl.length > 2.6 * 1024 * 1024) { setFeedbackImageErr("Image too large"); return; }
-      setFeedbackImage(dataUrl);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); setFeedbackImageErr("Couldn't read the image"); };
-    img.src = url;
+    void downscaleToDataUrl(file).then((res) => {
+      if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
+      else setFeedbackImage(res.dataUrl);
+    });
   };
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
