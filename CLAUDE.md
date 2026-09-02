@@ -129,6 +129,15 @@ favourites filter cannot leak into the All page, and it would wipe the map's
 filter on every tab switch). Every storage touch is guarded; blocked storage
 means the filter simply does not persist.
 
+The weather line above the trip options is ALWAYS shown when a forecast
+exists (`web/src/weather.ts`): temperature, condition and the chance of rain
+within the hour, quiet by default and an amber "Take an umbrella" past 70%.
+It was rain-only and hidden below 50%, which meant nobody learned to look for
+it. It never reorders or hides an option — a shuttle is not faster in the
+rain, only drier at the ends. Temperature and the WMO code are optional all
+the way through, so an upstream that stops sending them degrades to the
+rain-only wording rather than to no line.
+
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never
 caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is

@@ -28,8 +28,12 @@ const LONGITUDE = -72.9279;
 const FORECAST_URL =
   "https://api.open-meteo.com/v1/forecast" +
   `?latitude=${LATITUDE}&longitude=${LONGITUDE}` +
-  "&hourly=precipitation_probability,precipitation" +
-  "&forecast_hours=3&timezone=America%2FNew_York";
+  // Temperature and the WMO weather code come along so the app can say what
+  // it is like out there, not only whether it will rain: the line is now
+  // always on, and "12% chance of rain" alone is a strange thing to read on a
+  // clear afternoon.
+  "&hourly=precipitation_probability,precipitation,temperature_2m,weather_code" +
+  "&forecast_hours=3&timezone=America%2FNew_York&temperature_unit=fahrenheit";
 
 /** One upstream call per this interval, shared by every client. */
 export const WEATHER_TTL_MS = 10 * 60_000;
@@ -49,6 +53,10 @@ export interface WeatherHour {
   probability: number;
   /** Expected precipitation, mm. */
   precipitationMm: number;
+  /** Temperature, °F. Absent when upstream did not send one. */
+  temperatureF?: number;
+  /** WMO weather code (0 clear … 95 thunderstorm). Absent when not sent. */
+  weatherCode?: number;
 }
 
 export type WeatherPayload =
@@ -82,6 +90,8 @@ export function parseForecast(raw: unknown): WeatherHour[] | null {
   const times = hourly.time;
   const probs = hourly.precipitation_probability;
   const amounts = hourly.precipitation;
+  const temps = hourly.temperature_2m;
+  const codes = hourly.weather_code;
   if (!Array.isArray(times) || !Array.isArray(probs)) return null;
   // Local wall-clock strings plus this offset; see the header comment.
   const offsetMs =
@@ -102,10 +112,16 @@ export function parseForecast(raw: unknown): WeatherHour[] | null {
     const amount = Array.isArray(amounts) && typeof amounts[i] === "number"
       ? (amounts[i] as number)
       : 0;
+    // Temperature and condition are optional: an upstream that stops sending
+    // them must degrade to the rain-only line, not to no forecast at all.
+    const temp = Array.isArray(temps) ? temps[i] : undefined;
+    const code = Array.isArray(codes) ? codes[i] : undefined;
     out.push({
       timeMs: parsed - offsetMs,
       probability: Number.isFinite(probability) ? Math.max(0, Math.min(100, probability)) : 0,
       precipitationMm: Number.isFinite(amount) ? Math.max(0, amount) : 0,
+      ...(typeof temp === "number" && Number.isFinite(temp) ? { temperatureF: temp } : {}),
+      ...(typeof code === "number" && Number.isFinite(code) ? { weatherCode: code } : {}),
     });
   }
   return out.length > 0 ? out : null;
