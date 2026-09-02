@@ -80,18 +80,31 @@ export function markFired(fired: FiredPings, ping: LeavePing): FiredPings {
     : { ...fired, headsUp: true };
 }
 
+/** Prefix added to a ping when rain is likely — grab a jacket on the way out. */
+export const RAIN_PREFIX = "🌧 Rain likely — ";
+
 /**
  * The exact rider-facing strings ("min" spelling per project convention):
  *   heads_up:  "Blue Day in 8 min — leave in 5 min"
  *   leave_now: "Time to leave — Blue Day in 3 min, 3 min walk"
+ *
+ * `rainLikely` prefixes "🌧 Rain likely — ". The ping is the last thing a
+ * rider reads before walking out the door, so it is the one moment where the
+ * forecast can still change what they take with them.
  */
-export function leaveAlertMessage(ping: LeavePing, routeLabel: string, s: LeaveAlertInput): string {
+export function leaveAlertMessage(
+  ping: LeavePing,
+  routeLabel: string,
+  s: LeaveAlertInput,
+  rainLikely = false,
+): string {
   const remaining = remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs);
+  const prefix = rainLikely ? RAIN_PREFIX : "";
   if (ping === "heads_up") {
     const until = Math.max(0, secUntilLeave(s));
-    return `${routeLabel} in ${fmtMin(remaining)} — leave in ${fmtMin(until)}`;
+    return `${prefix}${routeLabel} in ${fmtMin(remaining)} — leave in ${fmtMin(until)}`;
   }
-  return `Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(s.walkToSec)} walk`;
+  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(s.walkToSec)} walk`;
 }
 
 /**

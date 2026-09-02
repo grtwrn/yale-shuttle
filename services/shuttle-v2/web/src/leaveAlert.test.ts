@@ -202,6 +202,21 @@ describe("leaveAlertMessage", () => {
     const s = input(510, 180, { computedAtMs: NOW - 120_000 });
     expect(leaveAlertMessage("leave_now", "Blue Day", s)).toMatch(/^Time to leave — Blue Day in 6 min/);
   });
+
+  it("prefixes the rain warning when rain is likely, on both pings", () => {
+    const s = input(etaFor(300, 180), 180);
+    expect(leaveAlertMessage("heads_up", "Blue Day", s, true))
+      .toBe("🌧 Rain likely — Blue Day in 8 min — leave in 5 min");
+    const t = input(etaFor(0, 180), 180);
+    expect(leaveAlertMessage("leave_now", "Blue Day", t, true))
+      .toBe("🌧 Rain likely — Time to leave — Blue Day in 3 min, 3 min walk");
+  });
+
+  it("says nothing about rain by default", () => {
+    const s = input(etaFor(300, 180), 180);
+    expect(leaveAlertMessage("heads_up", "Blue Day", s)).not.toMatch(/🌧|[Rr]ain/);
+    expect(leaveAlertMessage("heads_up", "Blue Day", s, false)).not.toMatch(/🌧|[Rr]ain/);
+  });
 });
 
 describe("findReminderOption — disarm when the bus/option disappears", () => {

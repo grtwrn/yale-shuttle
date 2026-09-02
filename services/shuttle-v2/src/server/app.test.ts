@@ -858,3 +858,36 @@ describe("rider-set priority", () => {
     expect(mine.reports.find((r) => r.id === id)?.priority).toBe("normal");
   });
 });
+
+describe("GET /api/weather", () => {
+  // The service itself is covered in weather.test.ts; this is about the
+  // wiring — that the endpoint is public, non-throwing, and passes the
+  // payload through untouched.
+  const withWeather = (get: () => Promise<unknown>) =>
+    buildApp({
+      collector,
+      bundle,
+      now: () => 1_700_000_000_000,
+      adminToken: TEST_ADMIN_TOKEN,
+      weather: { get: get as never },
+    });
+
+  it("serves the cached forecast to anyone, no token needed", async () => {
+    const payload = {
+      available: true,
+      fetchedAtMs: 1_700_000_000_000,
+      hourly: [{ timeMs: 1_700_000_000_000, probability: 60, precipitationMm: 1.2 }],
+    };
+    const res = await withWeather(async () => payload).request("/api/weather");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(payload);
+    // Shared by every rider, so it may be cached for the whole TTL.
+    expect(res.headers.get("Cache-Control")).toContain("max-age=600");
+  });
+
+  it("answers unavailable rather than erroring when upstream never worked", async () => {
+    const res = await withWeather(async () => ({ available: false })).request("/api/weather");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ available: false });
+  });
+});
