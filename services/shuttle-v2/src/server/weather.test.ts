@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  budgetMs,
   createWeatherService,
+  MIN_ATTEMPT_MS,
   parseForecast,
   parseNwsForecast,
   WEATHER_MAX_AGE_MS,
@@ -144,10 +146,11 @@ describe("createWeatherService", () => {
 });
 
 describe("the National Weather Service fallback", () => {
-  // Open-Meteo answers this Pi but returns 503 "The service is overloaded" to
-  // the production machine's egress IP (measured 2026-09-02 inside the VM, on
-  // a minimal request too). So a second source is not belt-and-braces here —
-  // it is the only one that answers where the app actually runs.
+  // Open-Meteo's free tier sheds load: on 2026-09-02 it returned
+  // 503 "The service is overloaded" to the production machine for minutes at
+  // a time, long enough that a restart left the cache cold and riders saw no
+  // weather at all, then recovered by itself. The fallback is what makes the
+  // next such spell invisible.
   const NWS_POINT = { properties: { forecastHourly: "https://api.weather.gov/gridpoints/OKX/66,75/forecast/hourly" } };
   const NWS_HOURLY = {
     properties: {
@@ -225,5 +228,21 @@ describe("the National Weather Service fallback", () => {
     const fetchImpl = (async () => { throw new Error("network down"); }) as unknown as typeof fetch;
     const svc = createWeatherService({ fetchImpl, now: () => 1_000_000 });
     await expect(svc.get()).resolves.toEqual({ available: false });
+  });
+});
+
+describe("the whole refresh shares one timeout budget", () => {
+  // Chaining two providers at a fresh 5 s each blocked the first cold request
+  // for 10 s, and single-flight makes every concurrent rider wait with it.
+  it("hands the second provider what is left, not another full timeout", () => {
+    const deadline = 10_000;
+    expect(budgetMs(deadline, 0)).toBe(10_000);
+    expect(budgetMs(deadline, 6_000)).toBe(4_000);
+  });
+
+  it("never hands out a zero or negative timeout", () => {
+    expect(budgetMs(10_000, 10_000)).toBe(MIN_ATTEMPT_MS);
+    expect(budgetMs(10_000, 99_999)).toBe(MIN_ATTEMPT_MS);
+    expect(budgetMs(NaN, 0)).toBe(MIN_ATTEMPT_MS);
   });
 });

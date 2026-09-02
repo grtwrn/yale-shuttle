@@ -129,6 +129,16 @@ favourites filter cannot leak into the All page, and it would wipe the map's
 filter on every tab switch). Every storage touch is guarded; blocked storage
 means the filter simply does not persist.
 
+The forecast has TWO sources (`src/server/weather.ts`): Open-Meteo first,
+then the National Weather Service (`api.weather.gov`, no key). Open-Meteo's
+free tier sheds load — on 2026-09-02 it returned 503 "The service is
+overloaded" to the production machine for minutes, and a restart in that
+window left riders with no weather at all — then recovered on its own. It is
+not blocking our address; the fallback simply makes the next such spell
+invisible. NWS carries no condition code, so the line degrades to temperature
+plus rain chance with a neutral icon. Both providers share ONE timeout budget
+per refresh, or a cold request would wait 5 s twice.
+
 The weather line above the trip options is ALWAYS shown when a forecast
 exists (`web/src/weather.ts`): temperature, condition and the chance of rain
 within the hour, quiet by default and an amber "Take an umbrella" past 70%.

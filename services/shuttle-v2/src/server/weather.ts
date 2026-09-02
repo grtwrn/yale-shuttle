@@ -14,13 +14,18 @@
  * last good forecast, and if there is none, `{ available: false }` — which the
  * client renders as no weather line at all.
  *
- * TWO sources, tried in order. Open-Meteo answers this Pi happily but returns
- * `503 {"reason":"The service is overloaded"}` to the production machine's
- * egress IP — measured 2026-09-02 from inside the Fly VM, on the minimal
- * request as well as ours, so it is the caller's address it objects to, not
- * the query. The National Weather Service (api.weather.gov) answers the same
- * machine fine, needs no key, and covers New Haven, so it is the fallback.
- * Neither is trusted to be up; the cache spans both.
+ * TWO sources, tried in order. On 2026-09-02 Open-Meteo returned
+ * `503 {"reason":"The service is overloaded"}` to the production machine for
+ * several minutes — long enough that a restart left the cache cold and the
+ * weather line disappeared for riders — while answering this Pi normally. It
+ * recovered on its own within the hour (40/40 later requests from the same VM
+ * returned 200), so that is free-tier load shedding, NOT a block on our
+ * address: an earlier version of this comment claimed the latter and was
+ * wrong. The National Weather Service (api.weather.gov) answers the same
+ * machine fine, needs no key and covers New Haven, so it stands behind
+ * Open-Meteo. Neither is trusted to be up; the cache spans both, and the
+ * point of the fallback is that the next few minutes of load shedding are
+ * invisible rather than blank.
  *
  * Timestamps are normalised to epoch milliseconds HERE, not in the browser.
  * Open-Meteo returns local wall-clock strings ("2026-09-01T18:00") with a
@@ -53,6 +58,17 @@ export const WEATHER_TTL_MS = 10 * 60_000;
 export const WEATHER_MAX_AGE_MS = 3 * 60 * 60_000;
 /** Upstream is a nicety; don't let a hung connection sit around. */
 const FETCH_TIMEOUT_MS = 5_000;
+
+/**
+ * Milliseconds left of a refresh's budget, floored so a provider that is
+ * tried second still gets a real (if short) chance rather than a zero
+ * timeout that aborts before the socket opens.
+ */
+export const MIN_ATTEMPT_MS = 250;
+export function budgetMs(deadlineMs: number, nowMs: number): number {
+  const left = deadlineMs - nowMs;
+  return Number.isFinite(left) ? Math.max(MIN_ATTEMPT_MS, left) : MIN_ATTEMPT_MS;
+}
 
 /**
  * The National Weather Service's hourly forecast for the same point, used
@@ -201,19 +217,24 @@ export function createWeatherService(options: WeatherServiceOptions = {}): Weath
   // not move, and spending a call on it every refresh would be rude.
   let nwsHourlyUrl: string | null = null;
 
-  const fromOpenMeteo = async (f: typeof fetch): Promise<WeatherHour[] | null> => {
+  // ONE budget for the whole refresh, not one per call: chaining two
+  // providers at 5 s each made a cold, hung refresh block the first request
+  // for 10 s, and single-flight means every concurrent rider waits with it.
+  const remaining = (deadline: number) => budgetMs(deadline, now());
+
+  const fromOpenMeteo = async (f: typeof fetch, deadline: number): Promise<WeatherHour[] | null> => {
     const res = await f(url, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(remaining(deadline)),
       headers: { accept: "application/json" },
     });
     if (!res.ok) return null;
     return parseForecast(await res.json());
   };
 
-  const fromNws = async (f: typeof fetch): Promise<WeatherHour[] | null> => {
+  const fromNws = async (f: typeof fetch, deadline: number): Promise<WeatherHour[] | null> => {
     if (!nwsHourlyUrl) {
       const p = await f(options.nwsPointUrl ?? NWS_POINT_URL, {
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(remaining(deadline)),
         headers: NWS_HEADERS,
       });
       if (!p.ok) return null;
@@ -223,11 +244,12 @@ export function createWeatherService(options: WeatherServiceOptions = {}): Weath
       nwsHourlyUrl = u;
     }
     const res = await f(nwsHourlyUrl, {
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(remaining(deadline)),
       headers: NWS_HEADERS,
     });
     if (!res.ok) {
-      // A stale grid URL is the one failure worth retrying differently.
+      // Forgotten, so the NEXT refresh re-resolves the grid — this pass is
+      // already over its budget to try again.
       nwsHourlyUrl = null;
       return null;
     }
@@ -245,13 +267,14 @@ export function createWeatherService(options: WeatherServiceOptions = {}): Weath
         // National Weather Service when it will not answer. Each source is
         // independently allowed to fail; only a parsed forecast replaces the
         // cache, so a bad day upstream leaves the last good one standing.
+        const deadline = now() + FETCH_TIMEOUT_MS;
         let hourly: WeatherHour[] | null = null;
         try {
-          hourly = await fromOpenMeteo(doFetch);
+          hourly = await fromOpenMeteo(doFetch, deadline);
         } catch { /* try the fallback */ }
         if (!hourly) {
           try {
-            hourly = await fromNws(doFetch);
+            hourly = await fromNws(doFetch, deadline);
           } catch { /* both down — last good value stands */ }
         }
         if (hourly) cached = { hourly, fetchedAtMs: now() };
