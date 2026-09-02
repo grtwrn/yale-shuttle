@@ -3,6 +3,7 @@
 
 import { computeUpcomingArrivals } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
+import { bikeSecFromMeters, bikeWorthOffering } from "./bike";
 import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -14,7 +15,10 @@ import type { PublishedWindow } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 
 export type TripOption = {
-  mode: "shuttle" | "walk";
+  // "bike" is a self-powered option like "walk": it has no bus, no stops and
+  // no live timings, so every bus-side branch that tests `mode === "shuttle"`
+  // skips it unchanged.
+  mode: "shuttle" | "walk" | "bike";
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
@@ -42,6 +46,17 @@ export type TripOption = {
 
 /** Don't keep looping past a boarding point. */
 export const MAX_RIDE_SEC = 25 * 60;
+
+/**
+ * "This plan has no bus in it." Drives the "Walking beats every shuttle here"
+ * line and the "Shuttles that go there — not running now" panel, both of which
+ * used to test `length === 1 && mode === "walk"`. That test silently became
+ * wrong when the bike option (report #60) could add a second self-powered row:
+ * a rider with the toggle on would have lost the panel telling them the
+ * shuttle does serve the trip, just not right now.
+ */
+export const hasNoShuttleOption = (options: readonly TripOption[]) =>
+  !options.some((o) => o.mode === "shuttle");
 
 /**
  * How long a rider still has to board a bus that's dwelling at a stop RIGHT
@@ -165,6 +180,11 @@ export function planTrip(
   dwellTimes: DwellTimes,
   targetDate?: Date | null,
   now = Date.now(),
+  // Report #60: the rider has told us they have a bike. Adds one direct-ride
+  // option and changes nothing else — shuttle options are untouched, because
+  // "bike to the stop, then take the bus with the bike" is a different trip
+  // (racks, capacity) than the one this flag claims to answer.
+  hasBike = false,
 ): TripOption[] {
   // Future-plan mode: the user picked a date/time >60s away. We can't
   // rely on live buses, so we filter by published operating hours and
@@ -363,7 +383,24 @@ export function planTrip(
         directWalkSec,
       }]
     : [];
-  return [...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
+  // The bike option (report #60). Same shape as the walk option — a direct
+  // ride from origin to destination, ranked by total time like everything
+  // else — and offered only when the rider has said they have a bike AND the
+  // distance makes one worth the lock-up (see bike.ts). It is never the ONLY
+  // option: the walk fallback above is chosen before this runs, so a rider who
+  // turns the toggle off still sees exactly what they saw before.
+  const bikeList: TripOption[] = hasBike && bikeWorthOffering(directWalkM)
+    ? [{
+        mode: "bike",
+        routeLabel: "Bike",
+        color: "#00796b",
+        boardStopId: 0, alightStopId: 0,
+        walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
+        totalSec: bikeSecFromMeters(directWalkM), busName: "",
+        directWalkSec,
+      }]
+    : [];
+  return [...bikeList, ...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
 }
 
 // Routes that geographically connect from→to (a stop within walking
@@ -496,8 +533,9 @@ export function findPotentialRoutes(
  * as good as the second — riders weigh similar options themselves (from
  * Prospect/Canner to the Green, Blue ranked one minute behind Orange with a
  * quarter of the walking, and sat hidden behind "show more": report #46). A
- * distant third is noise and cedes its slot; the walk row always shows because
- * it is a different kind of answer, not a competing shuttle.
+ * distant third is noise and cedes its slot; the walk row — and the bike row,
+ * when the rider has one — always shows, because those are a different kind of
+ * answer, not a competing shuttle.
  */
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 

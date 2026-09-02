@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { BIKE_MIN_M, BIKE_ONLY_MAX_SEC, bikeSecFromMeters } from "./bike";
+import { dwellBoardWindowSec, findPotentialRoutes, hasNoShuttleOption, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -63,6 +64,94 @@ describe("planTrip: the walk option", () => {
     const walk = options.find((o) => o.mode === "walk");
     expect(walk).toBeDefined();
     expect(walk!.totalSec).toBeCloseTo(walkSecFromMeters(haversineMeters(from, to)), 6);
+  });
+});
+
+describe("planTrip: the bike option (report #60)", () => {
+  const from = northOf(STOP.phelpsGate, 110);
+  const to = { lat: at(STOP.cedar333).lat, lon: at(STOP.cedar333).lon - 0.002 };
+  const bikePlan = (
+    a: { lat: number; lon: number },
+    b: { lat: number; lon: number },
+    buses = [liveBus()],
+  ) => planTrip(a, b, buses, routeStops, stopCoords, segmentTimes, dwellTimes, null, NOW, true);
+
+  it("offers no bike unless the rider says they have one", () => {
+    expect(plan(from, to).some((o) => o.mode === "bike")).toBe(false);
+  });
+
+  it("adds one bike option when they do", () => {
+    const bikes = bikePlan(from, to).filter((o) => o.mode === "bike");
+    expect(bikes).toHaveLength(1);
+    expect(bikes[0].totalSec).toBeCloseTo(bikeSecFromMeters(haversineMeters(from, to)), 6);
+    expect(bikes[0].routeLabel).toBe("Bike");
+  });
+
+  it("changes nothing else about the plan", () => {
+    // The toggle answers "may I ride there myself", not "re-plan the buses":
+    // it must not perturb which shuttles are offered or how they are timed.
+    const without = plan(from, to);
+    const with_ = bikePlan(from, to).filter((o) => o.mode !== "bike");
+    expect(with_).toEqual(without);
+  });
+
+  it("stays sorted by total time with the rest", () => {
+    const totals = bikePlan(from, to).map((o) => o.totalSec);
+    expect([...totals].sort((a, b) => a - b)).toEqual(totals);
+  });
+
+  it("beats the walk over the same ground", () => {
+    const options = bikePlan(from, to);
+    const bike = options.find((o) => o.mode === "bike")!;
+    const walk = options.find((o) => o.mode === "walk")!;
+    expect(bike.totalSec).toBeLessThan(walk.totalSec);
+    expect(options.indexOf(bike)).toBeLessThan(options.indexOf(walk));
+  });
+
+  it("skips a trip too short to unlock a bike for", () => {
+    const near = northOf(STOP.phelpsGate, BIKE_MIN_M - 100);
+    expect(haversineMeters(at(STOP.phelpsGate), near)).toBeLessThan(BIKE_MIN_M);
+    expect(bikePlan(at(STOP.phelpsGate), near).some((o) => o.mode === "bike")).toBe(false);
+  });
+
+  it("skips a ride past the one-hour cutoff", () => {
+    // ~17 km away from campus and from every stop: an hour-plus either way.
+    const a = { lat: 41.20, lon: -72.90 };
+    const b = { lat: 41.35, lon: -72.90 };
+    expect(bikeSecFromMeters(haversineMeters(a, b))).toBeGreaterThan(BIKE_ONLY_MAX_SEC);
+    const options = bikePlan(a, b);
+    expect(options.some((o) => o.mode === "bike")).toBe(false);
+    // ...and the last-resort walk from report #35 still survives.
+    expect(options.map((o) => o.mode)).toEqual(["walk"]);
+  });
+
+  it("is always shown, never squeezed out by the shuttle rows", () => {
+    const visible = topVisibleOptions(bikePlan(from, to));
+    expect(visible.some((o) => o.mode === "bike")).toBe(true);
+    expect(visible.some((o) => o.mode === "walk")).toBe(true);
+  });
+});
+
+describe("hasNoShuttleOption", () => {
+  const from = northOf(STOP.phelpsGate, 110);
+  const to = { lat: at(STOP.cedar333).lat, lon: at(STOP.cedar333).lon - 0.002 };
+
+  it("is false as soon as one bus can do the trip", () => {
+    expect(hasNoShuttleOption(plan(from, to))).toBe(false);
+  });
+
+  it("is true for an empty plan and for a self-powered-only plan", () => {
+    expect(hasNoShuttleOption([])).toBe(true);
+    // No shuttle within walking distance: bike + walk and nothing else. The
+    // old `length === 1 && mode === "walk"` test called this a bus plan and
+    // hid the "shuttles that go there" panel from anyone with the toggle on.
+    const a = { lat: 41.24, lon: -72.90 };
+    const b = { lat: 41.245, lon: -72.90 };
+    const options = planTrip(
+      a, b, [liveBus()], routeStops, stopCoords, segmentTimes, dwellTimes, null, NOW, true,
+    );
+    expect(options.map((o) => o.mode).sort()).toEqual(["bike", "walk"]);
+    expect(hasNoShuttleOption(options)).toBe(true);
   });
 });
 

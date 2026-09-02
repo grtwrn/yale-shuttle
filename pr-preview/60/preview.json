@@ -1,0 +1,17 @@
+{
+  "caption": "Report #60: the 🚲 chip above the trip options, tapped on — a Bike row now sits in the ranked list beside the shuttles and the walk (Prospect/Sachem → 333 Cedar, ~1.6 km).",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 106,
+    "dest": 10
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788368020/pr-preview/60/trip-failed.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

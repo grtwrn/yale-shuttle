@@ -22,9 +22,10 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
+  dwellBoardWindowSec, findPotentialRoutes, hasNoShuttleOption, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { loadBikePref, saveBikePref } from "./bikePref";
 
 // True when running as an installed app (home-screen/desktop install). Fixed
 // for the life of the page, so a module constant, not state.
@@ -1782,12 +1783,21 @@ const TripPlanner: FC<{
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshed, setRefreshed] = useState(false);
 
+  // Report #60: "Add bike option with toggle of whether I use bike or not."
+  // A standing fact about the rider, not a per-search choice, so it is read
+  // from storage once and written back whenever they flip it. Declared HERE,
+  // above stableOptions — it goes in that memo's dependency array, and a
+  // dependency array referencing a const declared further down is a TDZ
+  // ReferenceError that blank-screens the app.
+  const [hasBike, setHasBike] = useState(loadBikePref);
+  const toggleBike = () => setHasBike((v) => { saveBikePref(!v); return !v; });
+
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
-      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
+      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), hasBike)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
+    [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey, hasBike],
   );
 
   // Collapse the "show more" list whenever a new trip is planned.
@@ -2894,13 +2904,13 @@ const TripPlanner: FC<{
           </div>
         </div>
       )}
-      {/* Fallback when planTrip only surfaced Walk (or nothing at all):
-          list routes that GEOGRAPHICALLY serve this trip with their next
-          active window. Helps the rider see that the shuttle does go
+      {/* Fallback when planTrip surfaced no BUS at all (walk, walk+bike, or
+          nothing): list routes that GEOGRAPHICALLY serve this trip with their
+          next active window. Helps the rider see that the shuttle does go
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && hasNoShuttleOption(options) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {potentialRoutes.some((p) => p.activeNow)
@@ -2981,6 +2991,35 @@ const TripPlanner: FC<{
               </div>
             );
           })()}
+          {/* Report #60: the rider tells us once whether they have a bike,
+              and a 🚲 row joins the options whenever pedalling is a sensible
+              answer for the distance. A chip rather than a mode switch: the
+              shuttle answers never change, the bike is simply one more way to
+              get there, ranked by time like the rest. Hidden on the details
+              page, which belongs to one route. */}
+          {!detailOpen && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 8px" }}>
+              <button
+                onClick={toggleBike}
+                aria-pressed={hasBike}
+                title={hasBike
+                  ? "Stop showing a bike option"
+                  : "Show how long the trip takes by bike"}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  fontSize: 14, fontWeight: 600, fontFamily: "inherit",
+                  color: hasBike ? "#00695c" : "#5f6368",
+                  background: hasBike ? "#e0f2f1" : "#fff",
+                  border: `1px solid ${hasBike ? "#00796b" : "#dadce0"}`,
+                  borderRadius: 999, padding: "0 14px", minHeight: 44,
+                  cursor: "pointer",
+                }}
+              >
+                <span aria-hidden="true">🚲</span>
+                <span>{hasBike ? "Using my bike" : "I have a bike"}</span>
+              </button>
+            </div>
+          )}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -3123,9 +3162,11 @@ const TripPlanner: FC<{
               </div>
             );
           })()}
-          {options.length === 1 && options[0].mode === "walk" && (
+          {hasNoShuttleOption(options) && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking beats every shuttle here — no bus nearby saves time.
+              {options.some((o) => o.mode === "bike")
+                ? "No bus nearby saves time here — you're better off under your own steam."
+                : "Walking beats every shuttle here — no bus nearby saves time."}
             </div>
           )}
           {(() => {
@@ -3163,7 +3204,9 @@ const TripPlanner: FC<{
             // tags read like the app is broken.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
+              // Any self-powered row (walk, and bike when the rider has one)
+              // is exempt from the tier test — only the shuttles are judged.
+              _sorted.every((o) => o.mode !== "shuttle" || _tier(o) > 0);
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
@@ -3274,12 +3317,12 @@ const TripPlanner: FC<{
                     there were pure repetition (user feedback 2026-07-17). */}
                 {!isExpanded && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
-                  {o.mode === "walk" ? (
+                  {o.mode !== "shuttle" ? (
                     <span style={{
                       fontSize: 13, fontWeight: 600, color: "#5f6368",
                       background: "transparent", border: "1px solid #dadce0",
                       borderRadius: 6, padding: "2px 8px",
-                    }}>🚶 Walk</span>
+                    }}>{o.mode === "bike" ? "🚲 Bike" : "🚶 Walk"}</span>
                   ) : (
                     <>
                       {o.walkToSec > 0 && (
@@ -3608,7 +3651,9 @@ const TripPlanner: FC<{
                     </div>
                   );
                 })()}
-                {isExpanded && o.mode === "walk" && effectiveFromLL && toLL && (
+                {/* Self-powered options (walk, bike) expand to the same
+                    thing: the straight origin→destination map. */}
+                {isExpanded && o.mode !== "shuttle" && effectiveFromLL && toLL && (
                   <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                     <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
                   </div>
