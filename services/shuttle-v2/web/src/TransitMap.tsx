@@ -1632,11 +1632,13 @@ const TripPlanner: FC<{
   // an unguarded localStorage access in a state initialiser throws (and
   // blank-screens) with site data blocked. See bikePref.ts.
   const [bikeOn, setBikeOn] = useState<boolean>(loadBikePref);
-  // Which half of the self-powered row the expanded map draws. One row is
-  // expanded at a time, so one piece of state covers it. Starts on the bike:
-  // that is the half the row's headline time belongs to.
-  const [selfPoweredDraw, setSelfPoweredDraw] = useState<"walk" | "bike">("bike");
-  useEffect(() => { setSelfPoweredDraw("bike"); }, [expandedKey]);
+  // Which half of the self-powered row the rider is looking at. One row is
+  // expanded at a time, so one piece of state covers it. Starts on the WALK —
+  // the option every rider has — and resets there for each newly opened row,
+  // so choosing the bike is always something the rider did, never a default
+  // they have to undo.
+  const [selfPoweredDraw, setSelfPoweredDraw] = useState<"walk" | "bike">("walk");
+  useEffect(() => { setSelfPoweredDraw("walk"); }, [expandedKey]);
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
@@ -3351,12 +3353,12 @@ const TripPlanner: FC<{
               }
               return { busMatch, stopsAway, normBus };
             })();
-            // The self-powered row RANKS on the bike, so that is the time it
-            // leads with. Open it and pick the walk half, though, and the
-            // headline must follow: a walking map under a cycling arrival
-            // time is the kind of small lie a rider notices at the door.
-            const shownSec = isExpanded && o.mode === "walk" && o.bike && selfPoweredDraw === "walk"
-              ? o.directWalkSec
+            // The self-powered row leads with the WALK — the time every
+            // rider can actually have. Open it, pick the bike, and the
+            // headline follows: a cycling map under a walking arrival time is
+            // the kind of small lie a rider notices at the door.
+            const shownSec = isExpanded && o.mode === "walk" && o.bike && selfPoweredDraw === "bike"
+              ? o.bike.totalSec
               : o.totalSec;
             return (
               // Keyed by IDENTITY (route label), not list position — the
@@ -3416,20 +3418,20 @@ const TripPlanner: FC<{
                       chips, never route-coloured pills: they are answers of a
                       different kind, and colouring them like a line would put
                       them in competition with the shuttles rather than beside
-                      them. Both times are spelled out on their chips, because
-                      the row's headline is the sooner of the two — a rider
-                      with no bike must not have to work out which.
+                      them. Both times are spelled out on their chips, and the
+                      WALK comes first because it is the one the headline
+                      belongs to and the one every rider has.
 
-                      fmtMin, not fmtWalk: the bike chip and the headline are
+                      fmtMin, not fmtWalk: the walk chip and the headline are
                       the SAME number, and fmtWalk rounds where fmtMin floors —
-                      a row reading "9 min" beside "Bike 10 min" reads as a
-                      bug. The walk chip follows so the pair agree with each
+                      a row reading "22 min" beside "Walk 23 min" reads as a
+                      bug. The bike chip follows so the pair agree with each
                       other too. */}
                   {o.mode !== "shuttle" ? (
                     [
+                      ...(o.mode === "walk" ? [`🚶 Walk ${fmtMin(o.directWalkSec)}`] : []),
                       ...(o.bike || o.mode === "bike"
                         ? [`🚲 Bike ${fmtMin(o.bike?.totalSec ?? o.totalSec)}`] : []),
-                      ...(o.mode === "walk" ? [`🚶 Walk ${fmtMin(o.directWalkSec)}`] : []),
                     ].map((text) => (
                       <span key={text} style={{
                         fontSize: 13, fontWeight: 600, color: "#5f6368",
@@ -3784,13 +3786,15 @@ const TripPlanner: FC<{
                   const both = o.mode === "walk" && !!o.bike;
                   const drawn = o.mode === "bike" || (both && selfPoweredDraw === "bike")
                     ? "bike" : "walk";
+                  // (`drawn` defaults to the walk for the merged row — see
+                  // selfPoweredDraw. A bike-only row has no walk to draw.)
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                       {both && (
                         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                           {([
-                            ["bike", `🚲 Bike ${fmtMin(o.bike!.totalSec)}`],
                             ["walk", `🚶 Walk ${fmtMin(o.directWalkSec)}`],
+                            ["bike", `🚲 Bike ${fmtMin(o.bike!.totalSec)}`],
                           ] as const).map(([m, text]) => (
                             <button
                               key={m}

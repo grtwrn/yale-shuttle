@@ -147,16 +147,20 @@ not a thing that can be suggested.
 the same question, and as two rows they could not even sit together: honest
 sorting puts a shuttle between a 9-minute bike and a 22-minute walk, so the
 picker showed one kind of answer twice with an unrelated one wedged between.
-The merged row **ranks on the bike** (`totalSec` is the sooner arrival; the
-walk's own time is always `directWalkSec`), because the top row is the
-picker's recommendation — but both times are printed on their own chips, so a
-rider with no bike reads the walk in the same glance. Chips use `fmtMin`, not
-`fmtWalk`: the bike chip and the headline are the same number, and a row
-reading "9 min" beside "Bike 10 min" reads as a bug. Expanding the row gives a
-two-way switch (the map draws a bike route or a foot route — different roads),
-and the headline follows the half that is selected. When the walk row has been
-suppressed (a walk over an hour) the bike stands alone under `mode: "bike"` —
-which is the trip where it is worth the most.
+The merged row **stays the walk**: same `totalSec`, so it keeps the rank and
+the headline time it had before a bike existed. Ranking it on the bike was
+tried first and is wrong — it puts a time on the top row that only a rider who
+owns a bike can have, and every rider who does not owns the walk. Both times
+are printed on their own chips (walk first), the bike is one tap from taking
+over the headline, and the row is never hidden behind "show more", so nothing
+is buried by the default. Chips use `fmtMin`, not `fmtWalk`: the walk chip and
+the headline are the same number, and a row reading "22 min" beside "Walk
+23 min" reads as a bug. Expanding gives a two-way switch (the map draws a foot
+route or a bike route — different roads) that starts on the walk and resets
+there for each newly opened row; the headline follows whichever half is
+selected. When the walk row has been suppressed (a walk over an hour) the bike
+stands alone under `mode: "bike"` — which is the trip where it is worth the
+most.
 
 The model is deliberately unheroic: 14.4 km/h on the ground (a city average,
 lights included) over a 1.25 detour — worse than walking's 1.2, since a bike

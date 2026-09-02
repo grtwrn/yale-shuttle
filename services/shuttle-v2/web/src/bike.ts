@@ -124,11 +124,14 @@ export function bikeLegFor(from: LatLon, to: LatLon): BikeLeg | null {
  * carrying both times reads as the single choice it actually is, and costs a
  * row of a list a rider is scanning on a phone.
  *
- * The merged row RANKS ON THE BIKE, because that is the soonest a rider can
- * get there under their own power and the picker's whole contract is that the
- * top row is the fastest. The walk time is not hidden by this — it is printed
- * on the same row, in its own chip — so a rider with no bike reads both
- * numbers in one glance instead of hunting for the second one further down.
+ * The merged row STAYS THE WALK: same `totalSec`, so it keeps the rank and the
+ * headline time it had before a bike was ever attached. Ranking it on the bike
+ * was tried first and is wrong — it puts a time on the top row that only a
+ * rider who owns a bike can actually have, and every rider who does not owns
+ * the walk. The bike is not buried by that: it sits on its own chip on the
+ * same row, one tap from taking over the headline, and the row itself is never
+ * hidden behind "show more" (see topVisibleOptions). Discoverable without
+ * being presumed.
  *
  * When the walk row has been suppressed (a walk over an hour) there is nothing
  * to join, and the bike becomes a row of its own — which is exactly the trip
@@ -148,12 +151,9 @@ export function withBikeOption(
   if (!bike) return options;
   const walkIdx = options.findIndex((o) => o.mode === "walk");
   const merged = walkIdx >= 0
-    ? options.map((o, i) => (i === walkIdx
-        // totalSec is the row's RANK and its headline, so it takes the sooner
-        // of the two arrivals. The walk's own time is never lost with it: it
-        // is `directWalkSec`, which every option already carries.
-        ? { ...o, bike, totalSec: Math.min(o.totalSec, bike.totalSec) }
-        : o))
+    // `totalSec` is deliberately untouched: it is the row's rank AND its
+    // headline, and both belong to the walk until the rider says otherwise.
+    ? options.map((o, i) => (i === walkIdx ? { ...o, bike } : o))
     : [...options, {
         mode: "bike" as const,
         routeLabel: BIKE_LABEL,

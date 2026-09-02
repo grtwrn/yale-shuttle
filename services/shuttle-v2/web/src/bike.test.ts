@@ -140,19 +140,25 @@ describe("folding the bike into the plan", () => {
     expect(self.bike?.totalSec).toBeCloseTo(bikeSecFromMeters(metres(2_000)), 6);
   });
 
-  it("ranks the merged row on the bike, and keeps the walk time readable", () => {
+  // The row leads with the walk, because that is the time every rider can
+  // actually have. Ranking it on the bike was tried and is wrong.
+  it("keeps the walk's rank and headline time", () => {
     const { from, to } = pair(2_000);
     const self = withBikeOption([walkRow(2_000)], from, to, true)[0];
-    expect(self.totalSec).toBeCloseTo(bikeSecFromMeters(metres(2_000)), 6);
+    expect(self.totalSec).toBeCloseTo(walkSecFromMeters(2_000), 6);
     expect(self.directWalkSec).toBeCloseTo(walkSecFromMeters(2_000), 6);
-    expect(self.totalSec).toBeLessThan(self.directWalkSec);
+    expect(self.bike!.totalSec).toBeLessThan(self.totalSec);
   });
 
-  it("sorts the merged row honestly among the shuttles", () => {
+  it("does not let the bike push the row up past a shuttle", () => {
     const { from, to } = pair(2_000);
     const bikeSec = bikeSecFromMeters(metres(2_000));
+    const walkSec = walkSecFromMeters(2_000);
+    // A shuttle slower than the bike but faster than the walk: it must still
+    // outrank the self-powered row, exactly as it did before the bike existed.
+    const between = (bikeSec + walkSec) / 2;
     const out = withBikeOption(
-      [walkRow(2_000), shuttle("Blue Day", bikeSec - 120), shuttle("Red", bikeSec + 120)],
+      [walkRow(2_000), shuttle("Blue Day", between), shuttle("Red", walkSec + 120)],
       from, to, true,
     );
     expect(out.map((o) => o.routeLabel)).toEqual(["Blue Day", "Walk", "Red"]);
