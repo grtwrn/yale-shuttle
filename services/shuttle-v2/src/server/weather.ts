@@ -10,9 +10,17 @@
  *   area), so there is nothing per-rider to ask for.
  *
  * Contract: **this never throws and never rejects.** A rain hint is a nicety;
- * an outage at Open-Meteo must be invisible to riders. On failure we serve the
+ * an outage upstream must be invisible to riders. On failure we serve the
  * last good forecast, and if there is none, `{ available: false }` — which the
- * client renders as "no rain line", exactly like a dry forecast.
+ * client renders as no weather line at all.
+ *
+ * TWO sources, tried in order. Open-Meteo answers this Pi happily but returns
+ * `503 {"reason":"The service is overloaded"}` to the production machine's
+ * egress IP — measured 2026-09-02 from inside the Fly VM, on the minimal
+ * request as well as ours, so it is the caller's address it objects to, not
+ * the query. The National Weather Service (api.weather.gov) answers the same
+ * machine fine, needs no key, and covers New Haven, so it is the fallback.
+ * Neither is trusted to be up; the cache spans both.
  *
  * Timestamps are normalised to epoch milliseconds HERE, not in the browser.
  * Open-Meteo returns local wall-clock strings ("2026-09-01T18:00") with a
@@ -46,6 +54,51 @@ export const WEATHER_MAX_AGE_MS = 3 * 60 * 60_000;
 /** Upstream is a nicety; don't let a hung connection sit around. */
 const FETCH_TIMEOUT_MS = 5_000;
 
+/**
+ * The National Weather Service's hourly forecast for the same point, used
+ * when Open-Meteo will not answer. Two calls: /points resolves the grid cell,
+ * whose hourly URL is stable, so it is resolved once and remembered.
+ * api.weather.gov requires a User-Agent that identifies the caller.
+ */
+const NWS_POINT_URL = `https://api.weather.gov/points/${LATITUDE},${LONGITUDE}`;
+const NWS_HEADERS = { "User-Agent": "yale-shuttle (github.com/grtwrn/yale-shuttle)", accept: "application/geo+json" };
+
+/**
+ * Parse the NWS hourly forecast into the same buckets as Open-Meteo.
+ *
+ * Its periods carry a real ISO timestamp with an offset, so no timezone
+ * reconstruction is needed. `probabilityOfPrecipitation.value` is null rather
+ * than 0 when there is no chance worth reporting; temperature is already °F
+ * for this office but the unit is checked rather than assumed.
+ */
+export function parseNwsForecast(raw: unknown): WeatherHour[] | null {
+  if (!raw || typeof raw !== "object") return null;
+  const periods = (raw as { properties?: { periods?: unknown } }).properties?.periods;
+  if (!Array.isArray(periods)) return null;
+  const out: WeatherHour[] = [];
+  for (const p of periods.slice(0, 6)) {
+    if (!p || typeof p !== "object") continue;
+    const o = p as Record<string, unknown>;
+    const t = typeof o.startTime === "string" ? Date.parse(o.startTime) : NaN;
+    if (!Number.isFinite(t)) continue;
+    const popRaw = (o.probabilityOfPrecipitation as { value?: unknown } | undefined)?.value;
+    const probability = typeof popRaw === "number" && Number.isFinite(popRaw) ? popRaw : 0;
+    const tempRaw = o.temperature;
+    const tempF = typeof tempRaw === "number" && Number.isFinite(tempRaw)
+      ? (o.temperatureUnit === "C" ? tempRaw * 9 / 5 + 32 : tempRaw)
+      : undefined;
+    out.push({
+      timeMs: t,
+      probability: Math.max(0, Math.min(100, probability)),
+      precipitationMm: 0,
+      ...(tempF !== undefined ? { temperatureF: tempF } : {}),
+      // No WMO code from this source; the client falls back to a plain
+      // cloud icon and drops the condition word rather than inventing one.
+    });
+  }
+  return out.length > 0 ? out : null;
+}
+
 export interface WeatherHour {
   /** Start of the hour this bucket covers, epoch ms. */
   timeMs: number;
@@ -75,6 +128,8 @@ export interface WeatherServiceOptions {
   fetchImpl?: typeof fetch;
   now?: () => number;
   url?: string;
+  /** Override the National Weather Service point lookup (tests). */
+  nwsPointUrl?: string;
 }
 
 /**
@@ -142,6 +197,43 @@ export function createWeatherService(options: WeatherServiceOptions = {}): Weath
   let cached: { hourly: WeatherHour[]; fetchedAtMs: number } | null = null;
   let inFlight: Promise<void> | null = null;
 
+  // The NWS grid URL for our point, resolved once and remembered: it does
+  // not move, and spending a call on it every refresh would be rude.
+  let nwsHourlyUrl: string | null = null;
+
+  const fromOpenMeteo = async (f: typeof fetch): Promise<WeatherHour[] | null> => {
+    const res = await f(url, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    return parseForecast(await res.json());
+  };
+
+  const fromNws = async (f: typeof fetch): Promise<WeatherHour[] | null> => {
+    if (!nwsHourlyUrl) {
+      const p = await f(options.nwsPointUrl ?? NWS_POINT_URL, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        headers: NWS_HEADERS,
+      });
+      if (!p.ok) return null;
+      const pj = (await p.json()) as { properties?: { forecastHourly?: unknown } };
+      const u = pj.properties?.forecastHourly;
+      if (typeof u !== "string") return null;
+      nwsHourlyUrl = u;
+    }
+    const res = await f(nwsHourlyUrl, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: NWS_HEADERS,
+    });
+    if (!res.ok) {
+      // A stale grid URL is the one failure worth retrying differently.
+      nwsHourlyUrl = null;
+      return null;
+    }
+    return parseNwsForecast(await res.json());
+  };
+
   const refresh = (): Promise<void> => {
     // Single-flight: 40 concurrent riders arriving the instant the TTL
     // expires must still produce exactly one upstream call.
@@ -149,13 +241,19 @@ export function createWeatherService(options: WeatherServiceOptions = {}): Weath
     inFlight = (async () => {
       try {
         if (!doFetch) return;
-        const res = await doFetch(url, {
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-          headers: { accept: "application/json" },
-        });
-        if (!res.ok) return;
-        const hourly = parseForecast(await res.json());
-        // Keep the previous good forecast when the shape is unrecognised.
+        // Open-Meteo first (richer: it carries a condition code), the
+        // National Weather Service when it will not answer. Each source is
+        // independently allowed to fail; only a parsed forecast replaces the
+        // cache, so a bad day upstream leaves the last good one standing.
+        let hourly: WeatherHour[] | null = null;
+        try {
+          hourly = await fromOpenMeteo(doFetch);
+        } catch { /* try the fallback */ }
+        if (!hourly) {
+          try {
+            hourly = await fromNws(doFetch);
+          } catch { /* both down — last good value stands */ }
+        }
         if (hourly) cached = { hourly, fetchedAtMs: now() };
       } catch {
         /* upstream down / timeout / bad JSON — last good value stands */
