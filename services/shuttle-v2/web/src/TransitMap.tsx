@@ -22,7 +22,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, type TripOption,
+  alternatePickup, dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -1911,10 +1911,22 @@ const TripPlanner: FC<{
       const { match, departed, missedBus } = picked;
       const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
-      return {
+      const next: TripOption = {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
         busEtaSec: match.eta, computedAtMs: nowMs,
       };
+      // Report #55: the board stop above is FROZEN from plan time, and
+      // pickLiveArrival only ever switches vehicle — so once the bus has left
+      // the rider's stop the card promises the next one (or the same bus a
+      // lap later) and never that a short walk to the next stop round the
+      // loop catches the bus they just missed. alternatePickup checks the
+      // route's other board stops against the live feed and is null unless
+      // the trip via one of them genuinely arrives sooner; the card then adds
+      // one line. Judged from the rider's live position when we have it.
+      const alt = alternatePickup(
+        next, buses, routeStops, stopCoords, segmentTimes, dwellTimes, nowMs, liveFromLL,
+      );
+      return alt ? { ...next, alternatePickup: alt } : next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
@@ -3345,6 +3357,23 @@ const TripPlanner: FC<{
                         )}
                       </div>
                       )}
+                      {/* Report #55: the bus left this stop but the loop
+                          brings it past another stop the rider can still
+                          walk to. One line on the DETAILS page only (the
+                          collapsed card keeps its single status line, and
+                          bus numbers stay off it — the ride pill here
+                          carries the number), only when alternatePickup
+                          found a genuinely sooner trip. */}
+                      {isExpanded && o.alternatePickup && (() => {
+                        const ap = o.alternatePickup;
+                        const name = (stopNames[ap.stopId] ?? `Stop ${ap.stopId}`).replace(/\s*\/\s*/g, "/");
+                        const eta = remainingSec(ap.busEtaSec, ap.computedAtMs);
+                        return (
+                          <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4, marginTop: 2 }}>
+                            🚶 Walk {fmtWalk(ap.walkSec)} to {name} instead — catch #{ap.busName} there {eta < 10 ? "now" : `in ${fmtMin(eta)}`}
+                          </div>
+                        );
+                      })()}
                       {o.departed && (
                         <div style={{ fontSize: 12, marginTop: 6 }}>
                           <button
