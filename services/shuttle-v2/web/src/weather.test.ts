@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  RAIN_PROBABILITY_THRESHOLD,
-  rainLikely,
-  rainLikelyFrom,
-  rainMessage,
-  type WeatherHour,
+  conditionText, RAIN_PROBABILITY_THRESHOLD, rainLikely, rainLikelyFrom, rainMessage,
+  weatherEmoji, weatherMessage, weatherTone, type RainVerdict, type WeatherHour,
 } from "./weather";
 
 const HOUR = 60 * 60_000;
@@ -30,6 +27,7 @@ describe("rainLikely", () => {
     expect(rainLikely(hours(5, 5, 90), H18 + 5 * 60_000)).toEqual({
       likely: false,
       probability: 5,
+      known: true,
     });
   });
 
@@ -37,6 +35,7 @@ describe("rainLikely", () => {
     expect(rainLikely(hours(70, 0, 0), H18 + 30 * 60_000)).toEqual({
       likely: true,
       probability: 70,
+      known: true,
     });
   });
 
@@ -44,7 +43,7 @@ describe("rainLikely", () => {
     // 17:56: the 17:00 bucket is dry, but the 18:00 one begins in four
     // minutes and is soaking. This is the rider the feature exists for.
     const v = rainLikely(hoursFrom(-1, 10, 80, 0), H18 - 4 * 60_000);
-    expect(v).toEqual({ likely: true, probability: 80 });
+    expect(v).toEqual({ likely: true, probability: 80, known: true });
   });
 
   it("takes the peak across the overlapping buckets, not the first", () => {
@@ -56,12 +55,13 @@ describe("rainLikely", () => {
     expect(rainLikely(hours(0, 0, 95), H18 + 5 * 60_000)).toEqual({
       likely: false,
       probability: 0,
+      known: true, // buckets exist and are dry — that is information too
     });
   });
 
   it("ignores buckets that have already passed", () => {
     const past = [{ timeMs: H18 - 3 * HOUR, probability: 100, precipitationMm: 4 }];
-    expect(rainLikely(past, H18)).toEqual({ likely: false, probability: 0 });
+    expect(rainLikely(past, H18)).toEqual({ likely: false, probability: 0, known: false });
   });
 
   it("fires exactly at the threshold, not below it", () => {
@@ -72,16 +72,16 @@ describe("rainLikely", () => {
   });
 
   it("never throws or warns on junk", () => {
-    expect(rainLikely(null, H18)).toEqual({ likely: false, probability: 0 });
-    expect(rainLikely(undefined, H18)).toEqual({ likely: false, probability: 0 });
-    expect(rainLikely([], H18)).toEqual({ likely: false, probability: 0 });
-    expect(rainLikely(hours(80), NaN)).toEqual({ likely: false, probability: 0 });
+    expect(rainLikely(null, H18)).toEqual({ likely: false, probability: 0, known: false });
+    expect(rainLikely(undefined, H18)).toEqual({ likely: false, probability: 0, known: false });
+    expect(rainLikely([], H18)).toEqual({ likely: false, probability: 0, known: false });
+    expect(rainLikely(hours(80), NaN)).toEqual({ likely: false, probability: 0, known: false });
     const junk = [
       { timeMs: NaN, probability: 100 },
       { timeMs: H18, probability: NaN },
       null as unknown as WeatherHour,
     ];
-    expect(rainLikely(junk, H18)).toEqual({ likely: false, probability: 0 });
+    expect(rainLikely(junk, H18)).toEqual({ likely: false, probability: 0, known: false });
   });
 
   it("rounds the reported probability for display", () => {
@@ -91,21 +91,71 @@ describe("rainLikely", () => {
 
 describe("rainLikelyFrom", () => {
   it("says no rain when the forecast is unavailable", () => {
-    expect(rainLikelyFrom({ available: false }, H18)).toEqual({ likely: false, probability: 0 });
-    expect(rainLikelyFrom(null, H18)).toEqual({ likely: false, probability: 0 });
-    expect(rainLikelyFrom(undefined, H18)).toEqual({ likely: false, probability: 0 });
+    expect(rainLikelyFrom({ available: false }, H18)).toEqual({ likely: false, probability: 0, known: false });
+    expect(rainLikelyFrom(null, H18)).toEqual({ likely: false, probability: 0, known: false });
+    expect(rainLikelyFrom(undefined, H18)).toEqual({ likely: false, probability: 0, known: false });
   });
 
   it("reads the hourly block when it is available", () => {
     const v = rainLikelyFrom({ available: true, hourly: hours(75) }, H18);
-    expect(v).toEqual({ likely: true, probability: 75 });
+    expect(v).toEqual({ likely: true, probability: 75, known: true });
   });
 });
 
-describe("rainMessage", () => {
-  it("spells out the chance without promising anything about the ride", () => {
-    expect(rainMessage({ likely: true, probability: 60 })).toBe(
-      "🌧 60% chance of rain in the next hour — the walk legs may get wet",
+describe("the weather line", () => {
+  const v = (probability: number, extra: Partial<RainVerdict> = {}): RainVerdict => ({
+    likely: probability >= 50, probability, known: true, ...extra,
+  });
+
+  it("says something on a dry day too — the line is always on", () => {
+    // A line that only appears when it rains is one nobody learns to look for.
+    expect(weatherTone(v(0))).toBe("quiet");
+    expect(weatherMessage(v(0, { temperatureF: 68, weatherCode: 0 })))
+      .toBe("68°F · Clear · No rain expected within the hour");
+    expect(weatherEmoji(v(0, { weatherCode: 0 }))).toBe("☀️");
+  });
+
+  it("mentions a small chance without alarm", () => {
+    expect(weatherTone(v(20))).toBe("quiet");
+    expect(weatherMessage(v(20, { temperatureF: 55, weatherCode: 3 })))
+      .toBe("55°F · Cloudy · 20% chance of rain within the hour");
+  });
+
+  it("warns about the walk legs once rain is likely", () => {
+    expect(weatherTone(v(60))).toBe("quiet");
+    expect(weatherMessage(v(60))).toBe(
+      "60% chance of rain within the hour — the walk legs may get wet",
     );
+    expect(weatherEmoji(v(60))).toBe("🌧");
+  });
+
+  it("becomes a warning at a high chance", () => {
+    expect(weatherTone(v(85))).toBe("warning");
+    expect(weatherMessage(v(85, { temperatureF: 61, weatherCode: 61 })))
+      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F · Rain");
+    expect(weatherEmoji(v(85))).toBe("☔");
+  });
+
+  it("stays hidden when there is no forecast at all", () => {
+    expect(weatherTone({ likely: false, probability: 0, known: false })).toBe("hidden");
+    expect(weatherMessage({ likely: false, probability: 0, known: false })).toBe("");
+  });
+
+  it("degrades to the rain-only wording when the server sends no temperature", () => {
+    expect(weatherMessage(v(0))).toBe("No rain expected within the hour");
+    expect(weatherMessage(v(30))).toBe("30% chance of rain within the hour");
+  });
+
+  it("describes the hour the rider is in, not the peak hour", () => {
+    // 18:30: the 18:00 bucket is now (clear, 60°F), the 19:00 one brings rain.
+    const now = Date.parse("2026-09-02T18:30:00-04:00");
+    const hourly = [
+      { timeMs: Date.parse("2026-09-02T18:00:00-04:00"), probability: 10, temperatureF: 60, weatherCode: 0 },
+      { timeMs: Date.parse("2026-09-02T19:00:00-04:00"), probability: 80, temperatureF: 57, weatherCode: 61 },
+    ];
+    const verdict = rainLikely(hourly, now);
+    expect(verdict.probability).toBe(80);
+    expect(verdict.temperatureF).toBe(60);
+    expect(conditionText(verdict.weatherCode)).toBe("Clear");
   });
 });

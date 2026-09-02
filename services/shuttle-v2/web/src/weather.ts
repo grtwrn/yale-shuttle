@@ -18,6 +18,10 @@ export type WeatherHour = {
   probability: number;
   /** Expected precipitation, mm. */
   precipitationMm?: number;
+  /** Temperature, °F. Absent on an older server. */
+  temperatureF?: number;
+  /** WMO weather code. Absent on an older server. */
+  weatherCode?: number;
 };
 
 export type WeatherPayload =
@@ -29,9 +33,40 @@ export const RAIN_PROBABILITY_THRESHOLD = 50;
 /** How far ahead we look — one walk leg's worth. */
 export const RAIN_HORIZON_MS = 60 * 60_000;
 
-export type RainVerdict = { likely: boolean; probability: number };
+export type RainVerdict = {
+  likely: boolean;
+  probability: number;
+  /** Temperature now, °F, when the server sent one. */
+  temperatureF?: number;
+  /** Condition now, as a WMO code, when the server sent one. */
+  weatherCode?: number;
+  /** False when there is no forecast at all — the line stays hidden. */
+  known: boolean;
+};
 
-const NO_RAIN: RainVerdict = { likely: false, probability: 0 };
+const NO_RAIN: RainVerdict = { likely: false, probability: 0, known: false };
+
+/**
+ * At or above this chance the line stops being a note and becomes a warning:
+ * amber, bold, and leading with "Take an umbrella". Below it the same line
+ * still shows the forecast, quietly.
+ */
+export const RAIN_PROMINENT_THRESHOLD = 70;
+
+/** Plain words for the WMO code — only the distinctions a rider acts on. */
+export function conditionText(code: number | undefined): string | null {
+  if (code == null || !Number.isFinite(code)) return null;
+  if (code === 0) return "Clear";
+  if (code <= 2) return "Partly cloudy";
+  if (code === 3) return "Cloudy";
+  if (code <= 49) return "Fog";
+  if (code <= 59) return "Drizzle";
+  if (code <= 69) return "Rain";
+  if (code <= 79) return "Snow";
+  if (code <= 84) return "Showers";
+  if (code <= 86) return "Snow showers";
+  return "Thunderstorms";
+}
 
 /**
  * Highest chance of rain in the next hour, and whether it clears the
@@ -54,12 +89,29 @@ export function rainLikely(
   if (!Array.isArray(hourly) || !Number.isFinite(nowMs)) return NO_RAIN;
   const windowEnd = nowMs + RAIN_HORIZON_MS;
   let peak = 0;
+  let known = false;
+  // Conditions come from the bucket the rider is standing in, not the peak:
+  // "42°F · Clear" should describe now, while the rain chance looks ahead.
+  let current: WeatherHour | null = null;
   for (const h of hourly) {
     if (!h || !Number.isFinite(h.timeMs) || !Number.isFinite(h.probability)) continue;
     const covers = h.timeMs + 60 * 60_000 > nowMs && h.timeMs < windowEnd;
-    if (covers && h.probability > peak) peak = h.probability;
+    if (!covers) continue;
+    known = true;
+    if (h.probability > peak) peak = h.probability;
+    if (h.timeMs <= nowMs && (!current || h.timeMs > current.timeMs)) current = h;
   }
-  return { likely: peak >= RAIN_PROBABILITY_THRESHOLD, probability: Math.round(peak) };
+  if (!known) return NO_RAIN;
+  const first = current ?? hourly.find((h) => h && h.timeMs + 60 * 60_000 > nowMs) ?? null;
+  return {
+    likely: peak >= RAIN_PROBABILITY_THRESHOLD,
+    probability: Math.round(peak),
+    known: true,
+    ...(first && typeof first.temperatureF === "number"
+      ? { temperatureF: Math.round(first.temperatureF) } : {}),
+    ...(first && typeof first.weatherCode === "number"
+      ? { weatherCode: first.weatherCode } : {}),
+  };
 }
 
 /** Convenience over the whole endpoint payload (which may be unavailable). */
@@ -71,7 +123,56 @@ export function rainLikelyFrom(
   return rainLikely(payload.hourly, nowMs);
 }
 
-/** The one compact line shown under the trip options. */
+/** How loudly to say it: nothing at all, a quiet line, or a warning. */
+export type WeatherTone = "hidden" | "quiet" | "warning";
+
+export function weatherTone(v: RainVerdict): WeatherTone {
+  if (!v.known) return "hidden";
+  if (v.probability >= RAIN_PROMINENT_THRESHOLD) return "warning";
+  return "quiet";
+}
+
+/**
+ * The one compact line above the trip options.
+ *
+ * Always present when a forecast exists (operator request, 2026-09-02): a
+ * rider deciding whether to walk a leg wants the weather whatever it says,
+ * and a line that only ever appears on rainy days is one nobody learns to
+ * look for. It gets louder as the chance climbs.
+ */
+export function weatherMessage(v: RainVerdict): string {
+  if (!v.known) return "";
+  const bits: string[] = [];
+  if (typeof v.temperatureF === "number") bits.push(`${v.temperatureF}°F`);
+  const cond = conditionText(v.weatherCode);
+  if (cond) bits.push(cond);
+  const head = bits.join(" · ");
+  if (v.probability >= RAIN_PROMINENT_THRESHOLD) {
+    return `Take an umbrella — ${v.probability}% chance of rain within the hour${head ? ` · ${head}` : ""}`;
+  }
+  if (v.likely) {
+    return `${v.probability}% chance of rain within the hour — the walk legs may get wet${head ? ` · ${head}` : ""}`;
+  }
+  if (v.probability > 0) {
+    return `${head}${head ? " · " : ""}${v.probability}% chance of rain within the hour`;
+  }
+  return `${head}${head ? " · " : ""}No rain expected within the hour`;
+}
+
+/** The emoji that leads the line. */
+export function weatherEmoji(v: RainVerdict): string {
+  if (v.probability >= RAIN_PROMINENT_THRESHOLD) return "☔";
+  if (v.likely) return "🌧";
+  const cond = conditionText(v.weatherCode);
+  if (cond === "Clear") return "☀️";
+  if (cond === "Snow" || cond === "Snow showers") return "🌨";
+  if (cond === "Thunderstorms") return "⛈";
+  if (cond === "Fog") return "🌫";
+  if (cond === "Partly cloudy") return "🌤";
+  return "☁️";
+}
+
+/** Kept for the leave-alert prefix, which only cares about the warning case. */
 export function rainMessage(v: RainVerdict): string {
-  return `🌧 ${v.probability}% chance of rain in the next hour — the walk legs may get wet`;
+  return `${weatherEmoji(v)} ${weatherMessage(v)}`;
 }

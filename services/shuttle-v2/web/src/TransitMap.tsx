@@ -9,7 +9,10 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
-import { rainLikelyFrom, rainMessage, type WeatherPayload } from "./weather";
+import {
+  rainLikelyFrom, rainMessage, weatherEmoji, weatherMessage, weatherTone,
+  type WeatherPayload,
+} from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
@@ -2905,6 +2908,37 @@ const TripPlanner: FC<{
         </div>
       )}
 
+      {/* The weather, always on (operator request, 2026-09-02): a rider
+          deciding whether to walk a leg wants it whatever it says, and a line
+          that only appeared when it rained was one nobody learned to look
+          for. It sits ABOVE the options because it colours the choice between
+          them; it never reorders or hides an option, because a shuttle is not
+          faster in the rain, only drier at the ends. Loud only when it earns
+          it: amber and "Take an umbrella" past 70%. */}
+      {(() => {
+        const tone = weatherTone(rain);
+        if (tone === "hidden") return null;
+        const warn = tone === "warning";
+        return (
+          <div
+            role="status"
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              fontSize: 13, fontWeight: warn ? 600 : 400,
+              color: warn ? "#8a5300" : "#546e7a",
+              padding: warn ? "10px 12px" : "6px 10px",
+              marginBottom: 8,
+              background: warn ? "#fff4e0" : "#f5f6f7",
+              border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
+              borderRadius: 10,
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
+            <span>{weatherMessage(rain)}</span>
+          </div>
+        );
+      })()}
+
       {/* Results */}
       {options && options.length === 0 && (
         <div style={{ fontSize: 14, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
@@ -3823,25 +3857,6 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {/* Rain warning. One compact line UNDER the options: it informs the
-          trip, it doesn't change it — the options are neither reordered,
-          hidden nor re-ranked, because a shuttle isn't faster in the rain,
-          it's just drier at the ends. Absent entirely when the forecast is
-          dry or unavailable. */}
-      {options && options.length > 0 && rain.likely && (
-        <div
-          role="status"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            fontSize: 13, color: "#37474f",
-            padding: "10px 12px", marginTop: 4,
-            background: "#eef4fb", border: "1px solid #d6e3f0",
-            borderRadius: 10,
-          }}
-        >
-          {rainMessage(rain)}
-        </div>
-      )}
 
       {/* Trip actions: Clear wipes the destination (returns the page to
           Saved/Recent); Refresh re-runs planTrip against the latest
