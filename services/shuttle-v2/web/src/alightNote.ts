@@ -26,13 +26,14 @@ import { BUS_SPEED_M_S } from "./routes";
 import { MAX_WALK_M, walkSecFromMeters } from "./walk";
 
 /**
- * A dwell counts as a layover at the same bar the route list already uses to
- * print "⏸ ~8 min" next to a stop (TransitMap.tsx): a typical hold of five
- * minutes or more, with enough samples to trust. Keeping the two equal means
- * the rider never reads "the shuttle rests here" beside a stop the stop list
- * shows as an ordinary one.
+ * A dwell counts as a layover at four minutes, with enough samples to trust.
+ * Above the route list's own "⏸" badge (three minutes), because this sentence
+ * asserts a REASON to a rider deciding whether the app made a mistake — but
+ * not so high that it misses the case it was written for: 344 Winchester,
+ * the stop in report #59, holds a median of 4.9 min (n=12 on 2026-09-02),
+ * and a five-minute bar would have silently excluded it.
  */
-export const LAYOVER_DWELL_SEC = 300;
+export const LAYOVER_DWELL_SEC = 240;
 export const LAYOVER_MIN_SAMPLES = 3;
 
 /**
@@ -43,11 +44,22 @@ export const LAYOVER_MIN_SAMPLES = 3;
 export const CLOSER_STOP_MIN_GAIN_M = 100;
 
 /**
- * How far past the alight stop to look for that nearer stop. The rider is
- * comparing against something they can see on their map near the destination,
- * not the far side of the loop.
+ * How far past the alight stop to look for that nearer stop, as RIDE TIME
+ * rather than a stop count. Six stops means very different things on Red (29
+ * stops) and Grocery TJ (5), where it wrapped four fifths of the way round the
+ * loop and produced sentences about a stop on the other side of town. Four
+ * minutes is about as far ahead as a rider looking at their map would even
+ * consider staying on.
  */
-export const LOOK_AHEAD_STOPS = 6;
+export const LOOK_AHEAD_SEC = 4 * 60;
+
+/**
+ * The smallest time difference worth asserting. The app's own measured ETA
+ * error is about 1.26 min, so a note claiming "about 1 min" off a 13-second
+ * margin — which happened on a quarter of firings — is noise dressed as an
+ * explanation.
+ */
+export const MIN_EXTRA_SEC = 120;
 
 export type AlightNote = {
   /** Stop the rider could see on the map and wondered about. */
@@ -56,8 +68,8 @@ export type AlightNote = {
   metresCloser: number;
   /** Seconds the ride there would add, beyond the walking it would save. */
   extraSec: number;
-  /** Typical hold at the alight stop, seconds — null when this isn't a layover. */
-  layoverSec: number | null;
+  /** Typical hold at the alight stop, seconds. Never null: see findAlightNote. */
+  layoverSec: number;
 };
 
 function segmentSec(
@@ -101,13 +113,33 @@ export function findAlightNote(
   const alightDist = haversineMeters(dest, alightCoord);
   const segs = routeSegs ?? {};
 
+  // The only thing worth saying is WHY: this stop is a layover. Without that
+  // the sentence just restates arithmetic the card already shows ("staying on
+  // takes 2 min longer"), which was 80% of what this printed — a recurring
+  // grey line answering a question nobody asked. No layover, no note.
+  const dw = routeDwells?.[String(alightStopId)];
+  const layoverSec =
+    dw && dw.n >= LAYOVER_MIN_SAMPLES && dw.med >= LAYOVER_DWELL_SEC ? dw.med : null;
+  if (layoverSec == null) return null;
+
   let best: AlightNote | null = null;
   let cumRide = 0;
-  const limit = Math.min(LOOK_AHEAD_STOPS, stops.length - 1);
-  for (let step = 1; step <= limit; step++) {
+  let firstSegSec = 0;
+  for (let step = 1; step < stops.length; step++) {
     const prev = stops[(alightIdx + step - 1) % stops.length];
     const cur = stops[(alightIdx + step) % stops.length];
-    cumRide += segmentSec(segs, prev, cur, stopCoords);
+    const segSec = segmentSec(segs, prev, cur, stopCoords);
+    if (step === 1) firstSegSec = segSec;
+    cumRide += segSec;
+    // Past the horizon: stop looking rather than wrap round the loop.
+    //
+    // Measured on MOVING time. Segments are arrival-to-arrival, so the hop out
+    // of a layover stop swallows the rest itself — on the reported case that
+    // one segment is 8.5 min, of which 7.7 is the shuttle sitting still. The
+    // rest is a real cost (extraSec counts it) but it is not distance, and
+    // charging it against a "how far ahead would you consider" horizon hid
+    // the very stop this feature exists to name.
+    if (cumRide - Math.min(layoverSec, firstSegSec) > LOOK_AHEAD_SEC) break;
     const c = stopCoords[cur];
     if (!c) continue;
     const d = haversineMeters(dest, c);
@@ -121,17 +153,15 @@ export function findAlightNote(
     // to explain — stay silent rather than print a sentence that contradicts
     // the option above it.
     if (extraSec <= 0) return null;
+    // Too close to call: below the app's own ETA error, saying "about 1 min"
+    // would be asserting precision the numbers do not have.
+    if (extraSec < MIN_EXTRA_SEC) continue;
     // Among the candidates, describe the nearest one — that is the stop the
     // rider is looking at.
     if (!best || metresCloser > best.metresCloser) {
-      best = { closerStopId: cur, metresCloser, extraSec, layoverSec: null };
+      best = { closerStopId: cur, metresCloser, extraSec, layoverSec };
     }
   }
-  if (!best) return null;
-
-  const dw = routeDwells?.[String(alightStopId)];
-  best.layoverSec =
-    dw && dw.n >= LAYOVER_MIN_SAMPLES && dw.med >= LAYOVER_DWELL_SEC ? dw.med : null;
   return best;
 }
 
@@ -142,10 +172,7 @@ export function findAlightNote(
  */
 export function alightNoteText(note: AlightNote, closerStopName: string): string {
   const name = closerStopName.replace(/\s*\/\s*/g, "/");
-  const saved = Math.max(1, Math.round(note.extraSec / 60));
-  if (note.layoverSec != null) {
-    const rest = Math.max(1, Math.round(note.layoverSec / 60));
-    return `Closer to ${name}? The shuttle rests about ${rest} min here, so walking from this stop gets you there about ${saved} min sooner.`;
-  }
-  return `Closer to ${name}? Staying on to there takes about ${saved} min longer than walking from this stop.`;
+  const saved = Math.round(note.extraSec / 60);
+  const rest = Math.round(note.layoverSec / 60);
+  return `Closer to ${name}? The shuttle rests about ${rest} min here, so walking from this stop gets you there about ${saved} min sooner.`;
 }

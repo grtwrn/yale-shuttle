@@ -3443,6 +3443,38 @@ const TripPlanner: FC<{
                           </div>
                         );
                       })()}
+                      {/* Why HERE and not the stop nearer the door (report
+                          #59). A rider looking at the map can see a closer
+                          stop on the same line; with no reason given they
+                          read it as a bug, and the only way to ask was to
+                          file a report. It sits directly under the walk that
+                          prompts the question, not inside the collapsed stop
+                          list three taps deeper. Explanation only — the
+                          option, its order and its total are untouched, and
+                          it appears only when there is a REASON to give (the
+                          shuttle rests here), never to restate arithmetic. */}
+                      {isExpanded && o.mode === "shuttle" && (() => {
+                        if (!toLL) return null;
+                        const noteCfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                        if (!noteCfg) return null;
+                        const note = findAlightNote(
+                          mergedRouteStops(noteCfg, routeStops), o.alightStopId, toLL,
+                          stopCoords, segmentTimes?.[noteCfg.routeIds[0]],
+                          dwellTimes?.[noteCfg.routeIds[0]],
+                        );
+                        if (!note) return null;
+                        const closerName =
+                          stopNames[note.closerStopId] ?? `Stop ${note.closerStopId}`;
+                        return (
+                          <div style={{
+                            display: "flex", gap: 6, marginTop: 8,
+                            fontSize: 12, lineHeight: 1.4, color: "#5f6368",
+                          }}>
+                            <span aria-hidden="true">💡</span>
+                            <span>{alightNoteText(note, closerName)}</span>
+                          </div>
+                        );
+                      })()}
                       {/* Directions is the card's one prominent action
                           (user request 2026-07-17: "make it more
                           obvious"). */}
@@ -3757,31 +3789,6 @@ const TripPlanner: FC<{
                         );
                       })}
                       </div>
-                      {/* Why HERE and not the stop nearer the door (report
-                          #59). A rider looking at the map can see a closer
-                          stop on the same line; with no reason given they
-                          read it as a bug, and the only way to ask was to
-                          file a report. Explanation only — the option, its
-                          order and its total are untouched. */}
-                      {(() => {
-                        if (!toLL) return null;
-                        const note = findAlightNote(
-                          mergedRouteStops(cfg, routeStops), o.alightStopId, toLL,
-                          stopCoords, segmentTimes?.[cfg.routeIds[0]], routeDwells,
-                        );
-                        if (!note) return null;
-                        const closerName =
-                          stopNames[note.closerStopId] ?? `Stop ${note.closerStopId}`;
-                        return (
-                          <div style={{
-                            display: "flex", gap: 6, marginTop: 8,
-                            fontSize: 12, lineHeight: 1.4, color: "#5f6368",
-                          }}>
-                            <span aria-hidden="true">💡</span>
-                            <span>{alightNoteText(note, closerName)}</span>
-                          </div>
-                        );
-                      })()}
                     </div>
                   );
                 })()}
