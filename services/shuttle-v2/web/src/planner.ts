@@ -7,7 +7,10 @@ import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
-import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt, nextActiveWindow } from "./schedule";
+import {
+  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
+} from "./schedule";
+import type { PublishedWindow } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 
 export type TripOption = {
@@ -386,16 +389,43 @@ export interface PotentialRoute {
   activeNow: boolean;
 }
 
+/**
+ * The published window for a ROUTE_LISTS entry, if the payload carries one.
+ * Looked up by the route ids the config lists (`routeIds`, then `busRouteIds`
+ * as served by upstream), so a merged config still finds its timetable.
+ */
+export function publishedWindowFor(
+  cfg: { routeIds: readonly string[]; busRouteIds: readonly number[] },
+  publishedHours: Record<string, PublishedWindow> | undefined,
+): PublishedWindow | undefined {
+  if (!publishedHours) return undefined;
+  for (const rid of cfg.routeIds) {
+    const w = publishedHours[rid];
+    if (w) return w;
+  }
+  for (const rid of cfg.busRouteIds) {
+    const w = publishedHours[String(rid)];
+    if (w) return w;
+  }
+  return undefined;
+}
+
 export function findPotentialRoutes(
   from: LatLon, to: LatLon,
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
   after: Date,
+  // `/api/buses` `route_hours`: the operator's published timetable, keyed by
+  // route id. When a route has one it is what the rider is told ("Runs …",
+  // "Next: …", "should be running"); otherwise the hand-maintained ROUTE_HOURS
+  // — which is the widened in-service gate, not the timetable — stands in.
+  publishedHours?: Record<string, PublishedWindow>,
 ): PotentialRoute[] {
   const out: PotentialRoute[] = [];
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
+    const published = publishedWindowFor(cfg, publishedHours);
     // Any board stop near "from" and any alight stop near "to",
     // with alight further along the route than board (so we're not
     // suggesting a ride that goes the wrong way).
@@ -427,9 +457,9 @@ export function findPotentialRoutes(
       color: cfg.color,
       boardStopId: bestBoard,
       alightStopId: bestAlight,
-      schedule: fmtSchedule(cfg.label),
-      nextActive: nextActiveWindow(cfg.label, after),
-      activeNow: isRouteActiveAt(cfg.label, after),
+      schedule: published ? fmtWindows([published]) : fmtSchedule(cfg.label),
+      nextActive: published ? nextWindowStart([published], after) : nextActiveWindow(cfg.label, after),
+      activeNow: published ? isWindowActiveAt([published], after) : isRouteActiveAt(cfg.label, after),
     });
   }
   // Routes that should be running now first, then by next-active — soonest

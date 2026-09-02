@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
-import { HEADWAY_MIN } from "./schedule";
+import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
   at, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -417,6 +417,68 @@ describe("findPotentialRoutes", () => {
       { lat: 41.20, lon: -72.90 }, { lat: 41.25, lon: -72.90 },
       routeStops, stopCoords, new Date(NOW),
     )).toEqual([]);
+  });
+
+  // Riders are shown the operator's PUBLISHED timetable, not ROUTE_HOURS —
+  // that table is the in-service gate and was widened on purpose, so Red read
+  // "5:40a–7p" while Yale publishes 7am–6pm. When `/api/buses` carries a
+  // parsed window for the route, it drives the text, "Next:" and "should be
+  // running"; ROUTE_HOURS stays the fallback.
+  describe("with published hours", () => {
+    // Blue Day's fixture routes (id "1") stand in for Red: the fixture payload
+    // only maps stops for Blue Day / Blue Weekend. The window is the one Yale
+    // publishes for Red, which disagrees with the gate table at both ends.
+    const publishedHours = {
+      "1": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
+    };
+    const wed0610 = new Date("2026-09-02T06:10:00-04:00");
+    const wed0710 = new Date("2026-09-02T07:10:00-04:00");
+
+    it("prefers the published window for text, activeNow and nextActive", () => {
+      // Sanity: the gate table for Red says 05:40 — a rider at 06:10 would
+      // otherwise be told the route "should be running".
+      expect(fmtSchedule("Red")).toBe("M–F 5:40a–7p");
+      expect(isRouteActiveAt("Red", wed0610)).toBe(true);
+
+      const early = findPotentialRoutes(from, to, routeStops, stopCoords, wed0610, publishedHours);
+      const day = early.find((r) => r.label === "Blue Day")!;
+      expect(day.schedule).toBe("M–F 7a–6p");
+      expect(day.activeNow).toBe(false);
+      expect(day.nextActive!.toISOString()).toBe(new Date("2026-09-02T07:00:00-04:00").toISOString());
+
+      const later = findPotentialRoutes(from, to, routeStops, stopCoords, wed0710, publishedHours);
+      expect(later.find((r) => r.label === "Blue Day")!.activeNow).toBe(true);
+    });
+
+    it("falls back to ROUTE_HOURS for routes without a published window", () => {
+      const found = findPotentialRoutes(from, to, routeStops, stopCoords, wed0610, publishedHours);
+      const weekend = found.find((r) => r.label === "Blue Weekend")!;
+      expect(weekend.schedule).toBe(fmtSchedule("Blue Weekend"));
+      expect(weekend.activeNow).toBe(false);
+    });
+
+    it("is byte-identical to the old behaviour when nothing is published", () => {
+      for (const at of [wed0610, wed0710, new Date(NOW)]) {
+        const without = findPotentialRoutes(from, to, routeStops, stopCoords, at);
+        expect(findPotentialRoutes(from, to, routeStops, stopCoords, at, {})).toEqual(without);
+        expect(findPotentialRoutes(from, to, routeStops, stopCoords, at, undefined)).toEqual(without);
+        const day = without.find((r) => r.label === "Blue Day")!;
+        expect(day.schedule).toBe(fmtSchedule("Blue Day"));
+        expect(day.activeNow).toBe(isRouteActiveAt("Blue Day", at));
+      }
+    });
+  });
+});
+
+describe("publishedWindowFor", () => {
+  const w = { days: [1], startMin: 0, endMin: 60 };
+  it("looks up routeIds first, then the bus route ids", () => {
+    const cfg = { routeIds: ["3"], busRouteIds: [3, 30] };
+    expect(publishedWindowFor(cfg, { "3": w })).toBe(w);
+    expect(publishedWindowFor(cfg, { "30": w })).toBe(w);
+    expect(publishedWindowFor(cfg, { "4": w })).toBeUndefined();
+    expect(publishedWindowFor(cfg, undefined)).toBeUndefined();
+    expect(publishedWindowFor(cfg, {})).toBeUndefined();
   });
 });
 

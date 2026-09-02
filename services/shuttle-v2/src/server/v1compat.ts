@@ -18,6 +18,7 @@ import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode } from "./geocode.js";
+import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
 
@@ -66,10 +67,18 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
   const dwells: Record<string, Record<string, { med: number; sd: number; n: number }>> = {};
   const route_peaks: Record<string, number> = {};
+  // The operator's published timetable per route, parsed from the free-text
+  // route description. Only routes whose text parsed are present; the client
+  // falls back to its ROUTE_HOURS table for the rest. This is what riders are
+  // SHOWN ("Runs M–F 7a–6p") — the in-service gate stays on ROUTE_HOURS,
+  // which is deliberately wider (see web/src/schedule.ts).
+  const route_hours: Record<string, PublishedWindow> = {};
 
   for (const r of net.routes.values()) {
     const rid = String(r.id);
     routes[rid] = r.stops;
+    const published = parsePublishedHours(r.description);
+    if (published) route_hours[rid] = published;
     // Prefer the derived line over upstream's published one. Several published
     // paths are too coarse to locate a stop on — Orange Night ships 37 points
     // for a 9.5 km loop, putting a stop a median 97 m from its own route — and
@@ -122,6 +131,7 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     dwells,
     dwells_by_bus: {},
     route_peaks,
+    route_hours,
     bus_pace: {},
   };
 }

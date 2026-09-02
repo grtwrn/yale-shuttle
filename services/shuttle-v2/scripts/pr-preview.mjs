@@ -22,7 +22,10 @@
 // Screenshots are full-page (the trip view is taller than a phone), so a line
 // under the options list is captured even when it sits below the fold.
 // Mock values may use "${now}" / "${now+3600000}" (epoch ms) so forecasts and
-// timestamps land in the present regardless of when the preview runs.
+// timestamps land in the present regardless of when the preview runs. A mock
+// of the form { "$patch": { "buses": [] } } keeps the REAL response and
+// overrides only those top-level keys — the way to empty the fleet or drop an
+// announcement without hand-writing an 85 KB payload.
 //
 // Output: <OUT>/<view>.png plus <OUT>/preview.json (caption, views, page errors).
 // Exit 1 on a page error or a crashed shell — a preview of a crash is a finding.
@@ -80,8 +83,15 @@ const page = await ctx.newPage();
 const pageErrors = [];
 page.on("pageerror", (e) => pageErrors.push(String(e.message)));
 for (const [pathname, body] of Object.entries(mocks)) {
-  await page.route((u) => u.pathname === pathname, (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) }));
+  await page.route((u) => u.pathname === pathname, async (route) => {
+    if (body && typeof body === "object" && !Array.isArray(body) && "$patch" in body) {
+      const real = await route.fetch();
+      let json = {};
+      try { json = await real.json(); } catch { /* non-JSON upstream — patch onto {} */ }
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...json, ...body.$patch }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+  });
 }
 
 fs.mkdirSync(OUT, { recursive: true });
