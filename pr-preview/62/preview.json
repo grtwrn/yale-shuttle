@@ -1,0 +1,19 @@
+{
+  "caption": "Report #62's trip: standing at Prospect/Canner (stop 100), heading to Peabody/SOM (stop 97) on Blue Day. The change only bites once the planned bus becomes uncatchable and the card advances to a later one — the rider is then re-met at the nearer stop instead of being sent 7 min up to Whitney/Canner. These shots confirm the trip view and map still render normally.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 100,
+    "dest": 97
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788377958/pr-preview/62/trip.png",
+    "/tmp/feedback-bot-wt-1788377958/pr-preview/62/map.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

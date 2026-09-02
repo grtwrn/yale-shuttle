@@ -22,7 +22,9 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
+  BOARD_SWAP_MIN_WALK_SAVING_SEC, dwellBoardWindowSec, findEarlierBoardStop, findPotentialRoutes,
+  pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption,
+  type BoardSwap, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -39,7 +41,7 @@ import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
-  BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
@@ -1914,11 +1916,46 @@ const TripPlanner: FC<{
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
       if (!picked) return { ...o, departed: true };
       const { match, departed, missedBus } = picked;
-      const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
-      const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+      // The board stop was chosen for the bus the plan pinned. If we've had to
+      // advance to a different one, that choice can be stale: a walk that was
+      // the only way to catch the old bus is pure walking once it's gone, and
+      // the new bus reaches the nearer stop first. Re-pick the meeting point —
+      // same bus, same destination, just less walking (report #62). Candidates
+      // are filtered by walk saving BEFORE their ETAs are computed, so this
+      // costs one extra computeUpcomingArrivals call and only while the plan's
+      // bus has actually changed. The rule itself is in planner.ts.
+      let swap: BoardSwap | null = null;
+      if (!departed && cfg && liveFromLL && norm(match.busName) !== norm(o.busName)) {
+        const near = mergedRouteStops(cfg, routeStops)
+          .map((sid) => ({ sid, c: stopCoords[sid] }))
+          .filter((s) => !!s.c)
+          .map(({ sid, c }) => {
+            const d = haversineMeters(liveFromLL, c!);
+            return { stopId: sid, walkSec: d < 80 ? 0 : walkSecFromMeters(d) };
+          })
+          .filter((s) => s.walkSec <= effectiveWalkToSec - BOARD_SWAP_MIN_WALK_SAVING_SEC);
+        if (near.length > 0) {
+          const alt = computeUpcomingArrivals(
+            near.map((s) => s.stopId), buses, routeStops, stopCoords, segmentTimes, nowMs,
+          ).filter((a) => a.routeLabel === o.routeLabel);
+          swap = findEarlierBoardStop({
+            busName: match.busName,
+            boardStopId: o.boardStopId, alightStopId: o.alightStopId,
+            boardEtaSec: match.eta, walkToSec: effectiveWalkToSec,
+            rideSec: o.rideSec, walkFromSec: o.walkFromSec,
+          }, near.map((s) => ({ ...s, arrivals: alt })));
+        }
+      }
+      const busEtaSec = swap ? swap.busEtaSec : match.eta;
+      const rideSec = swap ? swap.rideSec : o.rideSec;
+      const walkNowSec = swap ? swap.walkToSec : effectiveWalkToSec;
+      const waitSec = Math.max(0, busEtaSec - walkNowSec);
+      const totalSec = walkNowSec + waitSec + rideSec + o.walkFromSec;
       return {
-        ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
-        busEtaSec: match.eta, computedAtMs: nowMs,
+        ...o,
+        ...(swap ? { boardStopId: swap.boardStopId, walkToSec: swap.walkToSec } : {}),
+        waitSec, rideSec, totalSec, busName: match.busName, departed, missedBus,
+        busEtaSec, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

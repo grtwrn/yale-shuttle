@@ -156,6 +156,101 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
   return { match: pinned ?? live[0], departed: true };
 }
 
+// ── Board stop, re-chosen after the planned bus is gone ────────────────────
+//
+// planTrip freezes a board stop, and it freezes it FOR A PARTICULAR BUS: a
+// stop further along the line is worth a long walk exactly when it is the last
+// place you can still catch the bus that is already past the nearer ones. The
+// moment that bus becomes uncatchable and the card advances to a later one,
+// the reasoning that justified the walk is gone — the next bus reaches the
+// nearer stop first, and it reaches it earlier by exactly the ride time
+// between the two, so boarding there arrives at the SAME minute with less
+// walking. (Report #62, Blue Day: told to walk 7 min from Prospect/Canner to
+// Whitney/Canner for a bus that had already gone, while the next one passes
+// Prospect/Canner — where the rider was standing — 7 min before it reaches
+// Whitney/Canner.)
+
+/** A swap must save at least this much walking; below it, it is churn. */
+export const BOARD_SWAP_MIN_WALK_SAVING_SEC = 60;
+
+export type BoardSwap = {
+  boardStopId: number;
+  walkToSec: number;
+  waitSec: number;
+  rideSec: number;
+  totalSec: number;
+  busEtaSec: number;
+};
+
+/**
+ * A stop the rider should board at instead, or null to keep the planned one.
+ *
+ * `current` describes the option as it stands this poll — the bus now pinned,
+ * that bus's ETA at the planned board stop, and the rider's REMAINING walk.
+ * Each candidate carries the rider's live walk to it and the arrivals the
+ * caller computed for it. Pure: the caller owns geometry and ETAs.
+ *
+ * A candidate is only taken when it is unambiguously better:
+ *  - it saves real walking (BOARD_SWAP_MIN_WALK_SAVING_SEC);
+ *  - the SAME bus reaches it before the planned stop, so it is genuinely on
+ *    the way and `rideSec` grows by exactly the ETA difference;
+ *  - the rider gets there before the bus does, so the wait can't clamp at 0
+ *    (a clamped wait means "the bus left without you", not a shorter trip);
+ *  - the resulting trip is no slower than the planned one.
+ *
+ * Ties on walking are broken by total time. Nothing here re-ranks routes or
+ * changes which bus is pinned — only where the rider meets it.
+ */
+export function findEarlierBoardStop<
+  A extends { eta: number; busName: string; stopId: number },
+>(
+  current: {
+    busName: string;
+    boardStopId: number;
+    alightStopId: number;
+    /** The pinned bus's ETA at `boardStopId`, seconds from now. */
+    boardEtaSec: number;
+    /** Rider's remaining walk to `boardStopId`, seconds. */
+    walkToSec: number;
+    rideSec: number;
+    walkFromSec: number;
+  },
+  candidates: readonly { stopId: number; walkSec: number; arrivals: readonly A[] }[],
+): BoardSwap | null {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const currentTotal = current.walkToSec
+    + Math.max(0, current.boardEtaSec - current.walkToSec)
+    + current.rideSec + current.walkFromSec;
+  let best: BoardSwap | null = null;
+  for (const c of candidates) {
+    if (c.stopId === current.boardStopId || c.stopId === current.alightStopId) continue;
+    if (c.walkSec > current.walkToSec - BOARD_SWAP_MIN_WALK_SAVING_SEC) continue;
+    // Arrivals are sorted soonest-first, so this is the bus's next pass.
+    const a = c.arrivals.find(
+      (x) => x.stopId === c.stopId && norm(x.busName) === norm(current.busName),
+    );
+    if (!a) continue;
+    if (a.eta >= current.boardEtaSec) continue;
+    if (c.walkSec > a.eta) continue;
+    const rideSec = current.rideSec + (current.boardEtaSec - a.eta);
+    if (rideSec > MAX_RIDE_SEC) continue;
+    const waitSec = Math.max(0, a.eta - c.walkSec);
+    const totalSec = c.walkSec + waitSec + rideSec + current.walkFromSec;
+    if (totalSec > currentTotal + 1) continue;
+    if (
+      best === null ||
+      c.walkSec < best.walkToSec ||
+      (c.walkSec === best.walkToSec && totalSec < best.totalSec)
+    ) {
+      best = {
+        boardStopId: c.stopId, walkToSec: c.walkSec,
+        waitSec, rideSec, totalSec, busEtaSec: a.eta,
+      };
+    }
+  }
+  return best;
+}
+
 export function planTrip(
   from: LatLon, to: LatLon,
   buses: BusData[],

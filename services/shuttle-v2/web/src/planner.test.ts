@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { BOARD_SWAP_MIN_WALK_SAVING_SEC, dwellBoardWindowSec, findEarlierBoardStop, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -548,5 +548,104 @@ describe("topVisibleOptions", () => {
   it("handles fewer than three shuttles", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
+  });
+});
+
+// ── Re-choosing the board stop once the planned bus is gone ────────────────
+//
+// Report #62 (Blue Day, "showing the next bus"): the rider was standing at
+// Prospect/Canner and told to walk 7 min to Whitney/Canner — correct while
+// #50 was catchable there and already past Prospect/Canner, and pointless the
+// moment #50 became uncatchable too. The next bus reaches Prospect/Canner
+// 7.1 min BEFORE Whitney/Canner, so boarding where they stood arrives at the
+// same minute with none of the walking.
+describe("findEarlierBoardStop", () => {
+  // Numbers from the live payload on the day of the report.
+  const WALK_TO_WHITNEY = 470;   // 512 m Prospect/Canner → Whitney/Canner
+  const RIDE_BETWEEN = 426;      // Prospect/Canner → Whitney/Canner by bus
+  const ETA_AT_WHITNEY = 680;    // the next Blue Day bus
+  const report62 = {
+    busName: "51", boardStopId: 129, alightStopId: 97,
+    boardEtaSec: ETA_AT_WHITNEY, walkToSec: WALK_TO_WHITNEY,
+    rideSec: 252, walkFromSec: 45,
+  };
+  const atProspect = (over: Partial<{ eta: number; busName: string }> = {}) => ({
+    stopId: 100, walkSec: 0,
+    arrivals: [{ stopId: 100, eta: ETA_AT_WHITNEY - RIDE_BETWEEN, busName: "51", ...over }],
+  });
+
+  it("moves the rider to the stop the same bus reaches first", () => {
+    const swap = findEarlierBoardStop(report62, [atProspect()])!;
+    expect(swap.boardStopId).toBe(100);
+    expect(swap.walkToSec).toBe(0);
+    // The ride absorbs exactly the leg the rider no longer walks.
+    expect(swap.rideSec).toBe(252 + RIDE_BETWEEN);
+    expect(swap.busEtaSec).toBe(ETA_AT_WHITNEY - RIDE_BETWEEN);
+    // Same arrival minute, none of the walking — that is the whole point.
+    const plannedTotal = WALK_TO_WHITNEY + (ETA_AT_WHITNEY - WALK_TO_WHITNEY) + 252 + 45;
+    expect(swap.totalSec).toBeCloseTo(plannedTotal, 5);
+  });
+
+  it("leaves a plan alone when the swap saves no real walking", () => {
+    // Same stop, comfortably catchable — the walk saving is the only thing
+    // under test here.
+    const savingOf = (sec: number) => ({
+      ...atProspect({ eta: 500 }), walkSec: WALK_TO_WHITNEY - sec,
+    });
+    expect(findEarlierBoardStop(report62, [savingOf(BOARD_SWAP_MIN_WALK_SAVING_SEC - 1)]))
+      .toBeNull();
+    // ...and takes it at exactly the threshold.
+    expect(findEarlierBoardStop(report62, [savingOf(BOARD_SWAP_MIN_WALK_SAVING_SEC)])?.boardStopId)
+      .toBe(100);
+  });
+
+  it("never boards at a stop the bus reaches after the planned one", () => {
+    // Nearby and a shorter walk, but downstream: riding there would mean
+    // riding past it. `rideSec` arithmetic only holds for upstream stops.
+    const downstream = { ...atProspect({ eta: ETA_AT_WHITNEY + 300 }) };
+    expect(findEarlierBoardStop(report62, [downstream])).toBeNull();
+  });
+
+  it("never sends the rider to a stop the bus beats them to", () => {
+    // Bus is 60 s from the nearer stop; the rider is 90 s away. Boarding
+    // there is watching it pull out, not a shorter trip.
+    const tooLate = { ...atProspect({ eta: 60 }), walkSec: 90 };
+    expect(findEarlierBoardStop(report62, [tooLate])).toBeNull();
+  });
+
+  it("only follows the bus the option is pinned to", () => {
+    const otherBus = atProspect({ busName: "77" });
+    expect(findEarlierBoardStop(report62, [otherBus])).toBeNull();
+    // A leading "#" on either side is the same vehicle.
+    const hashed = atProspect({ busName: "#51" });
+    expect(findEarlierBoardStop({ ...report62, busName: "#51" }, [hashed])?.boardStopId).toBe(100);
+  });
+
+  it("keeps the ride inside MAX_RIDE_SEC", () => {
+    const wayBack = {
+      stopId: 100, walkSec: 0,
+      arrivals: [{ stopId: 100, eta: 1, busName: "51" }],
+    };
+    // Riding from there would add ~11 min short of a full loop on top of a
+    // ride that is already near the cap.
+    expect(findEarlierBoardStop({ ...report62, rideSec: MAX_RIDE_SEC - 60 }, [wayBack]))
+      .toBeNull();
+  });
+
+  it("ignores the planned board and alight stops themselves", () => {
+    const self = { stopId: 129, walkSec: 0, arrivals: [{ stopId: 129, eta: 10, busName: "51" }] };
+    const dest = { stopId: 97, walkSec: 0, arrivals: [{ stopId: 97, eta: 10, busName: "51" }] };
+    expect(findEarlierBoardStop(report62, [self, dest])).toBeNull();
+  });
+
+  it("prefers the least walking, then the faster trip", () => {
+    const far = { stopId: 140, walkSec: 200, arrivals: [{ stopId: 140, eta: 400, busName: "51" }] };
+    const near = { stopId: 100, walkSec: 60, arrivals: [{ stopId: 100, eta: 300, busName: "51" }] };
+    expect(findEarlierBoardStop(report62, [far, near])!.boardStopId).toBe(100);
+    expect(findEarlierBoardStop(report62, [near, far])!.boardStopId).toBe(100);
+  });
+
+  it("returns null when there is nothing to consider", () => {
+    expect(findEarlierBoardStop(report62, [])).toBeNull();
   });
 });
