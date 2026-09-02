@@ -120,6 +120,15 @@ curl -s -H "x-admin-token: $TOKEN" \
   https://yale-shuttle.fly.dev/api/reports/{id}/image -o report.png
 ```
 
+The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
+above the map toggles each route, and the choice is remembered in
+localStorage as the HIDDEN toggle labels — so a route added upstream appears
+by default rather than staying invisible. It is deliberately separate state
+from `hiddenRoutes`, which every view change resets (that reset exists so the
+favourites filter cannot leak into the All page, and it would wipe the map's
+filter on every tab switch). Every storage touch is guarded; blocked storage
+means the filter simply does not persist.
+
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never
 caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is

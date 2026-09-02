@@ -25,6 +25,7 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 
 // True when running as an installed app (home-screen/desktop install). Fixed
 // for the life of the page, so a module constant, not state.
@@ -1236,9 +1237,11 @@ const AllRoutesMap: FC<{
   stopCoords: Record<number, LatLon>;
   stopNames: Record<number, string>;
   routeStops: Record<string, number[]>;
+  /** Toggle labels the rider has switched off; remembered across visits. */
+  hiddenRoutes: Set<string>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate }) => {
+}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, hiddenRoutes, userLatLon, onRequestLocate }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busLayerRef = useRef<L.LayerGroup | null>(null);
@@ -1283,13 +1286,23 @@ const AllRoutesMap: FC<{
     }).addTo(map);
 
     const pts: [number, number][] = [];
+    // Only the lines the rider left switched on (operator request): fifteen
+    // routes over one downtown is unreadable when you ride two of them.
+    const shown = (rid: number | string) => {
+      const toggle = ROUTE_ID_TO_TOGGLE[Number(rid)];
+      return !toggle || !hiddenRoutes.has(toggle);
+    };
     for (const [rid, path] of Object.entries(routePaths)) {
-      if (!path || path.length < 2) continue;
+      if (!path || path.length < 2 || !shown(rid)) continue;
       L.polyline(path, { color: routeColorFor(Number(rid)), weight: 4, opacity: 0.85 }).addTo(map);
       for (const p of path) pts.push(p);
     }
+    // Stops follow their routes: a lone dot from a hidden line is noise.
     const stopIds = new Set<number>();
-    for (const ids of Object.values(routeStops)) for (const s of ids) stopIds.add(s);
+    for (const [rid, ids] of Object.entries(routeStops)) {
+      if (!shown(rid)) continue;
+      for (const s of ids) stopIds.add(s);
+    }
     for (const sid of stopIds) {
       const c = stopCoords[sid];
       if (!c) continue;
@@ -1307,8 +1320,9 @@ const AllRoutesMap: FC<{
     // zoomed the default view out to the whole metro area with the actual
     // shuttles reduced to a downtown speck. Fall back to route bounds
     // until the first bus poll lands (the buses effect below refits once).
-    if (buses.length > 0) {
-      map.fitBounds(L.latLngBounds(buses.map((b) => [b.lat, b.lon] as [number, number])), {
+    const fitBuses = buses.filter((b) => shown(b.route_id));
+    if (fitBuses.length > 0) {
+      map.fitBounds(L.latLngBounds(fitBuses.map((b) => [b.lat, b.lon] as [number, number])), {
         padding: [48, 48], maxZoom: 15,
       });
       busFitDoneRef.current = true;
@@ -1333,7 +1347,10 @@ const AllRoutesMap: FC<{
       youMarkerRef.current = null; // died with the map
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(Object.keys(routePaths).sort())]);
+    // Rebuilt when the filter changes too: the lines and stops are drawn once
+    // at mount, so a toggle has to re-run this effect to take effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
   useEffect(() => {
@@ -1341,6 +1358,8 @@ const AllRoutesMap: FC<{
     if (!grp) return;
     grp.clearLayers();
     for (const b of buses) {
+      const toggle = ROUTE_ID_TO_TOGGLE[b.route_id];
+      if (toggle && hiddenRoutes.has(toggle)) continue;
       const color = routeColorFor(b.route_id);
       const label = b.bus_name.replace(/^#/, "");
       const dwelling = b.at_stop_id != null;
@@ -5955,6 +5974,16 @@ const TransitMap: FC = () => {
   // While a ride is active, the dedicated ride page (map + stop list) replaces
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
+  // The Map tab's own filter, remembered between visits (operator request,
+  // 2026-09-02). Deliberately NOT `hiddenRoutes` above: that one is reset on
+  // every view change to keep the favourites filter from leaking into the All
+  // page, which would wipe this the moment the rider switched tabs.
+  const [mapHidden, setMapHidden] = useState<Set<string>>(() =>
+    loadHiddenRoutes(LEGEND_ROUTES.map((r) => r.toggleLabel)));
+  const setMapHiddenPersisted = (next: Set<string>) => {
+    setMapHidden(next);
+    saveHiddenRoutes(next);
+  };
   const [showMap, setShowMap] = useState(false);
   // Every storage touch in the shell is guarded: with site data blocked (iOS
   // "Block All Cookies", a QR scanner's in-app WebView) `localStorage` THROWS
@@ -6787,11 +6816,69 @@ const TransitMap: FC = () => {
           />
         </>
       ) : listView === "map" ? (
-        <AllRoutesMap
-          buses={buses} routePaths={routePaths}
-          stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-          userLatLon={userLatLon} onRequestLocate={startLocating}
-        />
+        <>
+          {/* Line filter, remembered between visits. Above the map, not on it:
+              a rider hunting one route should not have to find a control
+              floating over the thing they are trying to read. */}
+          <div style={{
+            width: "100%", maxWidth: 800, margin: "0 auto",
+            padding: "0 12px 6px", display: "flex", gap: 6,
+            // One scrolling row, not four wrapped ones: fifteen 44 px chips
+            // wrapped push the map itself off a phone screen, and the map is
+            // what the tab is for.
+            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
+            alignItems: "center",
+          }}>
+            <button
+              onClick={() => setMapHiddenPersisted(
+                toggleAll(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden))}
+              style={{
+                padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
+                background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit", minHeight: 44,
+                display: "inline-flex", alignItems: "center",
+                flexShrink: 0, whiteSpace: "nowrap",
+              }}
+            >
+              {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? "Show all" : "Hide all"}
+            </button>
+            {LEGEND_ROUTES.map((r) => {
+              const off = mapHidden.has(r.toggleLabel);
+              return (
+                <button
+                  key={r.toggleLabel}
+                  onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
+                  aria-pressed={!off}
+                  style={{
+                    padding: "3px 10px", borderRadius: 10,
+                    border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
+                    background: off ? "#fff" : r.color,
+                    color: off ? "#90a4ae" : "#fff",
+                    fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                    minHeight: 44, display: "inline-flex", alignItems: "center",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto",
+              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
+            }}>
+              Every line is switched off — tap one above to put it back on the map.
+            </div>
+          )}
+          <AllRoutesMap
+            buses={buses} routePaths={routePaths}
+            stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
+            hiddenRoutes={mapHidden}
+            userLatLon={userLatLon} onRequestLocate={startLocating}
+          />
+        </>
       ) : listView === "issues" ? (
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
