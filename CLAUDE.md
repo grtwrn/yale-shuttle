@@ -54,12 +54,17 @@ cd web && npx vite build   # build = the frontend type/syntax gate
 
 ```bash
 cd services/shuttle-v2
-npm run deploy        # THE way to deploy: gates -> local staging -> browser
-                      # smoke -> flyctl -> prod verify. Add -- --stage-only to
-                      # stop before prod. Raw `flyctl deploy` skips every check
-                      # that has caught real bugs (a wrong API-shape assumption,
-                      # and the ReferenceError class that once crashed prod).
-~/.fly/bin/flyctl deploy --remote-only   # escape hatch only
+git push origin master    # THE way to deploy: .github/workflows/deploy.yml runs
+                          # scripts/deploy.mjs (gates -> throwaway-DB staging ->
+                          # API + browser smoke -> flyctl -> prod verify) on every
+                          # push touching services/shuttle-v2/. Deploys come from
+                          # committed history — commit + push, then watch
+                          # `gh run list`.
+npm run deploy            # same pipeline run locally; hotfix path when CI is down.
+                          # -- --stage-only stops before prod.
+~/.fly/bin/flyctl deploy --remote-only   # raw escape hatch; skips every check
+                          # that has caught real bugs (wrong API-shape smoke
+                          # assumptions, the ReferenceError that crashed prod).
 
 # Health
 curl -s https://yale-shuttle.fly.dev/healthz
@@ -121,7 +126,28 @@ caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
 the classic self-bricking failure.
 `scripts/map-bot-cron.sh` reads the same token file for its dedupe check.
 
-**Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold.
+**Always annotate after a fix.** The resolution field is the triage log; append, don't replace. Next agent should not re-investigate cold. Note prefixes are load-bearing: `[triage]` = bot analysis awaiting the operator, `[approved]` = operator authorizes the bot to implement, `[pr]` = a feedback-bot PR awaits review, `[fixed]` = shipped, `automated:` = benign auto-close, `automated-abuse:` = spam close that earns a reputation strike.
+
+### The feedback bot (autonomous triage)
+
+Rider reports are triaged by a headless-`claude` bot on this Pi, event-driven:
+the server pushes each submission/follow-up over `GET /api/reports/stream`
+(admin SSE), `scripts/feedback-bot-listener.mjs` holds the connection (kept
+alive by a 1-min cron; 6 h sweep as backstop) and runs
+`scripts/feedback-bot-cron.sh`. Arbitration (`feedback-bot-arbitrate.mjs`):
+operator-`[approved]` reports first, then priority tiers
+(urgent > normal > nice_to_have), round-robin one report per reporter within a
+tier, ≤3 per run; browsers with 3 `automated-abuse:` closes are auto-ignored
+(strikes in `scripts/.feedback-bot/reputation.json` — delete an entry to
+pardon). The bot triages/replies directly via the admin API, but CODE changes
+happen in a disposable git worktree and become a `feedback-bot/*` branch + PR
+— **merging the PR is the approval and deploys via master CI; closing
+declines**. `npm run approve -- <id> [guidance]` pre-authorizes bigger work
+(still a PR). The wrapper enforces a file allowlist on the worktree diff and
+re-runs the gates before any push; report bodies are treated as untrusted data
+throughout (`feedback-bot-prompt.md`). Riders see everything in the in-app
+Issues tab (`/api/my-reports`): statuses, notes (which are replies to them),
+follow-ups (these reopen + wake the bot), archive, and self-rated priority.
 
 ## Usage metrics
 
