@@ -5,6 +5,7 @@ import type { UpstreamClient, RawBus } from "../collector/upstream.js";
 import { openDb, type DbBundle } from "../db/client.js";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import path from "node:path";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 
@@ -967,5 +968,209 @@ describe("GET /api/weather", () => {
     const res = await withWeather(async () => ({ available: false })).request("/api/weather");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ available: false });
+  });
+});
+
+// The dashboard at /stats must not keep the admin token in the browser: one
+// XSS, or one borrowed phone, would otherwise hand over the triage log with
+// every reporter's IP address in it. The token is exchanged once for an
+// HttpOnly cookie scoped to /api/stats and nothing else.
+describe("operator stats session", () => {
+  const FROZEN = 1_700_000_000_000;
+  const ANON = "11111111-2222-4333-8444-555555555555";
+
+  /** Mint a cookie value the way the server does, to forge good and bad ones. */
+  const mint = (expiryMs: number, key = TEST_ADMIN_TOKEN) =>
+    `${expiryMs}.${crypto.createHmac("sha256", key).update(String(expiryMs)).digest("hex")}`;
+
+  const login = async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    expect(res.status).toBe(200);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    const value = /stats_session=([^;]+)/.exec(setCookie)?.[1] ?? "";
+    return { setCookie, cookie: `stats_session=${value}` };
+  };
+
+  it("issues an HttpOnly, Strict, /api/stats-scoped cookie for the right token", async () => {
+    const { setCookie } = await login();
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Strict");
+    // Scoped so the cookie is never even sent to the report routes.
+    expect(setCookie).toContain("Path=/api/stats");
+    expect(setCookie).toContain(`Max-Age=${30 * 24 * 60 * 60}`);
+  });
+
+  it("rejects a wrong token with a generic 401 and no cookie", async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "not-the-token" }),
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // The body must say nothing that helps a guesser.
+    expect(await res.text()).not.toContain(TEST_ADMIN_TOKEN);
+  });
+
+  // Otherwise the endpoint is a brute-force oracle for the admin token.
+  it("rate-limits repeated login attempts", async () => {
+    let last = 200;
+    for (let i = 0; i < 12; i++) {
+      const res = await app.request("/api/stats/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: "guess" }),
+      });
+      last = res.status;
+    }
+    expect(last).toBe(429);
+  });
+
+  it("accepts the session cookie on both stats routes", async () => {
+    await app.request("/api/buses", { headers: { "x-anon-id": ANON } });
+    const { cookie } = await login();
+
+    const stats = await app.request("/api/stats", { headers: { cookie } });
+    expect(stats.status).toBe(200);
+    expect(((await stats.json()) as { riders: { today: number } }).riders.today).toBe(1);
+
+    const history = await app.request("/api/stats/history", { headers: { cookie } });
+    expect(history.status).toBe(200);
+    const body = (await history.json()) as { history: { day: string; newRiders: number }[] };
+    expect(body.history).toHaveLength(1);
+    expect(body.history[0]!.newRiders).toBe(1);
+  });
+
+  // The whole point of scoping the cookie: it must not unlock the triage log.
+  it("does not unlock the report routes", async () => {
+    const { cookie } = await login();
+    expect((await app.request("/api/reports?status=open", { headers: { cookie } })).status).toBe(401);
+    expect((await app.request("/api/reports/1/image", { headers: { cookie } })).status).toBe(401);
+    const exclude = await app.request("/api/stats/exclude", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ anonId: ANON, note: "nope" }),
+    });
+    expect(exclude.status).toBe(401);
+  });
+
+  it("rejects a tampered or forged cookie", async () => {
+    const good = mint(FROZEN + 60_000);
+    const flipped = `${good.slice(0, -1)}${good.endsWith("a") ? "b" : "a"}`;
+    for (const value of [
+      flipped,
+      // Expiry rewritten without re-signing.
+      `${FROZEN + 999_999_999}.${good.split(".")[1]}`,
+      // Signed with a different key.
+      mint(FROZEN + 60_000, "some-other-token"),
+      "garbage",
+      `${FROZEN + 60_000}.`,
+      ".deadbeef",
+    ]) {
+      const res = await app.request("/api/stats", {
+        headers: { cookie: `stats_session=${value}` },
+      });
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it("rejects an expired cookie and accepts an unexpired one", async () => {
+    const expired = await app.request("/api/stats", {
+      headers: { cookie: `stats_session=${mint(FROZEN - 1)}` },
+    });
+    expect(expired.status).toBe(401);
+
+    const live = await app.request("/api/stats", {
+      headers: { cookie: `stats_session=${mint(FROZEN + 60_000)}` },
+    });
+    expect(live.status).toBe(200);
+  });
+
+  it("still refuses both stats routes with no auth at all", async () => {
+    expect((await app.request("/api/stats")).status).toBe(401);
+    expect((await app.request("/api/stats/history")).status).toBe(401);
+  });
+
+  it("still accepts the admin header on both stats routes", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    expect((await app.request("/api/stats", { headers })).status).toBe(200);
+    const res = await app.request("/api/stats/history", { headers });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("clamps the history window to 1..90 days", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const q of ["?days=0", "?days=-3", "?days=9999", "?days=abc", ""]) {
+      const res = await app.request(`/api/stats/history${q}`, { headers });
+      expect(res.status).toBe(200);
+      expect(Array.isArray(((await res.json()) as { history: unknown[] }).history)).toBe(true);
+    }
+  });
+
+  it("fails closed when no admin token is configured", async () => {
+    const openApp = buildApp({ collector, bundle, now: () => FROZEN, adminToken: "" });
+    expect((await openApp.request("/api/stats/history")).status).toBe(503);
+    const res = await openApp.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: "anything" }),
+    });
+    expect(res.status).toBe(503);
+  });
+});
+
+describe("static routes", () => {
+  // Vite copies web/public/* verbatim, so stats.html lands beside index.html.
+  // The extensionless /stats needs its own route — and must not cost the SPA
+  // its fallback.
+  const withStatic = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-v2-static-"));
+    fs.writeFileSync(path.join(dir, "index.html"), "<html>rider app</html>");
+    fs.writeFileSync(path.join(dir, "stats.html"), "<html>operator dashboard</html>");
+    return {
+      dir,
+      app: buildApp({
+        collector,
+        bundle,
+        now: () => 1_700_000_000_000,
+        adminToken: TEST_ADMIN_TOKEN,
+        staticDir: dir,
+      }),
+    };
+  };
+
+  it("serves the dashboard at both /stats and /stats.html", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      const bare = await withDir.request("/stats");
+      expect(bare.status).toBe(200);
+      expect(await bare.text()).toContain("operator dashboard");
+      expect(bare.headers.get("cache-control")).toBe("no-store");
+
+      const explicit = await withDir.request("/stats.html");
+      expect(explicit.status).toBe(200);
+      expect(await explicit.text()).toContain("operator dashboard");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("still falls back to the rider app for unknown paths", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      const res = await withDir.request("/plan/somewhere");
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("rider app");
+      // And an API path is never answered with HTML.
+      expect((await withDir.request("/api/stats")).status).toBe(401);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

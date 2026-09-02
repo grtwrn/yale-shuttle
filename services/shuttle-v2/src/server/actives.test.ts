@@ -306,3 +306,124 @@ describe("excluding test traffic", () => {
     expect(t.stats(T).today).toBe(1);
   });
 });
+
+describe("per-day history", () => {
+  const exclude = (id: string, note = "test") =>
+    bundle.sqlite
+      .prepare("INSERT OR IGNORE INTO excluded_anon_ids (anon_id, note) VALUES (?,?)")
+      .run(id, note);
+
+  it("splits each day into first-ever and returning browsers", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 2 * DAY_MS);
+    t.seen(ID_A, "poll", T);
+    t.seen(ID_B, "poll", T);
+
+    const h = t.history(30, T);
+    expect(h.map((d) => d.day)).toEqual([etDay(T - 2 * DAY_MS), etDay(T)]);
+    // Same browser: new on the day it first appeared, returning on the next.
+    expect(h[0]).toMatchObject({ riders: 1, newRiders: 1, returningRiders: 0 });
+    expect(h[1]).toMatchObject({ riders: 2, newRiders: 1, returningRiders: 1 });
+  });
+
+  // "New" means first EVER seen, not first seen inside the window — otherwise
+  // a narrow window would relabel every long-standing rider as an arrival.
+  it("does not call a browser new just because the window starts after its first day", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 5 * DAY_MS);
+    t.seen(ID_A, "poll", T);
+    const h = t.history(2, T);
+    expect(h.map((d) => d.day)).toEqual([etDay(T)]);
+    expect(h[0]).toMatchObject({ riders: 1, newRiders: 0, returningRiders: 1 });
+  });
+
+  it("omits days with no rows rather than inventing zeros", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 3 * DAY_MS);
+    t.seen(ID_A, "poll", T);
+    // Nothing on the two days in between: they are absent, not zero, so a
+    // chart cannot imply the app existed and was unused.
+    expect(t.history(30, T).map((d) => d.day)).toEqual([etDay(T - 3 * DAY_MS), etDay(T)]);
+  });
+
+  it("never shows a flagged browser, on any day", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_B, "poll", T - DAY_MS);
+    t.seen(ID_B, "search", T);
+    t.seen(ID_A, "poll", T);
+    t.flush(T);
+    exclude(ID_B, "pre-launch testing");
+
+    const h = t.history(30, T);
+    // The excluded browser was the only one on T-1, so that day disappears.
+    expect(h.map((d) => d.day)).toEqual([etDay(T)]);
+    expect(h[0]).toMatchObject({ riders: 1, newRiders: 1, returningRiders: 0, searches: 0 });
+  });
+
+  it("counts searches and median session length per day", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T);
+    t.seen(ID_A, "search", T + 4 * 60_000);
+    t.seen(ID_B, "poll", T);
+    t.seen(ID_B, "poll", T + 10 * 60_000);
+    t.seen(ID_B, "search", T + 10 * 60_000);
+
+    const h = t.history(30, T + 10 * 60_000);
+    expect(h).toHaveLength(1);
+    expect(h[0]!.searches).toBe(2);
+    // Sessions of 4 min and 10 min.
+    expect(h[0]!.medianMinutesPerDay).toBe(7);
+  });
+
+  it("reports zero minutes for a day of single-sighting browsers", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T);
+    expect(t.history(30, T)[0]!.medianMinutesPerDay).toBe(0);
+  });
+
+  it("clamps the window at both ends", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 2 * DAY_MS);
+    t.seen(ID_A, "poll", T);
+    // A zero or negative window still yields today, never an empty range.
+    expect(t.history(0, T).map((d) => d.day)).toEqual([etDay(T)]);
+    expect(t.history(-5, T).map((d) => d.day)).toEqual([etDay(T)]);
+    // And a huge window stops at the retention horizon.
+    bundle.sqlite
+      .prepare("INSERT INTO daily_actives (day, anon_id, first_seen_ms, last_seen_ms, polls, searches) VALUES (?,?,?,?,1,0)")
+      .run(etDay(T - 95 * DAY_MS), ID_C, T - 95 * DAY_MS, T - 95 * DAY_MS);
+    const wide = t.history(1000, T).map((d) => d.day);
+    expect(wide).not.toContain(etDay(T - 95 * DAY_MS));
+    expect(wide).toEqual([etDay(T - 2 * DAY_MS), etDay(T)]);
+  });
+
+  it("returns the days oldest first", () => {
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 4 * DAY_MS);
+    t.seen(ID_B, "poll", T - DAY_MS);
+    t.seen(ID_C, "poll", T);
+    const days = t.history(30, T).map((d) => d.day);
+    expect([...days].sort()).toEqual(days);
+  });
+});
+
+describe("history() and stats() cannot drift apart", () => {
+  it("agrees with today's row on every figure they share", () => {
+    // Two independent SQL paths (a grouped `firsts` CTE vs an INTERSECT):
+    // the whole dashboard rests on them telling the same story about today.
+    const t = createActivesTracker(bundle);
+    t.seen(ID_A, "poll", T - 2 * DAY_MS);
+    t.seen(ID_B, "poll", T - DAY_MS);
+    t.seen(ID_A, "poll", T);              // returning today
+    t.seen(ID_C, "poll", T);              // new today
+    t.seen(ID_C, "search", T + 1000);
+    const s = t.stats(T);
+    const today = t.history(30, T).at(-1)!;
+    expect(today.day).toBe(etDay(T));
+    expect(today.riders).toBe(s.today);
+    expect(today.newRiders).toBe(s.newToday);
+    expect(today.returningRiders).toBe(s.returningToday);
+    expect(today.searches).toBe(s.searchesToday);
+    expect(today.newRiders + today.returningRiders).toBe(today.riders);
+  });
+});

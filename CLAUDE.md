@@ -207,6 +207,31 @@ Three things to preserve if you touch it:
 
 It counts browsers, not people — phone + laptop is two.
 
+### The operator dashboard at /stats
+
+`https://yale-shuttle.fly.dev/stats` is the same numbers on a phone, plus a
+30-day stacked bar of new vs returning browsers. It is `web/public/stats.html`
+— a standalone page with no React, no build step and no external request, so it
+still works when the bundle does not; `/stats` (extensionless) is a small route
+in `src/server/app.ts` and answers `/stats.html` identically (both `no-store`
+— serveStatic alone would have left the `.html` spelling heuristically
+cached). **Not linked from the rider app**, and `sw.js` skips both paths, so
+the dashboard is never served from the rider shell's cache.
+
+It reads `GET /api/stats` and `GET /api/stats/history?days=N` (1..90, default
+30; days with no rows are absent, not zero). Both accept EITHER the
+`x-admin-token` header or a `stats_session` cookie; **every other admin route
+still requires the header** — the cookie must never unlock `/api/reports`,
+which carries reporter IPs. The cookie is minted by `POST /api/stats/session`
+(rate-limited, 10/min per IP) and is stateless: `"<expiryMs>.<hmac_sha256(admin
+token, expiryMs)>"`, HttpOnly + Secure + SameSite=Strict + `Path=/api/stats`,
+30 days. So there is no session table, a restart does not log the operator out,
+and **the admin token itself is never stored in the browser**.
+
+Chart colours are tokens on `:root`, redefined for dark mode, and the pair was
+run through the dataviz palette validator in both modes — don't re-pick them by
+eye.
+
 **Test traffic is excluded, not deleted.** Browser harnesses drive the live
 site, so they mint real ids and would otherwise appear as riders who never
 return — dragging week-1 retention toward zero for a month. `excluded_anon_ids`
