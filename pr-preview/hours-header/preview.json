@@ -1,0 +1,17 @@
+{
+  "caption": "Details page: the line's published hours under the back button",
+  "base": "http://127.0.0.1:8097",
+  "trip": {
+    "board": 118,
+    "dest": 38
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/wt-published-hours/pr-preview/hours-header/trip.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

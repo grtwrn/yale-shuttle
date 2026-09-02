@@ -15,17 +15,26 @@
 //   {
 //     "caption": "Rain line under the trip options",
 //     "mock":  { "/api/weather": { "available": true, "hourly": [{ "timeMs": "${now}", "probability": 80 }] } },
-//     "trip":  { "board": 118, "dest": 38 },          // stop ids; default = two stops of a live route
+//     "trip":  { "board": 118, "dest": 38,            // stop ids; default = two stops of a live route
+//                "from": { "lat": 41.32, "lon": -72.92 } },  // optional: stand here instead of at the board stop
 //     "views": ["trip", "map"],                       // any of trip | map | favorites | issues
-//     "focus": "Rain likely"                          // text to scroll into view before the shot
+//     "focus": "Rain likely",                         // text to scroll into view before the shot
+//     "actions": [ { "click": "Blue Day", "which": "last" }, { "wait": 2000 } ]  // after the trip is planned, before the shot
 //   }
+// `actions` run in order on the trip view: `click` matches visible text (a
+// regex; `which` picks "first" (default) or "last" match — the map legend
+// lists route names BEFORE the option cards, so the chip on a card is the
+// last match), `wait` pauses that many ms.
 // Screenshots are full-page (the trip view is taller than a phone), so a line
 // under the options list is captured even when it sits below the fold.
 // Mock values may use "${now}" / "${now+3600000}" (epoch ms) so forecasts and
 // timestamps land in the present regardless of when the preview runs. A mock
 // of the form { "$patch": { "buses": [] } } keeps the REAL response and
 // overrides only those top-level keys — the way to empty the fleet or drop an
-// announcement without hand-writing an 85 KB payload.
+// announcement without hand-writing an 85 KB payload. A mock may also be a
+// LIST of phases, each with "untilMs" (ms since page load; the last phase has
+// none): { "/api/buses": [ { "untilMs": 8000, "$patch": {...} }, { "$patch": {...} } ] }
+// — the way to plan a trip while a bus approaches, then move it past the stop.
 //
 // Output: <OUT>/<view>.png plus <OUT>/preview.json (caption, views, page errors).
 // Exit 1 on a page error or a crashed shell — a preview of a crash is a finding.
@@ -67,13 +76,16 @@ if (!trip || !coords[trip.board] || !coords[trip.dest]) {
   trip = { board: stops[Math.floor(stops.length * 0.3)], dest: stops[Math.floor(stops.length * 0.7)] };
 }
 const board = coords[trip.board], dest = coords[trip.dest];
+// Where the rider stands: the board stop unless the recipe says otherwise (a
+// rider 150 m from the stop is a different trip than one standing on it).
+const standing = trip.from && Number.isFinite(trip.from.lat) && Number.isFinite(trip.from.lon) ? trip.from : board;
 
 const browser = process.env.BOT_CDP_URL
   ? await chromium.connectOverCDP(process.env.BOT_CDP_URL)
   : await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? "/usr/bin/chromium", args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"] });
 const ctx = await browser.newContext({
   permissions: ["geolocation"],
-  geolocation: { latitude: board.lat, longitude: board.lon },
+  geolocation: { latitude: standing.lat, longitude: standing.lon },
   timezoneId: "America/New_York",
   viewport: { width: 390, height: 844 },
   deviceScaleFactor: 2,
@@ -82,8 +94,15 @@ await seedTestId(ctx);
 const page = await ctx.newPage();
 const pageErrors = [];
 page.on("pageerror", (e) => pageErrors.push(String(e.message)));
-for (const [pathname, body] of Object.entries(mocks)) {
+const loadedAt = { t: Date.now() };
+for (const [pathname, spec] of Object.entries(mocks)) {
   await page.route((u) => u.pathname === pathname, async (route) => {
+    let body = spec;
+    if (Array.isArray(spec)) {
+      const elapsed = Date.now() - loadedAt.t;
+      const phase = spec.find((ph) => ph && Number.isFinite(ph.untilMs) && elapsed < ph.untilMs) ?? spec[spec.length - 1];
+      body = phase && typeof phase === "object" ? Object.fromEntries(Object.entries(phase).filter(([k]) => k !== "untilMs")) : phase;
+    }
     if (body && typeof body === "object" && !Array.isArray(body) && "$patch" in body) {
       const real = await route.fetch();
       let json = {};
@@ -111,6 +130,7 @@ async function openTab(label) {
   await sleep(1500);
 }
 
+loadedAt.t = Date.now();
 await page.goto(BASE, { waitUntil: "domcontentloaded" });
 await sleep(4000);
 for (const view of views) {
@@ -124,6 +144,15 @@ for (const view of views) {
       await sleep(1500);
       await input.press("Enter");
       await sleep(4000);
+      for (const step of Array.isArray(recipe.actions) ? recipe.actions : []) {
+        if (step && typeof step.click === "string") {
+          const matches = page.getByText(new RegExp(step.click), { exact: false });
+          await (step.which === "last" ? matches.last() : matches.first()).click({ timeout: 10_000 });
+          await sleep(1500);
+        } else if (step && Number.isFinite(step.wait)) {
+          await sleep(step.wait);
+        }
+      }
     } else {
       await openTab(view[0].toUpperCase() + view.slice(1));
       await sleep(view === "map" ? 3000 : 500);

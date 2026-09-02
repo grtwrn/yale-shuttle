@@ -22,7 +22,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, type TripOption,
+  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 
@@ -2965,6 +2965,22 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
+          {/* Report #57: the line's operating hours at the top of its details
+              page. One caption line, no box — this page has been de-cluttered
+              twice on rider feedback, and the overview header directly below
+              already names the route, so the caption is the hours alone.
+              Published hours first, ROUTE_HOURS as the fallback (same
+              precedence as the All tab); nothing when neither knows the route. */}
+          {detailOpen && (() => {
+            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
+            const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
+            if (!cfg || !caption) return null;
+            return (
+              <div style={{ fontSize: 12, color: "#78909c", padding: "0 2px 8px", lineHeight: 1.3 }}>
+                {caption}
+              </div>
+            );
+          })()}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see

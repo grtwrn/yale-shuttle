@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -479,6 +479,29 @@ describe("publishedWindowFor", () => {
     expect(publishedWindowFor(cfg, { "4": w })).toBeUndefined();
     expect(publishedWindowFor(cfg, undefined)).toBeUndefined();
     expect(publishedWindowFor(cfg, {})).toBeUndefined();
+  });
+});
+
+describe("routeHoursCaption (report #57: hours atop the route details page)", () => {
+  const blueDay = { label: "Blue Day", routeIds: ["3"], busRouteIds: [30] };
+  const published = { days: [1, 2, 3, 4, 5], startMin: 8 * 60, endMin: 17 * 60 + 30, text: "8am - 5:30pm, M - F" };
+
+  it("prefers the operator's published window over ROUTE_HOURS", () => {
+    expect(routeHoursCaption(blueDay, { "3": published })).toBe("Runs M–F 8a–5:30p");
+    // Looked up by busRouteIds too, like the All tab.
+    expect(routeHoursCaption(blueDay, { "30": published })).toBe("Runs M–F 8a–5:30p");
+  });
+
+  it("falls back to the ROUTE_HOURS table when nothing is published for the route", () => {
+    expect(routeHoursCaption(blueDay, undefined)).toBe(`Runs ${fmtSchedule("Blue Day")}`);
+    expect(routeHoursCaption(blueDay, { "4": published })).toBe(`Runs ${fmtSchedule("Blue Day")}`);
+    expect(fmtSchedule("Blue Day")).not.toBe("");
+  });
+
+  it("is null when neither source knows the route, so the caption is not drawn", () => {
+    const unknown = { label: "Route That Does Not Exist", routeIds: ["999"], busRouteIds: [9990] };
+    expect(routeHoursCaption(unknown, undefined)).toBeNull();
+    expect(routeHoursCaption(unknown, { "3": published })).toBeNull();
   });
 });
 

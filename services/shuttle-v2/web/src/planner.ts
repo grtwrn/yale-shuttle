@@ -410,6 +410,22 @@ export function publishedWindowFor(
   return undefined;
 }
 
+/**
+ * The hours line a rider reads on a route's details page ("Runs M–F 7a–6p"):
+ * the operator's published window when the payload carries one, ROUTE_HOURS
+ * rendered as text otherwise, and null when neither knows the route — the
+ * caller renders nothing rather than "Runs ". Same precedence as the All tab
+ * and the "Shuttles that go there" panel, so the three never disagree.
+ */
+export function routeHoursCaption(
+  cfg: { label: string; routeIds: readonly string[]; busRouteIds: readonly number[] },
+  publishedHours: Record<string, PublishedWindow> | undefined,
+): string | null {
+  const published = publishedWindowFor(cfg, publishedHours);
+  const hours = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+  return hours ? `Runs ${hours}` : null;
+}
+
 export function findPotentialRoutes(
   from: LatLon, to: LatLon,
   routeStops: Record<string, number[]>,
