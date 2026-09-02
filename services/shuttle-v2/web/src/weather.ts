@@ -53,6 +53,24 @@ const NO_RAIN: RainVerdict = { likely: false, probability: 0, known: false };
  */
 export const RAIN_PROMINENT_THRESHOLD = 70;
 
+/**
+ * The temperature, in both units.
+ *
+ * Upstream is asked for Fahrenheit and that stays the leading number — this
+ * is a New Haven shuttle — but a good share of the riders grew up on Celsius,
+ * so the conversion rides along in brackets rather than behind a setting
+ * nobody would find (rider request, 2026-09-02). Converting the ALREADY
+ * ROUNDED Fahrenheit keeps the two halves of the line consistent with each
+ * other: whatever °F a rider reads is exactly what the °C was computed from.
+ */
+export function temperatureText(fahrenheit: number | undefined): string | null {
+  if (typeof fahrenheit !== "number" || !Number.isFinite(fahrenheit)) return null;
+  const f = Math.round(fahrenheit);
+  // Math.round(-0.4) is -0, which prints as "-0°C".
+  const c = Math.round(((f - 32) * 5) / 9) + 0;
+  return `${f}°F (${c}°C)`;
+}
+
 /** Plain words for the WMO code — only the distinctions a rider acts on. */
 export function conditionText(code: number | undefined): string | null {
   if (code == null || !Number.isFinite(code)) return null;
@@ -143,7 +161,8 @@ export function weatherTone(v: RainVerdict): WeatherTone {
 export function weatherMessage(v: RainVerdict): string {
   if (!v.known) return "";
   const bits: string[] = [];
-  if (typeof v.temperatureF === "number") bits.push(`${v.temperatureF}°F`);
+  const temp = temperatureText(v.temperatureF);
+  if (temp) bits.push(temp);
   const cond = conditionText(v.weatherCode);
   if (cond) bits.push(cond);
   const head = bits.join(" · ");

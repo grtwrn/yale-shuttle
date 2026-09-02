@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   conditionText, RAIN_PROBABILITY_THRESHOLD, rainLikely, rainLikelyFrom, rainMessage,
-  weatherEmoji, weatherMessage, weatherTone, type RainVerdict, type WeatherHour,
+  temperatureText, weatherEmoji, weatherMessage, weatherTone,
+  type RainVerdict, type WeatherHour,
 } from "./weather";
 
 const HOUR = 60 * 60_000;
@@ -111,14 +112,14 @@ describe("the weather line", () => {
     // A line that only appears when it rains is one nobody learns to look for.
     expect(weatherTone(v(0))).toBe("quiet");
     expect(weatherMessage(v(0, { temperatureF: 68, weatherCode: 0 })))
-      .toBe("68°F · Clear · No rain expected within the hour");
+      .toBe("68°F (20°C) · Clear · No rain expected within the hour");
     expect(weatherEmoji(v(0, { weatherCode: 0 }))).toBe("☀️");
   });
 
   it("mentions a small chance without alarm", () => {
     expect(weatherTone(v(20))).toBe("quiet");
     expect(weatherMessage(v(20, { temperatureF: 55, weatherCode: 3 })))
-      .toBe("55°F · Cloudy · 20% chance of rain within the hour");
+      .toBe("55°F (13°C) · Cloudy · 20% chance of rain within the hour");
   });
 
   it("warns about the walk legs once rain is likely", () => {
@@ -132,13 +133,29 @@ describe("the weather line", () => {
   it("becomes a warning at a high chance", () => {
     expect(weatherTone(v(85))).toBe("warning");
     expect(weatherMessage(v(85, { temperatureF: 61, weatherCode: 61 })))
-      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F · Rain");
+      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F (16°C) · Rain");
     expect(weatherEmoji(v(85))).toBe("☔");
   });
 
   it("stays hidden when there is no forecast at all", () => {
     expect(weatherTone({ likely: false, probability: 0, known: false })).toBe("hidden");
     expect(weatherMessage({ likely: false, probability: 0, known: false })).toBe("");
+  });
+
+  it("gives the temperature in both units", () => {
+    // Riders raised on Celsius shouldn't have to do the arithmetic; riders
+    // raised on Fahrenheit shouldn't have to hunt for a setting.
+    expect(temperatureText(68)).toBe("68°F (20°C)");
+    expect(temperatureText(32)).toBe("32°F (0°C)");
+    expect(temperatureText(0)).toBe("0°F (-18°C)");
+    // Freezing-adjacent values must not print a negative zero.
+    expect(temperatureText(31.6)).toBe("32°F (0°C)");
+    expect(temperatureText(100)).toBe("100°F (38°C)");
+  });
+
+  it("has no temperature to give when the server sent none", () => {
+    expect(temperatureText(undefined)).toBeNull();
+    expect(temperatureText(Number.NaN)).toBeNull();
   });
 
   it("degrades to the rain-only wording when the server sends no temperature", () => {

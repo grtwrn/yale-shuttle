@@ -1,0 +1,25 @@
+{
+  "caption": "The weather line now gives the temperature in both units — 68°F (20°C). Forecast mocked at a quiet 15% so the temperature leads the line.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 118,
+    "dest": 38
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/weather"
+  ],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788384615/pr-preview/65/trip-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
