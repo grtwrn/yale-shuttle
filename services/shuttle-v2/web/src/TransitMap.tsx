@@ -821,6 +821,8 @@ const TripMap: FC<{
 // pin per matched bus, and no per-option upstream/walk ornamentation.
 type OverviewOption = {
   label: string;
+  /** Board-stop name, shown on the map only when two cards share a route. */
+  boardName?: string;
   color: string;
   segCoords: LatLon[];
   // Pre-sliced road polyline from the route's full path (when available).
@@ -881,7 +883,15 @@ const CombinedTripMap: FC<{
         // "(B) 4 min" — route-initial tag so a time is attributable to
         // its route even without judging the text color (user request
         // 2026-07-17; also helps color-blind riders).
-        const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
+        // With two itineraries on one route (report #55) the board chips
+        // read "(B) 4 min" and "(B) 21 min" — same tag, different stops, and
+        // when they merge the rider cannot tell which time belongs where
+        // (operator, 2026-09-02). Name the stop on the board chip in exactly
+        // that case; one card per route keeps the short form.
+        const shared = optionsRef.current.filter((x) => x.label === o.label).length > 1;
+        const tagged = shared && e.kind === "board" && o.boardName
+          ? `(${o.label.charAt(0).toUpperCase()}) ${e.text} · ${o.boardName}`
+          : `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
           part: `<span style="color:${o.color}">${tagged}</span>`,
@@ -3086,6 +3096,7 @@ const TripPlanner: FC<{
               const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords);
               overviewOpts.push({
                 label: o.routeLabel,
+                boardName: (stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/"),
                 color: o.color,
                 segCoords,
                 road,
@@ -3333,13 +3344,15 @@ const TripPlanner: FC<{
                           <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
                       )}
-                      {/* Report #55: this card is the same route boarded at a
-                          different stop than the card next to it — say which. */}
-                      {o.viaAlternate && (
-                        <span style={{ fontSize: 12, color: "#78909c", whiteSpace: "nowrap" }}>
-                          · boarding at {(stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/")}
-                        </span>
-                      )}
+                      {/* Which stop it picks up at, on EVERY shuttle card
+                          (operator request, 2026-09-02). It was only on the
+                          same-route alternates, which is precisely when the
+                          reader most needs to compare — but a rider deciding
+                          between two different routes wants it too, and it is
+                          the one fact the chips row could not answer. */}
+                      <span style={{ fontSize: 12, color: "#78909c", whiteSpace: "nowrap" }}>
+                        · from {(stopNames[o.boardStopId] ?? `Stop ${o.boardStopId}`).replace(/\s*\/\s*/g, "/")}
+                      </span>
                     </>
                   )}
                 </div>

@@ -1,6 +1,6 @@
 {
-  "caption": "Missed the bus at Prospect/Canner: both Blue Day itineraries listed side by side",
-  "base": "http://127.0.0.1:8098",
+  "caption": "Every shuttle card says which stop it picks up at; with two Blue Day itineraries the map names the stop on each board label",
+  "base": "http://127.0.0.1:8095",
   "trip": {
     "board": 100,
     "dest": 38,
@@ -16,7 +16,7 @@
     "/api/buses"
   ],
   "shots": [
-    "/tmp/wt-alt-pickup/pr-preview/alt-pickup/trip.png"
+    "/tmp/wt-alt/pr-preview/alt-pickup/trip.png"
   ],
   "pageErrors": [],
   "crashed": false
