@@ -54,6 +54,6 @@ jobs:
           npx playwright-core install --with-deps chromium
           echo "BOT_CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
 
+      # BOT_CHROMIUM_PATH comes from the install step above, via GITHUB_ENV.
       - name: Gates + staging + smoke (no deploy)
         run: npm run deploy -- --stage-only
-        env:
