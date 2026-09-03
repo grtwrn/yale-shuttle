@@ -28,6 +28,7 @@ import {
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
+import { createSearchTermsTracker } from "./searchTerms.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
@@ -161,6 +162,9 @@ export function buildApp(opts: AppOptions): Hono {
   // Who the operator is, so "somebody wrote in" can mean somebody else. Tests
   // pass their own list; production reads the Fly secret.
   seedOperatorIds(opts.bundle, opts.operatorAnonIds ?? process.env.SHUTTLE_OPERATOR_ANON_IDS);
+  // What riders type, so lookup is fixed with evidence rather than one rider
+  // report at a time. Words only — see searchTerms.ts for why there is no id.
+  const searchTerms = createSearchTermsTracker(opts.bundle);
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -328,6 +332,10 @@ export function buildApp(opts: AppOptions): Hono {
     actives.seen(c.req.header("x-anon-id"), "search", now());
     const q = (c.req.query("q") ?? "").slice(0, 100);
     const results = await geocodeV1(opts.collector.ref.get(), q, geocoder);
+    // The words and whether they found anything — no id, no IP, no time of
+    // day. A search that finds nothing is the only reliable signal that a
+    // place is missing from the list.
+    searchTerms.record(q, results.length, now());
     c.header("Cache-Control", "no-store");
     return c.json({ results });
   });
@@ -675,6 +683,19 @@ export function buildApp(opts: AppOptions): Hono {
         now(),
       ),
     });
+  });
+
+  // What riders searched for, and what found nothing. Same auth as the rest
+  // of /api/stats; the payload is words and counts, never a rider.
+  app.get("/api/stats/searches", requireStatsAuth, (c) => {
+    const days = parseInt(c.req.query("days") ?? "", 10);
+    const limit = parseInt(c.req.query("limit") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json(searchTerms.report(
+      Number.isFinite(days) ? days : 30,
+      Number.isFinite(limit) ? limit : 25,
+      now(),
+    ));
   });
 
   // Reports from someone OTHER than the operator — the dashboard's alert.

@@ -189,6 +189,18 @@
   }
   .hours-legend i.today { border-top-color: var(--series-new); border-top-width: 3px; }
 
+  /* Searches. Two lists: what riders look for, and what they look for and do
+     not find — the second is the one that turns into work. */
+  .terms { display: grid; gap: 6px; }
+  .term {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: 15px; padding: 7px 10px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .term.missing { border-color: var(--series-returning); }
+  .term-q { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .term-n { font-size: 13px; color: var(--ink-2); flex: none; }
+
   /* Rider mail. Loud only when something is unread — the point of the
      section is that a stranger's report should not sit unnoticed among the
      operator's own (2026-09-03). */
@@ -310,6 +322,25 @@
 
     <section>
       <div class="chart-head">
+        <h2>Searched for, not found</h2>
+        <div class="legend"><span id="terms-note"></span></div>
+      </div>
+      <div id="missing" class="terms"></div>
+      <div id="missing-empty" class="empty" hidden>
+        Every search found something.
+      </div>
+    </section>
+
+    <section>
+      <div class="chart-head">
+        <h2>Top searches</h2>
+      </div>
+      <div id="top-terms" class="terms"></div>
+      <div id="top-empty" class="empty" hidden>No searches recorded yet.</div>
+    </section>
+
+    <section>
+      <div class="chart-head">
         <h2>From riders<span id="mail-new" class="mail-new" hidden></span></h2>
         <div class="legend"><span id="mail-total"></span></div>
       </div>
@@ -355,6 +386,11 @@
     hoursLegend: document.getElementById("hours-legend"),
     hoursNote: document.getElementById("hours-note"),
     hoursEmpty: document.getElementById("hours-empty"),
+    missing: document.getElementById("missing"),
+    missingEmpty: document.getElementById("missing-empty"),
+    topTerms: document.getElementById("top-terms"),
+    topEmpty: document.getElementById("top-empty"),
+    termsNote: document.getElementById("terms-note"),
     mail: document.getElementById("mail"),
     mailNew: document.getElementById("mail-new"),
     mailTotal: document.getElementById("mail-total"),
@@ -451,12 +487,14 @@
       // A failure here must not take the numbers down with it: the rider
       // count is the page's job, the mail is the addition.
       getJson("/api/stats/reports?limit=15").catch(function () { return null; }),
-      getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; })
+      getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; }),
+      getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
       renderMail(both[2]);
       renderHours(both[3] && both[3].hourly);
+      renderTerms(both[4]);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -597,6 +635,38 @@
       item.appendChild(label);
       el.hoursLegend.appendChild(item);
     }
+  }
+
+  /**
+   * The two search lists. textContent throughout: every word here was typed
+   * by a member of the public.
+   */
+  function renderTerms(data) {
+    var d = data || {};
+    var missing = d.missing || [], top = d.top || [];
+    var fill = function (el, rows, cls) {
+      el.textContent = "";
+      for (var i = 0; i < rows.length; i++) {
+        var row = document.createElement("div");
+        row.className = cls;
+        var q = document.createElement("span");
+        q.className = "term-q";
+        q.textContent = rows[i].q;
+        row.appendChild(q);
+        var n = document.createElement("span");
+        n.className = "term-n";
+        n.textContent = rows[i].n === 1 ? "once" : rows[i].n + "\u00d7";
+        row.appendChild(n);
+        el.appendChild(row);
+      }
+    };
+    fill(el.missing, missing.slice(0, 12), "term missing");
+    fill(el.topTerms, top.slice(0, 12), "term");
+    el.missingEmpty.hidden = missing.length > 0;
+    el.topEmpty.hidden = top.length > 0;
+    el.termsNote.textContent = d.searches
+      ? d.searches + " searches, " + d.zeroSearches + " found nothing"
+      : "";
   }
 
   function ago(ms) {
