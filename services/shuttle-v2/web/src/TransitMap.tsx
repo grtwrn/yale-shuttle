@@ -15,7 +15,7 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, dwellRangeSec, type UpcomingArrival } from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
@@ -3999,12 +3999,26 @@ const TripPlanner: FC<{
                                       ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (
-                                    <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
-                                          title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(typ)}
-                                    </span>
-                                  )}
+                                  {!showLive && typ != null && typ >= 180 && (() => {
+                                    // A rest is a distribution — show it as
+                                    // one. A point estimate here jumped by
+                                    // four minutes the moment the bus
+                                    // arrived and the median took over
+                                    // (report #77); the range does not.
+                                    const pb = busDwells[String(sid)];
+                                    const stat = pb && pb.n >= 5 ? pb : routeDwells[String(sid)];
+                                    const range = dwellRangeSec(stat);
+                                    return (
+                                      <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
+                                            title={range
+                                              ? "Typical hold here runs this long"
+                                              : "Typical hold at this stop"}>
+                                        ⏸ {range
+                                          ? `${fmtShort(range[0]).replace(/ min$/, "")}–${fmtShort(range[1])}`
+                                          : `~${fmtShort(typ)}`}
+                                      </span>
+                                    );
+                                  })()}
                                 </span>
                               </div>
                             );

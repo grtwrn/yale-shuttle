@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, dwellRangeSec, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -430,5 +430,40 @@ describe("billedDwellSec — one number, shown and billed (report #73)", () => {
   it("says nothing when there is no statistic at all", () => {
     expect(billedDwellSec(undefined, false)).toBeNull();
     expect(billedDwellSec({ med: NaN }, false)).toBeNull();
+  });
+});
+
+describe("dwellRangeSec — a rest is a distribution (report #77)", () => {
+  // "It said it would be five minutes dwell, but once it got there, it went
+  // to a nine minute dwell. Perhaps lower quartile too low?" Both numbers
+  // were right — 5 is billed for a stop ahead, 9 once the bus is there — but
+  // a figure that moves four minutes on arrival reads as the app changing
+  // its mind. Showing the spread says what the data actually knows.
+  it("gives the billed and typical ends of a real rest", () => {
+    expect(dwellRangeSec({ med: 540, low: 300 })).toEqual([300, 540]);
+  });
+
+  it("stays a point when the spread is noise", () => {
+    // "4-5 min" tells a rider nothing "~5 min" did not.
+    expect(dwellRangeSec({ med: 300, low: 260 })).toBeNull();
+  });
+
+  it("stays a point where the calibrator has placed no quantile", () => {
+    expect(dwellRangeSec({ med: 540 })).toBeNull();
+  });
+
+  it("never inverts, whatever the inputs", () => {
+    expect(dwellRangeSec({ med: 300, low: 400 })).toBeNull();
+    expect(dwellRangeSec({ med: NaN, low: 100 })).toBeNull();
+    expect(dwellRangeSec(undefined)).toBeNull();
+  });
+
+  it("agrees with what the ETA bills at each end", () => {
+    // The low end is exactly what a stop ahead costs, the high end exactly
+    // what it costs once the bus is standing there. One source, two ends.
+    const stat = { med: 540, low: 300 };
+    const range = dwellRangeSec(stat)!;
+    expect(range[0]).toBe(billedDwellSec(stat, false));
+    expect(range[1]).toBe(billedDwellSec(stat, true));
   });
 });

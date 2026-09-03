@@ -1,0 +1,20 @@
+{
+  "caption": "A rest still ahead shows its spread (5-9 min) instead of a point that jumps on arrival — report #77. Dwell payload mocked so every stop carries a rest-sized hold.",
+  "base": "http://127.0.0.1:8181",
+  "trip": {
+    "board": 127,
+    "dest": 23
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/shots-rng3/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

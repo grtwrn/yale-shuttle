@@ -39,6 +39,36 @@ const MIN_HOP_SEC = 30;
  * 10" (report #73). Displaying one number while billing another is a bug
  * whichever number is right, so there is now only one.
  */
+/**
+ * The spread a rider should be shown for a hold the bus has not started:
+ * `[billed, typical]`, or null when there is nothing worth showing a range
+ * for.
+ *
+ * Report #77, within an hour of #40 shipping: "It said it would be five
+ * minutes dwell, but once it got there, it went to a nine minute dwell."
+ * Both numbers were ours and both were right — 5 is the low quantile the ETA
+ * bills for a stop still ahead, 9 is the median it bills once the bus is
+ * standing there — but a number that changes by four minutes on arrival
+ * reads as the app changing its mind.
+ *
+ * A rest is a distribution, which is the entire argument for pricing it at a
+ * low quantile in the first place. So show it as one: "5-9 min" ahead of
+ * time, and the live elapsed counter against the median once the bus is
+ * there. Nothing about the arithmetic changes; the screen simply stops
+ * implying a precision the data never had.
+ */
+export function dwellRangeSec(
+  stat: { med: number; low?: number } | undefined,
+): [number, number] | null {
+  if (!stat || !Number.isFinite(stat.med)) return null;
+  const low = stat.low;
+  if (low === undefined || !Number.isFinite(low) || low >= stat.med) return null;
+  // A spread under a minute is noise, not information: "4-5 min" says
+  // nothing "~5 min" did not, and costs a rider a wider number to read.
+  if (stat.med - low < 60) return null;
+  return [low, stat.med];
+}
+
 export function billedDwellSec(
   stat: { med: number; low?: number } | undefined,
   started: boolean,
