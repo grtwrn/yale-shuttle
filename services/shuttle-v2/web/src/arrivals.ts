@@ -127,7 +127,9 @@ export function billedDwellSec(
  * What DID fix the reported symptom is in the collector, not here: a parked
  * bus that shuffled a few metres restarted its own dwell clock, so the credit
  * was ~0 on a bus most of the way through its layover. See
- * `BusState.stationarySince`.
+ * `BusState.stationarySince`, whose frame is the stop the bus is waiting at —
+ * anchoring it on the BUS is what let a yard shuffle throw the layover away
+ * (report #82).
  */
 
 export type UpcomingArrival = {
