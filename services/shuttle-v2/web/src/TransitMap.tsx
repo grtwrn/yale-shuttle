@@ -10,7 +10,8 @@ import {
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
-  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours, outlookRange, rangeText,
+  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
+  tempTrend, temperatureIn, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -3004,13 +3005,19 @@ const TripPlanner: FC<{
         const nowMs = Date.now();
         const later = nextWetHour(hourly, nowMs);
         const hours = outlookHours(hourly, nowMs);
-        // The high/low describes exactly the hours the strip lists, so
-        // opening it shows where those two numbers came from.
-        const range = outlookRange(hours);
-        // Null when the window is flat IN THE UNIT ON SCREEN (68-69°F is one
-        // number in Celsius), and then the line carries no arrows — so the
-        // strip must not mark cells the line never mentioned.
-        const span = rangeText(range, tempUnit);
+        // ONE number, not two: where the temperature is heading from here,
+        // and when it gets there. The low is not news at 9am on a warming
+        // day — it is the temperature the rider is already standing in
+        // (operator, 2026-09-03).
+        const trend = tempTrend(hours, rain.temperatureF);
+        // Null when the destination reads the same as now IN THE UNIT ON
+        // SCREEN, and then the strip must not mark a cell the line never
+        // mentioned.
+        const span = trendText(trend, rain.temperatureF, tempUnit);
+        // Screen readers get words, not an arrow glyph.
+        const trendSpeech = trend
+          ? `${trend.dir === "up" ? "Up to" : "Down to"} ${degreesText(trend.temperatureF, tempUnit)}`
+          : "";
         return (
           <div style={{
             marginBottom: 8,
@@ -3038,7 +3045,27 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, range)}</span>
+                <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                  <span>{weatherMessage(rain, later, tempUnit)}</span>
+                  {/* The window's high and low get their OWN row, labelled
+                      with the hour they run to. Inside the sentence they
+                      pushed it onto a second line anyway — "69°F ↑80° ↓69° ·
+                      Cloudy · no rain expected" shipped wrapped on
+                      2026-09-03 — and an unlabelled pair of numbers in the
+                      middle of a sentence never said which hours it meant. */}
+                  {span && (
+                    <span
+                      role="img"
+                      aria-label={`${trendSpeech} by ${hourLabel(trend!.timeMs)}`}
+                      style={{
+                        fontSize: 11, fontWeight: 400,
+                        color: warn ? "#a06a10" : "#90a4ae",
+                      }}
+                    >
+                      {span}
+                    </span>
+                  )}
+                </span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}
@@ -3082,11 +3109,16 @@ const TripPlanner: FC<{
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
                   // Which cell each arrow in the line points at. Only marked
                   // when the two differ — a flat window has no high or low.
-                  const peak = span && range && h.temperatureF === range.highF
-                    ? "↑"
-                    : span && range && h.temperatureF === range.lowF
-                      ? "↓"
-                      : "";
+                  // Marks only the hour the LINE names, and compares in the
+                  // unit on screen: in °C two hours often print the same
+                  // number (60°F and 61°F are both 16°C), so every cell
+                  // showing that number is marked rather than an arbitrary
+                  // one of them.
+                  const shown = temperatureIn(h.temperatureF, tempUnit);
+                  const peak = span && trend && shown != null
+                    && shown === temperatureIn(trend.temperatureF, tempUnit)
+                    ? (trend.dir === "up" ? "↑" : "↓")
+                    : "";
                   return (
                     <div key={h.timeMs} style={{
                       flexShrink: 0, minWidth: 62, textAlign: "center",
@@ -3806,9 +3838,10 @@ const TripPlanner: FC<{
                             </button>
                           </>
                         )}
-                        {o.mode === "shuttle" && (
-                          <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
-                        )}
+                        {/* Always reached: this whole row renders only for a
+                            shuttle option, so "I'm on it" always precedes
+                            Report and the separator is unconditional. */}
+                        <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); reportOption(o); }}
                           title="Report that this route is wrong or confusing"

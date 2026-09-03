@@ -42,8 +42,15 @@ jobs:
       - name: Install dependencies (backend + web)
         run: npm ci && npm ci --prefix web
 
+      # NOT `apt-get install chromium-browser`: on Ubuntu that package is a
+      # snap shim, and on 2026-09-03 the snap store answered its assertion
+      # fetch with a 408 and failed the run. Playwright's own build is pinned
+      # to the playwright-core already in the lockfile and comes from a CDN
+      # the rest of the job does not depend on.
       - name: Install chromium for the browser smoke
-        run: sudo apt-get update -q && sudo apt-get install -y -q chromium-browser
+        run: |
+          npx playwright-core install --with-deps chromium
+          echo "BOT_CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -52,4 +59,3 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLYCTL: flyctl
-          BOT_CHROMIUM_PATH: /usr/bin/chromium-browser
