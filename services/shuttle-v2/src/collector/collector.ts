@@ -713,7 +713,13 @@ export class Collector {
         : undefined;
       const atStop = state && atStopCandidate &&
         distanceMeters(o, atStopCandidate) <= AT_STOP_MAX_M
-        ? { id: state.nearestStopId, since: state.enteredAt }
+        // `stationarySince`, NOT `enteredAt`: the latter restarts whenever a
+        // different stop becomes nearest, and a bus shuffling a few metres
+        // while parked flips that. A rider watched "⏸ 45s" on a bus most of
+        // the way through a ~10 min layover at 344 Winchester (2026-09-03),
+        // which zeroed the stall credit and charged the layover twice. The
+        // stationary clock only restarts on real movement. See BusState.
+        ? { id: state.nearestStopId, since: state.stationarySince }
         : null;
       this.livePositions.set(key, {
         busId: o.busId,
