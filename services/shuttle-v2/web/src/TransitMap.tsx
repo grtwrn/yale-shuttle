@@ -22,6 +22,7 @@ import {
   type GeocodeResult,
 } from "./format";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
+import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
   AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
   findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
@@ -6255,13 +6256,33 @@ const TransitMap: FC = () => {
     } catch { return true; }
   });
   const [locateError, setLocateError] = useState<string | null>(null);
-  const watchIdRef = React.useRef<number | null>(null);
+  const geoWatchRef = React.useRef<GeoWatchHandle | null>(null);
   // Accuracy tier the live watch is currently running at (null = none yet).
-  // Every watchPosition registration below records its tier here so the
+  // Every watch registration below records its tier here so the
   // battery-saver effect can tell "needs a different accuracy" from "already
   // correct" — restarting a healthy watch throws away the current fix and
   // re-acquires GPS from cold, which is what a rider sees as a frozen dot.
   const gpsPreciseRef = React.useRef<boolean | null>(null);
+
+  // The ONE way a watch gets started (mount, tier change, tab made visible
+  // again). Report #65: the last two used to register a bare watchPosition
+  // with no timeout and an error callback that did nothing, so an app left
+  // open long enough to hit one lost the report-#54 hardening and went back
+  // to spinning on "Locating…" forever. startGeoWatch keeps them identical.
+  const startGpsWatch = (precise: boolean) => {
+    geoWatchRef.current?.stop();
+    gpsPreciseRef.current = precise;
+    geoWatchRef.current = startGeoWatch(navigator.geolocation, {
+      precise,
+      onFix: (p) => {
+        setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
+        setLocating(false);
+        setLocateError(null);
+      },
+      // Whatever happened, stop claiming we are still looking.
+      onSettled: () => setLocating(false),
+    });
+  };
 
   const startLocating = () => {
     console.log("[locate] startLocating called; secure context:", window.isSecureContext, "geo available:", !!navigator.geolocation);
@@ -6279,18 +6300,11 @@ const TransitMap: FC = () => {
       console.log("[locate] got position", pos.coords);
       setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       setLocating(false);
-      if (watchIdRef.current == null) {
+      if (geoWatchRef.current == null) {
         // The LIVE WATCH stays high-accuracy regardless of how the first fix
         // was obtained — gps-tier-check.mjs asserts exactly this (one watch,
-        // no downgrade). Only the one-shot below is ever allowed to be coarse.
-        gpsPreciseRef.current = true;
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (p) => {
-            setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-          },
-          () => {},
-          { enableHighAccuracy: true, maximumAge: 5_000 },
-        );
+        // no downgrade). Only the one-shots are ever allowed to be coarse.
+        startGpsWatch(true);
       }
     };
     const fail = (err: GeolocationPositionError) => {
@@ -6316,9 +6330,7 @@ const TransitMap: FC = () => {
         // PERMISSION_DENIED (asking again cannot help).
         if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
           console.warn("[locate] high-accuracy failed, coarse retry", err.code);
-          navigator.geolocation.getCurrentPosition(applyFix, fail, {
-            enableHighAccuracy: false, timeout: 20_000, maximumAge: 120_000,
-          });
+          navigator.geolocation.getCurrentPosition(applyFix, fail, RESCUE_OPTIONS);
         } else {
           fail(err);
         }
@@ -6331,7 +6343,8 @@ const TransitMap: FC = () => {
   };
 
   useEffect(() => () => {
-    if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    geoWatchRef.current?.stop();
+    geoWatchRef.current = null;
   }, []);
 
   // Auto-start watchPosition on mount. Previously GPS only kicked in
@@ -6345,30 +6358,13 @@ const TransitMap: FC = () => {
   // or the "Locating…" state below.
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
-    if (watchIdRef.current != null) return;
-    gpsPreciseRef.current = true;
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (p) => {
-        setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-        setLocating(false);
-        setLocateError(null);
-      },
-      (err) => {
-        // Don't show the error banner for the silent auto-start —
-        // only for explicit locate requests. A user who has
-        // permissions blocked should still be able to enter a
-        // From manually.
-        //
-        // But ALWAYS clear the "Locating…" state (report #54): this handler
-        // used to do nothing for TIMEOUT/POSITION_UNAVAILABLE — and skipped
-        // the clear for PERMISSION_DENIED too — so a rider with no cached
-        // location watched the spinner run forever, and refreshing just
-        // restarted the same doomed watch.
-        setLocating(false);
-        if (err.code === err.PERMISSION_DENIED) return;
-      },
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 },
-    );
+    if (geoWatchRef.current != null) return;
+    // No error banner for the silent auto-start — only for explicit locate
+    // requests. A rider with permissions blocked should still be able to
+    // type a From. But the "Locating…" state is ALWAYS cleared (report #54):
+    // this handler used to do nothing on TIMEOUT/POSITION_UNAVAILABLE, so a
+    // rider with no cached location watched the spinner run forever.
+    startGpsWatch(true);
     // If we don't have ANY location yet (cache stale, first run),
     // show the "Locating…" hint so the rider knows to wait.
     if (!userLatLon) setLocating(true);
@@ -6399,21 +6395,9 @@ const TransitMap: FC = () => {
     !!boardedRide || listView === "trip" || (listView === "map" && (locating || userLatLon !== null));
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
-    if (watchIdRef.current == null) return; // nothing running yet — mount effect owns the first start
+    if (geoWatchRef.current == null) return; // nothing running yet — mount effect owns the first start
     if (gpsPreciseRef.current === tripActiveForGps) return; // already at the right tier
-    navigator.geolocation.clearWatch(watchIdRef.current);
-    gpsPreciseRef.current = tripActiveForGps;
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (p) => {
-        setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-        setLocating(false);
-        setLocateError(null);
-      },
-      () => { /* silent — same policy as the auto-start watch */ },
-      tripActiveForGps
-        ? { enableHighAccuracy: true, maximumAge: 5_000 }
-        : { enableHighAccuracy: false, maximumAge: 60_000 },
-    );
+    startGpsWatch(tripActiveForGps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripActiveForGps]);
 
@@ -6426,24 +6410,13 @@ const TransitMap: FC = () => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     const onVisibility = () => {
       if (document.hidden) {
-        if (watchIdRef.current != null) {
-          navigator.geolocation.clearWatch(watchIdRef.current);
-          watchIdRef.current = null;
+        if (geoWatchRef.current != null) {
+          geoWatchRef.current.stop();
+          geoWatchRef.current = null;
           gpsPreciseRef.current = null;
         }
-      } else if (watchIdRef.current == null) {
-        gpsPreciseRef.current = tripActiveForGps;
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (p) => {
-            setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
-            setLocating(false);
-            setLocateError(null);
-          },
-          () => { /* silent */ },
-          tripActiveForGps
-            ? { enableHighAccuracy: true, maximumAge: 5_000 }
-            : { enableHighAccuracy: false, maximumAge: 60_000 },
-        );
+      } else if (geoWatchRef.current == null) {
+        startGpsWatch(tripActiveForGps);
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
