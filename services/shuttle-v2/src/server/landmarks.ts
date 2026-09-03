@@ -185,6 +185,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery"], anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
   { label: "Mamoun's Falafel", lat: 41.310327, lon: -72.934555, aliases: ["mamouns", "falafel", "85 howe"], anchorStop: "Howe / Edgewood" }, // OSM N2191968199
   { label: "Modern Apizza", lat: 41.313825, lon: -72.912834, aliases: ["modern", "modern pizza", "874 state"], anchorStop: "Nicoll / Edwards" }, // OSM N470623969
+  { label: "One 6 Three", lat: 41.32108, lon: -72.90911, aliases: ["one6three", "163", "one six three", "163 pizza", "one 6 three pizza"], anchorStop: "Willow / Foster" }, // OSM N3099233997
   { label: "Pataka", lat: 41.312649, lon: -72.933259, aliases: ["pataka indian"], anchorStop: "Elm / Lynwood" }, // OSM N2637704331
   { label: "Rubamba", lat: 41.306923, lon: -72.930973, aliases: ["arepas", "25 high"], anchorStop: "York / Crown" }, // OSM N11606236058
   { label: "Sally's Apizza", lat: 41.303057, lon: -72.920077, aliases: ["sallys", "sally's", "wooster street pizza", "237 wooster"], anchorStop: "Olive / Wooster" }, // OSM N2567417097
