@@ -166,6 +166,13 @@ export interface ActivesTracker {
    * Days with no rows are absent, like history().
    */
   hourly(days?: number, now?: number): DayHours[];
+  /**
+   * Is this browser one the statistics ignore — a verification harness, or an
+   * id the operator flagged? Callers other than the counters need this too:
+   * `search_terms` stores no anon id by design and so cannot filter test
+   * traffic after the fact, and has to decide before it writes.
+   */
+  isExcluded(anonId: string | undefined | null): boolean;
   /** Write accumulated counters through. Called on a timer and at shutdown. */
   flush(now?: number): void;
   stop(): void;
@@ -276,7 +283,29 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
     /* pre-migration database — the next boot seeds it */
   }
 
-  const timer = setInterval(() => flush(), FLUSH_MS);
+  /**
+   * The flagged ids, held in memory: `/api/buses` is ~40 req/s and a SELECT
+   * per request is exactly the cost this module exists to avoid. The table is
+   * a handful of rows and only the operator writes it, so the whole set is
+   * reloaded on the flush cadence — an id flagged through /api/stats/exclude
+   * takes effect within a minute rather than instantly, which is the right
+   * trade for never touching the database on a hot path.
+   */
+  let excludedIds = new Set<string>();
+  const reloadExcluded = () => {
+    try {
+      const rows = db.all<{ anon_id: string }>(sql`SELECT anon_id FROM excluded_anon_ids`);
+      excludedIds = new Set(rows.map((r) => r.anon_id));
+    } catch {
+      /* pre-migration database — keep whatever we had, and never throw */
+    }
+  };
+  reloadExcluded();
+
+  const timer = setInterval(() => {
+    flush();
+    reloadExcluded();
+  }, FLUSH_MS);
   // Never hold the process open on account of analytics.
   timer.unref?.();
 
@@ -404,6 +433,11 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
       });
     },
 
+    isExcluded(anonId) {
+      // No id is not an excluded id: a rider with storage disabled sends no
+      // header, and their zero-result search is exactly the signal we want.
+      return typeof anonId === "string" && excludedIds.has(anonId);
+    },
     sinceDay() {
       return SINCE_DAY;
     },
