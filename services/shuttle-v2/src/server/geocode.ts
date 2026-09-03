@@ -1,15 +1,19 @@
 import type { TransitNetwork } from "../network/TransitNetwork.js";
+import { LANDMARKS, type Landmark } from "./landmarks.js";
+
+// The curated list moved to landmarks.ts (it is replaced wholesale by a
+// verified list); callers that imported it from here keep working.
+export { LANDMARKS };
+export type { Landmark };
 
 /**
  * Lightweight geocoder over shuttle stops + a curated Yale landmark list.
  *
- * The v1 server combined this with Mapbox, Nominatim, and Photon for arbitrary
- * NYC-area addresses. That port is queued separately — most rider queries are
- * "Sterling", "SOM", "Peabody", which this covers without any external calls.
- *
- * Scoring is a simple containment match with a small bonus for prefix hits.
- * Results are sorted by score descending, then alphabetically. Empty query
- * returns the full landmark list — handy for "browse" interactions.
+ * Most rider queries are "Sterling", "SOM", "Peabody", which this answers
+ * without any external call; `v1compat.ts` appends Photon/Nominatim results
+ * for everything else. Results are sorted by score descending, then
+ * alphabetically. Empty query returns the full landmark list — handy for
+ * "browse" interactions.
  */
 export interface GeocodeHit {
   label: string;
@@ -18,99 +22,59 @@ export interface GeocodeHit {
   /** "stop" for shuttle stops, "landmark" for curated POIs. */
   kind: "stop" | "landmark";
   score: number;
+  /** Set when the best match came through an alias rather than the label. */
+  viaAlias?: true;
 }
-
-/**
- * Yale-area landmarks the rider is likely to type into the trip planner.
- * Keep the list short and high-signal — a long list dilutes the ranking and
- * adds maintenance load.
- *
- * ⚠️ Hand-entered coordinates rot silently. Every entry here was audited on
- * 2026-08-31 against OpenStreetMap/Nominatim (forward AND reverse geocode) and
- * against the live shuttle stop network; seven of the original fourteen were
- * wrong, one by 1.2 km. `geocode.test.ts` now pins each landmark to the shuttle
- * stop that serves it, so the same drift fails the suite instead of sending a
- * rider across town. **If you add or move an entry, cross-check it externally
- * and add its anchor to that test** — do not eyeball it.
- */
-export const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
-  // -- Weekend grocery runs (report #45 asked for these by name) ------------
-  // Coordinates are copied from the serving shuttle stops themselves (ids
-  // 119, 169, 170), not hand-entered; the anchor test pins them there.
-  { label: "Trader Joe's (Milford)", lat: 41.251375, lon: -73.018082 },
-  { label: "ShopRite (Hamden)", lat: 41.36879, lon: -72.92047 },
-  { label: "Aldi / Walmart (Hamden)", lat: 41.37512, lon: -72.91709 },
-
-  // -- Central campus / downtown --------------------------------------------
-  { label: "Sterling Memorial Library", lat: 41.3115, lon: -72.9282 },
-  { label: "Beinecke Library", lat: 41.3115, lon: -72.9272 },
-  { label: "Bass Library", lat: 41.3110, lon: -72.9281 },
-  { label: "Old Campus", lat: 41.3083, lon: -72.9282 },
-  // Was 41.3091,-72.9298 — east of York St, on the Old Campus block, and
-  // reverse-geocoding it named no building at all. OSM's Davenport College
-  // polygon (248 York St) sits 224 m NW, west of York between Chapel and Elm,
-  // which is where the college actually is.
-  { label: "Davenport College", lat: 41.3105, lon: -72.9317 },
-  { label: "Woolsey Hall", lat: 41.3112, lon: -72.9262 },
-  { label: "Schwarzman Center", lat: 41.3118, lon: -72.9264 },
-  { label: "Yale Law School", lat: 41.3120, lon: -72.9278 },
-  { label: "Yale University Art Gallery", lat: 41.3084, lon: -72.9309 },
-  { label: "Yale Center for British Art", lat: 41.3079, lon: -72.9309 },
-  // Was 41.3115,-72.9173 — 1.2 km east, which reverse-geocodes to 712 State
-  // Street. The gym is 70 Tower Parkway, 44 m from our own "Payne Whitney Gym"
-  // shuttle stop.
-  { label: "Payne Whitney Gym", lat: 41.3137, lon: -72.9311 },
-  // Nominatim has no POI for Yale Health, so the curated list is the only way
-  // a rider finds it. 55 Lock St, per the OSM address node.
-  { label: "Yale Health Center", lat: 41.3157, lon: -72.9278 },
-
-  // -- Science Hill / Prospect / Whitney ------------------------------------
-  // Was 41.3168,-72.9234 — 481 m north, on Kroon Hall. Becton is 15 Prospect,
-  // 22 m from the "Becton / 15 Prospect" stop.
-  { label: "Becton Center", lat: 41.3127, lon: -72.9251 },
-  // Was 41.3098,-72.9259 — 556 m south, on 51 Temple St. Rosenkranz is
-  // 115 Prospect St.
-  { label: "Rosenkranz Hall", lat: 41.3147, lon: -72.9246 },
-  // Was 41.3163,-72.9209 — outside Evans Hall's footprint and reverse-geocoding
-  // to the Kline Geology Laboratory next door. SOM is Evans Hall, 165 Whitney,
-  // 32 m from the "SOM" stop.
-  { label: "School of Management (SOM)", lat: 41.3152, lon: -72.9205 },
-  // Was 41.3151,-72.9223 — 145 m SW, outside the museum footprint.
-  { label: "Peabody Museum", lat: 41.3160, lon: -72.9211 },
-  { label: "Ingalls Rink", lat: 41.3168, lon: -72.9250 },
-  // Renamed: the 2023 renovation dropped "Biology" (biology moved to the Yale
-  // Science Building) and OSM now maps 219 Prospect as "Kline Tower". The old
-  // name stays in the label so riders who still type it get a hit. The old
-  // coordinate 41.3199,-72.9223 was ~300 m north, on Edwards Street.
-  { label: "Kline Tower (Kline Biology Tower)", lat: 41.3172, lon: -72.9225 },
-  { label: "Yale Science Building (YSB)", lat: 41.3174, lon: -72.9218 },
-  { label: "Divinity School", lat: 41.3232, lon: -72.9225 },
-
-  // -- Medical campus / south -----------------------------------------------
-  // Report #14 got the *matching* fixed but not the coordinate: 41.3162,-72.9367
-  // is 1.4 km NW, on Goffe Street. YSPH is 60 College St (LEPH), 52 m from the
-  // "LEPH / 60 College" stop.
-  { label: "School of Public Health (YSPH)", lat: 41.3037, lon: -72.9322 },
-  { label: "School of Medicine (YSM)", lat: 41.3032, lon: -72.9337 },
-  { label: "Yale-New Haven Hospital", lat: 41.3035, lon: -72.9358 },
-  { label: "Union Station", lat: 41.2974, lon: -72.9266 },
-];
 
 const MAX_RESULTS = 10;
 
-export function geocode(network: TransitNetwork, rawQuery: string): GeocodeHit[] {
-  const q = normalize(rawQuery);
-  if (q.length === 0) {
-    return LANDMARKS.map((l) => ({ ...l, kind: "landmark" as const, score: 0 }));
+/**
+ * `landmarks` is injectable so the matcher can be tested against fixtures
+ * (an apostrophe'd shop, a deliberately confusable name) without adding
+ * entries to the rider-facing list.
+ */
+export function geocode(
+  network: TransitNetwork,
+  rawQuery: string,
+  landmarks: readonly Landmark[] = LANDMARKS,
+): GeocodeHit[] {
+  const query = parseQuery(rawQuery);
+  if (query === null) {
+    return landmarks.map((l) => ({
+      label: l.label,
+      lat: l.lat,
+      lon: l.lon,
+      kind: "landmark" as const,
+      score: 0,
+    }));
   }
 
   const out: GeocodeHit[] = [];
-  for (const l of LANDMARKS) {
-    const score = scoreMatch(q, normalize(l.label));
-    if (score > 0) out.push({ ...l, kind: "landmark", score });
+  // A street address is an alias too ("85 howe", "1000 chapel"), but only
+  // when the rider is typing an address: without a number in the query, the
+  // street word alone would pull every cafe on Chapel Street into a search
+  // for the Chapel stops (review finding, 2026-09-02).
+  // A bare number is a stop ("800" is Building 800), not an address.
+  const queryHasNumber = /\d/.test(query.text) && query.tokens.length >= 2;
+  for (const l of landmarks) {
+    // A landmark answers to its label AND every alias, and the best of them
+    // counts: "kbt" must rank Kline Tower exactly as "kline tower" does.
+    let score = scoreMatch(query, candidate(l.label));
+    const labelScore = score;
+    for (const name of l.aliases ?? []) {
+      if (score === 1) break;
+      if (!queryHasNumber && /^\d+ /.test(name)) continue;
+      score = Math.max(score, scoreMatch(query, candidate(name)));
+    }
+    if (score > 0) {
+      out.push({
+        label: l.label, lat: l.lat, lon: l.lon, kind: "landmark", score,
+        ...(labelScore < score ? { viaAlias: true as const } : {}),
+      });
+    }
   }
   for (const stop of network.stops.values()) {
-    const score = scoreMatch(q, normalize(stop.name));
+    const score = scoreMatch(query, candidate(stop.name));
     if (score > 0) {
       out.push({
         label: stop.name,
@@ -122,7 +86,17 @@ export function geocode(network: TransitNetwork, rawQuery: string): GeocodeHit[]
     }
   }
 
-  out.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+  // At equal score a stop outranks a landmark: "york" is a request for the
+  // York Street stops, and a landmark that only mentions the street in an
+  // alias must not take the row from them.
+  // ...and a match on the label outranks one through an alias: "sterlin"
+  // is Sterling Memorial Library before the three places whose alias merely
+  // mentions Sterling.
+  const kindRank = (h: GeocodeHit) => (h.kind === "stop" ? 0 : 1);
+  const aliasRank = (h: GeocodeHit) => (h.viaAlias ? 1 : 0);
+  out.sort((a, b) =>
+    b.score - a.score || kindRank(a) - kindRank(b) || aliasRank(a) - aliasRank(b) ||
+    a.label.localeCompare(b.label));
 
   // A curated landmark that IS a shuttle stop (the grocery destinations sit on
   // the stops' own coordinates) would otherwise appear twice — a rider typing
@@ -130,56 +104,189 @@ export function geocode(network: TransitNetwork, rawQuery: string): GeocodeHit[]
   // a spot, the LANDMARK survives regardless of score: its label carries more
   // information ("Trader Joe's (Milford)" vs "Trader Joe's"), and several
   // curated entries sit on their serving stops by design (SOM, Divinity).
+  // "Regardless of score" is the wrong rule, though: with 148 landmarks,
+  // most sit inside some stop's box, and "howe" lost the Howe / Edgewood
+  // stop to Mamoun's (alias "85 howe"), which the frontend then auto-picked.
+  // The list is sorted by score, so the first of a twin pair is the better
+  // match; the landmark takes the row when it scores better, or scores the
+  // same AND sits on the stop itself (within ~40 m: SOM, Peabody, the
+  // groceries). At equal score from further away it is a different place
+  // that happens to share the block — College Street Music Hall is 59 m from
+  // College / Crown and must not answer "college st" in the stop's place.
+  // Two STOPS on one corner ((N)/(S) platforms, "Audubon / Orange" beside
+  // "Orange / Audobon") collapse to one row too — the planner picks the
+  // platform, the rider only needs the corner. Two LANDMARKS never merge:
+  // the verified list keeps distinct places that share a block (a cafe in
+  // the British Art Center's ground floor, the Apple Store beside the Yale
+  // Bookstore), and folding them would hide the label the rider typed.
+  // ~40 m: a landmark placed on its serving stop, not merely on the block.
+  const onTheStop = (a: GeocodeHit, b: GeocodeHit) =>
+    Math.abs(a.lat - b.lat) < 3.6e-4 && Math.abs(a.lon - b.lon) < 4.8e-4;
   const near = (a: GeocodeHit, b: GeocodeHit) =>
+    !(a.kind === "landmark" && b.kind === "landmark") &&
     Math.abs(a.lat - b.lat) < 6e-4 && Math.abs(a.lon - b.lon) < 8e-4;
   const deduped: GeocodeHit[] = [];
   for (const h of out) {
     const twinIdx = deduped.findIndex((k) => near(k, h));
     if (twinIdx === -1) deduped.push(h);
-    else if (h.kind === "landmark" && deduped[twinIdx]!.kind === "stop") deduped[twinIdx] = h;
+    else if (
+      h.kind === "landmark" && deduped[twinIdx]!.kind === "stop" &&
+      (h.score > deduped[twinIdx]!.score ||
+        (h.score === deduped[twinIdx]!.score && onTheStop(h, deduped[twinIdx]!)))
+    ) deduped[twinIdx] = h;
   }
   return deduped.slice(0, MAX_RESULTS);
 }
 
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    // Apostrophes are deleted, not collapsed to spaces: "Joe's" must equal
-    // "Joes", not "joe s" — a rider typing without the apostrophe found
-    // nothing (report #45).
-    .replace(/['\u2019]/g, "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+// -- Normalisation ------------------------------------------------------------
+
+/**
+ * Both sides of every comparison go through this, so a rider's spelling and
+ * the upstream name only have to agree after the noise is gone.
+ */
+export function normalizeName(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      // Apostrophes are deleted, not collapsed to spaces: "Joe's" must equal
+      // "Joes", not "joe s" — a rider typing without the apostrophe found
+      // nothing (report #45), and the operator hit the same wall with
+      // "elenas" on 2026-09-02.
+      .replace(/['‘’]/g, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      // The upstream stop is "Stop & Shop"; riders type "stop and shop".
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+  );
 }
 
 /**
- * Query tokens that carry no signal here — nearly everything a rider can type
- * is Yale's, so "yale school of public health" must match a label that never
- * mentions Yale.
+ * Query tokens that carry no signal here — nearly everything a rider can
+ * type is Yale's, in New Haven, so "yale school of public health" must match
+ * a label that never mentions Yale (report #14) and "stop and shop" must
+ * survive its conjunction. "st"/"street" are here because upstream names
+ * spell streets three ways ("130 Prospect Street", "State St Station",
+ * "Orange / Audobon") and a rider typing "orange st" found nothing: no stop
+ * has a word beginning with "st" after "orange". Dropping them from the QUERY
+ * only is safe — every one of the 172 live stop names typed verbatim still
+ * ranks itself first (the exact/prefix tiers see the untouched query).
  */
-const STOPWORDS = new Set(["yale", "university", "the", "at"]);
+const STOPWORDS = new Set([
+  "yale", "university", "the", "at", "of", "on", "in", "and", "new", "haven", "st", "street",
+]);
+
+interface Query {
+  /** The full normalised query. */
+  text: string;
+  /** The query with stopwords removed, as text ("" when nothing survives). */
+  stripped: string;
+  /** Tokens the tiers below must account for, stopwords removed. */
+  tokens: string[];
+}
+
+function parseQuery(raw: string): Query | null {
+  const text = normalizeName(raw);
+  if (text.length === 0) return null;
+  const all = text.split(" ");
+  const meaningful = all.filter((t) => !STOPWORDS.has(t));
+  // "new haven" alone is all stopwords; better to match on them than on
+  // nothing.
+  const tokens = meaningful.length > 0 ? meaningful : all;
+  const stripped = meaningful.join(" ");
+  return { text, stripped, tokens };
+}
+
+interface Candidate {
+  text: string;
+  words: string[];
+}
+
+function candidate(name: string): Candidate {
+  const text = normalizeName(name);
+  return { text, words: text.split(" ") };
+}
+
+// -- Scoring ------------------------------------------------------------------
 
 /**
- * 1.0 for an exact match, 0.75 for prefix, 0.5 for any-word match, 0.4 when
- * every meaningful query token prefixes some candidate word (superset queries
- * like "yale school of public health"), 0.25 for substring, 0 otherwise.
- * Keeps the dialer simple while still putting `som` ahead of
- * "social some thing" — the more specific the hit, the higher.
+ * Tiers, highest first. Each is tried against the whole query and, where it
+ * differs, the stopword-stripped one, so "the commons" and "commons" score
+ * alike:
+ *
+ *  1.0  exact        — the candidate is the query
+ *  0.75 prefix       — the candidate starts with the query ("state st" →
+ *                      "State St Station")
+ *  0.5  word-prefix  — some candidate word starts with the query ("peabody"
+ *                      → "Peabody Museum / Whitney / Sachem")
+ *  0.4  token-prefix — every meaningful query token prefixes some candidate
+ *                      word, any order ("yale peabody museum")
+ *  0.3  fuzzy        — as token-prefix, but a token may instead be a typo of
+ *                      a candidate word; see {@link fuzzyWordMatch} for the
+ *                      length rule. This is how "audubon" reaches the
+ *                      upstream-misspelt "Orange / Audobon" (which we may not
+ *                      edit) and "peobody" reaches the museum.
+ *  0.25 substring    — the query appears anywhere in the candidate
+ *
+ * The more specific the hit, the higher, which keeps `som` ahead of
+ * "social some thing".
  */
-function scoreMatch(query: string, candidate: string): number {
-  if (candidate === query) return 1;
-  if (candidate.startsWith(query)) return 0.75;
-  const words = candidate.split(" ");
-  if (words.some((w) => w.startsWith(query))) return 0.5;
-  const qTokens = query.split(" ").filter((t) => !STOPWORDS.has(t));
-  if (
-    qTokens.length > 0 &&
-    qTokens.every((t) => words.some((w) => w.startsWith(t)))
-  ) {
-    return 0.4;
+function scoreMatch(q: Query, c: Candidate): number {
+  const forms = q.stripped.length > 0 && q.stripped !== q.text ? [q.text, q.stripped] : [q.text];
+  if (forms.some((f) => c.text === f)) return 1;
+  if (forms.some((f) => c.text.startsWith(f))) return 0.75;
+  if (forms.some((f) => c.words.some((w) => w.startsWith(f)))) return 0.5;
+  if (q.tokens.every((t) => c.words.some((w) => w.startsWith(t)))) return 0.4;
+  if (q.tokens.every((t) => c.words.some((w) => w.startsWith(t) || fuzzyWordMatch(t, w)))) {
+    return 0.3;
   }
-  if (candidate.includes(query)) return 0.25;
+  if (c.text.includes(q.text)) return 0.25;
   return 0;
+}
+
+/**
+ * A query token counts as a typo of a candidate word when it is long enough
+ * that one slip is unlikely to turn it into a different word: 5+ letters
+ * within one edit, 8+ letters within two. Never for short tokens — campus
+ * initialisms are three letters apart from each other ("som"/"sml"/"sss"),
+ * so "sss" must not become "sass" and "som" must not become "some".
+ */
+export function fuzzyWordMatch(token: string, word: string): boolean {
+  if (token.length < 5) return false;
+  const maxEdits = token.length >= 8 ? 2 : 1;
+  if (Math.abs(token.length - word.length) > maxEdits) return false;
+  return damerauLevenshtein(token, word, maxEdits) <= maxEdits;
+}
+
+/**
+ * Optimal-string-alignment distance (insert, delete, substitute, and swap two
+ * adjacent letters — the typo "peobody" is one swap from "peabody"). Returns
+ * early with `limit + 1` once no alignment can come in under `limit`.
+ */
+export function damerauLevenshtein(a: string, b: string, limit: number): number {
+  const n = a.length;
+  const m = b.length;
+  if (n === 0) return m;
+  if (m === 0) return n;
+  let prev2: number[] = [];
+  let prev: number[] = Array.from({ length: m + 1 }, (_, j) => j);
+  for (let i = 1; i <= n; i++) {
+    const cur: number[] = new Array<number>(m + 1);
+    cur[0] = i;
+    let rowMin = i;
+    for (let j = 1; j <= m; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        v = Math.min(v, prev2[j - 2]! + 1);
+      }
+      cur[j] = v;
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > limit) return limit + 1;
+    prev2 = prev;
+    prev = cur;
+  }
+  return prev[m]!;
 }

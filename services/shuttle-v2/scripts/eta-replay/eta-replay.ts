@@ -1,0 +1,651 @@
+/**
+ * Offline replay of the rider-facing ETA against logged arrivals.
+ *
+ * For every detector arrival of bus B at route position i (time t0) in the
+ * last 21 days, predict the arrival at positions i+1..i+10 exactly the way
+ * web/src/arrivals.ts does for a bus standing at a stop (stall credit 0,
+ * proration 1), using the calibration the server would have served at the
+ * start of t0's ET hour, and score it against the bus's real next arrival at
+ * that position. Then re-score the SAME pairs under alternative estimators.
+ *
+ *   cd services/shuttle-v2 && TZ=America/New_York npx tsx <this file>
+ */
+import fs from "node:fs";
+
+import {
+  CALIB_NAMES,
+  DAY_MS,
+  OUT_DIR,
+  SEGMENT_WINDOW_MS,
+  fmtEt,
+  loadNet,
+  loadSamples,
+  lowerBound,
+  makeCalibCache,
+  metricsOf,
+  routeAdjacency,
+  serveRoute,
+  type AdjEntry,
+  type CalibName,
+  type ServedRoute,
+} from "./common.js";
+import { median } from "../../src/calibrator/shrinkage.js";
+import { distanceMeters } from "../../src/network/geo.js";
+import { ROUTE_ID_LABEL } from "../../web/src/routes";
+
+const T0 = Date.now();
+const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
+
+const EVAL_DAYS = Number(process.env.EVAL_DAYS ?? 21);
+const MAX_K = 10;
+const MAX_HOP = 5;
+const MAX_GAP_MS = 45 * 60_000;
+const SAMPLE_EVERY = Number(process.env.SAMPLE_EVERY ?? 1); // 1 = every origin
+
+const net = loadNet();
+const { db, network } = net;
+
+const evalEnd = (db.prepare("SELECT MAX(arrived_at) m FROM arrivals").get() as { m: number }).m;
+// EVAL_START: ET wall-clock like "2026-08-31 17:00" overrides the day count.
+const evalStart = process.env.EVAL_START ? new Date(process.env.EVAL_START.replace(" ", "T")).getTime() : evalEnd - EVAL_DAYS * DAY_MS;
+const OUT_NAME = process.env.OUT_NAME ?? "replay";
+const DEBUG_ROUTE = Number(process.env.DEBUG_ROUTE ?? -1);
+log(`eval window ${fmtEt(evalStart)} .. ${fmtEt(evalEnd)} ET`);
+
+// -- Segment samples for the time-travelled calibration ------------------------
+const samples = loadSamples(net, evalStart - SEGMENT_WINDOW_MS - 3_600_000, evalEnd);
+log(`segments loaded: ${samples.rows} rows in ${samples.groups.length} groups`);
+
+// Multi-hop samples land in their own (from,to) group. Check that no 2..5-hop
+// pair coincides with an adjacent pair on the same route (it would pollute).
+const coincideList: string[] = [];
+{
+  let coincide = 0;
+  for (const r of net.routes) {
+    const N = r.stops.length;
+    const adjKeys = new Set<string>();
+    for (let i = 0; i < N; i++) adjKeys.add(`${r.stops[i]}:${r.stops[(i + 1) % N]}`);
+    for (let i = 0; i < N; i++) {
+      for (let h = 2; h <= MAX_HOP; h++) {
+        const k = `${r.stops[i]}:${r.stops[(i + h) % N]}`;
+        if (adjKeys.has(k)) { coincide++; coincideList.push(`${r.id}:${k} (${h} hops)`); }
+      }
+    }
+  }
+  log(`multi-hop keys coinciding with an adjacent key: ${coincide}`, coincideList.join(", "));
+}
+
+const calibCache = makeCalibCache(samples, network);
+const adjByRoute = new Map<number, AdjEntry[]>();
+for (const r of net.routes) adjByRoute.set(r.id, routeAdjacency(net, samples, r.id));
+
+// -- Arrival chains -----------------------------------------------------------
+interface Node {
+  pos: number;
+  cum: number; // cumulative hops from block start
+  t: number;
+  busId: number;
+  idChanged: boolean; // bus_id differs from the previous node's
+  dupAfter: boolean; // a same-position (re-anchor) arrival row followed this node
+}
+interface Origin {
+  route: number;
+  pos: number;
+  t: number;
+  /** previous steps in the block, most recent last: [startPos, hops, seconds] */
+  prev: Array<[number, number, number]>;
+}
+const discards = {
+  unknownStop: 0,
+  ambiguousStart: 0,
+  ambiguousHop: 0,
+  hopTooFar: 0,
+  gapOver45min: 0,
+  duplicateSamePos: 0,
+  contendedBlocks: 0,
+  contendedArrivals: 0,
+  originsBeforeWindow: 0,
+  originsSampledOut: 0,
+  pairsSkippedPosition: 0, // a multi-hop step skipped that position
+  pairsBeyondData: 0, // chain ended (end of block/data) before position i+k
+  pairsActualImplausible: 0, // actual faster than 22 m/s over the chord sum (stop flicker) — same rule the calibrator applies to samples
+  hopTooFarKind: { back1: 0, back2: 0, back3plus: 0, fwd6to10: 0, other: 0 } as Record<string, number>,
+};
+
+const arrivalRows = db
+  .prepare(
+    `SELECT bus_name b, bus_id i, route_id r, stop_id s, arrived_at t FROM arrivals
+     WHERE arrived_at >= ? AND arrived_at <= ? ORDER BY route_id, bus_name, arrived_at, id`,
+  )
+  .all(evalStart - 3 * 3_600_000, evalEnd) as Array<{ b: string; i: number; r: number; s: number; t: number }>;
+log(`arrivals loaded: ${arrivalRows.length}`);
+
+const origins: Origin[] = [];
+// pair storage
+const pairOrigin: number[] = [];
+const pairK: number[] = [];
+const pairActual: number[] = [];
+const pairClean: number[] = [];
+
+const chordByRoute = new Map<number, Float64Array>();
+for (const r of net.routes) {
+  const N = r.stops.length;
+  const c = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const a = net.stopById.get(r.stops[i]!);
+    const b = net.stopById.get(r.stops[(i + 1) % N]!);
+    c[i] = a && b ? distanceMeters(a, b) : 0;
+  }
+  chordByRoute.set(r.id, c);
+}
+function flushBlock(route: number, nodes: Node[], contended: boolean) {
+  if (contended) {
+    discards.contendedBlocks++;
+    discards.contendedArrivals += nodes.length;
+    return;
+  }
+  for (let j = 0; j < nodes.length; j++) {
+    const o = nodes[j]!;
+    if (o.t < evalStart) {
+      discards.originsBeforeWindow++;
+      continue;
+    }
+    if (SAMPLE_EVERY > 1 && origins.length % SAMPLE_EVERY !== 0 && j % SAMPLE_EVERY !== 0) {
+      discards.originsSampledOut++;
+      continue;
+    }
+    const prev: Array<[number, number, number]> = [];
+    for (let m = Math.max(0, j - 3); m < j; m++) {
+      const a = nodes[m]!;
+      const b = nodes[m + 1]!;
+      prev.push([a.pos, b.cum - a.cum, (b.t - a.t) / 1000]);
+    }
+    const oi = origins.length;
+    origins.push({ route, pos: o.pos, t: o.t, prev });
+    let clean = 1;
+    let expectK = 1;
+    for (let m = j + 1; m < nodes.length; m++) {
+      const nd = nodes[m]!;
+      const k = nd.cum - o.cum;
+      if (k > MAX_K) break;
+      if (nd.idChanged || nodes[m - 1]!.dupAfter) clean = 0;
+      while (expectK < k) {
+        discards.pairsSkippedPosition++;
+        expectK++;
+      }
+      expectK = k + 1;
+      {
+        const chord = chordByRoute.get(route)!;
+        let m = 0;
+        for (let h = 0; h < k; h++) m += chord[(o.pos + h) % chord.length]!;
+        const actualSec = (nd.t - o.t) / 1000;
+        if (actualSec <= 0 || m / actualSec > 22) {
+          discards.pairsActualImplausible++;
+          continue;
+        }
+      }
+      pairOrigin.push(oi);
+      pairK.push(k);
+      pairActual.push((nd.t - o.t) / 1000);
+      pairClean.push(clean);
+    }
+    discards.pairsBeyondData += MAX_K - (expectK - 1);
+  }
+}
+
+{
+  let curKey = "";
+  let nodes: Node[] = [];
+  let cur: Node | null = null;
+  let route = -1;
+  let N = 0;
+  let seenIds = new Set<number>();
+  let contended = false;
+  const endBlock = () => {
+    if (nodes.length > 0) flushBlock(route, nodes, contended);
+    nodes = [];
+    cur = null;
+    seenIds = new Set();
+    contended = false;
+  };
+  const startBlock = (a: { i: number; r: number; s: number; t: number }, positions: readonly number[]) => {
+    if (positions.length !== 1) {
+      discards.ambiguousStart++;
+      return;
+    }
+    cur = { pos: positions[0]!, cum: 0, t: a.t, busId: a.i, idChanged: false, dupAfter: false };
+    nodes = [cur];
+    seenIds = new Set([a.i]);
+    contended = false;
+  };
+  for (const a of arrivalRows) {
+    const key = `${a.r}|${a.b}`;
+    if (key !== curKey) {
+      endBlock();
+      curKey = key;
+      route = a.r;
+      N = network.routeLength(a.r);
+    }
+    const positions = network.positionsOnRoute(a.r, a.s);
+    if (positions.length === 0 || N === 0) {
+      discards.unknownStop++;
+      endBlock();
+      continue;
+    }
+    if (!cur) {
+      startBlock(a, positions);
+      continue;
+    }
+    const gap = a.t - cur.t;
+    if (gap > MAX_GAP_MS) {
+      discards.gapOver45min++;
+      endBlock();
+      startBlock(a, positions);
+      continue;
+    }
+    if (a.i !== cur.busId && seenIds.has(a.i)) contended = true;
+    seenIds.add(a.i);
+    const cands: number[] = [];
+    for (const p of positions) {
+      const d = (p - cur.pos + N) % N;
+      // A forward hop must also be the SHORTER way round: on a 5-stop loop a
+      // 2-stop backward flicker looks like a 3-hop advance otherwise.
+      if (d <= MAX_HOP && d * 2 < N) cands.push(d);
+    }
+    let d: number;
+    if (cands.length === 0) {
+      discards.hopTooFar++;
+      {
+        let best = Infinity;
+        for (const p of positions) best = Math.min(best, (p - cur.pos + N) % N);
+        const back = N - best;
+        const kind = back === 1 ? "back1" : back === 2 ? "back2" : back <= 5 ? "back3plus" : best <= 10 ? "fwd6to10" : "other";
+        discards.hopTooFarKind[kind] = (discards.hopTooFarKind[kind] ?? 0) + 1;
+      }
+      endBlock();
+      startBlock(a, positions);
+      continue;
+    } else if (cands.length === 1) {
+      d = cands[0]!;
+    } else {
+      const near = cands.filter((x) => x <= 2);
+      if (near.length === 1) d = near[0]!;
+      else {
+        discards.ambiguousHop++;
+        endBlock();
+        continue;
+      }
+    }
+    if (d === 0) {
+      discards.duplicateSamePos++;
+      cur.dupAfter = true;
+      cur.busId = a.i;
+      continue;
+    }
+    const nd: Node = {
+      pos: (cur.pos + d) % N,
+      cum: cur.cum + d,
+      t: a.t,
+      busId: a.i,
+      idChanged: a.i !== cur.busId,
+      dupAfter: false,
+    };
+    nodes.push(nd);
+    cur = nd;
+  }
+  endBlock();
+}
+const P = pairOrigin.length;
+log(`origins ${origins.length}, pairs ${P}`, JSON.stringify(discards));
+
+// -- Predictions --------------------------------------------------------------
+type Policy = "A" | "B";
+interface Variant {
+  name: string;
+  description: string;
+  calib: CalibName;
+  policy: Policy;
+  pace?: "full" | "sqrt";
+  recent?: { windowMs: number; k: number };
+  /** route-level drift: multiply every hop by clamp(sum actual / sum served over all of this route's hops completed in the window) */
+  drift?: { windowMs: number; lo: number; hi: number };
+}
+const variants: Variant[] = [];
+variants.push({ name: "baseline", description: "what riders see today: real calibrator (dow + hour±1 window, k=8, 30-day median prior) + current client (n>=1 gate, avgSeg/distance fallback)", calib: "base", policy: "A" });
+variants.push({ name: "V1 servedPrior", description: "same calibration; client uses the served avg even when n==0 (no avgSeg/distance fallback)", calib: "base", policy: "B" });
+variants.push({ name: "V2 hourOnly", description: "window = hour±1 across ALL days, k=8; current client", calib: "hourOnly", policy: "A" });
+variants.push({ name: "V2b hourOnly+servedPrior", description: "hour±1 window, k=8; client trusts served avg", calib: "hourOnly", policy: "B" });
+variants.push({ name: "V3 wkdayWkend", description: "window = weekday/weekend class AND hour±1, k=8; current client", calib: "wkdayWkend", policy: "A" });
+variants.push({ name: "V3b wkdayWkend+servedPrior", description: "weekday/weekend + hour±1; client trusts served avg", calib: "wkdayWkend", policy: "B" });
+variants.push({ name: "V4 recencyPrior", description: "prior = median of last 7 days (>=5 samples, else 30-day); baseline window; current client", calib: "recent7prior", policy: "A" });
+variants.push({ name: "V4b recencyPrior+servedPrior", description: "7-day prior; client trusts served avg", calib: "recent7prior", policy: "B" });
+variants.push({ name: "V5 k=2", description: "baseline window, shrinkage k=2; current client", calib: "k2", policy: "A" });
+variants.push({ name: "V5 k=4", description: "baseline window, shrinkage k=4; current client", calib: "k4", policy: "A" });
+variants.push({ name: "V5 k=16", description: "baseline window, shrinkage k=16; current client", calib: "k16", policy: "A" });
+variants.push({ name: "V5b k=16+servedPrior", description: "k=16; client trusts served avg", calib: "k16", policy: "B" });
+variants.push({ name: "V7 windowMedian", description: "window MEDIAN (not mean) shrunk to the 30-day median, k=8; current client", calib: "winMedian", policy: "A" });
+variants.push({ name: "V7b windowMedian+servedPrior", description: "window median, k=8; client trusts served avg", calib: "winMedian", policy: "B" });
+variants.push({ name: "V0 medianOnly+servedPrior", description: "no dow/hour window at all: serve the 30-day segment median; client trusts it", calib: "medianOnly", policy: "B" });
+variants.push({ name: "V2c hourOnlyMedian+servedPrior", description: "hour±1 window median shrunk to 30-day median, k=8; client trusts served avg", calib: "hourOnlyMedian", policy: "B" });
+variants.push({ name: "V6 livePace", description: "baseline x clamp(actual/predicted over this bus's last <=3 completed hops, 0.75..1.3)", calib: "base", policy: "A", pace: "full" });
+variants.push({ name: "V6b livePace sqrt", description: "baseline x sqrt(pace ratio) — half-strength correction", calib: "base", policy: "A", pace: "sqrt" });
+variants.push({ name: "V8 recentTraffic 2h k4", description: "per hop: median of this segment's samples completed in the last 2 h (any bus) shrunk toward the baseline value with k=4; current client", calib: "base", policy: "A", recent: { windowMs: 2 * 3_600_000, k: 4 } });
+variants.push({ name: "V8b recentTraffic 2h k4 + servedPrior", description: "recent-2h median shrunk (k=4) toward the served avg (no client fallback)", calib: "base", policy: "B", recent: { windowMs: 2 * 3_600_000, k: 4 } });
+variants.push({ name: "V8c recentTraffic 1h k2 + servedPrior", description: "recent-1h median shrunk (k=2) toward the served avg", calib: "base", policy: "B", recent: { windowMs: 3_600_000, k: 2 } });
+variants.push({ name: "V9 hourOnly + recent 2h k4 + servedPrior", description: "hour±1 calibration, client trusts it, plus recent-2h traffic (k=4)", calib: "hourOnly", policy: "B", recent: { windowMs: 2 * 3_600_000, k: 4 } });
+variants.push({ name: "V9b medianOnly + recent 2h k4 + servedPrior", description: "30-day median, no window, plus recent-2h traffic (k=4)", calib: "medianOnly", policy: "B", recent: { windowMs: 2 * 3_600_000, k: 4 } });
+variants.push({ name: "V9c hourOnly + recent + livePace sqrt", description: "V9 with the half-strength own-bus pace correction on top", calib: "hourOnly", policy: "B", recent: { windowMs: 2 * 3_600_000, k: 4 }, pace: "sqrt" });
+
+variants.push({ name: "V10 routeDrift 2h", description: "baseline calibration, client trusts served avg, every hop x clamp(sum actual / sum served over ALL hops completed on this route in the last 2 h, 0.8..1.25)", calib: "base", policy: "B", drift: { windowMs: 2 * 3_600_000, lo: 0.8, hi: 1.25 } });
+variants.push({ name: "V10b routeDrift 6h", description: "as V10 with a 6 h window", calib: "base", policy: "B", drift: { windowMs: 6 * 3_600_000, lo: 0.8, hi: 1.25 } });
+variants.push({ name: "V10c routeDrift 2h tight", description: "as V10 clamped to 0.9..1.15", calib: "base", policy: "B", drift: { windowMs: 2 * 3_600_000, lo: 0.9, hi: 1.15 } });
+variants.push({ name: "V10d hourOnly + routeDrift 2h", description: "hour±1 calibration, client trusts it, x route drift (2 h, 0.8..1.25)", calib: "hourOnly", policy: "B", drift: { windowMs: 2 * 3_600_000, lo: 0.8, hi: 1.25 } });
+variants.push({ name: "V10e routeDrift 2h + recent 2h k4", description: "V10 plus the per-segment recent-traffic shrink (k=4)", calib: "base", policy: "B", drift: { windowMs: 2 * 3_600_000, lo: 0.8, hi: 1.25 }, recent: { windowMs: 2 * 3_600_000, k: 4 } });
+variants.push({ name: "V11 recencyPrior + recent 1h k2 + servedPrior", description: "7-day prior calibration, client trusts it, plus per-segment recent-1h median shrunk with k=2", calib: "recent7prior", policy: "B", recent: { windowMs: 3_600_000, k: 2 } });
+const VN = variants.length;
+
+// Per-route index of plausible ADJACENT-hop samples by completion time, for the drift variants.
+const routeSamples = new Map<number, { end: Float64Array; pos: Int32Array; sec: Float64Array }>();
+{
+  const tmp = new Map<number, Array<[number, number, number]>>();
+  for (const r of net.routes) {
+    const adj = adjByRoute.get(r.id)!;
+    const arr: Array<[number, number, number]> = [];
+    for (let i = 0; i < adj.length; i++) {
+      const gi = adj[i]!.gi;
+      if (gi < 0) continue;
+      const g = samples.groups[gi]!;
+      for (let j = 0; j < g.at.length; j++) if (g.ok[j]) arr.push([g.end[j]!, i, g.sec[j]!]);
+    }
+    arr.sort((a, b) => a[0] - b[0]);
+    tmp.set(r.id, arr);
+    routeSamples.set(r.id, { end: Float64Array.from(arr.map((x) => x[0])), pos: Int32Array.from(arr.map((x) => x[1])), sec: Float64Array.from(arr.map((x) => x[2])) });
+  }
+}
+function routeDrift(route: number, t0: number, windowMs: number, servedAvg: Float64Array, lo: number, hi: number): number {
+  const rs = routeSamples.get(route);
+  if (!rs) return 1;
+  let i = lowerBound(rs.end, t0 - windowMs);
+  let sumAct = 0;
+  let sumPred = 0;
+  for (; i < rs.end.length && rs.end[i]! <= t0; i++) {
+    sumAct += rs.sec[i]!;
+    sumPred += servedAvg[rs.pos[i]!]!;
+  }
+  if (sumPred <= 0) return 1;
+  return Math.max(lo, Math.min(hi, sumAct / sumPred));
+}
+const errs: Float32Array[] = variants.map(() => new Float32Array(P));
+const predSec: Float32Array[] = variants.map(() => new Float32Array(P));
+
+// Served cache per (bucket, calib, route)
+const servedCache = new Map<string, ServedRoute>();
+function served(bucketStart: number, calib: CalibName, route: number): ServedRoute {
+  const key = `${bucketStart}|${calib}|${route}`;
+  let s = servedCache.get(key);
+  if (!s) {
+    const bc = calibCache.get(bucketStart);
+    s = serveRoute(adjByRoute.get(route)!, bc.byName[calib]);
+    servedCache.set(key, s);
+  }
+  return s;
+}
+
+/** Median of a segment group's plausible samples completed in [t0-window, t0]. */
+function recentMedian(gi: number, t0: number, windowMs: number): number | null {
+  if (gi < 0) return null;
+  const g = samples.groups[gi]!;
+  const from = t0 - windowMs;
+  let i = lowerBound(g.at, from - 45 * 60_000);
+  const vals: number[] = [];
+  for (; i < g.at.length && g.at[i]! < t0; i++) {
+    if (!g.ok[i]) continue;
+    const e = g.end[i]!;
+    if (e <= t0 && e >= from) vals.push(g.sec[i]!);
+  }
+  return vals.length ? median(vals) : null;
+}
+
+let firstPair = 0;
+let debugLeft = 40;
+const cum = new Float64Array(MAX_K + 1);
+const hopVals = new Float64Array(MAX_K + 1);
+let bucketsSeen = new Set<number>();
+let nextLog = 0;
+for (let oi = 0; oi < origins.length; oi++) {
+  const o = origins[oi]!;
+  // pairs are grouped by origin in ascending order
+  const pStart = firstPair;
+  let pEnd = pStart;
+  while (pEnd < P && pairOrigin[pEnd] === oi) pEnd++;
+  firstPair = pEnd;
+  if (pEnd === pStart) continue;
+  const bucketStart = calibCache.bucketStart(o.t);
+  bucketsSeen.add(bucketStart);
+  const adj = adjByRoute.get(o.route)!;
+  const N = adj.length;
+  for (let v = 0; v < VN; v++) {
+    const vr = variants[v]!;
+    const sv = served(bucketStart, vr.calib, o.route);
+    const vals = vr.policy === "A" ? sv.clientA : sv.clientB;
+    // per-hop values
+    for (let k = 1; k <= MAX_K; k++) {
+      const pi = (o.pos + k - 1) % N;
+      let hv = vals[pi]!;
+      if (vr.recent) {
+        const rm = recentMedian(adj[pi]!.gi, o.t, vr.recent.windowMs);
+        if (rm !== null) {
+          // count of recent samples matters for shrinkage weight; recompute cheaply
+          const g = samples.groups[adj[pi]!.gi]!;
+          let m = 0;
+          for (let i = lowerBound(g.at, o.t - vr.recent.windowMs - 45 * 60_000); i < g.at.length && g.at[i]! < o.t; i++) {
+            if (g.ok[i] && g.end[i]! <= o.t && g.end[i]! >= o.t - vr.recent.windowMs) m++;
+          }
+          hv = (m * rm + vr.recent.k * hv) / (m + vr.recent.k);
+        }
+      }
+      hopVals[k] = hv;
+    }
+    let ratio = 1;
+    if (vr.drift) ratio = routeDrift(o.route, o.t, vr.drift.windowMs, sv.avg, vr.drift.lo, vr.drift.hi);
+    if (vr.pace && o.prev.length > 0) {
+      // own-bus pace over the last <=3 completed steps, priced with the same
+      // per-hop values (recent-traffic adjusted if the variant uses it)
+      let predPrev = 0;
+      let actPrev = 0;
+      for (const [sp, hops, sec] of o.prev) {
+        for (let h = 0; h < hops; h++) {
+          const pi = (sp + h) % N;
+          let hv = vals[pi]!;
+          if (vr.recent) {
+            const rm = recentMedian(adj[pi]!.gi, o.t, vr.recent.windowMs);
+            if (rm !== null) hv = (rm + vr.recent.k * hv) / (1 + vr.recent.k); // approx weight
+          }
+          predPrev += hv;
+        }
+        actPrev += sec;
+      }
+      if (predPrev > 0) {
+        ratio = Math.max(0.75, Math.min(1.3, actPrev / predPrev));
+        if (vr.pace === "sqrt") ratio = Math.sqrt(ratio);
+      }
+    }
+    cum[0] = 0;
+    for (let k = 1; k <= MAX_K; k++) cum[k] = cum[k - 1]! + hopVals[k]! * ratio;
+    for (let p = pStart; p < pEnd; p++) {
+      const k = pairK[p]!;
+      predSec[v]![p] = cum[k]!;
+      errs[v]![p] = cum[k]! - pairActual[p]!;
+    }
+    if (v === 0 && o.route === DEBUG_ROUTE && debugLeft > 0) {
+      debugLeft--;
+      const parts: string[] = [];
+      for (let p = pStart; p < pEnd; p++) parts.push(`k${pairK[p]}:act=${Math.round(pairActual[p]!)} pred=${Math.round(cum[pairK[p]!]!)}`);
+      const nn: string[] = [];
+      for (let k = 1; k <= 5; k++) { const pi = (o.pos + k - 1) % N; nn.push(`${adj[pi]!.key}:avg${sv.avg[pi]}/n${sv.n[pi]}/A${Math.round(sv.clientA[pi]!)}`); }
+      console.error(`DBG ${fmtEt(o.t)} pos${o.pos} ${parts.join(" ")} | ${nn.join(" ")} | avgSeg=${Math.round(sv.avgSeg)}`);
+    }
+  }
+  if (oi >= nextLog) {
+    log(`origin ${oi}/${origins.length}, buckets ${calibCache.size()}`);
+    nextLog += 20000;
+  }
+}
+log(`predictions done; buckets calibrated: ${calibCache.size()}`);
+
+// Replica check
+{
+  let worst = 0;
+  let mism = 0;
+  let groups = 0;
+  for (const b of calibCache.all()) {
+    worst = Math.max(worst, b.check.maxDiff);
+    mism += b.check.mismatched;
+    groups += b.check.groups;
+  }
+  log(`replica vs real computeSegmentStats: groups ${groups}, mismatched ${mism}, max |diff| ${worst}`);
+  (discards as any).replicaCheck = { groups, mismatched: mism, maxDiff: worst };
+}
+
+// -- Metrics ------------------------------------------------------------------
+const routeName = (r: number) => `${ROUTE_ID_LABEL[r] ?? "?"} (${net.routeById.get(r)?.name ?? r})`;
+const idxAll = Int32Array.from({ length: P }, (_, i) => i);
+function select(pred: (p: number) => boolean): Int32Array {
+  const out: number[] = [];
+  for (let p = 0; p < P; p++) if (pred(p)) out.push(p);
+  return Int32Array.from(out);
+}
+function pick(arr: Float32Array, idx: Int32Array): Float32Array {
+  const out = new Float32Array(idx.length);
+  for (let i = 0; i < idx.length; i++) out[i] = arr[idx[i]!]!;
+  return out;
+}
+const byKIdx: Int32Array[] = [];
+for (let k = 1; k <= MAX_K; k++) byKIdx[k] = select((p) => pairK[p] === k);
+const routesSeen = [...new Set(origins.map((o) => o.route))].sort((a, b) => a - b);
+const byRouteIdx = new Map<number, Int32Array>();
+for (const r of routesSeen) byRouteIdx.set(r, select((p) => origins[pairOrigin[p]!]!.route === r));
+const cleanIdx = select((p) => pairClean[p] === 1);
+const k1to5Idx = select((p) => pairK[p]! <= 5);
+// hour-of-day buckets (baseline only)
+const byHourIdx = new Map<number, Int32Array>();
+for (let h = 0; h < 24; h++) {
+  const idx = select((p) => new Date(origins[pairOrigin[p]!]!.t).getHours() === h);
+  if (idx.length > 0) byHourIdx.set(h, idx);
+}
+// horizon buckets by actual minutes (how far out the promise was)
+const byHorizonIdx = new Map<string, Int32Array>();
+for (const [label, lo, hi] of [["0-2min", 0, 120], ["2-5min", 120, 300], ["5-10min", 300, 600], ["10-20min", 600, 1200], ["20min+", 1200, Infinity]] as const) {
+  byHorizonIdx.set(label, select((p) => pairActual[p]! >= lo && pairActual[p]! < hi));
+}
+
+function summarise(v: number, full: boolean) {
+  const e = errs[v]!;
+  const byHops: Record<number, ReturnType<typeof metricsOf>> = {};
+  for (let k = 1; k <= MAX_K; k++) byHops[k] = metricsOf(pick(e, byKIdx[k]!));
+  const byRoute: Record<string, any> = {};
+  for (const r of routesSeen) {
+    const idx = byRouteIdx.get(r)!;
+    const m = metricsOf(pick(e, idx));
+    byRoute[routeName(r)] = full
+      ? { ...m, k1: metricsOf(pick(e, select((p) => pairK[p] === 1 && origins[pairOrigin[p]!]!.route === r))), k5: metricsOf(pick(e, select((p) => pairK[p] === 5 && origins[pairOrigin[p]!]!.route === r))) }
+      : { n: m.n, medianAbsSec: m.medianAbsSec, meanSignedSec: m.meanSignedSec };
+  }
+  const out: any = {
+    name: variants[v]!.name,
+    description: variants[v]!.description,
+    overall: metricsOf(e),
+    k1to5: metricsOf(pick(e, k1to5Idx)),
+    byHops,
+    byRoute,
+  };
+  if (full) {
+    out.cleanOnly = metricsOf(pick(e, cleanIdx));
+    out.cleanOnlyByHops = Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, metricsOf(pick(e, select((p) => pairK[p] === k && pairClean[p] === 1)))]));
+    out.byHour = Object.fromEntries([...byHourIdx].map(([h, idx]) => [h, metricsOf(pick(e, idx))]));
+    out.byHorizon = Object.fromEntries([...byHorizonIdx].map(([h, idx]) => [h, metricsOf(pick(e, idx))]));
+    // relative error (as % of actual) for k1to5, since the harness reported bias as % of remaining time
+    const rel = new Float64Array(k1to5Idx.length);
+    for (let i = 0; i < k1to5Idx.length; i++) {
+      const p = k1to5Idx[i]!;
+      rel[i] = (100 * e[p]!) / Math.max(30, pairActual[p]!);
+    }
+    out.relativePctK1to5 = metricsOf(rel);
+  }
+  if (v > 0) {
+    // paired vs baseline
+    const b = errs[0]!;
+    const d = new Float64Array(P);
+    let better = 0;
+    let worse = 0;
+    for (let p = 0; p < P; p++) {
+      d[p] = Math.abs(e[p]!) - Math.abs(b[p]!);
+      if (d[p]! < -1) better++;
+      else if (d[p]! > 1) worse++;
+    }
+    const dm = metricsOf(d);
+    out.paired = {
+      medianDeltaAbsSec: dm.medianSignedSec,
+      meanDeltaAbsSec: dm.meanSignedSec,
+      pctPairsBetter: Math.round((1000 * better) / P) / 10,
+      pctPairsWorse: Math.round((1000 * worse) / P) / 10,
+      deltaMedianAbsSec: Math.round(10 * (out.overall.medianAbsSec - metricsOf(b).medianAbsSec)) / 10,
+    };
+  }
+  return out;
+}
+
+log("summarising");
+const baseline = summarise(0, true);
+const variantOut = [];
+for (let v = 1; v < VN; v++) variantOut.push(summarise(v, false));
+
+// Distribution of served n for the baseline (how often the client falls back)
+{
+  let n0 = 0;
+  let n1 = 0;
+  let n2 = 0;
+  let total = 0;
+  let fallbackDist = 0;
+  let fallbackAvgSeg = 0;
+  for (let oi = 0; oi < origins.length; oi++) {
+    const o = origins[oi]!;
+    const sv = served(calibCache.bucketStart(o.t), "base", o.route);
+    const N = sv.n.length;
+    for (let k = 1; k <= 5; k++) {
+      const pi = (o.pos + k - 1) % N;
+      total++;
+      const n = sv.n[pi]!;
+      if (n === 0) {
+        n0++;
+        if (sv.clientA[pi] === sv.avgSeg) fallbackAvgSeg++;
+        else fallbackDist++;
+      } else if (n === 1) n1++;
+      else n2++;
+    }
+  }
+  (discards as any).servedNShareK1to5 = {
+    hops: total,
+    n0pct: Math.round((1000 * n0) / total) / 10,
+    n1pct: Math.round((1000 * n1) / total) / 10,
+    n2pluspct: Math.round((1000 * n2) / total) / 10,
+    n0_usedAvgSegPct: Math.round((1000 * fallbackAvgSeg) / total) / 10,
+    n0_usedDistancePct: Math.round((1000 * fallbackDist) / total) / 10,
+  };
+}
+
+const result = {
+  generatedAt: new Date().toISOString(),
+  window: { start: fmtEt(evalStart), end: fmtEt(evalEnd), days: EVAL_DAYS, sampleEvery: SAMPLE_EVERY },
+  counts: { arrivalsLoaded: arrivalRows.length, origins: origins.length, pairs: P, cleanPairs: cleanIdx.length, buckets: calibCache.size(), segmentRows: samples.rows, segmentGroups: samples.groups.length },
+  discards,
+  routesEvaluated: routesSeen.map(routeName),
+  multiHopKeysCoincidingWithAdjacent: coincideList,
+  baseline,
+  variants: variantOut,
+  runtimeSec: Math.round((Date.now() - T0) / 1000),
+};
+fs.writeFileSync(`${OUT_DIR}/${OUT_NAME}.json`, JSON.stringify(result, null, 1));
+log(`wrote ${OUT_DIR}/${OUT_NAME}.json`);
+console.log(JSON.stringify({ counts: result.counts, discards, baseline: { overall: baseline.overall, k1to5: baseline.k1to5 } }, null, 1));
+for (const v of variantOut) console.log(v.name.padEnd(44), JSON.stringify(v.overall), JSON.stringify(v.paired));

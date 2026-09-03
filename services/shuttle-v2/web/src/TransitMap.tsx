@@ -9,10 +9,16 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
-import { rainLikelyFrom, rainMessage, type WeatherPayload } from "./weather";
-import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
+  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
+  tempTrend, temperatureIn, trendText,
+  RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
+  weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
+} from "./weather";
+import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import {
+  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
+  suggLabel,
   type GeocodeResult,
 } from "./format";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
@@ -26,15 +32,9 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
-// True when running as an installed app (home-screen/desktop install). Fixed
-// for the life of the page, so a module constant, not state.
-const isStandaloneDisplay = (() => {
-  try {
-    return window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
-  } catch { return false; }
-})();
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
@@ -44,7 +44,7 @@ import {
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
-import { attachErrorText, downscaleToDataUrl } from "./screenshot";
+import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
@@ -249,6 +249,15 @@ type SavedTrip = {
 // geocoder result is noise for this app's purpose.
 const SERVICE_CENTER: LatLon = { lat: 41.31, lon: -72.93 };
 const SERVICE_RADIUS_M = 8_000;
+// A shuttle stop or a curated destination is by definition somewhere the
+// shuttle goes, however far from the centre: Trader Joe's (Milford) is 9.8 km
+// out and used to vanish from the dropdown whenever an unrelated in-range OSM
+// hit was also returned (the raw-list fallback only fires when the filter
+// empties the list). The server ranks external hits by distance to the
+// network, so the radius only has to keep far-off OSM noise out.
+const inServiceArea = (g: GeocodeResult): boolean =>
+  g.class === "yale" || g.class === "shuttle" ||
+  haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M;
 
 
 // An active ride the rider has boarded — drives the on-bus tracking banner.
@@ -773,6 +782,12 @@ const TripMap: FC<{
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
   }, [fullscreen]);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
         position: "fixed", inset: 0, zIndex: 9999,
@@ -784,7 +799,7 @@ const TripMap: FC<{
         border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
       };
   return (
-    <div className="trip-map-wrap" style={wrapperStyle}>
+    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       {/* Desaturate the OSM tile layer so the route color, bus pin,
           and user/endpoint markers pop against a quieter background.
           Only the tile pane is filtered; SVG overlays (polylines,
@@ -793,8 +808,32 @@ const TripMap: FC<{
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
         }
+        .trip-map-wrap.map-fs .leaflet-top.leaflet-left { margin-top: 52px; }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
+          the expanded map fills the screen and the thumb that got there came
+          from the left (operator, 2026-09-02). Leaflet's zoom control shares
+          this corner, so the stylesheet above drops it below the button. */}
+      {fullscreen && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          title="Back"
+          aria-label="Back"
+          style={{
+            position: "absolute", top: 8, left: 8, zIndex: 1000,
+            minWidth: 44, height: 44, border: "none", borderRadius: 8,
+            padding: "0 14px 0 10px",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+            cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#37474f",
+            display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>‹</span>
+          Back
+        </button>
+      )}
       <button
         onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -1161,6 +1200,12 @@ const CombinedTripMap: FC<{
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
   }, [fullscreen]);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
         position: "fixed", inset: 0, zIndex: 9999,
@@ -1175,11 +1220,12 @@ const CombinedTripMap: FC<{
       };
 
   return (
-    <div className="trip-map-wrap" style={wrapperStyle}>
+    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
         }
+        .trip-map-wrap.map-fs .leaflet-top.leaflet-left { margin-top: 52px; }
         .trip-map-wrap .eta-tip {
           padding: 1px 6px;
           font-size: 10px;
@@ -1189,6 +1235,29 @@ const CombinedTripMap: FC<{
         }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
+          the expanded map fills the screen and the thumb that got there came
+          from the left (operator, 2026-09-02). Leaflet's zoom control shares
+          this corner, so the stylesheet above drops it below the button. */}
+      {fullscreen && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          title="Back"
+          aria-label="Back"
+          style={{
+            position: "absolute", top: 8, left: 8, zIndex: 1000,
+            minWidth: 44, height: 44, border: "none", borderRadius: 8,
+            padding: "0 14px 0 10px",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+            cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#37474f",
+            display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>‹</span>
+          Back
+        </button>
+      )}
       <button
         onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -1237,9 +1306,21 @@ const AllRoutesMap: FC<{
   stopCoords: Record<number, LatLon>;
   stopNames: Record<number, string>;
   routeStops: Record<string, number[]>;
+  /**
+   * CSS height of the map. The Map tab fills the screen; embedded in a route
+   * card it must not, or the stop list below lands off the bottom — report
+   * #21, "the stop list is below the fold", which RideRouteMap already caps
+   * at min(32vh, 300px) for the same reason.
+   */
+  height?: string;
+  /** Toggle labels the rider has switched off; remembered across visits. */
+  hiddenRoutes: Set<string>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
-}> = ({ buses, routePaths, stopCoords, stopNames, routeStops, userLatLon, onRequestLocate }) => {
+}> = ({
+  buses, routePaths, stopCoords, stopNames, routeStops, height, hiddenRoutes,
+  userLatLon, onRequestLocate,
+}) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const busLayerRef = useRef<L.LayerGroup | null>(null);
@@ -1284,13 +1365,23 @@ const AllRoutesMap: FC<{
     }).addTo(map);
 
     const pts: [number, number][] = [];
+    // Only the lines the rider left switched on (operator request): fifteen
+    // routes over one downtown is unreadable when you ride two of them.
+    const shown = (rid: number | string) => {
+      const toggle = ROUTE_ID_TO_TOGGLE[Number(rid)];
+      return !toggle || !hiddenRoutes.has(toggle);
+    };
     for (const [rid, path] of Object.entries(routePaths)) {
-      if (!path || path.length < 2) continue;
+      if (!path || path.length < 2 || !shown(rid)) continue;
       L.polyline(path, { color: routeColorFor(Number(rid)), weight: 4, opacity: 0.85 }).addTo(map);
       for (const p of path) pts.push(p);
     }
+    // Stops follow their routes: a lone dot from a hidden line is noise.
     const stopIds = new Set<number>();
-    for (const ids of Object.values(routeStops)) for (const s of ids) stopIds.add(s);
+    for (const [rid, ids] of Object.entries(routeStops)) {
+      if (!shown(rid)) continue;
+      for (const s of ids) stopIds.add(s);
+    }
     for (const sid of stopIds) {
       const c = stopCoords[sid];
       if (!c) continue;
@@ -1308,13 +1399,25 @@ const AllRoutesMap: FC<{
     // zoomed the default view out to the whole metro area with the actual
     // shuttles reduced to a downtown speck. Fall back to route bounds
     // until the first bus poll lands (the buses effect below refits once).
-    if (buses.length > 0) {
-      map.fitBounds(L.latLngBounds(buses.map((b) => [b.lat, b.lon] as [number, number])), {
-        padding: [48, 48], maxZoom: 15,
+    const fitBuses = buses.filter((b) => shown(b.route_id));
+    // Padding scaled to the box. 48 px on each side of a 388 px embedded map
+    // eats a quarter of it and cost the fit a whole zoom level, turning the
+    // downtown fleet into overlapping discs; on the old full-height map the
+    // same number was fine.
+    const fitPad: [number, number] = height ? [16, 16] : [48, 48];
+    if (fitBuses.length > 0) {
+      map.fitBounds(L.latLngBounds(fitBuses.map((b) => [b.lat, b.lon] as [number, number])), {
+        padding: fitPad, maxZoom: 15,
       });
       busFitDoneRef.current = true;
     } else if (pts.length) {
       map.fitBounds(L.latLngBounds(pts), { padding: [24, 24] });
+    } else {
+      // Nothing to fit — every line switched off. A Leaflet map with no view
+      // set renders as a grey void; the rider should still see New Haven
+      // under the (empty) overlay, so the page reads as "no lines shown"
+      // rather than "the map is broken".
+      map.setView([SERVICE_CENTER.lat, SERVICE_CENTER.lon], 13);
     }
     // The tab mounts hidden-then-shown, so the container can have 0 height at
     // init — recompute size a couple of times after layout settles or the
@@ -1334,7 +1437,10 @@ const AllRoutesMap: FC<{
       youMarkerRef.current = null; // died with the map
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(Object.keys(routePaths).sort())]);
+    // Rebuilt when the filter changes too: the lines and stops are drawn once
+    // at mount, so a toggle has to re-run this effect to take effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
   useEffect(() => {
@@ -1342,6 +1448,8 @@ const AllRoutesMap: FC<{
     if (!grp) return;
     grp.clearLayers();
     for (const b of buses) {
+      const toggle = ROUTE_ID_TO_TOGGLE[b.route_id];
+      if (toggle && hiddenRoutes.has(toggle)) continue;
       const color = routeColorFor(b.route_id);
       const label = b.bus_name.replace(/^#/, "");
       const dwelling = b.at_stop_id != null;
@@ -1413,10 +1521,17 @@ const AllRoutesMap: FC<{
     // Leaflet container inside it) to ~0 width, collapsing the map to a
     // vertical line.
     <div style={{ width: "100%", maxWidth: 1000, margin: "0 auto", padding: "0 8px 12px", boxSizing: "border-box" }}>
-      <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }`}</style>
+      <style>{`@keyframes shuttlePulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }
+        /* A grey basemap, so the routes are the only colour on the page
+           (operator, 2026-09-02). The filter hits the TILE pane only: lines,
+           bus discs and the you-dot live in overlay panes and keep their
+           colour, which is the point. A filter rather than a different tile
+           host — no new external dependency, no second attribution, and
+           OpenStreetMap's own tiles stay the source. */
+        .map-grey .leaflet-tile-pane { filter: grayscale(1) contrast(1.04) brightness(1.03); }`}</style>
       <div style={{ position: "relative", width: "100%" }}>
-        <div ref={ref} style={{
-          position: "relative", width: "100%", height: "72vh", borderRadius: 8,
+        <div ref={ref} className="map-grey" style={{
+          position: "relative", width: "100%", height: height ?? "72vh", borderRadius: 8,
           border: "1px solid #e0ddd8", overflow: "hidden",
         }} />
         {/* "Locate me" — sits above the Leaflet panes (z-index 1000 matches
@@ -1505,11 +1620,6 @@ const TripPlanner: FC<{
   // options sink), and a positional index made the open card silently jump
   // to whichever option landed on that index mid-watch.
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  // Which option has its stop list open. AUTO-OPENS with the route's
-  // details (user request 2026-07-17) — the Stops toggle can still
-  // collapse it.
-  const [detailsKey, setDetailsKey] = useState<string | null>(null);
-  useEffect(() => { setDetailsKey(expandedKey); }, [expandedKey]);
   // ── Leave-time reminder ──────────────────────────────────────────────
   // At most ONE armed reminder at a time (arming another option replaces
   // it). Deliberately NOT persisted: an in-page timer cannot fire after
@@ -1554,6 +1664,17 @@ const TripPlanner: FC<{
   // Recomputed each render (the /api/buses poll re-renders every 5 s), so
   // the line disappears on its own once the wet hour has passed.
   const rain = rainLikelyFrom(weather, Date.now());
+  /** Hour-by-hour panel open? Collapsed by default; the line usually suffices. */
+  const [weatherOpen, setWeatherOpen] = useState(false);
+  /** °F or °C, the rider's call, remembered across visits (operator, 2026-09-02). */
+  const [tempUnit, setTempUnit] = useState<TempUnit>(() => loadTempUnit());
+  const flipTempUnit = () => {
+    setTempUnit((u) => {
+      const next: TempUnit = u === "F" ? "C" : "F";
+      saveTempUnit(next);
+      return next;
+    });
+  };
   // The reminder engine's 1 s tick runs inside a closure that must not
   // re-arm on every forecast change — same ref pattern as `optionsRef`.
   const rainRef = useRef(rain);
@@ -1667,7 +1788,7 @@ const TripPlanner: FC<{
       // noise here) and cap the list so the dropdown stays scannable.
       // If the filter kills everything, fall back to the raw list — the
       // rider may genuinely be searching somewhere farther out.
-      let results = raw.filter((g) => haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M).slice(0, 8);
+      let results = raw.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = raw.slice(0, 8);
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
@@ -1840,7 +1961,7 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -2653,25 +2774,9 @@ const TripPlanner: FC<{
           >
             {alreadySaved ? "★" : "☆"}
           </button>
-          {/* Installed-app reload. Post-search only: before a destination
-              exists there is nothing on screen worth refreshing, and desktop
-              installs (no browser chrome, no touch pull gesture) have no
-              other way to reload. Same square language as the star. */}
-          {isStandaloneDisplay && (
-            <button
-              onClick={(e) => { e.stopPropagation(); window.location.reload(); }}
-              title="Refresh the app"
-              aria-label="Refresh the app"
-              style={{
-                minHeight: 44, padding: "6px 14px", fontSize: 15,
-                borderRadius: 6, border: "1px solid #bbb",
-                background: "#fff", color: "#546e7a",
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              ↻
-            </button>
-          )}
+          {/* The reload button used to live here, post-search and
+              installed-app only. It now sits beside the tabs, where it is
+              always reachable (operator, 2026-09-02). */}
         </div>
       ) : (
       <div style={{ marginBottom: 8 }}>
@@ -2887,6 +2992,154 @@ const TripPlanner: FC<{
         </div>
       )}
 
+      {/* The weather, always on (operator request, 2026-09-02): a rider
+          deciding whether to walk a leg wants it whatever it says, and a line
+          that only appeared when it rained was one nobody learned to look
+          for. It sits ABOVE the options because it colours the choice between
+          them; it never reorders or hides an option, because a shuttle is not
+          faster in the rain, only drier at the ends. Loud only when it earns
+          it: amber and "Take an umbrella" past 70%. */}
+      {(() => {
+        const tone = weatherTone(rain);
+        if (tone === "hidden") return null;
+        const warn = tone === "warning";
+        const hourly = weather && weather.available ? weather.hourly : null;
+        const nowMs = Date.now();
+        const later = nextWetHour(hourly, nowMs);
+        const hours = outlookHours(hourly, nowMs);
+        // ONE number, not two: where the temperature is heading from here,
+        // and when it gets there. The low is not news at 9am on a warming
+        // day — it is the temperature the rider is already standing in
+        // (operator, 2026-09-03).
+        const trend = tempTrend(hours, rain.temperatureF);
+        // The line always names the trend now (see weatherMessage), so the
+        // strip marks that hour whenever there is one to mark. Null when the
+        // destination reads the same as now in the unit on screen — see
+        // trendText — and then nothing is marked either.
+        const span = trendText(trend, rain.temperatureF, tempUnit);
+        return (
+          <div style={{
+            marginBottom: 8,
+            background: warn ? "#fff4e0" : "#f5f6f7",
+            border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
+            borderRadius: 10,
+          }}>
+            {/* The line answers "and later?" in one clause — the hour the dry
+                spell ends — because a rider out for the evening is not helped
+                by "no rain within the hour". The hour-by-hour is a tap away
+                rather than always on: a table of six hours is more than the
+                question usually needs (operator, 2026-09-02). */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <button
+                role="status"
+                onClick={() => hours.length > 1 && setWeatherOpen((v) => !v)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+                  textAlign: "left", background: "transparent", border: "none",
+                  fontSize: 13, fontWeight: warn ? 600 : 400,
+                  color: warn ? "#8a5300" : "#546e7a",
+                  padding: warn ? "10px 4px 10px 12px" : "8px 4px 8px 10px", minHeight: 44,
+                  cursor: hours.length > 1 ? "pointer" : "default",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
+                {/* One line: "warming to 80° by 2pm", not "↑80°" — a bare
+                    arrow beside a number read as a DELTA to a rider who saw
+                    it live (operator, 2026-09-03), and a second row under the
+                    sentence read as two separate facts when it is one. The
+                    trend only ever appears here, in the quietest branch (see
+                    weatherMessage), which is what keeps it to one line. */}
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, trend)}</span>
+                {hours.length > 1 && (
+                  <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
+                    {weatherOpen ? "▴" : "▾"}
+                  </span>
+                )}
+              </button>
+              {/* Half of Yale reads Celsius. Showing both units spent a third
+                  of the line saying the same thing twice, so the rider picks
+                  one here and it sticks (operator, 2026-09-02). One control,
+                  both units visible, so which is live is never a guess. */}
+              <button
+                onClick={flipTempUnit}
+                aria-label={`Show temperature in ${tempUnit === "F" ? "Celsius" : "Fahrenheit"}`}
+                title={`Show temperature in ${tempUnit === "F" ? "Celsius" : "Fahrenheit"}`}
+                style={{
+                  display: "flex", alignItems: "center", gap: 3, flexShrink: 0,
+                  minHeight: 44, padding: "0 12px", marginRight: 4,
+                  background: "transparent", border: "none",
+                  fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                }}
+              >
+                <span style={{
+                  fontWeight: tempUnit === "F" ? 700 : 400,
+                  color: tempUnit === "F" ? (warn ? "#8a5300" : "#37474f") : "#b0bec5",
+                }}>°F</span>
+                <span aria-hidden="true" style={{ color: "#cfd8dc" }}>|</span>
+                <span style={{
+                  fontWeight: tempUnit === "C" ? 700 : 400,
+                  color: tempUnit === "C" ? (warn ? "#8a5300" : "#37474f") : "#b0bec5",
+                }}>°C</span>
+              </button>
+            </div>
+            {weatherOpen && hours.length > 1 && (
+              // Scrolls sideways rather than wrapping, so a narrow phone shows
+              // four hours and a swipe reaches the rest.
+              <div style={{
+                display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch",
+                padding: "0 10px 10px",
+              }}>
+                {hours.map((h) => {
+                  const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
+                  // Which cell each arrow in the line points at. Only marked
+                  // when the two differ — a flat window has no high or low.
+                  // Marks only the hour the LINE names, and compares in the
+                  // unit on screen: in °C two hours often print the same
+                  // number (60°F and 61°F are both 16°C), so every cell
+                  // showing that number is marked rather than an arbitrary
+                  // one of them.
+                  const shown = temperatureIn(h.temperatureF, tempUnit);
+                  const peak = span && trend && shown != null
+                    && shown === temperatureIn(trend.temperatureF, tempUnit)
+                    ? (trend.dir === "up" ? "↑" : "↓")
+                    : "";
+                  return (
+                    <div key={h.timeMs} style={{
+                      flexShrink: 0, minWidth: 62, textAlign: "center",
+                      background: wet ? "#ffe9c9" : "#fff",
+                      border: `1px solid ${wet ? "#f0c68a" : "#e4e6e8"}`,
+                      borderRadius: 8, padding: "6px 8px",
+                    }}>
+                      <div style={{ fontSize: 11, color: "#78909c", whiteSpace: "nowrap" }}>{hourLabel(h.timeMs)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
+                        {degreesText(h.temperatureF, tempUnit)}
+                        {peak && (
+                          <span aria-hidden="true" style={{ fontSize: 10, color: "#90a4ae" }}>{peak}</span>
+                        )}
+                      </div>
+                      {/* The drop says what the number is. Without it a bare
+                          "35%" beside a temperature reads as anything
+                          (operator, 2026-09-02). */}
+                      <div
+                        role="img"
+                        aria-label={`${h.probability}% chance of rain`}
+                        style={{
+                          fontSize: 11, color: wet ? "#8a5300" : "#90a4ae",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span aria-hidden="true">💧{h.probability}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Results */}
       {options && options.length === 0 && (
         <div style={{ fontSize: 14, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
@@ -2967,22 +3220,6 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
-          {/* Report #57: the line's operating hours at the top of its details
-              page. One caption line, no box — this page has been de-cluttered
-              twice on rider feedback, and the overview header directly below
-              already names the route, so the caption is the hours alone.
-              Published hours first, ROUTE_HOURS as the fallback (same
-              precedence as the All tab); nothing when neither knows the route. */}
-          {detailOpen && (() => {
-            const cfg = ROUTE_LISTS.find((c) => c.label === expandedKey);
-            const caption = cfg ? routeHoursCaption(cfg, routeHours) : null;
-            if (!cfg || !caption) return null;
-            return (
-              <div style={{ fontSize: 12, color: "#78909c", padding: "0 2px 8px", lineHeight: 1.3 }}>
-                {caption}
-              </div>
-            );
-          })()}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -3083,6 +3320,14 @@ const TripPlanner: FC<{
               : overviewOpts.length < _totalShuttle
                 ? `Overview — top ${overviewOpts.length} of ${_totalShuttle} routes`
                 : `Overview — all ${overviewOpts.length} route${overviewOpts.length === 1 ? "" : "s"}`;
+            // Report #57's hours ride WITH the route name rather than on a
+            // line of their own (operator, 2026-09-02): they describe the
+            // route, and this page has been de-cluttered twice on rider
+            // feedback. Published hours first, ROUTE_HOURS as the fallback.
+            const _hoursCfg = expandedKey
+              ? ROUTE_LISTS.find((c) => c.label === expandedKey)
+              : undefined;
+            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours) : null;
             return (
               <div style={{
                 marginBottom: 12,
@@ -3105,8 +3350,15 @@ const TripPlanner: FC<{
                   <span style={{
                     fontSize: 10, color: "#78909c",
                     textTransform: "uppercase", letterSpacing: 1,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    minWidth: 0, textAlign: "left",
                   }}>
                     {_overviewLabel}
+                    {_hours && (
+                      <span style={{ textTransform: "none", letterSpacing: 0, color: "#90a4ae" }}>
+                        {" · "}{_hours}
+                      </span>
+                    )}
                   </span>
                   <span style={{ fontSize: 12, color: "#90a4ae" }}>
                     {overviewExpanded ? "▴" : "▾"}
@@ -3185,7 +3437,6 @@ const TripPlanner: FC<{
             // so the label alone is unique ("Walk" for the walk option).
             const oKey = o.routeLabel;
             const isExpanded = expandedKey === oKey;
-            const showMore = detailsKey === oKey;
             // Shared shuttle context: bus pinned to this option + how
             // many stops before the pickup it is right now. Computed
             // once so both the collapsed one-liner and the expanded
@@ -3222,6 +3473,33 @@ const TripPlanner: FC<{
               }
               return { busMatch, stopsAway, normBus };
             })();
+            // Live bus ETA, hoisted to row scope so the TOP line can carry it
+            // beside the total (operator, 2026-09-03: "could this go on the
+            // top line ... between total time and arrival time?"). Computed
+            // ONCE here and consumed both there and by the departed warning
+            // below, so the two can never disagree.
+            //
+            // NOT walkToSec + waitSec: waitSec clamps at 0 once the bus will
+            // beat the rider to the stop, which froze the readout at the
+            // constant walk time ("in 1:49" for a full minute) while the bus
+            // visibly closed in — report #48.
+            const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
+              ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
+              : null;
+            // The bus AFTER the pinned one (user request 2026-07-17) — lets
+            // riders judge "can I skip this one?" at a glance. Strictly later
+            // than the pinned arrival so an earlier, uncatchable bus never
+            // masquerades as "next"; the same vehicle a loop later counts.
+            const nextArrLive = busEtaLive !== null && !o.departed
+              ? (computeUpcomingArrivals(
+                  // dwellTimes matters here: #32 made a dwell able to cancel
+                  // the waiting inside a segment, and hoisting this call must
+                  // not quietly drop that argument.
+                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+                )
+                  .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
+                  .sort((a, b) => a.eta - b.eta)[0] ?? null)
+              : null;
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3247,6 +3525,22 @@ const TripPlanner: FC<{
                   ) : (
                     <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap" }}>
                       {fmtMin(o.totalSec)}
+                    </span>
+                  )}
+                  {/* The live bus, between the total and the arrival: it is
+                      the number that decides whether you leave now, and it
+                      used to sit two lines further down. Secondary weight so
+                      the two bold numbers still frame the row, nowrap +
+                      ellipsis so a narrow phone clips the "next in" tail
+                      rather than wrapping the row onto two lines. */}
+                  {busEtaLive !== null && !o.departed && !isExpanded && (
+                    <span style={{
+                      fontSize: 13, color: "#5f6368", fontWeight: 500,
+                      flex: 1, minWidth: 0, overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      textAlign: "center",
+                    }}>
+                      {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
                     </span>
                   )}
                   <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -3311,27 +3605,11 @@ const TripPlanner: FC<{
                     scannable when the user just wants to pick one. */}
                 {o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
                   const { busMatch, stopsAway, normBus } = shuttleCtx;
-                  // The bus's own arrival at the board stop, less whatever has
-                  // elapsed since it was computed. NOT walkToSec + waitSec:
-                  // waitSec clamps at 0 once the bus will beat the rider to
-                  // the stop, which froze this line at the constant walk time
-                  // ("in 1:49" for a full minute) while the bus visibly
-                  // closed in — report #48.
-                  const busEta = remainingSec(
-                    o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs,
-                  );
-                  // The bus AFTER the pinned one (user request 2026-07-17) —
-                  // lets riders judge "can I skip this one?" at a glance.
-                  // Strictly later than the pinned arrival so an earlier,
-                  // uncatchable bus never masquerades as "next"; the same
-                  // vehicle a loop later counts.
-                  const nextArr = !o.departed
-                    ? (computeUpcomingArrivals(
-                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes,
-                      )
-                        .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEta + 30)
-                        .sort((a, b) => a.eta - b.eta)[0] ?? null)
-                    : null;
+                  // Both hoisted to row scope — the top line shows the same
+                  // numbers, and computing them twice was how they could
+                  // disagree.
+                  const busEta = busEtaLive ?? 0;
+                  const nextArr = nextArrLive;
                   // The stops-away/dwell/accuracy/bias readouts that used
                   // to be derived here were cut with their UI (2026-07-13
                   // "redundant route info") — the status line + step list
@@ -3356,18 +3634,15 @@ const TripPlanner: FC<{
                       {/* No bus numbers here (user 2026-07-17) — the ride
                           pill in the details view carries the number for
                           matching against the physical bus. */}
-                      {(o.departed || (!isExpanded && !o.missedBus)) && (
+                      {/* "in N min · next in M min" moved UP to the top line
+                          (operator, 2026-09-03), so all that is left here is
+                          the departed warning, which is a sentence and could
+                          never have fitted there. */}
+                      {o.departed && (
                       <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4 }}>
-                        {o.departed
-                          ? (shuttleCtx.stopsAway === 0
-                              ? "🚌 The bus is at your stop — you won't arrive in time, check for the next shuttle"
-                              : "🚌 The bus will reach your stop before you arrive — check for the next shuttle")
-                          : busEta < 10 ? "🚌 arriving now" : `🚌 in ${fmtMin(busEta)}`}
-                        {!o.departed && nextArr && (
-                          <span style={{ color: "#9aa0a6" }}>
-                            {` · next in ${fmtMin(nextArr.eta)}`}
-                          </span>
-                        )}
+                        {shuttleCtx.stopsAway === 0
+                          ? "🚌 The bus is at your stop — you won't arrive in time, check for the next shuttle"
+                          : "🚌 The bus will reach your stop before you arrive — check for the next shuttle"}
                       </div>
                       )}
                       {o.departed && (
@@ -3437,7 +3712,7 @@ const TripPlanner: FC<{
                           "could be one line"). The colored pill carries the
                           RIDE TIME + bus number, not the route name — the
                           route is named in the map header above, and stop
-                          names live in Stops ▾ / the map.
+                          names live in the stop list below / the map.
                           The walk chip is duration only — the live meters
                           readout was cut 2026-07-17 ("don't need the
                           distance"). */}
@@ -3488,7 +3763,9 @@ const TripPlanner: FC<{
                       )}
                       {/* One flat row of quiet secondary links — the old
                           nested disclosures (More ▾ → Stops ▾ → Route ▾)
-                          made riders dig three levels for a stop list. */}
+                          made riders dig three levels for a stop list. The
+                          Stops toggle itself is gone — the list is always
+                          open now. */}
                       <div
                         onClick={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
@@ -3497,18 +3774,6 @@ const TripPlanner: FC<{
                           display: "flex", alignItems: "center", justifyContent: "center",
                           gap: 2, flexWrap: "wrap",
                         }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDetailsKey(showMore ? null : oKey); }}
-                          title={showMore ? "Hide stop list" : "Show stop list"}
-                          style={{
-                            fontSize: 13, fontWeight: 500, padding: "0 8px",
-                            minHeight: 44, display: "inline-flex", alignItems: "center",
-                            border: "none", background: "transparent",
-                            color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                          }}
-                        >
-                          Stops {showMore ? "▴" : "▾"}
-                        </button>
                         {/* Manual way into ride tracking. Auto-detect (the
                             "On <route> #N?" offer) is the usual path, but it
                             needs a GPS fix good enough to place the rider
@@ -3518,7 +3783,6 @@ const TripPlanner: FC<{
                             without this the ride page is unreachable. */}
                         {o.mode === "shuttle" && (
                           <>
-                            <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -3583,6 +3847,9 @@ const TripPlanner: FC<{
                             </button>
                           </>
                         )}
+                        {/* Always reached: this whole row renders only for a
+                            shuttle option, so "I'm on it" always precedes
+                            Report and the separator is unconditional. */}
                         <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); reportOption(o); }}
@@ -3615,9 +3882,13 @@ const TripPlanner: FC<{
                     <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
                   </div>
                 )}
-                {isExpanded && showMore && o.mode === "shuttle" && (() => {
-                  // Stop list, two sections (auto-opens with the details —
-                  // user request 2026-07-17): first the APPROACH (the stops
+                {isExpanded && o.mode === "shuttle" && (() => {
+                  // Stop list, two sections. ALWAYS shown with the route —
+                  // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
+                  // "we'll always want to show the drop-down"), and it had
+                  // auto-opened since 2026-07-17 anyway, so the control's only
+                  // remaining job was to take the list away. First the
+                  // APPROACH (the stops
                   // the bus still has to clear to reach the pickup, muted,
                   // with typical hold times and a live "been sitting here"
                   // counter at its current stop), then the board→alight
@@ -3659,11 +3930,18 @@ const TripPlanner: FC<{
                   // the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
                   const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
-                  const typDwell = (sid: number): number | null => {
+                  // The hold shown must be the hold BILLED — see
+                  // billedDwellSec. `started` is true only for the stop the
+                  // bus is standing at; every other stop on the approach is
+                  // still ahead of it and is priced at the low quantile
+                  // (report #73: "it says arrive in 8 but expected dwell is
+                  // 10", which was the median on screen and the low quantile
+                  // in the arithmetic).
+                  const typDwell = (sid: number, started = false): number | null => {
                     const pb = busDwells[String(sid)];
-                    if (pb && pb.n >= 5) return pb.med;
+                    if (pb && pb.n >= 5) return billedDwellSec(pb, started);
                     const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return r.med;
+                    if (r && r.n >= 3) return billedDwellSec(r, started);
                     return null;
                   };
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
@@ -3691,7 +3969,7 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid);
+                            const typ = typDwell(sid, isBusHere);
                             const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
                             return (
                               <div key={sid} style={{
@@ -3805,25 +4083,6 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {/* Rain warning. One compact line UNDER the options: it informs the
-          trip, it doesn't change it — the options are neither reordered,
-          hidden nor re-ranked, because a shuttle isn't faster in the rain,
-          it's just drier at the ends. Absent entirely when the forecast is
-          dry or unavailable. */}
-      {options && options.length > 0 && rain.likely && (
-        <div
-          role="status"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            fontSize: 13, color: "#37474f",
-            padding: "10px 12px", marginTop: 4,
-            background: "#eef4fb", border: "1px solid #d6e3f0",
-            borderRadius: 10,
-          }}
-        >
-          {rainMessage(rain)}
-        </div>
-      )}
 
       {/* Trip actions: Clear wipes the destination (returns the page to
           Saved/Recent); Refresh re-runs planTrip against the latest
@@ -4106,11 +4365,12 @@ const NextShuttles: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
-}> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes }) => {
+}> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (savedStops.size === 0) return null;
 
-  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes);
+  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes);
   const arrivals: Record<number, UpcomingArrival[]> = {};
   for (const a of all) {
     (arrivals[a.stopId] ??= []).push(a);
@@ -4207,7 +4467,7 @@ const NearbyStopsPicker: FC<{
       const d = await r.json();
       if (abortRef.current !== ctrl) return;
       const rawR: GeocodeResult[] = d.results ?? [];
-      let results = rawR.filter((g) => haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M).slice(0, 8);
+      let results = rawR.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = rawR.slice(0, 8);
       if (results.length === 0) {
         setSugg([]);
@@ -4377,13 +4637,14 @@ const FavoriteStopsPage: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   savedTrips: SavedTrip[];
   setSavedTrips: (t: SavedTrip[]) => void;
   onPlanTrip: (t: SavedTrip) => void;
-}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
+}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nearbyGroupId, setNearbyGroupId] = useState<string | null>(null);
 
@@ -4451,7 +4712,7 @@ const FavoriteStopsPage: FC<{
         </div>
       )}
       {groups.map((g, idx) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
         const editing = editingId === g.id;
         return (
           <div key={g.id} style={{
@@ -4615,13 +4876,14 @@ const StopGroupsSummary: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
-}> = ({ groups, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
+}> = ({ groups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (groups.length === 0) return null;
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {groups.map((g) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
         const name = g.name || "Unnamed";
         return (
           <div key={g.id} style={{
@@ -4659,11 +4921,73 @@ const StopGroupsSummary: FC<{
   );
 };
 
+// The collapsed route card lists only the soonest arrivals; the whole stop
+// list is one tap away on the isolated view.
+const MAX_CARD_ARRIVALS = 4;
+
+/** Stable empty set — a fresh one each render would remount the map. */
+const EMPTY_HIDDEN: Set<string> = new Set();
+
+// One route's thumbnail map: the published line, its stops and its live buses
+// as a flat inline SVG. Deliberately NOT Leaflet — fifteen tiled map instances
+// on one phone page is unshippable, and the All tab needs these to paint
+// instantly. The maths is in routeThumb.ts (pure, unit-tested); this only
+// draws. Colour comes from the caller's ROUTE_LISTS entry, never from here.
+const RouteThumb: FC<{
+  thumb: RouteThumbShape;
+  color: string;
+  label: string;
+  dashed?: boolean;
+}> = ({ thumb, color, label, dashed }) => {
+  const busNames = thumb.buses.map((b) => b.name).join(", ");
+  const caption = `${label} route map: ${thumb.stops.length} stops, `
+    + (thumb.buses.length === 0
+      ? "no buses running"
+      : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} live (${busNames})`);
+  return (
+    <svg
+      viewBox={thumb.viewBox}
+      role="img"
+      aria-label={caption}
+      preserveAspectRatio="xMidYMid meet"
+      style={{
+        // The viewBox carries the aspect ratio, so height follows width and
+        // the drawing is never squashed; the cap keeps it a thumbnail on a
+        // wide screen (meet letterboxes what is left).
+        display: "block", width: "100%", height: "auto", maxHeight: 200,
+        background: "#faf9f7", borderRadius: 8, border: "1px solid #ece9e4",
+      }}
+    >
+      {/* Without this the thumbnail is a silent picture to a screen reader. */}
+      <title>{caption}</title>
+      <path
+        d={thumb.path}
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        strokeDasharray={dashed ? "6 4" : undefined}
+        opacity={0.9}
+      />
+      {thumb.stops.map((s, i) => (
+        <circle key={`s${i}`} cx={s.x} cy={s.y} r={2} fill="#fff" stroke={color} strokeWidth={1} />
+      ))}
+      {thumb.buses.map((b, i) => (
+        <circle key={`b${i}`} cx={b.x} cy={b.y} r={4.5} fill={color} stroke="#fff" strokeWidth={1.5} />
+      ))}
+    </svg>
+  );
+};
+
 const StopList: FC<{
   buses: BusData[];
   stopNames: Record<number, string>;
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
+  // Published polylines, keyed by route id — the thumbnails' geometry and, on
+  // the isolated view, the real Leaflet map's.
+  routePaths?: Record<string, [number, number][]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
   dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   routePeaks?: Record<string, number>;
@@ -4678,7 +5002,15 @@ const StopList: FC<{
   onToggleFavorite: (routeId: string) => void;
   savedStops: Set<number>;
   onToggleSavedStop: (stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop }) => {
+  userLatLon?: LatLon | null;
+  onRequestLocate?: () => void;
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
+  // Which route the rider has tapped into, by primary route id. Local state on
+  // purpose: leaving the tab unmounts this list, so isolation never survives a
+  // visit. The effect covers the case where the view changes underneath us
+  // without an unmount.
+  const [isolatedRouteId, setIsolatedRouteId] = useState<string | null>(null);
+  useEffect(() => { setIsolatedRouteId(null); }, [listView]);
 
   // GPS-based: find nearest route stop for each bus
   function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
@@ -4720,10 +5052,25 @@ const StopList: FC<{
 
   return (
     <div style={{
-      display: "flex", gap: 4, overflowX: "auto",
-      padding: "4px 8px", fontSize: 10.5, color: "#455a64",
-      maxWidth: "100%",
+      display: "flex", flexDirection: "column", gap: 10,
+      width: "100%", maxWidth: 640,
+      padding: "4px 0", fontSize: 13, color: "#455a64",
     }}>
+      {/* Isolated view leads with the way back — same control as the trip
+          details page, so "back" reads the same everywhere in the app. */}
+      {isolatedRouteId && (
+        <button
+          onClick={() => setIsolatedRouteId(null)}
+          title="Back to all routes"
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 15, fontWeight: 600, color: "#1a73e8",
+            background: "transparent", border: "none", padding: "0 2px 4px",
+            minHeight: 44, cursor: "pointer", fontFamily: "inherit",
+            alignSelf: "flex-start",
+          }}
+        >← All routes</button>
+      )}
       {ROUTE_LISTS.map((cfg, listIdx) => {
         // Merge stops from all route IDs in this config (deduplicated, preserving order)
         const seen = new Set<number>();
@@ -4742,282 +5089,425 @@ const StopList: FC<{
         const hasBuses = Object.keys(busMap).length > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
+        const isolated = isolatedRouteId === primaryRouteId;
 
-        // Filter by view
-        if (activeOnly && !hasBuses) return null;
-        if (listView === "favorites") {
-          if (!hasBuses) return null;
-          if (favoriteStopIds && favoriteStopIds.size > 0) {
-            const hitsFav = stops.some((sid) => favoriteStopIds.has(sid));
-            if (!hitsFav) return null;
-          } else if (!isFav) {
-            return null;
+        // The isolated card ignores the filters: a bus vanishing mid-read (or
+        // a chip being toggled) must not blank the page the rider is on.
+        if (!isolated) {
+          if (isolatedRouteId) return null;
+          // Filter by view
+          if (activeOnly && !hasBuses) return null;
+          if (listView === "favorites") {
+            if (!hasBuses) return null;
+            if (favoriteStopIds && favoriteStopIds.size > 0) {
+              const hitsFav = stops.some((sid) => favoriteStopIds.has(sid));
+              if (!hitsFav) return null;
+            } else if (!isFav) {
+              return null;
+            }
+          }
+          if (hiddenRoutes) {
+            const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+            if (toggle && hiddenRoutes.has(toggle)) return null;
           }
         }
-        if (hiddenRoutes) {
-          const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-          if (toggle && hiddenRoutes.has(toggle)) return null;
-        }
         const blinkOn = tick % 2 === 0;
+        const routeBuses = buses.filter((b) => cfg.busRouteIds.includes(b.route_id));
+
+        // ── Subtitle: loop duration, live/peak bus count, published hours ──
+        // Prefer learned segment averages; fall back to straight-line distance
+        // over BUS_SPEED_M_S for any missing segment. This keeps the line
+        // populated for routes like Red that currently have no calibrated data
+        // in the DB, as long as we know the stop coordinates.
+        const loopSegs = segmentTimes[primaryRouteId] ?? {};
+        let loopSec = 0;
+        let hasAnyLoopData = false;
+        for (let k = 0; k < stops.length; k++) {
+          const prev = stops[k];
+          const cur = stops[(k + 1) % stops.length];
+          const seg = loopSegs[`${prev}-${cur}`];
+          if (seg && seg.n >= 1) {
+            loopSec += seg.avg;
+            hasAnyLoopData = true;
+          } else {
+            const pc = stopCoords[prev], cc = stopCoords[cur];
+            if (pc && cc) {
+              loopSec += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+            }
+          }
+        }
+        const busCount = routeBuses.length;
+        const peak = Math.max(
+          busCount,
+          ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
+        );
+        const loopMin = Math.round(loopSec / 60);
+        // Published hours when the server parsed them; ROUTE_HOURS (the wider
+        // in-service gate) only as a fallback.
+        const published = publishedWindowFor(cfg, routeHours);
+        const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
+          + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
+
+        // ── ETAs: cumulative from each bus to the stops ahead of it ──
+        const routeSegs = segmentTimes[primaryRouteId] ?? {};
+        const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
+        const avgSeg = segValues.length > 0
+          ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
+          : 0;
+
+        const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
+        for (const [sid, b] of Object.entries(busMap)) {
+          const busIdx = stops.indexOf(Number(sid));
+          if (busIdx === -1) continue;
+          let cumulative = 0;
+          let cumulativeVar = 0;
+          let hasAnyData = false;
+          const totalStops = stops.length;
+          const fallbackSd = avgSeg * 0.5;
+          // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
+          for (let step = 1; step < totalStops; step++) {
+            const prevIdx = (busIdx + step - 1) % totalStops;
+            const curIdx = (busIdx + step) % totalStops;
+
+            const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
+            if (seg && seg.n >= 1) {
+              cumulative += seg.avg;
+              cumulativeVar += (seg.sd ?? 0) ** 2;
+              hasAnyData = true;
+            } else if (avgSeg > 0) {
+              cumulative += avgSeg;
+              cumulativeVar += fallbackSd * fallbackSd;
+            } else {
+              // No calibration at all — a fresh database, or a route the
+              // collector has not yet learned. Price the hop by distance at
+              // bus speed, exactly as planTrip and the loop-time line above
+              // already do, rather than giving up: this loop used to `break`,
+              // and the card that reads from it then showed a route with two
+              // running buses and not one stop.
+              const pc = stopCoords[stops[prevIdx]], cc = stopCoords[stops[curIdx]];
+              if (!pc || !cc) break;
+              const est = Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+              cumulative += est;
+              cumulativeVar += (est * 0.5) ** 2;
+            }
+            if (cumulative > 0) {
+              const sd = Math.sqrt(cumulativeVar);
+              const existing = etaAtStop[stops[curIdx]];
+              if (!existing || cumulative < existing.eta) {
+                etaAtStop[stops[curIdx]] = {
+                  eta: cumulative,
+                  low: Math.max(0, cumulative - sd),
+                  high: cumulative + sd,
+                  busName: (b as BusData).bus_name,
+                  estimated: !hasAnyData,
+                };
+              }
+            }
+          }
+        }
+
+        // One stop row. Shared by the collapsed card (a handful of them, in
+        // arrival order) and the isolated view (all of them, in route order),
+        // so a stop reads identically either way — and stays tappable as a
+        // favourite in both.
+        const stopRow = (stopId: number, key: string) => {
+          const name = stopNames[stopId] ?? `Stop ${stopId}`;
+          const bus = busMap[stopId];
+          const isNext = nextSet.has(stopId);
+          const isSaved = savedStops.has(stopId);
+          const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
+          // Only surface significant timing-point dwells (>= 5 min typical).
+          const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
+          const dwellLabel = longDwell
+            ? (() => {
+                const lo = Math.max(1, Math.round(longDwell.med / 60));
+                const hi = Math.round((longDwell.med + longDwell.sd) / 60);
+                return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
+              })()
+            : null;
+
+          return (
+            <div
+              key={key}
+              onClick={() => onToggleSavedStop(stopId)}
+              title={isSaved ? "Remove from saved stops" : "Save this stop"}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "6px 10px", minHeight: 44, boxSizing: "border-box",
+                cursor: "pointer",
+                background: bus ? `${cfg.color}18`
+                  : isNext && blinkOn ? `${cfg.color}0D`
+                  : isSaved ? "#2E7D3220" : "transparent",
+                fontWeight: bus ? 600 : isSaved ? 700 : isNext ? 500 : 400,
+                transition: "background 0.3s",
+                borderLeft: isSaved ? "4px solid #2E7D32" : "4px solid transparent",
+                borderRadius: isSaved ? 4 : 0,
+                margin: isSaved ? "2px 0" : 0,
+                boxShadow: isSaved ? "0 1px 4px rgba(46,125,50,0.15)" : "none",
+              }}
+            >
+              <div style={{
+                width: isSaved ? 10 : 7, height: isSaved ? 10 : 7,
+                borderRadius: "50%", flexShrink: 0,
+                background: bus ? cfg.color
+                  : isNext && blinkOn ? cfg.color
+                  : isSaved ? "#2E7D32" : "#fff",
+                border: `${isSaved ? 2 : 1.5}px solid ${isSaved ? "#2E7D32" : cfg.color}`,
+                boxShadow: isSaved ? "0 0 6px rgba(46,125,50,0.4)"
+                  : isNext && blinkOn ? `0 0 6px ${cfg.color}` : "none",
+                transition: "all 0.3s",
+              }} />
+              {/* Full width now, so the whole stop name is shown — no
+                  ellipsis, no stripped (N)/(S) suffix (stops 28 m apart
+                  differ only by it). */}
+              <span style={{
+                flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.25,
+                color: isNext ? cfg.color : isSaved ? "#2E7D32" : "#37474f",
+              }}>
+                {name}
+                {longDwell && dwellLabel && !(bus && bus.at_stop_id === stopId) && (
+                  <span title={`Often pauses here ~${dwellLabel} (n=${longDwell.n})`}
+                        style={{
+                          marginLeft: 5, fontSize: 9, color: "#fff",
+                          background: "#FFA726", borderRadius: 4, padding: "1px 4px",
+                          fontWeight: 700, whiteSpace: "nowrap",
+                        }}>
+                    ⏸ {dwellLabel}
+                  </span>
+                )}
+              </span>
+              {etaAtStop[stopId] && !bus && (() => {
+                const e = etaAtStop[stopId];
+                const lo = Math.round(e.low / 60);
+                return (
+                  <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
+                      {e.estimated ? "~" : ""}{lo} min
+                    </span>
+                    <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
+                      {fmtClock(e.eta)}
+                    </span>
+                  </span>
+                );
+              })()}
+              {isSaved && !bus && !isNext && (
+                <span style={{ fontSize: 10, color: "#2E7D32", opacity: 0.6 }}>★</span>
+              )}
+              {bus && (() => {
+                // If bus is parked at a known-dwell stop, count up how long it's been sitting
+                // and show next to the expected dwell: "X:XX / ~Y min"
+                let countdown: string | null = null;
+                if (longDwell && dwellLabel && bus.at_stop_id === stopId && bus.at_stop_since) {
+                  const elapsedSec = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
+                  const totalSec = Math.floor(elapsedSec);
+                  const mm = Math.floor(totalSec / 60);
+                  const ss = totalSec % 60;
+                  const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
+                  countdown = `${elapsed} / ~${dwellLabel}`;
+                }
+                return (
+                  <>
+                    {countdown && (
+                      <span title={longDwell ? `Sitting / typical pause (n=${longDwell.n})` : undefined}
+                            style={{
+                              fontSize: 9.5, fontWeight: 700, color: "#fff",
+                              background: "#FFA726", borderRadius: 6, padding: "1px 5px",
+                              marginRight: 3, whiteSpace: "nowrap",
+                            }}>
+                        ⏸ {countdown}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "#fff",
+                      background: cfg.color, borderRadius: 6, padding: "1px 6px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {bus.bus_name.replace("#", "")}
+                    </span>
+                  </>
+                );
+              })()}
+              {isNext && !bus && (
+                <span style={{
+                  fontSize: 8.5, fontWeight: 700, color: cfg.color,
+                  opacity: blinkOn ? 1 : 0.3,
+                  transition: "opacity 0.3s",
+                }}>
+                  NEXT
+                </span>
+              )}
+            </div>
+          );
+        };
+
+        // Collapsed card: only the stops a bus is actually heading to, soonest
+        // first. The full list is one tap away, so the card stays a card.
+        const arriving: { sid: number; eta: number }[] = [];
+        for (const sid of stops) {
+          const e = etaAtStop[sid];
+          if (e) arriving.push({ sid, eta: e.eta });
+        }
+        arriving.sort((a, b) => a.eta - b.eta);
+        // A saved stop always makes the card. The star exists so the stop the
+        // rider cares about is the one they see without tapping; sorting
+        // purely by ETA silently disabled it.
+        const savedFirst = arriving.filter((a) => savedStops.has(a.sid));
+        const rest = arriving.filter((a) => !savedStops.has(a.sid));
+        // The rest are spread across the loop rather than clustered in front
+        // of the buses: on a three-bus route the four soonest arrivals were
+        // four stops within a minute of each other, useless to anyone not
+        // already standing at one. One per bus first, then by ETA.
+        const perBus = new Map<string, { sid: number; eta: number }>();
+        for (const a of rest) {
+          const name = etaAtStop[a.sid]?.busName ?? "";
+          if (!perBus.has(name)) perBus.set(name, a);
+        }
+        const spread = [...perBus.values()];
+        const filler = rest.filter((a) => !spread.includes(a));
+        const upcoming = [...savedFirst, ...spread, ...filler]
+          .slice(0, MAX_CARD_ARRIVALS)
+          .sort((a, b) => a.eta - b.eta);
+        const moreStops = stops.length - upcoming.length;
+
+        // The thumbnail's geometry: the published line for this route, its
+        // stops, and its live buses. Null when upstream has no polyline for
+        // the route — the card then simply has no picture.
+        const thumb = buildRouteThumb(
+          routePaths?.[primaryRouteId],
+          stops.map((sid) => stopCoords[sid]).filter(Boolean),
+          routeBuses.map((b) => ({ lat: b.lat, lon: b.lon, name: b.bus_name })),
+        );
+
+        // Only this route's geometry reaches the isolated Leaflet map.
+        const isolatedPaths: Record<string, [number, number][]> = {};
+        const isolatedStops: Record<string, number[]> = {};
+        if (isolated) {
+          for (const rid of cfg.routeIds) {
+            const p = routePaths?.[rid];
+            if (p) isolatedPaths[rid] = p;
+            const s = routeStops[rid];
+            if (s) isolatedStops[rid] = s;
+          }
+        }
 
         return (
-          <div key={`${cfg.routeIds.join("-")}-${listIdx}`} style={{
-            minWidth: 145, maxWidth: 170, flexShrink: 0,
-          }}>
+          <div
+            key={`${cfg.routeIds.join("-")}-${listIdx}`}
+            id={`route-card-${cfg.label}`}
+            style={{
+              width: "100%", boxSizing: "border-box", scrollMarginTop: 8,
+              border: "1px solid #e8e5e0", borderRadius: 10, background: "#fff",
+              overflow: "hidden",
+            }}
+          >
             <div style={{
-              fontSize: 10, fontWeight: 700, color: cfg.color,
-              padding: "4px 10px", letterSpacing: 1, textTransform: "uppercase",
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "0 10px",
               borderBottom: cfg.dashed
                 ? `2px dashed ${cfg.color}`
                 : `2px solid ${cfg.color}`,
-              marginBottom: 2,
-              display: "flex", justifyContent: "space-between", alignItems: "center",
             }}>
-              <span>{cfg.label}</span>
-              <span
+              <button
+                onClick={() => setIsolatedRouteId(isolated ? null : primaryRouteId)}
+                title={isolated ? "Back to all routes" : `Show only ${cfg.label}`}
+                style={{
+                  flex: 1, minWidth: 0, textAlign: "left",
+                  background: "transparent", border: "none", padding: "6px 0",
+                  minHeight: 44, cursor: "pointer", fontFamily: "inherit",
+                  fontSize: 15, fontWeight: 700, color: cfg.color,
+                  letterSpacing: 0.6, textTransform: "uppercase",
+                  // Full name, wrapped if it must be — never truncated.
+                  whiteSpace: "normal", overflowWrap: "anywhere", lineHeight: 1.2,
+                }}
+              >
+                {cfg.label}
+              </button>
+              <button
                 onClick={(e) => { e.stopPropagation(); onToggleFavorite(primaryRouteId); }}
-                style={{ cursor: "pointer", fontSize: 12, opacity: isFav ? 1 : 0.25 }}
+                aria-label={isFav ? `Unfavourite ${cfg.label}` : `Favourite ${cfg.label}`}
+                title={isFav ? "Remove from favourites" : "Add to favourites"}
+                style={{
+                  width: 44, height: 44, flexShrink: 0, padding: 0,
+                  background: "transparent", border: "none", cursor: "pointer",
+                  fontSize: 18, lineHeight: 1, color: cfg.color,
+                  opacity: isFav ? 1 : 0.25, fontFamily: "inherit",
+                }}
               >
                 ★
-              </span>
+              </button>
             </div>
-            {(() => {
-              // Route subtitle: estimated loop duration + live bus count.
-              // Prefer learned segment averages; fall back to straight-line
-              // distance over BUS_SPEED_M_S for any missing segment. This
-              // keeps the line populated for routes like Red that currently
-              // have no calibrated data in the DB (collector hasn't logged
-              // them yet, or they've been trimmed), as long as we know the
-              // stop coordinates.
-              const loopSegs = segmentTimes[primaryRouteId] ?? {};
-              let loopSec = 0;
-              let hasAny = false;
-              const n = stops.length;
-              for (let k = 0; k < n; k++) {
-                const prev = stops[k];
-                const cur = stops[(k + 1) % n];
-                const seg = loopSegs[`${prev}-${cur}`];
-                if (seg && seg.n >= 1) {
-                  loopSec += seg.avg;
-                  hasAny = true;
-                } else {
-                  const pc = stopCoords[prev], cc = stopCoords[cur];
-                  if (pc && cc) {
-                    loopSec += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
-                  }
-                }
-              }
-              const busCount = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).length;
-              const peak = Math.max(
-                busCount,
-                ...cfg.busRouteIds.map((bid) => (routePeaks?.[String(bid)] ?? 0)),
-              );
-              const loopMin = Math.round(loopSec / 60);
-              // Published hours when the server parsed them; ROUTE_HOURS
-              // (the wider in-service gate) only as a fallback.
-              const published = publishedWindowFor(cfg, routeHours);
-              const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
-              if (!loopSec && !busCount && !peak && !schedule) return null;
-              return (
-                <>
-                  <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 2px", display: "flex", justifyContent: "space-between" }}>
-                    <span>{loopSec ? `${hasAny ? "" : "~"}loop ${loopMin} min` : ""}</span>
-                    <span>{peak > 0 ? `${busCount}/${peak}` : busCount} {peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses"}</span>
-                  </div>
-                  {schedule && (
-                    <div style={{ fontSize: 9.5, color: "#78909c", padding: "0 10px 3px" }}>
-                      {schedule}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-            {(() => {
-              // Pre-compute cumulative ETAs from each bus to downstream stops
-              const routeSegs = segmentTimes[primaryRouteId] ?? {};
-              const routeDwells = dwellTimes[primaryRouteId] ?? {};
 
-              // Compute average segment time for this route as fallback
-              const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
-              const avgSeg = segValues.length > 0
-                ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
-                : 0;
+            {(loopSec > 0 || busCount > 0 || peak > 0 || schedule) && (
+              <div style={{
+                display: "flex", justifyContent: "space-between", gap: 8,
+                flexWrap: "wrap", fontSize: 11, color: "#78909c",
+                padding: "4px 10px 6px",
+              }}>
+                <span>
+                  {loopSec > 0 ? `${hasAnyLoopData ? "" : "~"}loop ${loopMin} min` : ""}
+                  {loopSec > 0 && schedule ? " · " : ""}
+                  {schedule}
+                </span>
+                <span>{busLabel}</span>
+              </div>
+            )}
 
-              const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
-              for (const [sid, b] of Object.entries(busMap)) {
-                const busIdx = stops.indexOf(Number(sid));
-                if (busIdx === -1) continue;
-                let cumulative = 0;
-                let cumulativeVar = 0;
-                let hasAnyData = false;
-                const totalStops = stops.length;
-                const fallbackSd = avgSeg * 0.5;
-                // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-                for (let step = 1; step < totalStops; step++) {
-                  const prevIdx = (busIdx + step - 1) % totalStops;
-                  const curIdx = (busIdx + step) % totalStops;
-
-                  const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-                  if (seg && seg.n >= 1) {
-                    cumulative += seg.avg;
-                    cumulativeVar += (seg.sd ?? 0) ** 2;
-                    hasAnyData = true;
-                  } else if (avgSeg > 0) {
-                    cumulative += avgSeg;
-                    cumulativeVar += fallbackSd * fallbackSd;
-                  } else {
-                    break;
-                  }
-                  if (cumulative > 0) {
-                    const sd = Math.sqrt(cumulativeVar);
-                    const existing = etaAtStop[stops[curIdx]];
-                    if (!existing || cumulative < existing.eta) {
-                      etaAtStop[stops[curIdx]] = {
-                        eta: cumulative,
-                        low: Math.max(0, cumulative - sd),
-                        high: cumulative + sd,
-                        busName: (b as BusData).bus_name,
-                        estimated: !hasAnyData,
-                      };
-                    }
-                  }
-                }
-              }
-
-              return stops.map((stopId, i) => {
-              const name = stopNames[stopId] ?? `Stop ${stopId}`;
-              const shortName = name.replace(/ \([NS]\)$/, "").replace(/^\d+ /, "");
-              const bus = busMap[stopId];
-              const isNext = nextSet.has(stopId);
-
-              const isSaved = savedStops.has(stopId);
-              const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
-              // Only surface significant timing-point dwells (>= 5 min typical).
-              const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
-              const dwellLabel = longDwell
-                ? (() => {
-                    const lo = Math.max(1, Math.round(longDwell.med / 60));
-                    const hi = Math.round((longDwell.med + longDwell.sd) / 60);
-                    return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
-                  })()
-                : null;
-
-              return (<React.Fragment key={`${primaryRouteId}-${stopId}-${i}`}>
-                <div
-                  onClick={() => onToggleSavedStop(stopId)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: isSaved ? "4px 10px" : "2px 10px",
-                    cursor: "pointer",
-                    background: bus ? `${cfg.color}18`
-                      : isNext && blinkOn ? `${cfg.color}0D`
-                      : isSaved ? "#2E7D3220" : "transparent",
-                    fontWeight: bus ? 600 : isSaved ? 700 : isNext ? 500 : 400,
-                    transition: "all 0.3s",
-                    borderLeft: isSaved ? "4px solid #2E7D32" : "4px solid transparent",
-                    borderRadius: isSaved ? 4 : 0,
-                    margin: isSaved ? "2px 0" : 0,
-                    boxShadow: isSaved ? "0 1px 4px rgba(46,125,50,0.15)" : "none",
-                  }}
-                >
-                  <div style={{
-                    width: isSaved ? 10 : 6, height: isSaved ? 10 : 6,
-                    borderRadius: "50%", flexShrink: 0,
-                    background: bus ? cfg.color
-                      : isNext && blinkOn ? cfg.color
-                      : isSaved ? "#2E7D32" : "#fff",
-                    border: `${isSaved ? 2 : 1.5}px solid ${isSaved ? "#2E7D32" : cfg.color}`,
-                    boxShadow: isSaved ? "0 0 6px rgba(46,125,50,0.4)"
-                      : isNext && blinkOn ? `0 0 6px ${cfg.color}` : "none",
-                    transition: "all 0.3s",
-                  }} />
-                  <span style={{
-                    flex: 1, overflow: "hidden", textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontSize: isSaved ? 11.5 : 10,
-                    color: isNext ? cfg.color : isSaved ? "#2E7D32" : undefined,
-                  }}>
-                    {shortName}
-                    {longDwell && dwellLabel && !(bus && bus.at_stop_id === stopId) && (
-                      <span title={`Often pauses here ~${dwellLabel} (n=${longDwell.n})`}
-                            style={{
-                              marginLeft: 4, fontSize: 7.5, color: "#fff",
-                              background: "#FFA726", borderRadius: 4, padding: "0 3px",
-                              fontWeight: 700, verticalAlign: "middle",
-                            }}>
-                        ⏸ {dwellLabel}
-                      </span>
-                    )}
-                  </span>
-                  {etaAtStop[stopId] && !bus && (
-                    <span style={{ display: "flex", gap: 3, flexShrink: 0, alignItems: "center" }}>
-                      {(() => {
-                        const e = etaAtStop[stopId];
-                        const lo = Math.round(e.low / 60);
-                        const label = `${lo} min`;
-                        return (
-                          <>
-                            <span style={{ fontSize: 8, color: cfg.color, fontWeight: 600, opacity: e.estimated ? 0.5 : 1 }}>
-                              {e.estimated ? "~" : ""}{label}
-                            </span>
-                            <span style={{ fontSize: 8, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
-                              {fmtClock(e.eta)}
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </span>
-                  )}
-                  {isSaved && !bus && !isNext && (
-                    <span style={{ fontSize: 8, color: "#2E7D32", opacity: 0.6 }}>★</span>
-                  )}
-                  {bus && (() => {
-                    // If bus is parked at a known-dwell stop, count up how long it's been sitting
-                    // and show next to the expected dwell: "X:XX / ~Ym"
-                    let countdown: string | null = null;
-                    if (longDwell && dwellLabel && bus.at_stop_id === stopId && bus.at_stop_since) {
-                      const elapsedSec = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-                      const totalSec = Math.floor(elapsedSec);
-                      const mm = Math.floor(totalSec / 60);
-                      const ss = totalSec % 60;
-                      const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
-                      countdown = `${elapsed} / ~${dwellLabel}`;
-                    }
-                    return (
-                      <>
-                        {countdown && (
-                          <span title={longDwell ? `Sitting / typical pause (n=${longDwell.n})` : undefined}
-                                style={{
-                                  fontSize: 8, fontWeight: 700, color: "#fff",
-                                  background: "#FFA726", borderRadius: 6, padding: "0 4px",
-                                  lineHeight: "14px", marginRight: 3,
-                                }}>
-                            ⏸ {countdown}
-                          </span>
-                        )}
-                        <span style={{
-                          fontSize: 8, fontWeight: 700, color: "#fff",
-                          background: cfg.color, borderRadius: 6, padding: "0 4px",
-                          lineHeight: "14px",
-                        }}>
-                          {bus.bus_name.replace("#", "")}
-                        </span>
-                      </>
-                    );
-                  })()}
-                  {isNext && !bus && (
-                    <span style={{
-                      fontSize: 7, fontWeight: 600, color: cfg.color,
-                      opacity: blinkOn ? 1 : 0.3,
-                      transition: "opacity 0.3s",
-                    }}>
-                      NEXT
-                    </span>
-                  )}
+            {isolated ? (
+              <>
+                {/* The real map for the one route the rider asked for. */}
+                <AllRoutesMap
+                  key={primaryRouteId}
+                  height="min(38vh, 320px)"
+                  // The rider asked for exactly this route; the Map tab's
+                  // line filter has no say here.
+                  hiddenRoutes={EMPTY_HIDDEN}
+                  buses={routeBuses}
+                  routePaths={isolatedPaths}
+                  stopCoords={stopCoords}
+                  stopNames={stopNames}
+                  routeStops={isolatedStops}
+                  userLatLon={userLatLon ?? null}
+                  onRequestLocate={onRequestLocate ?? (() => {})}
+                />
+                <div style={{ padding: "0 0 6px" }}>
+                  {stops.map((sid, i) => stopRow(sid, `${primaryRouteId}-${sid}-${i}`))}
                 </div>
-              </React.Fragment>);
-              });
-            })()}
+              </>
+            ) : (
+              <>
+                {thumb && (
+                  <div
+                    onClick={() => setIsolatedRouteId(primaryRouteId)}
+                    title={`Show only ${cfg.label}`}
+                    style={{ padding: "0 10px 6px", cursor: "pointer" }}
+                  >
+                    <RouteThumb
+                      thumb={thumb}
+                      color={cfg.color}
+                      label={cfg.label}
+                      dashed={cfg.dashed}
+                    />
+                  </div>
+                )}
+                {upcoming.map(({ sid }, i) => stopRow(sid, `${primaryRouteId}-${sid}-${i}`))}
+                {(upcoming.length === 0 || moreStops > 0) && (
+                  <button
+                    onClick={() => setIsolatedRouteId(primaryRouteId)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left",
+                      fontSize: 12, color: "#546e7a", padding: "10px",
+                      minHeight: 44, background: "none", border: "none",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {upcoming.length > 0
+                      ? `and ${moreStops} more stops ›`
+                      : `${stops.length} stops${hasBuses ? "" : " · no buses en route"} ›`}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         );
       })}
@@ -5025,416 +5515,6 @@ const StopList: FC<{
   );
 };
 
-// ── Track loop visualization ───────────────────────────────────────────────
-
-const TRACK_W = 520;
-const TRACK_H = 340;
-const TRACK_RX = 60;       // corner radius
-const TRACK_PAD = 80;      // room for outward labels
-
-/** Compute tangent angle (degrees) at a given t — direction of travel */
-function trackTangent(t: number): number {
-  const [x1, y1] = trackPoint(t);
-  const [x2, y2] = trackPoint((t + 0.001) % 1);
-  return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-}
-
-/** Compute outward normal direction (away from center) at a given t */
-function trackNormal(t: number): [number, number] {
-  const [x, y] = trackPoint(t);
-  const cx = TRACK_W / 2, cy = TRACK_H / 2;
-  const dx = x - cx, dy = y - cy;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  return [dx / len, dy / len];
-}
-
-/** Compute a point along a rounded-rectangle perimeter (0–1 = full loop) */
-function trackPoint(t: number): [number, number] {
-  const w = TRACK_W - TRACK_PAD * 2;
-  const h = TRACK_H - TRACK_PAD * 2;
-  const straight = (w - TRACK_RX * 2) * 2 + (h - TRACK_RX * 2) * 2;
-  const curve = 2 * Math.PI * TRACK_RX;
-  const perimeter = straight + curve;
-  let d = ((t % 1) + 1) % 1 * perimeter;
-
-  const cx = TRACK_PAD, cy = TRACK_PAD;
-  const topLen = w - TRACK_RX * 2;
-  const rightLen = h - TRACK_RX * 2;
-
-  // Top straight (left to right)
-  if (d < topLen) return [cx + TRACK_RX + d, cy];
-  d -= topLen;
-  // Top-right curve
-  const qCurve = Math.PI * TRACK_RX / 2;
-  if (d < qCurve) {
-    const a = -Math.PI / 2 + (d / qCurve) * (Math.PI / 2);
-    return [cx + w - TRACK_RX + Math.cos(a) * TRACK_RX, cy + TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Right straight (top to bottom)
-  if (d < rightLen) return [cx + w, cy + TRACK_RX + d];
-  d -= rightLen;
-  // Bottom-right curve
-  if (d < qCurve) {
-    const a = (d / qCurve) * (Math.PI / 2);
-    return [cx + w - TRACK_RX + Math.cos(a) * TRACK_RX, cy + h - TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Bottom straight (right to left)
-  if (d < topLen) return [cx + w - TRACK_RX - d, cy + h];
-  d -= topLen;
-  // Bottom-left curve
-  if (d < qCurve) {
-    const a = Math.PI / 2 + (d / qCurve) * (Math.PI / 2);
-    return [cx + TRACK_RX + Math.cos(a) * TRACK_RX, cy + h - TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  d -= qCurve;
-  // Left straight (bottom to top)
-  if (d < rightLen) return [cx, cy + h - TRACK_RX - d];
-  d -= rightLen;
-  // Top-left curve (from left at (cx, cy+TRACK_RX) to top at (cx+TRACK_RX, cy))
-  if (d < qCurve) {
-    const a = Math.PI + (d / qCurve) * (Math.PI / 2);
-    return [cx + TRACK_RX + Math.cos(a) * TRACK_RX, cy + TRACK_RX + Math.sin(a) * TRACK_RX];
-  }
-  return [cx + TRACK_RX, cy];
-}
-
-interface TrackLoopProps {
-  label: string;
-  color: string;
-  stops: number[];
-  stopNames: Record<number, string>;
-  stopCoords: Record<number, { lat: number; lon: number }>;
-  buses: BusData[];
-  savedStops: Set<number>;
-  tick: number;
-}
-
-const TrackLoop: FC<TrackLoopProps & {
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  routeId: string;
-}> = (
-  { label, color, stops, stopNames, stopCoords, buses, savedStops, tick, segmentTimes, dwellTimes, routeId }
-) => {
-  if (stops.length === 0) return null;
-
-  const n = stops.length;
-
-  // Find northernmost stop and use it as offset so it appears at the top of the loop
-  let northIdx = 0;
-  let maxLat = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const coord = stopCoords[stops[i]];
-    if (coord && coord.lat > maxLat) {
-      maxLat = coord.lat;
-      northIdx = i;
-    }
-  }
-  // Offset function: rotate stop positions so northIdx maps to t=0 (top of track)
-  const toT = (idx: number) => ((idx - northIdx + n) % n) / n;
-
-  // Segment data for this route
-  const routeSegs = segmentTimes[routeId] ?? {};
-  const segValues = Object.values(routeSegs).filter((s) => s.n >= 1);
-  const avgSeg = segValues.length > 0 ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length : 0;
-
-  // Find buses on this route — use GPS to find the nearest route stop
-  // (more accurate than last_stop_id which can be stale or zero)
-  const busPositions: Array<{ name: string; idx: number; t: number; stationary: boolean; dwellElapsed: number | null; dwellExpected: number | null }> = [];
-  for (const bus of buses) {
-    let bestIdx = -1;
-    if (bus.lat && bus.lon) {
-      let bestD2 = Infinity;
-      for (let i = 0; i < stops.length; i++) {
-        const sc = stopCoords[stops[i]];
-        if (!sc) continue;
-        const dLat = bus.lat - sc.lat;
-        const dLon = bus.lon - sc.lon;
-        const d2 = dLat * dLat + dLon * dLon;
-        if (d2 < bestD2) { bestD2 = d2; bestIdx = i; }
-      }
-    }
-    if (bestIdx === -1) {
-      if (bus.last_stop_id === 0) continue;
-      bestIdx = stops.indexOf(bus.last_stop_id);
-      if (bestIdx === -1) continue;
-    }
-    // Count up elapsed sitting time if bus is parked at a known long-dwell stop
-    let dwellElapsed: number | null = null;
-    let dwellExpected: number | null = null;
-    const atStopId = bus.at_stop_id ?? stops[bestIdx];
-    const atStopIdx = stops.indexOf(atStopId);
-    const dw = (dwellTimes[routeId] ?? {})[String(atStopId)];
-    if (dw && dw.n >= 3 && dw.med >= 300 && bus.at_stop_since && atStopIdx === bestIdx) {
-      dwellElapsed = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-      dwellExpected = dw.med;
-    }
-    busPositions.push({
-      name: bus.bus_name.replace("#", ""),
-      idx: bestIdx, t: toT(bestIdx),
-      stationary: !!bus.stationary,
-      dwellElapsed,
-      dwellExpected,
-    });
-  }
-
-  // Compute ETA (+ over/under range) from nearest upstream bus for EVERY stop
-  const routeDwells = dwellTimes[routeId] ?? {};
-  const stopEtas: Record<number, { eta: number; low: number; high: number }> = {};
-  const fallbackSd = avgSeg * 0.5;
-  // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-  for (const bp of busPositions) {
-    let cumulative = 0;
-    let cumulativeVar = 0;
-    for (let step = 1; step < n; step++) {
-      const prevIdx = (bp.idx + step - 1) % n;
-      const curIdx = (bp.idx + step) % n;
-
-      const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-      if (seg && seg.n >= 1) {
-        cumulative += seg.avg;
-        cumulativeVar += (seg.sd ?? 0) ** 2;
-      } else {
-        const a = avgSeg > 0 ? avgSeg : 60;
-        cumulative += a;
-        cumulativeVar += fallbackSd * fallbackSd;
-      }
-      const sd = Math.sqrt(cumulativeVar);
-      const existing = stopEtas[stops[curIdx]];
-      if (!existing || cumulative < existing.eta) {
-        stopEtas[stops[curIdx]] = {
-          eta: cumulative,
-          low: Math.max(0, cumulative - sd),
-          high: cumulative + sd,
-        };
-      }
-    }
-  }
-
-  // Stops currently hosting a parked bus whose dwell pill is being rendered —
-  // suppress the stop-level ⏸Xm hint there to avoid duplication.
-  const parkedDwellIdxs = new Set<number>();
-  for (const bp of busPositions) {
-    if (bp.dwellExpected !== null) parkedDwellIdxs.add(bp.idx);
-  }
-
-  // Label ALL stops. Collapse only adjacent N/S twins (back-to-back same-name
-  // stops look like one); leave non-adjacent twins labeled so opposite-side
-  // occurrences don't turn into unlabeled gaps.
-  const labeledStops: Array<{ idx: number; t: number; name: string; saved: boolean; eta: string | null; dwellMin: number | null }> = [];
-  let lastLabeledName: string | null = null;
-  for (let i = 0; i < n; i++) {
-    const rawName = stopNames[stops[i]] ?? `Stop ${stops[i]}`;
-    const shortName = rawName.replace(/ \([NS]\)$/, "").replace(/\s*\/\s*/g, "/").trim().slice(0, 16);
-    const isSaved = savedStops.has(stops[i]);
-    if (shortName === lastLabeledName && !isSaved) continue;
-    lastLabeledName = shortName;
-    const e = stopEtas[stops[i]];
-    let etaStr: string | null = null;
-    if (e) {
-      if (e.eta < 60) {
-        etaStr = "<1 min";
-      } else {
-        etaStr = `${Math.round(e.low / 60)} min`;
-      }
-    }
-    const dw = routeDwells[String(stops[i])];
-    const dwellMin = dw && dw.n >= 3 && dw.med >= 300 && !parkedDwellIdxs.has(i) ? Math.round(dw.med / 60) : null;
-    labeledStops.push({ idx: i, t: toT(i), name: shortName, saved: isSaved, eta: etaStr, dwellMin });
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%", maxWidth: TRACK_W }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color, letterSpacing: 1, textTransform: "uppercase" }}>{label}</div>
-      <svg viewBox={`0 0 ${TRACK_W} ${TRACK_H}`} style={{ width: "100%", maxWidth: TRACK_W, height: "auto", display: "block" }}>
-        {/* Track outline */}
-        <rect
-          x={TRACK_PAD} y={TRACK_PAD}
-          width={TRACK_W - TRACK_PAD * 2} height={TRACK_H - TRACK_PAD * 2}
-          rx={TRACK_RX} fill="none" stroke={color} strokeWidth={3} opacity={0.15}
-        />
-
-        {/* Stop tick marks */}
-        {stops.map((_, i) => {
-          const [x, y] = trackPoint(toT(i));
-          return <circle key={i} cx={x} cy={y} r={1.5} fill={color} opacity={0.25} />;
-        })}
-
-        {/* Labeled stops — radial, text pointing outward from center */}
-        {labeledStops.map((ls) => {
-          const [x, y] = trackPoint(ls.t);
-          const [nx, ny] = trackNormal(ls.t);
-          // More spacing on top/bottom (vertical normal) than sides
-          const isVertical = Math.abs(ny) > Math.abs(nx) * 0.5;
-          const offset = isVertical ? 12 : 8;
-          const lx = x + nx * offset;
-          const ly = y + ny * offset;
-
-          // All angled labels use the same angle: -45° (up-and-to-the-right tilt).
-          // Which side of the text touches the loop depends on the dot's position:
-          //   top of loop    → anchor=start (text extends up-right, LEFT edge at dot)
-          //   bottom of loop → anchor=end   (text extends down-left, RIGHT edge at dot)
-          //   right side     → anchor=start (horizontal, LEFT edge at dot)
-          //   left side      → anchor=end   (horizontal, RIGHT edge at dot)
-          const onBottom = ny > 0;
-          const onLeft = nx < 0;
-          const isAngled = Math.abs(ny) > Math.abs(nx) * 0.5;
-          const angle = isAngled ? -45 : 0;
-          // Pick anchor: end for bottom labels and left-side labels
-          const textAnchor = (isAngled ? onBottom : onLeft) ? "end" : "start";
-
-          return (
-            <g key={`l${ls.idx}`}>
-              <circle cx={x} cy={y} r={ls.saved ? 5 : 3}
-                      fill={ls.saved ? "#2E7D32" : "#fff"}
-                      stroke={ls.saved ? "#fff" : color}
-                      strokeWidth={ls.saved ? 2 : 1.5} />
-              {ls.dwellMin && (
-                <g>
-                  <title>Often pauses ~{ls.dwellMin} min here</title>
-                  <circle cx={x} cy={y} r={ls.saved ? 9 : 7} fill="none"
-                          stroke="#FFA726" strokeWidth={1.5} strokeDasharray="2 2" opacity={0.8} />
-                  <text x={x - 8} y={y - 8} textAnchor="end" dominantBaseline="central"
-                        fontSize={9} fontWeight={700} fill="#E65100">
-                    ⏸{ls.dwellMin}m
-                  </text>
-                </g>
-              )}
-              <text
-                x={lx} y={ly}
-                textAnchor={textAnchor}
-                dominantBaseline="central"
-                transform={`rotate(${angle}, ${lx}, ${ly})`}
-                fontSize={11}
-                fill={ls.saved ? "#2E7D32" : "#78909C"}>
-                {(() => {
-                  const parts = ls.name.split("/").map((p) => p.trim()).filter(Boolean);
-                  const nameColor = ls.saved ? "#2E7D32" : "#455a64";
-                  const nameWeight = ls.saved ? 700 : 500;
-                  const line1 = parts[0];
-                  const line2 = parts.slice(1).join("/");
-                  const multiline = parts.length > 1;
-                  return (
-                    <>
-                      <tspan fontWeight={nameWeight} fill={nameColor}>{line1}</tspan>
-                      {multiline && (
-                        <tspan x={lx} dy="1em" dx={textAnchor === "start" ? 6 : -6}
-                               fontWeight={nameWeight} fill={nameColor}>
-                          {line2}
-                        </tspan>
-                      )}
-                    </>
-                  );
-                })()}
-              </text>
-              {ls.eta && (() => {
-                // Place ETA on the inside of the loop (opposite side of the dot from the label).
-                const etaOffset = 8;
-                const ex = x - nx * etaOffset;
-                const ey = y - ny * etaOffset;
-                const etaAnchor = textAnchor === "start" ? "end" : "start";
-                const etaSize = ls.saved ? 11 : 9;
-                const etaWeight = ls.saved ? 800 : 700;
-                return (
-                  <text x={ex} y={ey} textAnchor={etaAnchor} dominantBaseline="central"
-                        transform={`rotate(${angle}, ${ex}, ${ey})`}
-                        fontSize={etaSize} fontWeight={etaWeight} fill={color}>
-                    {ls.eta}
-                  </text>
-                );
-              })()}
-            </g>
-          );
-        })}
-
-        {/* Direction arrows */}
-        {[0.15, 0.65].map((t, i) => {
-          const [ax, ay] = trackPoint(t);
-          const [bx, by] = trackPoint(t + 0.01);
-          const angle = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
-          return (
-            <g key={`arr${i}`} transform={`translate(${ax},${ay}) rotate(${angle})`}>
-              <polygon points="5,0 -3,-3 -3,3" fill={color} opacity={0.35} />
-            </g>
-          );
-        })}
-
-        {/* Bus dots — offset when multiple buses at same stop */}
-        {busPositions.map((bp, i) => {
-          const [x, y] = trackPoint(bp.t);
-          // Count how many buses at the same idx, and which offset this one is
-          const sameStopBuses = busPositions.filter((b) => b.idx === bp.idx);
-          const orderAtStop = sameStopBuses.findIndex((b) => b.name === bp.name);
-          // Offset perpendicular to track using normal direction
-          const [nx, ny] = trackNormal(bp.t);
-          const spacing = 15;
-          const offset = sameStopBuses.length > 1
-            ? (orderAtStop - (sameStopBuses.length - 1) / 2) * spacing
-            : 0;
-          const bx = x + nx * offset;
-          const by = y + ny * offset;
-          return (
-            <g key={`b${bp.name}`}>
-              <g opacity={bp.stationary ? 0.45 : 1}>
-                {!bp.stationary && (
-                  <circle cx={bx} cy={by} r={8} fill={color} opacity={0.15}>
-                    <animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
-                  </circle>
-                )}
-                <circle cx={bx} cy={by} r={8}
-                        fill={bp.stationary ? "#999" : color}
-                        stroke="#fff" strokeWidth={1.5}
-                        strokeDasharray={bp.stationary ? "2 2" : undefined} />
-                <text x={bx} y={by} textAnchor="middle" dominantBaseline="central"
-                      fontSize={9} fontWeight={700} fill="#fff">{bp.name}</text>
-              </g>
-              {bp.dwellElapsed !== null && (() => {
-                const s = Math.floor(bp.dwellElapsed);
-                const mm = Math.floor(s / 60);
-                const ss = s % 60;
-                const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
-                const expMin = bp.dwellExpected !== null ? Math.max(1, Math.round(bp.dwellExpected / 60)) : null;
-                const label = expMin !== null ? `${elapsed}/~${expMin} min` : elapsed;
-                const width = expMin !== null ? 66 : 48;
-                return (
-                  <g>
-                    <rect x={bx - width / 2} y={by + 10} width={width} height={14}
-                          rx={3} fill="#FFA726" opacity={0.95} />
-                    <text x={bx} y={by + 17} textAnchor="middle" dominantBaseline="central"
-                          fontSize={9.5} fontWeight={700} fill="#fff">⏸ {label}</text>
-                  </g>
-                );
-              })()}
-            </g>
-          );
-        })}
-
-        {/* Center label — count placed vs unplaced */}
-        {(() => {
-          const placed = busPositions.length;
-          const unplaced = buses.length - placed;
-          return (
-            <>
-              <text x={TRACK_W / 2} y={TRACK_H / 2 - 4} textAnchor="middle" dominantBaseline="central"
-                    fontSize={11} fontWeight={600} fill={color} opacity={0.5}>
-                {placed > 0 ? `${placed} bus${placed > 1 ? "es" : ""}` : "no buses"}
-              </text>
-              {unplaced > 0 && (
-                <text x={TRACK_W / 2} y={TRACK_H / 2 + 10} textAnchor="middle" dominantBaseline="central"
-                      fontSize={8} fill="#999">
-                  +{unplaced} off-route
-                </text>
-              )}
-            </>
-          );
-        })()}
-      </svg>
-    </div>
-  );
-};
 
 
 // On-bus tracking banner. Appears once the rider taps "I'm on this bus";
@@ -5626,7 +5706,8 @@ const RideStopList: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   const cfg = ROUTE_LISTS.find(c => c.label === ride.routeLabel);
   const normBus = (s: string) => s.replace(/^#/, "");
 
@@ -5656,7 +5737,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
     );
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
@@ -5762,8 +5843,9 @@ const OnBusBanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   onEnd: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, onEnd }) => {
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, onEnd }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -5801,7 +5883,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
     );
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
@@ -5956,6 +6038,16 @@ const TransitMap: FC = () => {
   // While a ride is active, the dedicated ride page (map + stop list) replaces
   // the tabbed views entirely — no toggle needed.
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<string>>(new Set());
+  // The Map tab's own filter, remembered between visits (operator request,
+  // 2026-09-02). Deliberately NOT `hiddenRoutes` above: that one is reset on
+  // every view change to keep the favourites filter from leaking into the All
+  // page, which would wipe this the moment the rider switched tabs.
+  const [mapHidden, setMapHidden] = useState<Set<string>>(() =>
+    loadHiddenRoutes(LEGEND_ROUTES.map((r) => r.toggleLabel)));
+  const setMapHiddenPersisted = (next: Set<string>) => {
+    setMapHidden(next);
+    saveHiddenRoutes(next);
+  };
   const [showMap, setShowMap] = useState(false);
   // Every storage touch in the shell is guarded: with site data blocked (iOS
   // "Block All Cookies", a QR scanner's in-app WebView) `localStorage` THROWS
@@ -5964,7 +6056,10 @@ const TransitMap: FC = () => {
   const [listView, setListView] = useState<"all" | "trip" | "map" | "favorites" | "issues">(() => {
     try {
       const saved = localStorage.getItem("listView");
-      return saved === "all" || saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
+      // "all" is retired — its content lives under the map now. A rider whose
+      // last tab was All lands where that content went, not back at Trip.
+      if (saved === "all") return "map";
+      return saved === "trip" || saved === "map" || saved === "issues" ? saved : "trip";
     } catch { return "trip"; }
   });
   useEffect(() => {
@@ -6057,12 +6152,18 @@ const TransitMap: FC = () => {
   const [feedbackImage, setFeedbackImage] = useState<string | null>(null);
   const [feedbackPriority, setFeedbackPriority] = useState<"urgent" | "normal" | "nice_to_have">("normal");
   const [feedbackImageErr, setFeedbackImageErr] = useState<string | null>(null);
+  /** A pasted screenshot is still being downscaled; Send waits for it. */
+  const [feedbackAttaching, setFeedbackAttaching] = useState(false);
   // Shared with the Issues tab's reply box — one downscale, one set of
   // limits, one wording for the failures (web/src/screenshot.ts).
-  const attachScreenshot = (file: File | undefined) => {
+  const attachScreenshot = (file: File | undefined | null) => {
     setFeedbackImageErr(null);
     if (!file) return;
+    // Decoding a 12 MP screenshot takes long enough on a phone that a rider
+    // can tap Send first and post a report with no picture and no warning.
+    setFeedbackAttaching(true);
     void downscaleToDataUrl(file).then((res) => {
+      setFeedbackAttaching(false);
       if ("error" in res) setFeedbackImageErr(attachErrorText(res.error));
       else setFeedbackImage(res.dataUrl);
     });
@@ -6279,9 +6380,17 @@ const TransitMap: FC = () => {
   // any trip has been started — as idle browsing. Those riders got
   // enableHighAccuracy:false with maximumAge:60_000, i.e. a coarse fix up to
   // a minute stale, and watched their dot sit still while they walked
-  // (reports #36, #39, #43, #44). Only the passive "all routes" list is
-  // genuinely idle; the trip and map views both render a live dot.
-  const tripActiveForGps = !!boardedRide || listView !== "all";
+  // (reports #36, #39, #43, #44). The trip view and a ride in progress render
+  // a live dot and need the precise tier.
+  //
+  // This used to read `listView !== "all"`, naming the tab that held the
+  // passive route list. That tab is gone — its cards live under the map — so
+  // the predicate became a tautology and the coarse tier was unreachable:
+  // a rider browsing route cards got a continuous high-accuracy watch. It now
+  // names the condition instead of the tab, and the map tab is precise only
+  // once the rider asks to be located.
+  const tripActiveForGps =
+    !!boardedRide || listView === "trip" || (listView === "map" && (locating || userLatLon !== null));
   useEffect(() => {
     if (!navigator.geolocation || !window.isSecureContext) return;
     if (geoWatchRef.current == null) return; // nothing running yet — mount effect owns the first start
@@ -6634,6 +6743,9 @@ const TransitMap: FC = () => {
           .app-header { padding: 16px 12px 4px !important; }
           .app-tabs { padding: 0 8px !important; }
           .app-tabs button { padding: 4px 10px !important; font-size: 10.5px !important; }
+          /* ...except the reload glyph, which is an icon, not a label. The
+             rule above is !important, so this one has to be too. */
+          .app-tabs button.app-refresh { font-size: 17px !important; padding: 4px 12px !important; }
           .pick-label { font-size: 11px !important; }
         }
       `}</style>
@@ -6644,7 +6756,7 @@ const TransitMap: FC = () => {
           stopNames={stopNames}
           stopCoords={stopCoords}
           routeStops={routeStops}
-          segmentTimes={segmentTimes}
+          segmentTimes={segmentTimes}          dwellTimes={dwellTimes}
           onEnd={() => setBoardedRide(null)}
         />
       )}
@@ -6660,15 +6772,19 @@ const TransitMap: FC = () => {
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
       </div>
 
-      {/* View tabs — hidden while on a bus, since the ride page is its own view */}
-      {!boardedRide && (
+      {/* View tabs — the tabs themselves are hidden while on a bus, since the
+          ride page is its own view, but the row stays so Refresh never
+          disappears. */}
       <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
           overflowX: "auto", WebkitOverflowScrolling: "touch",
-          justifyContent: "center", flexWrap: "wrap",
+          justifyContent: "center", flexWrap: "wrap", alignItems: "center",
         }}>
-          {(["trip", "all", "map", "issues"] as const).map((v) => (
+          {/* Three tabs, not four: the route cards moved under the map
+              (operator, 2026-09-02), so "All" and "Map" were two halves of
+              one page. */}
+          {!boardedRide && (["trip", "map", "issues"] as const).map((v) => (
             <button
               key={v}
               onClick={() => { setListView(v); }}
@@ -6696,9 +6812,32 @@ const TransitMap: FC = () => {
               )}
             </button>
           ))}
+          {/* Reload, to the right of Issues and always present (operator,
+              2026-09-02). It used to appear only in the installed app AND
+              only after a destination was picked — exactly the state a stuck
+              app never reaches. The pull-to-refresh gesture still works;
+              a visible button is the one riders find. */}
+          <button
+            className="app-refresh"
+            onClick={() => window.location.reload()}
+            title="Refresh the app"
+            aria-label="Refresh the app"
+            style={{
+              // Deliberately NOT an inactive tab's colours, and set apart by a
+              // gap: it sits one thumb-width from Issues and a mis-tap reloads
+              // the page, which throws away a planned trip.
+              padding: "4px 12px", borderRadius: 12,
+              border: "1px solid #d5d2cc", background: "transparent",
+              color: "#78909c", marginLeft: 8,
+              cursor: "pointer", fontSize: 17, fontFamily: "inherit",
+              minHeight: 44, minWidth: 44,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ↻
+          </button>
         </div>
       </div>
-      )}
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
@@ -6756,15 +6895,147 @@ const TransitMap: FC = () => {
             stopNames={stopNames}
             stopCoords={stopCoords}
             routeStops={routeStops}
-            segmentTimes={segmentTimes}
+            segmentTimes={segmentTimes}            dwellTimes={dwellTimes}
           />
         </>
       ) : listView === "map" ? (
-        <AllRoutesMap
-          buses={buses} routePaths={routePaths}
-          stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-          userLatLon={userLatLon} onRequestLocate={startLocating}
-        />
+        <>
+          {/* Line filter, remembered between visits. Above the map, not on it:
+              a rider hunting one route should not have to find a control
+              floating over the thing they are trying to read. */}
+          <div style={{
+            width: "100%", maxWidth: 800, margin: "0 auto",
+            padding: "0 12px 6px", display: "flex", gap: 6,
+            // One scrolling row, not four wrapped ones: fifteen 44 px chips
+            // wrapped push the map itself off a phone screen, and the map is
+            // what the tab is for.
+            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
+            alignItems: "center",
+          }}>
+            <button
+              onClick={() => setMapHiddenPersisted(
+                toggleAll(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden))}
+              style={{
+                padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
+                background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit", minHeight: 44,
+                display: "inline-flex", alignItems: "center",
+                flexShrink: 0, whiteSpace: "nowrap",
+              }}
+            >
+              {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? "Show all" : "Hide all"}
+            </button>
+            {LEGEND_ROUTES.map((r) => {
+              const off = mapHidden.has(r.toggleLabel);
+              return (
+                <button
+                  key={r.toggleLabel}
+                  onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
+                  aria-pressed={!off}
+                  style={{
+                    padding: "3px 10px", borderRadius: 10,
+                    border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
+                    background: off ? "#fff" : r.color,
+                    color: off ? "#90a4ae" : "#fff",
+                    fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                    minHeight: 44, display: "inline-flex", alignItems: "center",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto",
+              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
+            }}>
+              Every line is switched off — tap one above to put it back on the map.
+            </div>
+          )}
+          <AllRoutesMap
+            // Shorter here than it was as a whole page: the route cards sit
+            // below it now and must be reachable without a long scroll.
+            height="min(48vh, 430px)"
+            buses={buses} routePaths={routePaths}
+            stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
+            hiddenRoutes={mapHidden}
+            userLatLon={userLatLon} onRequestLocate={startLocating}
+          />
+
+          {/* The route cards, under the map (operator, 2026-09-02). They were
+              a tab of their own; the map above answers "where is everything"
+              and these answer "when does MY line reach MY stop", which is one
+              page, not two. The line filter above governs both. */}
+          {/* One control row above the cards: the "running now" filter, then
+              the jump index. Two stacked rows pushed the first card entirely
+              off a phone screen. It scrolls sideways rather than wrapping, so
+              fifteen routes cost the same height as three.
+              The jump index earns its place because the page is thousands of
+              pixels tall and a swipe starting on the map pans the map instead
+              of scrolling the page — report #21 is the same complaint about a
+              list sitting too low. */}
+          <div style={{
+            // Same shape as the line-filter row above the map: a sideways
+            // scroller must be width-constrained or it widens the PAGE, and a
+            // page that scrolls sideways on a phone feels broken.
+            width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
+            padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
+            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
+          }}>
+            <button
+              onClick={() => setActiveOnly(!activeOnly)}
+              style={{
+                padding: "4px 14px", borderRadius: 12, minHeight: 44, flexShrink: 0,
+                border: activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
+                background: activeOnly ? "#1a1a2e" : "#fff",
+                color: activeOnly ? "#fff" : "#546e7a", whiteSpace: "nowrap",
+                fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              {activeOnly ? "Running now" : "Every route"}
+            </button>
+            {ROUTE_LISTS.map((cfg) => {
+              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+              if (activeOnly && buses.length > 0 && !hasBuses) return null;
+              const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+              if (toggle && mapHidden.has(toggle)) return null;
+              return (
+                <button
+                  key={cfg.label}
+                  onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  title={`Jump to the ${cfg.label} route`}
+                  style={{
+                    padding: "3px 10px", borderRadius: 10, minHeight: 44,
+                    border: `1px solid ${cfg.color}`, background: "#fff",
+                    color: cfg.color, fontSize: 10, fontWeight: 700,
+                    cursor: "pointer", fontFamily: "inherit",
+                    flexShrink: 0, whiteSpace: "nowrap",
+                  }}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
+            <StopList
+              buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+              routePaths={routePaths}
+              segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
+              routeHours={routeHours} tick={tick}
+              listView="all" activeOnly={activeOnly && buses.length > 0}
+              // One filter for the page: the chips above already say which
+              // lines the rider cares about, and they persist between visits.
+              hiddenRoutes={mapHidden}
+              favorites={favorites} onToggleFavorite={toggleFavorite}
+              savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
+              userLatLon={userLatLon} onRequestLocate={startLocating}
+            />
+          </div>
+        </>
       ) : listView === "issues" ? (
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
@@ -6788,6 +7059,9 @@ const TransitMap: FC = () => {
           onBoard={(ride) => { setBoardedRide(ride); }}
         />
       ) : (
+      // Unreachable: the tab bar offers trip/map/issues only, and a stored
+      // "all" is migrated to "map" above. Kept as the favourites/accuracy
+      // shell it also serves.
       <>
       {false && (() => {
         const visibleRouteIds = new Set<string>();
@@ -6974,7 +7248,7 @@ const TransitMap: FC = () => {
       )}
 
       {/* Route jump index: one chip per visible route, scrolls to that
-          route's loop diagram — the page is thousands of pixels tall. */}
+          route's card — the page is thousands of pixels tall. */}
       {listView === "all" && (
         <div style={{
           padding: "0 16px 6px", display: "flex", gap: 6, flexWrap: "wrap",
@@ -6988,8 +7262,8 @@ const TransitMap: FC = () => {
             return (
               <button
                 key={cfg.label}
-                onClick={() => document.getElementById(`loop-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                title={`Jump to the ${cfg.label} route diagram`}
+                onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                title={`Jump to the ${cfg.label} route`}
                 style={{
                   padding: "3px 10px", borderRadius: 10,
                   border: `1px solid ${cfg.color}`, background: "#fff",
@@ -7005,61 +7279,21 @@ const TransitMap: FC = () => {
         </div>
       )}
 
-      {/* Stop list (all view — below the map) */}
+      {/* Route cards (all view): one full-width card per route — name, hours,
+          an SVG thumbnail of the line and its soonest arrivals. Tapping a card
+          isolates that route (real Leaflet map + every stop). */}
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+            routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
             listView={listView} activeOnly={activeFilter}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}
             savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
+            userLatLon={userLatLon} onRequestLocate={startLocating}
           />
-        </div>
-      )}
-
-      {/* Track loops (bottom of all view) — honor the same visibility filters
-          the stop list and map use: hidden routes hide, active-only collapses
-          to routes with buses. */}
-      {listView === "all" && (
-        <div style={{
-          width: "100%", padding: "8px 16px", display: "flex",
-          gap: 8, flexWrap: "wrap", justifyContent: "center",
-        }}>
-          {ROUTE_LISTS.map((cfg, idx) => {
-            const routeBuses = buses.filter((b) => cfg.busRouteIds.includes(b.route_id));
-            const hasBuses = routeBuses.length > 0;
-            if (activeFilter && !hasBuses) return null;
-            const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-            if (toggle && hiddenRoutes.has(toggle)) return null;
-            const allStops: number[] = [];
-            const seen = new Set<number>();
-            for (const rid of cfg.routeIds) {
-              for (const sid of (routeStops[rid] ?? [])) {
-                if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
-              }
-            }
-            if (allStops.length < 2) return null;
-            return (
-              // Anchor for the jump-index chips above the list.
-              <div key={idx} id={`loop-${cfg.label}`} style={{ scrollMarginTop: 8 }}>
-                <TrackLoop
-                  label={cfg.label}
-                  color={cfg.color}
-                  stops={allStops}
-                  stopNames={stopNames}
-                  stopCoords={stopCoords}
-                  buses={routeBuses}
-                  savedStops={savedStops}
-                  tick={tick}
-                  segmentTimes={segmentTimes}
-                  dwellTimes={dwellTimes}
-                  routeId={cfg.routeIds[0]}
-                />
-              </div>
-            );
-          })}
         </div>
       )}
       </>
@@ -7140,6 +7374,25 @@ const TransitMap: FC = () => {
             <textarea
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
+              // Paste or drop a screenshot straight in (operator request,
+              // 2026-09-02): a phone screenshot is already on the clipboard,
+              // and making the rider save it and then find it in a file
+              // picker is the step that stops them attaching one at all. A
+              // text paste is untouched — imageFromTransfer returns null and
+              // the event runs as normal.
+              onPaste={(e) => {
+                const file = imageFromTransfer(e.clipboardData);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
+              onDragOver={(e) => { if (dragCarriesFile(e.dataTransfer)) e.preventDefault(); }}
+              onDrop={(e) => {
+                const file = imageFromTransfer(e.dataTransfer);
+                if (!file) return;
+                e.preventDefault();
+                attachScreenshot(file);
+              }}
               placeholder="Anything on your mind — bugs, ideas, confusing bits…"
               autoFocus
               rows={4}
@@ -7186,7 +7439,7 @@ const TransitMap: FC = () => {
                   fontSize: 13, color: "#1976D2", cursor: "pointer",
                   minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
                 }}>
-                  📎 Attach screenshot
+                  📎 Attach screenshot <span style={{ color: "#90a4ae" }}>&nbsp;or paste one</span>
                   <input type="file" accept="image/*" hidden
                     onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>
@@ -7214,17 +7467,17 @@ const TransitMap: FC = () => {
               </button>
               <button
                 onClick={sendFeedback}
-                disabled={feedbackSending || !feedbackText.trim()}
+                disabled={feedbackSending || feedbackAttaching || !feedbackText.trim()}
                 style={{
                   fontSize: 13, padding: "8px 14px", minHeight: 40,
                   border: "1px solid #1976D2", borderRadius: 6,
-                  background: feedbackSending || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
+                  background: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
                   color: "#fff",
-                  cursor: feedbackSending || !feedbackText.trim() ? "default" : "pointer",
+                  cursor: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "default" : "pointer",
                   fontFamily: "inherit", fontWeight: 600, flex: 1,
                 }}
               >
-                {feedbackSending ? "Sending…" : "Send"}
+                {feedbackSending ? "Sending…" : feedbackAttaching ? "Attaching…" : "Send"}
               </button>
             </div>
           </div>

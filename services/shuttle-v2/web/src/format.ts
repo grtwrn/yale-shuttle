@@ -20,6 +20,27 @@ export type GeocodeResult = {
  * stopwatch (report #48), and it violated the "minutes are spelled min"
  * convention besides. Sub-minute is a state ("<1 min", "now"), not a timer.
  */
+/**
+ * The next two buses in one breath: "in 1, 11 min".
+ *
+ * "in 1 min · next in 11 min" did not fit the option row beside the total
+ * and the arrival time — at 390px it clipped mid-number — and the operator's
+ * fix was the right one (2026-09-03): drop the second label and let the two
+ * numbers share the unit. Both times are always shown now, at any ETA.
+ *
+ * A bus already at the stop has no number to share, so it keeps words.
+ */
+export function fmtBusPair(firstSec: number, secondSec?: number | null): string {
+  const first = fmtMin(firstSec);
+  if (secondSec == null || !Number.isFinite(secondSec)) {
+    return first === "now" ? "arriving now" : `in ${first}`;
+  }
+  const second = fmtMin(secondSec);
+  if (first === "now") return `now, then ${second}`;
+  // "1 min" + "11 min" -> "1, 11 min"; "<1 min" keeps its "<".
+  return `in ${first.replace(" min", "")}, ${second}`;
+}
+
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";

@@ -75,6 +75,9 @@ beforeEach(async () => {
     adminToken: TEST_ADMIN_TOKEN,
     // The clock here is frozen in 2023; count from before it.
     statsSinceDay: "2000-01-01",
+    // Keeps /api/geocode off the network; the external half (Photon and
+    // Nominatim, with a stubbed fetch) is covered in v1compat.geocode.test.ts.
+    geocoder: { lookup: async () => [] },
   });
   // Per-browser budgets now key on the anon id, which the tests reuse across
   // the file; with the frozen clock a bucket never expires on its own.
@@ -1278,5 +1281,95 @@ describe("the stats payload names its counting epoch", () => {
     const body = (await res.json()) as { since: string; riders: { today: number } };
     expect(body.since).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(typeof body.riders.today).toBe("number");
+  });
+});
+
+describe("GET /api/stats/reports — the dashboard's \"someone wrote in\" alert", () => {
+  const OPERATOR = "11111111-1111-4111-8111-111111111111";
+  const STRANGER = "22222222-2222-4222-8222-222222222222";
+
+  const submit = async (body: string, anonId: string) =>
+    app.request("/api/report", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-anon-id": anonId },
+      // The public endpoint takes { note, source }, not { body, kind }.
+      body: JSON.stringify({ note: body, source: "feedback" }),
+    });
+
+  const login = async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    return `stats_session=${value}`;
+  };
+
+  const claim = (anonId: string) =>
+    app.request("/api/stats/operator", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": TEST_ADMIN_TOKEN },
+      body: JSON.stringify({ anonId }),
+    });
+
+  it("shows a stranger's report and hides the operator's own", async () => {
+    expect((await claim(OPERATOR)).status).toBe(200);
+    expect((await submit("mine, from my phone", OPERATOR)).status).toBe(200);
+    expect((await submit("the bus never came", STRANGER)).status).toBe(200);
+
+    const res = await app.request("/api/stats/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { reports: Array<{ excerpt: string }>; total: number };
+    expect(body.total).toBe(1);
+    expect(body.reports[0]!.excerpt).toBe("the bus never came");
+  });
+
+  it("is reachable with the stats cookie, and leaks nothing that identifies a reporter", async () => {
+    await submit("something is wrong", STRANGER);
+    const cookie = await login();
+    const res = await app.request("/api/stats/reports", { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("something is wrong");
+    // The cookie must never reach an IP or a browser id — that is the whole
+    // reason /api/reports stays header-only.
+    expect(text).not.toContain(STRANGER);
+    expect(text).not.toContain("client_ip");
+    expect(text).not.toContain("clientIp");
+  });
+
+  it("still refuses the cookie on the routes that DO carry reporter IPs", async () => {
+    await submit("something is wrong", STRANGER);
+    const cookie = await login();
+    expect((await app.request("/api/reports", { headers: { cookie } })).status).toBe(401);
+  });
+
+  it("refuses an unauthenticated caller", async () => {
+    expect((await app.request("/api/stats/reports")).status).toBe(401);
+    expect((await app.request("/api/stats/operator", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ anonId: OPERATOR }),
+    })).status).toBe(401);
+  });
+
+  it("claims and releases an operator browser, and rejects a malformed id", async () => {
+    const claimed = (await (await claim(OPERATOR)).json()) as { operators: string[] };
+    expect(claimed.operators).toEqual([OPERATOR]);
+    const released = await app.request("/api/stats/operator", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": TEST_ADMIN_TOKEN },
+      body: JSON.stringify({ anonId: OPERATOR, remove: true }),
+    });
+    expect(((await released.json()) as { operators: string[] }).operators).toEqual([]);
+    const bad = await app.request("/api/stats/operator", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": TEST_ADMIN_TOKEN },
+      body: JSON.stringify({ anonId: "not-a-uuid" }),
+    });
+    expect(bad.status).toBe(400);
   });
 });

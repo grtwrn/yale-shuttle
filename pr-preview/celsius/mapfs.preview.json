@@ -1,0 +1,18 @@
+{
+  "caption": "Expanded map: Back top-left, ✕ top-right",
+  "base": "http://127.0.0.1:8151",
+  "trip": {
+    "board": 127,
+    "dest": 23
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/shots-c/mapfs/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

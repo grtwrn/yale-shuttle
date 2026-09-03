@@ -211,7 +211,7 @@ export function planTrip(
         (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
       );
       const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
-        [b], buses, routeStops, stopCoords, segmentTimes, now,
+        [b], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes,
       ).filter((a) => a.routeLabel === cfg.label);
       let cumRide = 0;
       for (let step = 1; step < stops.length; step++) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { computeUpcomingArrivals } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
   at, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -87,9 +88,13 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     const arrivals = computeUpcomingArrivals(
       [STOP.collegeWallN], [bus], routeStops, stopCoords, segmentTimes, NOW,
     );
-    // 20 minutes of dwell swallows the whole first segment: the bus is about
-    // to pull out, so the next stop is imminent.
-    expect(etaFor(arrivals, STOP.collegeWallN)).toBeLessThan(5);
+    // 20 minutes of dwell cancels as much of the first segment as the cap
+    // allows — the bus is about to pull out, but the hop still has to be
+    // driven (the replay showed 'imminent' was 3 min optimistic after a long
+    // layover). Half the segment remains: ~370 m at the 6 m/s fallback ≈ 60 s.
+    const eta = etaFor(arrivals, STOP.collegeWallN)!;
+    expect(eta).toBeGreaterThan(20);
+    expect(eta).toBeLessThan(40);
   });
 
   it("withholds credit when the feed names a DIFFERENT stop than the anchor", () => {
@@ -132,6 +137,97 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     expect(eta).toBeGreaterThan(30);
   });
 
+  /**
+   * Red, 2026-09-03, reported by a rider: bus #316 had been sitting at 344
+   * Winchester for 10 minutes of its ~8-minute layover — about to pull out,
+   * 82 s of driving from the next stop — and the board told someone three
+   * stops down the line "5 min". It left, arrived about 2.5 min later, and
+   * anyone who trusted the 5 missed it. Arriving EARLY is the dangerous
+   * direction: the rider is not there.
+   *
+   * The numbers below are that hop's live calibration: the segment averages
+   * 557 s BECAUSE it contains the 475 s layover. What a dwelling bus can
+   * cancel is the layover, not the drive.
+   */
+  it("a bus that has finished a long layover is not padded by half of it", () => {
+    const LAYOVER = 475.2;
+    const segs: SegmentTimes = {
+      "4": {
+        [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 },
+        [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: 37.4, sd: 10, n: 32 },
+      },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: LAYOVER, sd: 120, n: 13 } },
+    };
+    const bus = makeBus({
+      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(10 * 60),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [bus], routeStops, stopCoords, segs, NOW, dwells),
+      STOP.collegeWallN,
+    )!;
+    // 557 - 475 = 82 s of driving, then the 37 s hop: about two minutes.
+    expect(eta).toBeGreaterThan(90);
+    expect(eta).toBeLessThan(150);
+    // Without a dwell statistic the fraction cap still applies — and that is
+    // the reading the rider was shown, half the segment being pure padding.
+    const padded = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [bus], routeStops, stopCoords, segs, NOW),
+      STOP.collegeWallN,
+    )!;
+    expect(padded).toBeGreaterThan(300);
+  });
+
+  // The "layover taken one stop early" block that lived here is gone with the
+  // behaviour it pinned. A week of `arrivals` says a long hold at a
+  // non-layover stop is followed by the scheduled layover 292 times out of
+  // 321 — the credit would have been wrong in 91% of the cases it fired on.
+  // See the note above STALL_CREDIT_MAX_FRACTION in arrivals.ts.
+
+  it("still does not promise a bus that is part way through its layover", () => {
+    const segs: SegmentTimes = {
+      "4": { [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 } },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: 475.2, sd: 120, n: 13 } },
+    };
+    const justArrived = makeBus({
+      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(30),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([STOP.elmYorkTyco], [justArrived], routeStops, stopCoords, segs, NOW, dwells),
+      STOP.elmYorkTyco,
+    )!;
+    // 30 s served of an ~8 min layover: the rest of the wait is still ahead.
+    expect(eta).toBeGreaterThan(480);
+  });
+
+  it("never credits more than the capped share of the first hop", () => {
+    // Replay finding (2026-09-02): a bus that has sat 5+ min was promised at
+    // the next stop ~3.4 min early because every elapsed second came off the
+    // hop. Whatever the dwell, at least (1 - cap) of the hop must remain.
+    const uncapped = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [makeBus({
+        ...at(STOP.elmYorkTyco), route_id: 4, last_stop_id: STOP.stopAndShop,
+        at_stop_id: STOP.elmYorkTyco, at_stop_since: dwellingSince(0),
+      })], routeStops, stopCoords, segmentTimes, NOW),
+      STOP.collegeWallN,
+    )!;
+    for (const minutes of [2, 5, 20, 60]) {
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [makeBus({
+          ...at(STOP.elmYorkTyco), route_id: 4, last_stop_id: STOP.stopAndShop,
+          at_stop_id: STOP.elmYorkTyco, at_stop_since: dwellingSince(minutes * 60),
+        })], routeStops, stopCoords, segmentTimes, NOW),
+        STOP.collegeWallN,
+      )!;
+      expect(eta).toBeGreaterThanOrEqual(uncapped * (1 - STALL_CREDIT_MAX_FRACTION) - 1e-6);
+    }
+  });
+
   it("a fresh dwell earns no credit; a long one does", () => {
     const fresh = makeBus({
       ...at(STOP.elmYorkTyco), route_id: 4, last_stop_id: STOP.stopAndShop,
@@ -149,6 +245,103 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     expect(freshEta).toBeGreaterThan(staleEta);
   });
 });
+
+  /**
+   * A layover the bus has NOT started is priced at a low quantile, not the
+   * median. The operator's watchers found the board pessimistic by 3-5 min on
+   * Blue, Red and Green whenever the estimate spanned a rest the bus had yet
+   * to take, which is the direction that costs a rider the bus.
+   *
+   * Numbers below are Red's live calibration: the 344 Winchester hop averages
+   * 452 s because the dwell there is 395 s (median) with a 35th percentile of
+   * about 240 s; the drive is the ~57 s remainder.
+   */
+  describe("a rest the bus has not reached yet", () => {
+    const LAYOVER_SEG = 452, DWELL_MED = 395, DWELL_LOW = 240;
+    const segs: SegmentTimes = {
+      "4": {
+        // stopAndShop -> elmYorkTyco is the layover hop; the two beyond it are
+        // quick, as they are on Red.
+        [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: LAYOVER_SEG, sd: 60, n: 34 },
+        [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: 26, sd: 8, n: 32 },
+      },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13, low: DWELL_LOW } },
+    };
+    // The bus is at York/Chapel, one hop BEFORE the layover stop.
+    const approaching = () => makeBus({
+      ...at(STOP.yorkChapel), route_id: 4, last_stop_id: STOP.stopAndShop,
+      at_stop_id: STOP.yorkChapel, at_stop_since: dwellingSince(5),
+    });
+
+    it("bills the low quantile for the rest, not the median", () => {
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, dwells),
+        STOP.collegeWallN,
+      )!;
+      // Without this the layover hop costs the full 452 s; with it the rest is
+      // priced at 240 s and the drive survives, so the estimate drops by about
+      // the difference between the median and the low quantile.
+      const withoutLow = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, {
+          "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+        }),
+        STOP.collegeWallN,
+      )!;
+      expect(withoutLow - eta).toBeGreaterThan(DWELL_MED - DWELL_LOW - 30);
+      expect(eta).toBeLessThan(withoutLow);
+    });
+
+    it("still prices the driving, even when the hop is almost all rest", () => {
+      // A pathological stop whose whole segment average is dwell: the estimate
+      // must not collapse to the low quantile alone.
+      const allDwell: DwellTimes = {
+        "4": { [String(STOP.stopAndShop)]: { med: LAYOVER_SEG, sd: 150, n: 13, low: 60 } },
+      };
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [approaching()], routeStops, stopCoords, segs, NOW, allDwell),
+        STOP.elmYorkTyco,
+      )!;
+      expect(eta).toBeGreaterThan(60);
+    });
+
+    it("does not touch the stop the bus is standing at", () => {
+      // Step 1 is the anchor's own hop: its dwell is handled by the elapsed
+      // credit, which knows how long the bus has really sat. Re-pricing it
+      // here would double-count.
+      const atLayover = makeBus({
+        ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+        at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(30),
+      });
+      const withLow = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [atLayover], routeStops, stopCoords, segs, NOW, dwells),
+        STOP.elmYorkTyco,
+      )!;
+      const withoutLow = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [atLayover], routeStops, stopCoords, segs, NOW, {
+          "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+        }),
+        STOP.elmYorkTyco,
+      )!;
+      expect(withLow).toBe(withoutLow);
+    });
+
+    it("is inert at a stop with no low quantile yet", () => {
+      const noLow: DwellTimes = {
+        "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+      };
+      const a = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, noLow),
+        STOP.collegeWallN,
+      )!;
+      const b = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW),
+        STOP.collegeWallN,
+      )!;
+      expect(a).toBe(b);
+    });
+  });
 
 describe("mid-segment proration", () => {
   it("shrinks the first-segment ETA as the bus approaches the next stop", () => {
@@ -203,5 +396,39 @@ describe("segment statistics", () => {
     );
     expect(all.length).toBeGreaterThan(0);
     expect(Math.max(...all.map((a) => a.eta))).toBeLessThanOrEqual(90 * 60);
+  });
+});
+
+describe("billedDwellSec — one number, shown and billed (report #73)", () => {
+  // A rider read the route page and did the arithmetic: "it says arrive in 8
+  // but expected dwell is 10". Both numbers came from this app — the 10 was
+  // the stop's MEDIAN hold on screen, the 8 was an ETA computed from the LOW
+  // quantile. Displaying one while billing the other is a bug whichever is
+  // right, so there is one definition now and the page calls it too.
+  const rest = { med: 600, low: 420 };
+
+  it("bills the low quantile for a stop still ahead", () => {
+    expect(billedDwellSec(rest, false)).toBe(420);
+  });
+
+  it("bills the median at the stop the bus is standing at", () => {
+    // Step 1 is where the elapsed-dwell credit lives, and it caps against the
+    // median — so that is the honest number to show there.
+    expect(billedDwellSec(rest, true)).toBe(600);
+  });
+
+  it("falls back to the median when no low quantile exists yet", () => {
+    // A stop the calibrator has not placed a quantile for.
+    expect(billedDwellSec({ med: 240 }, false)).toBe(240);
+  });
+
+  it("never bills a low quantile that exceeds the median", () => {
+    // The calibrator clamps this, but the display must not depend on that.
+    expect(billedDwellSec({ med: 200, low: 260 }, false)).toBe(200);
+  });
+
+  it("says nothing when there is no statistic at all", () => {
+    expect(billedDwellSec(undefined, false)).toBeNull();
+    expect(billedDwellSec({ med: NaN }, false)).toBeNull();
   });
 });

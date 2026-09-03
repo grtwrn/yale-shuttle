@@ -1,0 +1,18 @@
+{
+  "caption": "Selected route: the stop list is simply there — no Stops toggle",
+  "base": "http://127.0.0.1:8152",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/shots-tr/stops/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

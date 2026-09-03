@@ -43,7 +43,7 @@ cd services/shuttle-v2
 
 npm run dev          # backend on :8092 (collector + server, tsx watch)
 npm run typecheck    # backend AND frontend types (a web/ scope error once shipped a live crash)
-npm test             # vitest — 427 tests, covers src/ AND web/src/
+npm test             # vitest — ~1070 tests, covers src/ AND web/src/
 npm run riders       # how many unique browsers are using the app
 
 # frontend
@@ -120,6 +120,115 @@ curl -s -H "x-admin-token: $TOKEN" \
   https://yale-shuttle.fly.dev/api/reports/{id}/image -o report.png
 ```
 
+**There is no All tab.** The route cards live under the map on the Map tab
+(operator, 2026-09-02): the map answers "where is everything" and the cards
+answer "when does my line reach my stop", which is one page, not two. A
+rider whose stored tab was `all` is migrated to `map` on load. `StopList`
+still takes `listView="all"` internally — that is the card-list mode, not a
+tab. With every line switched off the map keeps a basemap centred on New
+Haven rather than rendering a grey void.
+
+The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
+above the map toggles each route, and the choice is remembered in
+localStorage as the HIDDEN toggle labels — so a route added upstream appears
+by default rather than staying invisible. It is deliberately separate state
+from `hiddenRoutes`, which every view change resets (that reset exists so the
+favourites filter cannot leak into the All page, and it would wipe the map's
+filter on every tab switch). Every storage touch is guarded; blocked storage
+means the filter simply does not persist.
+
+The forecast has TWO sources (`src/server/weather.ts`): Open-Meteo first,
+then the National Weather Service (`api.weather.gov`, no key). Open-Meteo's
+free tier sheds load — on 2026-09-02 it returned 503 "The service is
+overloaded" to the production machine for minutes, and a restart in that
+window left riders with no weather at all — then recovered on its own. It is
+not blocking our address; the fallback simply makes the next such spell
+invisible. NWS carries no condition code, so the line degrades to temperature
+plus rain chance with a neutral icon. Both providers share ONE timeout budget
+per refresh, or a cold request would wait 5 s twice.
+
+The weather line answers ONE question — when will it next rain — in as few
+words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
+condition word ("Clear") whenever it has an hour to name, because the hour is
+the useful half.
+
+**Where the temperature is HEADING rides in the SAME sentence**, spelled out
+("warming to 80° by 2pm" / "cooling to 57° by 2pm") rather than an arrow —
+"↑80°" read live as "up 80 degrees" (a delta) rather than a destination, and a
+separate row under the sentence read as two facts when it is one. The extreme
+further from the current temperature wins, drawn from the hours the strip
+lists — not the calendar day, most of which a rider has already lived
+through. Showing both ends was the first cut and the operator cut it down
+(2026-09-03): at 9am on a warming day the low is the temperature you are
+already standing in.
+
+**The line carries BOTH facts at once** — the chance of rain and the
+temperature trend ("69°F · 35% rain · warming to 80°"). An earlier cut showed
+the trend only when there was no rain to report, which meant the two things
+the operator asked for were never on screen together. To fit at 390px,
+`rainFragment` has a TERSE form used only when the trend is beside it ("35%
+rain" rather than "35% chance of rain within the hour"), and the trend drops
+its hour ("by 2pm") whenever rain needs more than a bare percentage —
+`trendHourFits` is the one place that decides. Rain arriving later in the
+window still outranks a sub-20% near-term number, so "rain 9pm (70%)" is what
+a quiet-now-wet-later evening says. Inside the sentence they wrapped it: that
+shipped on 2026-09-03 and was caught on production, so measure the LONGEST
+branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
+touching this line, not the shortest. The ≥70% branch still takes two rows by
+choice — it is the amber warning and the second row carries the advice. Tapping it opens the next six hours as a sideways-scrolling
+strip of temperature and rain chance, each percentage carrying a 💧 so it is
+not read as anything else; that strip is collapsed by default, since the
+sentence usually suffices. Hours are spelled `11pm`, not the app's usual
+`11p` — a bare letter beside a temperature and a percentage was one
+abbreviation too many. The server asks upstream for six hours for the same
+reason.
+
+**Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
+right of the line and persists in `localStorage` (`shuttle.tempUnit`, read
+through `loadTempUnit()` which never throws). Printing "68°F (20°C)" spent a
+third of the line saying the same thing twice. The toggle is a SIBLING of the
+line's expand button, not nested inside it: a button within a button is
+invalid HTML and iOS ignores the inner one.
+
+The weather line above the trip options is ALWAYS shown when a forecast
+exists (`web/src/weather.ts`), quiet by default and amber past 70%. It was
+rain-only and hidden below 50%, which meant nobody learned to look for it. It
+never reorders or hides an option — a shuttle is not faster in the rain, only
+drier at the ends. Temperature and the WMO code are optional all the way
+through, so an upstream that stops sending them degrades to the rain-only
+wording rather than to no line.
+
+**The line says "within the hour", never "now".** `probability` is the PEAK
+across every bucket overlapping the next hour, so "raining now" would fire up
+to 55 minutes early on a dry evening. For the same reason the number is quoted
+without an adjective — 45% is neither likely nor unlikely — and only the
+"take an umbrella" clause changes at 70%, so no wording flips at the boundary.
+A near-term chance always outranks the later hour: a rider with 45% in the
+next hour must not be told about nine o'clock instead. A wet WMO code with a
+low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
+no rain expected".
+
+**The option row's top line is total · live bus · arrival** — "12 min · 🚌 in
+<1, 14 min · arrive 10:16a". The bus times moved up from a third line
+(operator, 2026-09-03) because that is the number deciding whether you leave
+now, and the card is two lines instead of three for it. The two ETAs share
+one unit via `fmtBusPair` ("in 12, 21 min", the operator's own wording): "in
+12 min · next in 21 min" clipped mid-number at 390px, and both times now fit
+at every ETA. The bus ETA is computed ONCE at row scope (`busEtaLive`) and
+consumed by both the top line and the departed warning, so they cannot
+disagree.
+
+**Reload lives beside the tabs** (right of Issues) and is always rendered,
+including on the ride page where the tabs themselves are hidden. It used to be
+installed-app-only AND post-search-only, which is exactly the state a stuck app
+never reaches. The pull-to-refresh gesture (`web/src/pullToRefresh.ts`) still
+works; the button is the one riders find.
+
+**The expanded map has Back at top-left as well as ✕ at top-right**, and
+Escape closes it. Leaflet's zoom control shares that corner, so the wrapper
+takes a `map-fs` class in fullscreen and the stylesheet drops the control
+below the button.
+
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never
 caches `/api/*` — do not make it cache-first, a stale bundle after a deploy is
@@ -156,18 +265,72 @@ declines**. `npm run approve -- <id> [guidance]` pre-authorizes bigger work
 wishes alike — rather than `[triage]` them; `[triage]` is for policy/design
 questions and anything near privacy, auth, schema or config. The wrapper enforces a file allowlist on the worktree diff and
 re-runs the gates before any push; report bodies are treated as untrusted data
-throughout (`feedback-bot-prompt.md`). **Every bot PR carries a screenshot**:
+throughout (`feedback-bot-prompt.md`). **A bot PR is filed against the report the bot names in `pr-report-id`**, not
+the first id arbitration handed it — the wrapper used to assume those were the
+same, and two PRs went out branded the wrong report (a geolocation fix labelled
+as an ETA complaint, a Celsius change labelled as the geolocation one). Since
+the `[fixed]` follow-up keys on the branch name, that would have closed an
+urgent report with someone else's work. The claimed id is honoured only if it
+is in the arbitrated set.
+
+**Every bot PR carries a screenshot**:
 the wrapper stages the PR's own build on :8096, runs `scripts/pr-preview.mjs`
 (phone-sized headless chromium; the bot's `pr-preview.json` recipe mocks the
 API responses that make the feature visible, e.g. a rainy forecast), commits
 the PNGs under `pr-preview/<id>/` on the PR branch and embeds them in the PR
-body — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
+body. **A view that never opened is a failed preview**: the harness records it
+in `preview.json`, exits non-zero, and its `*-failed.png` is never embedded —
+a PR with no usable screenshot opens as a DRAFT saying so, because one shipped
+with a screenshot of its own failure and the operator had to catch it — the user's ask (2026-09-02): "for any pr, can we get a screenshot of the
 feature to see it before approving?". To preview any branch by hand: build
 `web/`, run the server on a spare port with a throwaway `SHUTTLE_V2_DB`, then
 `BASE=http://127.0.0.1:<port> RECIPE=recipe.json OUT=/tmp/shots node
 scripts/pr-preview.mjs`. Riders see everything in the in-app
 Issues tab (`/api/my-reports`): statuses, notes (which are replies to them),
 follow-ups (these reopen + wake the bot), archive, and self-rated priority.
+
+## Destination lookup (`/api/geocode`)
+
+Three layers, local first, and the response shape is v1's
+(`{results:[{display_name,lat,lon,type,class}]}`; the frontend auto-picks on
+class `yale`, type `bus_stop`/`house`, or a single result — keep those values):
+
+1. **Curated landmarks** — `src/server/landmarks.ts`, 148 entries, every one
+   VERIFIED against OpenStreetMap on 2026-09-02 and pinned to the live stop
+   that serves it (`anchorStop`). `geocode.test.ts` recomputes the nearest
+   stop from the checked-in 172-stop fixture (`src/server/__fixtures__/stops.json`)
+   for every entry, so a moved or mistyped coordinate fails the suite. **To add
+   a place: look it up in OSM, copy the coordinate, set its anchor** — the
+   2026-08-31 audit found seven of fourteen hand-typed entries wrong, one by
+   1.2 km, and the 2026-09-02 audit moved five more. One entry per physical
+   place; other names go in `aliases` ("kbt", "commons", "med school", the
+   former name, the street address) — no misspellings, the fuzzy tier handles
+   those. Adjacent-but-distinct places (a cafe inside a museum) stay separate.
+2. **The matcher** (`src/server/geocode.ts`) normalises both sides (apostrophes
+   deleted, `&` → "and", diacritics stripped), drops query stopwords (yale,
+   university, the, at, of, on, in, and, new, haven, st, street) and scores in
+   tiers: exact > prefix > word-prefix > every-token-prefixes > fuzzy
+   (Damerau-Levenshtein ≤ 1 from 5 letters, ≤ 2 from 8, never shorter — "som"
+   must not become "some") > substring. Aliases score exactly like labels.
+   Stop names come from upstream and may NOT be hand-edited even when misspelt
+   ("Orange / Audobon"); the fuzzy tier is how "audubon" reaches them. Dedup:
+   a landmark on its serving stop replaces the stop row; two stops on one
+   corner collapse to one; two landmarks never merge.
+3. **External** (`src/server/v1compat.ts`): Photon (komoot) first — it tolerates
+   a missing apostrophe and typos, which Nominatim does not ("elenas" returned
+   nothing until 2026-09-02) — then Nominatim only when Photon errors or is
+   empty. One shared 1.1 s throttle, one 2.5 s budget per lookup, cache keyed
+   by provider+query, in-flight collapse. External hits keep the provider's
+   order (a distance sort put a street centreline ahead of the house the
+   rider typed); any hit more than 2.5 km from every shuttle stop is dropped
+   when a closer one exists: the service area is "near the network", not a
+   rectangle. The
+   fetcher is injected (`buildApp({ geocoder })`), so tests stub it; nothing in
+   the suite touches the network.
+
+The frontend's 8 km radius filter exempts class `yale`/`shuttle` rows — a
+curated destination is by definition reachable, and Trader Joe's (Milford) at
+9.8 km used to vanish whenever an unrelated in-range OSM hit came back too.
 
 ## Usage metrics
 
@@ -241,6 +404,28 @@ and **the admin token itself is never stored in the browser**.
 Chart colours are tokens on `:root`, redefined for dark mode, and the pair was
 run through the dataviz palette validator in both modes — don't re-pick them by
 eye.
+
+**The dashboard answers two more questions** (2026-09-03):
+
+- **"Has anyone but me written in?"** — `GET /api/stats/reports` lists reports
+  that are NOT from the operator's own browsers and not the map-bot's own
+  filings, newest first, with an unread badge the page keeps in localStorage.
+  It matters because 60 of the first 69 reports were the operator's own
+  testing and the ONE report from a real outside rider had to be found by
+  hand. Operator browsers live in `operator_anon_ids` — deliberately NOT
+  `excluded_anon_ids`, because the operator's phone is a real rider and must
+  keep counting in the usage numbers. Seed it with the `SHUTTLE_OPERATOR_ANON_IDS`
+  secret (comma-separated) or `POST /api/stats/operator {anonId}`. A report
+  with no anon id counts as OUTSIDE: storage may simply have been blocked, and
+  a false "someone wrote in" is cheaper than missing the one person who did.
+  **The payload carries no IP, no anon id and no context** — this route is
+  reachable with the stats cookie, so its shape is the security boundary.
+- **"When is it used?"** — `GET /api/stats/hourly` gives 24 counts per day,
+  one line per day on the page. It is DERIVED from the first/last sighting
+  already stored per (day, browser): nothing new is collected, and it reads
+  back to launch. A browser counts in every hour of its span, so this is an
+  upper bound on "present at that moment". Today's line stops at the current
+  hour — future hours are not zeroes.
 
 **Test traffic is excluded, not deleted.** Browser harnesses drive the live
 site, so they mint real ids and would otherwise appear as riders who never
@@ -340,6 +525,73 @@ These are load-bearing; several rider-visible bugs traced to them:
   majority). Without it the planner priced an 8.4 km ride at 97 seconds.
 - **Routes 9 and 10 repeat stops** for the West Campus out-and-back. Keep the
   sequence verbatim and index by position; de-duplicating loses real legs.
+- **The feed repeats a position rather than interpolating**: 53.6% of
+  consecutive samples are identical coordinates (runs of 15 s typically, up to
+  28 min). Anything derived from consecutive positions must account for it —
+  naive speed reads 0 mph on 54% of samples and calls a *moving* bus stopped
+  on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
+  records why a Kalman filter is not the answer.
+
+## ETA accuracy: measure with the replay, not by eye
+
+`docs/eta-accuracy.md` records the 2026-09-02 replay of the exact client
+arithmetic against three months of arrivals and 69k raw positions
+(`scripts/eta-replay/`, README there — take a snapshot of the production DB
+and run both scripts; a few minutes each). Findings that constrain changes:
+
+- **Calibration is at its floor.** 28 variants (window shape, shrinkage k,
+  medians, recency, recent traffic, live pace, route drift) moved the median by
+  at most −1.9 s. Don't retune `calibrator.ts` without a replay showing more.
+- **Stall credit is capped at half the first hop** (`STALL_CREDIT_MAX_FRACTION`
+  in `web/src/arrivals.ts`). Segment samples run arrival to arrival, so the
+  served time already holds the typical dwell; subtracting every elapsed second
+  promised a bus that had sat 5 min at the next stop 3.4 min early. The cap cut
+  the at-stop next-stop median error 71 → 51.5 s and the all-positions median
+  115 → 104 s. A quarter is as good on the median but pessimistic after long
+  layovers.
+- **The anchor is the next lever**: where `findRouteAnchor` disagrees with the
+  detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
+  the median error is 367 s vs 99 s. A perfect anchor would take the median to
+  103 s and the mean bias to +2 s.
+- **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
+  Not built; the numbers are in the doc.
+- `predictions_log` is empty — nothing records what riders were told. The
+  replay is the substitute; the live browser harness
+  (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
+  `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
+  see, so it is a sanity check, not a measurement.
+
+### The accuracy gate: a recorded pass, before/during/after a dwell
+
+Any change to an arrival time is replayed against a REAL bus pass before it
+merges: `web/src/accuracy-layover.test.ts` walks
+`web/src/__fixtures__/red-layover-pass.json` — Red #309 approaching the
+344 Winchester layover, sitting through 9 min 45 s of it, and driving on —
+and asks what the board would have shown a rider at Division/Prospect and
+Prospect/Hillside at each of 115 recorded moments, against when the bus
+actually arrived. `npm run test:accuracy`, and `.github/workflows/accuracy.yml`
+runs it on every PR touching the estimator (it is in `npm test` too, so the
+deploy gate catches it either way).
+
+It exists because unit tests did not catch the 2026-09-03 defect: each of them
+pinned one contrived moment, and the failure only appears in a bus MOVING
+THROUGH a dwell. The invariants are loose about accuracy and strict about the
+two things that hurt riders — a bus promised LATER than it comes (they walk
+down and it has gone: the gate fails past 120 s) and a countdown that LURCHES
+between polls (they cannot tell whether to run: past 180 s). Reverting the
+estimator to the shipped-yesterday rule fails three of them by name, quoting
+the moment and both numbers.
+
+**Do not loosen a bound or re-record the fixture to make a change pass.**
+Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
+changes shape, and say in the PR what moved.
+
+## Investigations that did not become code
+
+- `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
+  trailing window beats a constant-velocity Kalman filter on this feed, and
+  the number is only informative about two minutes ahead, so it must never
+  feed the ETA. Not built; read it before building it.
 
 ## Verification harnesses
 
@@ -351,14 +603,21 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `gps-tier-check.mjs` | one live high-accuracy geolocation watch, no downgrade |
 | `timezone-check.mjs` | identical service state across 5 device timezones |
 | `walk-fallback-check.mjs` | a long trip shows a walk, never "No trip options found" |
-| `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals |
+| `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals (live, ~10 pairs a run) |
+| `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 
-`eta-accuracy.mjs` is the honest one: it reads what the app tells a rider while
-independently watching raw positions for the actual arrival. Last measured
-median error **1.26 min**, 71% within 2 min, with a known optimistic bias on the
-*wait* leg of 20–25% of the remaining time (unfixed — the ride-time estimator
-itself is unbiased).
+`eta-accuracy.mjs` reads what the app tells a rider while independently
+watching raw positions for the actual arrival. Last daytime measurement
+(Blue Day): median error **1.26 min**, 71% within 2 min, wait leg 20–25%
+optimistic — the replay traced that optimism to the uncapped stall credit,
+now fixed. It scores only what the page shows, so it needs the route under
+test visible (it now expands "Show N more routes") and a bus that actually
+visits the board stop: on 2026-09-02 a 50-min Blue Night run scored zero pairs
+because #38 passed Peabody 297 m away on Whitney and never stopped, while the
+app counted down "3 min" to it and the detector still logged an arrival there
+(no distance gate on arrivals). The offline replay is the measurement; this is
+the sanity check.
 
 ## Don'ts
 

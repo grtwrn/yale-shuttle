@@ -25,14 +25,29 @@ import fs from "node:fs";
 
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
 const RUN_MS = (Number(process.env.RUN_MIN) || 35) * 60_000;
-const BOARD = { id: 100, name: "Prospect / Canner", lat: 41.32535, lon: -72.92289 };
-const DEST  = { id: 30,  name: "Chapel / Church",   lat: 41.30596, lon: -72.92546 };
-const ROUTES = [1, 4];
+// Defaults are the daytime Blue trip; override with BOARD_ID / DEST_ID /
+// ROUTES (comma-separated route ids) to score another line — e.g. Blue Night:
+//   BOARD_ID=97 DEST_ID=121 ROUTES=13 node scripts/eta-accuracy.mjs
+const STOPS = await fetch(`${BASE}/api/buses`).then((r) => r.json()).catch((err) => {
+  console.error(`cannot reach ${BASE}: ${err.message}`);
+  process.exit(2);
+});
+const stopAt = (id, fallback) => {
+  const c = STOPS.stop_coords?.[id];
+  return c ? { id, name: STOPS.stop_names?.[id] ?? String(id), lat: c.lat, lon: c.lon } : fallback;
+};
+const BOARD = stopAt(Number(process.env.BOARD_ID) || 100, { id: 100, name: "Prospect / Canner", lat: 41.32535, lon: -72.92289 });
+const DEST  = stopAt(Number(process.env.DEST_ID) || 30, { id: 30,  name: "Chapel / Church",   lat: 41.30596, lon: -72.92546 });
+const ROUTES = (process.env.ROUTES ?? "1,4").split(",").map(Number);
+// Score only the option on this line (its rendered label, e.g. "Blue Night").
+// Without it the fastest shuttle option is scored, which may board a
+// different stop on a different route than the arrivals being watched.
+const ROUTE_LABEL = process.env.ROUTE_LABEL ?? null;
 const ARRIVAL_M = 45;      // how close counts as "at the stop"
 const REARM_M = 120;       // must leave this far before a second arrival counts
 const POLL_MS = 5_000;
 const SCRAPE_MS = 20_000;
-const OUT = "/tmp/eta-accuracy.json";
+const OUT = process.env.OUT ?? "/tmp/eta-accuracy.json";
 
 const hav = (a, b) => {
   const R = 6371000, t = (x) => (x * Math.PI) / 180;
@@ -108,10 +123,10 @@ function parsePlan(text) {
     i += 1;
   }
   // Score the fastest option that actually rides a shuttle.
-  const shuttle = opts.filter((o) => o.waitSec !== null).sort((a, b) => a.totalMin - b.totalMin)[0];
+  const shuttle = opts.filter((o) => o.waitSec !== null && (!ROUTE_LABEL || o.route === ROUTE_LABEL)).sort((a, b) => a.totalMin - b.totalMin)[0];
   return shuttle
-    ? { waitMin: shuttle.waitSec / 60, totalMin: shuttle.totalMin, arriveText: shuttle.arriveText, busName: shuttle.route, options: opts.length }
-    : { waitMin: null, totalMin: null, arriveText: null, busName: null, options: opts.length };
+    ? { waitMin: shuttle.waitSec / 60, totalMin: shuttle.totalMin, arriveText: shuttle.arriveText, busName: shuttle.route, options: opts.length, seen: opts.map((o) => o.route) }
+    : { waitMin: null, totalMin: null, arriveText: null, busName: null, options: opts.length, seen: opts.map((o) => o.route) };
 }
 
 const browser = await chromium.launch({
@@ -141,6 +156,14 @@ await input.press("Enter");
 await sleep(4000);
 say("plan entered; sampling");
 
+// The picker collapses to the top options; the line under test may sit
+// behind "Show N more routes" when its bus has just passed the stop (a full
+// lap away). Expand it so every scrape sees every option.
+async function expandOptions() {
+  const more = page.getByText(/Show \d+ more route/i).first();
+  if (await more.isVisible().catch(() => false)) await more.click({ timeout: 5000 }).catch(() => {});
+}
+await expandOptions();
 const started = Date.now();
 let lastScrape = 0;
 while (Date.now() - started < RUN_MS) {
@@ -148,6 +171,7 @@ while (Date.now() - started < RUN_MS) {
     const n = await pollOnce();
     if (Date.now() - lastScrape >= SCRAPE_MS) {
       lastScrape = Date.now();
+      await expandOptions();
       const text = await page.evaluate(() => document.body.innerText);
       const p = parsePlan(text);
       if (p.waitMin != null) {
@@ -157,7 +181,7 @@ while (Date.now() - started < RUN_MS) {
             (p.arriveText ? `, arrive ${p.arriveText}` : "") +
             (p.busName ? ` (#${p.busName})` : "") + `  [${n} buses live]`);
       } else {
-        say(`predict  no shuttle option shown  [${n} buses live]`);
+        say(`predict  no shuttle option shown  [${n} buses live]  options seen: ${JSON.stringify(p.seen)}`);
       }
     }
   } catch (e) {
