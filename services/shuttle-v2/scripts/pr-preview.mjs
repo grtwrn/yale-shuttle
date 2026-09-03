@@ -19,9 +19,10 @@
 //                "from": { "lat": 41.32, "lon": -72.92 } },  // optional: stand here instead of at the board stop
 //     "views": ["trip", "map"],                       // any of trip | map | favorites | issues
 //     "focus": "Rain likely",                         // text to scroll into view before the shot
-//     "actions": [ { "click": "Blue Day", "which": "last" }, { "wait": 2000 } ]  // after the trip is planned, before the shot
+//     "actions": [ { "click": "Blue Day", "which": "last" }, { "wait": 2000 } ], // after the view opens, before the shot
+//     "fullPage": false                               // frame the viewport (a fullscreen overlay), not the whole page
 //   }
-// `actions` run in order on the trip view: `click` matches visible text (a
+// `actions` run in order once each view has opened: `click` matches visible text (a
 // regex; `which` picks "first" (default) or "last" match — the map legend
 // lists route names BEFORE the option cards, so the chip on a card is the
 // last match), `wait` pauses that many ms.
@@ -122,8 +123,24 @@ async function shot(name) {
     await page.getByText(recipe.focus, { exact: false }).first()
       .scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
   }
-  await page.screenshot({ path: file, fullPage: true });
+  // A fullscreen overlay is position:fixed; a full-page capture of one shows
+  // the overlay pinned over a page-height canvas. "fullPage": false frames it
+  // as the rider sees it.
+  await page.screenshot({ path: file, fullPage: recipe.fullPage !== false });
   taken.push(file);
+}
+// Recipe actions, run after a view has opened — on ANY view, not just trip:
+// the expanded map and the tab bar are reachable from map and issues too.
+async function runActions() {
+  for (const step of Array.isArray(recipe.actions) ? recipe.actions : []) {
+    if (step && typeof step.click === "string") {
+      const matches = page.getByText(new RegExp(step.click), { exact: false });
+      await (step.which === "last" ? matches.last() : matches.first()).click({ timeout: 10_000 });
+      await sleep(step.settle ?? 1500);
+    } else if (step && Number.isFinite(step.wait)) {
+      await sleep(step.wait);
+    }
+  }
 }
 async function openTab(label) {
   const tab = page.getByRole("button", { name: new RegExp(`^\\s*(\\S+\\s+)?${label}\\s*$`, "i") }).first();
@@ -145,19 +162,11 @@ for (const view of views) {
       await sleep(1500);
       await input.press("Enter");
       await sleep(4000);
-      for (const step of Array.isArray(recipe.actions) ? recipe.actions : []) {
-        if (step && typeof step.click === "string") {
-          const matches = page.getByText(new RegExp(step.click), { exact: false });
-          await (step.which === "last" ? matches.last() : matches.first()).click({ timeout: 10_000 });
-          await sleep(1500);
-        } else if (step && Number.isFinite(step.wait)) {
-          await sleep(step.wait);
-        }
-      }
     } else {
       await openTab(view[0].toUpperCase() + view.slice(1));
       await sleep(view === "map" ? 3000 : 500);
     }
+    await runActions();
     await shot(view);
   } catch (e) {
     // A view that never opened is a FAILED preview, not a preview of a

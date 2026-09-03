@@ -1,9 +1,9 @@
 {
-  "caption": "Weather: the line answers \"and later?\", and the hours open on a tap",
-  "base": "http://127.0.0.1:8083",
+  "caption": "Hourly outlook open: am/pm labels and a drop beside each percentage",
+  "base": "http://127.0.0.1:8096",
   "trip": {
-    "board": 118,
-    "dest": 38
+    "board": 127,
+    "dest": 23
   },
   "views": [
     "trip"
@@ -12,7 +12,7 @@
     "/api/weather"
   ],
   "shots": [
-    "/tmp/wt-c/pr-preview/celsius/trip.png"
+    "/tmp/shots-c/weather-open/trip.png"
   ],
   "failedViews": [],
   "pageErrors": [],

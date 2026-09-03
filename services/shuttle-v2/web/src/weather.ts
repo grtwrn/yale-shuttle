@@ -58,6 +58,9 @@ const NO_RAIN: RainVerdict = { likely: false, probability: 0, known: false };
  * still shows the forecast, quietly.
  */
 export const RAIN_PROMINENT_THRESHOLD = 70;
+/** Below this, the line says "no rain expected" rather than quoting a number:
+ *  "12% chance of rain" is noise a rider cannot act on. */
+export const RAIN_MENTION_THRESHOLD = 20;
 
 /** Plain words for the WMO code — only the distinctions a rider acts on. */
 export function conditionText(code: number | undefined): string | null {
@@ -138,13 +141,57 @@ export function rainLikelyFrom(
  * ROUNDED Fahrenheit keeps the halves consistent: whatever °F a rider reads is
  * exactly what the °C was computed from.
  */
-export function temperatureText(fahrenheit: number | undefined): string | null {
+/**
+ * Which unit the rider reads. Yale's students are half international, so
+ * neither unit is "the" unit — but printing BOTH ("68°F (20°C)") spent a third
+ * of a one-line summary on saying the same thing twice, so the rider picks
+ * one and it sticks (operator, 2026-09-02).
+ */
+export type TempUnit = "F" | "C";
+
+export const TEMP_UNIT_LS_KEY = "shuttle.tempUnit";
+
+/** Fahrenheit unless the rider said otherwise. Never throws: a browser with
+ *  storage blocked (private mode, "block all cookies") just gets the default. */
+export function loadTempUnit(): TempUnit {
+  try {
+    return localStorage.getItem(TEMP_UNIT_LS_KEY) === "C" ? "C" : "F";
+  } catch {
+    return "F";
+  }
+}
+
+export function saveTempUnit(unit: TempUnit): void {
+  try {
+    localStorage.setItem(TEMP_UNIT_LS_KEY, unit);
+  } catch {
+    /* storage blocked — the choice just won't outlive the tab */
+  }
+}
+
+/** The number the rider sees, already rounded. Both feeds report Fahrenheit. */
+export function temperatureIn(fahrenheit: number | undefined, unit: TempUnit): number | null {
   if (typeof fahrenheit !== "number" || !Number.isFinite(fahrenheit)) return null;
   const f = Math.round(fahrenheit);
+  if (unit === "F") return f;
   const c = Math.round(((f - 32) * 5) / 9);
-  // -0 would print as "-0°C"; f is an integer, so only exactly 32°F can land
-  // on zero, but the guard costs nothing and the rendering is the point.
-  return `${f}°F (${Object.is(c, -0) ? 0 : c}°C)`;
+  // -0 would print as "-0°"; only 32°F lands there, but the guard is free.
+  return Object.is(c, -0) ? 0 : c;
+}
+
+/** "68°F" / "20°C" — for the summary line. */
+export function temperatureText(
+  fahrenheit: number | undefined,
+  unit: TempUnit = "F",
+): string | null {
+  const v = temperatureIn(fahrenheit, unit);
+  return v == null ? null : `${v}°${unit}`;
+}
+
+/** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
+export function degreesText(fahrenheit: number | undefined, unit: TempUnit): string {
+  const v = temperatureIn(fahrenheit, unit);
+  return v == null ? "—" : `${v}°`;
 }
 
 export type ForecastHour = { timeMs: number; temperatureF?: number; probability: number };
@@ -188,12 +235,16 @@ export function nextWetHour(
   return null;
 }
 
-/** "9p" / "12a" — the same clock idiom the arrival times use. */
+/**
+ * "9pm" / "12am". Spelled out rather than the app's usual "9p", because a
+ * bare letter beside a temperature and a percentage is one abbreviation too
+ * many to decode at a glance (operator, 2026-09-02).
+ */
 export function hourLabel(timeMs: number, tz = "America/New_York"): string {
   try {
     const s = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: true })
       .format(new Date(timeMs));
-    return s.replace(/\s?AM$/i, "a").replace(/\s?PM$/i, "p");
+    return s.replace(/\s?AM$/i, "am").replace(/\s?PM$/i, "pm");
   } catch {
     return "";
   }
@@ -216,30 +267,37 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * and a line that only ever appears on rainy days is one nobody learns to
  * look for. It gets louder as the chance climbs.
  */
-export function weatherMessage(v: RainVerdict, later?: ForecastHour | null): string {
+/**
+ * The collapsed line: temperature, then WHEN IT WILL NEXT RAIN, in as few
+ * words as that takes.
+ *
+ * It has to fit one line on a phone, so the condition word is dropped
+ * whenever there is a rain time to give — "Clear" is the least useful thing
+ * on the line once it can say "rain likely 10pm". The hour-by-hour lives
+ * behind the tap.
+ */
+export function weatherMessage(
+  v: RainVerdict,
+  later?: ForecastHour | null,
+  unit: TempUnit = "F",
+): string {
   if (!v.known) return "";
-  const bits: string[] = [];
-  const temp = temperatureText(v.temperatureF);
-  if (temp) bits.push(temp);
-  const cond = conditionText(v.weatherCode);
-  if (cond) bits.push(cond);
-  const head = bits.join(" · ");
+  const temp = temperatureText(v.temperatureF, unit);
+  const head = temp ? `${temp} · ` : "";
   if (v.probability >= RAIN_PROMINENT_THRESHOLD) {
-    return `Take an umbrella — ${v.probability}% chance of rain within the hour${head ? ` · ${head}` : ""}`;
+    return `${head}rain likely now (${v.probability}%) — take an umbrella`;
   }
   if (v.likely) {
-    return `${v.probability}% chance of rain within the hour — the walk legs may get wet${head ? ` · ${head}` : ""}`;
+    return `${head}rain likely within the hour (${v.probability}%)`;
   }
-  // Dry for now. A rider out for the evening needs the hour the dry spell
-  // ends, not a table of hours (operator, 2026-09-02) — so the line spends
-  // its remaining words on that and nothing else.
   if (later) {
-    return `${head}${head ? " · " : ""}dry now, ${later.probability}% chance of rain around ${hourLabel(later.timeMs)}`;
+    return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
-  if (v.probability > 0) {
-    return `${head}${head ? " · " : ""}${v.probability}% chance of rain within the hour`;
+  if (v.probability >= RAIN_MENTION_THRESHOLD) {
+    return `${head}rain unlikely (${v.probability}%)`;
   }
-  return `${head}${head ? " · " : ""}no rain expected for a few hours`;
+  const cond = conditionText(v.weatherCode);
+  return `${head}${cond ? `${cond} · ` : ""}no rain expected`;
 }
 
 /** The emoji that leads the line. */

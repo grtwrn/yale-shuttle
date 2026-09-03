@@ -147,12 +147,23 @@ invisible. NWS carries no condition code, so the line degrades to temperature
 plus rain chance with a neutral icon. Both providers share ONE timeout budget
 per refresh, or a cold request would wait 5 s twice.
 
-The weather line answers "and later?" in its own sentence — "dry now, 70%
-chance of rain around 10p" — because a rider out for the evening is not helped
-by "no rain within the hour". Tapping it opens the next six hours as a
-sideways-scrolling strip of temperature and rain chance; that is collapsed by
-default, since the sentence usually suffices. The server asks upstream for six
-hours for the same reason. Temperature carries both units.
+The weather line answers ONE question — when will it next rain — in as few
+words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
+condition word ("Clear") whenever it has an hour to name, because the hour is
+the useful half. Tapping it opens the next six hours as a sideways-scrolling
+strip of temperature and rain chance, each percentage carrying a 💧 so it is
+not read as anything else; that strip is collapsed by default, since the
+sentence usually suffices. Hours are spelled `11pm`, not the app's usual
+`11p` — a bare letter beside a temperature and a percentage was one
+abbreviation too many. The server asks upstream for six hours for the same
+reason.
+
+**Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
+right of the line and persists in `localStorage` (`shuttle.tempUnit`, read
+through `loadTempUnit()` which never throws). Printing "68°F (20°C)" spent a
+third of the line saying the same thing twice. The toggle is a SIBLING of the
+line's expand button, not nested inside it: a button within a button is
+invalid HTML and iOS ignores the inner one.
 
 The weather line above the trip options is ALWAYS shown when a forecast
 exists (`web/src/weather.ts`): temperature, condition and the chance of rain
@@ -162,6 +173,17 @@ it. It never reorders or hides an option — a shuttle is not faster in the
 rain, only drier at the ends. Temperature and the WMO code are optional all
 the way through, so an upstream that stops sending them degrades to the
 rain-only wording rather than to no line.
+
+**Reload lives beside the tabs** (right of Issues) and is always rendered,
+including on the ride page where the tabs themselves are hidden. It used to be
+installed-app-only AND post-search-only, which is exactly the state a stuck app
+never reaches. The pull-to-refresh gesture (`web/src/pullToRefresh.ts`) still
+works; the button is the one riders find.
+
+**The expanded map has Back at top-left as well as ✕ at top-right**, and
+Escape closes it. Leaflet's zoom control shares that corner, so the wrapper
+takes a `map-fs` class in fullscreen and the stylesheet drops the control
+below the button.
 
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never

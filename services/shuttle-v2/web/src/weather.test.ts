@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  conditionText, RAIN_PROBABILITY_THRESHOLD, rainLikely, rainLikelyFrom, rainMessage,
-  hourLabel, nextWetHour, outlookHours, temperatureText, weatherEmoji, weatherMessage, weatherTone,
-  type RainVerdict, type WeatherHour,
+  RAIN_PROBABILITY_THRESHOLD,
+  conditionText,
+  degreesText,
+  hourLabel,
+  loadTempUnit,
+  nextWetHour,
+  outlookHours,
+  rainLikely,
+  rainLikelyFrom,
+  rainMessage,
+  saveTempUnit,
+  temperatureText,
+  type RainVerdict,
+  type WeatherHour,
+  weatherEmoji,
+  weatherMessage,
+  weatherTone,
 } from "./weather";
 
 const HOUR = 60 * 60_000;
@@ -112,28 +126,26 @@ describe("the weather line", () => {
     // A line that only appears when it rains is one nobody learns to look for.
     expect(weatherTone(v(0))).toBe("quiet");
     expect(weatherMessage(v(0, { temperatureF: 68, weatherCode: 0 })))
-      .toBe("68°F (20°C) · Clear · no rain expected for a few hours");
+      .toBe("68°F · Clear · no rain expected");
     expect(weatherEmoji(v(0, { weatherCode: 0 }))).toBe("☀️");
   });
 
   it("mentions a small chance without alarm", () => {
     expect(weatherTone(v(20))).toBe("quiet");
     expect(weatherMessage(v(20, { temperatureF: 55, weatherCode: 3 })))
-      .toBe("55°F (13°C) · Cloudy · 20% chance of rain within the hour");
+      .toBe("55°F · rain unlikely (20%)");
   });
 
   it("warns about the walk legs once rain is likely", () => {
     expect(weatherTone(v(60))).toBe("quiet");
-    expect(weatherMessage(v(60))).toBe(
-      "60% chance of rain within the hour — the walk legs may get wet",
-    );
+    expect(weatherMessage(v(60))).toBe("rain likely within the hour (60%)");
     expect(weatherEmoji(v(60))).toBe("🌧");
   });
 
   it("becomes a warning at a high chance", () => {
     expect(weatherTone(v(85))).toBe("warning");
     expect(weatherMessage(v(85, { temperatureF: 61, weatherCode: 61 })))
-      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F (16°C) · Rain");
+      .toBe("61°F · rain likely now (85%) — take an umbrella");
     expect(weatherEmoji(v(85))).toBe("☔");
   });
 
@@ -143,8 +155,8 @@ describe("the weather line", () => {
   });
 
   it("degrades to the rain-only wording when the server sends no temperature", () => {
-    expect(weatherMessage(v(0))).toBe("no rain expected for a few hours");
-    expect(weatherMessage(v(30))).toBe("30% chance of rain within the hour");
+    expect(weatherMessage(v(0))).toBe("no rain expected");
+    expect(weatherMessage(v(30))).toBe("rain unlikely (30%)");
   });
 
   it("describes the hour the rider is in, not the peak hour", () => {
@@ -161,20 +173,24 @@ describe("the weather line", () => {
   });
 });
 
-describe("temperatureText — both units (report #66)", () => {
-  it("leads with Fahrenheit and brackets the Celsius", () => {
-    expect(temperatureText(68)).toBe("68°F (20°C)");
-    expect(temperatureText(32)).toBe("32°F (0°C)");
-    expect(temperatureText(5)).toBe("5°F (-15°C)");
+describe("temperatureText — the rider's unit (report #66)", () => {
+  it("prints whichever unit was asked for", () => {
+    expect(temperatureText(68, "F")).toBe("68°F");
+    expect(temperatureText(68, "C")).toBe("20°C");
+    expect(temperatureText(32, "C")).toBe("0°C");
+    expect(temperatureText(5, "C")).toBe("-15°C");
   });
 
   it("converts the number the rider actually reads, not the raw one", () => {
     // Upstream sends 70.9; the line says 71°F, so the °C must be 71's.
-    expect(temperatureText(70.9)).toBe("71°F (22°C)");
+    expect(temperatureText(70.9, "C")).toBe("22°C");
   });
 
   it("never prints a negative zero", () => {
-    for (let f = -50; f <= 120; f++) expect(temperatureText(f)).not.toContain("-0°C");
+    for (let f = -50; f <= 120; f++) {
+      expect(temperatureText(f, "C")).not.toContain("-0°");
+      expect(degreesText(f, "C")).not.toContain("-0°");
+    }
   });
 
   it("says nothing when there is no temperature", () => {
@@ -183,15 +199,39 @@ describe("temperatureText — both units (report #66)", () => {
   });
 });
 
-describe("the weather line carries both units", () => {
-  it("puts them in the line the rider sees", () => {
-    expect(weatherMessage({ likely: false, probability: 5, known: true, temperatureF: 68, weatherCode: 0 }))
-      .toBe("68°F (20°C) · Clear · 5% chance of rain within the hour");
+describe("the rider chooses the unit", () => {
+  it("prints the one they picked, not both", () => {
+    const v = { likely: false, probability: 5, known: true, temperatureF: 68, weatherCode: 0 };
+    expect(weatherMessage(v)).toBe("68°F · Clear · no rain expected");
+    expect(weatherMessage(v, null, "C")).toBe("20°C · Clear · no rain expected");
+  });
+
+  it("converts, and never prints -0°", () => {
+    expect(temperatureText(68, "C")).toBe("20°C");
+    expect(temperatureText(32, "C")).toBe("0°C");
+    expect(temperatureText(32, "F")).toBe("32°F");
+    expect(degreesText(68, "C")).toBe("20°");
+    expect(degreesText(68, "F")).toBe("68°");
+    expect(degreesText(undefined, "F")).toBe("—");
   });
 
   it("still works when the fallback source sends no temperature", () => {
     expect(weatherMessage({ likely: false, probability: 5, known: true }))
-      .toBe("5% chance of rain within the hour");
+      .toBe("no rain expected");
+    expect(weatherMessage({ likely: false, probability: 35, known: true }))
+      .toBe("rain unlikely (35%)");
+  });
+
+  it("defaults to Fahrenheit, and survives a browser with storage blocked", () => {
+    const real = globalThis.localStorage;
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() { throw new Error("blocked"); },
+    });
+    expect(loadTempUnit()).toBe("F");
+    expect(() => saveTempUnit("C")).not.toThrow();
+    if (real) Object.defineProperty(globalThis, "localStorage", { configurable: true, value: real });
+    else delete (globalThis as { localStorage?: unknown }).localStorage;
   });
 });
 
@@ -205,30 +245,27 @@ describe("the outlook — answering \"and later?\"", () => {
   it("lists the hours from the one the rider is in", () => {
     const hours = outlookHours(evening, now);
     expect(hours).toHaveLength(6);
-    expect(hourLabel(hours[0]!.timeMs)).toBe("6p");
+    expect(hourLabel(hours[0]!.timeMs)).toBe("6pm");
     expect(hours[0]!.temperatureF).toBe(60);
   });
 
   it("names the hour the dry spell ends", () => {
     const later = nextWetHour(evening, now)!;
-    expect(hourLabel(later.timeMs)).toBe("9p");
+    expect(hourLabel(later.timeMs)).toBe("9pm");
     expect(later.probability).toBe(70);
   });
 
   it("says so in the line, in one clause", () => {
     const v = { likely: false, probability: 10, known: true, temperatureF: 60, weatherCode: 0 };
     expect(weatherMessage(v, nextWetHour(evening, now)))
-      .toBe("60°F (16°C) · Clear · dry now, 70% chance of rain around 9p");
+      .toBe("60°F · rain likely 9pm (70%)");
   });
 
   it("stays quiet about later when the whole outlook is dry", () => {
     const dry = [H(18, 5), H(19, 5), H(20, 0), H(21, 5)];
     expect(nextWetHour(dry, now)).toBeNull();
     expect(weatherMessage({ likely: false, probability: 0, known: true }, null))
-      .toBe("no rain expected for a few hours");
-    // A small non-zero chance still reports itself rather than claiming dry.
-    expect(weatherMessage({ likely: false, probability: 5, known: true }, null))
-      .toBe("5% chance of rain within the hour");
+      .toBe("no rain expected");
   });
 
   it("does not repeat itself when it is already raining soon", () => {
@@ -236,8 +273,10 @@ describe("the outlook — answering \"and later?\"", () => {
     // announce the same hour again.
     const soon = [H(18, 80), H(19, 85)];
     const v = { likely: true, probability: 85, known: true, temperatureF: 61 };
-    expect(weatherMessage(v, nextWetHour(soon, now))).toContain("within the hour");
-    expect(weatherMessage(v, nextWetHour(soon, now))).not.toContain("dry now");
+    // It names NOW, not the hour after it: a rider already being rained on
+    // does not need 7pm's forecast on the same line.
+    expect(weatherMessage(v, nextWetHour(soon, now))).toContain("now");
+    expect(weatherMessage(v, nextWetHour(soon, now))).not.toContain("7pm");
   });
 
   it("ignores hours beyond the outlook horizon", () => {

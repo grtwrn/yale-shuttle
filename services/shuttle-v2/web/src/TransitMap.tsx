@@ -10,8 +10,9 @@ import {
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
-  hourLabel, nextWetHour, outlookHours, RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom,
-  rainMessage, weatherEmoji, weatherMessage, weatherTone, type WeatherPayload,
+  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
+  RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, rainMessage, saveTempUnit,
+  weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
@@ -31,14 +32,6 @@ import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
-// True when running as an installed app (home-screen/desktop install). Fixed
-// for the life of the page, so a module constant, not state.
-const isStandaloneDisplay = (() => {
-  try {
-    return window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
-  } catch { return false; }
-})();
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
@@ -777,6 +770,12 @@ const TripMap: FC<{
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
   }, [fullscreen]);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
         position: "fixed", inset: 0, zIndex: 9999,
@@ -788,7 +787,7 @@ const TripMap: FC<{
         border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
       };
   return (
-    <div className="trip-map-wrap" style={wrapperStyle}>
+    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       {/* Desaturate the OSM tile layer so the route color, bus pin,
           and user/endpoint markers pop against a quieter background.
           Only the tile pane is filtered; SVG overlays (polylines,
@@ -797,8 +796,32 @@ const TripMap: FC<{
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
         }
+        .trip-map-wrap.map-fs .leaflet-top.leaflet-left { margin-top: 52px; }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
+          the expanded map fills the screen and the thumb that got there came
+          from the left (operator, 2026-09-02). Leaflet's zoom control shares
+          this corner, so the stylesheet above drops it below the button. */}
+      {fullscreen && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          title="Back"
+          aria-label="Back"
+          style={{
+            position: "absolute", top: 8, left: 8, zIndex: 1000,
+            minWidth: 44, height: 44, border: "none", borderRadius: 8,
+            padding: "0 14px 0 10px",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+            cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#37474f",
+            display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>‹</span>
+          Back
+        </button>
+      )}
       <button
         onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -1165,6 +1188,12 @@ const CombinedTripMap: FC<{
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
   }, [fullscreen]);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
         position: "fixed", inset: 0, zIndex: 9999,
@@ -1179,11 +1208,12 @@ const CombinedTripMap: FC<{
       };
 
   return (
-    <div className="trip-map-wrap" style={wrapperStyle}>
+    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
         }
+        .trip-map-wrap.map-fs .leaflet-top.leaflet-left { margin-top: 52px; }
         .trip-map-wrap .eta-tip {
           padding: 1px 6px;
           font-size: 10px;
@@ -1193,6 +1223,29 @@ const CombinedTripMap: FC<{
         }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
+      {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
+          the expanded map fills the screen and the thumb that got there came
+          from the left (operator, 2026-09-02). Leaflet's zoom control shares
+          this corner, so the stylesheet above drops it below the button. */}
+      {fullscreen && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          title="Back"
+          aria-label="Back"
+          style={{
+            position: "absolute", top: 8, left: 8, zIndex: 1000,
+            minWidth: 44, height: 44, border: "none", borderRadius: 8,
+            padding: "0 14px 0 10px",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+            cursor: "pointer", fontSize: 14, lineHeight: 1, color: "#37474f",
+            display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>‹</span>
+          Back
+        </button>
+      )}
       <button
         onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
@@ -1606,6 +1659,15 @@ const TripPlanner: FC<{
   const rain = rainLikelyFrom(weather, Date.now());
   /** Hour-by-hour panel open? Collapsed by default; the line usually suffices. */
   const [weatherOpen, setWeatherOpen] = useState(false);
+  /** °F or °C, the rider's call, remembered across visits (operator, 2026-09-02). */
+  const [tempUnit, setTempUnit] = useState<TempUnit>(() => loadTempUnit());
+  const flipTempUnit = () => {
+    setTempUnit((u) => {
+      const next: TempUnit = u === "F" ? "C" : "F";
+      saveTempUnit(next);
+      return next;
+    });
+  };
   // The reminder engine's 1 s tick runs inside a closure that must not
   // re-arm on every forecast change — same ref pattern as `optionsRef`.
   const rainRef = useRef(rain);
@@ -2705,25 +2767,9 @@ const TripPlanner: FC<{
           >
             {alreadySaved ? "★" : "☆"}
           </button>
-          {/* Installed-app reload. Post-search only: before a destination
-              exists there is nothing on screen worth refreshing, and desktop
-              installs (no browser chrome, no touch pull gesture) have no
-              other way to reload. Same square language as the star. */}
-          {isStandaloneDisplay && (
-            <button
-              onClick={(e) => { e.stopPropagation(); window.location.reload(); }}
-              title="Refresh the app"
-              aria-label="Refresh the app"
-              style={{
-                minHeight: 44, padding: "6px 14px", fontSize: 15,
-                borderRadius: 6, border: "1px solid #bbb",
-                background: "#fff", color: "#546e7a",
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              ↻
-            </button>
-          )}
+          {/* The reload button used to live here, post-search and
+              installed-app only. It now sits beside the tabs, where it is
+              always reachable (operator, 2026-09-02). */}
         </div>
       ) : (
       <div style={{ marginBottom: 8 }}>
@@ -2966,27 +3012,54 @@ const TripPlanner: FC<{
                 by "no rain within the hour". The hour-by-hour is a tap away
                 rather than always on: a table of six hours is more than the
                 question usually needs (operator, 2026-09-02). */}
-            <button
-              role="status"
-              onClick={() => hours.length > 1 && setWeatherOpen((v) => !v)}
-              style={{
-                display: "flex", alignItems: "center", gap: 8, width: "100%",
-                textAlign: "left", background: "transparent", border: "none",
-                fontSize: 13, fontWeight: warn ? 600 : 400,
-                color: warn ? "#8a5300" : "#546e7a",
-                padding: warn ? "10px 12px" : "8px 10px", minHeight: 44,
-                cursor: hours.length > 1 ? "pointer" : "default",
-                fontFamily: "inherit",
-              }}
-            >
-              <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-              <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later)}</span>
-              {hours.length > 1 && (
-                <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
-                  {weatherOpen ? "▴" : "▾"}
-                </span>
-              )}
-            </button>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <button
+                role="status"
+                onClick={() => hours.length > 1 && setWeatherOpen((v) => !v)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+                  textAlign: "left", background: "transparent", border: "none",
+                  fontSize: 13, fontWeight: warn ? 600 : 400,
+                  color: warn ? "#8a5300" : "#546e7a",
+                  padding: warn ? "10px 4px 10px 12px" : "8px 4px 8px 10px", minHeight: 44,
+                  cursor: hours.length > 1 ? "pointer" : "default",
+                  fontFamily: "inherit",
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit)}</span>
+                {hours.length > 1 && (
+                  <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
+                    {weatherOpen ? "▴" : "▾"}
+                  </span>
+                )}
+              </button>
+              {/* Half of Yale reads Celsius. Showing both units spent a third
+                  of the line saying the same thing twice, so the rider picks
+                  one here and it sticks (operator, 2026-09-02). One control,
+                  both units visible, so which is live is never a guess. */}
+              <button
+                onClick={flipTempUnit}
+                aria-label={`Show temperature in ${tempUnit === "F" ? "Celsius" : "Fahrenheit"}`}
+                title={`Show temperature in ${tempUnit === "F" ? "Celsius" : "Fahrenheit"}`}
+                style={{
+                  display: "flex", alignItems: "center", gap: 3, flexShrink: 0,
+                  minHeight: 44, padding: "0 12px", marginRight: 4,
+                  background: "transparent", border: "none",
+                  fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                }}
+              >
+                <span style={{
+                  fontWeight: tempUnit === "F" ? 700 : 400,
+                  color: tempUnit === "F" ? (warn ? "#8a5300" : "#37474f") : "#b0bec5",
+                }}>°F</span>
+                <span aria-hidden="true" style={{ color: "#cfd8dc" }}>|</span>
+                <span style={{
+                  fontWeight: tempUnit === "C" ? 700 : 400,
+                  color: tempUnit === "C" ? (warn ? "#8a5300" : "#37474f") : "#b0bec5",
+                }}>°C</span>
+              </button>
+            </div>
             {weatherOpen && hours.length > 1 && (
               // Scrolls sideways rather than wrapping, so a narrow phone shows
               // four hours and a swipe reaches the rest.
@@ -3003,12 +3076,21 @@ const TripPlanner: FC<{
                       border: `1px solid ${wet ? "#f0c68a" : "#e4e6e8"}`,
                       borderRadius: 8, padding: "6px 8px",
                     }}>
-                      <div style={{ fontSize: 11, color: "#78909c" }}>{hourLabel(h.timeMs)}</div>
+                      <div style={{ fontSize: 11, color: "#78909c", whiteSpace: "nowrap" }}>{hourLabel(h.timeMs)}</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
-                        {h.temperatureF != null ? `${h.temperatureF}°` : "—"}
+                        {degreesText(h.temperatureF, tempUnit)}
                       </div>
-                      <div style={{ fontSize: 11, color: wet ? "#8a5300" : "#90a4ae" }}>
-                        {h.probability}%
+                      {/* The drop says what the number is. Without it a bare
+                          "35%" beside a temperature reads as anything
+                          (operator, 2026-09-02). */}
+                      <div
+                        aria-label={`${h.probability}% chance of rain`}
+                        style={{
+                          fontSize: 11, color: wet ? "#8a5300" : "#90a4ae",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span aria-hidden="true">💧{h.probability}%</span>
                       </div>
                     </div>
                   );
@@ -6645,18 +6727,19 @@ const TransitMap: FC = () => {
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
       </div>
 
-      {/* View tabs — hidden while on a bus, since the ride page is its own view */}
-      {!boardedRide && (
+      {/* View tabs — the tabs themselves are hidden while on a bus, since the
+          ride page is its own view, but the row stays so Refresh never
+          disappears. */}
       <div className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
           overflowX: "auto", WebkitOverflowScrolling: "touch",
-          justifyContent: "center", flexWrap: "wrap",
+          justifyContent: "center", flexWrap: "wrap", alignItems: "center",
         }}>
           {/* Three tabs, not four: the route cards moved under the map
               (operator, 2026-09-02), so "All" and "Map" were two halves of
               one page. */}
-          {(["trip", "map", "issues"] as const).map((v) => (
+          {!boardedRide && (["trip", "map", "issues"] as const).map((v) => (
             <button
               key={v}
               onClick={() => { setListView(v); }}
@@ -6684,9 +6767,27 @@ const TransitMap: FC = () => {
               )}
             </button>
           ))}
+          {/* Reload, to the right of Issues and always present (operator,
+              2026-09-02). It used to appear only in the installed app AND
+              only after a destination was picked — exactly the state a stuck
+              app never reaches. The pull-to-refresh gesture still works;
+              a visible button is the one riders find. */}
+          <button
+            onClick={() => window.location.reload()}
+            title="Refresh the app"
+            aria-label="Refresh the app"
+            style={{
+              padding: "4px 14px", borderRadius: 12, border: "none",
+              background: "#e0ddd8", color: "#546e7a",
+              cursor: "pointer", fontSize: 14, fontFamily: "inherit",
+              minHeight: 44, minWidth: 44,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ↻
+          </button>
         </div>
       </div>
-      )}
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
