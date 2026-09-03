@@ -48,6 +48,7 @@ import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
+import { lastBusVerdict } from "./lastBus";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
@@ -3296,8 +3297,13 @@ const TripPlanner: FC<{
                         Should be running now — no bus reporting yet
                       </div>
                     ) : nextStr && (
+                      // Report #86 asked whether a route that is not running
+                      // should be listed at all. It should — the alternative
+                      // is "No trip options found", which reads as "no
+                      // shuttle goes there" — but its state must be said
+                      // outright, not left to be inferred from "Next:".
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
-                        Next: {nextStr}
+                        Not running now · next {nextStr}
                       </div>
                     )}
                   </span>
@@ -3575,7 +3581,13 @@ const TripPlanner: FC<{
                   stopsAway = (bi - busIdx + allStops.length) % allStops.length;
                 }
               }
-              return { busMatch, stopsAway, normBus };
+              // How many buses are really on this line — the same on-route
+              // test the pin uses, so a depot ghost cannot make "2 buses out"
+              // of one. The last-bus warning below reads this.
+              const liveCount = buses.filter((b) =>
+                cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
+              ).length;
+              return { busMatch, stopsAway, normBus, cfg, liveCount };
             })();
             // Live bus ETA, hoisted to row scope so the TOP line can carry it
             // beside the total (operator, 2026-09-03: "could this go on the
@@ -3589,6 +3601,22 @@ const TripPlanner: FC<{
             // visibly closed in — report #48.
             const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
               ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
+              : null;
+            // Is this the last one, and will there be another? Judged
+            // against the PUBLISHED close (the same `route_hours` the
+            // "Runs …" caption shows), one headway, and the live count —
+            // see lastBus.ts. Plain render-time arithmetic, no hook, so it
+            // cannot trip the TDZ hazard this component is known for. It
+            // only ever ADDS a line: the option is never hidden or moved.
+            const lastBus = shuttleCtx
+              ? lastBusVerdict({
+                  label: o.routeLabel,
+                  published: publishedWindowFor(shuttleCtx.cfg, routeHours),
+                  now: new Date(),
+                  busEtaSec: busEtaLive,
+                  liveCount: shuttleCtx.liveCount,
+                  future: isFuture,
+                })
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
@@ -3701,6 +3729,33 @@ const TripPlanner: FC<{
                     </>
                   )}
                 </div>
+                )}
+                {/* Last-bus warning — shown in BOTH the collapsed row and the
+                    details view, because the rider decides in either. Two
+                    nowrap lines (measured at 390px, see lastBus.test.ts);
+                    explicit background and colour because the rider app has
+                    no dark theme to inherit from. Amber like the service
+                    banners; the headline turns red once the published
+                    hours have actually ended. */}
+                {lastBus && (
+                  <div
+                    data-testid="last-bus"
+                    data-kind={lastBus.kind}
+                    role="note"
+                    style={{
+                      background: "#FFF8E1", border: "1px solid #FFE082",
+                      borderRadius: 6, padding: "6px 8px", marginBottom: 8,
+                      fontSize: 13, lineHeight: 1.45, color: "#795548",
+                    }}
+                  >
+                    <div style={{
+                      fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      color: lastBus.kind === "closing" ? "#795548" : "#C62828",
+                    }}>{lastBus.headline}</div>
+                    <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {lastBus.detail}
+                    </div>
+                  </div>
                 )}
                 {/* Collapsed preview: a single summary line. For shuttle
                     options it's "#bus · N stops before yours · arrives
