@@ -38,8 +38,9 @@ import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
+import { alightNoteText, findAlightNote } from "./alightNote";
 import {
-  BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
@@ -4051,6 +4052,31 @@ const TripPlanner: FC<{
                         );
                       })}
                       </div>
+                      {/* Why HERE and not the stop nearer the door (report
+                          #59). A rider looking at the map can see a closer
+                          stop on the same line; with no reason given they
+                          read it as a bug, and the only way to ask was to
+                          file a report. Explanation only — the option, its
+                          order and its total are untouched. */}
+                      {(() => {
+                        if (!toLL) return null;
+                        const note = findAlightNote(
+                          mergedRouteStops(cfg, routeStops), o.alightStopId, toLL,
+                          stopCoords, segmentTimes?.[cfg.routeIds[0]], routeDwells,
+                        );
+                        if (!note) return null;
+                        const closerName =
+                          stopNames[note.closerStopId] ?? `Stop ${note.closerStopId}`;
+                        return (
+                          <div style={{
+                            display: "flex", gap: 6, marginTop: 8,
+                            fontSize: 12, lineHeight: 1.4, color: "#5f6368",
+                          }}>
+                            <span aria-hidden="true">💡</span>
+                            <span>{alightNoteText(note, closerName)}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
