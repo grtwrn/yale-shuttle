@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  busPairLine,
   fmtBusPair,
   fmtClock,
   fmtMin,
@@ -233,5 +236,56 @@ describe("fmtBusPair — the next two buses in one breath", () => {
 
   it("keeps the under-a-minute marker", () => {
     expect(fmtBusPair(45, 660)).toBe("in <1, 11 min");
+  });
+});
+
+describe("busPairLine — the same live readout on every card", () => {
+  it("prints the pair behind the bus emoji", () => {
+    expect(busPairLine(60, 660)).toBe("🚌 in 1, 11 min");
+    expect(busPairLine(60)).toBe("🚌 in 1 min");
+  });
+
+  it("says nothing when there is no live bus on the option", () => {
+    // Future-mode and schedule-only options have no pinned vehicle; the card
+    // falls back to its "⏳ wait N min" summary.
+    expect(busPairLine(null)).toBeNull();
+    expect(busPairLine(undefined)).toBeNull();
+    expect(busPairLine(NaN, 660)).toBeNull();
+  });
+
+  it("says nothing once the option has departed", () => {
+    // The card runs its "check for the next shuttle" sentence instead —
+    // counting down to a bus the rider cannot catch is the misleading case.
+    expect(busPairLine(60, 660, { departed: true })).toBeNull();
+  });
+
+  it("takes no view state, so an opened card reads like the overview", () => {
+    // Report #79: the countdown was rendered only on collapsed rows, so
+    // tapping a trip for more detail removed the one live number on it.
+    // Whatever the row shows, it shows in both places — same inputs, one
+    // string, and no third argument for "is this card open".
+    const overview = busPairLine(8 * 60, 20 * 60);
+    const details = busPairLine(8 * 60, 20 * 60);
+    expect(details).toBe(overview);
+    expect(details).toBe("🚌 in 8, 20 min");
+  });
+});
+
+describe("the option row renders that readout in both of its states", () => {
+  // busPairLine cannot enforce this on its own: the row could simply decline
+  // to render it when open, which is exactly the bug report #79 describes.
+  // This project has no DOM test setup, so — as walk.test.ts does with the
+  // server's walking speed — read the source and pin the one condition.
+  const source = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
+
+  it("gates the live bus line on the bus, not on which card is open", () => {
+    const guard = source.match(/\{busLine && \(/);
+    expect(guard, "the live bus span should render on `busLine` alone").not.toBeNull();
+    expect(source).not.toMatch(/busLine && [^)]*isExpanded/);
+    expect(source).not.toMatch(/isExpanded[^)]*&& busLine/);
+  });
+
+  it("builds the line once, so the two views cannot word it differently", () => {
+    expect(source.match(/busPairLine\(/g)).toHaveLength(1);
   });
 });
