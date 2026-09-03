@@ -1,0 +1,23 @@
+{
+  "caption": "The opened trip card now keeps the live \"🚌 in X, Y min\" countdown on its top line, worded exactly as the overview row it was tapped from (report #79). Before this change it was collapsed-rows-only, so tapping a trip for more detail took the one live number off the page — the \"#316 · 8 min\" chip below it is the ride's length, not a countdown. The recipe plans Temple/Grove → Congress/Cedar and taps the shuttle row open.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 118,
+    "dest": 43
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788464488/pr-preview/79/trip-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

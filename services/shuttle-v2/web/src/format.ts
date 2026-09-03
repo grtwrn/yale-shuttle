@@ -41,6 +41,28 @@ export function fmtBusPair(firstSec: number, secondSec?: number | null): string 
   return `in ${first.replace(" min", "")}, ${second}`;
 }
 
+/**
+ * The whole live-bus readout for an option row, or null when there is nothing
+ * live to say. One function so the collapsed row and the opened details page
+ * cannot word it differently — a rider opened a card and found the "in X, Y"
+ * they had just read on the overview simply gone (report #79), because the
+ * details view rendered no live line at all.
+ *
+ * Expansion state is deliberately NOT an input: which card is open says
+ * nothing about whether a bus is coming.
+ */
+export function busPairLine(
+  busEtaSec: number | null | undefined,
+  nextEtaSec?: number | null,
+  opts: { departed?: boolean } = {},
+): string | null {
+  if (busEtaSec == null || !Number.isFinite(busEtaSec)) return null;
+  // A departed option's own countdown is meaningless — the card says "check
+  // for the next shuttle" instead.
+  if (opts.departed) return null;
+  return `🚌 ${fmtBusPair(busEtaSec, nextEtaSec)}`;
+}
+
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";

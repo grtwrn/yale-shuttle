@@ -17,7 +17,7 @@ import {
 } from "./weather";
 import { billedDwellSec, computeUpcomingArrivals, dwellRangeSec, type UpcomingArrival } from "./arrivals";
 import {
-  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
+  busPairLine, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
   type GeocodeResult,
 } from "./format";
@@ -3502,6 +3502,9 @@ const TripPlanner: FC<{
                   .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
                   .sort((a, b) => a.eta - b.eta)[0] ?? null)
               : null;
+            // Built once, rendered once — collapsed and expanded show the
+            // same sentence because there is only one of it.
+            const busLine = busPairLine(busEtaLive, nextArrLive?.eta, { departed: o.departed });
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3534,15 +3537,22 @@ const TripPlanner: FC<{
                       used to sit two lines further down. Secondary weight so
                       the two bold numbers still frame the row, nowrap +
                       ellipsis so a narrow phone clips the "next in" tail
-                      rather than wrapping the row onto two lines. */}
-                  {busEtaLive !== null && !o.departed && !isExpanded && (
+                      rather than wrapping the row onto two lines.
+
+                      Shown on the OPENED card too (report #79). It was
+                      collapsed-only, so tapping a row to see more of a trip
+                      took away the one live number on it; the chip line below
+                      carries the ride's length ("#316 · 8 min"), which is not
+                      a countdown and was being read as one. Expanded has more
+                      room, not less — the row drops its › chevron. */}
+                  {busLine && (
                     <span style={{
                       fontSize: 13, color: "#5f6368", fontWeight: 500,
                       flex: 1, minWidth: 0, overflow: "hidden",
                       textOverflow: "ellipsis", whiteSpace: "nowrap",
                       textAlign: "center",
                     }}>
-                      {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
+                      {busLine}
                     </span>
                   )}
                   <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -3628,18 +3638,18 @@ const TripPlanner: FC<{
                           🚌 You can't catch #{o.missedBus} — showing the next bus:
                         </div>
                       )}
-                      {/* Collapsed = at most one live-status line (missed-bus
-                          warning takes precedence). Expanded: the step list
-                          below carries bus number + wait, so the plain
-                          "in N min" line would repeat it — only the departed
-                          warning still shows there. */}
+                      {/* At most one live-status line here (the missed-bus
+                          warning takes precedence). The countdown itself is
+                          not one of them — it lives on the top line, in both
+                          the collapsed and the opened card. */}
                       {/* No bus numbers here (user 2026-07-17) — the ride
                           pill in the details view carries the number for
                           matching against the physical bus. */}
                       {/* "in N min · next in M min" moved UP to the top line
                           (operator, 2026-09-03), so all that is left here is
                           the departed warning, which is a sentence and could
-                          never have fitted there. */}
+                          never have fitted there — which is also why the top
+                          line stays silent while an option is departed. */}
                       {o.departed && (
                       <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4 }}>
                         {shuttleCtx.stopsAway === 0
