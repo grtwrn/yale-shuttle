@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
 
-import { createActivesTracker, etDay, TEST_ANON_ID } from "./actives.js";
+import { createActivesTracker, etDay, etHour, TEST_ANON_ID } from "./actives.js";
 
 const ID_A = "11111111-2222-4333-8444-555555555555";
 const ID_B = "66666666-7777-4888-8999-aaaaaaaaaaaa";
@@ -462,5 +462,67 @@ describe("history() and stats() cannot drift apart", () => {
     expect(today.returningRiders).toBe(s.returningToday);
     expect(today.searches).toBe(s.searchesToday);
     expect(today.newRiders + today.returningRiders).toBe(today.riders);
+  });
+});
+
+describe("per-hour shape of a day", () => {
+  // 2026-08-31T20:00:00Z is 16:00 ET — the hour the fixtures below hang off.
+  const ET_HOUR_OF_T = 16;
+
+  it("reads the hour in ET, not the machine's timezone", () => {
+    expect(etHour(T)).toBe(ET_HOUR_OF_T);
+    // Midnight ET must be 0, never 24.
+    expect(etHour(Date.parse("2026-09-01T04:00:00Z"))).toBe(0);
+  });
+
+  it("counts a browser in every hour between its first and last sighting", () => {
+    const t = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    t.seen(ID_A, "poll", T);                        // 16:00 ET
+    t.seen(ID_A, "poll", T + 2 * 60 * 60_000);      // 18:00 ET, same browser
+    t.seen(ID_B, "poll", T);                        // 16:00 ET only
+    const [day] = t.hourly(7, T + 3 * 60 * 60_000);
+    expect(day!.day).toBe(etDay(T));
+    expect(day!.hours).toHaveLength(24);
+    expect(day!.hours[16]).toBe(2);   // both browsers
+    expect(day!.hours[17]).toBe(1);   // A is still in its span
+    expect(day!.hours[18]).toBe(1);
+    expect(day!.hours[19]).toBe(0);
+    expect(day!.hours[9]).toBe(0);
+  });
+
+  it("gives each day its own line, oldest first, and skips days with nothing", () => {
+    const t = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    t.seen(ID_A, "poll", T - 2 * DAY_MS);
+    t.seen(ID_B, "poll", T);
+    const days = t.hourly(7, T);
+    expect(days.map((d) => d.day)).toEqual([etDay(T - 2 * DAY_MS), etDay(T)]);
+    // The day between them had no rows: absent, not a row of zeroes.
+    expect(days).toHaveLength(2);
+  });
+
+  it("ignores browsers the statistics exclude", () => {
+    const t = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    t.seen(TEST_ANON_ID, "poll", T);   // seeded into excluded_anon_ids
+    t.seen(ID_A, "poll", T);
+    expect(t.hourly(7, T)[0]!.hours[ET_HOUR_OF_T]).toBe(1);
+  });
+
+  it("flushes first, so today is not an hour behind", () => {
+    const t = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    t.seen(ID_A, "poll", T);
+    // No explicit flush(): hourly() must do it, as stats() and history() do.
+    expect(t.hourly(7, T)[0]!.hours[ET_HOUR_OF_T]).toBe(1);
+  });
+
+  it("does not wrap a session that ran past midnight into the same day", () => {
+    const t = createActivesTracker(bundle, { sinceDay: OPEN_EPOCH });
+    const lateNight = Date.parse("2026-09-01T03:30:00Z"); // 23:30 ET on the 31st
+    t.seen(ID_A, "poll", lateNight);
+    t.seen(ID_A, "poll", lateNight + 60 * 60_000);        // 00:30 ET next day
+    const day = t.hourly(7, lateNight + 2 * 60 * 60_000).find((d) => d.day === etDay(lateNight))!;
+    // The row belongs to the 31st, so it fills to 23 rather than wrapping
+    // round into hours that belong to the 1st.
+    expect(day.hours[23]).toBe(1);
+    expect(day.hours[0]).toBe(0);
   });
 });

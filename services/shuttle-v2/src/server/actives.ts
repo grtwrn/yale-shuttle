@@ -61,6 +61,18 @@ export function etDay(now: number): string {
   }).format(new Date(now));
 }
 
+/** ET hour of the day, 0-23. Same explicit-timezone rule as etDay. */
+export function etHour(now: number): number {
+  const h = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    hour12: false,
+  }).format(new Date(now));
+  // "24" appears for midnight in some ICU versions; fold it back to 0.
+  const n = parseInt(h, 10);
+  return Number.isFinite(n) ? n % 24 : 0;
+}
+
 /** What a browser did today, accumulated in memory between flushes. */
 interface DayState {
   firstSeen: number;
@@ -106,6 +118,25 @@ export interface RiderStats {
 }
 
 /** One ET day of the trend series behind the operator dashboard. */
+/**
+ * One day's shape over the clock: how many browsers were in the app during
+ * each ET hour.
+ *
+ * Derived from the first/last sighting already stored per (day, browser) —
+ * NOT from new data. Nothing about time of day is collected that was not
+ * collected before; this only reads the span that was already there. A
+ * browser counts in every hour between its first and last sighting, so a
+ * rider who opened the app at 8:58 and closed it at 9:02 counts in both 8
+ * and 9. Sessions here are short (median under a minute at launch), so in
+ * practice this is close to "arrivals per hour" and always its upper bound.
+ */
+export interface DayHours {
+  /** ET calendar day, "YYYY-MM-DD". */
+  day: string;
+  /** 24 counts, index 0 = midnight ET. */
+  hours: number[];
+}
+
 export interface DayHistory {
   /** ET calendar day, "YYYY-MM-DD". */
   day: string;
@@ -130,6 +161,11 @@ export interface ActivesTracker {
    * absent, not a zero, so a chart cannot imply a launch that never happened.
    */
   history(days?: number, now?: number): DayHistory[];
+  /**
+   * Per-hour presence for each of the trailing `days` ET days, oldest first.
+   * Days with no rows are absent, like history().
+   */
+  hourly(days?: number, now?: number): DayHours[];
   /** Write accumulated counters through. Called on a timer and at shutdown. */
   flush(now?: number): void;
   stop(): void;
@@ -271,6 +307,41 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
     stop() {
       clearInterval(timer);
       flush();
+    },
+
+    hourly(days = 7, now = Date.now()) {
+      flush(now);
+      const requested = Number.isFinite(days) ? Math.floor(days) : 7;
+      const span = Math.max(1, Math.min(RETAIN_DAYS, requested));
+      const from = etDay(now - (span - 1) * 86_400_000);
+      // Spans, not counters: the hour buckets are DERIVED from the first and
+      // last sighting each row already carries, so this reads history back to
+      // launch and collects nothing new.
+      const rows = db.all<{ day: string; firstSeen: number | null; lastSeen: number | null }>(sql`
+        SELECT day, first_seen_ms AS firstSeen, last_seen_ms AS lastSeen
+        FROM daily_actives
+        WHERE day >= ${from} AND ${notExcluded}
+        ORDER BY day`);
+      const byDay = new Map<string, number[]>();
+      for (const r of rows) {
+        // A row written before these columns existed has no span to read.
+        if (r.firstSeen == null || r.lastSeen == null) continue;
+        let hours = byDay.get(r.day);
+        if (!hours) {
+          hours = new Array<number>(24).fill(0);
+          byDay.set(r.day, hours);
+        }
+        const start = etHour(r.firstSeen);
+        // A session that runs past midnight belongs to the day it started in
+        // (that is the row's day), so the walk stops at 23 rather than
+        // wrapping into hours of a day this row does not represent.
+        const end = etHour(Math.max(r.firstSeen, r.lastSeen));
+        const last = end >= start ? end : 23;
+        for (let h = start; h <= last; h++) hours[h] = (hours[h] ?? 0) + 1;
+      }
+      return [...byDay.entries()]
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([day, hours]) => ({ day, hours }));
     },
 
     history(days = 30, now = Date.now()) {

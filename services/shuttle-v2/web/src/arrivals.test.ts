@@ -180,6 +180,12 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     expect(padded).toBeGreaterThan(300);
   });
 
+  // The "layover taken one stop early" block that lived here is gone with the
+  // behaviour it pinned. A week of `arrivals` says a long hold at a
+  // non-layover stop is followed by the scheduled layover 292 times out of
+  // 321 — the credit would have been wrong in 91% of the cases it fired on.
+  // See the note above STALL_CREDIT_MAX_FRACTION in arrivals.ts.
+
   it("still does not promise a bus that is part way through its layover", () => {
     const segs: SegmentTimes = {
       "4": { [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 } },

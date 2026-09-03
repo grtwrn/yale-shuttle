@@ -122,6 +122,9 @@ describe("step", () => {
       lastObservedAt: T0,
       lat: stops[0]!.lat,
       lon: stops[0]!.lon,
+      stationarySince: T0,
+      stationaryLat: stops[0]!.lat,
+      stationaryLon: stops[0]!.lon,
     };
     const obsOnRouteTwo: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 2 };
     const result = step(twoRouteNet, stateOnRouteOne, obsOnRouteTwo);
@@ -140,6 +143,9 @@ describe("step", () => {
       lastObservedAt: T0,
       lat: stops[0]!.lat,
       lon: stops[0]!.lon,
+      stationarySince: T0,
+      stationaryLat: stops[0]!.lat,
+      stationaryLon: stops[0]!.lon,
     };
     const obsOnUnknown: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 999 };
     const result = step(net, stateOnRouteOne, obsOnUnknown);
@@ -633,5 +639,58 @@ describe("two live ids sharing one bus name", () => {
     );
     // Not in the poll is not the same as gone — that is the TTL sweep's job.
     expect([...map.keys()]).toEqual(["#99"]);
+  });
+});
+
+describe("the stationary clock survives a parked shuffle (2026-09-03)", () => {
+  // Two stops ~100 m apart, like 344 Winchester and the kerb beside its
+  // garage lane. A bus parked between them flips "nearest" on a few metres of
+  // drift — which used to restart the dwell a rider was watching.
+  const LON_PER_M = 1 / 83_700; // at latitude 41.32
+  const garage: Stop = { id: 10, name: "Garage", lat: 41.32, lon: -72.94 };
+  const kerb: Stop = { id: 11, name: "Kerb", lat: 41.32, lon: -72.94 + 100 * LON_PER_M };
+  const nearNet = TransitNetwork.build([garage, kerb], [
+    { id: 1, name: "Line", shortName: "L", color: "#000", stops: [10, 11] },
+  ]);
+  const at = (metresEast: number, when: number): BusObservation => ({
+    busId: 42,
+    busName: "#42",
+    routeId: 1,
+    lat: 41.32,
+    lon: -72.94 + metresEast * LON_PER_M,
+    heading: 90,
+    lastStopId: 10,
+    collectedAt: when,
+  });
+
+  it("keeps the wait a rider is watching when the bus only shuffles", () => {
+    const parked = step(nearNet, null, at(0, T0)).state!;
+    expect(parked.stationarySince).toBe(T0);
+
+    // Eight minutes into its layover it pulls forward 70 m — still at the
+    // same place to anyone watching, but now nearer the other stop.
+    const shuffled = step(nearNet, parked, at(70, T0 + 8 * 60_000)).state!;
+    expect(shuffled.nearestStopId).toBe(11);          // nearest really did flip
+    expect(shuffled.enteredAt).toBe(T0 + 8 * 60_000); // the anchor restarts, as before
+    // ...but the rider-visible wait does not: this is the bug being fixed.
+    expect(shuffled.stationarySince).toBe(T0);
+    expect(shuffled.stationaryLat).toBe(41.32);
+  });
+
+  it("restarts once the bus has actually gone somewhere", () => {
+    const parked = step(nearNet, null, at(0, T0)).state!;
+    const left = step(nearNet, parked, at(300, T0 + 8 * 60_000)).state!;
+    expect(left.stationarySince).toBe(T0 + 8 * 60_000);
+  });
+
+  it("cannot be walked across town one metre at a time", () => {
+    // The anchor point is kept, not re-centred on every observation, so a
+    // slow drift never accumulates into a free stationary clock.
+    let st = step(nearNet, null, at(0, T0)).state!;
+    for (let i = 1; i <= 6; i++) {
+      st = step(nearNet, st, at(i * 20, T0 + i * 60_000)).state!;
+    }
+    // 120 m from where it stopped: the clock must have restarted on the way.
+    expect(st.stationarySince).toBeGreaterThan(T0);
   });
 });

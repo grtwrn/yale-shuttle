@@ -57,6 +57,13 @@
       "when": 1788281063147,
       "tag": "0007_salty_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788440074799,
+      "tag": "0008_sturdy_mother_askani",
+      "breakpoints": true
     }
   ]
 }
