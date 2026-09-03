@@ -11,7 +11,7 @@ import {
   fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
-import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 
 export type TripOption = {
   mode: "shuttle" | "walk";
@@ -364,6 +364,51 @@ export function planTrip(
       }]
     : [];
   return [...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
+}
+
+/**
+ * Wording split inside the "already there" state: at or below this the two
+ * points are ONE spot ("the same place you're starting from"); above it they
+ * are two, a few steps apart.
+ *
+ * 10 m because that is smaller than any separation this network treats as two
+ * places: the closest pair of distinct stops it serves is 10.3 m (Front / Rt 1
+ * (N) and (S) — measured over the 172-stop fixture; the next four pairs are
+ * 10.3–10.8 m). So the stronger sentence is never printed for two points the
+ * app itself would call different stops.
+ */
+export const SAME_SPOT_M = 10;
+
+/**
+ * "You're already there": the destination is within `AT_PLACE_M` of the origin
+ * and the planner produced no shuttle worth showing.
+ *
+ * The state is real and the planner is right to produce it. With endpoints
+ * this close the dominance rule above discards every shuttle option — both
+ * walk legs would have to fit inside a direct walk of ~zero — leaving a single
+ * 0-minute Walk. What was wrong is what the screen then said: the "shuttles
+ * that go there" fallback keys on exactly that walk-only shape and answered a
+ * rider standing at their destination with a dozen routes and "should be
+ * running now — no bus reporting yet".
+ *
+ * Both halves of the test matter. Distance alone is not enough: two stops can
+ * be 10 m apart, so a (silly but real) ride between them can survive, and an
+ * option must never be overruled by a message. An empty shuttle list alone is
+ * not enough either: that is also what an off-hours cross-town trip looks
+ * like, and THAT rider does want the route list.
+ *
+ * The threshold cannot hide a ride. Measured on the test network from Phelps
+ * Gate, the first surviving shuttle option needs ~200 m of separation — well
+ * clear of AT_PLACE_M — and `planner.test.ts` pins that.
+ */
+export function isAlreadyThere(
+  from: LatLon | null | undefined,
+  to: LatLon | null | undefined,
+  options: readonly TripOption[] | null | undefined,
+): boolean {
+  if (!from || !to || !options) return false;
+  if (options.some((o) => o.mode === "shuttle")) return false;
+  return haversineMeters(from, to) <= AT_PLACE_M;
 }
 
 // Routes that geographically connect from→to (a stop within walking

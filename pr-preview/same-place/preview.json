@@ -1,0 +1,109 @@
+{
+  "caption": "Same origin and destination: the app now says \"You’re already there\" instead of listing every route",
+  "stagedOn": "http://127.0.0.1:8231 (branch build, throwaway DB)",
+  "viewport": "390x844 @2x, chromium",
+  "shots": {
+    "before-same-place.png": "master, standing at Phelps Gate with Phelps Gate as the destination",
+    "after-same-place.png": "this branch, same trip",
+    "after-near-miss.png": "this branch, destination 25 m from the GPS fix",
+    "after-ordinary-trip.png": "this branch, Phelps Gate to Union Station (unchanged)"
+  },
+  "measured": {
+    "afterSamePlace": {
+      "query": "Phelps Gate",
+      "pageErrors": [],
+      "docWidth": 390,
+      "viewWidth": 390,
+      "card": [
+        {
+          "text": "You’re already there",
+          "lines": 1,
+          "textW": 157,
+          "availW": 157,
+          "fontSize": "16px",
+          "minH": 20
+        },
+        {
+          "text": "That’s the same place you’re starting from.",
+          "lines": 1,
+          "textW": 282,
+          "availW": 324,
+          "fontSize": "14px",
+          "minH": 20
+        },
+        {
+          "text": "Pick a different destination above to plan a trip.",
+          "lines": 1,
+          "textW": 278,
+          "availW": 324,
+          "fontSize": "12.5px",
+          "minH": 18
+        }
+      ]
+    },
+    "afterNearMiss": {
+      "query": "Phelps Gate",
+      "pageErrors": [],
+      "docWidth": 390,
+      "viewWidth": 390,
+      "card": [
+        {
+          "text": "You’re already there",
+          "lines": 1,
+          "textW": 157,
+          "availW": 157,
+          "fontSize": "16px",
+          "minH": 20
+        },
+        {
+          "text": "Your destination is just a few steps away.",
+          "lines": 1,
+          "textW": 271,
+          "availW": 324,
+          "fontSize": "14px",
+          "minH": 20
+        },
+        {
+          "text": "Pick a different destination above to plan a trip.",
+          "lines": 1,
+          "textW": 278,
+          "availW": 324,
+          "fontSize": "12.5px",
+          "minH": 18
+        }
+      ]
+    },
+    "at320px": {
+      "query": "Phelps Gate",
+      "pageErrors": [],
+      "docWidth": 320,
+      "viewWidth": 320,
+      "card": [
+        {
+          "text": "You’re already there",
+          "lines": 1,
+          "textW": 157,
+          "availW": 157,
+          "fontSize": "16px",
+          "minH": 20
+        },
+        {
+          "text": "That’s the same place you’re starting from.",
+          "lines": 2,
+          "textW": 243,
+          "availW": 254,
+          "fontSize": "14px",
+          "minH": 41
+        },
+        {
+          "text": "Pick a different destination above to plan a trip.",
+          "lines": 2,
+          "textW": 251,
+          "availW": 254,
+          "fontSize": "12.5px",
+          "minH": 36
+        }
+      ]
+    }
+  }
+}
