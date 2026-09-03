@@ -1963,7 +1963,7 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -3550,7 +3550,7 @@ const TripPlanner: FC<{
                   // vehicle a loop later counts.
                   const nextArr = !o.departed
                     ? (computeUpcomingArrivals(
-                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes,
+                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
                       )
                         .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEta + 30)
                         .sort((a, b) => a.eta - b.eta)[0] ?? null)
@@ -4310,11 +4310,12 @@ const NextShuttles: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
-}> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes }) => {
+}> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (savedStops.size === 0) return null;
 
-  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes);
+  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes);
   const arrivals: Record<number, UpcomingArrival[]> = {};
   for (const a of all) {
     (arrivals[a.stopId] ??= []).push(a);
@@ -4581,13 +4582,14 @@ const FavoriteStopsPage: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   savedTrips: SavedTrip[];
   setSavedTrips: (t: SavedTrip[]) => void;
   onPlanTrip: (t: SavedTrip) => void;
-}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
+}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nearbyGroupId, setNearbyGroupId] = useState<string | null>(null);
 
@@ -4655,7 +4657,7 @@ const FavoriteStopsPage: FC<{
         </div>
       )}
       {groups.map((g, idx) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
         const editing = editingId === g.id;
         return (
           <div key={g.id} style={{
@@ -4819,13 +4821,14 @@ const StopGroupsSummary: FC<{
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   tick: number;
-}> = ({ groups, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
+}> = ({ groups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (groups.length === 0) return null;
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {groups.map((g) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
         const name = g.name || "Unnamed";
         return (
           <div key={g.id} style={{
@@ -5648,7 +5651,8 @@ const RideStopList: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes }) => {
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   const cfg = ROUTE_LISTS.find(c => c.label === ride.routeLabel);
   const normBus = (s: string) => s.replace(/^#/, "");
 
@@ -5678,7 +5682,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
     );
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
@@ -5784,8 +5788,9 @@ const OnBusBanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
+  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
   onEnd: () => void;
-}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, onEnd }) => {
+}> = ({ ride, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, onEnd }) => {
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
@@ -5823,7 +5828,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
     );
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
@@ -6724,7 +6729,7 @@ const TransitMap: FC = () => {
           stopNames={stopNames}
           stopCoords={stopCoords}
           routeStops={routeStops}
-          segmentTimes={segmentTimes}
+          segmentTimes={segmentTimes}          dwellTimes={dwellTimes}
           onEnd={() => setBoardedRide(null)}
         />
       )}
@@ -6863,7 +6868,7 @@ const TransitMap: FC = () => {
             stopNames={stopNames}
             stopCoords={stopCoords}
             routeStops={routeStops}
-            segmentTimes={segmentTimes}
+            segmentTimes={segmentTimes}            dwellTimes={dwellTimes}
           />
         </>
       ) : listView === "map" ? (

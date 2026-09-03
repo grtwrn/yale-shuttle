@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
   at, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -134,6 +135,68 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     )!;
     // Half a ~790 m segment at the 6 m/s fallback ≈ 66 s, not "arriving now".
     expect(eta).toBeGreaterThan(30);
+  });
+
+  /**
+   * Red, 2026-09-03, reported by a rider: bus #316 had been sitting at 344
+   * Winchester for 10 minutes of its ~8-minute layover — about to pull out,
+   * 82 s of driving from the next stop — and the board told someone three
+   * stops down the line "5 min". It left, arrived about 2.5 min later, and
+   * anyone who trusted the 5 missed it. Arriving EARLY is the dangerous
+   * direction: the rider is not there.
+   *
+   * The numbers below are that hop's live calibration: the segment averages
+   * 557 s BECAUSE it contains the 475 s layover. What a dwelling bus can
+   * cancel is the layover, not the drive.
+   */
+  it("a bus that has finished a long layover is not padded by half of it", () => {
+    const LAYOVER = 475.2;
+    const segs: SegmentTimes = {
+      "4": {
+        [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 },
+        [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: 37.4, sd: 10, n: 32 },
+      },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: LAYOVER, sd: 120, n: 13 } },
+    };
+    const bus = makeBus({
+      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(10 * 60),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [bus], routeStops, stopCoords, segs, NOW, dwells),
+      STOP.collegeWallN,
+    )!;
+    // 557 - 475 = 82 s of driving, then the 37 s hop: about two minutes.
+    expect(eta).toBeGreaterThan(90);
+    expect(eta).toBeLessThan(150);
+    // Without a dwell statistic the fraction cap still applies — and that is
+    // the reading the rider was shown, half the segment being pure padding.
+    const padded = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [bus], routeStops, stopCoords, segs, NOW),
+      STOP.collegeWallN,
+    )!;
+    expect(padded).toBeGreaterThan(300);
+  });
+
+  it("still does not promise a bus that is part way through its layover", () => {
+    const segs: SegmentTimes = {
+      "4": { [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 } },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: 475.2, sd: 120, n: 13 } },
+    };
+    const justArrived = makeBus({
+      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(30),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([STOP.elmYorkTyco], [justArrived], routeStops, stopCoords, segs, NOW, dwells),
+      STOP.elmYorkTyco,
+    )!;
+    // 30 s served of an ~8 min layover: the rest of the wait is still ahead.
+    expect(eta).toBeGreaterThan(480);
   });
 
   it("never credits more than the capped share of the first hop", () => {

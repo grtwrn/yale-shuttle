@@ -13,8 +13,11 @@ export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
 /**
- * How much of the first hop's calibrated time an elapsed dwell may cancel.
- * Measured, not chosen: see the stall-credit comment in computeUpcomingArrivals.
+ * How much of the first hop's calibrated time an elapsed dwell may cancel when
+ * we have no dwell statistic for the stop. See the stall-credit comment in
+ * computeUpcomingArrivals: with dwell data the bound is the dwell itself,
+ * which is the quantity actually baked into the segment, and this fraction is
+ * only the fallback for a stop the calibrator has never measured.
  */
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
 
@@ -30,6 +33,7 @@ export function computeUpcomingArrivals(
   stopCoords: Record<number, LatLon>,
   segmentTimes: SegmentTimes,
   now = Date.now(),
+  dwellTimes: DwellTimes = {},
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -149,21 +153,34 @@ export function computeUpcomingArrivals(
             segVar = (segAvg * 0.5) ** 2;
           }
         }
-        // Burn stall credit on the first segment only, and never more than
-        // STALL_CREDIT_MAX_FRACTION of it. A segment sample runs arrival to
-        // arrival, so seg.avg already contains the TYPICAL dwell at this
-        // stop; crediting every elapsed second assumed the bus would leave
-        // the instant it had sat that long. It does not: replaying 69k raw
-        // positions (2026-09-02) against real arrivals, the next-stop error
-        // for a dwelling bus grew from -19 s after 30 s of dwell to -112 s
-        // after 2-5 min and -203 s past 5 min — the 'wait leg 20-25%
-        // optimistic' the live harness kept reporting. Capping the credit at
-        // half the hop cut the at-stop next-stop median error 71 -> 51.5 s
-        // and its bias -54 -> -26 s, and the all-positions median 115 ->
-        // 104 s (docs/eta-accuracy.md). A quarter scores the same on the
-        // median but turns pessimistic (+61 s) for buses that sat over 5 min.
+        // Burn stall credit on the first segment only, and never more than the
+        // waiting that segment actually contains.
+        //
+        // A segment sample runs arrival to arrival, so seg.avg = the dwell at
+        // this stop + the drive to the next one. What a bus that has already
+        // been sitting here can cancel is the DWELL part, and nothing more —
+        // it still has to drive. So the bound is the calibrated dwell for this
+        // stop, and the fraction below is only the fallback for a stop the
+        // calibrator has never measured.
+        //
+        // Both wrong answers have shipped. Crediting every elapsed second
+        // (until 2026-09-02) drove the hop to zero and promised a bus that was
+        // still minutes of driving away: replaying 69k positions, the
+        // next-stop error for a dwelling bus reached -203 s past 5 min of
+        // dwell. Capping at half the hop (2026-09-02 to 09-03) fixed that
+        // average and broke the layover, which is the dangerous direction: on
+        // Red, #316 had sat 10 min of its ~8 min layover at 344 Winchester,
+        // 82 s of driving from Winchester/Division, and the board told a rider
+        // 3 stops later "5 min" — half of the 557 s segment is 279 s of pure
+        // padding — so the bus left, arrived ~2.5 min later, and the rider who
+        // trusted the 5 was too late. The dwell bound gives 557 - 475 = 82 s,
+        // which is the drive, which is the answer.
         if (step === 1 && stallCredit > 0) {
-          const applied = Math.min(stallCredit, segAvg * STALL_CREDIT_MAX_FRACTION);
+          const dwell = dwellTimes[cfg.routeIds[0]]?.[String(stops[busIdx])];
+          const cancellable = dwell && dwell.med > 0
+            ? dwell.med
+            : segAvg * STALL_CREDIT_MAX_FRACTION;
+          const applied = Math.min(stallCredit, cancellable, segAvg);
           segAvg -= applied;
           stallCredit -= applied;
         }
