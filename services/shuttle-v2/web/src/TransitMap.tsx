@@ -17,7 +17,8 @@ import {
 } from "./weather";
 import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
-  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
+  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
 } from "./format";
@@ -1782,7 +1783,12 @@ const TripPlanner: FC<{
       const d = await r.json();
       // If a newer request (or a pick) has superseded us, bail quietly.
       if (abortRef.current !== controller) return;
-      const raw: GeocodeResult[] = d.results ?? [];
+      // Every field below (name, coordinate, class, type) comes from Photon or
+      // Nominatim, so nothing is assumed about its shape: one row missing
+      // `display_name` used to throw inside the dropdown's render and take the
+      // whole app down behind the ErrorBoundary. Malformed rows are dropped,
+      // the rest of the answer still shows. See sanitizeGeocodeResults.
+      const raw: GeocodeResult[] = sanitizeGeocodeResults(d?.results);
       // Drop results outside the shuttle service area (a Milford hit is
       // noise here) and cap the list so the dropdown stays scannable.
       // If the filter kills everything, fall back to the raw list — the
@@ -4571,7 +4577,8 @@ const NearbyStopsPicker: FC<{
       });
       const d = await r.json();
       if (abortRef.current !== ctrl) return;
-      const rawR: GeocodeResult[] = d.results ?? [];
+      // Same untrusted payload as the trip search — see the note there.
+      const rawR: GeocodeResult[] = sanitizeGeocodeResults(d?.results);
       let results = rawR.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = rawR.slice(0, 8);
       if (results.length === 0) {

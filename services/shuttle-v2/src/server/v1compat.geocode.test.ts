@@ -14,6 +14,7 @@ import {
   parseCoordinateQuery,
   parsePhoton,
   rankExternal,
+  sanitizeHits,
   type GeocodeV1Hit,
 } from "./v1compat.js";
 
@@ -758,5 +759,93 @@ describe("a street address with a suffix (operator, 2026-09-03)", () => {
     for (const q of ["800", "prospect", "trader joes", "  "]) {
       expect(looksLikeStreetAddress(q)).toBe(false);
     }
+  });
+});
+
+/**
+ * A malformed record must not reach a rider — and must not cost the lookup.
+ *
+ * `parsePhoton` and `parseNominatim` are careful, but the `ExternalGeocoder`
+ * is an injected interface and the providers are outside our control, so this
+ * pins the endpoint's behaviour on a hit that is simply wrong. Before the
+ * guard, `rankExternal` split a missing `display_name` and threw — one bad row
+ * 500ing the whole lookup — and anything it did pass through blank-screened
+ * the client (see web/src/format.test.ts for the other half of this fix).
+ */
+describe("a malformed external hit costs its own row, not the lookup", () => {
+  const malformed = [
+    { lat: 41.2978, lon: -72.9268, type: "house", class: "osm" },            // no name
+    { display_name: null, lat: 41.2978, lon: -72.9268 },
+    { display_name: 42, lat: 41.2978, lon: -72.9268 },
+    { display_name: "   ", lat: 41.2978, lon: -72.9268 },
+    { display_name: "Union Station Cafe" },                                   // no coordinate
+    { display_name: "Union Station Bar", lat: 41.2978 },
+    { display_name: "Union Station Null", lat: null, lon: null },
+    { display_name: "Union Station Bool", lat: true, lon: false },
+    { display_name: "Union Station Blank", lat: "", lon: "" },
+    { display_name: "Union Station Off-Globe", lat: 900, lon: -72.9268 },
+    null,
+    "Union Station",
+  ] as unknown as GeocodeV1Hit[];
+
+  const goodHit: GeocodeV1Hit = {
+    // ~200 m from the Union Station stop: past LOCAL_DEDUP_M so it is a
+    // distinct place, well inside EXTERNAL_REACH_M so it is plannable.
+    display_name: "Union Station Diner, 50 Union Avenue, New Haven",
+    lat: 41.2996, lon: -72.9265, type: "restaurant", class: "osm",
+  };
+
+  it("answers with the good hits and none of the broken ones", async () => {
+    const results = await geocodeV1(network, "union station", {
+      lookup: async () => [...malformed, goodHit],
+    });
+    expect(results.some((r) => r.display_name === goodHit.display_name)).toBe(true);
+    // The local layer still answers, so the rider loses nothing real.
+    expect(results.some((r) => r.display_name === "Union Station" && r.class === "yale")).toBe(true);
+    for (const r of results) {
+      expect(typeof r.display_name).toBe("string");
+      expect(r.display_name.trim()).not.toBe("");
+      expect(Number.isFinite(r.lat)).toBe(true);
+      expect(Number.isFinite(r.lon)).toBe(true);
+      expect(Math.abs(r.lat)).toBeLessThanOrEqual(90);
+      expect(Math.abs(r.lon)).toBeLessThanOrEqual(180);
+      expect(typeof r.type).toBe("string");
+      expect(typeof r.class).toBe("string");
+    }
+  });
+
+  it("still answers from the local layer when every external hit is junk", async () => {
+    const results = await geocodeV1(network, "union station", { lookup: async () => malformed });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.class === "shuttle" || r.class === "yale")).toBe(true);
+  });
+
+  it("does not weaken the name-relevance filter to get there", async () => {
+    // A perfectly well-formed hit with an unrelated name is still dropped —
+    // sanitizing is about shape, never about whether a hit is an answer.
+    const results = await geocodeV1(network, "union station", {
+      lookup: async () => [
+        ...malformed,
+        { display_name: "EbLens, Whalley Avenue, New Haven", lat: 41.3092, lon: -72.9395, type: "clothes", class: "osm" },
+      ],
+    });
+    expect(results.some((r) => r.display_name.includes("EbLens"))).toBe(false);
+  });
+
+  it("sanitizeHits keeps the shape and drops the rest", () => {
+    expect(sanitizeHits([...malformed, goodHit])).toEqual([goodHit]);
+    expect(sanitizeHits(undefined)).toEqual([]);
+    expect(sanitizeHits(null)).toEqual([]);
+    expect(sanitizeHits("hits")).toEqual([]);
+    // Nominatim's string coordinates, and the neutral defaults a hit with no
+    // type/class takes rather than being dropped over an icon.
+    expect(sanitizeHits([{ display_name: "Union Station", lat: "41.29752", lon: "-72.92651" }]))
+      .toEqual([{ display_name: "Union Station", lat: 41.29752, lon: -72.92651, type: "place", class: "osm" }]);
+  });
+
+  it("rankExternal is never handed a row it would throw on", () => {
+    // The pairing this fix rests on: rankExternal splits display_name, so the
+    // sanitizer runs first. Together they must not throw on any of it.
+    expect(() => rankExternal(network, sanitizeHits(malformed), "union station")).not.toThrow();
   });
 });
