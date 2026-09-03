@@ -162,12 +162,16 @@ through. Showing both ends was the first cut and the operator cut it down
 (2026-09-03): at 9am on a warming day the low is the temperature you are
 already standing in.
 
-**The trend only ever occupies the QUIETEST branch** — temperature with no
-near-term or later rain to report (`trendShownInMessage` in `weather.ts`,
-shared by the line and by which hourly-strip cell gets marked, so the two can
-never disagree). Every other branch was measured too long to add it to at
-390px: the ≥70% umbrella branch already wraps to two rows on its own, and
-that is unchanged, deliberate, and left alone. Inside the sentence they wrapped it: that
+**The line carries BOTH facts at once** — the chance of rain and the
+temperature trend ("69°F · 35% rain · warming to 80°"). An earlier cut showed
+the trend only when there was no rain to report, which meant the two things
+the operator asked for were never on screen together. To fit at 390px,
+`rainFragment` has a TERSE form used only when the trend is beside it ("35%
+rain" rather than "35% chance of rain within the hour"), and the trend drops
+its hour ("by 2pm") whenever rain needs more than a bare percentage —
+`trendHourFits` is the one place that decides. Rain arriving later in the
+window still outranks a sub-20% near-term number, so "rain 9pm (70%)" is what
+a quiet-now-wet-later evening says. Inside the sentence they wrapped it: that
 shipped on 2026-09-03 and was caught on production, so measure the LONGEST
 branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
 touching this line, not the shortest. The ≥70% branch still takes two rows by
@@ -203,6 +207,16 @@ A near-term chance always outranks the later hour: a rider with 45% in the
 next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
 no rain expected".
+
+**The option row's top line is total · live bus · arrival** — "12 min · 🚌 in
+<1, 14 min · arrive 10:16a". The bus times moved up from a third line
+(operator, 2026-09-03) because that is the number deciding whether you leave
+now, and the card is two lines instead of three for it. The two ETAs share
+one unit via `fmtBusPair` ("in 12, 21 min", the operator's own wording): "in
+12 min · next in 21 min" clipped mid-number at 390px, and both times now fit
+at every ETA. The bus ETA is computed ONCE at row scope (`busEtaLive`) and
+consumed by both the top line and the departed warning, so they cannot
+disagree.
 
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be

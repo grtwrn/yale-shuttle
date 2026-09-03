@@ -11,13 +11,14 @@ import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
-  tempTrend, temperatureIn, trendShownInMessage, trendText,
+  tempTrend, temperatureIn, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
+  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
+  suggLabel,
   type GeocodeResult,
 } from "./format";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
@@ -3010,14 +3011,11 @@ const TripPlanner: FC<{
         // day — it is the temperature the rider is already standing in
         // (operator, 2026-09-03).
         const trend = tempTrend(hours, rain.temperatureF);
-        // Marked in the strip ONLY when the LINE actually names the trend —
-        // trendShownInMessage mirrors weatherMessage's own branch order
-        // rather than re-deriving it, so the two can never disagree. Also
-        // null when the destination reads the same as now in the unit on
-        // screen (see trendText).
-        const span = trendShownInMessage(rain, later)
-          ? trendText(trend, rain.temperatureF, tempUnit)
-          : null;
+        // The line always names the trend now (see weatherMessage), so the
+        // strip marks that hour whenever there is one to mark. Null when the
+        // destination reads the same as now in the unit on screen — see
+        // trendText — and then nothing is marked either.
+        const span = trendText(trend, rain.temperatureF, tempUnit);
         return (
           <div style={{
             marginBottom: 8,
@@ -3474,6 +3472,33 @@ const TripPlanner: FC<{
               }
               return { busMatch, stopsAway, normBus };
             })();
+            // Live bus ETA, hoisted to row scope so the TOP line can carry it
+            // beside the total (operator, 2026-09-03: "could this go on the
+            // top line ... between total time and arrival time?"). Computed
+            // ONCE here and consumed both there and by the departed warning
+            // below, so the two can never disagree.
+            //
+            // NOT walkToSec + waitSec: waitSec clamps at 0 once the bus will
+            // beat the rider to the stop, which froze the readout at the
+            // constant walk time ("in 1:49" for a full minute) while the bus
+            // visibly closed in — report #48.
+            const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
+              ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
+              : null;
+            // The bus AFTER the pinned one (user request 2026-07-17) — lets
+            // riders judge "can I skip this one?" at a glance. Strictly later
+            // than the pinned arrival so an earlier, uncatchable bus never
+            // masquerades as "next"; the same vehicle a loop later counts.
+            const nextArrLive = busEtaLive !== null && !o.departed
+              ? (computeUpcomingArrivals(
+                  // dwellTimes matters here: #32 made a dwell able to cancel
+                  // the waiting inside a segment, and hoisting this call must
+                  // not quietly drop that argument.
+                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+                )
+                  .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
+                  .sort((a, b) => a.eta - b.eta)[0] ?? null)
+              : null;
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3499,6 +3524,22 @@ const TripPlanner: FC<{
                   ) : (
                     <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap" }}>
                       {fmtMin(o.totalSec)}
+                    </span>
+                  )}
+                  {/* The live bus, between the total and the arrival: it is
+                      the number that decides whether you leave now, and it
+                      used to sit two lines further down. Secondary weight so
+                      the two bold numbers still frame the row, nowrap +
+                      ellipsis so a narrow phone clips the "next in" tail
+                      rather than wrapping the row onto two lines. */}
+                  {busEtaLive !== null && !o.departed && !isExpanded && (
+                    <span style={{
+                      fontSize: 13, color: "#5f6368", fontWeight: 500,
+                      flex: 1, minWidth: 0, overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      textAlign: "center",
+                    }}>
+                      {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
                     </span>
                   )}
                   <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -3563,27 +3604,11 @@ const TripPlanner: FC<{
                     scannable when the user just wants to pick one. */}
                 {o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
                   const { busMatch, stopsAway, normBus } = shuttleCtx;
-                  // The bus's own arrival at the board stop, less whatever has
-                  // elapsed since it was computed. NOT walkToSec + waitSec:
-                  // waitSec clamps at 0 once the bus will beat the rider to
-                  // the stop, which froze this line at the constant walk time
-                  // ("in 1:49" for a full minute) while the bus visibly
-                  // closed in — report #48.
-                  const busEta = remainingSec(
-                    o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs,
-                  );
-                  // The bus AFTER the pinned one (user request 2026-07-17) —
-                  // lets riders judge "can I skip this one?" at a glance.
-                  // Strictly later than the pinned arrival so an earlier,
-                  // uncatchable bus never masquerades as "next"; the same
-                  // vehicle a loop later counts.
-                  const nextArr = !o.departed
-                    ? (computeUpcomingArrivals(
-                        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
-                      )
-                        .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEta + 30)
-                        .sort((a, b) => a.eta - b.eta)[0] ?? null)
-                    : null;
+                  // Both hoisted to row scope — the top line shows the same
+                  // numbers, and computing them twice was how they could
+                  // disagree.
+                  const busEta = busEtaLive ?? 0;
+                  const nextArr = nextArrLive;
                   // The stops-away/dwell/accuracy/bias readouts that used
                   // to be derived here were cut with their UI (2026-07-13
                   // "redundant route info") — the status line + step list
@@ -3608,18 +3633,15 @@ const TripPlanner: FC<{
                       {/* No bus numbers here (user 2026-07-17) — the ride
                           pill in the details view carries the number for
                           matching against the physical bus. */}
-                      {(o.departed || (!isExpanded && !o.missedBus)) && (
+                      {/* "in N min · next in M min" moved UP to the top line
+                          (operator, 2026-09-03), so all that is left here is
+                          the departed warning, which is a sentence and could
+                          never have fitted there. */}
+                      {o.departed && (
                       <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4 }}>
-                        {o.departed
-                          ? (shuttleCtx.stopsAway === 0
-                              ? "🚌 The bus is at your stop — you won't arrive in time, check for the next shuttle"
-                              : "🚌 The bus will reach your stop before you arrive — check for the next shuttle")
-                          : busEta < 10 ? "🚌 arriving now" : `🚌 in ${fmtMin(busEta)}`}
-                        {!o.departed && nextArr && (
-                          <span style={{ color: "#9aa0a6" }}>
-                            {` · next in ${fmtMin(nextArr.eta)}`}
-                          </span>
-                        )}
+                        {shuttleCtx.stopsAway === 0
+                          ? "🚌 The bus is at your stop — you won't arrive in time, check for the next shuttle"
+                          : "🚌 The bus will reach your stop before you arrive — check for the next shuttle"}
                       </div>
                       )}
                       {o.departed && (
