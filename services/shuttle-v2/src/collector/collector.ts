@@ -717,8 +717,14 @@ export class Collector {
         // different stop becomes nearest, and a bus shuffling a few metres
         // while parked flips that. A rider watched "⏸ 45s" on a bus most of
         // the way through a ~10 min layover at 344 Winchester (2026-09-03),
-        // which zeroed the stall credit and charged the layover twice. The
-        // stationary clock only restarts on real movement. See BusState.
+        // which zeroed the stall credit and charged the layover twice.
+        //
+        // That clock is pinned to the STOP while the bus is at it, so it
+        // survives a shuffle around the yard and restarts only on reaching a
+        // different stop or leaving for good. `AT_STOP_MAX_M` below and
+        // `AT_STOP_PIN_M` in the detector are deliberately the same number —
+        // the clock is pinned over exactly the region where it is published.
+        // See BusState.stationaryStopId.
         ? { id: state.nearestStopId, since: state.stationarySince }
         : null;
       this.livePositions.set(key, {
