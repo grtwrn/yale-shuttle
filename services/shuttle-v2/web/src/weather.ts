@@ -189,6 +189,40 @@ export function temperatureText(
   return v == null ? null : `${v}°${unit}`;
 }
 
+/**
+ * Warmest and coolest hour of the window the strip shows — NOT the calendar
+ * day's high/low. A rider deciding what to wear for the next few hours is
+ * asking about those hours (operator, 2026-09-03).
+ */
+export type OutlookRange = { highF: number; lowF: number };
+
+export function outlookRange(
+  hours: readonly ForecastHour[] | null | undefined,
+): OutlookRange | null {
+  if (!Array.isArray(hours)) return null;
+  const temps = hours
+    .map((h) => h?.temperatureF)
+    .filter((t): t is number => typeof t === "number" && Number.isFinite(t));
+  if (temps.length === 0) return null;
+  return { highF: Math.max(...temps), lowF: Math.min(...temps) };
+}
+
+/**
+ * "↑67° ↓60°", in the rider's unit. Null when there is nothing to add: no
+ * temperatures at all, or a window flat enough that both ends round to the
+ * same number in the unit being shown (66°F and 67°F are both 19°C).
+ */
+export function rangeText(
+  range: OutlookRange | null | undefined,
+  unit: TempUnit,
+): string | null {
+  if (!range) return null;
+  const hi = temperatureIn(range.highF, unit);
+  const lo = temperatureIn(range.lowF, unit);
+  if (hi == null || lo == null || hi === lo) return null;
+  return `↑${hi}° ↓${lo}°`;
+}
+
 /** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
 export function degreesText(fahrenheit: number | undefined, unit: TempUnit): string {
   const v = temperatureIn(fahrenheit, unit);
@@ -281,10 +315,15 @@ export function weatherMessage(
   v: RainVerdict,
   later?: ForecastHour | null,
   unit: TempUnit = "F",
+  range?: OutlookRange | null,
 ): string {
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
-  const head = temp ? `${temp} · ` : "";
+  // "66°F ↑67° ↓60°" — now, then the window's ends, in that order: the
+  // number a rider reads first should be the one they are standing in.
+  const span = rangeText(range, unit);
+  const lead = [temp, span].filter(Boolean).join(" ");
+  const head = lead ? `${lead} · ` : "";
   // "within the hour", never "now": `probability` is the PEAK across every
   // bucket that overlaps the next hour (see rainLikely), so at 20:05 an 85%
   // bucket at 21:00 would have the line announcing rain up to 55 minutes
@@ -300,8 +339,11 @@ export function weatherMessage(
   // Dry for the next hour: spend the words on when that ends. This branch is
   // BELOW the near-term one deliberately — a rider with 45% in the next hour
   // must not be told about 9pm instead.
+  // "rain 11am (70%)", not "rain likely 11am (70%)": with the window's high
+  // and low now ahead of it, the longer phrasing wrapped the line onto a
+  // second row on a 390px phone (measured, 2026-09-03).
   if (later) {
-    return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
+    return `${head}rain ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
   const cond = conditionText(v.weatherCode);
   // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain

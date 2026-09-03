@@ -1,22 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  RAIN_PROBABILITY_THRESHOLD,
   conditionText,
   degreesText,
   hourLabel,
   loadTempUnit,
   nextWetHour,
   outlookHours,
+  outlookRange,
+  RAIN_PROBABILITY_THRESHOLD,
   rainLikely,
   rainLikelyFrom,
+  rangeText,
   saveTempUnit,
   temperatureText,
-  type RainVerdict,
-  type WeatherHour,
   weatherEmoji,
   weatherMessage,
   weatherTone,
+  type RainVerdict,
+  type WeatherHour,
 } from "./weather";
 
 const HOUR = 60 * 60_000;
@@ -262,7 +264,7 @@ describe("the outlook — answering \"and later?\"", () => {
   it("says so in the line, in one clause", () => {
     const v = { likely: false, probability: 10, known: true, temperatureF: 60, weatherCode: 0 };
     expect(weatherMessage(v, nextWetHour(evening, now)))
-      .toBe("60°F · rain likely 9pm (70%)");
+      .toBe("60°F · rain 9pm (70%)");
   });
 
   it("stays quiet about later when the whole outlook is dry", () => {
@@ -315,5 +317,60 @@ describe("the outlook — answering \"and later?\"", () => {
     const tomorrow = [H(18, 5), { timeMs: now + 9 * 60 * 60_000, probability: 90 }];
     expect(nextWetHour(tomorrow, now)).toBeNull();
     expect(outlookHours(tomorrow, now)).toHaveLength(1);
+  });
+});
+
+describe("the window's high and low (operator, 2026-09-03)", () => {
+  const H = (h: number, prob: number, temp?: number) => ({
+    timeMs: Date.parse(`2026-09-03T${String(h).padStart(2, "0")}:00:00-04:00`),
+    probability: prob,
+    ...(temp == null ? {} : { temperatureF: temp }),
+  });
+  const now = Date.parse("2026-09-03T18:30:00-04:00");
+
+  it("reads the hours the strip shows, not the calendar day", () => {
+    const hours = outlookHours([H(18, 5, 66), H(19, 10, 64), H(20, 35, 67), H(21, 70, 60)], now);
+    expect(outlookRange(hours)).toEqual({ highF: 67, lowF: 60 });
+  });
+
+  it("says nothing when the feed carries no temperatures", () => {
+    const hours = outlookHours([H(18, 5), H(19, 10)], now);
+    expect(outlookRange(hours)).toBeNull();
+    expect(rangeText(null, "F")).toBeNull();
+    expect(outlookRange(null)).toBeNull();
+    expect(outlookRange([])).toBeNull();
+  });
+
+  it("skips the hours that have no temperature rather than counting them as zero", () => {
+    const hours = outlookHours([H(18, 5, 66), H(19, 10), H(20, 5, 71)], now);
+    expect(outlookRange(hours)).toEqual({ highF: 71, lowF: 66 });
+  });
+
+  it("stays quiet when both ends round to the same number in the unit shown", () => {
+    // 66-67°F is 19°C either way: two arrows pointing at one number is noise.
+    expect(rangeText({ highF: 67, lowF: 66 }, "F")).toBe("↑67° ↓66°");
+    expect(rangeText({ highF: 67, lowF: 66 }, "C")).toBeNull();
+    expect(rangeText({ highF: 66, lowF: 66 }, "F")).toBeNull();
+  });
+
+  it("puts now first, then the window, in the line the rider reads", () => {
+    const v = { likely: false, probability: 10, known: true, temperatureF: 66, weatherCode: 0 };
+    const later = { timeMs: Date.parse("2026-09-03T21:00:00-04:00"), probability: 70 };
+    expect(weatherMessage(v, later, "F", { highF: 67, lowF: 60 }))
+      .toBe("66°F ↑67° ↓60° · rain 9pm (70%)");
+    expect(weatherMessage(v, later, "C", { highF: 67, lowF: 60 }))
+      .toBe("19°C ↑19° ↓16° · rain 9pm (70%)");
+  });
+
+  it("degrades to the old line when there is no range to show", () => {
+    const v = { likely: false, probability: 10, known: true, temperatureF: 66, weatherCode: 0 };
+    expect(weatherMessage(v, null, "F", null)).toBe("66°F · Clear · no rain expected");
+    expect(weatherMessage(v, null, "F")).toBe("66°F · Clear · no rain expected");
+  });
+
+  it("shows the window even when the current temperature is missing", () => {
+    const v = { likely: false, probability: 10, known: true };
+    expect(weatherMessage(v, null, "F", { highF: 67, lowF: 60 }))
+      .toBe("↑67° ↓60° · no rain expected");
   });
 });

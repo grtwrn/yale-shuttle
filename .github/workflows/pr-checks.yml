@@ -1,0 +1,53 @@
+# Every pull request runs the same gates a deploy runs — and stops before Fly.
+#
+# Until 2026-09-03 a PR here had NO checks at all: `deploy.yml` fires only on
+# a push to master, so the first time CI saw a branch was after it had been
+# merged into production. That is backwards; this workflow moves the gates in
+# front of the merge button.
+#
+# It reuses scripts/deploy.mjs with `--stage-only`, so there is still ONE
+# source of truth for what a gate is: typecheck (backend + web), the full
+# vitest suite, the frontend build, a real staging server on a throwaway DB,
+# and the API + real-browser smoke against it. No FLY_API_TOKEN is needed or
+# provided, so this job cannot reach production even by accident.
+name: pr-checks
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - "services/shuttle-v2/**"
+      - ".github/workflows/pr-checks.yml"
+
+concurrency:
+  # A new push supersedes the run for the previous commit on the same PR.
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/shuttle-v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            services/shuttle-v2/package-lock.json
+            services/shuttle-v2/web/package-lock.json
+
+      - name: Install dependencies (backend + web)
+        run: npm ci && npm ci --prefix web
+
+      - name: Install chromium for the browser smoke
+        run: sudo apt-get update -q && sudo apt-get install -y -q chromium-browser
+
+      - name: Gates + staging + smoke (no deploy)
+        run: npm run deploy -- --stage-only
+        env:
+          BOT_CHROMIUM_PATH: /usr/bin/chromium-browser
