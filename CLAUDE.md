@@ -43,7 +43,7 @@ cd services/shuttle-v2
 
 npm run dev          # backend on :8092 (collector + server, tsx watch)
 npm run typecheck    # backend AND frontend types (a web/ scope error once shipped a live crash)
-npm test             # vitest — ~870 tests, covers src/ AND web/src/
+npm test             # vitest — ~1070 tests, covers src/ AND web/src/
 npm run riders       # how many unique browsers are using the app
 
 # frontend
@@ -485,11 +485,17 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 
-`eta-accuracy.mjs` is the honest one: it reads what the app tells a rider while
-independently watching raw positions for the actual arrival. Last measured
-median error **1.26 min**, 71% within 2 min, with a known optimistic bias on the
-*wait* leg of 20–25% of the remaining time (unfixed — the ride-time estimator
-itself is unbiased).
+`eta-accuracy.mjs` reads what the app tells a rider while independently
+watching raw positions for the actual arrival. Last daytime measurement
+(Blue Day): median error **1.26 min**, 71% within 2 min, wait leg 20–25%
+optimistic — the replay traced that optimism to the uncapped stall credit,
+now fixed. It scores only what the page shows, so it needs the route under
+test visible (it now expands "Show N more routes") and a bus that actually
+visits the board stop: on 2026-09-02 a 50-min Blue Night run scored zero pairs
+because #38 passed Peabody 297 m away on Whitney and never stopped, while the
+app counted down "3 min" to it and the detector still logged an arrival there
+(no distance gate on arrivals). The offline replay is the measurement; this is
+the sanity check.
 
 ## Don'ts
 

@@ -43,7 +43,7 @@ export type Landmark = {
 
 export const LANDMARKS: readonly Landmark[] = [
   // -- Campus areas ----------------------------------------------------------
-  { label: "25 Science Park", lat: 41.320867, lon: -72.928993, aliases: ["science park", "winchester", "yale science park", "science park at yale", "150 munson"], anchorStop: "Canal / Munson" }, // OSM W76235255
+  { label: "25 Science Park", lat: 41.320867, lon: -72.928993, aliases: ["science park", "yale science park", "science park at yale", "150 munson"], anchorStop: "Canal / Munson" }, // OSM W76235255
   { label: "Cross Campus", lat: 41.310464, lon: -72.92714, aliases: ["xc"], anchorStop: "College / Wall (N)" }, // OSM R5421111
   { label: "Old Campus", lat: 41.308751, lon: -72.928647, aliases: ["durfee's", "durfees", "vanderbilt hall", "lawrance hall", "phelps hall", "welch hall", "bingham hall", "farnam hall", "durfee hall", "connecticut hall", "lanman-wright", "first year", "battell", "battell chapel"], anchorStop: "Phelps Gate" }, // OSM W211737531
   { label: "Undergraduate Admissions (38 Hillhouse)", lat: 41.314572, lon: -72.923772, aliases: ["admissions", "admissions office", "38 hillhouse"], anchorStop: "130 Prospect Street (S)" }, // OSM W225487554
@@ -53,14 +53,14 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale West Campus", lat: 41.257131, lon: -72.98967, aliases: ["west campus", "wc", "orange campus", "west campus main"], anchorStop: "Building 600" }, // OSM R3861723
 
   // -- Residential colleges --------------------------------------------------
-  { label: "Benjamin Franklin College", lat: 41.314734, lon: -72.925016, aliases: ["franklin", "ben franklin", "bf college", "new colleges"], anchorStop: "130 Prospect Street (S)" }, // OSM R5424658
+  { label: "Benjamin Franklin College", lat: 41.314734, lon: -72.925016, aliases: ["franklin", "ben franklin", "bf college", "new colleges", "bf"], anchorStop: "130 Prospect Street (S)" }, // OSM R5424658
   { label: "Berkeley College", lat: 41.311082, lon: -72.927325, aliases: ["berkeley", "bk"], anchorStop: "College / Wall (S)" }, // OSM R6084168
-  { label: "Branford College", lat: 41.309671, lon: -72.930083, aliases: ["branford", "bf", "harkness tower"], anchorStop: "Library Walk" }, // OSM R2837570
+  { label: "Branford College", lat: 41.309671, lon: -72.930083, aliases: ["branford", "harkness tower"], anchorStop: "Library Walk" }, // OSM R2837570
   { label: "Davenport College", lat: 41.310488, lon: -72.931744, aliases: ["davenport", "dport", "dc"], anchorStop: "Elm / York (TYCO)" }, // OSM R2858948
   { label: "Ezra Stiles College", lat: 41.312757, lon: -72.931608, aliases: ["stiles", "ezra stiles", "es"], anchorStop: "Payne Whitney Gym" }, // OSM R5463395
   { label: "Grace Hopper College", lat: 41.309989, lon: -72.92692, aliases: ["hopper", "grace hopper", "gh", "calhoun"], anchorStop: "Elm / College" }, // OSM R2840328
   { label: "Jonathan Edwards College", lat: 41.309041, lon: -72.9299, aliases: ["je", "jonathan edwards"], anchorStop: "Library Walk" }, // OSM W363808899
-  { label: "Morse College", lat: 41.312857, lon: -72.929688, aliases: ["morse"], anchorStop: "Wall / York" }, // OSM R5463394
+  { label: "Morse College", lat: 41.312857, lon: -72.929688, aliases: ["morse", "mc"], anchorStop: "Wall / York" }, // OSM R5463394
   { label: "Pauli Murray College", lat: 41.315712, lon: -72.924721, aliases: ["murray", "pauli murray", "pm", "new colleges"], anchorStop: "Prospect / Sachem (S)" }, // OSM R5424657
   { label: "Pierson College", lat: 41.310194, lon: -72.932383, aliases: ["pierson", "pc"], anchorStop: "Library Walk" }, // OSM R5421070
   { label: "Saybrook College", lat: 41.31015, lon: -72.92915, aliases: ["saybrook", "sy"], anchorStop: "Elm / High" }, // OSM R2837571
@@ -107,7 +107,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine", "harkness auditorium (shm)", "harkness auditorium", "med school auditorium"], anchorStop: "333 Cedar" }, // OSM W180193233
   { label: "School of Nursing (West Campus)", lat: 41.255831, lon: -72.992846, aliases: ["nursing", "nursing school", "ysn", "400 west campus"], anchorStop: "Building 400" }, // OSM W336607422
   { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["ysph", "public health", "leph", "60 college", "epidemiology"], anchorStop: "LEPH / 60 College" }, // OSM W239527110
-  { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall"], anchorStop: "Wall / York" }, // OSM R2840491
+  { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall", "law"], anchorStop: "Wall / York" }, // OSM R2840491
 
   // -- Student life ----------------------------------------------------------
   { label: "Afro-American Cultural Center", lat: 41.309406, lon: -72.93288, aliases: ["af am house", "afam house", "the house", "afro american cultural center", "211 park"], anchorStop: "180 York (A&A)" }, // OSM W224889712
@@ -140,7 +140,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale Health Center", lat: 41.315731, lon: -72.927521, aliases: ["yale health", "health center", "student health", "yuhs", "55 lock", "pharmacy", "acute care"], anchorStop: "Winchester / Sachem" }, // OSM W217340232
   { label: "Yale New Haven Hospital Saint Raphael Campus", lat: 41.310144, lon: -72.942931, aliases: ["st raphael", "saint raphael", "st raphaels", "srh", "1450 chapel"], anchorStop: "Chapel / Dwight" }, // OSM W442001687
   { label: "Yale Physicians Building", lat: 41.302563, lon: -72.936326, aliases: ["ypb", "physicians building", "800 howard"], anchorStop: "Davenport / Howard" }, // OSM W232595708
-  { label: "Yale-New Haven Hospital", lat: 41.304312, lon: -72.936013, aliases: ["ynhh", "hospital", "yale new haven hospital", "york street campus", "children's hospital", "emergency room", "er", "emergency department", "20 york"], anchorStop: "Howard / Park" }, // OSM W114193509
+  { label: "Yale-New Haven Hospital", lat: 41.304312, lon: -72.936013, aliases: ["ynhh", "hospital", "yale new haven hospital", "children's hospital", "emergency room", "er", "emergency department", "20 york"], anchorStop: "Howard / Park" }, // OSM W114193509
 
   // -- Transit ---------------------------------------------------------------
   { label: "State Street Station", lat: 41.30473, lon: -72.922003, aliases: ["state st station", "state street", "shore line east", "hartford line"], anchorStop: "State St Station" }, // OSM N6901137794
@@ -162,7 +162,7 @@ export const LANDMARKS: readonly Landmark[] = [
 
   // -- Shops -----------------------------------------------------------------
   { label: "Apple Store (Broadway)", lat: 41.311853, lon: -72.93101, aliases: ["apple", "apple store", "shops at yale"], anchorStop: "Broadway / Park" }, // OSM N2719820443
-  { label: "Yale Bookstore", lat: 41.312017, lon: -72.931088, aliases: ["bookstore", "barnes and noble", "barnes & noble", "yale barnes and noble", "broadway"], anchorStop: "Broadway / Park" }, // OSM N2719820436
+  { label: "Yale Bookstore", lat: 41.312017, lon: -72.931088, aliases: ["bookstore", "barnes and noble", "barnes & noble", "yale barnes and noble"], anchorStop: "Broadway / Park" }, // OSM N2719820436
 
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], anchorStop: "Willow / Foster" }, // OSM N299708928
@@ -170,7 +170,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Ashley's Ice Cream", lat: 41.311033, lon: -72.929949, aliases: ["ashleys", "ashley's", "ice cream", "280 york"], anchorStop: "Broadway / York" }, // OSM N2719756863
   { label: "Atticus Bookstore Cafe", lat: 41.307953, lon: -72.930644, aliases: ["atticus", "atticus cafe", "1082 chapel"], anchorStop: "Chapel / York" }, // OSM N2373828306
   { label: "BAR (Crown St)", lat: 41.306176, lon: -72.930261, aliases: ["bar", "bar pizza", "mashed potato pizza", "254 crown"], anchorStop: "College / Crown" }, // OSM N430030530
-  { label: "Blue State Coffee (Cedar St)", lat: 41.301817, lon: -72.933294, aliases: ["blue state", "blue state york", "blue state cedar", "301 cedar"], anchorStop: "Congress / Cedar" }, // OSM N2077027965
+  { label: "Blue State Coffee (Cedar St)", lat: 41.301817, lon: -72.933294, aliases: ["blue state", "blue state cedar", "301 cedar"], anchorStop: "Congress / Cedar" }, // OSM N2077027965
   { label: "Book Trader Cafe", lat: 41.308422, lon: -72.931987, aliases: ["book trader", "booktrader", "1140 chapel"], anchorStop: "York / Chapel" }, // OSM N2759702155
   { label: "Claire's Corner Copia", lat: 41.307265, lon: -72.928957, aliases: ["claires", "claire's", "corner copia", "1000 chapel"], anchorStop: "Chapel / College" }, // OSM N1293332877
   { label: "East Rock Brewing Company", lat: 41.322055, lon: -72.907055, aliases: ["east rock brewing", "east rock brewery", "brewery", "285 nicoll"], anchorStop: "Nash / Willow" }, // OSM N6236258494
@@ -182,7 +182,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Junzi Kitchen", lat: 41.311129, lon: -72.93034, aliases: ["junzi", "21 broadway"], anchorStop: "Broadway / York" }, // OSM N8910620396
   { label: "Koffee?", lat: 41.31155, lon: -72.92192, aliases: ["koffee", "koffee on audubon", "104 audubon"], anchorStop: "Whitney / Audubon" }, // OSM N470632969
   { label: "Louis' Lunch", lat: 41.306474, lon: -72.930408, aliases: ["louis lunch", "louis", "hamburger", "261 crown"], anchorStop: "College / Crown" }, // OSM N2122108492
-  { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery", "950 state"], anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
+  { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery"], anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
   { label: "Mamoun's Falafel", lat: 41.310327, lon: -72.934555, aliases: ["mamouns", "falafel", "85 howe"], anchorStop: "Howe / Edgewood" }, // OSM N2191968199
   { label: "Modern Apizza", lat: 41.313825, lon: -72.912834, aliases: ["modern", "modern pizza", "874 state"], anchorStop: "Nicoll / Edwards" }, // OSM N470623969
   { label: "Pataka", lat: 41.312649, lon: -72.933259, aliases: ["pataka indian"], anchorStop: "Elm / Lynwood" }, // OSM N2637704331
@@ -200,11 +200,11 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Edgerton Park", lat: 41.333726, lon: -72.914384, aliases: ["edgerton"], anchorStop: "Whitney / Huntington" }, // OSM W43437653
   { label: "Grove Street Cemetery", lat: 41.31335, lon: -72.926841, aliases: ["cemetery", "grove st cemetery"], anchorStop: "Becton / 15 Prospect" }, // OSM W43437557
   { label: "Marsh Botanical Garden", lat: 41.321675, lon: -72.924629, aliases: ["marsh gardens", "botanical garden", "greenhouse"], anchorStop: "Prospect / Hillside" }, // OSM W40783723
-  { label: "New Haven Green", lat: 41.308017, lon: -72.927059, aliases: ["the green", "green", "temple street", "downtown", "bus hub", "ct transit"], anchorStop: "Phelps Gate" }, // OSM R11597767
+  { label: "New Haven Green", lat: 41.308017, lon: -72.927059, aliases: ["the green", "green", "downtown", "bus hub", "ct transit"], anchorStop: "Phelps Gate" }, // OSM R11597767
   { label: "Wooster Square", lat: 41.304758, lon: -72.917775, aliases: ["wooster", "cherry blossoms"], anchorStop: "Court / Olive" }, // OSM W43437030
 
   // -- Venues ----------------------------------------------------------------
-  { label: "College Street Music Hall", lat: 41.306665, lon: -72.92931, aliases: ["college street", "music hall", "csmh", "238 college"], anchorStop: "College / Crown" }, // OSM N3688823675
+  { label: "College Street Music Hall", lat: 41.306665, lon: -72.92931, aliases: ["music hall", "csmh", "238 college"], anchorStop: "College / Crown" }, // OSM N3688823675
   { label: "Criterion Cinemas", lat: 41.304584, lon: -72.928672, aliases: ["criterion", "movie theater", "cinema", "86 temple"], anchorStop: "Church / George" }, // OSM N470646424
   { label: "Shubert Theatre", lat: 41.306331, lon: -72.928817, aliases: ["shubert", "the shubert", "247 college"], anchorStop: "College / Crown" }, // OSM W142323797
   { label: "Toad's Place", lat: 41.311524, lon: -72.929635, aliases: ["toads", "toad's", "300 york"], anchorStop: "York / Elm" }, // OSM W960079261
@@ -220,7 +220,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "New Haven City Hall", lat: 41.307378, lon: -72.92433, aliases: ["city hall", "165 church"], anchorStop: "Elm / Orange" }, // OSM W39267857
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], anchorStop: "Church Wall" }, // OSM W141164127
-  { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square", "orange and chapel"], anchorStop: "Chapel / Church" }, // OSM W777642209
+  { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], anchorStop: "Chapel / Church" }, // OSM W777642209
   { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police"], anchorStop: "Ashmun / Lock" }, // OSM N511976767
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], anchorStop: "Elm / High" }, // OSM N359283573
 ];

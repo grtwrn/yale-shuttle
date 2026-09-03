@@ -268,18 +268,19 @@ describe("rankExternal", () => {
     class: "osm",
   });
 
-  it("orders by distance to the nearest stop and drops anything past 2.5 km when a closer one exists", () => {
+  it("drops anything past 2.5 km when a closer one exists, keeping the provider's order", () => {
     const far = hit("Branford Green, Branford", 41.2795, -72.8151); // ~10 km from any stop
     const mid = hit("East Rock Park, New Haven", 41.3305, -72.9075); // ~0.9 km from Orange / Canner
     const near = hit("Wooster Square, New Haven", 41.3045, -72.9165); // ~1 km from Chapel / York
-    const out = rankExternal(network, [far, mid, near]);
-    expect(out.map((h) => h.display_name.split(",")[0])).toEqual(["East Rock Park", "Wooster Square"]);
+    const out = rankExternal(network, [far, near, mid]);
+    // Provider order, not distance order: the geocoder ranked by relevance.
+    expect(out.map((h) => h.display_name.split(",")[0])).toEqual(["Wooster Square", "East Rock Park"]);
   });
 
   it("keeps far results when nothing is near — the rider may mean it", () => {
     const a = hit("Milford Green, Milford", 41.2225, -73.0565);
     const b = hit("Branford Green, Branford", 41.2795, -72.8151);
-    expect(rankExternal(network, [a, b]).map((h) => h.display_name)).toEqual([b.display_name, a.display_name]);
+    expect(rankExternal(network, [a, b]).map((h) => h.display_name)).toEqual([a.display_name, b.display_name]);
   });
 
   it("collapses two hits with the same name within 150 m", () => {

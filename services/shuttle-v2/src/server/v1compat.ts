@@ -286,7 +286,8 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
     signal: AbortSignal,
     run: ProviderFetch,
   ): Promise<GeocodeV1Hit[] | null> => {
-    const key = `${provider}:${query}`;
+    // "Union Station" and "union station" are one lookup, not two slots.
+    const key = `${provider}:${query.trim().toLowerCase().replace(/\s+/g, " ")}`;
     const cached = cache.get(key);
     if (cached && now() - cached.at < GEO_TTL_MS) return cached.results;
 
@@ -376,6 +377,7 @@ export function parsePhoton(body: unknown): GeocodeV1Hit[] {
   if (!Array.isArray(features)) return [];
   const results: GeocodeV1Hit[] = [];
   for (const f of features) {
+    if (!f || typeof f !== "object") continue;
     const feat = f as {
       geometry?: { coordinates?: unknown };
       properties?: Record<string, unknown>;
@@ -472,8 +474,10 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
     }
     return best;
   };
-  const scored = hits.map((h, i) => ({ h, d: nearest(h), i }));
-  scored.sort((a, b) => a.d - b.d || a.i - b.i);
+  // Keep the provider's order — it ranks by relevance, and re-sorting by
+  // distance put a street centreline ahead of the house the rider typed —
+  // and only DROP hits that are out of reach when a reachable one exists.
+  const scored = hits.map((h) => ({ h, d: nearest(h) }));
   const reachable = scored.some((s) => s.d <= EXTERNAL_REACH_M)
     ? scored.filter((s) => s.d <= EXTERNAL_REACH_M)
     : scored;

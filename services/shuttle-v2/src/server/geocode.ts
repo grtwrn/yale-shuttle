@@ -48,11 +48,17 @@ export function geocode(
   }
 
   const out: GeocodeHit[] = [];
+  // A street address is an alias too ("85 howe", "1000 chapel"), but only
+  // when the rider is typing an address: without a number in the query, the
+  // street word alone would pull every cafe on Chapel Street into a search
+  // for the Chapel stops (review finding, 2026-09-02).
+  const queryHasNumber = /\d/.test(query.text);
   for (const l of landmarks) {
     // A landmark answers to its label AND every alias, and the best of them
     // counts: "kbt" must rank Kline Tower exactly as "kline tower" does.
     let score = 0;
     for (const name of [l.label, ...(l.aliases ?? [])]) {
+      if (name !== l.label && !queryHasNumber && /^\d+ /.test(name)) continue;
       score = Math.max(score, scoreMatch(query, candidate(name)));
       if (score === 1) break;
     }
@@ -71,7 +77,11 @@ export function geocode(
     }
   }
 
-  out.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
+  // At equal score a stop outranks a landmark: "york" is a request for the
+  // York Street stops, and a landmark that only mentions the street in an
+  // alias must not take the row from them.
+  const kindRank = (h: GeocodeHit) => (h.kind === "stop" ? 0 : 1);
+  out.sort((a, b) => b.score - a.score || kindRank(a) - kindRank(b) || a.label.localeCompare(b.label));
 
   // A curated landmark that IS a shuttle stop (the grocery destinations sit on
   // the stops' own coordinates) would otherwise appear twice — a rider typing
@@ -79,12 +89,24 @@ export function geocode(
   // a spot, the LANDMARK survives regardless of score: its label carries more
   // information ("Trader Joe's (Milford)" vs "Trader Joe's"), and several
   // curated entries sit on their serving stops by design (SOM, Divinity).
+  // "Regardless of score" is the wrong rule, though: with 148 landmarks,
+  // most sit inside some stop's box, and "howe" lost the Howe / Edgewood
+  // stop to Mamoun's (alias "85 howe"), which the frontend then auto-picked.
+  // The list is sorted by score, so the first of a twin pair is the better
+  // match; the landmark takes the row when it scores better, or scores the
+  // same AND sits on the stop itself (within ~40 m: SOM, Peabody, the
+  // groceries). At equal score from further away it is a different place
+  // that happens to share the block — College Street Music Hall is 59 m from
+  // College / Crown and must not answer "college st" in the stop's place.
   // Two STOPS on one corner ((N)/(S) platforms, "Audubon / Orange" beside
   // "Orange / Audobon") collapse to one row too — the planner picks the
   // platform, the rider only needs the corner. Two LANDMARKS never merge:
   // the verified list keeps distinct places that share a block (a cafe in
   // the British Art Center's ground floor, the Apple Store beside the Yale
   // Bookstore), and folding them would hide the label the rider typed.
+  // ~40 m: a landmark placed on its serving stop, not merely on the block.
+  const onTheStop = (a: GeocodeHit, b: GeocodeHit) =>
+    Math.abs(a.lat - b.lat) < 3.6e-4 && Math.abs(a.lon - b.lon) < 4.8e-4;
   const near = (a: GeocodeHit, b: GeocodeHit) =>
     !(a.kind === "landmark" && b.kind === "landmark") &&
     Math.abs(a.lat - b.lat) < 6e-4 && Math.abs(a.lon - b.lon) < 8e-4;
@@ -92,7 +114,11 @@ export function geocode(
   for (const h of out) {
     const twinIdx = deduped.findIndex((k) => near(k, h));
     if (twinIdx === -1) deduped.push(h);
-    else if (h.kind === "landmark" && deduped[twinIdx]!.kind === "stop") deduped[twinIdx] = h;
+    else if (
+      h.kind === "landmark" && deduped[twinIdx]!.kind === "stop" &&
+      (h.score > deduped[twinIdx]!.score ||
+        (h.score === deduped[twinIdx]!.score && onTheStop(h, deduped[twinIdx]!)))
+    ) deduped[twinIdx] = h;
   }
   return deduped.slice(0, MAX_RESULTS);
 }

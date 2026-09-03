@@ -342,7 +342,7 @@ type Proration = "chord" | "none" | "path" | "chordNoStall" | "cappedStallDwell"
 function replicaEtas(
   bus: BusData,
   stops: number[],
-  routeSegs: Record<string, { avg: number; sd: number; n: number }>,
+  routeSegs: Record<string, { avg: number; sd?: number; n: number }>,
   busIdx: number,
   now: number,
   mode: Proration,

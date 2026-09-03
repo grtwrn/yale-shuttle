@@ -376,3 +376,62 @@ describe("robust matching (2026-09-02 live probe)", () => {
     }
   });
 });
+
+/**
+ * The rider-facing list against the whole live network. The fixture tests
+ * above use a handful of stops, which is how a 2026-09-02 review found that
+ * with 148 landmarks most sit inside some stop's dedup box and a landmark
+ * could take the stop's row whatever its score: "howe" returned only
+ * Mamoun's (alias "85 howe") and the frontend auto-picked it.
+ */
+describe("the real list against every live stop", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, [
+    { id: 1, name: "Live", shortName: "L", color: "#000", stops: LIVE_STOPS.map((s) => s.id) },
+  ]);
+  const top = (q: string) => geocode(live, q)[0];
+  const norm = (s: string) => s.toLowerCase();
+
+  it.each([
+    "howe", "broadway", "crown", "york", "chapel", "cottage", "munson", "ashmun", "howard",
+    "cedar", "orange st", "college st", "temple", "winchester", "whitney", "prospect",
+  ])("%o ranks a stop on that street first", (q) => {
+    const hit = top(q)!;
+    const word = q.split(" ")[0]!;
+    // A landmark placed ON one of those stops may carry the merged row
+    // (Blue State Coffee sits on the 300 Cedar stop); a landmark elsewhere
+    // may not.
+    const stopUnder = LIVE_STOPS.find((st) =>
+      norm(st.name).includes(word) &&
+      Math.abs(st.lat - hit.lat) < 3.6e-4 && Math.abs(st.lon - hit.lon) < 4.8e-4);
+    expect(hit.kind === "stop" || stopUnder !== undefined, `${q} -> ${hit.label}`).toBe(true);
+    expect(norm(hit.label)).toContain(word);
+  });
+
+  it("a street word alone does not reach an address alias", () => {
+    // "1000 chapel" is an alias of Claire's; "chapel" must not surface it.
+    expect(geocode(live, "chapel").some((h) => h.label.startsWith("Claire"))).toBe(false);
+    // ...but the address itself does.
+    expect(geocode(live, "1000 chapel")[0]?.label.startsWith("Claire")).toBe(true);
+  });
+
+  it.each([
+    ["phelps", "Phelps Gate"],
+    ["mamouns", "Mamoun's Falafel"],
+    ["union station", "Union Station"],
+    ["bf", "Benjamin Franklin College"],
+    ["mc", "Morse College"],
+    ["peabody", "Peabody Museum"],
+    ["stop and shop", "Stop & Shop (Whalley Ave)"],
+  ])("%o -> %o", (q, label) => {
+    expect(top(q)?.label).toBe(label);
+  });
+
+  it("ranks every live stop name first when typed verbatim", () => {
+    for (const s of LIVE_STOPS) {
+      const hit = top(s.name)!;
+      const merged = hit.kind === "landmark" &&
+        Math.abs(hit.lat - s.lat) < 6e-4 && Math.abs(hit.lon - s.lon) < 8e-4;
+      expect(hit.label === s.name || merged, `${s.name} -> ${hit.label}`).toBe(true);
+    }
+  });
+});
