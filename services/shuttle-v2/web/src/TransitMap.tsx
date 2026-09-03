@@ -32,6 +32,10 @@ import { topVisibleOptions,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
+import {
+  CURRENT_LOCATION_TEXT, cancelFromEdit, effectiveOrigin, isCurrentLocationText,
+  unresolvedStartText,
+} from "./originEdit";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -335,8 +339,9 @@ const POPULAR_DESTS: { name: string; lat: number; lon: number }[] = [
 // The live-origin checks used to test `!fromText`, which is only true when the
 // box is BLANK — so tapping 📍 (which fills in this text) silently froze the
 // origin at the first fix, the exact bug report #19 was about.
-const CURRENT_LOCATION_TEXT = "Current location";
-const isCurrentLocationText = (t: string) => !t || t === CURRENT_LOCATION_TEXT;
+// CURRENT_LOCATION_TEXT / isCurrentLocationText now live in originEdit.ts,
+// alongside the rest of the From field's rules (imported at the top of this
+// file), so they can be unit-tested.
 
 
 // Road-following polylines per (from_stop, to_stop) pair. Fetched from
@@ -1703,6 +1708,10 @@ const TripPlanner: FC<{
   // Same idea for From: remember what the pill said so blur-without-
   // pick restores the original rather than leaving the pill blank.
   const prevFromTextRef = useRef<string>("");
+  // ...and the coordinate that label stood for, so cancelling an edit puts the
+  // rider back where they were rather than on a label with nothing behind it
+  // (report #84 — see originEdit.ts).
+  const prevFromLLRef = useRef<LatLon | null>(null);
   // Short-lived status string shown beside "Report issue" after a
   // submit lands (e.g. "Thanks, logged (#42)") or fails.
   const [reportStatus, setReportStatus] = useState<string | null>(null);
@@ -1731,6 +1740,7 @@ const TripPlanner: FC<{
     const display = suggLabel(g, fromSugg);
     setFromText(display);
     prevFromTextRef.current = display;
+    prevFromLLRef.current = { lat: g.lat, lon: g.lon };
     setFromSugg([]);
     // Drop the iOS on-screen keyboard and collapse the field back to
     // the summary pill — mirrors how Google Maps hides the editor once
@@ -1743,6 +1753,27 @@ const TripPlanner: FC<{
     // stuck even though results are now on screen.
     setSearching((cur) => cur === "from" ? null : cur);
   };
+  // Abandon a From edit: close the field on the start the rider had when they
+  // opened it. Escape used to only empty the suggestion list, leaving typed
+  // text with no coordinate behind it — which erases the origin and takes the
+  // whole trip plan down with it (report #84).
+  const cancelFromEditing = () => {
+    fromAbortRef.current?.abort();
+    fromAbortRef.current = null;
+    if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
+    const back = cancelFromEdit({
+      previousText: prevFromTextRef.current,
+      previousOrigin: prevFromLLRef.current,
+      gps: userLatLon,
+    });
+    setFromText(back.text);
+    setFromLL(back.origin);
+    setFromSugg([]);
+    setFromExpanded(false);
+    fromInputRef.current?.blur();
+    setSearching((cur) => cur === "from" ? null : cur);
+  };
+
   const pickTo = (g: GeocodeResult) => {
     toAbortRef.current?.abort();
     toAbortRef.current = null;
@@ -1893,7 +1924,7 @@ const TripPlanner: FC<{
   // GPS when the user hasn't typed anything (placeholder "Current location"
   // state). This way leaving From empty + tapping a Saved destination just
   // works without a separate "use current location" click.
-  const effectiveFromLL = fromLL ?? (!fromText ? userLatLon : null);
+  const effectiveFromLL = effectiveOrigin({ picked: fromLL, text: fromText, gps: userLatLon });
   // Memoize the candidate set (which routes, which board/alight pair per
   // route) on the endpoint coords + target time. This stops the list
   // from reshuffling every /api/buses poll. Then recompute live wait /
@@ -2514,6 +2545,15 @@ const TripPlanner: FC<{
   // change the starting point. Also show From whenever the user
   // explicitly expanded it (rare — for "plan a walk from X to Y" cases).
   const showFromRow = !!toLL || fromExpanded;
+  // A start the rider typed that never became a coordinate. Until now this
+  // state rendered the first-run home screen under a filled-in From and a
+  // locked To — no trips, no explanation (report #84). Offer the search back.
+  const pendingStart = unresolvedStartText({
+    hasDestination: !!toLL,
+    origin: effectiveFromLL,
+    text: fromText,
+    busy: searching !== null || awaitingLocation || !!locating,
+  });
   // Route-details page open: the search chrome (From/To/When) hides and a
   // top back bar leads the page instead (user request 2026-07-17).
   const detailOpen = !!expandedKey && !!options?.some((o) => o.routeLabel === expandedKey);
@@ -2557,6 +2597,7 @@ const TripPlanner: FC<{
         <div
           onClick={() => {
             prevFromTextRef.current = fromText;
+            prevFromLLRef.current = fromLL;
             setFromText("");
             setFromSugg([]);
             setFromExpanded(true);
@@ -2594,6 +2635,7 @@ const TripPlanner: FC<{
                 setFromLL(oldToLL);
                 setFromText(oldToText);
                 prevFromTextRef.current = oldToText;
+                prevFromLLRef.current = oldToLL;
                 setToLL(oldFromLL);
                 setToText(oldFromText);
                 prevToTextRef.current = oldFromText;
@@ -2639,9 +2681,9 @@ const TripPlanner: FC<{
                      setFromActive((i) => (i <= 0 ? fromSugg.length - 1 : i - 1));
                      return;
                    }
-                   if (e.key === "Escape" && fromSugg.length > 0) {
+                   if (e.key === "Escape") {
                      e.preventDefault();
-                     setFromSugg([]);
+                     cancelFromEditing();
                      return;
                    }
                    if (e.key !== "Enter") return;
@@ -2898,7 +2940,10 @@ const TripPlanner: FC<{
         )}
       </div>
       )}
-      {locateError && (
+      {/* Only while the trip still depends on GPS. Once the rider has picked a
+          start themselves the warning is answered, and leaving it under their
+          own address reads as "this trip is broken" (report #84). */}
+      {locateError && !fromLL && (
         <div style={{ fontSize: 10, color: "#C62828", marginBottom: 6, marginLeft: 32 }}>
           📍 {locateError}
         </div>
@@ -4138,7 +4183,34 @@ const TripPlanner: FC<{
           first trip doesn't start with a blank search box. The popular
           chips are training wheels — once the rider has their own saved
           or recent destinations, those take the space instead. */}
-      {!options && (() => {
+      {/* The rider typed a start and never committed it — dismissing the
+          suggestion list is enough to land here. One tap runs exactly the
+          search Enter would have run, rather than leaving them staring at a
+          home screen with both endpoints filled in (report #84). */}
+      {!options && pendingStart && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 13, color: "#546e7a", padding: "0 2px", marginBottom: 8 }}>
+            Nothing yet — we still need a start location for this trip.
+          </div>
+          <button
+            onClick={() => {
+              setFromExpanded(true);
+              geocode(pendingStart, "from");
+            }}
+            style={{
+              fontSize: 15, padding: "10px 16px", minHeight: 44,
+              borderRadius: 8, border: "1px solid #1976D2",
+              background: "#fff", color: "#1976D2", fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+              maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Start from “{pendingStart}”
+          </button>
+        </div>
+      )}
+      {!options && !pendingStart && (() => {
         const activeRoutes = ROUTE_LISTS.filter((c) => buses.some((b) => c.busRouteIds.includes(b.route_id)));
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (

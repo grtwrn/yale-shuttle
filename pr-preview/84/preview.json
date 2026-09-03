@@ -1,0 +1,29 @@
+{
+  "caption": null,
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 36,
+    "dest": 4
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788470465/pr-preview/84/trip-failed.png",
+    "/tmp/feedback-bot-wt-1788470465/pr-preview/84/map-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    },
+    {
+      "view": "map",
+      "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /^\\s*(\\S+\\s+)?Map\\s*$/i }).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
