@@ -180,8 +180,30 @@ strip of temperature and rain chance, each percentage carrying a 💧 so it is
 not read as anything else; that strip is collapsed by default, since the
 sentence usually suffices. Hours are spelled `11pm`, not the app's usual
 `11p` — a bare letter beside a temperature and a percentage was one
-abbreviation too many. The server asks upstream for six hours for the same
-reason.
+abbreviation too many. The server asks upstream for ten hours, so an
+afternoon system is visible before lunchtime.
+
+**Every branch names an hour, including the near one** (report #83: "it
+should tell what time rain is expected"). The near-term half used to print a
+bare percentage, so the line answered "how likely" and never "when" — the one
+question it exists for. `rainLikely` now records WHICH bucket the peak came
+from, and the wording follows honestly: a bucket the rider is already inside
+is named by its END ("rain by 7pm"), because naming its start would say the
+rain is happening now, and a bucket still ahead is named by its start ("rain
+6pm").
+
+**Three facts do not fit one line, and the measurement decides which gives.**
+Measured in the real line box at 390 px (238 px of room quiet, 236 px
+warning), by probing the rendered span — not by counting characters, which is
+how a wrapping line shipped on 2026-09-03. With the hour named, the
+temperature trend prints its DIRECTION only ("· cooling"): the full clause
+made the widest line 267 px. Past the umbrella threshold the trend goes
+entirely (298 px with it) and the percentage goes with it, leaving "100°F ·
+rain by 12am — umbrella" at 200 px; "take an umbrella" beside an hour is
+249 px and does not fit at all. The quiet, no-rain branch keeps the whole
+"warming to 80° by 8pm" — it was written for that branch and still fits there
+at 237 px. `weather.test.ts` pins the widest string each branch can produce,
+with those measurements in the comments; re-measure if you reword.
 
 **Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
 right of the line and persists in `localStorage` (`shuttle.tempUnit`, read
@@ -202,7 +224,7 @@ wording rather than to no line.
 across every bucket overlapping the next hour, so "raining now" would fire up
 to 55 minutes early on a dry evening. For the same reason the number is quoted
 without an adjective — 45% is neither likely nor unlikely — and only the
-"take an umbrella" clause changes at 70%, so no wording flips at the boundary.
+umbrella clause changes at 70%, so no wording flips at the boundary.
 A near-term chance always outranks the later hour: a rider with 45% in the
 next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
