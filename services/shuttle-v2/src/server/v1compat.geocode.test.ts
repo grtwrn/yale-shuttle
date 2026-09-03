@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Stop } from "../schema/api.js";
 
+import fs from "node:fs";
+import liveStops from "./__fixtures__/stops.json";
+import { LANDMARKS } from "./landmarks.js";
 import {
+  EXTERNAL_REACH_M,
   createExternalGeocoder,
   geocodeV1,
   parsePhoton,
@@ -328,7 +332,9 @@ describe("geocodeV1 merge", () => {
     const results = await geocodeV1(network, "station", external);
     expect(results.filter((r) => r.display_name.startsWith("Union Station"))).toHaveLength(1);
     expect(results[0]).toMatchObject({ class: "yale" });
-    expect(results.at(-1)).toMatchObject({ display_name: "Elena's on Orange, Orange Street, New Haven", class: "osm" });
+    // The ice cream shop is dropped for a different reason — it is no answer
+    // to "station" — so assert the dedup on the twin, which is the point here.
+    expect(results.every((r) => !r.display_name.startsWith("Elena"))).toBe(true);
   });
 
   it("keeps the v1 class/type vocabulary for local hits", async () => {
@@ -345,43 +351,104 @@ describe("geocodeV1 merge", () => {
   /**
    * Reported by the operator on 2026-09-03, three screenshots in a row:
    * "pepes" answered Frank Pepe Pizzeria AND "Pepe's Lawn Care" in West
-   * Haven; "elenas" answered Elena's on Orange and a clothing shop; "trader
-   * joes" listed the Milford store the shuttle serves beside the Hamden one
-   * it does not. The 2.5 km reachability rule cannot catch these — the
-   * weekend grocery runs genuinely reach Milford and West Haven.
+   * Haven; "elenas" answered Elena's on Orange and a clothing shop called
+   * EbLens; "trader joes" listed the Milford store the shuttle serves beside
+   * the Hamden one it does not ("are there really two trader Joe's? this is
+   * confusing as a user").
+   *
+   * Two rules answer all three, and each is needed: the lawn care and the
+   * Hamden store are REACHABLE-looking but out of walking range of any stop,
+   * while EbLens is 292 m from one — genuinely reachable, and simply not what
+   * anybody typing "elenas" meant.
+   *
+   * The rule that does NOT work, and was reverted before shipping: skipping
+   * the external lookup whenever a local hit matched well. That hides real
+   * places behind a curated one — "police" then answers only Yale Police and
+   * buries the New Haven Police Department 64 m from the Union Station stop.
    */
-  describe("a place we know by name ends the search", () => {
-    const noisy = () => ({
-      calls: 0,
-      lookup: async function (this: { calls: number }) {
-        this.calls++;
-        return [{ display_name: "Pepe's Lawn Care, 71 Lucey Avenue, West Haven", lat: 41.2472, lon: -72.9683, type: "gardener", class: "osm" }];
-      },
+  describe("the noise the operator photographed", () => {
+    // The whole live network, because these rules are about DISTANCE to a
+    // stop: the grocery runs reach Milford and Hamden, which is exactly why
+    // "near the network" had to become "within walking range of a stop".
+    const liveNetwork = TransitNetwork.build(liveStops as Stop[], [
+      { id: 1, name: "Live", shortName: "L", color: "#000", stops: (liveStops as Stop[]).map((st) => st.id) },
+    ]);
+    const stub = (hits: GeocodeV1Hit[]) => {
+      const ext = { calls: 0, lookup: async () => { ext.calls++; return hits; } };
+      return ext;
+    };
+    const osm = (display_name: string, lat: number, lon: number, type = "yes"): GeocodeV1Hit =>
+      ({ display_name, lat, lon, type, class: "osm" });
+
+    it("drops a lawn-care business off the West Campus highway from 'pepes'", async () => {
+      // 1,971 m from the nearest stop: no shuttle trip can be planned to it.
+      // Photon's real answer: the pizzeria itself (which then dedups against
+      // the curated entry) and the lawn care. A reachable hit exists, so the
+      // unreachable one goes.
+      const ext = stub([
+        osm("Frank Pepe Pizzeria Napoletana, Wooster Street", 41.30296, -72.91696, "restaurant"),
+        osm("Pepe's Lawn Care, 71 Lucey Avenue, West Haven", 41.2472, -72.9683, "gardener"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "pepes", ext);
+      expect(ext.calls).toBe(1);
+      expect(results.map((r) => r.display_name)).not.toContain(expect.stringContaining("Lawn Care"));
+      expect(results.some((r) => r.display_name.includes("Lawn Care"))).toBe(false);
     });
 
-    it.each(["pepes", "elenas", "trader joes", "stop and shop"])(
-      "%o is answered locally, with no external lookup at all",
-      async (q) => {
-        const ext = noisy();
-        const results = await geocodeV1(network, q, ext);
-        expect(ext.calls).toBe(0);
-        expect(results.every((r) => r.class === "yale" || r.class === "shuttle")).toBe(true);
-      },
-    );
-
-    it("still asks outside when the query only half-matches something we list", async () => {
-      // "lawn" matches nothing curated; "pepe" would, so use a word that
-      // only brushes the list.
-      const ext = noisy();
-      const results = await geocodeV1(network, "lawn care", ext);
-      expect(ext.calls).toBe(1);
-      expect(results.some((r) => r.class === "osm")).toBe(true);
+    it("drops a clothing shop that merely looks like 'elenas'", async () => {
+      // 292 m from Elm / Lynwood — reachable, so only the NAME can rule it
+      // out, and "eblens" is no answer to "elenas" under our own matcher.
+      const ext = stub([osm("EbLens, Whalley Avenue, New Haven", 41.3136, -72.9351, "clothes")]);
+      const results = await geocodeV1(liveNetwork, "elenas", ext);
+      expect(results.some((r) => r.display_name.startsWith("EbLens"))).toBe(false);
+      expect(results[0]!.display_name).toBe("Elena's on Orange");
     });
 
-    it("still asks outside for a typo, which only reaches the fuzzy tier", async () => {
-      const ext = noisy();
-      await geocodeV1(network, "peobody", ext);
+    it("drops the Hamden Trader Joe's, which the shuttle does not reach", async () => {
+      // 1,590 m from the Aldi/Walmart stop: a 24-minute walk, and the name
+      // matches perfectly, so distance is the only thing that can rule it out.
+      const ext = stub([
+        osm("Trader Joe's, Boston Post Road, Milford", 41.251375, -73.018082, "supermarket"),
+        osm("Trader Joe's, 46 Skiff Street, Hamden", 41.372, -72.8985, "supermarket"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "trader joes", ext);
+      expect(results.some((r) => r.display_name.includes("Skiff"))).toBe(false);
+      expect(results[0]!.display_name).toBe("Trader Joe's (Milford)");
+    });
+
+    it("keeps a real alternative that is near a stop and answers the query", async () => {
+      // The regression the first attempt at this caused: a curated place must
+      // not hide a genuine one. New Haven Police Department is 64 m from the
+      // Union Station stop and is exactly what "police" can mean.
+      const ext = stub([osm("New Haven Police Department, 1 Union Avenue", 41.2985, -72.9268, "police")]);
+      const results = await geocodeV1(liveNetwork, "police", ext);
       expect(ext.calls).toBe(1);
+      expect(results.some((r) => r.display_name.startsWith("New Haven Police"))).toBe(true);
+    });
+
+    it("keeps another branch of a chain we curate one of", async () => {
+      const ext = stub([osm("CVS Pharmacy, 122 Whitney Avenue, New Haven", 41.3115, -72.9235, "pharmacy")]);
+      const results = await geocodeV1(liveNetwork, "cvs", ext);
+      expect(results.some((r) => r.display_name.startsWith("CVS Pharmacy"))).toBe(true);
+    });
+
+    it("still asks outside for a typo and for a half match", async () => {
+      for (const q of ["peobody", "station", "lawn care"]) {
+        const ext = stub([]);
+        await geocodeV1(liveNetwork, q, ext);
+        expect(ext.calls, q).toBe(1);
+      }
+    });
+
+    it("keeps everything when nothing at all is within walking range", async () => {
+      // The rider may genuinely mean somewhere far out; the filter drops the
+      // unreachable only when a reachable answer exists.
+      const ext = stub([
+        osm("Yale Bowl, Chapel Street, New Haven", 41.3122, -72.9601, "stadium"),
+        osm("Westville Music Bowl, Yale Avenue", 41.3155, -72.9622, "stadium"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "yale bowl", ext);
+      expect(results.some((r) => r.display_name.startsWith("Yale Bowl"))).toBe(true);
     });
   });
 
@@ -418,5 +485,42 @@ describe("geocodeV1 merge", () => {
     expect(Date.now() - started).toBeLessThan(1000);
     expect(results.length).toBeGreaterThan(0);
     expect(results.every((r) => r.class !== "osm")).toBe(true);
+  });
+});
+
+/**
+ * Two invariants that span the server/client boundary, in the style this repo
+ * already uses for the walk model and route colours: a value that drifts here
+ * fails silently in front of a rider rather than loudly in CI.
+ */
+describe("what the server serves and the client can draw", () => {
+  const clientSource = fs.readFileSync(
+    new URL("../../web/src/format.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("has an icon for every category the landmark list ships", () => {
+    // A `poi` with no entry in PLACE_ICONS falls back to the generic building
+    // glyph — the very state the categories were added to remove, and
+    // invisible unless somebody searches for that one place.
+    const table = clientSource.match(/PLACE_ICONS[^{]*\{([\s\S]*?)\n\};/)![1]!;
+    const iconKeys = new Set([...table.matchAll(/([a-z_]+):\s*"/g)].map((m) => m[1]!));
+    expect(iconKeys.size).toBeGreaterThan(20);
+    const unmapped = [...new Set(LANDMARKS.map((l) => l.poi).filter(Boolean))]
+      .filter((poi) => !iconKeys.has(poi!));
+    expect(unmapped, `no icon for: ${unmapped.join(", ")}`).toEqual([]);
+  });
+
+  it("keeps the external reach equal to the planner's walking limit", () => {
+    // Past MAX_WALK_M the planner cannot offer a shuttle trip to the place at
+    // all, so listing it only invites a rider to pick a destination the
+    // shuttle does not serve.
+    const walkSource = fs.readFileSync(
+      new URL("../../web/src/walk.ts", import.meta.url),
+      "utf8",
+    );
+    const maxWalk = Number(walkSource.match(/export const MAX_WALK_M = ([\d_]+)/)![1]!.replace(/_/g, ""));
+    expect(maxWalk).toBeGreaterThan(0);
+    expect(EXTERNAL_REACH_M).toBe(maxWalk);
   });
 });

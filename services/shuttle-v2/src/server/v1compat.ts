@@ -18,7 +18,7 @@ import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
-import { geocode, normalizeName } from "./geocode.js";
+import { geocode, normalizeName, relevanceOf } from "./geocode.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
@@ -456,7 +456,16 @@ export function parseNominatim(body: unknown): GeocodeV1Hit[] {
 // The right area is "near the shuttle network", not a rectangle: a viewbox
 // admits a street in Branford as readily as one on Orange Street. Any result
 // farther than this from every stop is dropped when a closer one exists.
-const EXTERNAL_REACH_M = 2_500;
+//
+// The bound is the planner's own walking limit (`MAX_WALK_M` in
+// web/src/walk.ts, pinned by a test in v1compat.geocode.test.ts): past it the
+// app cannot offer a shuttle trip to the place at all, so listing it only
+// invites the rider to pick a destination the shuttle does not serve. It used
+// to be 2.5 km, which is how "trader joes" answered with the Hamden store
+// (1.6 km from the Aldi/Walmart stop — a 24-minute walk) beside the Milford
+// one the shuttle actually visits, and how "pepes" reached a lawn-care
+// business 2 km off the West Campus highway (operator, 2026-09-03).
+export const EXTERNAL_REACH_M = 1_500;
 const LOCAL_DEDUP_M = 60;
 const EXTERNAL_DEDUP_M = 150;
 const MERGED_MAX = 12;
@@ -468,7 +477,11 @@ const MERGED_MAX = 12;
  * external hits for the same place (Photon lists a shop's node and its
  * building) collapse on name + proximity.
  */
-export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): GeocodeV1Hit[] {
+export function rankExternal(
+  network: TransitNetwork,
+  hits: GeocodeV1Hit[],
+  query?: string,
+): GeocodeV1Hit[] {
   const stops = [...network.stops.values()];
   const nearest = (h: GeocodeV1Hit) => {
     let best = Infinity;
@@ -478,10 +491,22 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
     }
     return best;
   };
+  // A result has to be a plausible answer to what the rider typed. Photon
+  // matches loosely: "elenas" returned EbLens, a clothing shop, and it sat
+  // directly under the ice cream shop the rider meant. No distance rule could
+  // catch that one — the shop is 292 m from a stop, genuinely reachable
+  // (operator, 2026-09-03). The test is the SAME matcher the curated list
+  // uses, at its weakest tier, so a real alternative survives ("police" still
+  // reaches New Haven Police Department, "cvs" the other branches) and only
+  // an unrelated name goes. It may empty the external list: the local answer
+  // is then the whole answer, which is the honest outcome.
+  const related = query
+    ? hits.filter((h) => relevanceOf(query, h.display_name.split(",")[0] ?? "") > 0)
+    : hits;
   // Keep the provider's order — it ranks by relevance, and re-sorting by
   // distance put a street centreline ahead of the house the rider typed —
   // and only DROP hits that are out of reach when a reachable one exists.
-  const scored = hits.map((h) => ({ h, d: nearest(h) }));
+  const scored = related.map((h) => ({ h, d: nearest(h) }));
   const reachable = scored.some((s) => s.d <= EXTERNAL_REACH_M)
     ? scored.filter((s) => s.d <= EXTERNAL_REACH_M)
     : scored;
@@ -497,22 +522,6 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
   }
   return out;
 }
-
-/**
- * A local hit this good means the rider typed the NAME of a place we know, so
- * there is nothing for a general geocoder to add. Below it (a word match, a
- * substring, a typo) the query is still open and the outside world may hold
- * the answer.
- *
- * This is the exact/prefix tier of `scoreMatch`. Without it every strong
- * query dragged a loose OSM hit along beneath the right answer, because
- * "near the shuttle network" is a wide area — the weekend runs reach Milford
- * and West Haven. The operator saw "pepes" answer Frank Pepe Pizzeria AND
- * Pepe's Lawn Care 8 km away in West Haven, "elenas" answer Elena's on
- * Orange and a clothing shop on Whalley, and "trader joes" list the Milford
- * store the shuttle serves beside the Hamden one it does not (2026-09-03).
- */
-const STRONG_LOCAL_SCORE = 0.75;
 
 export async function geocodeV1(
   network: TransitNetwork,
@@ -535,12 +544,10 @@ export async function geocodeV1(
   // Skip the external lookup for short queries.
   // Gate on what the matcher saw: "!!!" is three characters and no query.
   if (normalizeName(query).length < 3) return local;
-  // ...and when we already know the place by that name (see above).
-  if ((hits[0]?.score ?? 0) >= STRONG_LOCAL_SCORE) return local;
 
   // The shipped geocoder never throws, but the interface is injectable and a
   // rejection here would 500 the route: degrade to local instead.
-  const ranked = rankExternal(network, await external.lookup(query).catch(() => []));
+  const ranked = rankExternal(network, await external.lookup(query).catch(() => []), query);
   // Local results always come first; an external hit for a place we already
   // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];

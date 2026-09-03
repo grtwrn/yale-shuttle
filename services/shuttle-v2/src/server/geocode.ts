@@ -236,6 +236,17 @@ function candidate(name: string): Candidate {
  * The more specific the hit, the higher, which keeps `som` ahead of
  * "social some thing".
  */
+/**
+ * How well a free-text name answers a rider's query, on the same tiers the
+ * curated list is ranked by. `v1compat.ts` uses it to drop an external result
+ * whose name has no relationship to what was typed — Photon matched "elenas"
+ * to a clothing shop called EbLens.
+ */
+export function relevanceOf(rawQuery: string, name: string): number {
+  const q = parseQuery(rawQuery);
+  return q === null ? 0 : scoreMatch(q, candidate(name));
+}
+
 function scoreMatch(q: Query, c: Candidate): number {
   const forms = q.stripped.length > 0 && q.stripped !== q.text ? [q.text, q.stripped] : [q.text];
   if (forms.some((f) => c.text === f)) return 1;

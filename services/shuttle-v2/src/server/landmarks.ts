@@ -125,12 +125,12 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "La Casa Cultural", lat: 41.307061, lon: -72.931765, aliases: ["la casa", "latino cultural center", "301 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240136
   { label: "Native American Cultural Center", lat: 41.306961, lon: -72.93118, aliases: ["nacc", "native american center", "26 high"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606236056
   { label: "Schwarzman Center", lat: 41.311808, lon: -72.92644, aliases: ["commons", "the commons", "schwarzman", "schwarzman commons", "the elm", "the well", "dome"], poi: "college", anchorStop: "College / Grove (N)" }, // OSM W363426802
-  { label: "Slifka Center", lat: 41.31018, lon: -72.925293, aliases: ["slifka", "hillel", "jewish life", "80 wall"], poi: "worship", anchorStop: "College / Wall (N)" }, // OSM W114626279
+  { label: "Slifka Center", lat: 41.31018, lon: -72.925293, aliases: ["slifka", "hillel", "jewish life", "80 wall"], poi: "synagogue", anchorStop: "College / Wall (N)" }, // OSM W114626279
   { label: "St. Thomas More Chapel", lat: 41.310967, lon: -72.932378, aliases: ["stm", "saint thomas more", "catholic chapel", "catholic center", "268 park"], poi: "worship", anchorStop: "Elm / Lynwood" }, // OSM R5463450
   { label: "Yale Farm", lat: 41.320491, lon: -72.921337, aliases: ["the farm", "sustainable food program", "345 edwards"], poi: "park", anchorStop: "Prospect / Edwards" }, // OSM W45092131
 
   // -- Athletics -------------------------------------------------------------
-  { label: "Ingalls Rink", lat: 41.316811, lon: -72.925004, aliases: ["the whale", "hockey rink", "ingalls", "73 sachem"], poi: "gym", anchorStop: "Prospect / Sachem (S)" }, // OSM W76235245
+  { label: "Ingalls Rink", lat: 41.316811, lon: -72.925004, aliases: ["the whale", "hockey rink", "ingalls", "73 sachem"], poi: "ice_rink", anchorStop: "Prospect / Sachem (S)" }, // OSM W76235245
   { label: "Payne Whitney Gym", lat: 41.313722, lon: -72.931086, aliases: ["pwg", "gym", "payne whitney", "lanman center", "lanman", "the gym", "70 tower parkway"], poi: "gym", anchorStop: "Payne Whitney Gym" }, // OSM W49602467
 
   // -- Museums ---------------------------------------------------------------
@@ -141,7 +141,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale University Art Gallery", lat: 41.308435, lon: -72.93088, aliases: ["yuag", "art gallery", "the gallery", "1111 chapel"], poi: "museum", anchorStop: "Chapel / York" }, // OSM R6686912
 
   // -- Medical campus and hospitals ------------------------------------------
-  { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "hospital", anchorStop: "LEPH / 60 College" }, // OSM W266150495
+  { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
   { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709
   { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
@@ -228,7 +228,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "New Haven City Hall", lat: 41.307378, lon: -72.92433, aliases: ["city hall", "165 church"], poi: "civic", anchorStop: "Elm / Orange" }, // OSM W39267857
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], poi: "library", anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
-  { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "place", anchorStop: "Chapel / Church" }, // OSM W777642209
+  { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "neighbourhood", anchorStop: "Chapel / Church" }, // OSM W777642209
   { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], poi: "civic", anchorStop: "Elm / High" }, // OSM N359283573
 ];
