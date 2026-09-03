@@ -672,6 +672,59 @@ the moment and both numbers.
 Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
 changes shape, and say in the PR what moved.
 
+### The rider canary (`scripts/rider-canary.mjs`)
+
+Everything above scores predictions **in aggregate** — median error, share
+within two minutes. The canary is the only thing that watches the SEQUENCE one
+rider sees, which is the operator's complaint (2026-09-03): "i'm not worried
+about a few seconds. i'm worried about saying a bus is 10min away and then a
+few seconds later dropping to 1 second." Reports #64 and #32 are riders saying
+the same thing.
+
+It plans Prospect/Canner → the School of Public Health in the real UI, rotating
+across the lines that are actually running, and watches the countdown every
+15 s until the bus physically reaches the board stop it read out of the app's
+own Directions link. `npm run canary -- --loop` keeps one rider going; one
+browser at a time, launched and closed per run; silent on a healthy run;
+`--summary` for the digest. It never files a report.
+
+**The display is bucketed** (`fmtMin`: "now", "<1 min", "N min"), so every
+comparison in `canary-metrics.mjs` is between INTERVALS and reports the
+smallest movement the two readings permit. A jump it reports is one the app
+provably made; bucket edges cannot invent one. Its unit tests are the spec.
+
+**What the first live run measured.** Red, 2026-09-03 17:01 ET, bus #304,
+board stop Division/Prospect (#48), on a build that already had #77's
+rest-as-a-spread work:
+
+    17:01:04  "🚌 in 7, 39 min"   #304 386 m out, at_stop_id 11
+    17:01:19  "🚌 in 2, 37 min"   #304 361 m out, moving
+    17:02:10  #304 reaches the stop — 66 s after the "7 min"
+
+The pin never changed and the feed moved 25 m, so the 3.75-minute drop was
+entirely a recompute. 420 s is exactly the served chain from the bus's anchor:
+11→146 (364 s) + 146→49 (33 s) + 49→48 (23 s) — and **11→146 is 112 m**, which
+no bus drives in six minutes. That segment is the 344 Winchester layover,
+billed arrival-to-arrival as the estimator intends; what the canary adds is
+that when a bus takes a SHORT rest the whole billed rest falls out of the
+number in one tick, in front of a rider. It is the same distribution problem
+#77 named, seen from the rider's side rather than the estimator's.
+
+Two things to take from it rather than the anecdote:
+
+- **The gate's blind spot is the rider's whole complaint.**
+  `accuracy-layover.test.ts` bounds a lurch at 180 s using the same arithmetic
+  — and skips "the moment the bus is recorded leaving the stop", because a real
+  discontinuity exists in the data there. It does; the rider still sees 7 min
+  become 2 min in fifteen seconds. The canary's catastrophic bar IS that 180 s
+  (a test pins the two together), applied without the exemption, which is why
+  it caught 225 s on its first run. Do not loosen either bound to match a
+  change — check the canary log first.
+- **The mirror is predicted and unconfirmed**: a bus ARRIVING at a layover
+  should make the countdown jump UP by the same 4–6 min, which is what report
+  #32 ("6 min then it said 16") describes. Look for it in
+  `scripts/.canary/runs.jsonl` before designing against it.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
@@ -704,6 +757,7 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 | `lookup-sweep.mjs` | every named Yale/campus place in OSM is findable by the pipeline a rider hits (no browser) |
+| `rider-canary.mjs` | a continuous synthetic rider: watches ONE countdown tick by tick until the bus arrives, and scores the SEQUENCE (jumps, reversals) rather than the aggregate |
 
 `eta-accuracy.mjs` reads what the app tells a rider while independently
 watching raw positions for the actual arrival. Last daytime measurement

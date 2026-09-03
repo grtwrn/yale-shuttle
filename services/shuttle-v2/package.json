@@ -16,7 +16,8 @@
     "riders": "node scripts/riders.mjs",
     "deploy": "node scripts/deploy.mjs",
     "approve": "node scripts/approve.mjs",
-    "test:accuracy": "vitest run web/src/accuracy-layover.test.ts web/src/arrivals.test.ts web/src/anchor.test.ts web/src/planner.test.ts"
+    "test:accuracy": "vitest run web/src/accuracy-layover.test.ts web/src/arrivals.test.ts web/src/anchor.test.ts web/src/planner.test.ts",
+    "canary": "node scripts/rider-canary.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.17",
