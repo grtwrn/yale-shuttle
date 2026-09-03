@@ -27,6 +27,7 @@ import {
   type RiderAction,
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
+import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
@@ -109,6 +110,12 @@ function safeEqual(a: string, b: string): boolean {
 
 export interface AppOptions {
   /**
+   * Comma-separated anon ids that belong to the operator's own browsers, so
+   * the dashboard's "someone wrote in" alert can ignore them. Defaults to
+   * SHUTTLE_OPERATOR_ANON_IDS.
+   */
+  operatorAnonIds?: string;
+  /**
    * First ET day the operator statistics count (see the counting epoch in
    * actives.ts). Tests that freeze the clock in the past set their own.
    */
@@ -151,6 +158,9 @@ export function buildApp(opts: AppOptions): Hono {
     opts.bundle,
     opts.statsSinceDay ? { sinceDay: opts.statsSinceDay } : {},
   );
+  // Who the operator is, so "somebody wrote in" can mean somebody else. Tests
+  // pass their own list; production reads the Fly secret.
+  seedOperatorIds(opts.bundle, opts.operatorAnonIds ?? process.env.SHUTTLE_OPERATOR_ANON_IDS);
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -652,6 +662,54 @@ export function buildApp(opts: AppOptions): Hono {
     // `since` travels with the numbers so the dashboard can say what it is
     // counting from without hard-coding a date of its own.
     return c.json({ riders: actives.stats(now()), since: actives.sinceDay() });
+  });
+
+  // When the app is used, hour by hour, one row per day. Derived from spans
+  // already stored — see actives.hourly().
+  app.get("/api/stats/hourly", requireStatsAuth, (c) => {
+    const raw = parseInt(c.req.query("days") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      hourly: actives.hourly(
+        Number.isFinite(raw) ? Math.max(1, Math.min(HISTORY_MAX_DAYS, raw)) : 7,
+        now(),
+      ),
+    });
+  });
+
+  // Reports from someone OTHER than the operator — the dashboard's alert.
+  // Same auth as the rest of /api/stats, which means the cookie reaches it,
+  // so the payload carries no IP, no anon id and no context: an excerpt, a
+  // status and a timestamp. Anything identifying a reporter stays behind
+  // requireAdmin on /api/reports.
+  app.get("/api/stats/reports", requireStatsAuth, (c) => {
+    const raw = parseInt(c.req.query("limit") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json(outsideReports(opts.bundle, Number.isFinite(raw) ? raw : 20));
+  });
+
+  // Claim (or release) a browser as the operator's own, so its reports stop
+  // reading as a stranger's. Admin header only: it changes what the alert
+  // above will ever show.
+  app.post("/api/stats/operator", requireAdmin, bodyLimit({
+    maxSize: REPORT_UPDATE_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as
+      | { anonId?: string; note?: string; remove?: boolean }
+      | null;
+    if (!body || typeof body.anonId !== "string" || !ANON_ID_PATTERN.test(body.anonId)) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    const db = opts.bundle.db;
+    if (body.remove === true) {
+      db.run(sql`DELETE FROM operator_anon_ids WHERE anon_id = ${body.anonId}`);
+    } else {
+      const note = (typeof body.note === "string" ? body.note : "operator browser").slice(0, 200);
+      db.run(sql`INSERT OR IGNORE INTO operator_anon_ids (anon_id, note)
+                 VALUES (${body.anonId}, ${note})`);
+    }
+    return c.json({ ok: true, operators: operatorIds(opts.bundle) });
   });
 
   // Per-day trend behind the dashboard chart. Days with no rows are absent

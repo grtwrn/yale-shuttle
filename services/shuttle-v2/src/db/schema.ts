@@ -241,6 +241,28 @@ export const excludedAnonIds = sqliteTable("excluded_anon_ids", {
 });
 
 /**
+ * Browsers that belong to the OPERATOR, so the dashboard can tell a rider's
+ * report from the operator's own.
+ *
+ * Deliberately NOT `excluded_anon_ids`: the operator's phone is a real rider
+ * and must keep counting in the usage numbers. This table answers a different
+ * question — "did somebody other than me write in?" — which on 2026-09-03 had
+ * exactly one true answer out of 69 reports, and finding that out took a
+ * by-hand grouping of ids and IP addresses.
+ *
+ * Seeded from SHUTTLE_OPERATOR_ANON_IDS (comma-separated) at startup, so a
+ * redeploy cannot forget who the operator is, and extendable at runtime via
+ * POST /api/stats/operator.
+ */
+export const operatorAnonIds = sqliteTable("operator_anon_ids", {
+  anonId: text("anon_id").primaryKey(),
+  note: text("note"),
+  addedMs: integer("added_ms")
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+/**
  * Route geometry derived from where buses actually drove — one row per route,
  * the survivor of everything the raw samples that produced it cannot outlive.
  *
@@ -304,4 +326,5 @@ export type DbPredictionLog = typeof predictionsLog.$inferSelect;
 export type DbReport = typeof reports.$inferSelect;
 export type DbDailyActive = typeof dailyActives.$inferSelect;
 export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;
+export type DbOperatorAnonId = typeof operatorAnonIds.$inferSelect;
 export type DbDerivedPath = typeof derivedPaths.$inferSelect;
