@@ -8,6 +8,7 @@ import {
   fmtWalk,
   formatEtaRange,
   remainingSec,
+  sanitizeGeocodeResults,
   suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -233,5 +234,119 @@ describe("fmtBusPair — the next two buses in one breath", () => {
 
   it("keeps the under-a-minute marker", () => {
     expect(fmtBusPair(45, 660)).toBe("in <1, 11 min");
+  });
+});
+
+// A malformed geocode result must cost the rider that ROW, never the app.
+//
+// The crash this pins: on 2026-09-03 the canary harness stubbed /api/geocode
+// with rows carrying `label` instead of `display_name`, and every trip it
+// tried died on "App crashed — Cannot read properties of undefined (reading
+// 'split')" — `suggLabel` splitting a `display_name` that was not there,
+// during render, behind main.tsx's ErrorBoundary. The stub was wrong; the
+// blank screen was the defect. /api/geocode merges two providers we do not
+// control (Photon, Nominatim) and the response contract is only
+// {display_name, lat, lon, type, class}, so every one of those fields is
+// treated here as possibly absent or of the wrong type.
+describe("a malformed geocode result never crashes the dropdown", () => {
+  // What the suggestion list actually does with each row, in the same order
+  // TransitMap does it: sanitize the payload, keep the rows in service range
+  // (the real filter is haversine; identity is enough here), and render each
+  // as an icon + a label computed against its siblings.
+  const renderDropdown = (payload: unknown): string[] => {
+    const rows = sanitizeGeocodeResults(payload);
+    return rows.map((g) => `${suggIcon(g)} ${suggLabel(g, rows)}`);
+  };
+
+  const good = {
+    display_name: "Phelps Gate, College Street, New Haven",
+    lat: 41.30815, lon: -72.92915, type: "landmark", class: "yale",
+  };
+
+  it("renders the good rows and drops the broken ones", () => {
+    const payload = {
+      results: [
+        // The exact shape that crashed: a name under the wrong key.
+        { label: "Sterling Library", lat: 41.3113, lon: -72.9289 },
+        { lat: 41.3113, lon: -72.9289, type: "landmark", class: "yale" }, // no display_name
+        { display_name: null, lat: 41.31, lon: -72.93 },
+        { display_name: 42, lat: 41.31, lon: -72.93 },
+        { display_name: "", lat: 41.31, lon: -72.93 },
+        { display_name: " , , ", lat: 41.31, lon: -72.93 },
+        { display_name: "Nowhere In Particular" }, // no coordinate at all
+        { display_name: "Half A Place", lat: 41.31 },
+        { display_name: "Null Island Bait", lat: null, lon: null },
+        { display_name: "Boolean Bay", lat: true, lon: false },
+        { display_name: "Empty String Cove", lat: "", lon: "" },
+        { display_name: "Not A Number", lat: "north", lon: "west" },
+        { display_name: "Off The Globe", lat: 500, lon: -72.93 },
+        { display_name: "Infinite Regress", lat: Infinity, lon: -72.93 },
+        null,
+        "Sterling Library",
+        good,
+      ],
+    };
+
+    let rendered: string[] = [];
+    expect(() => { rendered = renderDropdown(payload.results); }).not.toThrow();
+    expect(rendered).toEqual(["🏛️ Phelps Gate, College Street"]);
+  });
+
+  it("keeps every well-formed row when one row beside it is broken", () => {
+    const rendered = renderDropdown([
+      { display_name: "Elm / York", lat: 41.3092, lon: -72.9312, type: "bus_stop", class: "shuttle" },
+      { lat: 41.31, lon: -72.93 },
+      good,
+      { display_name: "Elena's on Orange, Orange Street", lat: 41.3105, lon: -72.9231, type: "ice_cream", class: "osm" },
+    ]);
+    expect(rendered).toEqual([
+      "🚏 Elm / York",
+      "🏛️ Phelps Gate, College Street",
+      "🍦 Elena's on Orange, Orange Street",
+    ]);
+  });
+
+  // The empty case is already handled ("No matches found" / an empty
+  // dropdown), so an answer that is entirely junk degrades into a path the
+  // app has always had rather than into a new one.
+  it("degrades an all-malformed answer to no results, not to a crash", () => {
+    expect(renderDropdown([{ label: "x" }, {}, null, 7])).toEqual([]);
+    expect(sanitizeGeocodeResults(undefined)).toEqual([]);
+    expect(sanitizeGeocodeResults(null)).toEqual([]);
+    expect(sanitizeGeocodeResults("results")).toEqual([]); // .filter would throw
+    expect(sanitizeGeocodeResults({ results: [good] })).toEqual([]); // not an array
+  });
+
+  it("keeps a coordinate sent as a string, which Nominatim does", () => {
+    expect(sanitizeGeocodeResults([{ display_name: "Union Station", lat: "41.29752", lon: "-72.92651" }]))
+      .toEqual([{ display_name: "Union Station", lat: 41.29752, lon: -72.92651 }]);
+  });
+
+  it("passes a well-formed row through unchanged, fields and all", () => {
+    expect(sanitizeGeocodeResults([good])).toEqual([good]);
+  });
+
+  // type/class only choose an icon and drive the auto-pick, so a wrong-typed
+  // one loses the icon, not the destination.
+  it("drops a non-string type or class rather than the whole row", () => {
+    expect(sanitizeGeocodeResults([{ display_name: "Somewhere", lat: 41.3, lon: -72.9, type: 3, class: {} }]))
+      .toEqual([{ display_name: "Somewhere", lat: 41.3, lon: -72.9 }]);
+  });
+
+  // Defence in depth: the gate above is the fix, but the render helpers
+  // themselves must not be able to throw either — that is the crash CLASS,
+  // and a future call site that forgets to sanitize must not resurrect it.
+  it("survives even when a caller skips the gate entirely", () => {
+    const junk = [
+      {}, { display_name: undefined }, { display_name: null }, { display_name: 7 },
+      { type: 5, class: [] }, { display_name: "ok", type: "__proto__" },
+    ] as unknown as GeocodeResult[];
+    for (const g of junk) {
+      expect(() => suggLabel(g)).not.toThrow();
+      expect(() => suggLabel(g, junk)).not.toThrow();
+      expect(() => suggIcon(g)).not.toThrow();
+      expect(typeof suggIcon(g)).toBe("string");
+    }
+    expect(suggLabel({ display_name: undefined } as unknown as GeocodeResult)).toBe("");
   });
 });

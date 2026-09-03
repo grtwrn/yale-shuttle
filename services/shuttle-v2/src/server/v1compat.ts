@@ -269,6 +269,61 @@ export function parseCoordinateQuery(q: string): { lat: number; lon: number } | 
   return { lat, lon };
 }
 
+/**
+ * Junk out of the list, before it can become junk on a rider's screen.
+ *
+ * The two external providers are outside our control, and the
+ * `ExternalGeocoder` interface is injectable, so a hit can reach here with a
+ * field missing or of the wrong type even though `parsePhoton` and
+ * `parseNominatim` are careful. Two things then go wrong: `rankExternal`
+ * splits `display_name` and would throw — 500ing the whole lookup, so one bad
+ * row costs every good one — and anything that survives is rendered by the
+ * client, where a missing name blank-screened the app on 2026-09-03.
+ *
+ * The client guards itself too (`sanitizeGeocodeResults` in web/src/format.ts,
+ * same rules), because the crash must be impossible whatever the server sends.
+ * This end keeps the list itself honest: a row with no name is unreadable and
+ * a row with no plausible coordinate is unplannable, so neither is an answer.
+ *
+ * This is NOT a relevance or reach judgement — both of those still happen in
+ * `rankExternal`, unchanged, on rows that are at least well-formed.
+ */
+export function sanitizeHits(hits: unknown): GeocodeV1Hit[] {
+  if (!Array.isArray(hits)) return [];
+  const out: GeocodeV1Hit[] = [];
+  for (const row of hits) {
+    if (!row || typeof row !== "object") continue;
+    const h = row as Partial<Record<keyof GeocodeV1Hit, unknown>>;
+    if (typeof h.display_name !== "string" || h.display_name.trim() === "") continue;
+    const lat = coordOrNull(h.lat, 90);
+    const lon = coordOrNull(h.lon, 180);
+    if (lat === null || lon === null) continue;
+    out.push({
+      display_name: h.display_name,
+      lat,
+      lon,
+      // Optional in practice: they only steer the icon and the client's
+      // auto-pick, so a missing one takes the same neutral default the
+      // providers' own parsers already use rather than dropping the row.
+      type: typeof h.type === "string" ? h.type : "place",
+      class: typeof h.class === "string" ? h.class : "osm",
+    });
+  }
+  return out;
+}
+
+/**
+ * A coordinate, or null. Numeric strings pass (Nominatim sends lat/lon as
+ * strings); `null`, `""` and booleans do not, because `Number()` turns them
+ * into 0, which is a real-looking point in the Gulf of Guinea.
+ */
+function coordOrNull(v: unknown, limit: number): number | null {
+  const n = typeof v === "number" ? v
+    : typeof v === "string" && v.trim() !== "" ? Number(v)
+    : NaN;
+  return Number.isFinite(n) && Math.abs(n) <= limit ? n : null;
+}
+
 /** An address-level hit: the building the rider actually typed. */
 function hasAddressHit(hits: readonly GeocodeV1Hit[]): boolean {
   return hits.some((h) => h.type === "house");
@@ -660,7 +715,8 @@ export async function geocodeV1(
 
   // The shipped geocoder never throws, but the interface is injectable and a
   // rejection here would 500 the route: degrade to local instead.
-  const ranked = rankExternal(network, await external.lookup(query).catch(() => []), query);
+  const externalHits = sanitizeHits(await external.lookup(query).catch(() => []));
+  const ranked = rankExternal(network, externalHits, query);
   // Local results always come first; an external hit for a place we already
   // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];
@@ -668,7 +724,10 @@ export async function geocodeV1(
     if (local.some((m) => distanceMeters(m, e) < LOCAL_DEDUP_M)) continue;
     merged.push(e);
   }
-  return merged.slice(0, MERGED_MAX);
+  // One last pass over everything, the local half included: stop names come
+  // from the upstream feed, so "well-formed" is not ours to assume there
+  // either, and this is the last point before the payload leaves.
+  return sanitizeHits(merged.slice(0, MERGED_MAX));
 }
 
 // -- /api/accuracy (v1 shape) -------------------------------------------------
