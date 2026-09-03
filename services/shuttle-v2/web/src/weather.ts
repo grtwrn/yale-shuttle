@@ -253,12 +253,13 @@ export function trendText(
   trend: TempTrend | null | undefined,
   nowF: number | undefined,
   unit: TempUnit,
+  withHour = true,
 ): string | null {
   if (!trend) return null;
   const to = temperatureIn(trend.temperatureF, unit);
   const from = temperatureIn(nowF, unit);
   if (to == null || to === from) return null;
-  const label = hourLabel(trend.timeMs);
+  const label = withHour ? hourLabel(trend.timeMs) : "";
   const verb = trend.dir === "up" ? "warming" : "cooling";
   return `${verb} to ${to}°${label ? ` by ${label}` : ""}`;
 }
@@ -359,8 +360,56 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * actually named it; string-matching the rendered message to answer this
  * would work but silently rot the moment the wording changes.
  */
-export function trendShownInMessage(v: RainVerdict, later: ForecastHour | null | undefined): boolean {
+/**
+ * True when weatherMessage has room to name the hour the trend arrives.
+ *
+ * The line carries BOTH facts the operator asked for — the chance of rain and
+ * which way the temperature is going (2026-09-03) — and at 390px that is all
+ * it can carry. Measured: "5% rain · warming to 80° by 2pm" fits;
+ * "rain 9pm (70%) · warming to 80° by 2pm" does not. So the trend keeps its
+ * hour only when the rain half is a bare percentage.
+ */
+export function trendHourFits(v: RainVerdict, later?: ForecastHour | null): boolean {
   return v.known && v.probability < RAIN_MENTION_THRESHOLD && !later;
+}
+
+/**
+ * The rain half of the line, in priority order:
+ *
+ *   - a real chance within the hour → the percentage (plus the umbrella
+ *     advice past 70%), because that is what a rider about to walk needs;
+ *   - otherwise, rain arriving LATER in the window → the hour it starts,
+ *     which is the whole point of the outlook (a rider out for the evening
+ *     is not helped by "5% within the hour");
+ *   - otherwise → nothing is coming, so say so.
+ *
+ * `terse` is set when the temperature trend is sharing the line, and only
+ * then: "5% rain" instead of "5% chance of rain within the hour". Alone, the
+ * longer wording still reads better and still fits, so the quiet-day line
+ * did not change when the trend arrived beside it.
+ *
+ * The window is THE NEXT HOUR either way — `probability` is the peak across
+ * every bucket overlapping it (see rainLikely) — which is why this never
+ * says "now".
+ */
+export function rainFragment(
+  v: RainVerdict,
+  later?: ForecastHour | null,
+  terse = false,
+): string {
+  if (!v.known) return "";
+  if (v.probability >= RAIN_MENTION_THRESHOLD) {
+    const pct = terse
+      ? `${v.probability}% rain`
+      : `${v.probability}% chance of rain within the hour`;
+    return v.probability >= RAIN_PROMINENT_THRESHOLD ? `${pct} — take an umbrella` : pct;
+  }
+  if (later) {
+    return terse
+      ? `rain ${hourLabel(later.timeMs)} (${later.probability}%)`
+      : `rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
+  }
+  return terse ? "no rain" : "no rain expected";
 }
 
 export function weatherMessage(
@@ -371,37 +420,26 @@ export function weatherMessage(
 ): string {
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
-  const head = temp ? `${temp} · ` : "";
-  // "within the hour", never "now": `probability` is the PEAK across every
-  // bucket that overlaps the next hour (see rainLikely), so at 20:05 an 85%
-  // bucket at 21:00 would have the line announcing rain up to 55 minutes
-  // early. The number and the window are quoted as they are; only the
-  // umbrella clause changes with severity, so nothing about the wording
-  // flips at the 69→70 boundary.
-  if (v.probability >= RAIN_PROMINENT_THRESHOLD) {
-    return `${head}${v.probability}% chance of rain within the hour — take an umbrella`;
+  // Both halves, always, in one line: what the sky is about to do and what
+  // the temperature is about to do. Neither hides the other any more — the
+  // previous cut showed the trend ONLY when there was no rain to report, so
+  // the two facts the operator asked for were never on screen together
+  // (2026-09-03).
+  const trendClause = trendText(trend, v.temperatureF, unit, trendHourFits(v, later));
+  const rain = rainFragment(v, later, !!trendClause);
+  const parts = [temp, rain].filter(Boolean);
+  if (trendClause) parts.push(trendClause);
+  // With no trend to carry the line there is room for the condition word.
+  // A wet code with a low chance ("Rain", 10%) replaces the rain half rather
+  // than sitting beside it — "Rain · no rain expected" is nonsense.
+  if (!trendClause && v.probability < RAIN_MENTION_THRESHOLD) {
+    const cond = conditionText(v.weatherCode);
+    if (cond && isWetCode(v.weatherCode) && !later) {
+      return [temp, cond].filter(Boolean).join(" · ");
+    }
+    if (cond && !later) parts.splice(parts.length - 1, 0, cond);
   }
-  if (v.probability >= RAIN_MENTION_THRESHOLD) {
-    return `${head}${v.probability}% chance of rain within the hour`;
-  }
-  // Dry for the next hour: spend the words on when that ends. This branch is
-  // BELOW the near-term one deliberately — a rider with 45% in the next hour
-  // must not be told about 9pm instead.
-  if (later) {
-    return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
-  }
-  // Nothing about rain left to say (trendShownInMessage agrees), so the
-  // line's spare words go to the temperature trend instead of the condition
-  // word — "warming to 80° by 2pm" answers "what should I expect the next
-  // couple hours" better than "Cloudy" does, and MEASURED (390px), the two
-  // together wrap the line.
-  const trendClause = trendText(trend, v.temperatureF, unit);
-  if (trendClause) return `${head}${trendClause}`;
-  const cond = conditionText(v.weatherCode);
-  // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain
-  // expected" — the condition alone is the honest line.
-  if (cond && isWetCode(v.weatherCode)) return `${head}${cond}`;
-  return `${head}${cond ? `${cond} · ` : ""}no rain expected`;
+  return parts.join(" · ");
 }
 
 /** WMO codes from 50 up are drizzle/rain/snow/showers/thunderstorms. */

@@ -13,7 +13,7 @@ import {
   saveTempUnit,
   temperatureText,
   tempTrend,
-  trendShownInMessage,
+  trendHourFits,
   trendText,
   weatherEmoji,
   weatherMessage,
@@ -384,30 +384,57 @@ describe("which way it is heading (operator, 2026-09-03)", () => {
     const trend = tempTrend(hours, 66);
     const v = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
     const msg = weatherMessage(v, null, "F", trend);
-    expect(msg).toBe("66°F · warming to 71° by 8pm");
+    expect(msg).toBe("66°F · no rain · warming to 71° by 8pm");
     expect(msg).not.toContain("\n");
     expect(msg).not.toContain("↑");
     expect(msg).not.toContain("↓");
   });
 
-  it("only appears in the quietest branch — never alongside a rain clause", () => {
+  it("shows the rain chance AND the trend together, at every probability", () => {
+    // The operator asked for both (2026-09-03); an earlier cut showed the
+    // trend only when there was no rain to report, so the two facts were
+    // never on screen at the same time.
     const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
     const trend = tempTrend(hours, 66);
-    // Near-term rain outranks the trend.
-    const warn = { likely: true, probability: 85, known: true, temperatureF: 66, weatherCode: 61 };
-    expect(weatherMessage(warn, null, "F", trend)).not.toContain("warming");
-    const mention = { likely: false, probability: 30, known: true, temperatureF: 66, weatherCode: 3 };
-    expect(weatherMessage(mention, null, "F", trend)).not.toContain("warming");
-    // So does the "and later?" rain clause.
+    for (const p of [0, 5, 30, 60, 70, 95]) {
+      const msg = weatherMessage(
+        { likely: p >= 50, probability: p, known: true, temperatureF: 66, weatherCode: 3 },
+        null, "F", trend,
+      );
+      // The trend is there at EVERY probability — that is the fix.
+      expect(msg).toContain("warming to 80°");
+      // Below the mention threshold the rain half stays wordless rather than
+      // quoting a number a rider cannot act on (see RAIN_MENTION_THRESHOLD).
+      expect(msg).toContain(p < 20 ? "no rain" : `${p}% rain`);
+    }
+  });
+
+  it("drops only the trend's HOUR to make room once rain speaks up", () => {
+    // At 390px "5% rain · warming to 80° by 2pm" fits and
+    // "60% rain · warming to 80° by 2pm" does not, so the hour is what gives.
+    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
+    const trend = tempTrend(hours, 66);
+    const quiet = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 3 };
+    const loud = { likely: true, probability: 60, known: true, temperatureF: 66, weatherCode: 61 };
+    expect(trendHourFits(quiet)).toBe(true);
+    expect(trendHourFits(loud)).toBe(false);
+    expect(weatherMessage(quiet, null, "F", trend)).toBe("66°F · no rain · warming to 80° by 7pm");
+    expect(weatherMessage(loud, null, "F", trend)).toBe("66°F · 60% rain · warming to 80°");
+    // Rain arriving later in the window also costs the trend its hour.
     const later = { timeMs: Date.parse("2026-09-03T21:00:00-04:00"), probability: 70 };
-    const dry = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
-    expect(weatherMessage(dry, later, "F", trend)).not.toContain("warming");
-    // Only the quietest branch carries it — and trendShownInMessage agrees.
-    expect(weatherMessage(dry, null, "F", trend)).toContain("warming");
-    expect(trendShownInMessage(warn, null)).toBe(false);
-    expect(trendShownInMessage(mention, null)).toBe(false);
-    expect(trendShownInMessage(dry, later)).toBe(false);
-    expect(trendShownInMessage(dry, null)).toBe(true);
+    expect(trendHourFits(quiet, later)).toBe(false);
+    expect(weatherMessage(quiet, later, "F", trend))
+      .toBe("66°F · rain 9pm (70%) · warming to 80°");
+  });
+
+  it("keeps the umbrella advice at 70% and above", () => {
+    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
+    const trend = tempTrend(hours, 66);
+    const msg = weatherMessage(
+      { likely: true, probability: 85, known: true, temperatureF: 66, weatherCode: 61 },
+      null, "F", trend,
+    );
+    expect(msg).toBe("66°F · 85% rain — take an umbrella · warming to 80°");
   });
 
   it("falls back to the condition word when there is nothing to warm or cool toward", () => {
