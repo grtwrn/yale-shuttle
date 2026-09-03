@@ -29,7 +29,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
+  dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -45,7 +45,7 @@ import {
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
-import { walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
 
@@ -1974,10 +1974,10 @@ const TripPlanner: FC<{
       //       flag departed. Instead treat it as waitSec=0 so the card shows
       //       "arriving now" / "0 min". Fixes reports #36, #37, #38.
       //   (b) Genuinely no catchable bus — flag departed as before.
-      // If the user's GPS puts them within 80 m of the board stop, treat them
-      // as already there (walkToSec = 0). Stale GPS commonly reports a position
-      // 30-100 m off, which makes an arriving bus look uncatchable when the rider
-      // is standing right at the stop.
+      // If the user's GPS puts them within AT_PLACE_M of the board stop, treat
+      // them as already there (walkToSec = 0). Stale GPS commonly reports a
+      // position 30-100 m off, which makes an arriving bus look uncatchable when
+      // the rider is standing right at the stop.
       // Judge proximity from the rider's LIVE position, not the origin
       // pinned at search time. When the trip starts from "current
       // location", fromLL (hence effectiveFromLL) is frozen at the coord
@@ -1991,11 +1991,11 @@ const TripPlanner: FC<{
       const distToBoard = (boardCoords && liveFromLL)
         ? haversineMeters(liveFromLL, boardCoords)
         : Infinity;
-      // Within 80 m → treat as standing at the stop (walk = 0). Otherwise,
+      // Within AT_PLACE_M → treat as standing at the stop (walk = 0). Otherwise,
       // when tracking live GPS, derive the *remaining* walk from current
       // distance rather than the original full walk leg, so partial
       // progress toward the stop shrinks the wait/catchable window.
-      const effectiveWalkToSec = distToBoard < 80
+      const effectiveWalkToSec = distToBoard < AT_PLACE_M
         ? 0
         : (usingLive ? walkSecFromMeters(distToBoard) : o.walkToSec);
 
@@ -2047,6 +2047,14 @@ const TripPlanner: FC<{
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  // Origin and destination are the same place (report: setting one's own
+  // location as the destination "gets confused"). Keyed on effectiveFromLL,
+  // the same origin planTrip used, so the message and the option list can
+  // never disagree about which trip is on screen. Declared here, above every
+  // hook, because a dependency array that reaches a later const is a TDZ
+  // ReferenceError that blank-screens the app.
+  const alreadyThere = isAlreadyThere(effectiveFromLL, toLL, options);
 
   // Latest options for the reminder engine's interval closure — the memo
   // above rebuilds the array every /api/buses poll, and re-arming the
@@ -3143,7 +3151,38 @@ const TripPlanner: FC<{
       })()}
 
       {/* Results */}
-      {options && options.length === 0 && (
+      {/* A trip of no distance is not a trip. Say the true thing FIRST.
+          Measured on master with the rider standing at Phelps Gate and Phelps
+          Gate as the destination: the walk-only shape lit the fallback below,
+          so the page opened with FIFTEEN route cards each reading "Should be
+          running now — no bus reporting yet" — which reads as a broken feed,
+          not as "you are here". The honest answer was on the page, but under
+          all of them and past the fold. The route list is noise in this state:
+          someone standing at their destination does not need to know which
+          shuttles serve it. */}
+      {alreadyThere && (
+        <div style={{
+          marginTop: 12, padding: "16px 16px 14px", background: "#fff",
+          borderRadius: 12, border: "1px solid #e0ddd8",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            fontSize: 16, fontWeight: 700, color: "#263238",
+          }}>
+            <span aria-hidden="true">🏁</span>
+            <span>You&rsquo;re already there</span>
+          </div>
+          <div style={{ fontSize: 14, color: "#546e7a", lineHeight: 1.45, marginTop: 6 }}>
+            {haversineMeters(effectiveFromLL!, toLL!) <= SAME_SPOT_M
+              ? "That\u2019s the same place you\u2019re starting from."
+              : "Your destination is just a few steps away."}
+          </div>
+          <div style={{ fontSize: 12.5, color: "#90a4ae", lineHeight: 1.45, marginTop: 8 }}>
+            Pick a different destination above to plan a trip.
+          </div>
+        </div>
+      )}
+      {options && options.length === 0 && !alreadyThere && (
         <div style={{ fontSize: 14, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
           No trip options found between these locations.
           <div style={{ fontSize: 13, color: "#bdbdbd", marginTop: 8 }}>
@@ -3157,7 +3196,7 @@ const TripPlanner: FC<{
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {potentialRoutes.some((p) => p.activeNow)
@@ -3206,7 +3245,7 @@ const TripPlanner: FC<{
         </div>
       )}
       </div>
-      {options && options.length > 0 && (
+      {options && options.length > 0 && !alreadyThere && (
         <div style={{ marginTop: 4 }}>
           {/* Details page leads with the way back — the search rows are
               hidden while a route is open, so this is the page header. */}

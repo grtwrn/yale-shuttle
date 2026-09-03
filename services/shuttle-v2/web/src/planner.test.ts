@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
-import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
   at, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
 } from "./__fixtures__/payload";
@@ -99,6 +99,92 @@ describe("planTrip: walking dominance", () => {
       if (o.mode !== "shuttle") continue;
       expect(o.walkToSec + o.walkFromSec).toBeLessThan(o.directWalkSec);
     }
+  });
+});
+
+// The operator, 2026-09-03: setting the same place as both origin and
+// destination "gets confused". planTrip is right — every shuttle option is
+// dominated by a direct walk of ~zero, leaving one 0-minute Walk. What was
+// wrong is that the walk-only shape is ALSO the trigger for the "shuttles that
+// go there — none on the map yet" fallback, so the rider standing at their
+// destination got a dozen routes and "Should be running now" instead of the
+// answer.
+describe("isAlreadyThere", () => {
+  const walkOnly = (from: { lat: number; lon: number }, to: { lat: number; lon: number }) => {
+    const options = plan(from, to);
+    expect(options.every((o) => o.mode === "walk")).toBe(true);
+    return options;
+  };
+
+  it("is true for the exact same point, where the plan is a 0-minute walk", () => {
+    const here = at(STOP.phelpsGate);
+    const options = walkOnly(here, here);
+    expect(options).toHaveLength(1);
+    expect(options[0].totalSec).toBe(0);
+    expect(isAlreadyThere(here, here, options)).toBe(true);
+  });
+
+  // The near miss the exact case hides behind: a saved "Home" a few metres off
+  // the GPS fix produces the same walk-only state with a 20-second walk.
+  it("is true for a near miss — a saved place metres from the fix", () => {
+    const from = at(STOP.phelpsGate);
+    const to = northOf(STOP.phelpsGate, 22);
+    expect(walkSecFromMeters(haversineMeters(from, to))).toBeLessThan(30);
+    expect(isAlreadyThere(from, to, walkOnly(from, to))).toBe(true);
+  });
+
+  it("holds up to AT_PLACE_M and stops there", () => {
+    const from = at(STOP.phelpsGate);
+    const inside = northOf(STOP.phelpsGate, AT_PLACE_M - 5);
+    const outside = northOf(STOP.phelpsGate, AT_PLACE_M + 5);
+    expect(isAlreadyThere(from, inside, walkOnly(from, inside))).toBe(true);
+    expect(isAlreadyThere(from, outside, walkOnly(from, outside))).toBe(false);
+  });
+
+  // The threshold has room: nothing is being suppressed at 80 m because
+  // planTrip has no shuttle to offer until the endpoints are ~200 m apart.
+  it("cannot hide a ride — the first shuttle option needs far more separation", () => {
+    const from = at(STOP.phelpsGate);
+    for (const m of [AT_PLACE_M, 120]) {
+      expect(plan(from, northOf(STOP.phelpsGate, m)).some((o) => o.mode === "shuttle")).toBe(false);
+    }
+    expect(plan(from, northOf(STOP.phelpsGate, 200)).some((o) => o.mode === "shuttle")).toBe(true);
+  });
+
+  // Distance alone must not decide: two stops in this network are 10 m apart,
+  // so a (silly but real) ride between them can survive the dominance rule,
+  // and a message must never overrule an option the planner kept.
+  it("is false whenever a shuttle option survives, however close the ends", () => {
+    const here = at(STOP.phelpsGate);
+    const shuttle = { ...plan(northOf(STOP.phelpsGate, 200), at(STOP.cedar333)).find((o) => o.mode === "shuttle")! };
+    expect(shuttle).toBeDefined();
+    expect(isAlreadyThere(here, here, [shuttle])).toBe(false);
+  });
+
+  // And an empty shuttle list alone must not decide either: an off-hours
+  // cross-town trip looks identical, and THAT rider wants the route list.
+  it("is false for a long walk-only trip, so the route list still shows", () => {
+    const from = { lat: 41.20, lon: -72.90 };
+    const to = { lat: 41.25, lon: -72.90 };
+    expect(isAlreadyThere(from, to, walkOnly(from, to))).toBe(false);
+  });
+
+  it("is false before a trip exists", () => {
+    const here = at(STOP.phelpsGate);
+    expect(isAlreadyThere(null, here, [])).toBe(false);
+    expect(isAlreadyThere(here, null, [])).toBe(false);
+    expect(isAlreadyThere(here, here, null)).toBe(false);
+  });
+
+  // The wording split. SAME_SPOT_M sits below the closest pair of distinct
+  // stops this network serves (10.3 m), so "the same place you're starting
+  // from" is never printed for two points the app calls different stops.
+  it("splits its wording below the closest distinct stop pair", () => {
+    expect(SAME_SPOT_M).toBeLessThan(10.3);
+    expect(SAME_SPOT_M).toBeLessThan(AT_PLACE_M);
+    const here = at(STOP.phelpsGate);
+    expect(haversineMeters(here, northOf(STOP.phelpsGate, 5))).toBeLessThanOrEqual(SAME_SPOT_M);
+    expect(haversineMeters(here, northOf(STOP.phelpsGate, 22))).toBeGreaterThan(SAME_SPOT_M);
   });
 });
 

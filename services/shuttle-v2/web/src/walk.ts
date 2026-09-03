@@ -59,6 +59,25 @@ export const walkSecFromMeters = (m: number) => (m * WALK_DETOUR) / WALK_SPEED_M
 export const WALK_ONLY_MAX_SEC = 3600;
 
 /**
+ * Distance at which a rider counts as standing AT a place rather than walking
+ * to it, in metres.
+ *
+ * A phone's fix routinely reads 30–100 m off (a stale position, an urban
+ * canyon), so below this the app cannot tell "here" from "there" and must not
+ * act as though it can. Two consumers, one claim:
+ *
+ *  - `TransitMap`'s live recompute: a rider this close to the board stop has
+ *    walkToSec = 0, so an arriving bus stays catchable instead of looking
+ *    missed while they stand at the pole.
+ *  - `isAlreadyThere` (planner.ts): an origin this close to the destination is
+ *    the SAME PLACE, so the answer is "you're already there", not a trip.
+ *
+ * It was an inline 80 in the first of those. Naming it is what lets the second
+ * make the same claim with the same number.
+ */
+export const AT_PLACE_M = 80;
+
+/**
  * Maximum walk leg (origin → board stop, or alight stop → destination).
  * Mirrors the server's MAX_WALK_M. The `walkDoesntDominate` check in planTrip
  * stops the generous ceiling from producing silly detours.
