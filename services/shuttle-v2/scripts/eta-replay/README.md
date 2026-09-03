@@ -51,3 +51,30 @@ PR.
 
 `raw_positions` is retention-swept, so the GPS replay only ever covers the last
 few hours; take the snapshot at the end of a service day to get a full one.
+
+## jitter-audit.ts — the jump classification, re-derived and paired
+
+`jitter-audit.ts` replays the REAL `computeUpcomingArrivals` over a snapshot and
+explains every ETA jump ≥120/180/300/600 s two ways: with `jitter-classify.ts`'s
+labels (real / moved / twitch / eventless) and MECHANICALLY from the anchor the
+ETA actually used (wrap / flip / advance / atstop / clock / proration / calib),
+per stop AND per incident (one bus, one poll pair). It builds `at_stop_since`
+from `stationarySince` — what `collector.ts` serves — unless `SINCE=entered`,
+which reproduces the earlier harnesses (and claim A's 16,128 to the unit).
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/jitter-audit.ts
+#   SINCE=stationary|entered   DETECTOR=new|pre57   ARM=none|gate|belief|guard   OUT_NAME=...
+```
+
+`ARM=gate` needs a tree where `computeUpcomingArrivals` takes an `AnchorStore`
+(PR #72); `ARM=guard` one where it takes an `EtaGuard` (PR #75); `ARM=belief`
+scores the kalman worktree's filter via `_arrivals-anchored-kalman.ts`. Every
+arm is paired against shipped on the same transitions, with a departure trace
+(arm − shipped for the six polls after every production `at_stop_id` → null)
+and the freeze share split by whether the raw fix moved. It also replays the
+trip card's "next in" rule old vs new (PR #74). Findings, 2026-09-03: at ≥300 s,
+65% of incidents are lap wraps (correct), 31% anchor flips (the defect, 1,586 in
+6.5 h, 1,149 of them −1 flips mostly triggered by `at_stop_id` clearing);
+"twitch" transitions are buses driving at 7.5 m/s. `_detector-pre57.ts` is the
+detector before PR #57, for `DETECTOR=pre57`.
