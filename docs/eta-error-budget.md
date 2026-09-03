@@ -31,12 +31,26 @@ A prediction that is 40 s off but ticks down smoothly is a good product. One
 that is 5 s off on average and jumps 10 min → 1 min between two polls five
 seconds apart is a broken one, and it discredits every other number on screen.
 
-That reframing also rescues the operator's original instinct. They asked for a
-smooth state estimator; the error-budget answer below says a motion model is
-worth 4.6% of the *accuracy*, and on that basis I would have told them not to
-build it. **Judged on stability that reasoning is wrong**, because smoothing is
-not a means to an accuracy gain — smoothing IS the deliverable. What the
-measurements below still change is *where* the smoothing belongs.
+**Then the objective narrowed once more, and this is the version that matters.**
+Smoothness is not the goal either:
+
+> "I don't want a slew limiter. it can go 5->1 if it leaves early. but if it is
+> jitter we need a fix."
+
+A 5 min → 1 min collapse is *correct* when the bus really did pull out early —
+that is information a rider standing at a stop needs immediately, and damping
+it is withholding the truth to make a graph look better. So the objective is
+neither accuracy nor smoothness but:
+
+> **eliminate changes that no real-world event caused, and let real ones
+> through instantly.**
+
+That distinction is what the rest of this document is organised around, and it
+is why an indiscriminate rate limiter — measured here, and effective at the
+wrong thing — was rejected. It also rescues the operator's original instinct:
+they asked for a state estimator with context about what we are tracking, and
+the context that pays turns out to be *whether anything happened*, not vehicle
+dynamics.
 
 ---
 
@@ -199,6 +213,12 @@ expect anchoring to dominate the stability problem. It does not. See below.
 
 ## Stability: the measurement nobody had made
 
+**Which code these numbers are of.** The scoreboard calls the real
+`computeUpcomingArrivals` and the real `stepMany` from the worktree it runs in
+— there is no replica anywhere in it (`gps-replay.ts`'s replica, which went
+three commits stale, is not used). The baseline below is **commit d6aeba2**,
+i.e. before PR #54 and PR #57. The post-fix figures are **commit 61f32ce**.
+
 For each (bus, stop) followed across consecutive 5 s polls, the metric is the
 drift of the **predicted arrival instant** A(t) = t + eta(t). A well-behaved
 countdown holds A constant and ticks the displayed number down by the poll
@@ -231,6 +251,64 @@ Attributed causes of the catastrophic jumps:
 By route, big jumps track the anchor-disagreement routes exactly: Green 2.7%,
 Blue Weekend 2.7%, Purple 2.5%, Pink 1.0% against Blue Day 0.4%, Orange Day
 0.4%.
+
+### Did today's two fixes solve it? Accuracy yes, jitter no
+
+PR #54 (reverting #40's re-pricing) and PR #57 (the layover clock) replayed on
+the same snapshot, d6aeba2 against 61f32ce, identical harness:
+
+| | before (d6aeba2) | after (61f32ce) |
+|---|---|---|
+| \|jump\| p50 / p90 | 4.9 s / 23.4 s | 4.9 s / **20.0 s** |
+| \|jump\| p99 / p99.9 | 305.6 s / 3489 s | 305.5 s / 3449 s |
+| jumps ≥ 60 s | 3.6% | **3.0%** |
+| jumps ≥ 120 s | 1.6% | 1.6% |
+| **jumps ≥ 300 s** | **16,025 (1.00%)** | **16,128 (1.00%)** |
+| board jumps ≥ 300 s | 7,554 (1.4%) | 7,468 (1.4%) |
+| accuracy median / mean | 188.3 s / +184.9 s | **160.4 s / +106.9 s** |
+
+Both fixes are real wins on **accuracy** — the median falls 28 s and the
+pessimistic bias nearly halves — and they take the typical jump down 15%. They
+do **not** touch the catastrophic tail: jumps over five minutes are unchanged
+at 1.0%. Whatever causes the operator's "10 min then 1 min" is untouched by
+either.
+
+### Which jumps should never have happened
+
+Reducing jump magnitude is the wrong objective. The operator's rule:
+
+> "I don't want a slew limiter. it can go 5->1 if it leaves early. but if it
+> is jitter we need a fix."
+
+A 5 → 1 collapse is *correct* when the bus really did pull out early;
+suppressing it withholds what a rider standing at a stop most needs. So every
+jump ≥ 300 s was asked one question: between these two polls, did anything
+actually happen to this bus? (16,128 jumps, commit 61f32ce.)
+
+| | n | share | verdict |
+|---|---|---|---|
+| a detector arrival fired, or the at-stop flag flipped | 7,928 | 49.2% | **real — the ETA should move** |
+| the bus moved ≥ 100 m | 716 | 4.4% | **real** |
+| the bus twitched < 100 m | **7,047** | **43.7%** | jitter |
+| the GPS fix was byte-identical | **437** | **2.7%** | jitter |
+
+**46.4% of catastrophic jumps had no real-world event behind them** — 7,484
+of 16,128, or 0.47% of all 1.59 M transitions. That is the first time this
+population has been sized, and it is the only thing that should be suppressed.
+
+The mechanism is the same in both jitter classes: **the anchor moved without
+the bus meaningfully moving.**
+
+- The twitch population displaces a median of **37.9 m** (p90 79.7 m, max 99 m
+  by construction) — one or two steps of the 30 m deadband — and 6,259 of the
+  7,047 are the anchor moving on GPS alone. It concentrates exactly where the
+  route folds back on itself: **Green 3,319, Purple 1,929, Pink 648**, which is
+  84% of it, against Blue Day 406 and Orange Day 206.
+- All 437 eventless jumps have one cause: **the feed's `last_stop_id` advanced
+  while the GPS fix was frozen.** `findRouteAnchor` reads `last_stop_id` to
+  disambiguate a route that revisits a vicinity, so upstream's stop assignment
+  can relocate the bus by a whole lap while its coordinate says it has not
+  moved 30 m.
 
 Of the board's 5,082 pin switches, 2,544 (50%) are legitimate — the bus you
 were watching pulled in and the card moved to the next one. **2,202 (43%) are
@@ -297,12 +375,23 @@ going stale. Not worth shipping on that trade.
 
 ---
 
-## What wins: constrain the output, not the input
+## Arm B (the rate limiter) was measured, then rejected — do not rebuild it
 
-Since every input-side intervention leaves the jump count intact, the
-intervention belongs on the output. A rate limiter on the predicted arrival
-instant — it may move at most N seconds per poll, released once the bus has
-effectively arrived (eta < 30 s):
+The numbers below are real and reproducible, and the arm is kept in
+`eta-stability.ts` as a baseline. **It must not ship**, for a reason that is
+better than the numbers:
+
+> "I don't want a slew limiter. it can go 5->1 if it leaves early. but if it
+> is jitter we need a fix." — the operator, 2026-09-03
+
+A rate limit is **indiscriminate**. It cannot tell a spurious change from a
+real one, so it damps both, and the 2.7 s of median accuracy it costs at
+45 s/poll (17 s at 20 s/poll) is exactly that: real information arriving late.
+The canary's post-fix trace makes the point concretely — Red #309 held 6–7 min
+for three minutes while the bus sat 400 m away about to leave, then collapsed
+to 1 min, and the bus arrived **84 seconds** later. The 5 → 1 was closer to
+right than the steady number that preceded it. **The defect is the
+steady-but-wrong number, not the correction.**
 
 | MAX_SLEW | p50 | p90 | p99 | p99.9 | jumps ≥300 s | board ≥300 s | countdown UP | rise p90 | accuracy median | mean signed | ETA frozen |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -312,48 +401,55 @@ effectively arrived (eta < 30 s):
 | 30 s | 5.1 | 30.0 | 30.0 | 56.6 | 555 (0.03%) | 665 (0.1%) | 28.5% | 25.1 s | 195.5 s | +73.0 s | 22.7% |
 | **45 s** | **5.0** | **45.0** | **45.0** | **62.4** | **748 (0.05%)** | **837 (0.2%)** | **22.2%** | **40.1 s** | **191.0 s** | +119.1 s | 25.5% |
 
-At 45 s per poll: **catastrophic jumps fall 95% (16,025 → 748), p99.9 falls
-from 3,489 s to 62 s, and the accuracy cost is 2.7 s of median** (188.3 →
-191.0). At 20 s per poll the reduction is 97% and the mean signed bias is
-almost perfectly corrected (+184.9 → −7.4 s), for 17 s of median.
+It suppresses 95% of catastrophic jumps at 45 s/poll — **including the 53.6%
+that were the app correctly reacting to a bus arriving, departing or moving.**
+That is the whole objection in one number.
 
-It is **not** stabilising by freezing. The share of polls on which the ETA does
-not move at all *falls* — 32.4% shipped to 25.5% at 45 s and 19.1% at 20 s. The
-number moves more often, just by less. A 10-minute correction still lands
-in full; it takes 14 polls instead of one.
-
-The cost is real and must be stated: the displayed countdown ticks *up* more
-often (22% of polls at 45 s against 8.5% shipped), because a slow catch-up
-climbs in small steps instead of jumping once. But the size collapses — p90 of
-the rise 40 s against 130 s. "5 min then 6 min" instead of "5 min then 16 min".
+For the record, since it is the way this class of fix usually fails: it did
+*not* stabilise by freezing. The share of polls on which the ETA does not move
+at all falls (32.4% → 25.5% at 45 s, 19.1% at 20 s), and a ten-minute
+correction still lands in full, over 14 polls instead of one. The arm was
+sound; the objective was wrong.
 
 **Note on the accuracy column**: 188.3 s is the median over *every* stop on the
 route including stops a full lap away, so it is not comparable with the 41.4 s
 and 103.6 s figures elsewhere in this document. It is a paired guard rail — all
 arms are scored identically — not an absolute.
 
----
-
 ## Recommendation
 
-**Build the output-side rate limiter. Start at 45 s per poll.**
+**Suppress anchor changes that no movement corroborates. Do not rate-limit the
+output.**
 
-The single number that justifies it: **catastrophic jumps fall 95%, from 16,025
-to 748 out of 1.59 M transitions, for 2.7 s of median accuracy.** No input-side
-change tested came within an order of magnitude of that, including a perfect
-anchor.
+The number that sizes it: **7,484 of 16,128 catastrophic jumps — 46.4% — had
+no real-world event behind them**, and in every one of them the anchor moved
+while the bus did not. The twitch population moves a median of 37.9 m, which is
+one step of a 30 m deadband, and swings the promise by a median of 22 minutes.
 
-Design notes for whoever builds it:
+This is the *discriminating* fix the rate limiter was not: gate the anchor on
+evidence rather than gating the output on time.
 
-- It belongs where the ETA is rendered, per (bus, stop), and must release
-  immediately once the bus has effectively arrived (eta < 30 s) or the number
-  will defend a stale promise past the bus's arrival.
-- Sweep the rate against both columns before fixing it. 20 s is best-calibrated
-  on bias, 45 s is best on accuracy; anything below 20 s starts trading badly.
-- It does **not** address board-level bus swapping — 2,202 genuine swaps of a
-  bus still 5 min out survive every arm here (330 with the limiter, because the
-  limiter blunts the jump rather than preventing the swap). That is a separate
-  mechanism in `pickLiveArrival` and deserves its own investigation.
+- Require an anchor change to be corroborated — by cumulative movement well
+  past the deadband (the twitch population tops out at 99 m), or by a detector
+  arrival or at-stop transition. A real departure releases it in the same poll,
+  so 5 → 1 still happens instantly when the bus really left.
+- `last_stop_id` must stay an input. Withholding it (`detAnchorPure`) makes
+  things **worse** — jumps ≥300 s go 16,128 → 24,986 — because it is doing real
+  disambiguation work where a route revisits a vicinity. The fix is to require
+  corroboration before acting on it, not to ignore it.
+- Validate on the replay before believing it. Two plausible interventions have
+  already failed here: the progress filter conserved the jumps and merely
+  re-labelled them, and the detector-anchor arm moved them 1.00% → 1.00%.
+  Neither would have been caught by reasoning.
+
+### Still open, and now the largest unexplained mechanism
+
+**2,202 of the board's pin switches replace a bus that is still more than five
+minutes out**, and no arm tested here changes that number (2,172 post-fix,
+1,904 with a stabilised anchor). By the operator's definition a swap with no
+real-world cause is jitter, and this is a separate mechanism living in
+`pickLiveArrival`, not in the estimator. It deserves the same attribution
+treatment this document gave the jumps.
 
 ---
 
@@ -367,6 +463,10 @@ Design notes for whoever builds it:
 - **Vehicle mass and inertia.** The velocity quantum is 6 m/s ≈ 13 mph at 5 s
   polling. Acceleration is below the sensor's noise floor by a wide margin.
   Nothing to fit.
+- **An output-side rate limiter on the ETA ("slew").** Built, measured, and
+  rejected by the operator on better reasoning than the numbers: it damps real
+  corrections and spurious ones alike. Kept in `eta-stability.ts` as a
+  baseline. See the section above before proposing anything shaped like it.
 - **A mode-switching route-progress filter.** Built and measured here. It works
   as designed — anchor flips down 84% — and buys nothing, because the jumps are
   conserved. Kept in the tree as `progress-filter.ts` for the measurement, not

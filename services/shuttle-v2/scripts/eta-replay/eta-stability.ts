@@ -231,7 +231,12 @@ function nextArrival(busName: string, stopId: number, t: number): number | null 
 // slew is the OUTPUT-side control: the shipped estimate passed through a rate
 // limiter on the predicted arrival instant. Every other arm changes the INPUT
 // to a stateless function; this one gives the output memory instead.
-const ARMS = ["shipped", "filterPos", "filterFull", "detAnchor", "slew"] as const;
+// detAnchorPure: like detAnchor, but ALSO withholds last_stop_id. detAnchor
+// stabilised the position and left last_stop_id free -- and findRouteAnchor
+// reads last_stop_id to disambiguate, so the client could still re-derive a
+// flipped anchor. This arm removes that second input, which is the only way to
+// actually deliver a stable anchor through the public API.
+const ARMS = ["shipped", "detAnchor", "detAnchorPure", "slew"] as const;
 /** How far the promised arrival instant may move in one poll, seconds. */
 const MAX_SLEW_SEC = Number(process.env.MAX_SLEW_SEC ?? 45);
 type Arm = (typeof ARMS)[number];
@@ -260,7 +265,7 @@ interface Stats {
   prev: Frame | null;
 }
 const mk = (): Stats => ({ jumps: [], jumpsBoard: [], rev: [], revBoard: [], up: 0, upBoard: 0, n: 0, nBoard: 0, causes: {}, causesBoard: {}, pinSwitchByOldEta: {}, bigByRoute: {}, errs: [], etaUnchanged: 0, anchorAgree: 0, anchorSeen: 0, posOffset: [], worst: [], prev: null });
-const stats: Record<Arm, Stats> = { shipped: mk(), filterPos: mk(), filterFull: mk(), detAnchor: mk(), slew: mk() };
+const stats: Record<Arm, Stats> = { shipped: mk(), detAnchor: mk(), detAnchorPure: mk(), slew: mk() };
 /** Smoothed predicted-arrival instant per `${bus}|${stop}`. */
 const slewState = new Map<string, number>();
 
@@ -277,8 +282,8 @@ for (let pi = 0; pi < polls.length; pi++) {
   const dw = dwellsAt(t);
   const scoreAcc = pi % ACC_STRIDE === 0;
 
-  const busesByArm: Record<Arm, BusData[]> = { shipped: [], filterPos: [], filterFull: [], detAnchor: [], slew: [] };
-  const diagByArm: Record<Arm, Frame["bus"]> = { shipped: new Map(), filterPos: new Map(), filterFull: new Map(), detAnchor: new Map(), slew: new Map() };
+  const busesByArm: Record<Arm, BusData[]> = { shipped: [], detAnchor: [], detAnchorPure: [], slew: [] };
+  const diagByArm: Record<Arm, Frame["bus"]> = { shipped: new Map(), detAnchor: new Map(), detAnchorPure: new Map(), slew: new Map() };
 
   for (const o of poll) {
     const key = plan.keys.get(o.busId) ?? o.busName;
@@ -308,9 +313,8 @@ for (let pi = 0; pi < polls.length; pi++) {
     const shippedBus = withAt({ ...base, lat: o.lat, lon: o.lon }, at);
     busesByArm.shipped.push(shippedBus);
 
-    if (filtered) {
+    if (false && filtered) {
       const fpos = { ...base, lat: filtered.lat, lon: filtered.lon };
-      busesByArm.filterPos.push(withAt(fpos, at));
       // The filter's own standing state: it is at the stop that starts its
       // current leg, provided it is standing and actually near that stop.
       const stops = mergedRouteStops(cfg!, net.routeStops);
@@ -323,14 +327,7 @@ for (let pi = 0; pi < polls.length; pi++) {
         : null;
       busesByArm.filterFull.push(withAt(fpos, fAt));
       for (const [arm, a] of [["filterPos", at], ["filterFull", fAt]] as const) {
-        diagByArm[arm].set(o.busName.replace("#", ""), {
-          anchor: filtered.leg, atStopId: a ? a.id : null, atStopSince: a ? a.since : null,
-          lat: filtered.lat, lon: filtered.lon, routeId: o.routeId,
-        });
       }
-    } else {
-      busesByArm.filterPos.push(shippedBus);
-      busesByArm.filterFull.push(shippedBus);
     }
 
     // ---- detAnchor: keep the raw fix, but project it onto the leg the
@@ -350,10 +347,15 @@ for (let pi = 0; pi < polls.length; pi++) {
         const pr = projectOnLeg(geo, bestLeg, { lat: o.lat, lon: o.lon })!;
         const pt = pointAt(geo, pr.progress);
         detBus = withAt({ ...base, lat: pt.lat, lon: pt.lon }, at);
+        // Same snapped position, but last_stop_id withheld so findRouteAnchor
+        // cannot re-derive a flipped anchor from the feed's stop assignment.
+        busesByArm.detAnchorPure.push(withAt({ ...base, lat: pt.lat, lon: pt.lon, last_stop_id: null as unknown as number }, at));
+        diagByArm.detAnchorPure.set(o.busName.replace("#", ""), { anchor: bestLeg, atStopId: at ? at.id : null, atStopSince: at ? at.since : null, lat: pt.lat, lon: pt.lon, routeId: o.routeId });
         diagByArm.detAnchor.set(o.busName.replace("#", ""), { anchor: bestLeg, atStopId: at ? at.id : null, atStopSince: at ? at.since : null, lat: pt.lat, lon: pt.lon, routeId: o.routeId });
       }
     }
     busesByArm.detAnchor.push(detBus ?? shippedBus);
+    if (!detBus) { busesByArm.detAnchorPure.push(shippedBus); diagByArm.detAnchorPure.set(o.busName.replace("#", ""), { anchor: -1, atStopId: at ? at.id : null, atStopSince: at ? at.since : null, lat: o.lat, lon: o.lon, routeId: o.routeId }); }
 
     let anchor = -1;
     if (cfg) {
@@ -364,14 +366,10 @@ for (let pi = 0; pi < polls.length; pi++) {
     if (st) {
       stats.shipped.anchorSeen++;
       if (anchor === st.nearestIndex) stats.shipped.anchorAgree++;
-      if (filtered) {
-        stats.filterPos.anchorSeen++;
-        if (filtered.leg === st.nearestIndex) stats.filterPos.anchorAgree++;
-        stats.filterPos.posOffset.push(distanceMeters({ lat: o.lat, lon: o.lon }, { lat: filtered.lat, lon: filtered.lon }));
-      }
+
     }
     if (!detBus) diagByArm.detAnchor.set(o.busName.replace("#", ""), { anchor, atStopId: at ? at.id : null, atStopSince: at ? at.since : null, lat: o.lat, lon: o.lon, routeId: o.routeId });
-    if (!filtered) for (const arm of ["filterPos", "filterFull"] as const) diagByArm[arm].set(o.busName.replace("#", ""), { anchor, atStopId: at ? at.id : null, atStopSince: at ? at.since : null, lat: o.lat, lon: o.lon, routeId: o.routeId });
+
   }
 
   const targets = new Set<number>();
@@ -572,6 +570,9 @@ for (const arm of ARMS) {
       reversalPct: Math.round((1000 * S.up) / Math.max(1, S.n)) / 10,
       reversalSizeSec: { p50: q(S.rev, 0.5), p90: q(S.rev, 0.9), p99: q(S.rev, 0.99) },
       bigJumps: big, bigJumpPct: Math.round((1000 * big) / Math.max(1, S.n)) / 10,
+      over60: S.jumps.filter((x) => Math.abs(x) >= 60).length,
+      over60Pct: Math.round((1000 * S.jumps.filter((x) => Math.abs(x) >= 60).length) / Math.max(1, S.n)) / 10,
+      over120Pct: Math.round((1000 * S.jumps.filter((x) => Math.abs(x) >= 120).length) / Math.max(1, S.n)) / 10,
       causes: S.causes,
     },
     board: {
@@ -579,6 +580,8 @@ for (const arm of ARMS) {
       absJump: { p50: q(absOf(S.jumpsBoard), 0.5), p90: q(absOf(S.jumpsBoard), 0.9), p99: q(absOf(S.jumpsBoard), 0.99), p999: q(absOf(S.jumpsBoard), 0.999) },
       reversalPct: Math.round((1000 * S.upBoard) / Math.max(1, S.nBoard)) / 10,
       bigJumps: bigB, bigJumpPct: Math.round((1000 * bigB) / Math.max(1, S.nBoard)) / 10,
+      over60Pct: Math.round((1000 * S.jumpsBoard.filter((x) => Math.abs(x) >= 60).length) / Math.max(1, S.nBoard)) / 10,
+      over120Pct: Math.round((1000 * S.jumpsBoard.filter((x) => Math.abs(x) >= 120).length) / Math.max(1, S.nBoard)) / 10,
       causes: S.causesBoard,
       pinSwitchByOldEta: S.pinSwitchByOldEta,
     },
@@ -611,6 +614,7 @@ for (const arm of ARMS) {
   const a = result.arms[arm];
   console.log(`\n=== ${arm}`);
   console.log(`  perBus  |jump| p50=${a.perBus.absJump.p50}s p90=${a.perBus.absJump.p90}s p99=${a.perBus.absJump.p99}s p99.9=${a.perBus.absJump.p999}s`);
+  console.log(`          >=60s: ${a.perBus.over60Pct}%  >=120s: ${a.perBus.over120Pct}%  >=300s: ${a.perBus.bigJumpPct}%   (board >=60s ${a.board.over60Pct}%, >=300s ${a.board.bigJumpPct}%)`);
   console.log(`          countdown UP on ${a.perBus.reversalPct}% (rise p90 ${a.perBus.reversalSizeSec.p90}s)  |  >=${JUMP_BIG_SEC}s: ${a.perBus.bigJumps} (${a.perBus.bigJumpPct}%)`);
   console.log(`          causes ${JSON.stringify(a.perBus.causes)}`);
   console.log(`  board   |jump| p99=${a.board.absJump.p99}s  >=${JUMP_BIG_SEC}s: ${a.board.bigJumps} (${a.board.bigJumpPct}%)  causes ${JSON.stringify(a.board.causes)}`);

@@ -680,10 +680,14 @@ changes shape, and say in the PR what moved.
   |predicted − actual|. A mode-switching route-progress filter was built and
   **lost**: it cuts anchor flips 84% and the catastrophic ETA jumps do not
   fall, because they are conserved and merely re-labelled. Even a perfect
-  anchor is worth 1.00% → 0.96% of them. What wins is an output-side rate
-  limiter: **95% fewer catastrophic jumps for 2.7 s of median accuracy**. Read
-  it before proposing a Kalman filter, a traffic model, or anchor work aimed
-  at stability.
+  anchor is worth 1.00% → 0.96% of them. Then classifies every jump by whether
+  ANY real-world event caused it: **46.4% had none** (the anchor moved while
+  the bus did not — a 37.9 m median twitch, 84% of it on Green/Purple/Pink),
+  and that population is the only thing worth suppressing. An output-side rate
+  limiter was measured and **rejected**: it damps real 5→1 corrections too, and
+  "it can go 5->1 if it leaves early; if it is jitter we need a fix" (operator).
+  Read it before proposing a Kalman filter, a traffic model, a slew/damping
+  guard, or anchor work aimed at stability.
 
 ## Verification harnesses
 
