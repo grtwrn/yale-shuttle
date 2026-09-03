@@ -35,6 +35,7 @@ import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
+import { AffiliationDisclaimer, BetaBanner } from "./Banners";
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
@@ -6111,6 +6112,19 @@ const TransitMap: FC = () => {
   // with source:"feedback" so debug queries can distinguish general
   // feedback from route-specific reports.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // The composer sits at the foot of the page, so the beta banner up by the
+  // tabs has to bring it into view as well as open it — expanding a form
+  // several screens below the tap looks like nothing happened.
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const openFeedback = () => {
+    setFeedbackOpen(true);
+    // Next frame: the composer has to exist before it can be scrolled to.
+    // Both calls are optional-chained — an older engine without smooth
+    // scrolling should still get the open form, not a crash.
+    requestAnimationFrame(() => {
+      feedbackRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    });
+  };
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -6849,6 +6863,13 @@ const TransitMap: FC = () => {
         </div>
       </div>
 
+      {/* Beta notice — persistent, and the tap opens the feedback composer at
+          the foot of the page. Near the top because the operator's aim is to
+          RECEIVE reports and the footer button is a full scroll away. Hidden
+          only on the ride page, which hides the tabs above it for the same
+          reason: that view is about the bus you are on. */}
+      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
+
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
@@ -7313,7 +7334,7 @@ const TransitMap: FC = () => {
           tabs (Trip / All / Accuracy). Collapsed by default so it
           doesn't compete with the primary UI; expands into a small
           textarea when the rider wants to say something. */}
-      <div style={{
+      <div ref={feedbackRef} style={{
         width: "100%", maxWidth: 560, margin: "16px auto 24px",
         padding: "0 16px", display: "flex", flexDirection: "column",
         alignItems: "stretch", gap: 8,
@@ -7493,6 +7514,11 @@ const TransitMap: FC = () => {
           </div>
         )}
       </div>
+
+      {/* Last line on every page, and not dismissible: the app is named for
+          Yale, serves its shuttle feed and draws its route colours, so this
+          sentence is what keeps that honest. */}
+      <AffiliationDisclaimer />
     </div>
   );
 };
