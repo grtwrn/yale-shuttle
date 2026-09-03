@@ -11,7 +11,7 @@ import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
-  RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, rainMessage, saveTempUnit,
+  RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
@@ -3084,6 +3084,7 @@ const TripPlanner: FC<{
                           "35%" beside a temperature reads as anything
                           (operator, 2026-09-02). */}
                       <div
+                        role="img"
                         aria-label={`${h.probability}% chance of rain`}
                         style={{
                           fontSize: 11, color: wet ? "#8a5300" : "#90a4ae",
@@ -6701,6 +6702,9 @@ const TransitMap: FC = () => {
           .app-header { padding: 16px 12px 4px !important; }
           .app-tabs { padding: 0 8px !important; }
           .app-tabs button { padding: 4px 10px !important; font-size: 10.5px !important; }
+          /* ...except the reload glyph, which is an icon, not a label. The
+             rule above is !important, so this one has to be too. */
+          .app-tabs button.app-refresh { font-size: 17px !important; padding: 4px 12px !important; }
           .pick-label { font-size: 11px !important; }
         }
       `}</style>
@@ -6773,13 +6777,18 @@ const TransitMap: FC = () => {
               app never reaches. The pull-to-refresh gesture still works;
               a visible button is the one riders find. */}
           <button
+            className="app-refresh"
             onClick={() => window.location.reload()}
             title="Refresh the app"
             aria-label="Refresh the app"
             style={{
-              padding: "4px 14px", borderRadius: 12, border: "none",
-              background: "#e0ddd8", color: "#546e7a",
-              cursor: "pointer", fontSize: 14, fontFamily: "inherit",
+              // Deliberately NOT an inactive tab's colours, and set apart by a
+              // gap: it sits one thumb-width from Issues and a mis-tap reloads
+              // the page, which throws away a planned trip.
+              padding: "4px 12px", borderRadius: 12,
+              border: "1px solid #d5d2cc", background: "transparent",
+              color: "#78909c", marginLeft: 8,
+              cursor: "pointer", fontSize: 17, fontFamily: "inherit",
               minHeight: 44, minWidth: 44,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
             }}

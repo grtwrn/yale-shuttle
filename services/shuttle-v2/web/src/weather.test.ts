@@ -10,7 +10,6 @@ import {
   outlookHours,
   rainLikely,
   rainLikelyFrom,
-  rainMessage,
   saveTempUnit,
   temperatureText,
   type RainVerdict,
@@ -133,19 +132,19 @@ describe("the weather line", () => {
   it("mentions a small chance without alarm", () => {
     expect(weatherTone(v(20))).toBe("quiet");
     expect(weatherMessage(v(20, { temperatureF: 55, weatherCode: 3 })))
-      .toBe("55°F · rain unlikely (20%)");
+      .toBe("55°F · 20% chance of rain within the hour");
   });
 
   it("warns about the walk legs once rain is likely", () => {
     expect(weatherTone(v(60))).toBe("quiet");
-    expect(weatherMessage(v(60))).toBe("rain likely within the hour (60%)");
+    expect(weatherMessage(v(60))).toBe("60% chance of rain within the hour");
     expect(weatherEmoji(v(60))).toBe("🌧");
   });
 
   it("becomes a warning at a high chance", () => {
     expect(weatherTone(v(85))).toBe("warning");
     expect(weatherMessage(v(85, { temperatureF: 61, weatherCode: 61 })))
-      .toBe("61°F · rain likely now (85%) — take an umbrella");
+      .toBe("61°F · 85% chance of rain within the hour — take an umbrella");
     expect(weatherEmoji(v(85))).toBe("☔");
   });
 
@@ -156,7 +155,7 @@ describe("the weather line", () => {
 
   it("degrades to the rain-only wording when the server sends no temperature", () => {
     expect(weatherMessage(v(0))).toBe("no rain expected");
-    expect(weatherMessage(v(30))).toBe("rain unlikely (30%)");
+    expect(weatherMessage(v(30))).toBe("30% chance of rain within the hour");
   });
 
   it("describes the hour the rider is in, not the peak hour", () => {
@@ -219,7 +218,7 @@ describe("the rider chooses the unit", () => {
     expect(weatherMessage({ likely: false, probability: 5, known: true }))
       .toBe("no rain expected");
     expect(weatherMessage({ likely: false, probability: 35, known: true }))
-      .toBe("rain unlikely (35%)");
+      .toBe("35% chance of rain within the hour");
   });
 
   it("defaults to Fahrenheit, and survives a browser with storage blocked", () => {
@@ -228,10 +227,15 @@ describe("the rider chooses the unit", () => {
       configurable: true,
       get() { throw new Error("blocked"); },
     });
-    expect(loadTempUnit()).toBe("F");
-    expect(() => saveTempUnit("C")).not.toThrow();
-    if (real) Object.defineProperty(globalThis, "localStorage", { configurable: true, value: real });
-    else delete (globalThis as { localStorage?: unknown }).localStorage;
+    // try/finally, or a failing assertion here leaves every later test in the
+    // file with a localStorage that throws.
+    try {
+      expect(loadTempUnit()).toBe("F");
+      expect(() => saveTempUnit("C")).not.toThrow();
+    } finally {
+      if (real) Object.defineProperty(globalThis, "localStorage", { configurable: true, value: real });
+      else delete (globalThis as { localStorage?: unknown }).localStorage;
+    }
   });
 });
 
@@ -273,10 +277,38 @@ describe("the outlook — answering \"and later?\"", () => {
     // announce the same hour again.
     const soon = [H(18, 80), H(19, 85)];
     const v = { likely: true, probability: 85, known: true, temperatureF: 61 };
-    // It names NOW, not the hour after it: a rider already being rained on
-    // does not need 7pm's forecast on the same line.
-    expect(weatherMessage(v, nextWetHour(soon, now))).toContain("now");
+    // The near-term number owns the line; the outlook must not name an hour
+    // that is already inside the window the number covers.
+    expect(weatherMessage(v, nextWetHour(soon, now))).toContain("within the hour");
     expect(weatherMessage(v, nextWetHour(soon, now))).not.toContain("7pm");
+  });
+
+  it("does not hide a near-term chance behind a later hour", () => {
+    // 45% in the next hour and 70% at nine: the rider walking a leg NOW is
+    // told about now. The nine o'clock hour is one tap away in the strip.
+    const v = { likely: false, probability: 45, known: true, temperatureF: 60, weatherCode: 3 };
+    expect(weatherMessage(v, nextWetHour(evening, now)))
+      .toBe("60°F · 45% chance of rain within the hour");
+  });
+
+  it("never calls a coin flip unlikely, and never claims rain has started", () => {
+    const at = (p: number) => weatherMessage({ likely: p >= 50, probability: p, known: true });
+    for (const p of [20, 35, 49, 50, 69, 70, 85, 100]) {
+      expect(at(p)).toContain(`${p}% chance of rain within the hour`);
+      expect(at(p)).not.toContain("unlikely");
+      expect(at(p)).not.toContain("now");
+    }
+    // Only the umbrella clause changes across the 69→70 boundary.
+    expect(at(69)).toBe("69% chance of rain within the hour");
+    expect(at(70)).toBe("70% chance of rain within the hour — take an umbrella");
+  });
+
+  it("does not print a wet condition beside \"no rain expected\"", () => {
+    // Upstream says it is raining but puts the hour's chance at 10%.
+    expect(weatherMessage({ likely: false, probability: 10, known: true, temperatureF: 55, weatherCode: 61 }, null))
+      .toBe("55°F · Rain");
+    expect(weatherMessage({ likely: false, probability: 10, known: true, temperatureF: 55, weatherCode: 3 }, null))
+      .toBe("55°F · Cloudy · no rain expected");
   });
 
   it("ignores hours beyond the outlook horizon", () => {

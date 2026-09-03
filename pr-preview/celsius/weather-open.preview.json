@@ -1,0 +1,20 @@
+{
+  "caption": "Hourly outlook open: am/pm labels and a drop beside each percentage",
+  "base": "http://127.0.0.1:8151",
+  "trip": {
+    "board": 127,
+    "dest": 23
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/weather"
+  ],
+  "shots": [
+    "/tmp/shots-c/weather-open/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

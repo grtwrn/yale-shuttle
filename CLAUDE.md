@@ -166,13 +166,22 @@ line's expand button, not nested inside it: a button within a button is
 invalid HTML and iOS ignores the inner one.
 
 The weather line above the trip options is ALWAYS shown when a forecast
-exists (`web/src/weather.ts`): temperature, condition and the chance of rain
-within the hour, quiet by default and an amber "Take an umbrella" past 70%.
-It was rain-only and hidden below 50%, which meant nobody learned to look for
-it. It never reorders or hides an option — a shuttle is not faster in the
-rain, only drier at the ends. Temperature and the WMO code are optional all
-the way through, so an upstream that stops sending them degrades to the
-rain-only wording rather than to no line.
+exists (`web/src/weather.ts`), quiet by default and amber past 70%. It was
+rain-only and hidden below 50%, which meant nobody learned to look for it. It
+never reorders or hides an option — a shuttle is not faster in the rain, only
+drier at the ends. Temperature and the WMO code are optional all the way
+through, so an upstream that stops sending them degrades to the rain-only
+wording rather than to no line.
+
+**The line says "within the hour", never "now".** `probability` is the PEAK
+across every bucket overlapping the next hour, so "raining now" would fire up
+to 55 minutes early on a dry evening. For the same reason the number is quoted
+without an adjective — 45% is neither likely nor unlikely — and only the
+"take an umbrella" clause changes at 70%, so no wording flips at the boundary.
+A near-term chance always outranks the later hour: a rider with 45% in the
+next hour must not be told about nine o'clock instead. A wet WMO code with a
+low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
+no rain expected".
 
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be

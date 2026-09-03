@@ -1,6 +1,6 @@
 {
-  "caption": "Hourly outlook open: am/pm labels and a drop beside each percentage",
-  "base": "http://127.0.0.1:8096",
+  "caption": "Weather line: am/pm hours, a drop on every percentage, and a °F/°C switch",
+  "base": "http://127.0.0.1:8151",
   "trip": {
     "board": 127,
     "dest": 23
@@ -12,7 +12,7 @@
     "/api/weather"
   ],
   "shots": [
-    "/tmp/shots-c/weather-open/trip.png"
+    "/tmp/shots-c/collapsed/trip.png"
   ],
   "failedViews": [],
   "pageErrors": [],

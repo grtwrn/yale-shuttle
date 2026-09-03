@@ -58,8 +58,9 @@ const NO_RAIN: RainVerdict = { likely: false, probability: 0, known: false };
  * still shows the forecast, quietly.
  */
 export const RAIN_PROMINENT_THRESHOLD = 70;
-/** Below this, the line says "no rain expected" rather than quoting a number:
- *  "12% chance of rain" is noise a rider cannot act on. */
+/** Below this the line stops quoting a number: "12% chance of rain" is noise
+ *  a rider cannot act on. At or above it the number is quoted plainly, with
+ *  no adjective — 45% is neither "likely" nor "unlikely", it is 45%. */
 export const RAIN_MENTION_THRESHOLD = 20;
 
 /** Plain words for the WMO code — only the distinctions a rider acts on. */
@@ -284,20 +285,34 @@ export function weatherMessage(
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
   const head = temp ? `${temp} · ` : "";
+  // "within the hour", never "now": `probability` is the PEAK across every
+  // bucket that overlaps the next hour (see rainLikely), so at 20:05 an 85%
+  // bucket at 21:00 would have the line announcing rain up to 55 minutes
+  // early. The number and the window are quoted as they are; only the
+  // umbrella clause changes with severity, so nothing about the wording
+  // flips at the 69→70 boundary.
   if (v.probability >= RAIN_PROMINENT_THRESHOLD) {
-    return `${head}rain likely now (${v.probability}%) — take an umbrella`;
+    return `${head}${v.probability}% chance of rain within the hour — take an umbrella`;
   }
-  if (v.likely) {
-    return `${head}rain likely within the hour (${v.probability}%)`;
+  if (v.probability >= RAIN_MENTION_THRESHOLD) {
+    return `${head}${v.probability}% chance of rain within the hour`;
   }
+  // Dry for the next hour: spend the words on when that ends. This branch is
+  // BELOW the near-term one deliberately — a rider with 45% in the next hour
+  // must not be told about 9pm instead.
   if (later) {
     return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
-  if (v.probability >= RAIN_MENTION_THRESHOLD) {
-    return `${head}rain unlikely (${v.probability}%)`;
-  }
   const cond = conditionText(v.weatherCode);
+  // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain
+  // expected" — the condition alone is the honest line.
+  if (cond && isWetCode(v.weatherCode)) return `${head}${cond}`;
   return `${head}${cond ? `${cond} · ` : ""}no rain expected`;
+}
+
+/** WMO codes from 50 up are drizzle/rain/snow/showers/thunderstorms. */
+function isWetCode(code: number | undefined): boolean {
+  return typeof code === "number" && Number.isFinite(code) && code >= 50;
 }
 
 /** The emoji that leads the line. */
@@ -314,6 +329,3 @@ export function weatherEmoji(v: RainVerdict): string {
 }
 
 /** Kept for the leave-alert prefix, which only cares about the warning case. */
-export function rainMessage(v: RainVerdict): string {
-  return `${weatherEmoji(v)} ${weatherMessage(v)}`;
-}
