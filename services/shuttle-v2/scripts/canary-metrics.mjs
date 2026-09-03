@@ -240,33 +240,127 @@ export function haversineM(a, b) {
 /**
  * The lines the canary rides, and the upstream route ids that carry them.
  *
+ * ALL FIFTEEN, because on 2026-09-03 the operator retired the other standing
+ * watch ("remove the cron. the canary agent can do it all") and this harness
+ * inherited its whole job — that one rotated lines, so this one must too.
+ * Order is the rotation order; Red and Blue Day lead it because they are the
+ * pair the operator named.
+ *
  * `web/src/routes.ts` is the single source of truth for this mapping and a
  * harness cannot import a .ts module, so this is a copy — and
  * `canary-metrics.test.mjs` parses ROUTE_LISTS out of that file and fails if
  * the two disagree, the same trick `walk.test.ts` uses to pin the client's
- * walk model to the server's. Order is the rotation order.
+ * walk model to the server's.
  */
 export const CANARY_LINES = [
   { label: "Red", busRouteIds: [3] },
   { label: "Blue Day", busRouteIds: [1] },
   { label: "Blue Weekend", busRouteIds: [4] },
   { label: "Blue Night", busRouteIds: [13] },
+  { label: "Blue West", busRouteIds: [16] },
+  { label: "Orange Day", busRouteIds: [2] },
+  { label: "Orange Night", busRouteIds: [14] },
+  { label: "Orange East", busRouteIds: [17] },
+  { label: "Brown", busRouteIds: [19] },
+  { label: "Pink", busRouteIds: [8] },
+  { label: "Green", busRouteIds: [9] },
+  { label: "Purple", busRouteIds: [10] },
+  { label: "Gold", busRouteIds: [15] },
+  { label: "Grocery TJ", busRouteIds: [6] },
+  { label: "Grocery Ham", busRouteIds: [18] },
 ];
 
 /**
- * The rider's trip, in the operator's words: "canner/prospect to public health
- * building". Both ends are coordinates rather than stop ids because the app
- * plans from a GPS fix and picks its own board stop — which is NOT always the
- * nearest one (Blue Day walks the rider 8 min down Whitney to skip eight
- * stops), so the canary reads the board stop back out of the app instead of
- * assuming it.
+ * The trip the operator named: "canner/prospect to public health building".
+ * Both ends are coordinates rather than stop ids because the app plans from a
+ * GPS fix and picks its own board stop — which is NOT always the nearest one
+ * (Blue Day walks the rider 8 min down Whitney to skip eight stops), so the
+ * canary reads the board stop back out of the app instead of assuming it.
  */
-export const CANARY_TRIP = {
+export const CANONICAL_TRIP = {
   origin: { label: "Prospect / Canner", lat: 41.325351, lon: -72.922891 },
   // The curated landmark, verbatim from src/server/landmarks.ts (OSM W239527110),
-  // anchored on the LEPH / 60 College stop.
-  destination: { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155 },
+  // anchored on the LEPH / 60 College stop. class "yale" so the app auto-picks it.
+  destination: {
+    label: "School of Public Health (YSPH)",
+    lat: 41.303735, lon: -72.932155, type: "college", class: "yale",
+  },
 };
 
 /** Mirrors MAX_WALK_M in web/src/walk.ts — past it the planner offers no ride. */
 export const MAX_WALK_M = 1500;
+/**
+ * How close a line must come to BOTH ends of the operator's trip before the
+ * canary rides it on that trip rather than on one of its own.
+ *
+ * NOT MAX_WALK_M. 1500 m is the absolute limit past which no ride can be
+ * planned at all, and at that radius fourteen of the fifteen lines "serve"
+ * this trip — including Pink, whose nearest stop to the origin is 2.5 km away
+ * once you measure it, and Blue Night at 1075 m, where the app is right to
+ * bury the option and the canary would call that a missing line. 700 m is
+ * ~8.5 min on the app's own walk model, which is exactly the walk the planner
+ * itself chose for Blue Day's board stop on this trip — so it is a walk the
+ * app demonstrably considers reasonable. Measured against live stop
+ * coordinates on 2026-09-03; the split it produces is in the test.
+ */
+export const CANONICAL_MAX_WALK_M = 700;
+/** Below this the planner would rightly answer "walk", so it is not a ride. */
+export const MIN_RIDE_M = 500;
+
+/** Every stop id on a line, in sequence, from the /api/buses `routes` map. */
+export function stopsOfLine(payload, line) {
+  return Object.entries(payload.routes ?? {})
+    .filter(([rid]) => line.busRouteIds.includes(Number(rid)))
+    .flatMap(([, s]) => s.map(Number));
+}
+
+/**
+ * The trip this line gets ridden on.
+ *
+ * The operator's own trip whenever the line reaches BOTH ends of it — that is
+ * Red and Blue Day, the pair they named, and any other line that qualifies.
+ * Otherwise a trip derived from the line's own published stops, because a
+ * rotation across fifteen lines cannot be fifteen hand-typed stop pairs
+ * quietly rotting against upstream: `CLAUDE.md` is explicit that stop lists
+ * come from TransLoc and are not hand-edited.
+ *
+ * Derived = board at the line's first stop, ride roughly a quarter of the loop
+ * (short enough to stay well inside the planner's MAX_RIDE_SEC of 25 min,
+ * long enough that walking does not dominate), stepping forward until the two
+ * ends are at least MIN_RIDE_M apart. Returns null when the line has no usable
+ * pair, which is a line the canary skips rather than fails.
+ */
+export function tripForLine(payload, line) {
+  const stops = stopsOfLine(payload, line);
+  const coord = (id) => payload.stop_coords?.[id] ?? null;
+  const name = (id) => payload.stop_names?.[id] ?? `stop ${id}`;
+  if (!stops.length) return null;
+  const nearestTo = (pt) => stops.reduce((best, id) => {
+    const c = coord(id);
+    if (!c) return best;
+    const d = haversineM(pt, c);
+    return d < best ? d : best;
+  }, Infinity);
+  if (nearestTo(CANONICAL_TRIP.origin) <= CANONICAL_MAX_WALK_M &&
+      nearestTo(CANONICAL_TRIP.destination) <= CANONICAL_MAX_WALK_M) {
+    return { kind: "canonical", ...CANONICAL_TRIP };
+  }
+  const board = coord(stops[0]);
+  if (!board) return null;
+  for (let i = Math.max(1, Math.round(stops.length / 4)); i < stops.length; i++) {
+    const c = coord(stops[i]);
+    if (c && haversineM(board, c) >= MIN_RIDE_M) {
+      return {
+        kind: "derived",
+        origin: { label: name(stops[0]), lat: board.lat, lon: board.lon },
+        destination: {
+          label: name(stops[i]), lat: c.lat, lon: c.lon,
+          // A stop is auto-picked by the frontend on type "bus_stop", the same
+          // as a curated landmark on class "yale".
+          type: "bus_stop", class: "shuttle",
+        },
+      };
+    }
+  }
+  return null;
+}

@@ -35,10 +35,10 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
-  CANARY_LINES, CANARY_TRIP, MAX_WALK_M, haversineM, parseOptions, scoreSequence, THRESHOLDS,
+  CANARY_LINES, haversineM, parseOptions, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { seedTestId } from "./testId.mjs";
 
@@ -87,33 +87,24 @@ const say = (s, at = Date.now()) => { if (VERBOSE) process.stderr.write(`[${cloc
 // ── which line to ride ──────────────────────────────────────────────────────
 
 /**
- * A line is rideable when the server is showing live buses on it AND its stop
- * list actually reaches both ends of the trip. The second half matters: Blue
- * Weekend serves Prospect/Canner but never LEPH, so on a Saturday the app is
- * RIGHT to offer no Blue option and a canary that demanded one would cry wolf
- * every weekend. Both facts come from /api/buses, so no schedule table is
- * copied here — the server already drops out-of-service ghosts (report #30).
+ * A line is rideable when the server is showing live buses on it AND a trip
+ * can be built that reaches both ends. The second half matters: Blue Weekend
+ * serves Prospect/Canner but never LEPH, so on a Saturday the app is RIGHT to
+ * offer no Blue option there and a canary that demanded one would cry wolf
+ * every weekend — `tripForLine` gives that line its own trip instead.
+ *
+ * Live buses, not a schedule table, are the service-hours gate. The server
+ * already drops out-of-service ghosts (report #30), so a line with no buses is
+ * a line with nothing to watch, whatever the timetable says.
  */
 export function rideableLines(payload) {
-  const nearest = (stopIds, pt) => stopIds.reduce((best, id) => {
-    const c = payload.stop_coords?.[id];
-    if (!c) return best;
-    const d = haversineM(pt, c);
-    return d < best.d ? { id, d } : best;
-  }, { id: null, d: Infinity });
   return CANARY_LINES.map((line) => {
-    const stops = Object.entries(payload.routes ?? {})
-      .filter(([rid]) => line.busRouteIds.includes(Number(rid)))
-      .flatMap(([, s]) => s.map(Number));
-    const board = nearest(stops, CANARY_TRIP.origin);
-    const alight = nearest(stops, CANARY_TRIP.destination);
+    const trip = tripForLine(payload, line);
     const live = (payload.buses ?? []).filter((b) => line.busRouteIds.includes(b.route_id));
     return {
-      ...line,
-      serves: board.d <= MAX_WALK_M && alight.d <= MAX_WALK_M,
+      ...line, trip,
       liveBuses: live.length,
-      nearestBoardStop: board,
-      rideable: board.d <= MAX_WALK_M && alight.d <= MAX_WALK_M && live.length > 0,
+      rideable: !!trip && live.length > 0,
     };
   });
 }
@@ -180,7 +171,7 @@ async function readPin(page, label) {
   return { ...pin, stuckInDetails: true };
 }
 
-async function plan(page, ctx) {
+async function plan(page, ctx, trip) {
   // Intercept the lookup. `searchTerms.record` in src/server/app.ts has no
   // anon-id filter — excluding the canary from the RIDER counts does not
   // exclude it from `search_terms` — so a canary that typed a real query
@@ -189,11 +180,7 @@ async function plan(page, ctx) {
   // own. The shape is the v1 contract, class "yale" so the app auto-picks it.
   await ctx.route("**/api/geocode*", (route) => route.fulfill({
     status: 200, contentType: "application/json",
-    body: JSON.stringify({ results: [{
-      display_name: CANARY_TRIP.destination.label,
-      lat: CANARY_TRIP.destination.lat, lon: CANARY_TRIP.destination.lon,
-      type: "college", class: "yale",
-    }] }),
+    body: JSON.stringify({ results: [trip.destination] }),
   }));
   await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 45_000 });
   await sleep(5_000);
@@ -201,7 +188,7 @@ async function plan(page, ctx) {
   const input = page.getByPlaceholder(/where do you want to go/i).first();
   await input.click({ timeout: 20_000 });
   await input.fill("");
-  await input.type(CANARY_TRIP.destination.label, { delay: 15 });
+  await input.type(trip.destination.label, { delay: 15 });
   await sleep(1_200);
   await input.press("Enter");
   await sleep(4_500);
@@ -226,7 +213,7 @@ async function runOnce(line) {
   const record = {
     startedAt, startedAtEt: clock(startedAt), base: BASE, line: line.label,
     busRouteIds: line.busRouteIds, thresholds: THRESH,
-    trip: { from: CANARY_TRIP.origin.label, to: CANARY_TRIP.destination.label },
+    trip: { from: line.trip.origin.label, to: line.trip.destination.label, kind: line.trip.kind },
     samples: [], pins: [], arrivals: [], pageErrors: [], failures: [],
   };
   const fail = (kind, detail) => record.failures.push({ kind, detail, atMs: Date.now() });
@@ -239,7 +226,7 @@ async function runOnce(line) {
   try {
     const ctx = await browser.newContext({
       viewport: { width: 390, height: 844 },
-      geolocation: { latitude: CANARY_TRIP.origin.lat, longitude: CANARY_TRIP.origin.lon },
+      geolocation: { latitude: line.trip.origin.lat, longitude: line.trip.origin.lon },
       permissions: ["geolocation"], timezoneId: "America/New_York",
     });
     // Before the first goto, always: the server pre-excludes this id, so a
@@ -250,7 +237,7 @@ async function runOnce(line) {
     page.on("pageerror", (e) => record.pageErrors.push(String(e.message)));
     page.on("console", (m) => { if (m.type() === "error") record.pageErrors.push(`console: ${m.text()}`); });
 
-    await plan(page, ctx);
+    await plan(page, ctx, line.trip);
 
     let opts = parseOptions(await page.evaluate(() => document.body.innerText));
     if (!opts.some((o) => o.routeLabel === line.label)) {
@@ -503,14 +490,23 @@ async function oneRider() {
   const st = readState();
   const line = pool[st.cursor % pool.length];
   if (!forced) writeState({ ...st, cursor: (st.cursor + 1) % 1e6, lastLine: line.label });
-  say(`riding ${line.label} (${line.liveBuses} live buses)`);
+  say(`riding ${line.label} (${line.liveBuses} live buses) — ${line.trip.origin.label} → ${line.trip.destination.label} [${line.trip.kind}]`);
   const record = await runOnce(line);
   append(record);
   if (!record.ok) process.stderr.write(`${describeFailure(record)}\n`);
   return { status: record.ok ? "ok" : "finding", record };
 }
 
-if (has("--summary")) {
+// Importing this file must never put a browser on the road. Two exploratory
+// `import()`s during development each launched a real rider — one of them
+// while another was already running, which is the one thing this harness
+// promises not to do.
+const RUN_AS_SCRIPT = !!process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (!RUN_AS_SCRIPT) {
+  // exported for tests and for inspection; nothing runs
+} else if (has("--summary")) {
   const i = argv.indexOf("--days");
   summary(i >= 0 ? Number(argv[i + 1]) : 7);
 } else if (has("--loop")) {

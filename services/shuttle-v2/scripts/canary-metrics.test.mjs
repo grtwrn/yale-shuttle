@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  bucketOf, conservativeDrift, parseBusEtaText, parseOptions, parseWaitFallback,
-  scoreSequence, THRESHOLDS,
+  bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M, CANONICAL_TRIP, conservativeDrift,
+  MAX_WALK_M, MIN_RIDE_M, parseBusEtaText, parseOptions, parseWaitFallback,
+  scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 
 describe("bucketOf", () => {
@@ -248,5 +249,87 @@ describe("the catastrophic bar", () => {
     const drift = conservativeDrift([420, 480], [120, 180], 15);
     expect(drift).toBe(-225);
     expect(Math.abs(drift)).toBeGreaterThanOrEqual(THRESHOLDS.catastrophicSec);
+  });
+});
+
+describe("which trip a line is ridden on", () => {
+  // A synthetic payload in the shape /api/buses serves. Nothing in the suite
+  // touches the network.
+  const near = (pt, dLat) => ({ lat: pt.lat + dLat, lon: pt.lon });
+  const payload = {
+    routes: {
+      3: [1, 2, 3, 4],              // reaches both ends of the operator's trip
+      9: [10, 11, 12, 13, 14, 15, 16, 17],  // nowhere near either
+      15: [20, 21, 22, 23],         // every stop on top of the next
+      99: [],
+    },
+    stop_coords: {
+      1: near(CANONICAL_TRIP.origin, 0.0005),        // ~55 m from the origin
+      2: { lat: 41.315, lon: -72.927 },
+      3: near(CANONICAL_TRIP.destination, 0.0005),   // ~55 m from the destination
+      4: { lat: 41.310, lon: -72.930 },
+      // A line 20 km east: inside no radius of either end.
+      10: { lat: 41.30, lon: -72.68 }, 11: { lat: 41.30, lon: -72.67 },
+      12: { lat: 41.30, lon: -72.66 }, 13: { lat: 41.30, lon: -72.65 },
+      14: { lat: 41.30, lon: -72.64 }, 15: { lat: 41.30, lon: -72.63 },
+      16: { lat: 41.30, lon: -72.62 }, 17: { lat: 41.30, lon: -72.61 },
+      // Four stops within a few metres of each other, 20 km away.
+      20: { lat: 41.40, lon: -72.60 }, 21: { lat: 41.40001, lon: -72.60 },
+      22: { lat: 41.40002, lon: -72.60 }, 23: { lat: 41.40003, lon: -72.60 },
+    },
+    stop_names: { 1: "A", 3: "B", 10: "E0", 12: "E2", 13: "E3", 17: "E7" },
+    buses: [{ route_id: 3, bus_name: "#1" }],
+  };
+  const line = (id) => CANARY_LINES.find((l) => l.busRouteIds[0] === id);
+
+  it("uses the operator's own trip for a line that reaches both ends", () => {
+    const t = tripForLine(payload, line(3));
+    expect(t.kind).toBe("canonical");
+    expect(t.destination.label).toBe("School of Public Health (YSPH)");
+  });
+
+  it("derives a trip from the line's own stops when it does not", () => {
+    const t = tripForLine(payload, line(9));
+    expect(t.kind).toBe("derived");
+    expect(t.origin.label).toBe("E0");
+    // A quarter of eight stops is index 2.
+    expect(t.destination.label).toBe("E2");
+    // A stop is auto-picked by the frontend the way a curated landmark is.
+    expect(t.destination.type).toBe("bus_stop");
+  });
+
+  it("walks forward until the two ends are far enough apart to be a ride", () => {
+    // Every stop on route 15 is within a few metres, so no pair qualifies.
+    expect(tripForLine(payload, line(15))).toBeNull();
+  });
+
+  it("skips a line upstream serves no stops for", () => {
+    expect(tripForLine({ routes: {}, stop_coords: {} }, line(3))).toBeNull();
+  });
+
+  it("does not treat the planner's absolute walk limit as a usable walk", () => {
+    // At MAX_WALK_M fourteen of fifteen lines "serve" the operator's trip,
+    // including ones the app is right to bury. The canonical radius has to be
+    // the walk the app itself would plan, not the one past which it gives up.
+    expect(CANONICAL_MAX_WALK_M).toBeLessThan(MAX_WALK_M);
+    expect(MIN_RIDE_M).toBeLessThan(CANONICAL_MAX_WALK_M);
+  });
+});
+
+describe("rideableLines", () => {
+  it("rides only a line with live buses AND a trip", async () => {
+    const { rideableLines } = await import("./rider-canary.mjs");
+    const payload = {
+      routes: { 3: [1, 2], 9: [] },
+      stop_coords: { 1: CANONICAL_TRIP.origin, 2: CANONICAL_TRIP.destination },
+      stop_names: {},
+      buses: [{ route_id: 3, bus_name: "#1" }, { route_id: 9, bus_name: "#2" }],
+    };
+    const byLabel = Object.fromEntries(rideableLines(payload).map((l) => [l.label, l]));
+    expect(byLabel.Red.rideable).toBe(true);
+    // Green has a bus but upstream lists no stops for it — nothing to ride.
+    expect(byLabel.Green.rideable).toBe(false);
+    // Blue Day has the trip but no bus on the road.
+    expect(byLabel["Blue Day"].rideable).toBe(false);
   });
 });

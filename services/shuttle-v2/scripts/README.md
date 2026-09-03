@@ -161,15 +161,26 @@ as broken in that order.
 
 ## What one run does
 
-1. Picks a line that is **actually running** — the roster is Red, Blue Day,
-   Blue Weekend, Blue Night, round-robin — where "running" means the server is
-   reporting live buses on it *and* its stop list reaches both ends of the trip.
-   Blue Weekend serves Prospect/Canner but never LEPH, so on a Saturday there
-   is correctly no Blue option and the canary does not cry wolf. No schedule
-   table is copied into the harness; `/api/buses` already drops out-of-service
-   ghosts.
-2. Plans **Prospect / Canner → School of Public Health (YSPH)** in the real UI
-   at 390×844 with `/usr/bin/chromium`, geolocation as the origin.
+1. Picks a line that is **actually running** — all fifteen, round-robin —
+   where "running" means the server is reporting live buses on it. That is the
+   service-hours gate, and it needs no schedule table: `/api/buses` already
+   drops out-of-service ghosts (report #30), so a line with no buses is a line
+   with nothing to watch whatever the timetable says.
+2. Plans the trip for that line in the real UI at 390×844 with
+   `/usr/bin/chromium`, geolocation as the origin. **Prospect / Canner →
+   School of Public Health (YSPH)** — the operator's own trip — for every line
+   that comes within 700 m of both ends: Red, Blue Day, Orange Day, Brown and
+   the evening blues. For a line that does not (Pink's nearest stop to the
+   origin is 2.5 km away), a trip **derived from that line's own published
+   stops**: board at its first, ride a quarter of the loop. Fifteen hand-typed
+   stop pairs would be fifteen things rotting against upstream, and stop lists
+   are not hand-edited here.
+
+   The 700 m is not `MAX_WALK_M`. At the planner's 1500 m limit fourteen of
+   fifteen lines "serve" this trip, including ones the app is right to bury,
+   and the canary would report every one of them as a missing line. 700 m is
+   ~8.5 min on the app's own walk model — the walk the planner itself chose for
+   Blue Day's board stop on this very trip.
 3. Reads the app's **own** answer to "which stop am I walking to" out of the
    details view's Directions link, rather than assuming the nearest one — the
    planner walks a Blue Day rider 8 min down Whitney to skip eight stops.

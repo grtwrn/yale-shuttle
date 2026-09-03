@@ -681,12 +681,30 @@ about a few seconds. i'm worried about saying a bus is 10min away and then a
 few seconds later dropping to 1 second." Reports #64 and #32 are riders saying
 the same thing.
 
-It plans Prospect/Canner → the School of Public Health in the real UI, rotating
-across the lines that are actually running, and watches the countdown every
-15 s until the bus physically reaches the board stop it read out of the app's
-own Directions link. `npm run canary -- --loop` keeps one rider going; one
-browser at a time, launched and closed per run; silent on a healthy run;
-`--summary` for the digest. It never files a report.
+**It is the standing watch.** On 2026-09-03 the operator retired the other one
+("remove the cron. the canary agent can do it all"), so this harness inherited
+the whole job: all fifteen lines, round-robin, one browser at a time. A line
+counts as running when `/api/buses` shows live buses on it — the server already
+drops out-of-service ghosts, so that is the service-hours gate and no schedule
+table is copied into the harness.
+
+Each line is ridden on the operator's own trip, Prospect/Canner → the School of
+Public Health, whenever it comes within 700 m of both ends; otherwise on a trip
+derived from its own published stops (board at the first, ride a quarter of the
+loop). The 700 m is deliberately not `MAX_WALK_M`: at 1500 m fourteen of the
+fifteen lines "serve" this trip, including ones the app is right to bury, and
+every one of them would be reported as a missing line.
+
+It watches the countdown every 15 s until the bus physically reaches the board
+stop it read out of the app's own Directions link. `npm run canary -- --loop`
+keeps one rider going; silent on a healthy run; `--summary` for the digest.
+
+**It never files a report, and a run that read nothing fails.** Both are
+lessons from the watch it replaced: that one auto-filed `[first-rider]` reports
+at `priority: "urgent"` — the behaviour the operator turned off once already —
+and it logged "Purple kept its promises at Building 800" off a ride whose own
+record says `"promises": 0`. A scraper that has silently stopped reading looks
+exactly like a healthy line, so `no-countdown` is a failure here.
 
 **The display is bucketed** (`fmtMin`: "now", "<1 min", "N min"), so every
 comparison in `canary-metrics.mjs` is between INTERVALS and reports the
