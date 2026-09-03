@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import {
+  billedDwellSec, computeUpcomingArrivals, MAX_PLAUSIBLE_M_S, MIN_HOP_SEC,
+  STALL_CREDIT_MAX_FRACTION,
+} from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -243,6 +249,94 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
       STOP.collegeWallN,
     )!;
     expect(freshEta).toBeGreaterThan(staleEta);
+  });
+});
+
+describe("a stall credit cancels waiting, never driving", () => {
+  /**
+   * Report #80, Red #316 at 344 Winchester: "if its waited 5/5 already, then
+   * it will be here sooner than 3 min". The premise turned out to be right and
+   * the conclusion wrong — every elapsed second WAS already credited, and the
+   * ~3 min left is three hops of driving. The bug the report actually
+   * uncovered is the opposite one, on the other side of the same bound: with
+   * the credit capped only by the calibrated dwell, a hop could be billed at
+   * ZERO. The dwell median and the segment average estimate the same quantity
+   * (see WHAT A DWELL STATISTIC ACTUALLY MEASURES), so `med >= avg` is
+   * ordinary — 114 of 274 hops on the live payload — and every one of those
+   * promised a bus that still had a block to drive as though it were already
+   * there.
+   */
+  const NEAR = 41.3111, FAR = 41.3211; // ~1.1 km apart at this latitude
+  const stops = { "4": [900, 901] } as Record<string, number[]>;
+  const coords = { 900: { lat: NEAR, lon: -72.93 }, 901: { lat: FAR, lon: -72.93 } };
+
+  it("floors the first hop at the driving the geometry demands", () => {
+    // The dwell median EXCEEDS the whole segment average, so the unfloored
+    // bound cancels all of it.
+    const segs: SegmentTimes = { "4": { "900-901": { avg: 200, sd: 30, n: 20 } } };
+    const dwells: DwellTimes = { "4": { "900": { med: 260, sd: 60, n: 20 } } };
+    const bus = makeBus({
+      lat: NEAR, lon: -72.93, route_id: 4, last_stop_id: 900,
+      at_stop_id: 900, at_stop_since: dwellingSince(30 * 60),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([901], [bus], stops, coords, segs, NOW, dwells), 901,
+    )!;
+    // 1.1 km cannot be driven in 0 s. At MAX_PLAUSIBLE_M_S it is ~50 s.
+    expect(eta).toBeGreaterThan(45);
+    expect(eta).toBeCloseTo(1_112 / MAX_PLAUSIBLE_M_S, -1);
+  });
+
+  it("never bills a hop below the 30 s minimum, however long the bus has sat", () => {
+    const close = { 900: { lat: NEAR, lon: -72.93 }, 901: { lat: NEAR + 0.0009, lon: -72.93 } };
+    const segs: SegmentTimes = { "4": { "900-901": { avg: 90, sd: 20, n: 20 } } };
+    const dwells: DwellTimes = { "4": { "900": { med: 300, sd: 60, n: 20 } } };
+    for (const minutes of [1, 10, 60]) {
+      const bus = makeBus({
+        lat: NEAR, lon: -72.93, route_id: 4, last_stop_id: 900,
+        at_stop_id: 900, at_stop_since: dwellingSince(minutes * 60),
+      });
+      const eta = etaFor(
+        computeUpcomingArrivals([901], [bus], stops, close, segs, NOW, dwells), 901,
+      )!;
+      expect(eta).toBeGreaterThanOrEqual(MIN_HOP_SEC - 1e-6);
+    }
+  });
+
+  it("leaves report #80's own layover untouched — the floor is not new padding", () => {
+    // Red's live calibration for 344 Winchester -> Winchester/Division: the
+    // stops are 112 m apart, so the floor is the 30 s minimum, well under the
+    // ~99 s of driving the hop is already billed. A bus that has served its
+    // whole hold still gets every second of credit it earned.
+    const segs: SegmentTimes = {
+      "4": { [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 } },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: 475.2, sd: 120, n: 13 } },
+    };
+    const served = makeBus({
+      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(10 * 60),
+    });
+    const eta = etaFor(
+      computeUpcomingArrivals([STOP.elmYorkTyco], [served], routeStops, stopCoords, segs, NOW, dwells),
+      STOP.elmYorkTyco,
+    )!;
+    // 557.4 - 475.2 = 82.2 s of driving, unchanged by the floor.
+    expect(eta).toBeCloseTo(557.4 - 475.2, 3);
+  });
+
+  it("mirrors the server's plausible-speed bound", () => {
+    // Same discipline as walk.test.ts: parse the SERVER's constant so the two
+    // cannot drift. A floor built on a slower speed would withhold credit the
+    // bus has genuinely earned — the padding that broke the Red layover, where
+    // the board promised 5 min and the bus came in 2.5.
+    const src = readFileSync(
+      fileURLToPath(new URL("../../src/calibrator/calibrator.ts", import.meta.url)), "utf8",
+    );
+    const m = /export const MAX_PLAUSIBLE_M_S = ([0-9.]+);/.exec(src);
+    expect(m, "MAX_PLAUSIBLE_M_S not found in the calibrator's source").toBeTruthy();
+    expect(MAX_PLAUSIBLE_M_S).toBe(Number(m![1]));
   });
 });
 
