@@ -75,6 +75,9 @@ beforeEach(async () => {
     adminToken: TEST_ADMIN_TOKEN,
     // The clock here is frozen in 2023; count from before it.
     statsSinceDay: "2000-01-01",
+    // Keeps /api/geocode off the network; the external half (Photon and
+    // Nominatim, with a stubbed fetch) is covered in v1compat.geocode.test.ts.
+    geocoder: { lookup: async () => [] },
   });
   // Per-browser budgets now key on the anon id, which the tests reuse across
   // the file; with the frozen clock a bucket never expires on its own.

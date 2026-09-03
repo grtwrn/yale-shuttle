@@ -4,7 +4,8 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { geocode, LANDMARKS } from "./geocode.js";
+import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS } from "./geocode.js";
+import type { Landmark } from "./landmarks.js";
 
 /**
  * Guards against coordinate rot in the hand-curated landmark list.
@@ -246,6 +247,132 @@ describe("landmark/stop dedup", () => {
           Math.abs(k.lat - h.lat) < 6e-4 && Math.abs(k.lon - h.lon) < 8e-4);
         expect(twins).toHaveLength(1);
       }
+    }
+  });
+});
+
+/**
+ * Measured live on 2026-09-02 against GET /api/geocode: "elenas" found
+ * nothing while "elena's" did, "stop and shop" found nothing server-side,
+ * "kbt"/"commons"/"medical school" found nothing, and "audubon" could not
+ * reach the upstream-misspelt "Orange / Audobon". Each case below is one of
+ * those, run against fixtures rather than the rider-facing list so the
+ * curated landmarks stay verified data.
+ */
+describe("robust matching (2026-09-02 live probe)", () => {
+  // Real upstream stop names, typos included — we may not hand-edit them.
+  const TYPO_STOPS: Stop[] = [
+    { id: 76, name: "Orange / Audobon", lat: 41.310923, lon: -72.920191 },
+    { id: 116, name: "Stop & Shop", lat: 41.315041, lon: -72.938202 },
+    { id: 131, name: "Whitney / Cold Springs (N)", lat: 41.325918, lon: -72.915845 },
+    { id: 115, name: "State St Station", lat: 41.30443, lon: -72.92164 },
+    { id: 17, name: "Amistand / Cedar Weekend Blue", lat: 41.300259, lon: -72.932555 },
+    { id: 157, name: "Elm / Orange", lat: 41.30742, lon: -72.92249 },
+  ];
+  const stops = [...REFERENCE_STOPS, ...TYPO_STOPS];
+  const typoNetwork = TransitNetwork.build(stops, [
+    { id: 1, name: "Reference", shortName: "R", color: "#000", stops: stops.map((s) => s.id) },
+  ]);
+
+  const FIXTURE_LANDMARKS: Landmark[] = [
+    { label: "Elena's on Orange", lat: 41.323, lon: -72.9108 },
+    // Confusables: a three-letter query must never fuzzy-match into these.
+    { label: "Sass Hall", lat: 41.31, lon: -72.93 },
+    { label: "Some Place", lat: 41.312, lon: -72.931 },
+    // Label and alias share nothing, so a hit on one is provably via that one.
+    { label: "Alpha Building", lat: 41.314, lon: -72.929, aliases: ["zeta hall"] },
+  ];
+
+  const hits = (q: string) => geocode(typoNetwork, q, FIXTURE_LANDMARKS);
+  const labels = (q: string) => hits(q).map((h) => h.label);
+  const scoreOf = (q: string, label: string) => hits(q).find((h) => h.label === label)?.score;
+
+  it.each(["elenas", "elena's", "elena’s", "élenas", "Elenas on Orange"])(
+    "%o finds the apostrophe'd landmark",
+    (q) => {
+      expect(labels(q)).toContain("Elena's on Orange");
+    },
+  );
+
+  it.each(["stop and shop", "stop & shop", "stop&shop", "Stop and Shop"])(
+    "%o ranks the Stop & Shop stop first",
+    (q) => {
+      expect(labels(q)[0]).toBe("Stop & Shop");
+    },
+  );
+
+  it("reaches the misspelt upstream stop names by their correct spelling", () => {
+    expect(labels("audubon")).toContain("Orange / Audobon");
+    expect(labels("amistad")).toContain("Amistand / Cedar Weekend Blue");
+    expect(labels("cold spring")).toContain("Whitney / Cold Springs (N)");
+  });
+
+  it("scores a typo below every prefix tier", () => {
+    // "Orange / Audobon" is a fuzzy hit; a candidate that genuinely contains
+    // the word sits above it.
+    expect(scoreOf("audubon", "Orange / Audobon")).toBe(0.3);
+    expect(scoreOf("audubon", "Orange / Audobon")!).toBeLessThan(
+      scoreOf("amistand", "Amistand / Cedar Weekend Blue")!,
+    );
+  });
+
+  it.each([
+    ["medical school", "School of Medicine (YSM)"],
+    ["commons", "Schwarzman Center"],
+    ["the commons", "Schwarzman Center"],
+    ["kbt", "Kline Tower (Kline Biology Tower)"],
+    ["marx library", "Kline Tower (Kline Biology Tower)"],
+    ["ynhh", "Yale-New Haven Hospital"],
+    ["new haven hospital", "Yale-New Haven Hospital"],
+    ["train station", "Union Station"],
+    ["business school", "School of Management (SOM)"],
+  ])("%o ranks %o first via an alias", (q, expected) => {
+    expect(geocode(network, q)[0]?.label).toBe(expected);
+  });
+
+  it("never fuzzy-matches a short token", () => {
+    expect(fuzzyWordMatch("sss", "sass")).toBe(false);
+    expect(fuzzyWordMatch("som", "some")).toBe(false);
+    expect(fuzzyWordMatch("kbt", "kbtx")).toBe(false);
+    expect(fuzzyWordMatch("somm", "some")).toBe(false);
+    expect(labels("sss")).toEqual([]);
+    expect(labels("somm")).toEqual([]);
+  });
+
+  it("allows one edit from five letters and two from eight", () => {
+    expect(fuzzyWordMatch("audubon", "audobon")).toBe(true);
+    expect(fuzzyWordMatch("peobody", "peabody")).toBe(true); // adjacent swap
+    expect(fuzzyWordMatch("steling", "sterling")).toBe(true);
+    expect(fuzzyWordMatch("biencke", "beinecke")).toBe(false); // 7 letters, 2 edits
+    expect(fuzzyWordMatch("shwartzman", "schwarzman")).toBe(true); // 10 letters, 2 edits
+    expect(fuzzyWordMatch("shwarzmen", "schwarzman")).toBe(true);
+    expect(fuzzyWordMatch("shwarzmenn", "schwarzman")).toBe(false); // 3 edits
+    expect(damerauLevenshtein("ca", "abc", 3)).toBe(3); // OSA, not unrestricted
+  });
+
+  it("scores an alias exactly like the label", () => {
+    expect(scoreOf("zeta hall", "Alpha Building")).toBe(scoreOf("alpha building", "Alpha Building"));
+    expect(scoreOf("zeta", "Alpha Building")).toBe(scoreOf("alpha", "Alpha Building"));
+    expect(scoreOf("hall zeta", "Alpha Building")).toBe(scoreOf("building alpha", "Alpha Building"));
+    expect(scoreOf("zeta hall", "Alpha Building")).toBe(1);
+  });
+
+  // "st"/"street" are query stopwords so "orange st" lists the Orange Street
+  // stops; that must not cost a stop that spells "St" in its own name.
+  it("drops street suffixes from the query without losing street-named stops", () => {
+    expect(labels("orange st")).toEqual(expect.arrayContaining(["Orange / Audobon", "Elm / Orange"]));
+    expect(labels("orange street")).toContain("Orange / Audobon");
+    expect(labels("state st station")[0]).toBe("State St Station");
+    expect(labels("state st")[0]).toBe("State St Station");
+    expect(labels("State St Station")[0]).toBe("State St Station");
+  });
+
+  it("still ranks every fixture stop first when typed verbatim", () => {
+    for (const s of stops) {
+      const top = geocode(typoNetwork, s.name, FIXTURE_LANDMARKS)[0]!;
+      const merged = top.kind === "landmark" &&
+        Math.abs(top.lat - s.lat) < 6e-4 && Math.abs(top.lon - s.lon) < 8e-4;
+      expect(top.label === s.name || merged, `${s.name} -> ${top.label}`).toBe(true);
     }
   });
 });
