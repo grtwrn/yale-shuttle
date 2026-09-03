@@ -38,7 +38,7 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
-import { computeUpcomingArrivals, type SegmentTimes } from "../../web/src/arrivals";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLegs } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
@@ -118,6 +118,57 @@ const dwellGroups = new Map<string, DwellGroup>();
     });
   }
 }
+// calibrator.ts DWELL_LOW_QUANTILE / DWELL_LOW_MIN_SAMPLES
+const DWELL_LOW_QUANTILE = 0.35;
+const DWELL_LOW_MIN_SAMPLES = 5;
+function percentileOf(a: number[], q: number): number {
+  const s = [...a].sort((x, y) => x - y);
+  const i = (s.length - 1) * q;
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  return s[lo]! + (s[hi]! - s[lo]!) * (i - lo);
+}
+/**
+ * The `dwells` half of the payload, rebuilt for the hour containing `t` the
+ * same way `computeDwellStats` builds it. Without this the real
+ * `computeUpcomingArrivals` is called with `dwellTimes = {}`, which silently
+ * disables everything `billedDwellSec` does — so the "client" row would be a
+ * client that production does not ship either.
+ */
+const dwellPayloadCache = new Map<string, DwellTimes>();
+function dwellPayloadAt(t: number): DwellTimes {
+  const start = calibCache.bucketStart(t);
+  const hit = dwellPayloadCache.get(String(start));
+  if (hit) return hit;
+  const d = new Date(start);
+  const dow = d.getDay();
+  const hours = new Set([(d.getHours() + 23) % 24, d.getHours(), (d.getHours() + 1) % 24]);
+  const out: DwellTimes = {};
+  for (const [key, g] of dwellGroups) {
+    const [rid, sid] = key.split(":");
+    const all: number[] = [];
+    const win: number[] = [];
+    for (let i = 0; i < g.at.length; i++) {
+      if (g.at[i]! < start - DWELL_WINDOW_MS || g.done[i]! > start) continue;
+      all.push(g.sec[i]!);
+      if (g.dow[i] === dow && hours.has(g.hour[i]!)) win.push(g.sec[i]!);
+    }
+    if (all.length === 0) continue;
+    const priorMedian = median(all);
+    const low = all.length >= DWELL_LOW_MIN_SAMPLES ? percentileOf(all, DWELL_LOW_QUANTILE) : undefined;
+    let stat: { med: number; sd: number; n: number; low?: number };
+    if (win.length === 0) {
+      stat = { med: priorMedian, sd: Math.max(percentileOf(all, 0.9) - priorMedian, 5), n: 0, ...(low !== undefined ? { low } : {}) };
+    } else {
+      const med = median(win);
+      stat = { med, sd: Math.max(percentileOf(win, 0.9) - med, 5), n: win.length, ...(low !== undefined ? { low: Math.min(low, med) } : {}) };
+    }
+    (out[rid!] ||= {})[sid!] = { med: Math.round(stat.med * 10) / 10, sd: Math.round(stat.sd * 10) / 10, n: stat.n, ...(stat.low !== undefined ? { low: Math.round(stat.low * 10) / 10 } : {}) };
+  }
+  dwellPayloadCache.set(String(start), out);
+  return out;
+}
+
 const dwellMedCache = new Map<string, number>();
 function dwellMedAt(routeId: number, stopId: number, t: number): number {
   const start = calibCache.bucketStart(t);
@@ -454,7 +505,7 @@ for (const o of observations) {
   const payload = payloadAt(o.t);
   const targets: number[] = [];
   for (let k = 1; k <= MAX_K; k++) targets.push(stops[(busIdx + k) % stops.length]!);
-  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t)
+  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t))
     .filter((a) => a.routeLabel === cfg.label);
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
@@ -546,13 +597,33 @@ for (const o of observations) {
   }
 }
 log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max replica diff ${maxReplicaDiff}`);
+// The replica below is a HAND COPY of computeUpcomingArrivals kept so the
+// counterfactual modes can be run. It has gone stale before -- silently, as a
+// counter in the JSON nobody read -- and the `chord` row was reported as "the
+// current client" for three commits after it stopped being that. Say so loudly.
+const replicaStaleShare = counts.scored > 0 ? counts.replicaMismatch / counts.scored : 0;
+const REPLICA_TOLERANCE = 0.01;
+if (replicaStaleShare > REPLICA_TOLERANCE) {
+  console.error("");
+  console.error("  ############################################################");
+  console.error("  #  REPLICA IS STALE -- the `chord` row is NOT the client.  #");
+  console.error("  ############################################################");
+  console.error(`  ${(100 * replicaStaleShare).toFixed(1)}% of pairs disagree with the real computeUpcomingArrivals`);
+  console.error(`  (${counts.replicaMismatch}/${counts.scored}), worst ${maxReplicaDiff.toFixed(1)} s.`);
+  console.error("  Read the `client` row for what riders actually get. The replica");
+  console.error("  rows are still valid as DELTAS against `chord`, but not as");
+  console.error("  absolute accuracy. Re-sync replicaEtas() with web/src/arrivals.ts.");
+  console.error("");
+}
 
-function score(truth: "det" | "prox", mode: Proration, filter: (p: Pair) => boolean) {
+function score(truth: "det" | "prox", mode: Proration | "client", filter: (p: Pair) => boolean) {
   const errs: number[] = [];
   for (const p of pairs) {
     const a = p[truth];
     if (a === null || !filter(p)) continue;
-    errs.push(p.eta[mode] - a);
+    // "client" is the REAL computeUpcomingArrivals output recorded alongside
+    // the replica — the only row that is guaranteed to be what riders get.
+    errs.push((mode === "client" ? p.realEta : p.eta[mode]) - a);
   }
   return metricsOf(errs);
 }
@@ -562,13 +633,19 @@ const result: any = {
   generatedAt: new Date().toISOString(),
   window: { start: fmtEt(rawStart), end: fmtEt(rawEnd), hours: Math.round(((rawEnd - rawStart) / 3_600_000) * 10) / 10, pollStride: POLL_STRIDE },
   counts,
-  replicaCheck: { maxAbsDiffSec: maxReplicaDiff, mismatched: counts.replicaMismatch },
+  replicaCheck: {
+    maxAbsDiffSec: maxReplicaDiff,
+    mismatched: counts.replicaMismatch,
+    mismatchedPct: Math.round(1000 * replicaStaleShare) / 10,
+    stale: replicaStaleShare > REPLICA_TOLERANCE,
+    note: "`client` is the real computeUpcomingArrivals. `chord` is a hand replica kept for the counterfactual modes; when `stale` is true it is NOT the shipped client and its absolute numbers must not be quoted.",
+  },
   atStopShare: Math.round((1000 * pairs.filter((p) => p.atStop).length) / pairs.length) / 10,
   truths: {},
 };
 for (const truth of ["prox", "det"] as const) {
   const t: any = {};
-  for (const mode of MODES) {
+  for (const mode of ["client", ...MODES] as const) {
     t[mode] = {
       overall: score(truth, mode, () => true),
       byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, score(truth, mode, (p) => p.k === k)])),
@@ -620,8 +697,9 @@ fs.writeFileSync(`${OUT_DIR}/gps.json`, JSON.stringify(result, null, 1));
 log(`wrote ${OUT_DIR}/gps.json`);
 console.log(JSON.stringify({ counts, replica: result.replicaCheck, atStopShare: result.atStopShare }, null, 1));
 for (const truth of ["prox", "det"] as const) {
-  for (const mode of MODES) {
+  for (const mode of ["client", ...MODES] as const) {
     const t = result.truths[truth][mode];
-    console.log(truth.padEnd(5), mode.padEnd(13), "overall", JSON.stringify(t.overall), "movingK1", JSON.stringify(t.movingK1), "atStopK1", JSON.stringify(t.atStopK1));
+    const tag = mode === "client" ? "client  <-- SHIPPED" : mode;
+    console.log(truth.padEnd(5), tag.padEnd(22), "overall", JSON.stringify(t.overall));
   }
 }
