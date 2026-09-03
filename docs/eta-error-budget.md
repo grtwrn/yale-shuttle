@@ -310,6 +310,22 @@ the bus meaningfully moving.**
   can relocate the bus by a whole lap while its coordinate says it has not
   moved 30 m.
 
+**"Twitch" means the response was disproportionate, not that nothing happened.**
+PR #63 (merged, measurement only) traced the sub-100 m moves at a layover and
+found many of them are real: the bus *repositioning inside the stop 55–80 s
+before it pulls out*. In the core of a layover 99.7% of consecutive polls carry
+identical coordinates, so those moves stand out — and the collector's 75 m
+tolerance treats them as a departure, resetting the layover clock on 73.7% of
+layovers and inflating a rider-visible ETA on 50% of them.
+
+That makes the twitch population worse, not better. A 40 m shuffle is often
+evidence the bus is *about to leave*, and the app responds by pushing the
+arrival further away — the exact inversion behind the canary's Red #309 trace,
+where a steady 6–7 min preceded an arrival 84 s later. The fix must therefore
+distinguish "moved too little to relocate the bus" from "moved a little,
+because it is leaving", and the second is the served-dwell correctness work,
+not a smoothing problem.
+
 Of the board's 5,082 pin switches, 2,544 (50%) are legitimate — the bus you
 were watching pulled in and the card moved to the next one. **2,202 (43%) are
 genuine swaps of a bus that was still more than five minutes out.** That is
