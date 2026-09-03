@@ -1,0 +1,18 @@
+{
+  "caption": "Route page: the hold shown is now the hold billed (report #73)",
+  "base": "http://127.0.0.1:8181",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/shots-batch/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

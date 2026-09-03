@@ -25,6 +25,30 @@ export const STALL_CREDIT_MAX_FRACTION = 0.5;
 const MIN_HOP_SEC = 30;
 
 /**
+ * The dwell the ETA actually BILLS at a stop — the single definition, shared
+ * with whatever puts a hold on screen.
+ *
+ * `started` means the bus is standing at this stop right now. Then the median
+ * is what the arithmetic uses (as the cap on the elapsed-dwell credit below).
+ * For a stop still ahead, the low quantile is billed instead — see the note
+ * on the re-pricing in computeUpcomingArrivals.
+ *
+ * It exists because the two drifted: the route page showed a stop's MEDIAN
+ * hold ("⏸ ~10 min") beside an arrival time computed from the low quantile,
+ * and a rider did the arithmetic — "it says arrive in 8 but expected dwell is
+ * 10" (report #73). Displaying one number while billing another is a bug
+ * whichever number is right, so there is now only one.
+ */
+export function billedDwellSec(
+  stat: { med: number; low?: number } | undefined,
+  started: boolean,
+): number | null {
+  if (!stat || !Number.isFinite(stat.med)) return null;
+  if (started) return stat.med;
+  return stat.low !== undefined && stat.low < stat.med ? stat.low : stat.med;
+}
+
+/**
  * The credit is spent on the FIRST hop only, and never beyond the dwell that
  * hop actually contains.
  *
