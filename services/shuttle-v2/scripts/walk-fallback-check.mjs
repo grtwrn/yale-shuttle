@@ -54,9 +54,23 @@ console.log(`"No trip options found" shown: ${noOptions}`);
 console.log(`walk option present: ${hasWalk}`);
 console.log(`first durations rendered: ${minCount.join(", ") || "(none)"}`);
 
-if (errors.length) console.log("RESULT: FAIL — page errors");
-else if (noOptions) console.log("RESULT: FAIL — rider still sees a dead end (report #35)");
-else if (!hasWalk) console.log("RESULT: FAIL — no walk fallback rendered");
-else console.log("RESULT: PASS — walk fallback shown instead of a dead end");
+// The verdict has to reach the EXIT CODE, not just the console. This printed
+// "RESULT: FAIL" and exited 0, so when a coordinate destination broke on
+// 2026-09-03 the harness went red and nothing noticed — which is the whole
+// failure mode a regression check exists to prevent.
+const failure = errors.length
+  ? "page errors"
+  : noOptions
+    ? "rider still sees a dead end (report #35)"
+    : !hasWalk
+      ? "no walk fallback rendered"
+      : null;
+
+console.log(
+  failure === null
+    ? "RESULT: PASS — walk fallback shown instead of a dead end"
+    : `RESULT: FAIL — ${failure}`,
+);
 
 await browser.close();
+process.exit(failure === null ? 0 : 1);
