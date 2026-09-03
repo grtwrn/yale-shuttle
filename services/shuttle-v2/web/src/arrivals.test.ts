@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, dwellRangeLabel, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -430,5 +430,52 @@ describe("billedDwellSec — one number, shown and billed (report #73)", () => {
   it("says nothing when there is no statistic at all", () => {
     expect(billedDwellSec(undefined, false)).toBeNull();
     expect(billedDwellSec({ med: NaN }, false)).toBeNull();
+  });
+});
+
+describe("dwellRangeLabel — the badge must not jump as the bus pulls in (report #77)", () => {
+  // Red / 344 Winchester as production served it on 2026-09-03.
+  const winchester = { med: 575.1, low: 325.3 };
+
+  it("does not change when the bus arrives", () => {
+    // The whole report: "it said it would be five minutes dwell, but once it
+    // got there, it went to a nine minute dwell". One label, both states.
+    const ahead = dwellRangeLabel(winchester);
+    const standing = dwellRangeLabel(winchester);
+    expect(ahead).toBe(standing);
+    expect(ahead).toBe("5-10 min");
+  });
+
+  it("spans both numbers the arithmetic bills (report #73 still holds)", () => {
+    const label = dwellRangeLabel(winchester)!;
+    const [lo, hi] = label.replace(" min", "").split("-").map(Number);
+    expect(lo).toBe(Math.round(billedDwellSec(winchester, false)! / 60));
+    expect(hi).toBe(Math.round(billedDwellSec(winchester, true)! / 60));
+  });
+
+  it("collapses to one figure when the two bills round together", () => {
+    expect(dwellRangeLabel({ med: 300, low: 290 })).toBe("5 min");
+  });
+
+  it("collapses when the calibrator has placed no low quantile yet", () => {
+    expect(dwellRangeLabel({ med: 600 })).toBe("10 min");
+  });
+
+  it("never prints a low bound above the median", () => {
+    // billedDwellSec clamps this; the label must not depend on that.
+    expect(dwellRangeLabel({ med: 200, low: 260 })).toBe("3 min");
+  });
+
+  it("never prints '0 min' for a short hold", () => {
+    expect(dwellRangeLabel({ med: 200, low: 20 })).toBe("1-3 min");
+  });
+
+  it("keeps sub-minute holds in seconds, with no spread", () => {
+    expect(dwellRangeLabel({ med: 40, low: 12 })).toBe("40s");
+  });
+
+  it("says nothing when there is no statistic", () => {
+    expect(dwellRangeLabel(undefined)).toBeNull();
+    expect(dwellRangeLabel({ med: NaN })).toBeNull();
   });
 });

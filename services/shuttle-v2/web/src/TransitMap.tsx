@@ -15,7 +15,7 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, dwellRangeLabel, type UpcomingArrival } from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
@@ -3932,19 +3932,17 @@ const TripPlanner: FC<{
                   // the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
                   const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
-                  // The hold shown must be the hold BILLED — see
-                  // billedDwellSec. `started` is true only for the stop the
-                  // bus is standing at; every other stop on the approach is
-                  // still ahead of it and is priced at the low quantile
-                  // (report #73: "it says arrive in 8 but expected dwell is
-                  // 10", which was the median on screen and the low quantile
-                  // in the arithmetic).
-                  const typDwell = (sid: number, started = false): number | null => {
+                  // The hold shown must span the holds BILLED — see
+                  // dwellRangeLabel. One label for the whole approach, so it
+                  // does not change as the bus pulls into the stop (report
+                  // #77); both its bounds are numbers the arithmetic bills, so
+                  // report #73's rule holds too.
+                  const dwellStat = (sid: number) => {
                     const pb = busDwells[String(sid)];
-                    if (pb && pb.n >= 5) return billedDwellSec(pb, started);
+                    if (pb && pb.n >= 5) return pb;
                     const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return billedDwellSec(r, started);
-                    return null;
+                    if (r && r.n >= 3) return r;
+                    return undefined;
                   };
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
                   const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
@@ -3971,7 +3969,12 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid, isBusHere);
+                            const stat = dwellStat(sid);
+                            const typLabel = dwellRangeLabel(stat);
+                            // Badge a stop still ahead only when its hold is
+                            // substantial — gated on the number that stop is
+                            // actually priced at, as before.
+                            const aheadHold = billedDwellSec(stat, false);
                             const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
                             return (
                               <div key={sid} style={{
@@ -3995,14 +3998,14 @@ const TripPlanner: FC<{
                                   {name}
                                   {showLive && (
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                          title={typ != null ? `Typically holds ~${fmtShort(typ)}` : "Time the bus has been sitting here"}>
-                                      ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
+                                          title={typLabel != null ? `Usually holds ${typLabel} here` : "Time the bus has been sitting here"}>
+                                      ⏸ {fmtShort(liveElapsedSec!)}{typLabel != null ? ` / ~${typLabel}` : ""}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (
+                                  {!showLive && typLabel != null && aheadHold != null && aheadHold >= 180 && (
                                     <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
                                           title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(typ)}
+                                      ⏸ ~{typLabel}
                                     </span>
                                   )}
                                 </span>
@@ -5221,13 +5224,12 @@ const StopList: FC<{
           const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
           // Only surface significant timing-point dwells (>= 5 min typical).
           const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
-          const dwellLabel = longDwell
-            ? (() => {
-                const lo = Math.max(1, Math.round(longDwell.med / 60));
-                const hi = Math.round((longDwell.med + longDwell.sd) / 60);
-                return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
-              })()
-            : null;
+          // One definition of the ⏸ badge, shared with the ride page — see
+          // dwellRangeLabel. This row used to build its own range, median to
+          // median+σ, which put the whole lower half of the hold outside the
+          // figures shown and disagreed with the same stop's badge one screen
+          // over. Both bounds are now numbers the ETA bills.
+          const dwellLabel = dwellRangeLabel(longDwell ?? undefined);
 
           return (
             <div

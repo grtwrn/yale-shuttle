@@ -1,0 +1,25 @@
+{
+  "caption": "The ⏸ hold badge now prints the spread it bills — \"8-9 min\" — instead of a single figure that changed from 5 to 9 when the bus pulled in (report #77). Same label on the ride page. Dwell statistics mocked from production, which a throwaway staging database has none of.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "map"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788453485/pr-preview/77/map-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "map",
+      "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /^\\s*(\\S+\\s+)?Map\\s*$/i }).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

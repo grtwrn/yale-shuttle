@@ -49,6 +49,41 @@ export function billedDwellSec(
 }
 
 /**
+ * The hold to SHOW: the SPREAD both billed numbers span, "5-10 min".
+ *
+ * `billedDwellSec` returns two different numbers for the same stop — the low
+ * quantile while the bus is still on its way, the median once it is standing
+ * there — and a badge printing whichever one is current changes as the bus
+ * pulls in. A rider watched exactly that at Red's 344 Winchester: "it said it
+ * would be five minutes dwell, but once it got there, it went to a nine minute
+ * dwell" (report #77). Nothing had gone wrong — 5.4 min is the 35th percentile
+ * and 9.6 the median of a hold whose deciles run 3 to 13 minutes — but the
+ * badge had told them a layover was one number, so the second one read as a
+ * broken promise.
+ *
+ * Printing the pair says the true thing instead (a layover is a distribution,
+ * see DwellStats.low) and says the SAME thing before, during and after the
+ * hold. Report #73's rule survives: both bounds are numbers the arithmetic
+ * actually bills, so the ETA can never be derived from a hold that is not on
+ * screen — the range simply no longer implies a precision the data does not
+ * have.
+ *
+ * Minutes are floored at 1 and spelled `min`. Sub-minute holds have no spread
+ * worth printing and stay a single figure in seconds.
+ */
+export function dwellRangeLabel(
+  stat: { med: number; low?: number } | undefined,
+): string | null {
+  const lo = billedDwellSec(stat, false);
+  const hi = billedDwellSec(stat, true);
+  if (lo == null || hi == null) return null;
+  if (hi < 60) return `${Math.round(hi)}s`;
+  const loMin = Math.max(1, Math.round(lo / 60));
+  const hiMin = Math.max(1, Math.round(hi / 60));
+  return loMin < hiMin ? `${loMin}-${hiMin} min` : `${hiMin} min`;
+}
+
+/**
  * The credit is spent on the FIRST hop only, and never beyond the dwell that
  * hop actually contains.
  *
