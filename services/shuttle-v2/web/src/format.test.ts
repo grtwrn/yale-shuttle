@@ -136,6 +136,24 @@ describe("suggLabel", () => {
     expect(suggLabel(c, siblings)).toBe("York Street, New Haven");
   });
 
+  it("names the town when the same business appears in two of them", () => {
+    // Report #72: the curated Trader Joe's sat above "Trader Joe's, 46 Skiff
+    // Street" with nothing saying that second one is up in Hamden.
+    const milford = g("Trader Joe's (Milford)");
+    const hamden = g("Trader Joe's, 46 Skiff Street, Hamden");
+    const siblings = [milford, hamden];
+    expect(suggLabel(hamden, siblings)).toBe("Trader Joe's, 46 Skiff Street, Hamden");
+    // The one that already carries its town in the name is left alone.
+    expect(suggLabel(milford, siblings)).toBe("Trader Joe's (Milford)");
+  });
+
+  it("leaves two branches in one town short — the street already tells them apart", () => {
+    const a = g("Starbucks, 1 Broadway, New Haven");
+    const b = g("Starbucks, 900 Chapel Street, New Haven");
+    expect(suggLabel(a, [a, b])).toBe("Starbucks, 1 Broadway");
+    expect(suggLabel(b, [a, b])).toBe("Starbucks, 900 Chapel Street");
+  });
+
   it("survives a one-segment name", () => {
     expect(suggLabel(g("Phelps Gate"))).toBe("Phelps Gate");
     expect(suggLabel(g("Phelps Gate"), [g("Phelps Gate"), g("Phelps Gate")])).toBe("Phelps Gate");

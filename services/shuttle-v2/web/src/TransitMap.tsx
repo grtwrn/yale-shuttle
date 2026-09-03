@@ -1725,7 +1725,9 @@ const TripPlanner: FC<{
     fromAbortRef.current?.abort();
     fromAbortRef.current = null;
     setFromLL({ lat: g.lat, lon: g.lon });
-    const display = g.display_name.split(",").slice(0, 2).join(", ");
+    // Same label the row carried, town and all — the pill must not quietly
+    // drop the word that made the rider pick this one over its namesake.
+    const display = suggLabel(g, fromSugg);
     setFromText(display);
     prevFromTextRef.current = display;
     setFromSugg([]);
@@ -1744,7 +1746,7 @@ const TripPlanner: FC<{
     toAbortRef.current?.abort();
     toAbortRef.current = null;
     setToLL({ lat: g.lat, lon: g.lon });
-    const display = g.display_name.split(",").slice(0, 2).join(", ");
+    const display = suggLabel(g, toSugg);
     setToText(display);
     // Remember what we landed on so the pill can be restored if the
     // rider later opens edit mode and bails without re-picking.
@@ -4439,7 +4441,7 @@ const NearbyStopsPicker: FC<{
   const pick = (g: GeocodeResult) => {
     abortRef.current?.abort(); abortRef.current = null;
     setLL({ lat: g.lat, lon: g.lon });
-    setText(g.display_name.split(",").slice(0, 2).join(", "));
+    setText(suggLabel(g, sugg));
     setSugg([]);
   };
 
