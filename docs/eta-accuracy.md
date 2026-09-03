@@ -80,10 +80,21 @@ kept reporting.
 | capped at ¼ × seg.avg | 102.9 s | −53 s | 51.8 s / −3 s |
 | no credit at all | 104.6 s | −32 s | 57.4 s / +19 s |
 
-Half was chosen over a quarter because a quarter turns pessimistic (+61 s
-median) for buses that have sat more than 5 min, and half keeps the "about to
-leave" reading honest for the layover stops riders watch most.
-`STALL_CREDIT_MAX_FRACTION` in `web/src/arrivals.ts`.
+**Both fractions were wrong, and a rider found out.** On 2026-09-03 a Red bus
+had sat 10 minutes of its ~8-minute layover at 344 Winchester — 82 s of driving
+from the next stop — and the board told a rider three stops later "5 min". Half
+of that 557 s segment is 279 s of pure padding. The bus left, arrived about
+2.5 min later, and anyone who trusted the 5 missed it. **Arriving early is the
+dangerous direction**: a late bus costs a wait, an early one is gone.
+
+The bound is not a fraction of the segment at all. A segment sample runs
+arrival to arrival, so it equals the dwell at the from-stop plus the drive to
+the next; what a bus that has already been sitting can cancel is the dwell, and
+nothing more. So the credit is capped at the calibrated dwell for that stop
+(`dwells` was already in the payload; `computeUpcomingArrivals` now takes it),
+and `STALL_CREDIT_MAX_FRACTION` survives only as the fallback for a stop the
+calibrator has never measured. For the reported hop: 557 − 475 = 82 s, which is
+the drive, which is the answer.
 
 **2. The anchor goes wrong on out-and-back routes.** Where the client's anchor
 disagrees with the server detector's stop index (13.4% of positions) the
