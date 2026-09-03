@@ -8,6 +8,8 @@ import {
   nextWetHour,
   outlookHours,
   RAIN_PROBABILITY_THRESHOLD,
+  nearTermRainWhen,
+  rainFragment,
   rainLikely,
   rainLikelyFrom,
   saveTempUnit,
@@ -41,7 +43,7 @@ const hoursFrom = (startHourOffset: number, ...probs: number[]): WeatherHour[] =
 describe("rainLikely", () => {
   it("is silent when the next hour is dry", () => {
     // 18:05, and the wet weather does not start until 20:00 — two hours out.
-    expect(rainLikely(hours(5, 5, 90), H18 + 5 * 60_000)).toEqual({
+    expect(rainLikely(hours(5, 5, 90), H18 + 5 * 60_000)).toMatchObject({
       likely: false,
       probability: 5,
       known: true,
@@ -49,7 +51,7 @@ describe("rainLikely", () => {
   });
 
   it("warns when the current hour is wet", () => {
-    expect(rainLikely(hours(70, 0, 0), H18 + 30 * 60_000)).toEqual({
+    expect(rainLikely(hours(70, 0, 0), H18 + 30 * 60_000)).toMatchObject({
       likely: true,
       probability: 70,
       known: true,
@@ -60,7 +62,7 @@ describe("rainLikely", () => {
     // 17:56: the 17:00 bucket is dry, but the 18:00 one begins in four
     // minutes and is soaking. This is the rider the feature exists for.
     const v = rainLikely(hoursFrom(-1, 10, 80, 0), H18 - 4 * 60_000);
-    expect(v).toEqual({ likely: true, probability: 80, known: true });
+    expect(v).toMatchObject({ likely: true, probability: 80, known: true });
   });
 
   it("takes the peak across the overlapping buckets, not the first", () => {
@@ -69,7 +71,7 @@ describe("rainLikely", () => {
 
   it("ignores buckets wholly outside the next hour", () => {
     // Two hours out: 95% is real rain, but not on this rider's walk.
-    expect(rainLikely(hours(0, 0, 95), H18 + 5 * 60_000)).toEqual({
+    expect(rainLikely(hours(0, 0, 95), H18 + 5 * 60_000)).toMatchObject({
       likely: false,
       probability: 0,
       known: true, // buckets exist and are dry — that is information too
@@ -115,7 +117,7 @@ describe("rainLikelyFrom", () => {
 
   it("reads the hourly block when it is available", () => {
     const v = rainLikelyFrom({ available: true, hourly: hours(75) }, H18);
-    expect(v).toEqual({ likely: true, probability: 75, known: true });
+    expect(v).toMatchObject({ likely: true, probability: 75, known: true });
   });
 });
 
@@ -485,5 +487,129 @@ describe("the window still bounds what can be named", () => {
     const t = tempTrend(hours, 69)!;
     expect(trendText(t, 69, "F")).toBe("warming to 80° by 7pm");
     expect(hours.filter((h) => h.temperatureF === t.temperatureF)).toHaveLength(1);
+  });
+});
+
+// Report #83, from the operator with a screenshot of "78°F · 29% rain ·
+// cooling to 70°": "it should tell what time rain is expected". Every branch
+// that quotes a chance now names an hour with it.
+describe("naming the hour the near-term rain is expected", () => {
+  it("names the end of the bucket the rider is already inside", () => {
+    // 18:30, and the 18:00 bucket (18:00–19:00) is the wet one: the chance
+    // runs until 7pm, and 6pm is a time that has already passed.
+    const v = rainLikely(hours(29, 5, 0), H18 + 30 * 60_000);
+    expect(v.peak).toEqual({ timeMs: H18, started: true });
+    expect(nearTermRainWhen(v)).toBe("by 7pm");
+    expect(rainFragment(v, null, true)).toBe("rain by 7pm (29%)");
+  });
+
+  it("names the start of a bucket that has not begun", () => {
+    // 17:56: the wet bucket is the 18:00 one, four minutes out.
+    const v = rainLikely(hoursFrom(-1, 5, 29, 0), H18 - 4 * 60_000);
+    expect(v.peak).toEqual({ timeMs: H18, started: false });
+    expect(nearTermRainWhen(v)).toBe("6pm");
+    expect(rainFragment(v, null, true)).toBe("rain 6pm (29%)");
+  });
+
+  it("keeps the earlier hour when two buckets tie", () => {
+    const v = rainLikely(hours(29, 29, 0), H18 + 30 * 60_000);
+    expect(v.peak).toEqual({ timeMs: H18, started: true });
+  });
+
+  // Measured at 390px in the real line box: with the hour named, the number
+  // and the full "take an umbrella" cannot both stay — see weather.ts.
+  it("drops the percentage past the umbrella threshold, not the hour", () => {
+    const v = rainLikely(hours(85, 0, 0), H18 + 30 * 60_000);
+    expect(rainFragment(v, null, true)).toBe("rain by 7pm — umbrella");
+    expect(rainFragment(v, null, false)).toBe("rain by 7pm — umbrella");
+  });
+
+  it("gives the whole line to the warning: no trend beside an umbrella", () => {
+    const hourly: WeatherHour[] = [
+      { timeMs: H18, probability: 85, precipitationMm: 2, temperatureF: 78, weatherCode: 61 },
+      { timeMs: H18 + HOUR, probability: 40, precipitationMm: 0, temperatureF: 74 },
+      { timeMs: H18 + 2 * HOUR, probability: 20, precipitationMm: 0, temperatureF: 70 },
+    ];
+    const at = H18 + 30 * 60_000;
+    const v = rainLikely(hourly, at);
+    const trend = tempTrend(outlookHours(hourly, at), v.temperatureF);
+    expect(trend).not.toBeNull();
+    expect(weatherMessage(v, null, "F", trend)).toBe("78°F · rain by 7pm — umbrella");
+  });
+
+  it("still never says the rain is happening now", () => {
+    for (const at of [H18, H18 + 5 * 60_000, H18 + 30 * 60_000, H18 + 59 * 60_000]) {
+      const v = rainLikely(hours(45, 45, 45), at);
+      expect(rainFragment(v, null, true)).not.toMatch(/\bnow\b/i);
+      expect(weatherMessage(v, null)).not.toMatch(/\bnow\b/i);
+    }
+  });
+
+  it("degrades to the old wording when the payload carried no bucket time", () => {
+    // An older server, or the NWS fallback: a verdict with no `peak`.
+    const v: RainVerdict = { likely: false, probability: 29, known: true };
+    expect(nearTermRainWhen(v)).toBeNull();
+    expect(rainFragment(v, null, true)).toBe("29% rain");
+    expect(rainFragment(v, null, false)).toBe("29% chance of rain within the hour");
+  });
+
+  it("puts the hour on the line the operator screenshotted", () => {
+    const hourly: WeatherHour[] = [
+      { timeMs: H18, probability: 29, precipitationMm: 0, temperatureF: 78 },
+      { timeMs: H18 + HOUR, probability: 10, precipitationMm: 0, temperatureF: 74 },
+      { timeMs: H18 + 2 * HOUR, probability: 5, precipitationMm: 0, temperatureF: 70 },
+    ];
+    const v = rainLikely(hourly, H18 + 20 * 60_000);
+    const trend = tempTrend(outlookHours(hourly, H18 + 20 * 60_000), v.temperatureF);
+    // The trend keeps its direction; its destination is what the hour cost.
+    expect(weatherMessage(v, null, "F", trend)).toBe("78°F · rain by 7pm (29%) · cooling");
+  });
+
+  it("still lets a near-term chance outrank a later hour", () => {
+    const v = rainLikely(hours(45, 0, 0), H18 + 30 * 60_000);
+    const later = { timeMs: H18 + 3 * HOUR, probability: 90 };
+    expect(rainFragment(v, later, true)).toBe("rain by 7pm (45%)");
+  });
+});
+
+// The line has ONE line to live on. These are the widest strings each branch
+// can produce with the widest plausible inputs — a three-digit temperature
+// and a four-character hour — and each was measured in the real line box at
+// 390px: 238px of room when quiet, 236px when warning. The measured widths
+// are in the comments. If you change a wording here, MEASURE it (stage the
+// build and probe the rendered span); counting characters is not measuring,
+// and a line that wrapped in production got there that way.
+describe("the widest line each branch can produce", () => {
+  const at = H18 + 5 * HOUR + 30 * 60_000; // 23:30 ET, so the bucket ends "12am"
+  const wettest = (probability: number): WeatherHour[] => [
+    { timeMs: H18 + 5 * HOUR, probability, precipitationMm: 1, temperatureF: 100, weatherCode: 61 },
+    { timeMs: H18 + 6 * HOUR, probability: 10, precipitationMm: 0, temperatureF: 108 },
+    { timeMs: H18 + 7 * HOUR, probability: 10, precipitationMm: 0, temperatureF: 108 },
+  ];
+  const line = (probability: number) => {
+    const hourly = wettest(probability);
+    const v = rainLikely(hourly, at);
+    const trend = tempTrend(outlookHours(hourly, at), v.temperatureF);
+    return weatherMessage(v, nextWetHour(hourly, at), "F", trend);
+  };
+
+  it("quiet, with an hour and a trend — measured 235px of 238px", () => {
+    expect(line(69)).toBe("100°F · rain by 12am (69%) · warming");
+  });
+
+  it("warning, where the trend gives way entirely — measured 200px of 236px", () => {
+    expect(line(85)).toBe("100°F · rain by 12am — umbrella");
+  });
+
+  it("quiet with no rain to name keeps the whole trend — measured 237px of 238px", () => {
+    const hourly: WeatherHour[] = [
+      { timeMs: H18, probability: 5, precipitationMm: 0, temperatureF: 66, weatherCode: 0 },
+      { timeMs: H18 + HOUR, probability: 8, precipitationMm: 0, temperatureF: 72 },
+      { timeMs: H18 + 2 * HOUR, probability: 10, precipitationMm: 0, temperatureF: 80 },
+    ];
+    const v = rainLikely(hourly, H18 + 5 * 60_000);
+    const trend = tempTrend(outlookHours(hourly, H18 + 5 * 60_000), v.temperatureF);
+    expect(weatherMessage(v, nextWetHour(hourly, H18 + 5 * 60_000), "F", trend))
+      .toBe("66°F · no rain · warming to 80° by 8pm");
   });
 });

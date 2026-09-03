@@ -49,6 +49,18 @@ export type RainVerdict = {
   temperatureF?: number;
   /** Condition now, as a WMO code, when the server sent one. */
   weatherCode?: number;
+  /**
+   * The bucket `probability` was taken from: when it starts, and whether the
+   * rider is already inside it.
+   *
+   * The line has to name a time (report #83, "it should tell what time rain
+   * is expected") and only the bucket knows which one. `started` is what
+   * keeps that honest: the peak may be the hour the rider is standing in, and
+   * naming its start would read as "it is raining now" — the one thing this
+   * line must never say, since the window is the next hour and nothing about
+   * it is about NOW. Absent when the payload carried no usable bucket time.
+   */
+  peak?: { timeMs: number; started: boolean };
   /** False when there is no forecast at all — the line stays hidden. */
   known: boolean;
 };
@@ -102,6 +114,7 @@ export function rainLikely(
   if (!Array.isArray(hourly) || !Number.isFinite(nowMs)) return NO_RAIN;
   const windowEnd = nowMs + RAIN_HORIZON_MS;
   let peak = 0;
+  let peakHour: WeatherHour | null = null;
   let known = false;
   // Conditions come from the bucket the rider is standing in, not the peak:
   // "42°F · Clear" should describe now, while the rain chance looks ahead.
@@ -112,6 +125,15 @@ export function rainLikely(
     if (!covers) continue;
     known = true;
     if (h.probability > peak) peak = h.probability;
+    // Which bucket that number came from. A tie keeps the EARLIER hour — at
+    // 4:23 with 29% in both the 4pm and 5pm buckets, the rain to plan around
+    // is the nearer one — and the times are compared rather than the arrival
+    // order, which the payload does not promise.
+    if (peakHour === null
+      || h.probability > peakHour.probability
+      || (h.probability === peakHour.probability && h.timeMs < peakHour.timeMs)) {
+      peakHour = h;
+    }
     if (h.timeMs <= nowMs && (!current || h.timeMs > current.timeMs)) current = h;
   }
   if (!known) return NO_RAIN;
@@ -120,6 +142,9 @@ export function rainLikely(
     likely: peak >= RAIN_PROBABILITY_THRESHOLD,
     probability: Math.round(peak),
     known: true,
+    ...(peakHour
+      ? { peak: { timeMs: peakHour.timeMs, started: peakHour.timeMs <= nowMs } }
+      : {}),
     ...(first && typeof first.temperatureF === "number"
       ? { temperatureF: Math.round(first.temperatureF) } : {}),
     ...(first && typeof first.weatherCode === "number"
@@ -257,13 +282,21 @@ export function trendText(
   nowF: number | undefined,
   unit: TempUnit,
   withHour = true,
+  withDestination = true,
 ): string | null {
   if (!trend) return null;
   const to = temperatureIn(trend.temperatureF, unit);
   const from = temperatureIn(nowF, unit);
   if (to == null || to === from) return null;
-  const label = withHour ? hourLabel(trend.timeMs) : "";
   const verb = trend.dir === "up" ? "warming" : "cooling";
+  // Direction only. The rain half has spent the line's remaining width on an
+  // hour (report #83) and, measured at 390px, the destination no longer fits
+  // beside it: "100°F · rain by 12am (29%) · warming to 108°" is 267px
+  // against 238px of line; the same line ending in "warming" is 230px. The
+  // full clause survives untouched in the branch it was written for — the
+  // quiet one, where there is no rain hour to name.
+  if (!withDestination) return verb;
+  const label = withHour ? hourLabel(trend.timeMs) : "";
   return `${verb} to ${to}°${label ? ` by ${label}` : ""}`;
 }
 
@@ -395,6 +428,18 @@ export function trendHourFits(v: RainVerdict, later?: ForecastHour | null): bool
  * every bucket overlapping it (see rainLikely) — which is why this never
  * says "now".
  */
+export function nearTermRainWhen(v: RainVerdict): string | null {
+  if (!v.peak || !Number.isFinite(v.peak.timeMs)) return null;
+  // Already inside the bucket: the chance runs to the END of it, and that end
+  // is the only honest clock time to print. Naming its start ("rain 4pm" at
+  // 4:23) would say the rain is happening, which the line must never claim.
+  const label = v.peak.started
+    ? hourLabel(v.peak.timeMs + 60 * 60_000)
+    : hourLabel(v.peak.timeMs);
+  if (!label) return null;
+  return v.peak.started ? `by ${label}` : label;
+}
+
 export function rainFragment(
   v: RainVerdict,
   later?: ForecastHour | null,
@@ -402,6 +447,24 @@ export function rainFragment(
 ): string {
   if (!v.known) return "";
   if (v.probability >= RAIN_MENTION_THRESHOLD) {
+    // Name the hour (report #83) in the shape the later-rain branch already
+    // uses, so there is one pattern to read and not two. Past the umbrella
+    // threshold the percentage goes rather than the hour: "take an umbrella"
+    // has already said the number is high, and the hour is the half the
+    // rider asked for.
+    const when = nearTermRainWhen(v);
+    if (when) {
+      // Past the umbrella threshold the PERCENTAGE gives, not the hour and
+      // not the advice: measured at 390px, "100°F · rain by 12am (85%) —
+      // umbrella" is 242px against 236px of line, while dropping the number
+      // fits at 200px. A rider told to take an umbrella does not also need
+      // to be told it is 85%.
+      return v.probability >= RAIN_PROMINENT_THRESHOLD
+        ? `rain ${when} — umbrella`
+        : `rain ${when} (${v.probability}%)`;
+    }
+    // No usable bucket time (an older server, or the NWS fallback): the
+    // wording degrades to the number alone rather than to nothing.
     const pct = terse
       ? `${v.probability}% rain`
       : `${v.probability}% chance of rain within the hour`;
@@ -428,7 +491,16 @@ export function weatherMessage(
   // previous cut showed the trend ONLY when there was no rain to report, so
   // the two facts the operator asked for were never on screen together
   // (2026-09-03).
-  const trendClause = trendText(trend, v.temperatureF, unit, trendHourFits(v, later));
+  // Three facts, one phone line, and at 390px they do not all fit once the
+  // rain half names an hour (report #83). Measured, in order of what a rider
+  // acts on: the hour stays, the trend's destination temperature gives, and
+  // past the umbrella threshold the trend gives entirely — "100°F · rain by
+  // 12am — umbrella · warming" is 298px against 236px of line.
+  const namesRainHour = v.probability >= RAIN_MENTION_THRESHOLD && nearTermRainWhen(v) !== null;
+  const shouting = namesRainHour && v.probability >= RAIN_PROMINENT_THRESHOLD;
+  const trendClause = shouting
+    ? null
+    : trendText(trend, v.temperatureF, unit, trendHourFits(v, later), !namesRainHour);
   const rain = rainFragment(v, later, !!trendClause);
   const parts = [temp, rain].filter(Boolean);
   if (trendClause) parts.push(trendClause);
