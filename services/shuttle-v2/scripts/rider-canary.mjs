@@ -79,7 +79,10 @@ const VERBOSE = has("--verbose");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clock = (ms) => new Date(ms).toLocaleTimeString("en-US",
   { timeZone: "America/New_York", hour12: false });
-const say = (s) => { if (VERBOSE) process.stderr.write(`[${clock(Date.now())}] ${s}\n`); };
+// `at` defaults to now, but a scrape passes the tick's own timestamp: under
+// load a page.evaluate can take seconds, and a log line stamped at print time
+// reads as two samples 5 s apart when the record correctly holds 15.
+const say = (s, at = Date.now()) => { if (VERBOSE) process.stderr.write(`[${clock(at)}] ${s}\n`); };
 
 // ── which line to ride ──────────────────────────────────────────────────────
 
@@ -288,7 +291,7 @@ async function runOnce(line) {
           if (!was && d <= ARRIVAL_M) {
             nearFlags.set(key, true);
             record.arrivals.push({ atMs: now, busName: b.bus_name, distM: Math.round(d) });
-            say(`ARRIVAL ${b.bus_name} at the board stop (${Math.round(d)} m)`);
+            say(`ARRIVAL ${b.bus_name} at the board stop (${Math.round(d)} m)`, now);
             arrived ??= { atMs: now, busName: b.bus_name };
           } else if (was && d > 120) nearFlags.set(key, false);
         }
@@ -322,9 +325,9 @@ async function runOnce(line) {
           record.firstSight = firstSight;
           const promisedMin = firstSight.first[1] / 60;
           deadline = now + Math.min(25, Math.max(8, promisedMin * 2 + 6)) * 60_000;
-          say(`first sight: ${firstSight.raw} — watching for up to ${Math.round((deadline - now) / 60000)} min`);
+          say(`first sight: ${firstSight.raw} — watching for up to ${Math.round((deadline - now) / 60000)} min`, now);
         }
-        say(`${line.label}: ${mine ? (mine.eta?.raw ?? (mine.departed ? "Departed" : "no countdown")) : "OPTION GONE"}`);
+        say(`${line.label}: ${mine ? (mine.eta?.raw ?? (mine.departed ? "Departed" : "no countdown")) : "OPTION GONE"}`, now);
 
         // A jump is only interesting if we can say what moved. Sampling the
         // pin costs a tap in and out, so it happens on the transitions that
@@ -368,6 +371,14 @@ async function runOnce(line) {
     }
     if (record.samples.length > 2 && !record.samples.some((s) => s.present)) {
       fail("option-vanished", `${line.label} disappeared from the plan and never came back`);
+    }
+    // A run that read no countdown is a BROKEN CANARY, not a healthy line, and
+    // it must never pass. The neighbouring watch at ~/eta-live filed
+    // "Purple kept its promises" off a ride with zero recorded promises on
+    // 2026-09-03 16:00 — a silent scraper failure that reads exactly like
+    // success. Two readings is the minimum that can show a transition at all.
+    if (record.sequence.readings < 2 && record.samples.some((s) => s.present)) {
+      fail("no-countdown", `${line.label} was on the plan but only ${record.sequence.readings} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
     }
     if (record.pageErrors.length) fail("page-error", record.pageErrors.slice(0, 3).join(" | "));
     record.ok = record.failures.length === 0;
@@ -422,20 +433,26 @@ function summary(days = 7) {
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
-    e.cat += r.sequence?.catastrophic ?? 0;
-    for (const t of r.sequence?.transitions ?? []) e.drifts.push(Math.abs(t.driftSec));
+    // Re-graded against the CURRENT bar rather than the one each run was
+    // written with, so moving the threshold re-reads the whole history
+    // instead of leaving old runs judged by a rule nobody remembers.
+    for (const t of r.sequence?.transitions ?? []) {
+      e.drifts.push(Math.abs(t.driftSec));
+      if (Math.abs(t.driftSec) >= THRESH.catastrophicSec) e.cat++;
+    }
     if (r.firstSightMissSec != null) e.miss.push(r.firstSightMissSec);
     byLine.set(r.line, e);
   }
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
-  console.log("line          runs   ok  arrived  readings  reversals  catastrophic  p90|drift|  worst   first-sight median");
+  console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
+  console.log("line           runs    ok  arrived  readings  reversals  catastr  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
-      `${line.padEnd(13)} ${String(e.runs).padStart(4)} ${String(e.ok).padStart(4)} ${String(e.arrived).padStart(8)} ` +
-      `${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(13)} ` +
-      `${String(pct(e.drifts, 90) ?? "-").padStart(10)}s ${String(pct(e.drifts, 100) ?? "-").padStart(6)}s ` +
-      `${String(pct(e.miss, 50) ?? "-").padStart(18)}s`);
+      `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
+      `${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
+      `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);
   }
   const bad = runs.filter((r) => !r.ok);
   if (bad.length) {

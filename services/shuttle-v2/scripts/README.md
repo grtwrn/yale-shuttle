@@ -199,7 +199,10 @@ line to the board stop.
 ## Output
 
 Silent and exit 0 when healthy. On a finding it prints the run to **stderr**
-and exits 1. Every run — healthy or not — appends one JSON object to
+and exits 1. **A run that parsed no countdown fails** (`no-countdown`) rather
+than passing: a scraper that has silently stopped reading looks exactly like a
+healthy line, and the neighbouring watch at `~/eta-live` filed "Purple kept its
+promises" off a ride with zero recorded promises on 2026-09-03. Every run — healthy or not — appends one JSON object to
 `scripts/.canary/runs.jsonl` (last 400 kept, ~a fortnight of continuous
 riding), holding the full tick-by-tick sequence, the bus snapshots beside it,
 the pins and the failures.
