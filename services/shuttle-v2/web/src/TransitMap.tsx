@@ -15,7 +15,7 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, dwellRangeSec, type UpcomingArrival } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
@@ -3933,12 +3933,10 @@ const TripPlanner: FC<{
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
                   const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
                   // The hold shown must be the hold BILLED — see
-                  // billedDwellSec. `started` is true only for the stop the
-                  // bus is standing at; every other stop on the approach is
-                  // still ahead of it and is priced at the low quantile
+                  // billedDwellSec, which is now one number at every position
                   // (report #73: "it says arrive in 8 but expected dwell is
-                  // 10", which was the median on screen and the low quantile
-                  // in the arithmetic).
+                  // 10", which was the median on screen and a low quantile in
+                  // the arithmetic; that arithmetic is gone).
                   const typDwell = (sid: number, started = false): number | null => {
                     const pb = busDwells[String(sid)];
                     if (pb && pb.n >= 5) return billedDwellSec(pb, started);
@@ -3999,26 +3997,22 @@ const TripPlanner: FC<{
                                       ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (() => {
-                                    // A rest is a distribution — show it as
-                                    // one. A point estimate here jumped by
-                                    // four minutes the moment the bus
-                                    // arrived and the median took over
-                                    // (report #77); the range does not.
-                                    const pb = busDwells[String(sid)];
-                                    const stat = pb && pb.n >= 5 ? pb : routeDwells[String(sid)];
-                                    const range = dwellRangeSec(stat);
-                                    return (
-                                      <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
-                                            title={range
-                                              ? "Typical hold here runs this long"
-                                              : "Typical hold at this stop"}>
-                                        ⏸ {range
-                                          ? `${fmtShort(range[0]).replace(/ min$/, "")}–${fmtShort(range[1])}`
-                                          : `~${fmtShort(typ)}`}
-                                      </span>
-                                    );
-                                  })()}
+                                  {!showLive && typ != null && typ >= 180 && (
+                                    // One figure, before the bus arrives and
+                                    // after. This was briefly a "5-9 min"
+                                    // range, because the ETA billed a low
+                                    // quantile ahead of the stop and the
+                                    // median once the bus was standing there,
+                                    // and report #77 saw the number change on
+                                    // arrival. The estimator no longer bills
+                                    // two prices, so there is nothing left to
+                                    // disagree and nothing to show a spread
+                                    // for.
+                                    <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
+                                          title="Typical hold at this stop">
+                                      ⏸ ~{fmtShort(typ)}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             );

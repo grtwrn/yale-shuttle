@@ -1,4 +1,23 @@
-# ETA accuracy: what riders see vs what happened (measured 2026-09-02)
+# ETA accuracy: what riders see vs what happened
+
+> **Correction, 2026-09-03 — read this first.** Everything below that says a
+> segment sample "already contains the typical dwell", or that
+> `seg.avg - dwells[from].med` is "the drive", is **wrong**, and it is wrong in
+> a way that shipped twice. `detector.ts` computes ONE number per transition,
+> `elapsedSec = obs.collectedAt - prev.enteredAt` (bus becomes nearest A →
+> becomes nearest B), and emits it as **both** `DwellEvent.dwellSec` and
+> `SegmentEvent.travelSec`. Joined on their shared anchor over 30 days,
+> **119,329 of 119,329 rows have `dwell_sec == travel_sec` exactly**, mean
+> difference 0. Nothing in this system measures how long a bus stands still.
+>
+> A segment is still arrival to arrival — that part is true, and it is why the
+> planner must never add a dwell to one. What is false is that the hop can be
+> *decomposed*: `dwells[stop]` is an estimate of the **whole hop**, keyed by
+> from-stop instead of by (from, to) pair. The subtraction goes negative in
+> practice — on the live payload the dwell median exceeds the whole segment
+> average on **41.2% of hops (113 of 274)**, which is impossible under the old
+> story. See "The unstarted-rest re-pricing" below.
+
 
 A replay of the app's own ETA arithmetic against three months of production
 arrivals, plus every raw GPS position of one service day through the real
@@ -64,8 +83,9 @@ fixes below.
 ## The two client mechanisms (GPS replay, 2026-09-02 13:14 → 20:16 ET, 322k pairs)
 
 **1. Stall credit over-corrected — fixed in this PR.** A segment sample runs
-arrival to arrival, so `seg.avg` already contains the typical dwell at the
-from-stop. `computeUpcomingArrivals` nevertheless subtracted every elapsed
+arrival to arrival, so `seg.avg` is the whole A→B elapsed time, waiting
+included (but see the correction at the top: it cannot be split into a wait
+and a drive). `computeUpcomingArrivals` nevertheless subtracted every elapsed
 second of the current dwell from the first hop, so the longer a bus sat, the
 more optimistic the promise: median next-stop error −19 s after 30 s of dwell,
 −112 s after 2–5 min, **−203 s** past 5 min. Buses are dwelling in 41.6% of
@@ -87,10 +107,15 @@ of that 557 s segment is 279 s of pure padding. The bus left, arrived about
 2.5 min later, and anyone who trusted the 5 missed it. **Arriving early is the
 dangerous direction**: a late bus costs a wait, an early one is gone.
 
-The bound is not a fraction of the segment at all. A segment sample runs
-arrival to arrival, so it equals the dwell at the from-stop plus the drive to
-the next; what a bus that has already been sitting can cancel is the dwell, and
-nothing more. So the credit is capped at the calibrated dwell for that stop
+The bound is not a fraction of the segment at all; it is the calibrated dwell
+figure for that stop. **The reasoning originally written here — "the segment
+equals the dwell plus the drive, and only the dwell can be cancelled" — is the
+false premise corrected at the top of this file.** What the bound actually
+leaves behind is the gap between a 30-day shrunk mean and a 14-day windowed
+median of the same quantity, which on a right-skewed layover happens to be
+about the size of the drive. It is kept because it is the best-MEASURED option
+and a recorded pass gates it (`npm run test:accuracy`), not because that story
+was right. So the credit is capped at the calibrated dwell for that stop
 (`dwells` was already in the payload; `computeUpcomingArrivals` now takes it),
 and `STALL_CREDIT_MAX_FRACTION` survives only as the fallback for a stop the
 calibrator has never measured. For the reported hop: 557 − 475 = 82 s, which is
@@ -108,6 +133,74 @@ West Campus spur, which needs its own investigation.
 Also measured and settled: proration of the first hop by straight-line
 progress is as good as proration along the road polyline (115 vs 117 s) and far
 better than none (157 s). Keep the chord.
+
+## The unstarted-rest re-pricing: shipped and reverted the same day (2026-09-03)
+
+`computeUpcomingArrivals` briefly re-priced every hop after the first as
+`max(30, seg.avg - dwell.med) + dwell.low`, meaning to bill a rest the bus had
+not begun at the 35th percentile rather than the median. It was merged on a
+measurement showing the median error on rest-spanning chains going from
++0.8..+2.0 min to about zero.
+
+**The shipped code did the opposite of the thing that was measured.** Because
+`dwell.med` estimates the whole hop rather than a part of it, `seg.avg - med`
+collapsed onto the 30 s floor and the hop became `30 + low` — *larger* than the
+segment it replaced.
+
+| where | share of eligible hops re-priced UP | median change |
+|---|---|---|
+| live payload, 2026-09-03 16:20 ET | 66.4% | +12.9 s |
+| every hour bucket of a week, all 15 routes (42,345 route-position-hours) | 77.2% | +24.9 s (mean +43.4 s) |
+
+Blue Night's 333 Cedar → 129 York has a 63 s segment average and a 680 s dwell
+median; it was billed **597 s**.
+
+Replayed against real arrivals — 262,762 (prediction, actual) pairs, 30 days,
+k = 1..5, `scripts/eta-replay/dwell-quantile-replay.ts`:
+
+| configuration | median abs | mean bias | >2 min PESSIMISTIC (rider misses it) | >2 min OPTIMISTIC (rider waits) |
+|---|---|---|---|---|
+| **no re-pricing (shipped now)** | **37.5 s** | **+0.2 s** | **11.0%** | 9.9% |
+| p35 re-pricing as merged | 46.7 s | +10.7 s | 13.0% | 9.8% |
+| the same intent as an honest discount, `seg.avg - (med - low)` | 39.9 s | −28.8 s | 8.9% | 14.0% |
+
+Clean window (post detector-rewrite, 60,163 pairs): median abs 41.1 / 45.2 /
+48.1 s, pessimistic 7.0% / 8.1% / 4.8%.
+
+So the merged version was **9.2 s worse on median error and 2.0 points more
+pessimistic** — the direction it existed to reduce, and the one that costs a
+rider the bus. Under the merging PR's own break-even (a missed bus 1.31× a
+wait) its expected cost is 26.8 against 24.3 for not having it. Writing the
+intent honestly (`- (med - low)`) overshoots the other way, −105 s median on
+rest-spanning chains, because `med - low` is p50−p35 of the *whole* hop
+compounded over five hops.
+
+`DwellStats.low` is still calibrated and served, and is now dormant.
+
+## Does a bus's holding-so-far predict its holding ahead? No. (2026-09-03)
+
+Tested because a bucket table suggested a bus that had held far LESS than
+expected went on to hold ~1.78× expected — "its break has not happened yet".
+`scripts/eta-replay/hold-signal.ts`, 58,005 windows over 30 days and all 15
+routes, expected = the calibrator's own served median at that instant.
+
+- The ratio reproduces at **1.44×**, not 1.78× (n = 1,096), and its median is
+  1.12 — the mean is a tail.
+- It is a confound. A bus that has held little is a bus that has not reached
+  its layover yet, so its next window contains *different stops*. De-mean each
+  observation's excess by the exact (route, stop-pair) it lands on and the
+  deficit bucket's median effect is **−2.6 s**.
+- Correlation of prev-3 ratio with next-2 ratio: **−0.03**; with de-meaned
+  excess: **−0.09**. Negative — if anything the opposite sign.
+- Against the price the board charges, the deficit bucket is under-charged by a
+  median 30.2 s, indistinguishable from the ordinary 1–1.5× bucket's 29.9 s.
+  The signal does not separate the population it exists to separate.
+- End to end, withholding a discount from "deficit" buses moves the median
+  error by 0.2–0.3 s. **A perfect, unbuildable oracle of whether the bus will
+  actually hold longer is worth at most 4.2 s.** The client also holds no
+  per-bus arrival history, so building it would need a new payload field.
+
+Not built. Do not rebuild it without a signal that beats that 4.2 s ceiling.
 
 ## Limits of the measurement
 

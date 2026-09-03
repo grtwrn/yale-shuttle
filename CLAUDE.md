@@ -594,13 +594,27 @@ and run both scripts; a few minutes each). Findings that constrain changes:
 - **Calibration is at its floor.** 28 variants (window shape, shrinkage k,
   medians, recency, recent traffic, live pace, route drift) moved the median by
   at most −1.9 s. Don't retune `calibrator.ts` without a replay showing more.
-- **Stall credit is capped at half the first hop** (`STALL_CREDIT_MAX_FRACTION`
-  in `web/src/arrivals.ts`). Segment samples run arrival to arrival, so the
-  served time already holds the typical dwell; subtracting every elapsed second
-  promised a bus that had sat 5 min at the next stop 3.4 min early. The cap cut
-  the at-stop next-stop median error 71 → 51.5 s and the all-positions median
-  115 → 104 s. A quarter is as good on the median but pessimistic after long
-  layovers.
+- **A dwell statistic is NOT the standing-still part of a hop.** `detector.ts`
+  computes one `elapsedSec` per transition and emits it as *both*
+  `DwellEvent.dwellSec` and `SegmentEvent.travelSec` — over 30 days, 119,329 of
+  119,329 joined rows are identical. So `seg.avg - dwells[from].med` is not
+  "the drive", it is two estimators of the same quantity disagreeing, and the
+  dwell median exceeds the whole segment average on 41.2% of hops. **This
+  sentence has caused two shipped changes**; read WHAT A DWELL STATISTIC
+  ACTUALLY MEASURES in `web/src/arrivals.ts` before touching either.
+- **Pricing an unstarted rest at p35 was shipped and reverted on 2026-09-03.**
+  It surcharged 77% of hops instead of discounting them (the floor), costing
+  9.2 s of median error and 2 points more pessimism over 262,762 replayed
+  pairs. `DwellStats.low` is still served and is deliberately dormant.
+- **Stall credit is bounded by the calibrated dwell**, with
+  `STALL_CREDIT_MAX_FRACTION` as the fallback where there is none. Subtracting
+  every elapsed second promised a bus that had sat 5 min at the next stop
+  3.4 min early; half the hop then broke the Red layover. The bound is
+  empirical, not a decomposition — do not re-derive it from the old story, and
+  `npm run test:accuracy` gates it.
+- **A bus's holding so far does not predict its holding ahead** (58,005
+  windows): correlation −0.03, and −0.09 once you control for which stops are
+  ahead. A perfect oracle would be worth 4.2 s. Not built.
 - **The anchor is the next lever**: where `findRouteAnchor` disagrees with the
   detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
   the median error is 367 s vs 99 s. A perfect anchor would take the median to
