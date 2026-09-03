@@ -582,6 +582,21 @@ These are load-bearing; several rider-visible bugs traced to them:
   majority). Without it the planner priced an 8.4 km ride at 97 seconds.
 - **Routes 9 and 10 repeat stops** for the West Campus out-and-back. Keep the
   sequence verbatim and index by position; de-duplicating loses real legs.
+- **`arrivals.dwell_sec` is NOT standing time — it is anchor residence time.**
+  `detector.ts` computes one `elapsedSec` per anchor transition and emits it
+  as BOTH the dwell event and the segment event, so `arrivals.dwell_sec` and
+  `segments.travel_sec` are the same number (97.6% byte-identical over 29,179
+  joined rows). Joining the two tables to split dwell from drive returns
+  "drive = 0, dwell = 100%", which is arithmetically correct and meaningless.
+  The split exists only in `raw_positions` (6 h retention). PR #40 rested on
+  the opposite premise and was reverted. See `docs/eta-error-budget.md`.
+- **The feed has a ~30 m position deadband.** Upstream sends a new coordinate
+  only once the bus has moved ~30 m: 2 of 33,118 distinct fixes moved under
+  28 m, and the floor is 30.0 m at Δt = 5 s, 6–10 s and 11–20 s — constant in
+  metres, not in speed. So a repeated fix is a *censored observation*
+  (|Δx| < 30 m, an upper bound on speed), not noise and not missing data. It
+  also puts the velocity quantum at 6 m/s ≈ 13 mph, which is why acceleration
+  and inertia are not estimable from this feed at all.
 - **The feed repeats a position rather than interpolating**: 53.6% of
   consecutive samples are identical coordinates (runs of 15 s typically, up to
   28 min). Anything derived from consecutive positions must account for it —
@@ -663,6 +678,17 @@ changes shape, and say in the PR what moved.
   trailing window beats a constant-velocity Kalman filter on this feed, and
   the number is only informative about two minutes ahead, so it must never
   feed the ETA. Not built; read it before building it.
+- `docs/eta-error-budget.md` — where the ETA error actually lives, and why the
+  rider-visible problem is **stability, not accuracy**. Decomposes a hop into
+  dwell / hold / drive (standing is 95% of the within-segment variance,
+  driving 5%); measures the *sequence* of numbers a rider sees rather than
+  |predicted − actual|. A mode-switching route-progress filter was built and
+  **lost**: it cuts anchor flips 84% and the catastrophic ETA jumps do not
+  fall, because they are conserved and merely re-labelled. Even a perfect
+  anchor is worth 1.00% → 0.96% of them. What wins is an output-side rate
+  limiter: **95% fewer catastrophic jumps for 2.7 s of median accuracy**. Read
+  it before proposing a Kalman filter, a traffic model, or anchor work aimed
+  at stability.
 
 ## Verification harnesses
 
