@@ -1,6 +1,6 @@
 {
-  "caption": "Celsius: every cell at the extreme carries its arrow",
-  "base": "http://127.0.0.1:8153",
+  "caption": "Cooling: the same row names the low instead",
+  "base": "http://127.0.0.1:8155",
   "trip": {
     "board": 44,
     "dest": 124
@@ -12,7 +12,7 @@
     "/api/weather"
   ],
   "shots": [
-    "/tmp/shots-w/celsius/trip.png"
+    "/tmp/shots-w/trend-down/trip.png"
   ],
   "failedViews": [],
   "pageErrors": [],

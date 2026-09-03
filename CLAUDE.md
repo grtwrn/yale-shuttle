@@ -152,10 +152,13 @@ words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
 the useful half.
 
-**The window's high and low ride on a SECOND row**, muted and labelled with
-the hour they run to ("↑80° ↓69° through 1pm"). They are the warmest and
-coolest of the hours the strip lists — not the calendar day, most of which a
-rider has already lived through. Inside the sentence they wrapped it: that
+**Where the temperature is HEADING rides on a SECOND row**, muted: one number,
+not two ("↑80° by 2pm" while it warms, "↓57° by 2pm" while it cools). The
+extreme further from the current temperature wins, drawn from the hours the
+strip lists — not the calendar day, most of which a rider has already lived
+through. Showing both ends was the first cut and the operator cut it down
+(2026-09-03): at 9am on a warming day the low is the temperature you are
+already standing in. Inside the sentence they wrapped it: that
 shipped on 2026-09-03 and was caught on production, so measure the LONGEST
 branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
 touching this line, not the shortest. The ≥70% branch still takes two rows by

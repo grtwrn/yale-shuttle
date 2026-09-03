@@ -10,8 +10,8 @@ import {
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
-  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours, outlookRange, rangeText,
-  temperatureIn,
+  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
+  tempTrend, temperatureIn, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -3005,18 +3005,18 @@ const TripPlanner: FC<{
         const nowMs = Date.now();
         const later = nextWetHour(hourly, nowMs);
         const hours = outlookHours(hourly, nowMs);
-        // The high/low describes exactly the hours the strip lists, so
-        // opening it shows where those two numbers came from.
-        const range = outlookRange(hours);
-        // Null when the window is flat IN THE UNIT ON SCREEN (68-69°F is one
-        // number in Celsius), and then the line carries no arrows — so the
-        // strip must not mark cells the line never mentioned.
-        const span = rangeText(range, tempUnit);
-        const lastHour = hours.length ? hours[hours.length - 1] : null;
-        const lastHourLabel = lastHour ? hourLabel(lastHour.timeMs) : "";
-        // Screen readers get words, not arrow glyphs.
-        const rangeSpeech = range
-          ? `${degreesText(range.highF, tempUnit)}, low ${degreesText(range.lowF, tempUnit)}`
+        // ONE number, not two: where the temperature is heading from here,
+        // and when it gets there. The low is not news at 9am on a warming
+        // day — it is the temperature the rider is already standing in
+        // (operator, 2026-09-03).
+        const trend = tempTrend(hours, rain.temperatureF);
+        // Null when the destination reads the same as now IN THE UNIT ON
+        // SCREEN, and then the strip must not mark a cell the line never
+        // mentioned.
+        const span = trendText(trend, rain.temperatureF, tempUnit);
+        // Screen readers get words, not an arrow glyph.
+        const trendSpeech = trend
+          ? `${trend.dir === "up" ? "Up to" : "Down to"} ${degreesText(trend.temperatureF, tempUnit)}`
           : "";
         return (
           <div style={{
@@ -3053,16 +3053,16 @@ const TripPlanner: FC<{
                       Cloudy · no rain expected" shipped wrapped on
                       2026-09-03 — and an unlabelled pair of numbers in the
                       middle of a sentence never said which hours it meant. */}
-                  {span && lastHourLabel && (
+                  {span && (
                     <span
                       role="img"
-                      aria-label={`High ${rangeSpeech} through ${lastHourLabel}`}
+                      aria-label={`${trendSpeech} by ${hourLabel(trend!.timeMs)}`}
                       style={{
                         fontSize: 11, fontWeight: 400,
                         color: warn ? "#a06a10" : "#90a4ae",
                       }}
                     >
-                      {span} through {lastHourLabel}
+                      {span}
                     </span>
                   )}
                 </span>
@@ -3109,16 +3109,16 @@ const TripPlanner: FC<{
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
                   // Which cell each arrow in the line points at. Only marked
                   // when the two differ — a flat window has no high or low.
-                  // Compared in the unit ON SCREEN. In °C two hours often
-                  // print the same number (60°F and 61°F are both 16°C), and
-                  // marking one of two identical cells is arbitrary — every
-                  // cell showing the extreme value carries the arrow.
+                  // Marks only the hour the LINE names, and compares in the
+                  // unit on screen: in °C two hours often print the same
+                  // number (60°F and 61°F are both 16°C), so every cell
+                  // showing that number is marked rather than an arbitrary
+                  // one of them.
                   const shown = temperatureIn(h.temperatureF, tempUnit);
-                  const peak = span && range && shown != null && shown === temperatureIn(range.highF, tempUnit)
-                    ? "↑"
-                    : span && range && shown != null && shown === temperatureIn(range.lowF, tempUnit)
-                      ? "↓"
-                      : "";
+                  const peak = span && trend && shown != null
+                    && shown === temperatureIn(trend.temperatureF, tempUnit)
+                    ? (trend.dir === "up" ? "↑" : "↓")
+                    : "";
                   return (
                     <div key={h.timeMs} style={{
                       flexShrink: 0, minWidth: 62, textAlign: "center",

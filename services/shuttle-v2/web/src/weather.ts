@@ -190,41 +190,69 @@ export function temperatureText(
 }
 
 /**
- * Warmest and coolest hour of the window the strip shows — NOT the calendar
- * day's high/low. A rider deciding what to wear for the next few hours is
- * asking about those hours (operator, 2026-09-03).
+ * Which way the temperature is going, and how far — ONE number, not two.
+ *
+ * A rider asked for the high and the low; seeing both, the operator decided
+ * (2026-09-03) that only the direction it is heading is actionable: at 9am on
+ * a warming day the low is the temperature you are already standing in. So
+ * this reports the extreme FURTHER from now — the high while it warms, the
+ * low while it cools — with the hour it arrives.
  */
-export type OutlookRange = { highF: number; lowF: number };
+export interface TempTrend {
+  dir: "up" | "down";
+  temperatureF: number;
+  timeMs: number;
+}
 
-export function outlookRange(
+export function tempTrend(
   hours: readonly ForecastHour[] | null | undefined,
-): OutlookRange | null {
-  if (!Array.isArray(hours)) return null;
-  const temps = hours
-    .map((h) => h?.temperatureF)
-    .filter((t): t is number => typeof t === "number" && Number.isFinite(t));
-  if (temps.length === 0) return null;
-  return { highF: Math.max(...temps), lowF: Math.min(...temps) };
+  nowF: number | undefined,
+): TempTrend | null {
+  if (!Array.isArray(hours) || typeof nowF !== "number" || !Number.isFinite(nowF)) return null;
+  const withTemp = hours.filter(
+    (h): h is ForecastHour & { temperatureF: number } =>
+      !!h && typeof h.temperatureF === "number" && Number.isFinite(h.temperatureF),
+  );
+  if (withTemp.length === 0) return null;
+  // EARLIEST hour at each extreme: "by 1pm" should name when it first gets
+  // there, not the last hour it stays there.
+  let hi = withTemp[0]!;
+  let lo = withTemp[0]!;
+  for (const h of withTemp) {
+    if (h.temperatureF > hi.temperatureF) hi = h;
+    if (h.temperatureF < lo.temperatureF) lo = h;
+  }
+  const now = Math.round(nowF);
+  const up = hi.temperatureF - now;
+  const down = now - lo.temperatureF;
+  if (up <= 0 && down <= 0) return null; // flat window: nothing to say
+  // Equal swings both ways (a dip then an equal climb): name whichever
+  // arrives first, since that is the one the rider meets.
+  const pickUp = up > down || (up === down && hi.timeMs <= lo.timeMs);
+  const pick = pickUp ? hi : lo;
+  return { dir: pickUp ? "up" : "down", temperatureF: pick.temperatureF, timeMs: pick.timeMs };
 }
 
 /**
- * "↑67° ↓60°", in the rider's unit — rendered on its own row under the
- * sentence, not inside it: in the sentence it pushed every branch past one
- * line on a 390px phone, and the dry branch ("69°F ↑80° ↓69° · Cloudy · no
- * rain expected") shipped wrapped on 2026-09-03 before this was caught live.
- * Null when there is nothing to add: no
- * temperatures at all, or a window flat enough that both ends round to the
- * same number in the unit being shown (66°F and 67°F are both 19°C).
+ * "↑80° by 1pm" — rendered on its own row under the sentence, not inside it:
+ * in the sentence it pushed every branch past one line on a 390px phone, and
+ * the dry branch ("69°F ↑80° ↓69° · Cloudy · no rain expected") shipped
+ * wrapped on 2026-09-03 before this was caught live.
+ *
+ * Null when the destination reads the same as now IN THE UNIT ON SCREEN —
+ * 66°F and 67°F are both 19°C, and "19° by 1pm" beside "19°C" says nothing.
  */
-export function rangeText(
-  range: OutlookRange | null | undefined,
+export function trendText(
+  trend: TempTrend | null | undefined,
+  nowF: number | undefined,
   unit: TempUnit,
 ): string | null {
-  if (!range) return null;
-  const hi = temperatureIn(range.highF, unit);
-  const lo = temperatureIn(range.lowF, unit);
-  if (hi == null || lo == null || hi === lo) return null;
-  return `↑${hi}° ↓${lo}°`;
+  if (!trend) return null;
+  const to = temperatureIn(trend.temperatureF, unit);
+  const from = temperatureIn(nowF, unit);
+  if (to == null || to === from) return null;
+  const label = hourLabel(trend.timeMs);
+  return `${trend.dir === "up" ? "↑" : "↓"}${to}°${label ? ` by ${label}` : ""}`;
 }
 
 /** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
@@ -314,7 +342,7 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * whenever there is a rain time to give — "Clear" is the least useful thing
  * on the line once it can say "rain likely 10pm". The window's high and low
  * are NOT in here for the same reason; they render on their own row (see
- * rangeText). The hour-by-hour lives behind the tap.
+ * trendText). The hour-by-hour lives behind the tap.
  */
 export function weatherMessage(
   v: RainVerdict,
