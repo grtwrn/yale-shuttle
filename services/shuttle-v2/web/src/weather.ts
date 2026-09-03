@@ -36,8 +36,11 @@ export const RAIN_HORIZON_MS = 60 * 60_000;
  * How far ahead the line will look to answer "and later?". A rider out for
  * the evening is not helped by "no rain within the hour" if it starts at
  * nine, so when the next hour is dry the line says when the dry spell ends.
+ * Ten hours, matching the server's `forecast_hours`, so a morning check still
+ * surfaces an afternoon/evening system (rider report, 2026-09-03: 6 h queried
+ * before 2pm hid rain due at 4pm).
  */
-export const OUTLOOK_HORIZON_MS = 6 * 60 * 60_000;
+export const OUTLOOK_HORIZON_MS = 10 * 60 * 60_000;
 
 export type RainVerdict = {
   likely: boolean;

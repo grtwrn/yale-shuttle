@@ -46,10 +46,11 @@ const FORECAST_URL =
   // always on, and "12% chance of rain" alone is a strange thing to read on a
   // clear afternoon.
   "&hourly=precipitation_probability,precipitation,temperature_2m,weather_code" +
-  // Six hours, not three: a rider heading out for the evening is asking "will
-  // I get rained on before I come back", and a one-hour horizon cannot answer
-  // it (operator, 2026-09-02).
-  "&forecast_hours=6&timezone=America%2FNew_York&temperature_unit=fahrenheit";
+  // Ten hours, not six: a rider checking mid-morning still needs to see an
+  // afternoon/evening system moving in — a 6 h window queried at 8am cut off
+  // before 2pm and hid rain due at 4pm (rider report, 2026-09-03). Matches
+  // the client's OUTLOOK_HORIZON_MS.
+  "&forecast_hours=10&timezone=America%2FNew_York&temperature_unit=fahrenheit";
 
 /** One upstream call per this interval, shared by every client. */
 export const WEATHER_TTL_MS = 10 * 60_000;
@@ -95,7 +96,7 @@ export function parseNwsForecast(raw: unknown): WeatherHour[] | null {
   const periods = (raw as { properties?: { periods?: unknown } }).properties?.periods;
   if (!Array.isArray(periods)) return null;
   const out: WeatherHour[] = [];
-  for (const p of periods.slice(0, 8)) {
+  for (const p of periods.slice(0, 11)) {
     if (!p || typeof p !== "object") continue;
     const o = p as Record<string, unknown>;
     const t = typeof o.startTime === "string" ? Date.parse(o.startTime) : NaN;
