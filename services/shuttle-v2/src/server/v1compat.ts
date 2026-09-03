@@ -217,6 +217,23 @@ const GEOCODE_MIN_INTERVAL_MS = 1100;
 const GEOCODE_BUDGET_MS = 2_500;
 
 /**
+ * Does this read like a street address the rider expects to land on a
+ * building? A leading house number and at least one more word.
+ *
+ * A bare number is NOT an address — "800" is Building 800, a stop — and the
+ * local matcher answers those. Deliberately loose about the rest: "517
+ * Prospect", "517 Prospect St", "1 Prospect Street New Haven" all qualify.
+ */
+export function looksLikeStreetAddress(query: string): boolean {
+  return /^\s*\d{1,6}\s+\S/.test(query);
+}
+
+/** An address-level hit: the building the rider actually typed. */
+function hasAddressHit(hits: readonly GeocodeV1Hit[]): boolean {
+  return hits.some((h) => h.type === "house");
+}
+
+/**
  * The external half of destination lookup. Injectable into `buildApp` (and
  * `geocodeV1`) so tests exercise the merge/rank/fallback with a stubbed
  * fetch and never touch the network.
@@ -353,9 +370,32 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       const timer = setTimeout(() => ctrl.abort(), budgetMs);
       try {
         const first = await ask("photon", query, deadline, ctrl.signal, photon);
-        if (first && first.length > 0) return first;
+        // "Returned something" is not "returned something useful".
+        //
+        // Photon answers an address-shaped query with whatever shares the
+        // street's words: measured 2026-09-03, "517 Prospect St" came back as
+        // Prospect Hill (a neighbourhood), Prospect Hill Historic District,
+        // Prospect Hill (a peak), Prospect Beach and two Prospect Street
+        // centrelines — and NO house. Because that list is non-empty, the
+        // Nominatim fallback never fired, and Nominatim resolves the very
+        // same query to "517, Prospect Street, ... 06511" first try.
+        //
+        // The rider-visible result was that "517 Prospect" worked (Photon
+        // returns nothing at all for it, so the fallback fired) while "517
+        // Prospect St" did not — adding the suffix most people type broke
+        // the lookup. So for an address-shaped query, an answer with no
+        // address in it is treated as no answer, and the other provider is
+        // asked as well. Its address hits lead; Photon's places follow,
+        // because a rider who typed a house number wants the house.
+        const wantAddress = looksLikeStreetAddress(query);
+        if (first && first.length > 0 && !(wantAddress && !hasAddressHit(first))) {
+          return first;
+        }
         const second = await ask("nominatim", query, deadline, ctrl.signal, nominatim);
-        return second ?? [];
+        if (!second || second.length === 0) return first ?? [];
+        if (!first || first.length === 0) return second;
+        const addresses = second.filter((h) => h.type === "house");
+        return addresses.length > 0 ? [...addresses, ...first] : first;
       } catch {
         return [];
       } finally {

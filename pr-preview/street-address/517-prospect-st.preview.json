@@ -1,0 +1,18 @@
+{
+  "caption": "517 Prospect St now finds the house — the suffix no longer breaks the lookup",
+  "base": "http://127.0.0.1:8171",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "search"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/shots-addr/search.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
