@@ -6,6 +6,7 @@ import type { Stop } from "../schema/api.js";
 import {
   createExternalGeocoder,
   geocodeV1,
+  looksLikeStreetAddress,
   parsePhoton,
   rankExternal,
   type GeocodeV1Hit,
@@ -370,5 +371,114 @@ describe("geocodeV1 merge", () => {
     expect(Date.now() - started).toBeLessThan(1000);
     expect(results.length).toBeGreaterThan(0);
     expect(results.every((r) => r.class !== "osm")).toBe(true);
+  });
+});
+
+describe("a street address with a suffix (operator, 2026-09-03)", () => {
+  // "destination lookup is broken I cant enter a street address like 517
+  // Prospect". Measured against the live providers that day:
+  //
+  //   query              Photon                              Nominatim
+  //   517 Prospect       (nothing)                           the house
+  //   517 Prospect St    Prospect Hill, Prospect Hill        the house
+  //                      Historic District, Prospect Hill
+  //                      (a peak), Prospect Beach, two
+  //                      Prospect Street centrelines
+  //
+  // Photon's answer to the suffixed query is non-empty and contains no
+  // house, so the Nominatim fallback never fired and the rider got a beach.
+  // Adding the suffix most people type broke the lookup.
+
+  /** Photon's real reply to "517 Prospect St": places, no address. */
+  const photonNoHouse = () => json({
+    features: [
+      photonFeature({ name: "Prospect Hill", city: "New Haven", osm_key: "place", osm_value: "neighbourhood", type: "locality" }, -72.9219, 41.3260),
+      photonFeature({ name: "Prospect Beach", city: "West Haven", osm_key: "natural", osm_value: "beach", type: "other" }, -72.9600, 41.2500),
+      photonFeature({ name: "Prospect Street", city: "New Haven", osm_key: "highway", osm_value: "secondary", type: "street" }, -72.9255, 41.3120),
+    ],
+  });
+
+  /** Nominatim's real reply: the house, first try. */
+  const nominatimHouse = () => json([
+    {
+      lat: "41.3264183",
+      lon: "-72.9223693",
+      display_name: "517, Prospect Street, Prospect Hill, East Rock, New Haven, Connecticut, 06511, United States",
+      type: "house",
+      class: "place",
+    },
+  ]);
+
+  const geocoderFor = (photon: () => Response, nominatim: () => Response) => {
+    const clock = fakeTime();
+    const { fetchImpl, calls } = stubFetch({ photon: () => photon(), nominatim: () => nominatim() });
+    return {
+      calls,
+      geocoder: createExternalGeocoder({ fetchImpl, now: clock.now, sleep: clock.sleep }),
+    };
+  };
+
+  it("asks the other provider when an address query comes back with no address", async () => {
+    const { geocoder, calls } = geocoderFor(photonNoHouse, nominatimHouse);
+    const hits = await geocoder.lookup("517 Prospect St");
+    // Both providers were asked, even though Photon answered.
+    expect(calls.some((u) => u.includes("photon"))).toBe(true);
+    expect(calls.some((u) => u.includes("nominatim"))).toBe(true);
+    // The house the rider typed leads.
+    expect(hits[0]!.type).toBe("house");
+    expect(hits[0]!.display_name).toContain("517");
+  });
+
+  it("puts the house ahead of the places that merely share the street's words", async () => {
+    const { geocoder } = geocoderFor(photonNoHouse, nominatimHouse);
+    const network2 = network;
+    const results = await geocodeV1(network2, "517 Prospect St", geocoder);
+    const first = results[0]!;
+    expect(first.display_name).toContain("517");
+    // Photon's street centreline survives behind it — the beach does not,
+    // because rankExternal drops what is out of reach of the network, which
+    // is its job and not this fix's.
+    expect(results.some((r) => r.display_name.includes("Prospect Street"))).toBe(true);
+    expect(results.some((r) => r.display_name.includes("Beach"))).toBe(false);
+  });
+
+  it("does NOT spend a second request when Photon already found the address", async () => {
+    const photonWithHouse = () => json({
+      features: [
+        photonFeature({ housenumber: "517", street: "Prospect Street", city: "New Haven", osm_key: "building", osm_value: "yes", type: "house" }, -72.9223693, 41.3264183),
+      ],
+    });
+    const { geocoder, calls } = geocoderFor(photonWithHouse, nominatimHouse);
+    const hits = await geocoder.lookup("517 Prospect St");
+    expect(hits[0]!.type).toBe("house");
+    expect(calls.some((u) => u.includes("nominatim"))).toBe(false);
+  });
+
+  it("leaves a place-name query on the single-provider path", async () => {
+    // "elenas" is exactly why Photon is primary — it must not start costing
+    // two outbound requests and two rate-limit slots.
+    const photonElenas = () => json({ features: [ELENAS] });
+    const { geocoder, calls } = geocoderFor(photonElenas, nominatimHouse);
+    const hits = await geocoder.lookup("elenas");
+    expect(hits[0]!.display_name).toContain("Elena");
+    expect(calls.some((u) => u.includes("nominatim"))).toBe(false);
+  });
+
+  it("keeps Photon's places when neither provider finds the address", async () => {
+    const emptyNominatim = () => json([]);
+    const { geocoder } = geocoderFor(photonNoHouse, emptyNominatim);
+    const hits = await geocoder.lookup("999999 Nowhere St");
+    // Degrades to what there is rather than to nothing.
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("recognises what riders actually type as an address", () => {
+    for (const q of ["517 Prospect", "517 Prospect St", "517 Prospect St.", "1 Prospect Street New Haven", "85 Howe"]) {
+      expect(looksLikeStreetAddress(q)).toBe(true);
+    }
+    // A bare number is Building 800, a stop — the local matcher owns those.
+    for (const q of ["800", "prospect", "trader joes", "  "]) {
+      expect(looksLikeStreetAddress(q)).toBe(false);
+    }
   });
 });
