@@ -220,6 +220,10 @@ the pins and the failures.
 
 ```bash
 npm run canary                    # one rider, then exit
+CANARY_LINE=Purple CANARY_WATCH_MAX_MIN=3 npm run canary -- --verbose
+                                  # probe one line: does it plan at all?
+                                  # (a short ceiling reports `no-arrival` by
+                                  # construction — that is the probe, not a bug)
 npm run canary -- --loop          # keep a rider going
 npm run canary -- --summary       # health digest across the log
 npm run canary -- --verbose       # narrate the watch
