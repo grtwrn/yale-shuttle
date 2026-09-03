@@ -3,7 +3,7 @@
 // bug-prone piece of maths in the app (reports #27, #32, #37, #38 all landed
 // here) and it deserves to be tested directly.
 
-import { distanceToSegmentM } from "./geo";
+import { distanceToSegmentM, traceStopLegs } from "./geo";
 import type { LatLon } from "./geo";
 
 // Drop buses whose GPS sits far from the route.
@@ -27,13 +27,14 @@ export const OFF_ROUTE_THRESHOLD_M = 500;
 //
 // The polylines arrive in the same `/api/buses` payload as the buses, so
 // the shell registers them here once per poll rather than threading a new
-// argument through every caller of `isBusOnRoute`.
+// argument through every caller of `isBusOnRoute` and `findRouteAnchor`.
 let routePathsById: Record<string, readonly (readonly [number, number])[]> = {};
 
 export function registerRoutePaths(
   paths: Record<string, readonly (readonly [number, number])[]> | null | undefined,
 ): void {
   routePathsById = paths ?? {};
+  legCache.clear();
 }
 
 function distanceToPathM(bus: LatLon, path: readonly (readonly [number, number])[]): number {
@@ -73,24 +74,97 @@ export function isBusOnRoute(
   return bestM2 < OFF_ROUTE_THRESHOLD_M * OFF_ROUTE_THRESHOLD_M;
 }
 
+// The road each leg actually follows, sliced out of the route's published
+// polyline by `traceStopLegs` (a chord where the polyline cannot supply the
+// leg), computed once per route and reused for every bus on every poll.
+//
+// The legs of a route used to be measured as stop-to-stop CHORDS. That is
+// fine downtown, where a leg is a block or two, and hopeless on the highway:
+// Green's Orange/Bradley → Building 900 leg is an 8.2 km chord under a
+// 14.4 km road that strays 1.6 km from it, and Purple's Union Station → West
+// Haven leg strays 984 m. A bus on those roads was > 150 m from EVERY chord,
+// so the scan fell through to "globally nearest", which ignores
+// `last_stop_id` — and since Orange/Bradley (N) and (S) are 30 m apart, the
+// outbound and return chords are the same line and the choice between them
+// was a coin flip. Replayed over 69,228 production positions (7 h of
+// 2026-09-02) the chord scan disagreed with the collector's position on 13 %
+// of them, and those carried a median ETA error of 367 s against 99 s when
+// it agreed.
+type Leg = readonly LatLon[];
+const legCache = new Map<string, Leg[] | null>();
+const LEG_CACHE_MAX = 64;
+
+function routeLegs(
+  routeId: number | string,
+  stops: number[],
+  stopCoords: Record<number, LatLon>,
+): Leg[] | null {
+  const path = routePathsById[String(routeId)];
+  if (!path || path.length < 2) return null;
+  const key = `${routeId}|${stops.join(",")}`;
+  const hit = legCache.get(key);
+  if (hit !== undefined) return hit;
+  let legs: Leg[] | null = null;
+  const ll: LatLon[] = [];
+  for (const sid of stops) {
+    const c = stopCoords[sid];
+    if (!c) break;
+    ll.push(c);
+  }
+  if (ll.length === stops.length && ll.length >= 2) {
+    ll.push(ll[0]!); // close the loop: the last leg runs back to the first stop
+    const traced = traceStopLegs(path as [number, number][], ll);
+    if (traced.length === stops.length) {
+      legs = traced.map((t) => t.slice.map(([lat, lon]) => ({ lat, lon })));
+    }
+  }
+  if (legCache.size >= LEG_CACHE_MAX) legCache.clear();
+  legCache.set(key, legs);
+  return legs;
+}
+
+/** Distance from the bus to the nearest point of a leg's road. */
+function distanceToLegM(bus: LatLon, leg: Leg): number {
+  let d = Infinity;
+  for (let i = 0; i + 1 < leg.length; i++) {
+    const m = distanceToSegmentM(bus, leg[i]!, leg[i + 1]!);
+    if (m < d) d = m;
+  }
+  return d;
+}
+
 // Locate a bus on a route's stop sequence. First-principles algorithm:
 //
-//   1. Find all segments stops[i] → stops[i+1] within GPS_THRESHOLD_M
-//      of the bus's actual GPS — these are plausible candidates.
+//   1. Find all legs stops[i] → stops[i+1] within GPS_THRESHOLD_M of the
+//      bus's actual GPS — these are plausible candidates. A leg is the road
+//      the route's polyline follows between the two stops (see `routeLegs`),
+//      or the chord when no polyline is registered for the route.
 //   2. If the feed provides last_stop_id and it's on the route, among
 //      the candidates prefer the one with the shortest FORWARD
 //      distance from last_stop_id. This disambiguates routes that
 //      revisit the same vicinity twice (e.g., Red passes 130 Prospect
 //      on both inbound and outbound legs) without letting the
 //      feed override fresh GPS.
-//   3. If no segment is within threshold (bus is genuinely off-route
+//   3. If no leg is within threshold (bus is genuinely off-route
 //      or on a part of the route the stop list doesn't model), fall
-//      back to the globally-nearest segment.
+//      back to the globally-nearest leg.
 //
-// Returns the starting-stop index of the segment. The downstream step
-// loop treats this as "bus is currently on segment i → i+1" which is
-// the correct mental model for both dwelling-at-stop and mid-segment
+// Returns the starting-stop index of the leg. The downstream step
+// loop treats this as "bus is currently on leg i → i+1" which is
+// the correct mental model for both dwelling-at-stop and mid-leg
 // cases.
+//
+// Measured on the replay above, road legs alone take the overall median ETA
+// error from 114.9 s to 111.9 s and leave the downtown routes unchanged, with
+// NO change in anchor stability (multi-stop swings that snap back within a
+// minute: 93 on master, 90 here). Two other ideas were measured and rejected:
+// resolving the West Campus routes' repeated stop ids to the occurrence
+// nearest the GPS makes things worse (116.6 s — a stale `last_stop_id`
+// resolved to its later occurrence pulls the anchor onto the return leg), and
+// filtering candidates by the feed's heading buys 2 s more but raises those
+// multi-stop swings by 70 % on the downtown routes, because a leg's nearest
+// segment can run the other way at a corner. Direction on a shared road is
+// therefore still decided by forward order from `last_stop_id`, stale or not.
 export const ANCHOR_GPS_THRESHOLD_M = 150;
 
 export type AnchorBus = {
@@ -98,6 +172,8 @@ export type AnchorBus = {
   lon: number;
   last_stop_id?: number | undefined;
   at_stop_id?: number | undefined;
+  /** Upstream route id — selects the polyline registered by `registerRoutePaths`. */
+  route_id?: number | string | undefined;
 };
 
 export function findRouteAnchor(
@@ -114,13 +190,15 @@ export function findRouteAnchor(
     return idx >= 0 ? idx : 0;
   }
 
-  // Distance to each segment.
+  // Distance to each leg's road (or chord).
+  const legs = bus.route_id != null ? routeLegs(bus.route_id, stops, stopCoords) : null;
   const dists: number[] = new Array(N);
   for (let i = 0; i < N; i++) {
     const a = stopCoords[stops[i]];
     const b = stopCoords[stops[(i + 1) % N]];
     if (!a || !b) { dists[i] = Infinity; continue; }
-    dists[i] = distanceToSegmentM(bus, a, b);
+    const leg = legs?.[i];
+    dists[i] = leg && leg.length >= 2 ? distanceToLegM(bus, leg) : distanceToSegmentM(bus, a, b);
   }
 
   const lastIdx = bus.last_stop_id != null ? stops.indexOf(bus.last_stop_id) : -1;

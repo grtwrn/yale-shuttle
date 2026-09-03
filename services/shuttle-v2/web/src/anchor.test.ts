@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute, OFF_ROUTE_THRESHOLD_M,
-  registerRoutePaths,
+  ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute,
+  OFF_ROUTE_THRESHOLD_M, registerRoutePaths,
 } from "./anchor";
 import { haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
@@ -206,5 +206,116 @@ describe("isBusOnRoute measures against the road polyline when one is registered
     registerRoutePaths({ "10": path });
     expect(isBusOnRoute({ ...onHighway, route_id: 3 }, stops, coords)).toBe(false);
     expect(isBusOnRoute({ ...a, route_id: 3 }, stops, coords)).toBe(true);
+  });
+});
+
+describe("findRouteAnchor on an out-and-back with a highway: road legs", () => {
+  // A miniature West Campus route (Green/Purple shaped): a downtown hub, a
+  // highway out to a campus spur that the bus drives out and back through
+  // the same stops, and the highway home to the hub's twin stop 30 m away.
+  //
+  //   H ──highway (L-shaped road, far from its chord)──> W1 → W2 → W3 → W4
+  //   H2 <──highway home (parallel carriageway, 35 m)── W1 ← W2 ← W3 ←┘
+  //
+  // Stop ids are repeated in the sequence exactly as routes 9 and 10 do.
+  const H = { lat: 41.3000, lon: -72.9300 };
+  const H2 = { lat: 41.3000, lon: -72.9304 };   // ~34 m west of H (Orange/Bradley N/S)
+  const W1 = { lat: 41.2600, lon: -72.9870 };
+  const W2 = { lat: 41.2580, lon: -72.9890 };
+  const W3 = { lat: 41.2560, lon: -72.9900 };
+  const W4 = { lat: 41.2558, lon: -72.9936 };
+  const coords = { 1: H, 2: H2, 11: W1, 12: W2, 13: W3, 14: W4 };
+  const stops = [1, 11, 12, 13, 14, 13, 12, 11, 2];
+  const LEG = { out: 0, w1w2: 1, w2w3: 2, w3w4: 3, w4w3: 4, w3w2: 5, w2w1: 6, home: 7, h2h: 8 };
+  // The highway runs south from the hub, then west to the campus: an L whose
+  // corner is ~2.5 km from the straight line between H and W1. The way home
+  // is the same L on a carriageway 35 m to the north/west.
+  const C1 = { lat: 41.2600, lon: -72.9300 };
+  const C2 = { lat: 41.2603, lon: -72.9304 };
+  const pt = (c: { lat: number; lon: number }): [number, number] => [c.lat, c.lon];
+  const path: [number, number][] = [
+    pt(H), pt(C1), pt(W1), pt(W2), pt(W3), pt(W4), pt(W3), pt(W2), pt(W1),
+    pt({ lat: W1.lat + 0.0003, lon: W1.lon }), pt(C2), pt(H2), pt(H),
+  ];
+  const ROUTE = 10;
+  const onOutboundHighway = { lat: 41.2600, lon: -72.9600, route_id: ROUTE };   // E-W stretch, outbound carriageway
+  const onHomewardHighway = { lat: 41.2603, lon: -72.9600, route_id: ROUTE };   // 33 m north, homeward carriageway
+
+  afterEach(() => registerRoutePaths(null));
+
+  it("the fixture really is the pathological shape", () => {
+    expect(haversineMeters(H, H2)).toBeLessThan(40);
+    // Mid-highway the bus is far from BOTH chords, so without road legs the
+    // scan falls through to "globally nearest" and never consults last_stop_id.
+    for (const b of [onOutboundHighway, onHomewardHighway]) {
+      expect(haversineMeters(b, C1)).toBeGreaterThan(2_000);
+      const idx = findRouteAnchor({ ...b, last_stop_id: 1 }, stops, coords);
+      // no path registered: chord behaviour, which is the coin flip we are fixing
+      expect([LEG.out, LEG.home]).toContain(idx);
+    }
+  });
+
+  it("anchors a bus on the outbound highway to the outbound leg", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    // Both carriageways are within 150 m; forward order from the hub picks
+    // the outbound leg — the chord scan could not even find a candidate here.
+    expect(findRouteAnchor({ ...onOutboundHighway, last_stop_id: 1 }, stops, coords)).toBe(LEG.out);
+  });
+
+  it("anchors a bus on the homeward highway to the return leg once the feed has refreshed last_stop_id", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    // last stop W1 (the spur's exit): forward order lands on the way home.
+    expect(findRouteAnchor({ ...onHomewardHighway, last_stop_id: 11 }, stops, coords)).toBe(LEG.home);
+    // With a stale hint from the way out the forward-order rule still prefers
+    // the outbound leg. That is the known limit of this fix: filtering by the
+    // feed's heading closed it in the replay but raised multi-stop anchor
+    // swings on the downtown routes by 70 %, so it is not used.
+    expect(findRouteAnchor({ ...onHomewardHighway, last_stop_id: 1 }, stops, coords)).toBe(LEG.out);
+  });
+
+  it("anchors a bus on the return half of the spur to the return-leg occurrence", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    // Three-quarters of the way from W3 back to W2, turnaround just passed.
+    const between = { lat: W3.lat + 0.75 * (W2.lat - W3.lat), lon: W3.lon + 0.75 * (W2.lon - W3.lon), route_id: ROUTE };
+    expect(findRouteAnchor({ ...between, last_stop_id: 14 }, stops, coords)).toBe(LEG.w3w2);
+  });
+
+  it("anchors a bus on the outbound half of the spur to the outbound occurrence", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    const between = { lat: W2.lat + 0.75 * (W3.lat - W2.lat), lon: W2.lon + 0.75 * (W3.lon - W2.lon), route_id: ROUTE };
+    expect(findRouteAnchor({ ...between, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
+    // and with no path registered at all the chord scan gives the same answer
+    registerRoutePaths(null);
+    expect(findRouteAnchor({ ...between, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
+  });
+
+  it("at_stop_id at a repeated stop never throws a returning bus back to the first occurrence", () => {
+    // Dwelling at W1 on the way home: the feed says at_stop W1, last stop W2.
+    // W1's FIRST occurrence is index 1 (outbound); accepting it would send the
+    // bus round the spur again — the report #37/#38 guarantee in a new guise.
+    registerRoutePaths({ [ROUTE]: path });
+    const bus = { ...W1, route_id: ROUTE, last_stop_id: 12, at_stop_id: 11 };
+    const idx = findRouteAnchor(bus, stops, coords);
+    expect([LEG.w2w1, LEG.home]).toContain(idx);
+    expect(idx).not.toBe(LEG.w1w2);
+    expect(idx).not.toBe(LEG.out);
+  });
+
+  it("is unchanged for a bus with no route_id or no registered path", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    const noRoute = { lat: onOutboundHighway.lat, lon: onOutboundHighway.lon, last_stop_id: 1 };
+    const chordAnswer = findRouteAnchor(noRoute, stops, coords);
+    registerRoutePaths(null);
+    expect(findRouteAnchor({ ...onOutboundHighway, last_stop_id: 1 }, stops, coords)).toBe(chordAnswer);
+  });
+
+  it("re-traces legs after registerRoutePaths replaces the polylines", () => {
+    registerRoutePaths({ [ROUTE]: path });
+    const bus = { ...onHomewardHighway, last_stop_id: 11 };
+    expect(findRouteAnchor(bus, stops, coords)).toBe(LEG.home);
+    registerRoutePaths({ [ROUTE]: [pt(H), pt(W1)] }); // a path that supplies no leg usefully
+    const after = findRouteAnchor(bus, stops, coords);
+    expect(after).toBeGreaterThanOrEqual(0);
+    expect(after).toBeLessThan(stops.length);
   });
 });
