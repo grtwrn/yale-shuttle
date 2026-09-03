@@ -10,7 +10,7 @@ import {
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
-  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
+  degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours, outlookRange, rangeText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -1617,11 +1617,6 @@ const TripPlanner: FC<{
   // options sink), and a positional index made the open card silently jump
   // to whichever option landed on that index mid-watch.
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  // Which option has its stop list open. AUTO-OPENS with the route's
-  // details (user request 2026-07-17) — the Stops toggle can still
-  // collapse it.
-  const [detailsKey, setDetailsKey] = useState<string | null>(null);
-  useEffect(() => { setDetailsKey(expandedKey); }, [expandedKey]);
   // ── Leave-time reminder ──────────────────────────────────────────────
   // At most ONE armed reminder at a time (arming another option replaces
   // it). Deliberately NOT persisted: an in-page timer cannot fire after
@@ -3009,6 +3004,13 @@ const TripPlanner: FC<{
         const nowMs = Date.now();
         const later = nextWetHour(hourly, nowMs);
         const hours = outlookHours(hourly, nowMs);
+        // The high/low describes exactly the hours the strip lists, so
+        // opening it shows where those two numbers came from.
+        const range = outlookRange(hours);
+        // Null when the window is flat IN THE UNIT ON SCREEN (68-69°F is one
+        // number in Celsius), and then the line carries no arrows — so the
+        // strip must not mark cells the line never mentioned.
+        const span = rangeText(range, tempUnit);
         return (
           <div style={{
             marginBottom: 8,
@@ -3036,7 +3038,7 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit)}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, range)}</span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}
@@ -3078,6 +3080,13 @@ const TripPlanner: FC<{
               }}>
                 {hours.map((h) => {
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
+                  // Which cell each arrow in the line points at. Only marked
+                  // when the two differ — a flat window has no high or low.
+                  const peak = span && range && h.temperatureF === range.highF
+                    ? "↑"
+                    : span && range && h.temperatureF === range.lowF
+                      ? "↓"
+                      : "";
                   return (
                     <div key={h.timeMs} style={{
                       flexShrink: 0, minWidth: 62, textAlign: "center",
@@ -3088,6 +3097,9 @@ const TripPlanner: FC<{
                       <div style={{ fontSize: 11, color: "#78909c", whiteSpace: "nowrap" }}>{hourLabel(h.timeMs)}</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
                         {degreesText(h.temperatureF, tempUnit)}
+                        {peak && (
+                          <span aria-hidden="true" style={{ fontSize: 10, color: "#90a4ae" }}>{peak}</span>
+                        )}
                       </div>
                       {/* The drop says what the number is. Without it a bare
                           "35%" beside a temperature reads as anything
@@ -3408,7 +3420,6 @@ const TripPlanner: FC<{
             // so the label alone is unique ("Walk" for the walk option).
             const oKey = o.routeLabel;
             const isExpanded = expandedKey === oKey;
-            const showMore = detailsKey === oKey;
             // Shared shuttle context: bus pinned to this option + how
             // many stops before the pickup it is right now. Computed
             // once so both the collapsed one-liner and the expanded
@@ -3660,7 +3671,7 @@ const TripPlanner: FC<{
                           "could be one line"). The colored pill carries the
                           RIDE TIME + bus number, not the route name — the
                           route is named in the map header above, and stop
-                          names live in Stops ▾ / the map.
+                          names live in the stop list below / the map.
                           The walk chip is duration only — the live meters
                           readout was cut 2026-07-17 ("don't need the
                           distance"). */}
@@ -3711,7 +3722,9 @@ const TripPlanner: FC<{
                       )}
                       {/* One flat row of quiet secondary links — the old
                           nested disclosures (More ▾ → Stops ▾ → Route ▾)
-                          made riders dig three levels for a stop list. */}
+                          made riders dig three levels for a stop list. The
+                          Stops toggle itself is gone — the list is always
+                          open now. */}
                       <div
                         onClick={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
@@ -3720,18 +3733,6 @@ const TripPlanner: FC<{
                           display: "flex", alignItems: "center", justifyContent: "center",
                           gap: 2, flexWrap: "wrap",
                         }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDetailsKey(showMore ? null : oKey); }}
-                          title={showMore ? "Hide stop list" : "Show stop list"}
-                          style={{
-                            fontSize: 13, fontWeight: 500, padding: "0 8px",
-                            minHeight: 44, display: "inline-flex", alignItems: "center",
-                            border: "none", background: "transparent",
-                            color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                          }}
-                        >
-                          Stops {showMore ? "▴" : "▾"}
-                        </button>
                         {/* Manual way into ride tracking. Auto-detect (the
                             "On <route> #N?" offer) is the usual path, but it
                             needs a GPS fix good enough to place the rider
@@ -3741,7 +3742,6 @@ const TripPlanner: FC<{
                             without this the ride page is unreachable. */}
                         {o.mode === "shuttle" && (
                           <>
-                            <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -3806,7 +3806,9 @@ const TripPlanner: FC<{
                             </button>
                           </>
                         )}
-                        <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
+                        {o.mode === "shuttle" && (
+                          <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
+                        )}
                         <button
                           onClick={(e) => { e.stopPropagation(); reportOption(o); }}
                           title="Report that this route is wrong or confusing"
@@ -3838,9 +3840,13 @@ const TripPlanner: FC<{
                     <TripMap from={fromIsCurrent && userLatLon ? userLatLon : effectiveFromLL} to={toLL} color={o.color} />
                   </div>
                 )}
-                {isExpanded && showMore && o.mode === "shuttle" && (() => {
-                  // Stop list, two sections (auto-opens with the details —
-                  // user request 2026-07-17): first the APPROACH (the stops
+                {isExpanded && o.mode === "shuttle" && (() => {
+                  // Stop list, two sections. ALWAYS shown with the route —
+                  // the "Stops ▾" toggle was removed on 2026-09-03 (operator:
+                  // "we'll always want to show the drop-down"), and it had
+                  // auto-opened since 2026-07-17 anyway, so the control's only
+                  // remaining job was to take the list away. First the
+                  // APPROACH (the stops
                   // the bus still has to clear to reach the pickup, muted,
                   // with typical hold times and a live "been sitting here"
                   // counter at its current stop), then the board→alight
