@@ -49,6 +49,28 @@ export interface BusState extends TrackedIdentity {
   lat: number;
   /** Longitude of the most recent observation. */
   lon: number;
+  /**
+   * When the bus last STARTED standing still, independent of which stop is
+   * nearest.
+   *
+   * `enteredAt` is anchored to `nearestIndex`, so it restarts whenever a
+   * different stop becomes nearest — and a bus that shuffles a few metres
+   * while parked (pulling out of the garage lane at 344 Winchester, 2026-09-03)
+   * flips the nearest stop and restarts it. The rider then saw "⏸ 45s" beside
+   * a bus that had been sitting nearly its whole ~10 min layover, the stall
+   * credit went to almost nothing, and the ETA charged the layover a second
+   * time.
+   *
+   * This clock resets only on real movement — more than STATIONARY_RADIUS_M
+   * from where the bus stopped — so it measures what a rider watching the bus
+   * would say. Kept deliberately SEPARATE from `enteredAt`: the dwell and
+   * segment events feeding calibration still key on the nearest-stop anchor,
+   * so this cannot change any statistic, only what the live payload reports.
+   */
+  stationarySince: EpochMs;
+  /** Where the bus was when `stationarySince` started. */
+  stationaryLat: number;
+  stationaryLon: number;
 }
 
 // Outputs ---------------------------------------------------------------------
@@ -181,6 +203,45 @@ export const ANCHOR_SLACK_M = 150;
  * include the missing window and be misleading.
  */
 export const MAX_OBSERVATION_GAP_MS = 10 * 60_000;
+
+/**
+ * How far a bus may drift and still count as standing in the same place.
+ *
+ * 75 m, the same radius `AT_STOP_MAX_M` uses to call a bus "at" a stop: if it
+ * is still close enough to be at the stop, it is still close enough to be the
+ * same wait. A garage-lane shuffle is metres; a departure is hundreds.
+ */
+export const STATIONARY_RADIUS_M = 75;
+
+/**
+ * Carry the stationary clock when the bus has not actually gone anywhere,
+ * restart it when it has. Crucially this is decided on DISTANCE from where
+ * the bus stopped, not on which stop is nearest — the nearest stop flips on a
+ * few metres of drift, which is the bug this exists to fix.
+ */
+function stationaryFields(
+  prev: Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon">,
+  obs: BusObservation,
+): Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon"> {
+  const moved = distanceMeters(
+    obs,
+    { lat: prev.stationaryLat, lon: prev.stationaryLon },
+  );
+  if (moved <= STATIONARY_RADIUS_M) {
+    // Still in the same place: keep the clock AND the original point, so a
+    // slow drift cannot walk the anchor across town one metre at a time.
+    return {
+      stationarySince: prev.stationarySince,
+      stationaryLat: prev.stationaryLat,
+      stationaryLon: prev.stationaryLon,
+    };
+  }
+  return {
+    stationarySince: obs.collectedAt,
+    stationaryLat: obs.lat,
+    stationaryLon: obs.lon,
+  };
+}
 
 // Vehicle identity ------------------------------------------------------------
 
@@ -456,6 +517,11 @@ export function step(
         lastObservedAt: obs.collectedAt,
         lat: obs.lat,
         lon: obs.lon,
+        // A reanchor means we lost track of this bus; nothing about how long
+        // it had been standing survives that.
+        stationarySince: obs.collectedAt,
+        stationaryLat: obs.lat,
+        stationaryLon: obs.lon,
       },
       events: [
         {
@@ -489,6 +555,7 @@ export function step(
         lastObservedAt: obs.collectedAt,
         lat: obs.lat,
         lon: obs.lon,
+        ...stationaryFields(prev, obs),
       },
       events: [],
     };
@@ -561,10 +628,16 @@ export function step(
       routeId: obs.routeId,
       nearestStopId: nearest.stopId,
       nearestIndex: nearest.index,
+      // The nearest-stop anchor restarts here — that is what it is for, and
+      // the dwell/segment events above depend on it.
       enteredAt: obs.collectedAt,
       lastObservedAt: obs.collectedAt,
       lat: obs.lat,
       lon: obs.lon,
+      // ...but the stationary clock does NOT, unless the bus actually moved.
+      // This is the whole fix: a parked bus that shuffles enough to flip the
+      // nearest stop keeps the wait a rider has been watching.
+      ...stationaryFields(prev, obs),
     },
     events,
   };
