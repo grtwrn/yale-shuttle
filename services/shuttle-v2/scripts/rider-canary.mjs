@@ -163,14 +163,21 @@ async function readPin(page, label) {
       board: m ? { lat: Number(m[1]), lon: Number(m[2]) } : null,
     };
   });
-  // Back to the list — the countdown is only rendered on collapsed rows.
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll("button")]
-      .find((x) => (x.innerText || "").includes("All routes"));
-    b?.click();
-  });
-  await sleep(600);
-  return pin;
+  // Back to the list, and CONFIRM it. The countdown is rendered only on
+  // collapsed rows, so a details view left open would make every remaining
+  // scrape read "no countdown" — the canary reporting its own stuck tap as an
+  // app fault. Two attempts, then give up and say so.
+  for (let i = 0; i < 2; i++) {
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll("button")]
+        .find((x) => (x.innerText || "").includes("All routes"));
+      b?.click();
+    });
+    await sleep(600);
+    const back = await page.evaluate(() => !/←\s*All routes/.test(document.body.innerText || ""));
+    if (back) return pin;
+  }
+  return { ...pin, stuckInDetails: true };
 }
 
 async function plan(page, ctx) {
@@ -263,6 +270,7 @@ async function runOnce(line) {
     if (pin0) record.pins.push({ atMs: Date.now(), ...pin0, why: "start" });
     const board = pin0?.board ?? null;
     if (!board) fail("no-board-stop", "could not read the board stop from the details view");
+    if (pin0?.stuckInDetails) fail("stuck-in-details", "could not return to the option list after reading the pin; the readings below are the harness's fault, not the app's");
     record.board = board;
 
     // Timeout: twice what the app promised at first sight, plus six minutes of
@@ -337,6 +345,10 @@ async function runOnce(line) {
         if (last && last.atMs === now && Math.abs(last.driftSec) >= THRESH.pinSampleSec) {
           const pin = await readPin(page, line.label).catch(() => null);
           if (pin) record.pins.push({ atMs: Date.now(), ...pin, why: "jump" });
+          if (pin?.stuckInDetails) {
+            record.failures.push({ kind: "stuck-in-details", detail: "could not return to the option list after reading the pin; later readings are the harness's fault, not the app's", atMs: Date.now() });
+            break;
+          }
         }
       }
 
