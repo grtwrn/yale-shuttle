@@ -10,8 +10,8 @@ import {
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
-  rainLikelyFrom, rainMessage, weatherEmoji, weatherMessage, weatherTone,
-  type WeatherPayload,
+  hourLabel, nextWetHour, outlookHours, RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom,
+  rainMessage, weatherEmoji, weatherMessage, weatherTone, type WeatherPayload,
 } from "./weather";
 import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
@@ -1604,6 +1604,8 @@ const TripPlanner: FC<{
   // Recomputed each render (the /api/buses poll re-renders every 5 s), so
   // the line disappears on its own once the wet hour has passed.
   const rain = rainLikelyFrom(weather, Date.now());
+  /** Hour-by-hour panel open? Collapsed by default; the line usually suffices. */
+  const [weatherOpen, setWeatherOpen] = useState(false);
   // The reminder engine's 1 s tick runs inside a closure that must not
   // re-arm on every forecast change — same ref pattern as `optionsRef`.
   const rainRef = useRef(rain);
@@ -2948,22 +2950,71 @@ const TripPlanner: FC<{
         const tone = weatherTone(rain);
         if (tone === "hidden") return null;
         const warn = tone === "warning";
+        const hourly = weather && weather.available ? weather.hourly : null;
+        const nowMs = Date.now();
+        const later = nextWetHour(hourly, nowMs);
+        const hours = outlookHours(hourly, nowMs);
         return (
-          <div
-            role="status"
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              fontSize: 13, fontWeight: warn ? 600 : 400,
-              color: warn ? "#8a5300" : "#546e7a",
-              padding: warn ? "10px 12px" : "6px 10px",
-              marginBottom: 8,
-              background: warn ? "#fff4e0" : "#f5f6f7",
-              border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
-              borderRadius: 10,
-            }}
-          >
-            <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-            <span>{weatherMessage(rain)}</span>
+          <div style={{
+            marginBottom: 8,
+            background: warn ? "#fff4e0" : "#f5f6f7",
+            border: `1px solid ${warn ? "#f0c68a" : "#e4e6e8"}`,
+            borderRadius: 10,
+          }}>
+            {/* The line answers "and later?" in one clause — the hour the dry
+                spell ends — because a rider out for the evening is not helped
+                by "no rain within the hour". The hour-by-hour is a tap away
+                rather than always on: a table of six hours is more than the
+                question usually needs (operator, 2026-09-02). */}
+            <button
+              role="status"
+              onClick={() => hours.length > 1 && setWeatherOpen((v) => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, width: "100%",
+                textAlign: "left", background: "transparent", border: "none",
+                fontSize: 13, fontWeight: warn ? 600 : 400,
+                color: warn ? "#8a5300" : "#546e7a",
+                padding: warn ? "10px 12px" : "8px 10px", minHeight: 44,
+                cursor: hours.length > 1 ? "pointer" : "default",
+                fontFamily: "inherit",
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later)}</span>
+              {hours.length > 1 && (
+                <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
+                  {weatherOpen ? "▴" : "▾"}
+                </span>
+              )}
+            </button>
+            {weatherOpen && hours.length > 1 && (
+              // Scrolls sideways rather than wrapping, so a narrow phone shows
+              // four hours and a swipe reaches the rest.
+              <div style={{
+                display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch",
+                padding: "0 10px 10px",
+              }}>
+                {hours.map((h) => {
+                  const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
+                  return (
+                    <div key={h.timeMs} style={{
+                      flexShrink: 0, minWidth: 62, textAlign: "center",
+                      background: wet ? "#ffe9c9" : "#fff",
+                      border: `1px solid ${wet ? "#f0c68a" : "#e4e6e8"}`,
+                      borderRadius: 8, padding: "6px 8px",
+                    }}>
+                      <div style={{ fontSize: 11, color: "#78909c" }}>{hourLabel(h.timeMs)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
+                        {h.temperatureF != null ? `${h.temperatureF}°` : "—"}
+                      </div>
+                      <div style={{ fontSize: 11, color: wet ? "#8a5300" : "#90a4ae" }}>
+                        {h.probability}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}

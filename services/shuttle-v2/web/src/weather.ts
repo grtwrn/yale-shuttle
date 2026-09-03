@@ -30,8 +30,14 @@ export type WeatherPayload =
 
 /** At or above this chance we say something. Below it, silence. */
 export const RAIN_PROBABILITY_THRESHOLD = 50;
-/** How far ahead we look — one walk leg's worth. */
+/** How far ahead the "will I get wet on this trip" verdict looks. */
 export const RAIN_HORIZON_MS = 60 * 60_000;
+/**
+ * How far ahead the line will look to answer "and later?". A rider out for
+ * the evening is not helped by "no rain within the hour" if it starts at
+ * nine, so when the next hour is dry the line says when the dry spell ends.
+ */
+export const OUTLOOK_HORIZON_MS = 6 * 60 * 60_000;
 
 export type RainVerdict = {
   likely: boolean;
@@ -123,6 +129,76 @@ export function rainLikelyFrom(
   return rainLikely(payload.hourly, nowMs);
 }
 
+/**
+ * The temperature, in both units.
+ *
+ * Fahrenheit leads — this is a New Haven shuttle — but plenty of riders grew
+ * up on Celsius, so the conversion rides along in brackets rather than behind
+ * a setting nobody would find (rider report #66). Converting the ALREADY
+ * ROUNDED Fahrenheit keeps the halves consistent: whatever °F a rider reads is
+ * exactly what the °C was computed from.
+ */
+export function temperatureText(fahrenheit: number | undefined): string | null {
+  if (typeof fahrenheit !== "number" || !Number.isFinite(fahrenheit)) return null;
+  const f = Math.round(fahrenheit);
+  const c = Math.round(((f - 32) * 5) / 9);
+  // -0 would print as "-0°C"; f is an integer, so only exactly 32°F can land
+  // on zero, but the guard costs nothing and the rendering is the point.
+  return `${f}°F (${Object.is(c, -0) ? 0 : c}°C)`;
+}
+
+export type ForecastHour = { timeMs: number; temperatureF?: number; probability: number };
+
+/**
+ * The hours the line and its expanded view describe: from the one the rider
+ * is standing in, out to the outlook horizon, in order.
+ */
+export function outlookHours(
+  hourly: readonly WeatherHour[] | null | undefined,
+  nowMs: number,
+): ForecastHour[] {
+  if (!Array.isArray(hourly) || !Number.isFinite(nowMs)) return [];
+  return hourly
+    .filter((h) => h && Number.isFinite(h.timeMs) && Number.isFinite(h.probability)
+      && h.timeMs + 60 * 60_000 > nowMs && h.timeMs < nowMs + OUTLOOK_HORIZON_MS)
+    .map((h) => ({
+      timeMs: h.timeMs,
+      probability: Math.max(0, Math.min(100, Math.round(h.probability))),
+      ...(typeof h.temperatureF === "number" ? { temperatureF: Math.round(h.temperatureF) } : {}),
+    }))
+    .sort((a, b) => a.timeMs - b.timeMs);
+}
+
+/**
+ * The first hour past the next one that is wet enough to mention, if any.
+ *
+ * This is what turns "no rain within the hour" into an answer for a rider who
+ * will be out for three: the useful fact is not a table of hours, it is the
+ * hour the dry spell ends.
+ */
+export function nextWetHour(
+  hourly: readonly WeatherHour[] | null | undefined,
+  nowMs: number,
+): ForecastHour | null {
+  for (const h of outlookHours(hourly, nowMs)) {
+    // Skip the hour the near-term verdict already covers.
+    if (h.timeMs < nowMs + RAIN_HORIZON_MS && h.probability < RAIN_PROBABILITY_THRESHOLD) continue;
+    if (h.probability >= RAIN_PROBABILITY_THRESHOLD) return h;
+  }
+  return null;
+}
+
+/** "9p" / "12a" — the same clock idiom the arrival times use. */
+export function hourLabel(timeMs: number, tz = "America/New_York"): string {
+  try {
+    const s = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: true })
+      .format(new Date(timeMs));
+    return s.replace(/\s?AM$/i, "a").replace(/\s?PM$/i, "p");
+  } catch {
+    return "";
+  }
+}
+
 /** How loudly to say it: nothing at all, a quiet line, or a warning. */
 export type WeatherTone = "hidden" | "quiet" | "warning";
 
@@ -140,10 +216,11 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * and a line that only ever appears on rainy days is one nobody learns to
  * look for. It gets louder as the chance climbs.
  */
-export function weatherMessage(v: RainVerdict): string {
+export function weatherMessage(v: RainVerdict, later?: ForecastHour | null): string {
   if (!v.known) return "";
   const bits: string[] = [];
-  if (typeof v.temperatureF === "number") bits.push(`${v.temperatureF}°F`);
+  const temp = temperatureText(v.temperatureF);
+  if (temp) bits.push(temp);
   const cond = conditionText(v.weatherCode);
   if (cond) bits.push(cond);
   const head = bits.join(" · ");
@@ -153,10 +230,16 @@ export function weatherMessage(v: RainVerdict): string {
   if (v.likely) {
     return `${v.probability}% chance of rain within the hour — the walk legs may get wet${head ? ` · ${head}` : ""}`;
   }
+  // Dry for now. A rider out for the evening needs the hour the dry spell
+  // ends, not a table of hours (operator, 2026-09-02) — so the line spends
+  // its remaining words on that and nothing else.
+  if (later) {
+    return `${head}${head ? " · " : ""}dry now, ${later.probability}% chance of rain around ${hourLabel(later.timeMs)}`;
+  }
   if (v.probability > 0) {
     return `${head}${head ? " · " : ""}${v.probability}% chance of rain within the hour`;
   }
-  return `${head}${head ? " · " : ""}No rain expected within the hour`;
+  return `${head}${head ? " · " : ""}no rain expected for a few hours`;
 }
 
 /** The emoji that leads the line. */

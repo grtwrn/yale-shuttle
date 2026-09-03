@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   conditionText, RAIN_PROBABILITY_THRESHOLD, rainLikely, rainLikelyFrom, rainMessage,
-  weatherEmoji, weatherMessage, weatherTone, type RainVerdict, type WeatherHour,
+  hourLabel, nextWetHour, outlookHours, temperatureText, weatherEmoji, weatherMessage, weatherTone,
+  type RainVerdict, type WeatherHour,
 } from "./weather";
 
 const HOUR = 60 * 60_000;
@@ -111,14 +112,14 @@ describe("the weather line", () => {
     // A line that only appears when it rains is one nobody learns to look for.
     expect(weatherTone(v(0))).toBe("quiet");
     expect(weatherMessage(v(0, { temperatureF: 68, weatherCode: 0 })))
-      .toBe("68°F · Clear · No rain expected within the hour");
+      .toBe("68°F (20°C) · Clear · no rain expected for a few hours");
     expect(weatherEmoji(v(0, { weatherCode: 0 }))).toBe("☀️");
   });
 
   it("mentions a small chance without alarm", () => {
     expect(weatherTone(v(20))).toBe("quiet");
     expect(weatherMessage(v(20, { temperatureF: 55, weatherCode: 3 })))
-      .toBe("55°F · Cloudy · 20% chance of rain within the hour");
+      .toBe("55°F (13°C) · Cloudy · 20% chance of rain within the hour");
   });
 
   it("warns about the walk legs once rain is likely", () => {
@@ -132,7 +133,7 @@ describe("the weather line", () => {
   it("becomes a warning at a high chance", () => {
     expect(weatherTone(v(85))).toBe("warning");
     expect(weatherMessage(v(85, { temperatureF: 61, weatherCode: 61 })))
-      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F · Rain");
+      .toBe("Take an umbrella — 85% chance of rain within the hour · 61°F (16°C) · Rain");
     expect(weatherEmoji(v(85))).toBe("☔");
   });
 
@@ -142,7 +143,7 @@ describe("the weather line", () => {
   });
 
   it("degrades to the rain-only wording when the server sends no temperature", () => {
-    expect(weatherMessage(v(0))).toBe("No rain expected within the hour");
+    expect(weatherMessage(v(0))).toBe("no rain expected for a few hours");
     expect(weatherMessage(v(30))).toBe("30% chance of rain within the hour");
   });
 
@@ -157,5 +158,91 @@ describe("the weather line", () => {
     expect(verdict.probability).toBe(80);
     expect(verdict.temperatureF).toBe(60);
     expect(conditionText(verdict.weatherCode)).toBe("Clear");
+  });
+});
+
+describe("temperatureText — both units (report #66)", () => {
+  it("leads with Fahrenheit and brackets the Celsius", () => {
+    expect(temperatureText(68)).toBe("68°F (20°C)");
+    expect(temperatureText(32)).toBe("32°F (0°C)");
+    expect(temperatureText(5)).toBe("5°F (-15°C)");
+  });
+
+  it("converts the number the rider actually reads, not the raw one", () => {
+    // Upstream sends 70.9; the line says 71°F, so the °C must be 71's.
+    expect(temperatureText(70.9)).toBe("71°F (22°C)");
+  });
+
+  it("never prints a negative zero", () => {
+    for (let f = -50; f <= 120; f++) expect(temperatureText(f)).not.toContain("-0°C");
+  });
+
+  it("says nothing when there is no temperature", () => {
+    expect(temperatureText(undefined)).toBeNull();
+    expect(temperatureText(NaN)).toBeNull();
+  });
+});
+
+describe("the weather line carries both units", () => {
+  it("puts them in the line the rider sees", () => {
+    expect(weatherMessage({ likely: false, probability: 5, known: true, temperatureF: 68, weatherCode: 0 }))
+      .toBe("68°F (20°C) · Clear · 5% chance of rain within the hour");
+  });
+
+  it("still works when the fallback source sends no temperature", () => {
+    expect(weatherMessage({ likely: false, probability: 5, known: true }))
+      .toBe("5% chance of rain within the hour");
+  });
+});
+
+describe("the outlook — answering \"and later?\"", () => {
+  const H = (h: number, prob: number, temp = 60) =>
+    ({ timeMs: Date.parse(`2026-09-02T${String(h).padStart(2, "0")}:00:00-04:00`), probability: prob, temperatureF: temp });
+  const now = Date.parse("2026-09-02T18:30:00-04:00");
+  // Dry now, wet at nine: exactly the rider who is out for two hours.
+  const evening = [H(18, 5), H(19, 10), H(20, 35), H(21, 70), H(22, 80), H(23, 60)];
+
+  it("lists the hours from the one the rider is in", () => {
+    const hours = outlookHours(evening, now);
+    expect(hours).toHaveLength(6);
+    expect(hourLabel(hours[0]!.timeMs)).toBe("6p");
+    expect(hours[0]!.temperatureF).toBe(60);
+  });
+
+  it("names the hour the dry spell ends", () => {
+    const later = nextWetHour(evening, now)!;
+    expect(hourLabel(later.timeMs)).toBe("9p");
+    expect(later.probability).toBe(70);
+  });
+
+  it("says so in the line, in one clause", () => {
+    const v = { likely: false, probability: 10, known: true, temperatureF: 60, weatherCode: 0 };
+    expect(weatherMessage(v, nextWetHour(evening, now)))
+      .toBe("60°F (16°C) · Clear · dry now, 70% chance of rain around 9p");
+  });
+
+  it("stays quiet about later when the whole outlook is dry", () => {
+    const dry = [H(18, 5), H(19, 5), H(20, 0), H(21, 5)];
+    expect(nextWetHour(dry, now)).toBeNull();
+    expect(weatherMessage({ likely: false, probability: 0, known: true }, null))
+      .toBe("no rain expected for a few hours");
+    // A small non-zero chance still reports itself rather than claiming dry.
+    expect(weatherMessage({ likely: false, probability: 5, known: true }, null))
+      .toBe("5% chance of rain within the hour");
+  });
+
+  it("does not repeat itself when it is already raining soon", () => {
+    // The near-term verdict covers the next hour; the outlook must not
+    // announce the same hour again.
+    const soon = [H(18, 80), H(19, 85)];
+    const v = { likely: true, probability: 85, known: true, temperatureF: 61 };
+    expect(weatherMessage(v, nextWetHour(soon, now))).toContain("within the hour");
+    expect(weatherMessage(v, nextWetHour(soon, now))).not.toContain("dry now");
+  });
+
+  it("ignores hours beyond the outlook horizon", () => {
+    const tomorrow = [H(18, 5), { timeMs: now + 9 * 60 * 60_000, probability: 90 }];
+    expect(nextWetHour(tomorrow, now)).toBeNull();
+    expect(outlookHours(tomorrow, now)).toHaveLength(1);
   });
 });

@@ -147,6 +147,13 @@ invisible. NWS carries no condition code, so the line degrades to temperature
 plus rain chance with a neutral icon. Both providers share ONE timeout budget
 per refresh, or a cold request would wait 5 s twice.
 
+The weather line answers "and later?" in its own sentence — "dry now, 70%
+chance of rain around 10p" — because a rider out for the evening is not helped
+by "no rain within the hour". Tapping it opens the next six hours as a
+sideways-scrolling strip of temperature and rain chance; that is collapsed by
+default, since the sentence usually suffices. The server asks upstream for six
+hours for the same reason. Temperature carries both units.
+
 The weather line above the trip options is ALWAYS shown when a forecast
 exists (`web/src/weather.ts`): temperature, condition and the chance of rain
 within the hour, quiet by default and an amber "Take an umbrella" past 70%.
