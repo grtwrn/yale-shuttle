@@ -735,13 +735,37 @@ list, so the sweep calls `geocodeV1` in-process (the same throttle applies),
 runs strictly sequentially and prints its own ETA. Calling `geocodeV1` rather
 than a server's `/api/geocode` is also what keeps the sweep out of the rider
 data: that route records every query in `search_terms`, and a few hundred
-synthetic OSM names would be indistinguishable from demand. **And the sweep is
-blind to places OSM does not name** — the Chaplain's Office among them. Search
-analytics (`GET /api/stats/searches`) is the instrument for those; the two
-together are the feedback loop.
+synthetic OSM names would be indistinguishable from demand.
 
 Overpass answers **406 to Node's default User-Agent**; the script names itself,
 and that is why.
+
+### "5 unfindable" does not mean lookup is 98.5% complete
+
+It means lookup is 98.5% complete **against OpenStreetMap**, which is a
+different and much weaker claim. There are two failure classes, they need
+different instruments, and the sweep can only see one of them:
+
+| failure | instrument | reading, 2026-09-03 |
+|---|---|---|
+| **OSM knows the place, we cannot answer it** | `lookup-sweep.mjs` | 5 of 342 |
+| **The place exists, OSM does not know it** | `search_terms` (`GET /api/stats/searches`) | invisible to any sweep |
+
+The second class is the one that started all of this. **The Chaplain's Office
+does not appear in a sweep run at all** — not as a miss, not as a hit. An
+unbounded Overpass search for `[Cc]haplain` returns **zero objects** — checked
+twice, and the second time across ANY tag rather than `name` alone and over a
+bbox far wider than the sweep's (41.20,-73.05,41.45,-72.80) — and both external
+providers answer with unrelated offices. An OSM-derived sweep can only grade against OSM, so a place OSM has
+never heard of is not scored, not counted, and not in any bucket. The same goes
+for every office, centre and department that a rider knows by a name Yale
+publishes and OSM never imported. "The anchor bar" surfaced this way too.
+
+So do not read a clean sweep as a complete lookup, and do not size the curation
+backlog from it. The sweep says *we answer what OSM knows*; only what riders
+actually typed and got nothing for (PR #49's table) says *we answer what riders
+ask*. Run both, and treat a zero-result search term as the higher-priority
+signal of the two — it is a rider who already failed.
 
 ## Don'ts
 
