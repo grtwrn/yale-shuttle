@@ -504,6 +504,31 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
   see, so it is a sanity check, not a measurement.
 
+### The accuracy gate: a recorded pass, before/during/after a dwell
+
+Any change to an arrival time is replayed against a REAL bus pass before it
+merges: `web/src/accuracy-layover.test.ts` walks
+`web/src/__fixtures__/red-layover-pass.json` — Red #309 approaching the
+344 Winchester layover, sitting through 9 min 45 s of it, and driving on —
+and asks what the board would have shown a rider at Division/Prospect and
+Prospect/Hillside at each of 115 recorded moments, against when the bus
+actually arrived. `npm run test:accuracy`, and `.github/workflows/accuracy.yml`
+runs it on every PR touching the estimator (it is in `npm test` too, so the
+deploy gate catches it either way).
+
+It exists because unit tests did not catch the 2026-09-03 defect: each of them
+pinned one contrived moment, and the failure only appears in a bus MOVING
+THROUGH a dwell. The invariants are loose about accuracy and strict about the
+two things that hurt riders — a bus promised LATER than it comes (they walk
+down and it has gone: the gate fails past 120 s) and a countdown that LURCHES
+between polls (they cannot tell whether to run: past 180 s). Reverting the
+estimator to the shipped-yesterday rule fails three of them by name, quoting
+the moment and both numbers.
+
+**Do not loosen a bound or re-record the fixture to make a change pass.**
+Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
+changes shape, and say in the PR what moved.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s

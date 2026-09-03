@@ -1,0 +1,72 @@
+# The accuracy gate: any change to the maths behind an arrival time is
+# replayed against a recorded Red pass before it can merge.
+#
+# `deploy.yml` already runs the whole suite, but only on a push to master —
+# by then the change is going out. On 2026-09-03 a rider was told "5 min" for
+# a bus 70 seconds away, because a cap shipped the day before padded the
+# estimate all through a layover; every unit test passed, because each checked
+# one contrived moment rather than a bus moving through a dwell. This job runs
+# the pass replay (`web/src/accuracy-layover.test.ts`) plus the estimator's own
+# tests on the PR, and it is deliberately narrow and fast so nobody is tempted
+# to skip it.
+#
+# Paths below are everything an arrival time depends on. Add to them when the
+# estimator grows a new input.
+name: accuracy
+
+on:
+  pull_request:
+    paths:
+      - "services/shuttle-v2/web/src/arrivals.ts"
+      - "services/shuttle-v2/web/src/anchor.ts"
+      - "services/shuttle-v2/web/src/planner.ts"
+      - "services/shuttle-v2/web/src/geo.ts"
+      - "services/shuttle-v2/web/src/routes.ts"
+      - "services/shuttle-v2/web/src/walk.ts"
+      - "services/shuttle-v2/web/src/schedule.ts"
+      - "services/shuttle-v2/web/src/__fixtures__/**"
+      - "services/shuttle-v2/src/calibrator/**"
+      - "services/shuttle-v2/src/network/**"
+      - "services/shuttle-v2/src/collector/detector.ts"
+      - "services/shuttle-v2/src/server/v1compat.ts"
+      - ".github/workflows/accuracy.yml"
+  # A change can reach master another way (a hotfix, a merge); catch it there
+  # too so the gate is never silently bypassed.
+  push:
+    branches: [master]
+    paths:
+      - "services/shuttle-v2/web/src/arrivals.ts"
+      - "services/shuttle-v2/web/src/anchor.ts"
+      - "services/shuttle-v2/web/src/planner.ts"
+      - "services/shuttle-v2/src/calibrator/**"
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/shuttle-v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            services/shuttle-v2/package-lock.json
+            services/shuttle-v2/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # No network, no browser, no database: one recorded pass and the real
+      # client functions. If this is red, a rider is about to be told the
+      # wrong time — read the failure message, it names the moment and both
+      # numbers.
+      - name: Replay the recorded Red layover pass
+        run: npm run test:accuracy
+
+      - name: Type-check the estimator
+        run: npx tsc --noEmit -p web
