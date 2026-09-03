@@ -3,7 +3,7 @@
 // bug-prone piece of maths in the app (reports #27, #32, #37, #38 all landed
 // here) and it deserves to be tested directly.
 
-import { distanceToSegmentM } from "./geo";
+import { distanceToSegmentM, traceStopLegs } from "./geo";
 import type { LatLon } from "./geo";
 
 // Drop buses whose GPS sits far from the route.
@@ -27,13 +27,14 @@ export const OFF_ROUTE_THRESHOLD_M = 500;
 //
 // The polylines arrive in the same `/api/buses` payload as the buses, so
 // the shell registers them here once per poll rather than threading a new
-// argument through every caller of `isBusOnRoute`.
+// argument through every caller of `isBusOnRoute` and `findRouteAnchor`.
 let routePathsById: Record<string, readonly (readonly [number, number])[]> = {};
 
 export function registerRoutePaths(
   paths: Record<string, readonly (readonly [number, number])[]> | null | undefined,
 ): void {
   routePathsById = paths ?? {};
+  legCache.clear();
 }
 
 function distanceToPathM(bus: LatLon, path: readonly (readonly [number, number])[]): number {
@@ -73,31 +74,134 @@ export function isBusOnRoute(
   return bestM2 < OFF_ROUTE_THRESHOLD_M * OFF_ROUTE_THRESHOLD_M;
 }
 
+// The road each leg actually follows, sliced out of the route's published
+// polyline by `traceStopLegs` (a chord where the polyline cannot supply the
+// leg), computed once per route and reused for every bus on every poll.
+//
+// The legs of a route used to be measured as stop-to-stop CHORDS. That is
+// fine downtown, where a leg is a block or two, and hopeless on the highway:
+// Green's Orange/Bradley → Building 900 leg is an 8.2 km chord under a
+// 14.4 km road that strays 1.6 km from it, and Purple's Union Station → West
+// Haven leg strays 984 m. A bus on those roads was > 150 m from EVERY chord,
+// so the scan fell through to "globally nearest", which ignores
+// `last_stop_id` — and since Orange/Bradley (N) and (S) are 30 m apart, the
+// outbound and return chords are the same line and the choice between them
+// was a coin flip. Replayed over 69,228 production positions (7 h of
+// 2026-09-02) the chord scan disagreed with the collector's position on 13 %
+// of them, and those carried a median ETA error of 367 s against 99 s when
+// it agreed.
+type Leg = readonly LatLon[];
+const legCache = new Map<string, Leg[] | null>();
+const LEG_CACHE_MAX = 64;
+
+function routeLegs(
+  routeId: number | string,
+  stops: number[],
+  stopCoords: Record<number, LatLon>,
+): Leg[] | null {
+  const path = routePathsById[String(routeId)];
+  if (!path || path.length < 2) return null;
+  const key = `${routeId}|${stops.join(",")}`;
+  const hit = legCache.get(key);
+  if (hit !== undefined) return hit;
+  let legs: Leg[] | null = null;
+  const ll: LatLon[] = [];
+  for (const sid of stops) {
+    const c = stopCoords[sid];
+    if (!c) break;
+    ll.push(c);
+  }
+  if (ll.length === stops.length && ll.length >= 2) {
+    ll.push(ll[0]!); // close the loop: the last leg runs back to the first stop
+    const traced = traceStopLegs(path as [number, number][], ll);
+    if (traced.length === stops.length) {
+      legs = traced.map((t) => t.slice.map(([lat, lon]) => ({ lat, lon })));
+    }
+  }
+  if (legCache.size >= LEG_CACHE_MAX) legCache.clear();
+  legCache.set(key, legs);
+  return legs;
+}
+
+/** Compass bearing a → b in degrees (0 = north, 90 = east), flat-earth. */
+function bearingDeg(a: LatLon, b: LatLon): number {
+  const dy = (b.lat - a.lat) * 111_000;
+  const dx = (b.lon - a.lon) * 84_000;
+  return ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+}
+
+function headingDiffDeg(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/** Distance from the bus to a leg, and the leg's direction where it is nearest. */
+function nearestOnLeg(bus: LatLon, leg: Leg): { d: number; bearing: number } {
+  let d = Infinity;
+  let bearing = NaN;
+  for (let i = 0; i + 1 < leg.length; i++) {
+    const m = distanceToSegmentM(bus, leg[i]!, leg[i + 1]!);
+    if (m < d) {
+      d = m;
+      bearing = bearingDeg(leg[i]!, leg[i + 1]!);
+    }
+  }
+  return { d, bearing };
+}
+
 // Locate a bus on a route's stop sequence. First-principles algorithm:
 //
-//   1. Find all segments stops[i] → stops[i+1] within GPS_THRESHOLD_M
-//      of the bus's actual GPS — these are plausible candidates.
-//   2. If the feed provides last_stop_id and it's on the route, among
+//   1. Find all legs stops[i] → stops[i+1] within GPS_THRESHOLD_M of the
+//      bus's actual GPS — these are plausible candidates. A leg is the road
+//      the route's polyline follows between the two stops (see `routeLegs`),
+//      or the chord when no polyline is registered for the route.
+//   2. If the bus reports a heading and is not sitting at a stop, drop the
+//      candidates that run against it — an out-and-back's two directions
+//      share one road, and the feed's `last_stop_id` (step 3) cannot tell
+//      them apart because TransLoc only refreshes it at timepoints: a bus
+//      returning from West Campus still says "last stop: Orange/Bradley"
+//      from the way out, which put it on the outbound leg. The heading is
+//      the fresh signal — within 30° of the bus's own displacement on 93 %
+//      of moving samples, opposite on 0.2 % — and the filter never empties
+//      the set, so a bad heading costs nothing that step 3 would not.
+//   3. If the feed provides last_stop_id and it's on the route, among
 //      the candidates prefer the one with the shortest FORWARD
 //      distance from last_stop_id. This disambiguates routes that
 //      revisit the same vicinity twice (e.g., Red passes 130 Prospect
 //      on both inbound and outbound legs) without letting the
 //      feed override fresh GPS.
-//   3. If no segment is within threshold (bus is genuinely off-route
+//   4. If no leg is within threshold (bus is genuinely off-route
 //      or on a part of the route the stop list doesn't model), fall
-//      back to the globally-nearest segment.
+//      back to the globally-nearest leg.
 //
-// Returns the starting-stop index of the segment. The downstream step
-// loop treats this as "bus is currently on segment i → i+1" which is
-// the correct mental model for both dwelling-at-stop and mid-segment
+// Returns the starting-stop index of the leg. The downstream step
+// loop treats this as "bus is currently on leg i → i+1" which is
+// the correct mental model for both dwelling-at-stop and mid-leg
 // cases.
+//
+// Measured on the replay above, steps 1 (road legs) and 2 (heading) together
+// take the overall median ETA error from 114.9 s to 109.8 s and the mean bias
+// from -87 s to +5 s; Purple's median from 198 s to 160 s (p90 1,334 → 494 s),
+// Pink 174 → 157 s, Orange East 107 → 105 s, and leave Blue Day, Orange Day
+// and Red unchanged (47.8 / 56.8 / 89.2 → 47.8 / 56.8 / 88.5 s). Resolving the
+// West Campus routes' repeated stop ids to "the occurrence nearest the GPS"
+// was the first suspect and does NOT help: alone it makes things worse
+// (116.6 s) because a stale `last_stop_id` resolved to its later occurrence
+// pulls the anchor onto the return leg, and on top of the road legs it gains
+// nothing. The tolerance is not knife-edge: 90°, 110°, 135° and 150° all
+// score within 0.2 s.
 export const ANCHOR_GPS_THRESHOLD_M = 150;
+export const ANCHOR_HEADING_TOLERANCE_DEG = 110;
 
 export type AnchorBus = {
   lat: number;
   lon: number;
   last_stop_id?: number | undefined;
   at_stop_id?: number | undefined;
+  /** Upstream route id — selects the polyline registered by `registerRoutePaths`. */
+  route_id?: number | string | undefined;
+  /** Compass heading in degrees as the feed reports it (0 = north). */
+  heading?: number | undefined;
 };
 
 export function findRouteAnchor(
@@ -114,13 +218,23 @@ export function findRouteAnchor(
     return idx >= 0 ? idx : 0;
   }
 
-  // Distance to each segment.
+  // Distance to each leg, and the leg's direction at the nearest point.
+  const legs = bus.route_id != null ? routeLegs(bus.route_id, stops, stopCoords) : null;
   const dists: number[] = new Array(N);
+  const bearings: number[] = new Array(N);
   for (let i = 0; i < N; i++) {
     const a = stopCoords[stops[i]];
     const b = stopCoords[stops[(i + 1) % N]];
-    if (!a || !b) { dists[i] = Infinity; continue; }
-    dists[i] = distanceToSegmentM(bus, a, b);
+    if (!a || !b) { dists[i] = Infinity; bearings[i] = NaN; continue; }
+    const leg = legs?.[i];
+    if (leg && leg.length >= 2) {
+      const near = nearestOnLeg(bus, leg);
+      dists[i] = near.d;
+      bearings[i] = near.bearing;
+    } else {
+      dists[i] = distanceToSegmentM(bus, a, b);
+      bearings[i] = bearingDeg(a, b);
+    }
   }
 
   const lastIdx = bus.last_stop_id != null ? stops.indexOf(bus.last_stop_id) : -1;
@@ -128,9 +242,26 @@ export function findRouteAnchor(
   // Candidates within threshold, sorted by forward distance from
   // last_stop_id (if available) so a route that revisits a vicinity
   // twice picks the right leg. Distance tiebreaker for ties.
-  const candidates: number[] = [];
+  let candidates: number[] = [];
   for (let i = 0; i < N; i++) {
     if (dists[i] < ANCHOR_GPS_THRESHOLD_M) candidates.push(i);
+  }
+  // A dwelling bus's heading is whatever it last drove, so the filter is
+  // skipped while the feed says it is at a stop; there `last_stop_id` and
+  // `at_stop_id` are fresh anyway. Exactly 0 is treated as "no heading": it
+  // is what a feed (and our fixtures) emit when the bearing is unknown, and
+  // the cost is nil — of 11,867 moving production samples, 22 genuinely
+  // reported 0 while driving north.
+  const heading = bus.heading;
+  if (
+    candidates.length > 1 && bus.at_stop_id == null &&
+    heading != null && Number.isFinite(heading) && heading !== 0
+  ) {
+    const along = candidates.filter(
+      (c) => !Number.isFinite(bearings[c]) ||
+        headingDiffDeg(bearings[c], heading) <= ANCHOR_HEADING_TOLERANCE_DEG,
+    );
+    if (along.length > 0) candidates = along;
   }
   if (candidates.length > 0) {
     if (lastIdx >= 0) {
