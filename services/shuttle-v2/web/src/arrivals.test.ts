@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import { createEtaGuard } from "./etaStability";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -360,5 +361,112 @@ describe("billedDwellSec — one number, shown and billed (reports #73, #77)", (
   it("says nothing when there is no statistic at all", () => {
     expect(billedDwellSec(undefined, false)).toBeNull();
     expect(billedDwellSec({ med: NaN }, false)).toBeNull();
+  });
+});
+
+/**
+ * The stability guard, threaded through the real ETA path (report #82).
+ *
+ * The unit rules live in etaStability.test.ts; what is pinned here is the
+ * wiring — that passing the guard changes what a rider is shown when the
+ * inputs misbehave, and that leaving it out keeps this function pure, which
+ * is what `scripts/eta-replay/` depends on.
+ */
+describe("computeUpcomingArrivals — the ETA stability guard", () => {
+  const segs: SegmentTimes = {
+    "4": {
+      [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: 557.4, sd: 60, n: 34 },
+      [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: 37.4, sd: 10, n: 32 },
+    },
+  };
+  const dwells: DwellTimes = {
+    "4": { [String(STOP.stopAndShop)]: { med: 475.2, sd: 120, n: 13 } },
+  };
+  /** A bus dwelling at the layover stop, with the clock set `heldSec` ago. */
+  const layingOver = (heldSec: number, atMs: number) => makeBus({
+    ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+    at_stop_id: STOP.stopAndShop,
+    at_stop_since: new Date(atMs - heldSec * 1000).toISOString().replace("Z", ""),
+  });
+  const poll = (guard: ReturnType<typeof createEtaGuard> | null, heldSec: number, atMs: number) =>
+    etaFor(
+      computeUpcomingArrivals(
+        [STOP.collegeWallN], [layingOver(heldSec, atMs)],
+        routeStops, stopCoords, segs, atMs, dwells, guard,
+      ),
+      STOP.collegeWallN,
+    )!;
+
+  it("is inert when no guard is passed — the arithmetic is unchanged", () => {
+    // Two identical polls five seconds apart, with the layover clock reset in
+    // between. Unguarded, the ETA does exactly what report #82 described.
+    const before = poll(null, 9 * 60, NOW);
+    const after = poll(null, 0, NOW + 5_000);
+    expect(after - before).toBeGreaterThan(300);   // "it jumped from 3min to 8 min!"
+  });
+
+  it("hides the layover-clock reset from the rider", () => {
+    const guard = createEtaGuard();
+    const before = poll(guard, 9 * 60, NOW);
+    const after = poll(guard, 0, NOW + 5_000);
+    // Same inputs, same bug underneath — the countdown just keeps counting.
+    expect(after).toBeLessThan(before);
+    expect(after).toBeCloseTo(before - 5, 0);
+    expect(guard.stats.damped).toBe(1);
+    expect(guard.stats.maxJumpSec).toBeGreaterThan(300);
+  });
+
+  it("keeps the spread centred on the number the rider is shown", () => {
+    const guard = createEtaGuard();
+    computeUpcomingArrivals(
+      [STOP.collegeWallN], [layingOver(9 * 60, NOW)],
+      routeStops, stopCoords, segs, NOW, dwells, guard,
+    );
+    const [a] = computeUpcomingArrivals(
+      [STOP.collegeWallN], [layingOver(0, NOW + 5_000)],
+      routeStops, stopCoords, segs, NOW + 5_000, dwells, guard,
+    );
+    expect(a.low).toBeLessThanOrEqual(a.eta);
+    expect(a.high).toBeGreaterThanOrEqual(a.eta);
+    expect(a.high - a.low).toBeGreaterThan(0);
+  });
+
+  it("guards this lap's arrival, not the same vehicle a lap later", () => {
+    // The second entry per stop is a different countdown that shares no
+    // history with the first; damping it would only desynchronise the pair.
+    const guard = createEtaGuard();
+    const first = computeUpcomingArrivals(
+      [STOP.collegeWallN], [layingOver(9 * 60, NOW)],
+      routeStops, stopCoords, segs, NOW, dwells, guard,
+    );
+    expect(first.length).toBeGreaterThanOrEqual(1);
+    // One vehicle, one stop, one entry — however many laps were emitted.
+    expect(guard.entries.size).toBe(1);
+  });
+
+  it("leaves nothing behind when the bus departs and the arrival disappears", () => {
+    // Once the bus is round the corner this stop drops out of its results
+    // altogether. Nothing must survive that could damp the NEXT vehicle's
+    // countdown to the same stop. (The other shape — the arrival surviving as
+    // a whole lap away — is the departure rule, unit-tested in
+    // etaStability.test.ts against explicit loop steps.)
+    const guard = createEtaGuard();
+    poll(guard, 9 * 60, NOW);
+    const blueWeekendStops = routeStops["4"]!;
+    const past = blueWeekendStops[
+      (blueWeekendStops.indexOf(STOP.collegeWallN) + 2) % blueWeekendStops.length
+    ];
+    const gone = makeBus({
+      lat: stopCoords[past].lat, lon: stopCoords[past].lon,
+      route_id: 4, last_stop_id: past,
+    });
+    expect(computeUpcomingArrivals(
+      [STOP.collegeWallN], [gone], routeStops, stopCoords, segs, NOW + 120_000, dwells, guard,
+    )).toEqual([]);
+    // A fresh bus much later is taken at face value, not measured against the
+    // countdown of the one that left.
+    const later = NOW + 10 * 60_000;
+    expect(poll(guard, 9 * 60, later)).toBeCloseTo(119.6, 0);
+    expect(guard.stats.damped).toBe(0);
   });
 });

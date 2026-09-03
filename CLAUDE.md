@@ -672,6 +672,57 @@ the moment and both numbers.
 Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
 changes shape, and say in the PR what moved.
 
+### The stability guard: the rider's number, not the estimator's
+
+`web/src/etaStability.ts` sits between the ETA arithmetic and the rider. It is
+NOT an accuracy change and must never be used to pass an accuracy gate — the
+replay and `accuracy-layover.test.ts` still measure the estimator raw, because
+`computeUpcomingArrivals` stays pure when no guard is passed. The guard exists
+because report #82 was filed URGENT about a jump, not about an error: "it
+jumped from 3min to 8 min!" on Red #316, which had not moved.
+
+The rule: a countdown ticks DOWN, so a large upward revision has to earn its
+way onto the screen. Under `ETA_JITTER_SEC` (60 s) everything passes through
+untouched — clamping small wobbles would ratchet the whole countdown onto its
+optimistic tail. Above it the revision is suppressed for `ETA_HOLD_SEC` while
+the number keeps ticking, then paid out at `ETA_CATCHUP_PER_SEC` (4 s per real
+second) so a bus that HAS genuinely stopped always gets to grow its ETA. Two
+backstops: never below `ETA_ARRIVING_FLOOR_SEC` (45 s) while suppressing —
+"arriving now" about a bus eight minutes out is the most expensive lie in the
+app — and never more than `ETA_MAX_SUPPRESSION_SEC` (10 min) hidden at once.
+
+**`ETA_HOLD_SEC` is measured, not chosen.** Replaying `detector.ts`'s 75 m
+stationary rule over 95,369 retained `raw_positions` (2026-09-03) found 18,845
+layover-clock resets, 415 of them spurious in report #82's sense — the bus had
+held for at least a minute and was still loitering within 150 m thirty seconds
+later. The gap from such a reset to the bus genuinely leaving (past 250 m) is
+p25 75 s, **median 105 s**, p75 145 s, p90 226 s. So 45 s covers 0.2% of them
+and 60 s covers 9.4%; the shipped 120 s covers 61%, and the rest drift up
+rather than lurch. Change it only with a new measurement.
+
+Three things to preserve if you touch it:
+
+- **Downward revisions are never damped, only counted** (`stats.drops`).
+  Holding one back tells a rider "3 min" about a bus at the curb and they miss
+  it. The counter is there so the other half of the operator's complaint
+  ("dropping to 1 second") can be answered with data first.
+- **A guard that pins a stale number is worse than the jump.** Three separate
+  rules exist only to stop that: the catch-up payout, the departure/lap-wrap
+  reseed (keyed on the loop step, so a bus that drove past the stop restarts
+  instead of counting down to a bus already gone), and — the one an earlier
+  draft got wrong — a material FALL in the raw value closes the episode.
+  Without that last rule, replaying #82's own timeline pinned the rider at the
+  45 s floor for a bus 2.5 min away the moment it pulled out.
+- **State is keyed `(route, bus, stop)`** in one shared `etaGuard`, because
+  the trip card, the next-bus line, the stop cards and the ride page all ask
+  about the same vehicle in one render and must show one number. It is cleared
+  whenever a new trip is planned (which the reload button also triggers), and
+  entries go stale after 60 s.
+
+`window.__shuttleEtaGuard` exposes `.stats` and `.log` in the browser, so a
+harness can answer "how often is reality jumping underneath us?" without a
+schema change or a network call.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s

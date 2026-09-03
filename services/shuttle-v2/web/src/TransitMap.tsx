@@ -16,6 +16,7 @@ import {
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import { etaGuard, resetEtaGuard } from "./etaStability";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
@@ -1916,8 +1917,19 @@ const TripPlanner: FC<{
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
   );
 
-  // Collapse the "show more" list whenever a new trip is planned.
-  useEffect(() => { setShowAllOptions(false); }, [stableOptions]);
+  // Collapse the "show more" list whenever a new trip is planned — and drop
+  // the ETA stability guard's history with it. A new plan is a new pin: the
+  // countdowns it damps belong to the trip the rider just replaced, and a
+  // manual reload (which also re-runs this memo, via refreshKey) is a rider
+  // explicitly asking for the raw numbers rather than a smoothed one.
+  //
+  // Keying by (route, bus, stop) already keeps two plans from sharing a
+  // countdown; this is the belt to that pair of braces, and it is what makes
+  // "🔄 Reload" a real escape hatch if the guard ever holds something back.
+  useEffect(() => {
+    setShowAllOptions(false);
+    resetEtaGuard(etaGuard);
+  }, [stableOptions]);
 
   // A shuttle-less plan is a snapshot of an empty feed: planTrip ran at
   // 07:02 before the first bus reported and nothing re-ran it when the bus
@@ -1964,7 +1976,7 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, etaGuard,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -3537,7 +3549,7 @@ const TripPlanner: FC<{
                   // dwellTimes matters here: #32 made a dwell able to cancel
                   // the waiting inside a segment, and hoisting this call must
                   // not quietly drop that argument.
-                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard,
                 )
                   .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
                   .sort((a, b) => a.eta - b.eta)[0] ?? null)
@@ -4420,7 +4432,7 @@ const NextShuttles: FC<{
 }> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (savedStops.size === 0) return null;
 
-  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes);
+  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard);
   const arrivals: Record<number, UpcomingArrival[]> = {};
   for (const a of all) {
     (arrivals[a.stopId] ??= []).push(a);
@@ -4762,7 +4774,7 @@ const FavoriteStopsPage: FC<{
         </div>
       )}
       {groups.map((g, idx) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard).slice(0, 5);
         const editing = editingId === g.id;
         return (
           <div key={g.id} style={{
@@ -4933,7 +4945,7 @@ const StopGroupsSummary: FC<{
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {groups.map((g) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard).slice(0, 5);
         const name = g.name || "Unnamed";
         return (
           <div key={g.id} style={{
@@ -5787,7 +5799,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard,
     );
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
@@ -5933,7 +5945,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, etaGuard,
     );
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),

@@ -1,6 +1,7 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { etaGuardKey, stabilizeEta, type EtaGuard } from "./etaStability";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -143,6 +144,18 @@ export function computeUpcomingArrivals(
   segmentTimes: SegmentTimes,
   now = Date.now(),
   dwellTimes: DwellTimes = {},
+  /**
+   * Optional rider-facing stability guard (`web/src/etaStability.ts`). Pass
+   * the app's shared `etaGuard` from anything a rider watches, so a bus whose
+   * layover clock resets, whose anchor flips, or whose GPS wanders does not
+   * make the displayed countdown lurch upward — report #82, "it jumped from
+   * 3min to 8 min!".
+   *
+   * Omit it and this function is pure and stateless exactly as before, which
+   * is what keeps `scripts/eta-replay/` an honest measurement of the
+   * arithmetic underneath the guard.
+   */
+  guard?: EtaGuard | null,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -326,13 +339,36 @@ export function computeUpcomingArrivals(
         if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
           recordedForStop.set(sid, recorded + 1);
           const sd = Math.sqrt(cumulativeVar);
+          const busName = bus.bus_name.replace("#", "");
+          // The rider-facing stability guard, applied to the FIRST arrival of
+          // this (bus, stop) only. The second entry is the same vehicle a lap
+          // later: a different countdown, sharing no history with this one and
+          // watched by nobody tick-by-tick, so damping it would only
+          // desynchronise the pair.
+          //
+          // `step` and `totalStops` ride along so the guard can tell a bus
+          // that DEPARTED this stop — the stop is suddenly most of a lap away,
+          // which must reset the countdown or we would keep counting down to a
+          // bus already gone — from an anchor that merely slipped back a stop
+          // or two, which is an artifact and must be damped.
+          const eta = (guard && recorded === 0)
+            ? stabilizeEta(
+                guard,
+                etaGuardKey(cfg.label, busName, sid),
+                cumulative,
+                now,
+                { step, loopLen: totalStops },
+              )
+            : cumulative;
           result.push({
-            eta: cumulative,
-            low: Math.max(0, cumulative - sd),
-            high: cumulative + sd,
+            // The spread keeps its width and rides with the shown value, so a
+            // damped ETA still reads as the range it is (report #77).
+            eta,
+            low: Math.max(0, eta - sd),
+            high: eta + sd,
             routeLabel: cfg.label,
             color: cfg.color,
-            busName: bus.bus_name.replace("#", ""),
+            busName,
             stopId: sid,
           });
         }
