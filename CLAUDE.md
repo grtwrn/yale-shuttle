@@ -152,13 +152,22 @@ words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
 the useful half.
 
-**Where the temperature is HEADING rides on a SECOND row**, muted: one number,
-not two ("↑80° by 2pm" while it warms, "↓57° by 2pm" while it cools). The
-extreme further from the current temperature wins, drawn from the hours the
-strip lists — not the calendar day, most of which a rider has already lived
+**Where the temperature is HEADING rides in the SAME sentence**, spelled out
+("warming to 80° by 2pm" / "cooling to 57° by 2pm") rather than an arrow —
+"↑80°" read live as "up 80 degrees" (a delta) rather than a destination, and a
+separate row under the sentence read as two facts when it is one. The extreme
+further from the current temperature wins, drawn from the hours the strip
+lists — not the calendar day, most of which a rider has already lived
 through. Showing both ends was the first cut and the operator cut it down
 (2026-09-03): at 9am on a warming day the low is the temperature you are
-already standing in. Inside the sentence they wrapped it: that
+already standing in.
+
+**The trend only ever occupies the QUIETEST branch** — temperature with no
+near-term or later rain to report (`trendShownInMessage` in `weather.ts`,
+shared by the line and by which hourly-strip cell gets marked, so the two can
+never disagree). Every other branch was measured too long to add it to at
+390px: the ≥70% umbrella branch already wraps to two rows on its own, and
+that is unchanged, deliberate, and left alone. Inside the sentence they wrapped it: that
 shipped on 2026-09-03 and was caught on production, so measure the LONGEST
 branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
 touching this line, not the shortest. The ≥70% branch still takes two rows by

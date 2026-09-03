@@ -1,6 +1,6 @@
 {
-  "caption": "Warming: the line names the high it is heading for",
-  "base": "http://127.0.0.1:8155",
+  "caption": "Warming, merged onto one line",
+  "base": "http://127.0.0.1:8156",
   "trip": {
     "board": 44,
     "dest": 124
@@ -12,7 +12,7 @@
     "/api/weather"
   ],
   "shots": [
-    "/tmp/shots-w/trend/trip.png"
+    "/tmp/shots-w/one-line-warm/trip.png"
   ],
   "failedViews": [],
   "pageErrors": [],

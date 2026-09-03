@@ -11,7 +11,7 @@ import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
-  tempTrend, temperatureIn, trendText,
+  tempTrend, temperatureIn, trendShownInMessage, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -3010,14 +3010,14 @@ const TripPlanner: FC<{
         // day — it is the temperature the rider is already standing in
         // (operator, 2026-09-03).
         const trend = tempTrend(hours, rain.temperatureF);
-        // Null when the destination reads the same as now IN THE UNIT ON
-        // SCREEN, and then the strip must not mark a cell the line never
-        // mentioned.
-        const span = trendText(trend, rain.temperatureF, tempUnit);
-        // Screen readers get words, not an arrow glyph.
-        const trendSpeech = trend
-          ? `${trend.dir === "up" ? "Up to" : "Down to"} ${degreesText(trend.temperatureF, tempUnit)}`
-          : "";
+        // Marked in the strip ONLY when the LINE actually names the trend —
+        // trendShownInMessage mirrors weatherMessage's own branch order
+        // rather than re-deriving it, so the two can never disagree. Also
+        // null when the destination reads the same as now in the unit on
+        // screen (see trendText).
+        const span = trendShownInMessage(rain, later)
+          ? trendText(trend, rain.temperatureF, tempUnit)
+          : null;
         return (
           <div style={{
             marginBottom: 8,
@@ -3045,27 +3045,13 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                  <span>{weatherMessage(rain, later, tempUnit)}</span>
-                  {/* The window's high and low get their OWN row, labelled
-                      with the hour they run to. Inside the sentence they
-                      pushed it onto a second line anyway — "69°F ↑80° ↓69° ·
-                      Cloudy · no rain expected" shipped wrapped on
-                      2026-09-03 — and an unlabelled pair of numbers in the
-                      middle of a sentence never said which hours it meant. */}
-                  {span && (
-                    <span
-                      role="img"
-                      aria-label={`${trendSpeech} by ${hourLabel(trend!.timeMs)}`}
-                      style={{
-                        fontSize: 11, fontWeight: 400,
-                        color: warn ? "#a06a10" : "#90a4ae",
-                      }}
-                    >
-                      {span}
-                    </span>
-                  )}
-                </span>
+                {/* One line: "warming to 80° by 2pm", not "↑80°" — a bare
+                    arrow beside a number read as a DELTA to a rider who saw
+                    it live (operator, 2026-09-03), and a second row under the
+                    sentence read as two separate facts when it is one. The
+                    trend only ever appears here, in the quietest branch (see
+                    weatherMessage), which is what keeps it to one line. */}
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, trend)}</span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}

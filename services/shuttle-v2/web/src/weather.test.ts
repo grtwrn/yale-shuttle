@@ -7,13 +7,14 @@ import {
   loadTempUnit,
   nextWetHour,
   outlookHours,
-  tempTrend,
   RAIN_PROBABILITY_THRESHOLD,
   rainLikely,
   rainLikelyFrom,
-  trendText,
   saveTempUnit,
   temperatureText,
+  tempTrend,
+  trendShownInMessage,
+  trendText,
   weatherEmoji,
   weatherMessage,
   weatherTone,
@@ -333,25 +334,25 @@ describe("which way it is heading (operator, 2026-09-03)", () => {
     const t = tempTrend(hours, 69)!;
     expect(t.dir).toBe("up");
     expect(t.temperatureF).toBe(80);
-    expect(trendText(t, 69, "F")).toBe("↑80° by 8pm");
+    expect(trendText(t, 69, "F")).toBe("warming to 80° by 8pm");
   });
 
   it("names the LOW while it is cooling", () => {
     const hours = outlookHours([H(18, 5, 66), H(19, 5, 62), H(20, 5, 57), H(21, 5, 58)], now);
     const t = tempTrend(hours, 66)!;
     expect(t.dir).toBe("down");
-    expect(trendText(t, 66, "F")).toBe("↓57° by 8pm");
+    expect(trendText(t, 66, "F")).toBe("cooling to 57° by 8pm");
   });
 
   it("picks the bigger swing when it goes both ways", () => {
     // Warms 2°, then drops 9°: the drop is the fact worth carrying.
     const hours = outlookHours([H(18, 5, 66), H(19, 5, 68), H(20, 5, 59), H(21, 5, 60)], now);
-    expect(trendText(tempTrend(hours, 66), 66, "F")).toBe("↓59° by 8pm");
+    expect(trendText(tempTrend(hours, 66), 66, "F")).toBe("cooling to 59° by 8pm");
   });
 
   it("names the hour it FIRST gets there, not the last hour it stays", () => {
     const hours = outlookHours([H(18, 5, 69), H(19, 5, 80), H(20, 5, 80), H(21, 5, 80)], now);
-    expect(trendText(tempTrend(hours, 69), 69, "F")).toBe("↑80° by 7pm");
+    expect(trendText(tempTrend(hours, 69), 69, "F")).toBe("warming to 80° by 7pm");
   });
 
   it("says nothing when the window is flat, or in the unit shown", () => {
@@ -359,7 +360,7 @@ describe("which way it is heading (operator, 2026-09-03)", () => {
     expect(tempTrend(flat, 66)).toBeNull();
     // 66°F and 67°F are both 19°C: a 1°F climb is nothing to report in °C.
     const tiny = outlookHours([H(18, 5, 66), H(19, 5, 67)], now);
-    expect(trendText(tempTrend(tiny, 66), 66, "F")).toBe("↑67° by 7pm");
+    expect(trendText(tempTrend(tiny, 66), 66, "F")).toBe("warming to 67° by 7pm");
     expect(trendText(tempTrend(tiny, 66), 66, "C")).toBeNull();
   });
 
@@ -373,16 +374,46 @@ describe("which way it is heading (operator, 2026-09-03)", () => {
 
   it("skips hours with no temperature rather than reading them as zero", () => {
     const gappy = outlookHours([H(18, 5, 69), H(19, 5), H(20, 5, 78)], now);
-    expect(trendText(tempTrend(gappy, 69), 69, "F")).toBe("↑78° by 8pm");
+    expect(trendText(tempTrend(gappy, 69), 69, "F")).toBe("warming to 78° by 8pm");
   });
 
-  it("stays OUT of the sentence — it has its own row", () => {
-    // The sentence must stay one line at 390px; the trend renders beneath it.
-    const v = { likely: false, probability: 10, known: true, temperatureF: 66, weatherCode: 0 };
+  it("rides in the SAME line, spelled out so it can't read as a delta", () => {
+    // "↑80°" was read live as "up 80 degrees" rather than "heading to 80
+    // degrees" (operator, 2026-09-03) — spelling it out removes the reading.
+    const hours = outlookHours([H(18, 5, 66), H(19, 5, 68), H(20, 5, 71)], now);
+    const trend = tempTrend(hours, 66);
+    const v = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
+    const msg = weatherMessage(v, null, "F", trend);
+    expect(msg).toBe("66°F · warming to 71° by 8pm");
+    expect(msg).not.toContain("\n");
+    expect(msg).not.toContain("↑");
+    expect(msg).not.toContain("↓");
+  });
+
+  it("only appears in the quietest branch — never alongside a rain clause", () => {
+    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
+    const trend = tempTrend(hours, 66);
+    // Near-term rain outranks the trend.
+    const warn = { likely: true, probability: 85, known: true, temperatureF: 66, weatherCode: 61 };
+    expect(weatherMessage(warn, null, "F", trend)).not.toContain("warming");
+    const mention = { likely: false, probability: 30, known: true, temperatureF: 66, weatherCode: 3 };
+    expect(weatherMessage(mention, null, "F", trend)).not.toContain("warming");
+    // So does the "and later?" rain clause.
     const later = { timeMs: Date.parse("2026-09-03T21:00:00-04:00"), probability: 70 };
-    expect(weatherMessage(v, later, "F")).toBe("66°F · rain likely 9pm (70%)");
+    const dry = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
+    expect(weatherMessage(dry, later, "F", trend)).not.toContain("warming");
+    // Only the quietest branch carries it — and trendShownInMessage agrees.
+    expect(weatherMessage(dry, null, "F", trend)).toContain("warming");
+    expect(trendShownInMessage(warn, null)).toBe(false);
+    expect(trendShownInMessage(mention, null)).toBe(false);
+    expect(trendShownInMessage(dry, later)).toBe(false);
+    expect(trendShownInMessage(dry, null)).toBe(true);
+  });
+
+  it("falls back to the condition word when there is nothing to warm or cool toward", () => {
+    const v = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
+    expect(weatherMessage(v, null, "F", null)).toBe("66°F · Clear · no rain expected");
     expect(weatherMessage(v, null, "F")).toBe("66°F · Clear · no rain expected");
-    expect(weatherMessage(v, null, "F")).not.toContain("↑");
   });
 });
 
@@ -419,13 +450,13 @@ describe("the window still bounds what can be named", () => {
     );
     const t = tempTrend(hours, 66)!;
     expect(t.temperatureF).toBe(60);
-    expect(trendText(t, 66, "F")).toBe("↓60° by 9pm");
+    expect(trendText(t, 66, "F")).toBe("cooling to 60° by 9pm");
   });
 
   it("marks in the strip exactly the number the line names", () => {
     const hours = outlookHours([H(18, 5, 69), H(19, 10, 80), H(20, 5, 72)], now);
     const t = tempTrend(hours, 69)!;
-    expect(trendText(t, 69, "F")).toBe("↑80° by 7pm");
+    expect(trendText(t, 69, "F")).toBe("warming to 80° by 7pm");
     expect(hours.filter((h) => h.temperatureF === t.temperatureF)).toHaveLength(1);
   });
 });
