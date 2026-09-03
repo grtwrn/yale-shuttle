@@ -45,7 +45,10 @@ const DWELL_WINDOW_DAYS = 14;
 
 /**
  * Quantile served as `DwellStats.low` and the samples needed to place it.
- * 0.35 is measured, not chosen — see DwellStats.low and docs/eta-accuracy.md.
+ *
+ * The estimator does NOT consume this — see the warning on `DwellStats.low`.
+ * It stays calibrated so the field remains available and honest, not because
+ * anything currently depends on 0.35.
  */
 const DWELL_LOW_QUANTILE = 0.35;
 const DWELL_LOW_MIN_SAMPLES = 5;

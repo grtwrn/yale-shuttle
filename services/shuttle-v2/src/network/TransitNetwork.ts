@@ -63,27 +63,33 @@ export interface DwellStats {
   stddev: number;
   n: number;
   /**
-   * A LOW quantile of the dwell (the 35th percentile), for a dwell the bus has
-   * not started yet.
+   * The 35th percentile of this stop's `dwell_sec` samples.
    *
-   * A layover's dwell is not a number, it is a wide distribution: at Red's
-   * 344 Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes, and
-   * one visit in fifty-eight is under two minutes (re-measured 2026-09-03 over
-   * 813 visits; the figure first written here, one in seventeen, was too high
-   * by three and a half times — the spread is the argument, not the tail).
-   * Billing the median for a rest
-   * the bus has not begun makes the board pessimistic about a third to half of
-   * the time by more than two minutes — and pessimistic is the direction that
-   * costs a rider the bus, because they stroll down and it has gone.
+   * ⚠️ **Nothing in the ETA reads this.** It is calibrated and served, and it
+   * is deliberately dormant.
    *
-   * Measured over 30 days of arrivals on the four busiest routes, re-pricing
-   * only the not-yet-started dwells at p35 moves the median error on estimates
-   * that span a layover from +0.8..+2.0 min to about zero, and the share more
-   * than 2 min pessimistic from 36-50% down to 17-32%. p25 overshoots into
-   * optimism (-1.8..-2.7 min). See docs/eta-accuracy.md.
+   * It was introduced (2026-09-03) to price a rest the bus had not started at
+   * a low quantile, on the premise that a hop's served time is "the dwell at
+   * its from-stop plus the drive". That premise is false. `detector.ts`
+   * computes one `elapsedSec` per transition — the time from the bus becoming
+   * nearest stop A to it becoming nearest stop B — and emits it as BOTH
+   * `DwellEvent.dwellSec` and `SegmentEvent.travelSec`. Joined on their shared
+   * anchor over 30 days, 119,329 of 119,329 rows are identical. So
+   * `dwell_sec` is not the standing-still part of a hop; it is the whole hop,
+   * keyed by from-stop instead of by (from, to) pair, and on the live payload
+   * this median exceeds the whole segment average on 41.2% of hops.
    *
-   * Undefined until the calibrator has enough samples to place a quantile;
-   * callers must fall back to `mean`.
+   * Subtracting it therefore discounted nothing and, through the consumer's
+   * floor, SURCHARGED 77% of hops. Replayed over 262,762 real pairs that cost
+   * 9.2 s of median absolute error and moved the board 2 points more
+   * pessimistic. Reverted; see WHAT A DWELL STATISTIC ACTUALLY MEASURES in
+   * `web/src/arrivals.ts` and docs/eta-accuracy.md.
+   *
+   * Kept, rather than deleted, because a rest model derived from a quantity
+   * that really is a dwell would want exactly this shape — and because
+   * removing it is a wider diff for no rider-visible gain.
+   *
+   * Undefined until the calibrator has enough samples to place a quantile.
    */
   low?: number;
 }
