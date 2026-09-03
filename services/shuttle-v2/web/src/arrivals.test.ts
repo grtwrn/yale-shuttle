@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION, STALL_CREDIT_MAX_STEPS } from "./arrivals";
+import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -180,104 +180,11 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     expect(padded).toBeGreaterThan(300);
   });
 
-  describe("a layover taken one stop early (operator, 2026-09-03)", () => {
-    // Red's ~8 min hold is calibrated at 344 Winchester, but a bus took it at
-    // Canal/Munson instead — 10 min sat where that stop typically holds ~2.
-    // The ETA cancelled only Canal/Munson's own 2 min and then charged the
-    // full 344 Winchester layover as well, so every downstream board read
-    // minutes too late for a hold the bus had ALREADY taken. Here
-    // stopAndShop stands in for Canal/Munson and elmYorkTyco for 344
-    // Winchester (adjacent in the route-4 fixture, idx 23 and 24).
-    const SHORT_HOP = 120;   // stopAndShop -> elmYorkTyco: mostly driving
-    const LAYOVER_HOP = 557; // elmYorkTyco -> collegeWallN: 475 s of it is the hold
-    const segs: SegmentTimes = {
-      "4": {
-        [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: SHORT_HOP, sd: 30, n: 20 },
-        [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: LAYOVER_HOP, sd: 60, n: 34 },
-      },
-    };
-    const dwells: DwellTimes = {
-      "4": {
-        [String(STOP.stopAndShop)]: { med: 120, sd: 40, n: 18 },
-        [String(STOP.elmYorkTyco)]: { med: 475, sd: 120, n: 13 },
-      },
-    };
-    const busSatAt = (seconds: number) => makeBus({
-      ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
-      at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(seconds),
-    });
-    const etaAt = (stopId: number, seconds: number) => etaFor(
-      computeUpcomingArrivals([stopId], [busSatAt(seconds)], routeStops, stopCoords, segs, NOW, dwells),
-      stopId,
-    )!;
-
-    it("does not charge a hold the bus has already taken", () => {
-      // 10 min sat: 2 of it cancels this stop's own dwell, and the 8 that are
-      // left cancel the layover baked into the NEXT hop. What remains is the
-      // driving: 557 - 475 = 82 s.
-      const eta = etaAt(STOP.collegeWallN, 600);
-      expect(eta).toBeLessThan(150);
-      expect(eta).toBeGreaterThan(60);
-    });
-
-    it("leaves a normal pause alone — nothing carries forward", () => {
-      // Sat exactly its measured 2 min: no evidence any hold has moved, so
-      // the layover ahead is still charged in full.
-      const eta = etaAt(STOP.collegeWallN, 120);
-      expect(eta).toBeGreaterThan(LAYOVER_HOP - 1);
-    });
-
-    it("credits the adjacent stop and no further", () => {
-      // Two hops past the stall the segment must be charged in full: a long
-      // stall is evidence a measured hold moved, not that the whole route
-      // will run early.
-      const twoPast = routeStops["4"]![26]!;
-      const uncredited = etaAt(twoPast, 120) - etaAt(STOP.collegeWallN, 120);
-      const credited = etaAt(twoPast, 600) - etaAt(STOP.collegeWallN, 600);
-      expect(credited).toBeCloseTo(uncredited, 6);
-      expect(STALL_CREDIT_MAX_STEPS).toBe(2);
-    });
-
-    it("only spills into a LAYOVER, not into any old pause", () => {
-      // Same 10-minute stall, but the adjacent stop merely pauses a minute.
-      // Measured (229,907 pairs): crediting stalls into small neighbouring
-      // dwells cost 1.8 s of median accuracy, because most long stalls are
-      // just long stalls — so this hop must be charged in full.
-      const smallDwells: DwellTimes = {
-        "4": {
-          [String(STOP.stopAndShop)]: { med: 120, sd: 40, n: 18 },
-          [String(STOP.elmYorkTyco)]: { med: 60, sd: 20, n: 22 },
-        },
-      };
-      const eta = etaFor(
-        computeUpcomingArrivals(
-          [STOP.collegeWallN], [busSatAt(600)], routeStops, stopCoords, segs, NOW, smallDwells,
-        ),
-        STOP.collegeWallN,
-      )!;
-      expect(eta).toBeGreaterThan(LAYOVER_HOP - 1);
-    });
-
-    it("requires the bus to have plausibly SERVED the layover", () => {
-      // Sat only 3 min: past this stop's own 2 min there is one minute left,
-      // nowhere near half of the ~8 min hold ahead, so it is not evidence
-      // the layover moved and the hop stays intact.
-      const eta = etaFor(
-        computeUpcomingArrivals(
-          [STOP.collegeWallN], [busSatAt(180)], routeStops, stopCoords, segs, NOW, dwells,
-        ),
-        STOP.collegeWallN,
-      )!;
-      expect(eta).toBeGreaterThan(LAYOVER_HOP - 1);
-    });
-
-    it("never drives a hop below zero, however long the stall", () => {
-      for (const minutes of [10, 30, 90]) {
-        expect(etaAt(STOP.collegeWallN, minutes * 60)).toBeGreaterThanOrEqual(0);
-        expect(etaAt(STOP.elmYorkTyco, minutes * 60)).toBeGreaterThanOrEqual(0);
-      }
-    });
-  });
+  // The "layover taken one stop early" block that lived here is gone with the
+  // behaviour it pinned. A week of `arrivals` says a long hold at a
+  // non-layover stop is followed by the scheduled layover 292 times out of
+  // 321 — the credit would have been wrong in 91% of the cases it fired on.
+  // See the note above STALL_CREDIT_MAX_FRACTION in arrivals.ts.
 
   it("still does not promise a bus that is part way through its layover", () => {
     const segs: SegmentTimes = {

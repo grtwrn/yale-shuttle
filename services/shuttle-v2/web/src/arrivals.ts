@@ -22,40 +22,26 @@ export type DwellsByBus = Record<string, DwellTimes>;
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
 
 /**
- * How many hops an elapsed dwell may be credited against.
+ * The credit is spent on the FIRST hop only, and never beyond the dwell that
+ * hop actually contains.
  *
- * 1 would mean "only the stop the bus is standing at". 2 adds the ADJACENT
- * stop, because a layover does not always happen where the calibrator
- * measured it: on Red the ~8 min hold is calibrated at 344 Winchester, and on
- * 2026-09-03 a bus took it one stop early at Canal/Munson (10 min sat, where
- * that stop typically holds ~2). The first hop could only cancel Canal/Munson's
- * own 2 min, so the ETA went on to charge the full 344 Winchester layover as
- * well — a hold the bus had already taken — and every downstream board read
- * minutes too late.
+ * On 2026-09-03 this briefly reached the adjacent stop too, on the theory
+ * that a driver's break taken one stop early leaves the layover ahead
+ * double-charged. Measured against a week of `arrivals`, the theory is wrong:
+ * of 321 cases where a bus held 3+ minutes at a non-layover stop with a
+ * layover-sized hold at the next stop, the layover was still taken as
+ * scheduled 292 times and skipped only 29 — 91% against. A bus holding
+ * abnormally long is usually running late and will take its layover anyway,
+ * so crediting it forward makes the ETA optimistic in nine cases out of ten,
+ * which is the direction that has a rider stroll to the stop and miss the
+ * bus. The replay agreed it was not worth it (+0.1 s median even at its most
+ * conservative). Reverted; do not re-add without new evidence.
  *
- * Not more than 2: past the adjacent stop, a long stall stops being evidence
- * that a specific measured hold has moved and becomes a guess that the rest
- * of the route will run early.
+ * What DID fix the reported symptom is in the collector, not here: a parked
+ * bus that shuffled a few metres restarted its own dwell clock, so the credit
+ * was ~0 on a bus most of the way through its layover. See
+ * `BusState.stationarySince`.
  */
-export const STALL_CREDIT_MAX_STEPS = 2;
-
-/**
- * A dwell this long is a LAYOVER, not a pause — the same threshold the
- * approach list already uses to show "⏸ ~Nm" beside a stop.
- *
- * Only a layover-sized hold on the adjacent stop is evidence that a layover
- * has moved. Measured on 229,907 replayed GPS pairs (gps-replay.ts,
- * 2026-09-03): spilling credit into ANY neighbouring dwell cost 1.8 s of
- * median accuracy and 0.5 points of within-2-min, because most long stalls
- * are just long stalls. Requiring a layover, and requiring that the bus has
- * plausibly already served half of it, costs 0.1 s of median and nothing at
- * all on within-2-min.
- */
-export const LAYOVER_DWELL_SEC = 180;
-
-/** How much of the adjacent layover the bus must have sat through for the
- *  hold to count as already taken. */
-export const STALL_CREDIT_SERVED_FRACTION = 0.5;
 
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
@@ -211,33 +197,13 @@ export function computeUpcomingArrivals(
         // padding — so the bus left, arrived ~2.5 min later, and the rider who
         // trusted the 5 was too late. The dwell bound gives 557 - 475 = 82 s,
         // which is the drive, which is the answer.
-        // The credit may also reach the ADJACENT stop, and this is the whole
-        // point of STALL_CREDIT_MAX_STEPS: a layover taken one stop early is
-        // still a layover taken. Leftover credit only EXISTS when the bus sat
-        // longer than its own stop's measured dwell, which is exactly the
-        // evidence that a hold has moved — a bus that pauses its normal two
-        // minutes leaves nothing to carry forward and nothing changes.
-        //
-        // Past the first hop the bound is the NEXT stop's measured dwell and
-        // nothing else: no fraction fallback. The fraction is a guess about
-        // how much of an unmeasured hop is waiting, and guessing that twice
-        // in a row is how the padding bug of 2026-09-02 happened in reverse.
-        if (step <= STALL_CREDIT_MAX_STEPS && stallCredit > 0) {
-          const originSid = stops[prevI];
-          const dwell = dwellTimes[cfg.routeIds[0]]?.[String(originSid)];
-          const med = dwell && dwell.med > 0 ? dwell.med : 0;
-          let cancellable = med > 0
-            ? med
-            : (step === 1 ? segAvg * STALL_CREDIT_MAX_FRACTION : 0);
-          // Past the first hop, the credit only reaches a LAYOVER the bus has
-          // plausibly already served. Both conditions are load-bearing:
-          // without the layover test this shaved small dwells off the second
-          // hop for every bus that idled a little long, which measured 1.8 s
-          // worse across 229,907 pairs.
-          if (step > 1
-            && (med < LAYOVER_DWELL_SEC || stallCredit < STALL_CREDIT_SERVED_FRACTION * med)) {
-            cancellable = 0;
-          }
+        // First hop only — see the note above STALL_CREDIT_MAX_FRACTION for
+        // why carrying it to the adjacent stop was tried and measured wrong.
+        if (step === 1 && stallCredit > 0) {
+          const dwell = dwellTimes[cfg.routeIds[0]]?.[String(stops[busIdx])];
+          const cancellable = dwell && dwell.med > 0
+            ? dwell.med
+            : segAvg * STALL_CREDIT_MAX_FRACTION;
           const applied = Math.min(stallCredit, cancellable, segAvg);
           segAvg -= applied;
           stallCredit -= applied;
