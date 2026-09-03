@@ -1373,3 +1373,53 @@ describe("GET /api/stats/reports — the dashboard's \"someone wrote in\" alert"
     expect(bad.status).toBe(400);
   });
 });
+
+describe("GET /api/stats/searches — what riders looked for", () => {
+  const login = async () => {
+    const res = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    return `stats_session=${value}`;
+  };
+  const search = (q: string) => app.request(`/api/geocode?q=${encodeURIComponent(q)}`);
+
+  it("counts what was searched and what found nothing", async () => {
+    // A place nothing knows about: the injected geocoder returns [] and no
+    // curated landmark matches, so this is a genuine "found nothing" — the
+    // signal worth having. ("one6three" would NOT do: #46 added it, which is
+    // exactly the outcome this table exists to produce.)
+    await search("zzz nowhere plaza");
+    await search("zzz nowhere plaza");
+    const res = await app.request("/api/stats/searches", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      searches: number; zeroSearches: number;
+      missing: Array<{ q: string; n: number }>;
+    };
+    expect(body.searches).toBe(2);
+    expect(body.zeroSearches).toBe(2);
+    expect(body.missing[0]!.q).toBe("zzz nowhere plaza");
+  });
+
+  it("is reachable with the stats cookie and carries no rider in it", async () => {
+    await search("zzz ice palace");
+    const cookie = await login();
+    const res = await app.request("/api/stats/searches", { headers: { cookie } });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("zzz ice palace");
+    // The words, never the person: the payload has no id, IP or timestamp.
+    expect(text).not.toContain("anon");
+    expect(text).not.toContain("client_ip");
+    expect(text).not.toMatch(/\d{13}/); // no epoch-ms anywhere
+  });
+
+  it("refuses an unauthenticated caller", async () => {
+    expect((await app.request("/api/stats/searches")).status).toBe(401);
+  });
+});

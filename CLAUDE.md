@@ -455,6 +455,30 @@ eye.
   upper bound on "present at that moment". Today's line stops at the current
   hour — future hours are not zeroes.
 
+**Search terms are recorded, riders are not** (`src/server/searchTerms.ts`,
+2026-09-03). `GET /api/stats/searches` answers the two questions that used to
+cost a rider report each: which searches find NOTHING (a place to add —
+"one6three" and "ice rink" were both found that way, one report at a time),
+and which are common enough that their matching is worth tuning. The /stats
+page shows both lists; the not-found one is the one that turns into work.
+
+**The privacy shape is why this table is allowed to exist.** A destination is
+the most revealing thing this app handles, so a row is keyed by (ET day,
+normalised query) and holds counts: no anon id, no IP, no user agent, no time
+of day, no session. Two searches by one rider and one search by two riders are
+the same row, and nothing in it can reconstruct a person's movements — a
+stricter promise than `daily_actives` keeps, and it should stay stricter.
+A test asserts the column set so a future column has to argue with it.
+Swept at 30 days rather than 90: a month is long enough to spot a gap.
+
+Two details that make the data usable rather than noise: the lookup fires on a
+debounce as a rider types, so `collapsePrefixes` drops any term that is a
+strict prefix of a longer one ("one6", "one6t" → "one6three"); and a term
+counts as missing only when it NEVER found anything, since one miss on a term
+that usually works is a flaky upstream, not a gap. Counts are ADDED on flush,
+never replaced — the mistake `daily_actives` made, which lost a day's tally on
+every deploy.
+
 **Test traffic is excluded, not deleted.** Browser harnesses drive the live
 site, so they mint real ids and would otherwise appear as riders who never
 return — dragging week-1 retention toward zero for a month. `excluded_anon_ids`

@@ -241,6 +241,44 @@ export const excludedAnonIds = sqliteTable("excluded_anon_ids", {
 });
 
 /**
+ * What riders type into the destination box — the words only, never who typed
+ * them.
+ *
+ * The point is to fix lookup with evidence instead of guesses: which searches
+ * find NOTHING (a place to add — "one6three" and "ice rink" were both found
+ * this way, by hand, from rider reports), and which are common enough that
+ * their matching is worth tuning.
+ *
+ * The privacy shape is deliberate and is the reason this table can exist at
+ * all. A destination is the most revealing thing this app ever sees — a
+ * clinic, somebody's home address — so a row is keyed by (ET day, normalised
+ * query) and carries COUNTS. There is no anon id, no IP, no time of day and
+ * no session: two searches by one rider and one search by two riders are the
+ * same row, and nothing here can reconstruct one person's route. That is a
+ * stricter promise than `daily_actives` keeps, and it should stay stricter.
+ *
+ * Swept at 30 days, shorter than the 90 the rider counts keep, because a
+ * month is long enough to spot a missing place and there is no reason to hold
+ * the words longer than that.
+ */
+export const searchTerms = sqliteTable(
+  "search_terms",
+  {
+    /** ET calendar day, "YYYY-MM-DD" — the same service day the rest uses. */
+    day: text("day").notNull(),
+    /** Lower-cased, whitespace-collapsed query. Capped at 60 chars. */
+    q: text("q").notNull(),
+    /** How many times it was searched that day. */
+    n: integer("n").notNull().default(0),
+    /** How many of those returned nothing at all — the "add this place" signal. */
+    zero: integer("zero").notNull().default(0),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.day, t.q] }) }),
+);
+
+export type DbSearchTerm = typeof searchTerms.$inferSelect;
+
+/**
  * Browsers that belong to the OPERATOR, so the dashboard can tell a rider's
  * report from the operator's own.
  *
