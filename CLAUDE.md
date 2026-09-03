@@ -150,7 +150,32 @@ per refresh, or a cold request would wait 5 s twice.
 The weather line answers ONE question — when will it next rain — in as few
 words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
-the useful half. Tapping it opens the next six hours as a sideways-scrolling
+the useful half.
+
+**Where the temperature is HEADING rides in the SAME sentence**, spelled out
+("warming to 80° by 2pm" / "cooling to 57° by 2pm") rather than an arrow —
+"↑80°" read live as "up 80 degrees" (a delta) rather than a destination, and a
+separate row under the sentence read as two facts when it is one. The extreme
+further from the current temperature wins, drawn from the hours the strip
+lists — not the calendar day, most of which a rider has already lived
+through. Showing both ends was the first cut and the operator cut it down
+(2026-09-03): at 9am on a warming day the low is the temperature you are
+already standing in.
+
+**The line carries BOTH facts at once** — the chance of rain and the
+temperature trend ("69°F · 35% rain · warming to 80°"). An earlier cut showed
+the trend only when there was no rain to report, which meant the two things
+the operator asked for were never on screen together. To fit at 390px,
+`rainFragment` has a TERSE form used only when the trend is beside it ("35%
+rain" rather than "35% chance of rain within the hour"), and the trend drops
+its hour ("by 2pm") whenever rain needs more than a bare percentage —
+`trendHourFits` is the one place that decides. Rain arriving later in the
+window still outranks a sub-20% near-term number, so "rain 9pm (70%)" is what
+a quiet-now-wet-later evening says. Inside the sentence they wrapped it: that
+shipped on 2026-09-03 and was caught on production, so measure the LONGEST
+branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
+touching this line, not the shortest. The ≥70% branch still takes two rows by
+choice — it is the amber warning and the second row carries the advice. Tapping it opens the next six hours as a sideways-scrolling
 strip of temperature and rain chance, each percentage carrying a 💧 so it is
 not read as anything else; that strip is collapsed by default, since the
 sentence usually suffices. Hours are spelled `11pm`, not the app's usual
@@ -182,6 +207,16 @@ A near-term chance always outranks the later hour: a rider with 45% in the
 next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
 no rain expected".
+
+**The option row's top line is total · live bus · arrival** — "12 min · 🚌 in
+<1, 14 min · arrive 10:16a". The bus times moved up from a third line
+(operator, 2026-09-03) because that is the number deciding whether you leave
+now, and the card is two lines instead of three for it. The two ETAs share
+one unit via `fmtBusPair` ("in 12, 21 min", the operator's own wording): "in
+12 min · next in 21 min" clipped mid-number at 390px, and both times now fit
+at every ETA. The bus ETA is computed ONCE at row scope (`busEtaLive`) and
+consumed by both the top line and the departed warning, so they cannot
+disagree.
 
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be
@@ -398,6 +433,28 @@ Chart colours are tokens on `:root`, redefined for dark mode, and the pair was
 run through the dataviz palette validator in both modes — don't re-pick them by
 eye.
 
+**The dashboard answers two more questions** (2026-09-03):
+
+- **"Has anyone but me written in?"** — `GET /api/stats/reports` lists reports
+  that are NOT from the operator's own browsers and not the map-bot's own
+  filings, newest first, with an unread badge the page keeps in localStorage.
+  It matters because 60 of the first 69 reports were the operator's own
+  testing and the ONE report from a real outside rider had to be found by
+  hand. Operator browsers live in `operator_anon_ids` — deliberately NOT
+  `excluded_anon_ids`, because the operator's phone is a real rider and must
+  keep counting in the usage numbers. Seed it with the `SHUTTLE_OPERATOR_ANON_IDS`
+  secret (comma-separated) or `POST /api/stats/operator {anonId}`. A report
+  with no anon id counts as OUTSIDE: storage may simply have been blocked, and
+  a false "someone wrote in" is cheaper than missing the one person who did.
+  **The payload carries no IP, no anon id and no context** — this route is
+  reachable with the stats cookie, so its shape is the security boundary.
+- **"When is it used?"** — `GET /api/stats/hourly` gives 24 counts per day,
+  one line per day on the page. It is DERIVED from the first/last sighting
+  already stored per (day, browser): nothing new is collected, and it reads
+  back to launch. A browser counts in every hour of its span, so this is an
+  upper bound on "present at that moment". Today's line stops at the current
+  hour — future hours are not zeroes.
+
 **Test traffic is excluded, not deleted.** Browser harnesses drive the live
 site, so they mint real ids and would otherwise appear as riders who never
 return — dragging week-1 retention toward zero for a month. `excluded_anon_ids`
@@ -531,6 +588,31 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
   `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
   see, so it is a sanity check, not a measurement.
+
+### The accuracy gate: a recorded pass, before/during/after a dwell
+
+Any change to an arrival time is replayed against a REAL bus pass before it
+merges: `web/src/accuracy-layover.test.ts` walks
+`web/src/__fixtures__/red-layover-pass.json` — Red #309 approaching the
+344 Winchester layover, sitting through 9 min 45 s of it, and driving on —
+and asks what the board would have shown a rider at Division/Prospect and
+Prospect/Hillside at each of 115 recorded moments, against when the bus
+actually arrived. `npm run test:accuracy`, and `.github/workflows/accuracy.yml`
+runs it on every PR touching the estimator (it is in `npm test` too, so the
+deploy gate catches it either way).
+
+It exists because unit tests did not catch the 2026-09-03 defect: each of them
+pinned one contrived moment, and the failure only appears in a bus MOVING
+THROUGH a dwell. The invariants are loose about accuracy and strict about the
+two things that hurt riders — a bus promised LATER than it comes (they walk
+down and it has gone: the gate fails past 120 s) and a countdown that LURCHES
+between polls (they cannot tell whether to run: past 180 s). Reverting the
+estimator to the shipped-yesterday rule fails three of them by name, quoting
+the moment and both numbers.
+
+**Do not loosen a bound or re-record the fixture to make a change pass.**
+Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
+changes shape, and say in the PR what moved.
 
 ## Investigations that did not become code
 

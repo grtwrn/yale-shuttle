@@ -42,8 +42,31 @@ jobs:
       - name: Install dependencies (backend + web)
         run: npm ci && npm ci --prefix web
 
-      - name: Install chromium for the browser smoke
-        run: sudo apt-get update -q && sudo apt-get install -y -q chromium-browser
+      # Two ways of getting a browser have now failed here, both for the same
+      # underlying reason — they reached for a package manager:
+      #
+      #   `apt-get install chromium-browser` is a snap shim on Ubuntu, and the
+      #   snap store 408'd on its assertion fetch (2026-09-03).
+      #   `playwright-core install --with-deps` runs `apt-get update`, and the
+      #   runner image ships a Microsoft azure-cli repo that started returning
+      #   403 Forbidden — "no longer signed" — which failed the DEPLOY the
+      #   same day, after the PR check had passed.
+      #
+      # So: no package manager. The runner image already has Google Chrome;
+      # drive that. Playwright's own pinned build is the fallback, and even
+      # then WITHOUT --with-deps, because the runner already carries the
+      # shared libraries a browser needs.
+      - name: Provide a browser for the smoke test
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "BOT_CHROMIUM_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null 2>&1; then
+            echo "BOT_CHROMIUM_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install chromium
+            echo "BOT_CHROMIUM_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+          fi
+          echo "browser: $(grep BOT_CHROMIUM_PATH "$GITHUB_ENV" | tail -1)"
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -52,4 +75,3 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLYCTL: flyctl
-          BOT_CHROMIUM_PATH: /usr/bin/chromium-browser

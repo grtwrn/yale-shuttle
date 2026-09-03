@@ -20,6 +20,27 @@ export type GeocodeResult = {
  * stopwatch (report #48), and it violated the "minutes are spelled min"
  * convention besides. Sub-minute is a state ("<1 min", "now"), not a timer.
  */
+/**
+ * The next two buses in one breath: "in 1, 11 min".
+ *
+ * "in 1 min · next in 11 min" did not fit the option row beside the total
+ * and the arrival time — at 390px it clipped mid-number — and the operator's
+ * fix was the right one (2026-09-03): drop the second label and let the two
+ * numbers share the unit. Both times are always shown now, at any ETA.
+ *
+ * A bus already at the stop has no number to share, so it keeps words.
+ */
+export function fmtBusPair(firstSec: number, secondSec?: number | null): string {
+  const first = fmtMin(firstSec);
+  if (secondSec == null || !Number.isFinite(secondSec)) {
+    return first === "now" ? "arriving now" : `in ${first}`;
+  }
+  const second = fmtMin(secondSec);
+  if (first === "now") return `now, then ${second}`;
+  // "1 min" + "11 min" -> "1, 11 min"; "<1 min" keeps its "<".
+  return `in ${first.replace(" min", "")}, ${second}`;
+}
+
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";
@@ -84,14 +105,27 @@ export function formatEtaRange(a: { eta: number; low: number; high: number }): s
 // Connecticut Planning Region, Connecticut, United States" — two segments
 // carry all the signal on a phone-width row.
 export function suggLabel(g: GeocodeResult, siblings?: GeocodeResult[]): string {
-  const parts = g.display_name.split(",").map((s) => s.trim()).filter(Boolean);
+  const parts = suggSegments(g.display_name);
   const short = parts.slice(0, 2).join(", ");
   if (!siblings) return short;
   // Two distinct results can share their first two segments ("Chapel Street,
   // New Haven" for both ends of a long street), which renders as duplicate
   // rows the rider cannot choose between. Widen only the colliding ones.
   const collides = siblings.some((o) => o !== g && suggLabel(o) === short);
-  return collides ? (parts.slice(0, 3).join(", ") || short) : short;
+  if (collides) return parts.slice(0, 3).join(", ") || short;
+  // Same business, another town. External hits are built "name, street, city"
+  // (parsePhoton), so the town is the third segment — precisely the one the
+  // two-part label drops. That left "Trader Joe's, 46 Skiff Street" sitting
+  // under the Trader Joe's the shuttle serves with nothing saying it is up in
+  // Hamden (report #72). Widen only when a sibling shares the place name and
+  // is somewhere else; two branches in one town are told apart by the street.
+  const name = suggPlaceName(g.display_name);
+  const town = parts[2];
+  const elsewhere = town != null && siblings.some((o) =>
+    o !== g
+    && suggPlaceName(o.display_name) === name
+    && suggSegments(o.display_name)[2] !== town);
+  return elsewhere ? parts.slice(0, 3).join(", ") : short;
 }
 
 /**
@@ -117,7 +151,18 @@ export const PLACE_ICONS: Record<string, string> = {
   worship: "⛪", place_of_worship: "⛪", synagogue: "🕍",
   neighbourhood: "🏙️", bank: "🏦", fuel: "⛽", parking: "🅿️",
 };
+const suggSegments = (display: string): string[] =>
+  display.split(",").map((s) => s.trim()).filter(Boolean);
 
+/**
+ * The place name two suggestions collide on: the first segment without the
+ * parenthetical the curated list uses to qualify a branch ("Trader Joe's
+ * (Milford)"), lowercased so casing between providers doesn't split a match.
+ */
+const suggPlaceName = (display: string): string =>
+  (suggSegments(display)[0] ?? "").replace(/\s*\([^)]*\)$/, "").trim().toLowerCase();
+
+/** Row icon by result kind so stops and landmarks are scannable at a glance. */
 export function suggIcon(g: GeocodeResult): string {
   if (g.type === "bus_stop") return "🚏";
   // `type` is an upstream string, so read the table by own-property only:

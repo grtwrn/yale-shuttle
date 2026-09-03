@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon, suggLabel,
+  fmtBusPair,
+  fmtClock,
+  fmtMin,
+  fmtWait,
+  fmtWalk,
+  formatEtaRange,
+  remainingSec,
+  suggIcon,
+  suggLabel,
   type GeocodeResult,
 } from "./format";
 
@@ -128,6 +136,24 @@ describe("suggLabel", () => {
     expect(suggLabel(c, siblings)).toBe("York Street, New Haven");
   });
 
+  it("names the town when the same business appears in two of them", () => {
+    // Report #72: the curated Trader Joe's sat above "Trader Joe's, 46 Skiff
+    // Street" with nothing saying that second one is up in Hamden.
+    const milford = g("Trader Joe's (Milford)");
+    const hamden = g("Trader Joe's, 46 Skiff Street, Hamden");
+    const siblings = [milford, hamden];
+    expect(suggLabel(hamden, siblings)).toBe("Trader Joe's, 46 Skiff Street, Hamden");
+    // The one that already carries its town in the name is left alone.
+    expect(suggLabel(milford, siblings)).toBe("Trader Joe's (Milford)");
+  });
+
+  it("leaves two branches in one town short — the street already tells them apart", () => {
+    const a = g("Starbucks, 1 Broadway, New Haven");
+    const b = g("Starbucks, 900 Chapel Street, New Haven");
+    expect(suggLabel(a, [a, b])).toBe("Starbucks, 1 Broadway");
+    expect(suggLabel(b, [a, b])).toBe("Starbucks, 900 Chapel Street");
+  });
+
   it("survives a one-segment name", () => {
     expect(suggLabel(g("Phelps Gate"))).toBe("Phelps Gate");
     expect(suggLabel(g("Phelps Gate"), [g("Phelps Gate"), g("Phelps Gate")])).toBe("Phelps Gate");
@@ -183,5 +209,29 @@ describe("suggIcon", () => {
     expect(suggIcon(hit({ type: "landmark", class: "yale" }))).toBe("🏛️");
     // A stop is a stop even if a category ever leaked into its type.
     expect(suggIcon(hit({ type: "bus_stop", class: "shuttle" }))).toBe("🚏");
+  });
+});
+
+describe("fmtBusPair — the next two buses in one breath", () => {
+  it("shares the unit between the two numbers", () => {
+    // "in 1 min · next in 11 min" clipped mid-number on the option row at
+    // 390px; the operator's shorter form fits at every ETA (2026-09-03).
+    expect(fmtBusPair(60, 660)).toBe("in 1, 11 min");
+    expect(fmtBusPair(22 * 60, 41 * 60)).toBe("in 22, 41 min");
+  });
+
+  it("keeps words when there is no second bus to pair with", () => {
+    expect(fmtBusPair(60)).toBe("in 1 min");
+    expect(fmtBusPair(22 * 60, null)).toBe("in 22 min");
+    expect(fmtBusPair(5)).toBe("arriving now");
+    expect(fmtBusPair(60, NaN)).toBe("in 1 min");
+  });
+
+  it("does not say \"in now\" when the bus is at the stop", () => {
+    expect(fmtBusPair(5, 660)).toBe("now, then 11 min");
+  });
+
+  it("keeps the under-a-minute marker", () => {
+    expect(fmtBusPair(45, 660)).toBe("in <1, 11 min");
   });
 });

@@ -1,0 +1,20 @@
+{
+  "caption": "Warming, merged onto one line",
+  "base": "http://127.0.0.1:8156",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/weather"
+  ],
+  "shots": [
+    "/tmp/shots-w/one-line-warm/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

@@ -193,6 +193,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery"], poi: "bakery", anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
   { label: "Mamoun's Falafel", lat: 41.310327, lon: -72.934555, aliases: ["mamouns", "falafel", "85 howe"], poi: "restaurant", anchorStop: "Howe / Edgewood" }, // OSM N2191968199
   { label: "Modern Apizza", lat: 41.313825, lon: -72.912834, aliases: ["modern", "modern pizza", "874 state"], poi: "pizza", anchorStop: "Nicoll / Edwards" }, // OSM N470623969
+  { label: "One 6 Three", lat: 41.32108, lon: -72.90911, aliases: ["one6three", "163", "one six three", "163 pizza", "one 6 three pizza"], poi: "pizza", anchorStop: "Willow / Foster" }, // OSM N3099233997
   { label: "Pataka", lat: 41.312649, lon: -72.933259, aliases: ["pataka indian"], poi: "restaurant", anchorStop: "Elm / Lynwood" }, // OSM N2637704331
   { label: "Rubamba", lat: 41.306923, lon: -72.930973, aliases: ["arepas", "25 high"], poi: "restaurant", anchorStop: "York / Crown" }, // OSM N11606236058
   { label: "Sally's Apizza", lat: 41.303057, lon: -72.920077, aliases: ["sallys", "sally's", "wooster street pizza", "237 wooster"], poi: "pizza", anchorStop: "Olive / Wooster" }, // OSM N2567417097
@@ -202,7 +203,6 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Willoughby's Coffee (Church St)", lat: 41.310424, lon: -72.922827, aliases: ["willoughbys church", "willoughby's church street"], poi: "cafe", anchorStop: "Church / Grove" }, // OSM N2373871290
   { label: "Willoughby's Coffee (York St)", lat: 41.308984, lon: -72.931471, aliases: ["willoughbys", "willoughby's york"], poi: "cafe", anchorStop: "180 York (A&A)" }, // OSM N2639180015
   { label: "Yorkside Pizza", lat: 41.311207, lon: -72.92983, aliases: ["yorkside", "288 york"], poi: "pizza", anchorStop: "York / Elm" }, // OSM N2719756869
-
   // -- Parks and public places -----------------------------------------------
   { label: "East Rock Park (College Woods)", lat: 41.325916, lon: -72.910674, aliases: ["east rock", "east rock park", "college woods", "the rock"], poi: "park", anchorStop: "Orange / Canner" }, // OSM W773006198
   { label: "Edgerton Park", lat: 41.333726, lon: -72.914384, aliases: ["edgerton"], poi: "park", anchorStop: "Whitney / Huntington" }, // OSM W43437653

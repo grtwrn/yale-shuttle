@@ -8,15 +8,97 @@ import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 
 export type SegmentStat = { avg: number; sd?: number; n: number };
 export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
-export type DwellStat = { med: number; sd: number; n: number };
+export type DwellStat = { med: number; sd: number; n: number; low?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
 /**
- * How much of the first hop's calibrated time an elapsed dwell may cancel.
- * Measured, not chosen: see the stall-credit comment in computeUpcomingArrivals.
+ * How much of the first hop's calibrated time an elapsed dwell may cancel when
+ * we have no dwell statistic for the stop. See the stall-credit comment in
+ * computeUpcomingArrivals: with dwell data the bound is the dwell itself,
+ * which is the quantity actually baked into the segment, and this fraction is
+ * only the fallback for a stop the calibrator has never measured.
  */
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
+
+/** Floor on a hop's driving time, whatever the dwell arithmetic says. */
+const MIN_HOP_SEC = 30;
+
+/**
+ * The dwell the ETA actually BILLS at a stop — the single definition, shared
+ * with whatever puts a hold on screen.
+ *
+ * `started` means the bus is standing at this stop right now. Then the median
+ * is what the arithmetic uses (as the cap on the elapsed-dwell credit below).
+ * For a stop still ahead, the low quantile is billed instead — see the note
+ * on the re-pricing in computeUpcomingArrivals.
+ *
+ * It exists because the two drifted: the route page showed a stop's MEDIAN
+ * hold ("⏸ ~10 min") beside an arrival time computed from the low quantile,
+ * and a rider did the arithmetic — "it says arrive in 8 but expected dwell is
+ * 10" (report #73). Displaying one number while billing another is a bug
+ * whichever number is right, so there is now only one.
+ */
+/**
+ * The spread a rider should be shown for a hold the bus has not started:
+ * `[billed, typical]`, or null when there is nothing worth showing a range
+ * for.
+ *
+ * Report #77, within an hour of #40 shipping: "It said it would be five
+ * minutes dwell, but once it got there, it went to a nine minute dwell."
+ * Both numbers were ours and both were right — 5 is the low quantile the ETA
+ * bills for a stop still ahead, 9 is the median it bills once the bus is
+ * standing there — but a number that changes by four minutes on arrival
+ * reads as the app changing its mind.
+ *
+ * A rest is a distribution, which is the entire argument for pricing it at a
+ * low quantile in the first place. So show it as one: "5-9 min" ahead of
+ * time, and the live elapsed counter against the median once the bus is
+ * there. Nothing about the arithmetic changes; the screen simply stops
+ * implying a precision the data never had.
+ */
+export function dwellRangeSec(
+  stat: { med: number; low?: number } | undefined,
+): [number, number] | null {
+  if (!stat || !Number.isFinite(stat.med)) return null;
+  const low = stat.low;
+  if (low === undefined || !Number.isFinite(low) || low >= stat.med) return null;
+  // A spread under a minute is noise, not information: "4-5 min" says
+  // nothing "~5 min" did not, and costs a rider a wider number to read.
+  if (stat.med - low < 60) return null;
+  return [low, stat.med];
+}
+
+export function billedDwellSec(
+  stat: { med: number; low?: number } | undefined,
+  started: boolean,
+): number | null {
+  if (!stat || !Number.isFinite(stat.med)) return null;
+  if (started) return stat.med;
+  return stat.low !== undefined && stat.low < stat.med ? stat.low : stat.med;
+}
+
+/**
+ * The credit is spent on the FIRST hop only, and never beyond the dwell that
+ * hop actually contains.
+ *
+ * On 2026-09-03 this briefly reached the adjacent stop too, on the theory
+ * that a driver's break taken one stop early leaves the layover ahead
+ * double-charged. Measured against a week of `arrivals`, the theory is wrong:
+ * of 321 cases where a bus held 3+ minutes at a non-layover stop with a
+ * layover-sized hold at the next stop, the layover was still taken as
+ * scheduled 292 times and skipped only 29 — 91% against. A bus holding
+ * abnormally long is usually running late and will take its layover anyway,
+ * so crediting it forward makes the ETA optimistic in nine cases out of ten,
+ * which is the direction that has a rider stroll to the stop and miss the
+ * bus. The replay agreed it was not worth it (+0.1 s median even at its most
+ * conservative). Reverted; do not re-add without new evidence.
+ *
+ * What DID fix the reported symptom is in the collector, not here: a parked
+ * bus that shuffled a few metres restarted its own dwell clock, so the credit
+ * was ~0 on a bus most of the way through its layover. See
+ * `BusState.stationarySince`.
+ */
 
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
@@ -30,6 +112,7 @@ export function computeUpcomingArrivals(
   stopCoords: Record<number, LatLon>,
   segmentTimes: SegmentTimes,
   now = Date.now(),
+  dwellTimes: DwellTimes = {},
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -44,6 +127,7 @@ export function computeUpcomingArrivals(
     if (routeBuses.length === 0) continue;
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
+    const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
@@ -129,6 +213,36 @@ export function computeUpcomingArrivals(
         if (seg && seg.n >= 1) {
           segAvg = seg.avg;
           segVar = (seg.sd ?? 0) ** 2;
+          // A hop's served time is the dwell at its from-stop plus the drive.
+          // For a stop the bus has NOT REACHED YET, price that dwell at a low
+          // quantile rather than the median.
+          //
+          // A rest is a wide distribution, not a number: at Red's 344
+          // Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes
+          // and one visit in fifty-eight is under two. Billing the middle of it
+          // made the board pessimistic by over two minutes on a third to a
+          // half of the estimates that span a rest — and pessimistic is the
+          // costly direction, because the rider strolls down and the bus has
+          // gone. Measured on 30 days of arrivals over Red, Blue Day, Orange
+          // Day and Green (31k chains that contain an unstarted rest), p35
+          // moves the median error from +0.8..+2.0 min to about zero and the
+          // share more than 2 min pessimistic from 36-50% to 17-32%. p25
+          // overshoots into optimism (-1.8..-2.7 min). docs/eta-accuracy.md
+          // has the table.
+          //
+          // Step 1 is exempt: the bus is AT that stop, so its dwell belongs to
+          // the elapsed-dwell credit below, which knows how long it has really
+          // sat. This only re-prices rests still in the future. Conditioning
+          // it on whether the bus ALREADY rested somewhere was tried and
+          // measured wrong — see the note above STALL_CREDIT_MAX_FRACTION.
+          if (step > 1) {
+            const d = routeDwells[String(stops[prevI])];
+            if (d && d.low !== undefined && d.low < d.med) {
+              // Keep a floor on the drive so a hop that is almost all dwell
+              // still prices the driving.
+              segAvg = Math.max(MIN_HOP_SEC, segAvg - d.med) + d.low;
+            }
+          }
         } else {
           // Unmeasured hop. The route-average segment time is a fair guess
           // for a typical block-to-block hop, but never for a long one:
@@ -149,21 +263,36 @@ export function computeUpcomingArrivals(
             segVar = (segAvg * 0.5) ** 2;
           }
         }
-        // Burn stall credit on the first segment only, and never more than
-        // STALL_CREDIT_MAX_FRACTION of it. A segment sample runs arrival to
-        // arrival, so seg.avg already contains the TYPICAL dwell at this
-        // stop; crediting every elapsed second assumed the bus would leave
-        // the instant it had sat that long. It does not: replaying 69k raw
-        // positions (2026-09-02) against real arrivals, the next-stop error
-        // for a dwelling bus grew from -19 s after 30 s of dwell to -112 s
-        // after 2-5 min and -203 s past 5 min — the 'wait leg 20-25%
-        // optimistic' the live harness kept reporting. Capping the credit at
-        // half the hop cut the at-stop next-stop median error 71 -> 51.5 s
-        // and its bias -54 -> -26 s, and the all-positions median 115 ->
-        // 104 s (docs/eta-accuracy.md). A quarter scores the same on the
-        // median but turns pessimistic (+61 s) for buses that sat over 5 min.
+        // Burn stall credit on the first segment only, and never more than the
+        // waiting that segment actually contains.
+        //
+        // A segment sample runs arrival to arrival, so seg.avg = the dwell at
+        // this stop + the drive to the next one. What a bus that has already
+        // been sitting here can cancel is the DWELL part, and nothing more —
+        // it still has to drive. So the bound is the calibrated dwell for this
+        // stop, and the fraction below is only the fallback for a stop the
+        // calibrator has never measured.
+        //
+        // Both wrong answers have shipped. Crediting every elapsed second
+        // (until 2026-09-02) drove the hop to zero and promised a bus that was
+        // still minutes of driving away: replaying 69k positions, the
+        // next-stop error for a dwelling bus reached -203 s past 5 min of
+        // dwell. Capping at half the hop (2026-09-02 to 09-03) fixed that
+        // average and broke the layover, which is the dangerous direction: on
+        // Red, #316 had sat 10 min of its ~8 min layover at 344 Winchester,
+        // 82 s of driving from Winchester/Division, and the board told a rider
+        // 3 stops later "5 min" — half of the 557 s segment is 279 s of pure
+        // padding — so the bus left, arrived ~2.5 min later, and the rider who
+        // trusted the 5 was too late. The dwell bound gives 557 - 475 = 82 s,
+        // which is the drive, which is the answer.
+        // First hop only — see the note above STALL_CREDIT_MAX_FRACTION for
+        // why carrying it to the adjacent stop was tried and measured wrong.
         if (step === 1 && stallCredit > 0) {
-          const applied = Math.min(stallCredit, segAvg * STALL_CREDIT_MAX_FRACTION);
+          const dwell = dwellTimes[cfg.routeIds[0]]?.[String(stops[busIdx])];
+          const cancellable = dwell && dwell.med > 0
+            ? dwell.med
+            : segAvg * STALL_CREDIT_MAX_FRACTION;
+          const applied = Math.min(stallCredit, cancellable, segAvg);
           segAvg -= applied;
           stallCredit -= applied;
         }

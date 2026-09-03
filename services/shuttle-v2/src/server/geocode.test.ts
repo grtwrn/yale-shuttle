@@ -276,6 +276,7 @@ describe("robust matching (2026-09-02 live probe)", () => {
 
   const FIXTURE_LANDMARKS: Landmark[] = [
     { label: "Elena's on Orange", lat: 41.323, lon: -72.9108, anchorStop: "" },
+    { label: "One 6 Three", lat: 41.32108, lon: -72.90911, aliases: ["one6three", "163", "one six three", "163 pizza", "one 6 three pizza"], anchorStop: "" },
     // Confusables: a three-letter query must never fuzzy-match into these.
     { label: "Sass Hall", lat: 41.31, lon: -72.93, anchorStop: "" },
     { label: "Some Place", lat: 41.312, lon: -72.931, anchorStop: "" },
@@ -291,6 +292,18 @@ describe("robust matching (2026-09-02 live probe)", () => {
     "%o finds the apostrophe'd landmark",
     (q) => {
       expect(labels(q)).toContain("Elena's on Orange");
+    },
+  );
+
+  // Report #69: "can't find one6three pizza, or when written as 163. this
+  // should be a landmark". The name is a number spelled three ways and OSM
+  // carries only one of them, so the aliases are the whole fix — the curated
+  // entry is verified (Photon forward, Nominatim reverse: OSM N3099233997,
+  // 43 m from the Willow / Foster stop).
+  it.each(["one6three", "163", "one six three", "163 pizza", "One6Three"])(
+    "%o finds the pizza place whose name is a number",
+    (q) => {
+      expect(labels(q)).toContain("One 6 Three");
     },
   );
 

@@ -338,7 +338,7 @@ function pathFraction(routeId: number, idx: number, bus: { lat: number; lon: num
 }
 
 // -- Replica of the computeUpcomingArrivals loop for ONE bus ------------------
-type Proration = "chord" | "none" | "path" | "chordNoStall" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "oracleAnchor";
+type Proration = "chord" | "none" | "path" | "chordNoStall" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "oracleAnchor";
 function replicaEtas(
   bus: BusData,
   stops: number[],
@@ -384,10 +384,38 @@ function replicaEtas(
       const byDistance = pc && cc ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S) : 0;
       segAvg = avgSeg > 0 && avgSeg >= byDistance ? avgSeg : byDistance || 90;
     }
-    if (step === 1 && stallCredit > 0) {
+    if (step === 1 && stallCredit > 0 && !mode.startsWith("dwellSpill")) {
       if (mode === "cappedStallHalfSeg") stallCredit = Math.min(stallCredit, 0.5 * segAvg);
       if (mode === "cappedStallQuarterSeg") stallCredit = Math.min(stallCredit, 0.25 * segAvg);
       const applied = Math.min(stallCredit, segAvg);
+      segAvg -= applied;
+      stallCredit -= applied;
+    }
+    // dwellSpillAdjacent: like cappedStallDwell, except the leftover credit
+    // may also cancel the dwell baked into the ADJACENT hop. A layover taken
+    // one stop early (Red's ~8 min hold is calibrated at 344 Winchester; a
+    // bus took it at Canal/Munson on 2026-09-03) is otherwise charged twice —
+    // once where it happened, once where it was expected.
+    if (step <= 2 && stallCredit > 0 && mode.startsWith("dwellSpill")) {
+      const med = dwellMedAt(bus.route_id, stops[prevI]!, now);
+      let cancellable = med > 0 ? med : (step === 1 ? 0.5 * segAvg : 0);
+      if (step === 2) {
+        // Only a LAYOVER-sized hold nearby is evidence that a layover moved.
+        // 180 s is the same threshold the approach list already calls a
+        // notable hold. dwellSpillLayoverHalf additionally requires that the
+        // bus has plausibly already SERVED that hold.
+        const isLayover = med >= 180;
+        if (mode === "dwellSpillLayover" && !isLayover) cancellable = 0;
+        if (mode === "dwellSpillLayoverHalf" && (!isLayover || stallCredit < 0.5 * med)) cancellable = 0;
+        // Stricter still: the hold ahead must be BIGGER than the one at the
+        // stop the bus is standing at — that is what "the layover belongs
+        // there, not here" actually looks like.
+        if (mode === "dwellSpillBigger") {
+          const here = dwellMedAt(bus.route_id, bus.at_stop_id!, now);
+          if (!isLayover || stallCredit < 0.5 * med || med <= here) cancellable = 0;
+        }
+      }
+      const applied = Math.min(stallCredit, cancellable, segAvg);
       segAvg -= applied;
       stallCredit -= applied;
     }
@@ -399,7 +427,7 @@ function replicaEtas(
 }
 
 // -- Score ----------------------------------------------------------------------
-const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "oracleAnchor"];
+const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "oracleAnchor"];
 interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];

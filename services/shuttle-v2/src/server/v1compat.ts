@@ -66,7 +66,7 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
   const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number }>> = {};
+  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -102,10 +102,15 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number }> = {};
+    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number }> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
-      dwMap[String(sid)] = { med: round1(d.mean), sd: round1(d.stddev), n: d.n };
+      dwMap[String(sid)] = {
+        med: round1(d.mean), sd: round1(d.stddev), n: d.n,
+        // `low` is what the client bills for a dwell the bus has not started
+        // (see DwellStats.low). Absent until the stop has enough history.
+        ...(d.low !== undefined ? { low: round1(d.low) } : {}),
+      };
     }
     dwells[rid] = dwMap;
   }
@@ -215,6 +220,23 @@ const GEOCODE_MIN_INTERVAL_MS = 1100;
 // landmarks alone. Degrading beats getting the egress IP banned, which breaks
 // search for good — and beats a cold request that waits 2.5 s twice.
 const GEOCODE_BUDGET_MS = 2_500;
+
+/**
+ * Does this read like a street address the rider expects to land on a
+ * building? A leading house number and at least one more word.
+ *
+ * A bare number is NOT an address — "800" is Building 800, a stop — and the
+ * local matcher answers those. Deliberately loose about the rest: "517
+ * Prospect", "517 Prospect St", "1 Prospect Street New Haven" all qualify.
+ */
+export function looksLikeStreetAddress(query: string): boolean {
+  return /^\s*\d{1,6}\s+\S/.test(query);
+}
+
+/** An address-level hit: the building the rider actually typed. */
+function hasAddressHit(hits: readonly GeocodeV1Hit[]): boolean {
+  return hits.some((h) => h.type === "house");
+}
 
 /**
  * The external half of destination lookup. Injectable into `buildApp` (and
@@ -353,9 +375,32 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       const timer = setTimeout(() => ctrl.abort(), budgetMs);
       try {
         const first = await ask("photon", query, deadline, ctrl.signal, photon);
-        if (first && first.length > 0) return first;
+        // "Returned something" is not "returned something useful".
+        //
+        // Photon answers an address-shaped query with whatever shares the
+        // street's words: measured 2026-09-03, "517 Prospect St" came back as
+        // Prospect Hill (a neighbourhood), Prospect Hill Historic District,
+        // Prospect Hill (a peak), Prospect Beach and two Prospect Street
+        // centrelines — and NO house. Because that list is non-empty, the
+        // Nominatim fallback never fired, and Nominatim resolves the very
+        // same query to "517, Prospect Street, ... 06511" first try.
+        //
+        // The rider-visible result was that "517 Prospect" worked (Photon
+        // returns nothing at all for it, so the fallback fired) while "517
+        // Prospect St" did not — adding the suffix most people type broke
+        // the lookup. So for an address-shaped query, an answer with no
+        // address in it is treated as no answer, and the other provider is
+        // asked as well. Its address hits lead; Photon's places follow,
+        // because a rider who typed a house number wants the house.
+        const wantAddress = looksLikeStreetAddress(query);
+        if (first && first.length > 0 && !(wantAddress && !hasAddressHit(first))) {
+          return first;
+        }
         const second = await ask("nominatim", query, deadline, ctrl.signal, nominatim);
-        return second ?? [];
+        if (!second || second.length === 0) return first ?? [];
+        if (!first || first.length === 0) return second;
+        const addresses = second.filter((h) => h.type === "house");
+        return addresses.length > 0 ? [...addresses, ...first] : first;
       } catch {
         return [];
       } finally {
@@ -504,8 +549,19 @@ export function rankExternal(
   // reaches New Haven Police Department, "cvs" the other branches) and only
   // an unrelated name goes. It may empty the external list: the local answer
   // is then the whole answer, which is the honest outcome.
+  //
+  // An ADDRESS is exempt, and has to be. Nominatim writes a house as
+  // "517, Prospect Street, Prospect Hill, ..." — its first segment is the bare
+  // number "517", which no relevance test can match against "517 Prospect St",
+  // so the exact building the rider typed scored zero and was dropped. That is
+  // the whole of report #59/#69's street-address fix undone (it shipped this
+  // morning; its test caught this). A house-typed hit answering an
+  // address-shaped query IS the answer, so it never faces this filter.
+  const addressQuery = query !== undefined && looksLikeStreetAddress(query);
   const related = query
-    ? hits.filter((h) => relevanceOf(query, h.display_name.split(",")[0] ?? "") > 0)
+    ? hits.filter((h) =>
+        (addressQuery && h.type === "house") ||
+        relevanceOf(query, h.display_name.split(",").slice(0, 2).join(" ").trim()) > 0)
     : hits;
   // Keep the provider's order — it ranks by relevance, and re-sorting by
   // distance put a street centreline ahead of the house the rider typed —
