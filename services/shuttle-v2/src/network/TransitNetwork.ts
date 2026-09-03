@@ -68,7 +68,10 @@ export interface DwellStats {
    *
    * A layover's dwell is not a number, it is a wide distribution: at Red's
    * 344 Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes, and
-   * one visit in seventeen is under two minutes. Billing the median for a rest
+   * one visit in fifty-eight is under two minutes (re-measured 2026-09-03 over
+   * 813 visits; the figure first written here, one in seventeen, was too high
+   * by three and a half times — the spread is the argument, not the tail).
+   * Billing the median for a rest
    * the bus has not begun makes the board pessimistic about a third to half of
    * the time by more than two minutes — and pessimistic is the direction that
    * costs a rider the bus, because they stroll down and it has gone.

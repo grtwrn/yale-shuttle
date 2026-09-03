@@ -189,7 +189,7 @@ export function computeUpcomingArrivals(
           //
           // A rest is a wide distribution, not a number: at Red's 344
           // Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes
-          // and one visit in seventeen is under two. Billing the middle of it
+          // and one visit in fifty-eight is under two. Billing the middle of it
           // made the board pessimistic by over two minutes on a third to a
           // half of the estimates that span a rest — and pessimistic is the
           // costly direction, because the rider strolls down and the bus has
