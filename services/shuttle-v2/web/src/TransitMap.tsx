@@ -4022,19 +4022,28 @@ const TripPlanner: FC<{
                         ? allStops.slice(busAnchorIdx, bi)
                         : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
                     : [];
-                  // Dwell readouts: typical hold at a stop (per-bus stats
-                  // preferred, route stats fallback) + live elapsed while
-                  // the bus is parked at its current stop.
+                  // Dwell readouts: the typical hold at a stop, plus the live
+                  // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
-                  // The hold shown must be the hold BILLED — see
-                  // billedDwellSec, which is now one number at every position
+                  // The hold SHOWN must be the hold BILLED — see billedDwellSec
                   // (report #73: "it says arrive in 8 but expected dwell is
                   // 10", which was the median on screen and a low quantile in
-                  // the arithmetic; that arithmetic is gone).
+                  // the arithmetic).
+                  //
+                  // So this reads the same record computeUpcomingArrivals bills
+                  // and nothing else. It used to prefer a per-bus dwell
+                  // (dwellsByBus, n >= 5) while the arithmetic only ever read
+                  // the ROUTE dwell, which is the same class of bug wearing a
+                  // different hat: the screen would have said "held 5 min of
+                  // ~5" while the countdown charged a different ~5. It could
+                  // not fire only because the server hardcodes dwells_by_bus to
+                  // {} (src/server/v1compat.ts) — a latent trap, not a working
+                  // feature. Report #80 is a rider doing exactly this
+                  // arithmetic out loud, so the two must not be able to drift.
+                  //
+                  // If per-bus dwells are ever really served, thread them into
+                  // computeUpcomingArrivals FIRST; display follows billing.
                   const typDwell = (sid: number, started = false): number | null => {
-                    const pb = busDwells[String(sid)];
-                    if (pb && pb.n >= 5) return billedDwellSec(pb, started);
                     const r = routeDwells[String(sid)];
                     if (r && r.n >= 3) return billedDwellSec(r, started);
                     return null;

@@ -121,6 +121,55 @@ and `STALL_CREDIT_MAX_FRACTION` survives only as the fallback for a stop the
 calibrator has never measured. For the reported hop: 557 − 475 = 82 s, which is
 the drive, which is the answer.
 
+### The credit could bill a whole hop at zero (2026-09-03, report #80)
+
+A rider watching Red #316 hold at 344 Winchester asked the obvious question:
+"if its waited 5/5 already, then it will be here sooner than 3 min". Replaying
+that exact position against live calibration, **the premise is right and the
+conclusion is wrong**: elapsed 300 s, cap 335 s, so `applied = min(300, 335,
+419) = 300` — every elapsed second was already credited. The ~3 min left is
+three hops of *driving* (119 + 55 + 50 s). No dwell credit can remove drive
+time, and the direction the rider wanted is the one measured harmful twice.
+
+What the report did uncover is the same bound failing on its other side. The
+dwell median and the segment average estimate the *same quantity*, so `med >=
+avg` is ordinary rather than exceptional — **114 of 274 hops (41.6%) on the
+live payload** — and on every one of those `min(elapsed, med, segAvg)` returns
+`segAvg`, billing the hop at **exactly zero**. A bus that had stood long enough
+was promised at the next stop instantly: 0 s to cover 311 m. Over 88,570
+replayed production positions that fired on **9.3% of at-stop next-stop
+predictions**.
+
+The fix is a floor that owes nothing to the dwell/segment decomposition: the
+stops are a known distance apart, and no bus covers that distance faster than
+the calibrator's own `MAX_PLAUSIBLE_M_S` (22 m/s). `driveFloorSec` in
+`web/src/arrivals.ts`; the client mirrors the server constant and
+`arrivals.test.ts` parses it, so the two cannot drift.
+
+GPS replay, 2026-09-03 09:51–17:30 ET, 412,994 pairs, replica-exact against the
+shipped function (0 mismatches). Truth = curb-side arrival:
+
+| | median | mean bias | ≤60 s | **>2 min optimistic** | >2 min pessimistic |
+|---|---|---|---|---|---|
+| all positions, before | 98.7 s | −76.7 s | 36.3% | 27.0% | 17.6% |
+| all positions, **after** | **96.7 s** | −73.7 s | 37.2% | **26.4%** | 17.6% |
+| at-stop next-stop, before | 65.7 s | −130.8 s | 47.2% | 27.7% | 5.5% |
+| at-stop next-stop, **after** | **62.1 s** | −124.9 s | 49.4% | **26.8%** | 5.5% |
+
+The optimistic tail shrinks and the pessimistic tail does not move — the floor
+only ever removes promises that were physically impossible. It fires on 30.1%
+of at-stop next-stop predictions, median lift 20.5 s.
+
+**Do not raise the floor to make the median look better.** Flooring at
+`BUS_SPEED_M_S` (6 m/s, the *typical* speed used to guess unmeasured hops)
+scores a better median (93.8 s) and a smaller optimistic tail (25.4%) — but
+6 m/s is not an upper bound on speed, so the floor stops being a bound and
+starts being padding: it prices a 370 m hop at 62 s and withholds credit a bus
+has genuinely earned, which is the complaint in report #82. The 22 m/s bound
+takes the free half of that trade and none of the risk. The half-hop cap still
+scores best of all on the aggregate (92.0 s) and is exactly the one that broke
+this layover; the aggregate hides it.
+
 **2. The anchor goes wrong on out-and-back routes.** Where the client's anchor
 disagrees with the server detector's stop index (13.4% of positions) the
 median error is 367 s against 99 s otherwise. Disagreement is concentrated
@@ -235,6 +284,18 @@ routes, expected = the calibrator's own served median at that instant.
 Not built. Do not rebuild it without a signal that beats that 4.2 s ceiling.
 
 ## Limits of the measurement
+
+- **Read the `client` row, not `chord`.** `gps-replay.ts` scores the real
+  `computeUpcomingArrivals` (the row marked SHIPPED) alongside an in-file
+  replica that exists only so the counterfactual modes can be run at all. The
+  replica has gone stale silently before — when the credit bound changed on
+  2026-09-03 it was not updated, and the real call was not being passed
+  `dwellTimes` either, so **112,825 of 412,994 pairs disagreed by up to 576 s**
+  while `chord` was still being quoted here as "the current client". Both were
+  fixed (#53 and this change). The replica rows remain sound as **deltas**
+  against each other — which is how the before/after table above should be read
+  — but an absolute accuracy figure should come from the `client` row, and the
+  run prints a banner when the replica drifts past 1%.
 
 - Ground truth for the arrivals replay is the detector's own "nearest stop
   changed" event, which fires a median 25 s before the bus is physically within

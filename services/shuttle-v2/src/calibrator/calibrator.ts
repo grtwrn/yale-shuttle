@@ -36,7 +36,11 @@ const SHRINKAGE_K = 8;
  * `getSegmentStats` falls back to its distance prior (meters / 5.5), which puts
  * that same hop at a believable ~25 minutes.
  */
-const MAX_PLAUSIBLE_M_S = 22;
+// Exported because the CLIENT mirrors it: web/src/arrivals.ts floors the first
+// hop at distance / MAX_PLAUSIBLE_M_S so a stall credit cannot promise a bus
+// faster than a shuttle can physically travel. arrivals.test.ts parses this
+// line, so the two cannot drift.
+export const MAX_PLAUSIBLE_M_S = 22;
 
 const SEGMENT_WINDOW_DAYS = 30;
 

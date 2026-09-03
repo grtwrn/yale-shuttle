@@ -38,11 +38,12 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
-import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
+import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLegs } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
+import { MAX_PLAUSIBLE_M_S } from "../../web/src/arrivals";
 
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
@@ -389,7 +390,21 @@ function pathFraction(routeId: number, idx: number, bus: { lat: number; lon: num
 }
 
 // -- Replica of the computeUpcomingArrivals loop for ONE bus ------------------
-type Proration = "chord" | "none" | "path" | "chordNoStall" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "oracleAnchor";
+type Proration = "chord" | "none" | "path" | "chordNoStall" | "uncapped" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "noFloor" | "driveFloor6" | "driveFloorNoMin" | "oracleAnchor";
+
+// The physical floor on the first hop: a bus cannot cover the distance to the
+// next stop in less time than driving it takes. Straight line at BUS_SPEED_M_S
+// UNDERSTATES the road distance, so it is a true lower bound. This is the same
+// construction the unmeasured-hop branch of arrivals.ts already uses, and it is
+// deliberately independent of the dwell/segment decomposition — see WHAT A
+// DWELL STATISTIC ACTUALLY MEASURES.
+function driveFloorSec(stops: number[], prevI: number, curI: number, speed: number, withMin: boolean): number {
+  const a = net.stopCoords[stops[prevI]!];
+  const b = net.stopCoords[stops[curI]!];
+  if (!a || !b) return 0;
+  const t = haversineMeters(a, b) / speed;
+  return withMin ? Math.max(30, t) : t;
+}
 function replicaEtas(
   bus: BusData,
   stops: number[],
@@ -404,7 +419,6 @@ function replicaEtas(
   if (mode !== "chordNoStall" && bus.at_stop_id && bus.at_stop_since) {
     const atIdx = stops.indexOf(bus.at_stop_id);
     if (atIdx >= 0 && atIdx === busIdx) stallCredit = Math.max(0, (now - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-    if (stallCredit > 0 && mode === "cappedStallDwell") stallCredit = Math.min(stallCredit, dwellMedAt(bus.route_id, bus.at_stop_id, now));
     if (stallCredit > 0 && mode === "cappedStallDwell2x") stallCredit = Math.min(stallCredit, 2 * dwellMedAt(bus.route_id, bus.at_stop_id, now));
   }
   let factor = 1;
@@ -436,9 +450,29 @@ function replicaEtas(
       segAvg = avgSeg > 0 && avgSeg >= byDistance ? avgSeg : byDistance || 90;
     }
     if (step === 1 && stallCredit > 0 && !mode.startsWith("dwellSpill")) {
-      if (mode === "cappedStallHalfSeg") stallCredit = Math.min(stallCredit, 0.5 * segAvg);
-      if (mode === "cappedStallQuarterSeg") stallCredit = Math.min(stallCredit, 0.25 * segAvg);
-      const applied = Math.min(stallCredit, segAvg);
+      // What SHIPS (web/src/arrivals.ts): the credit cancels at most the
+      // calibrated dwell for the anchor stop; the fraction is only the fallback
+      // for a stop the calibrator has never measured. `chord`, `none`, `path`
+      // and `oracleAnchor` are the faithful replica and must carry that bound,
+      // or the replica-fidelity check below compares against code that has not
+      // been live since 2026-09-03. The rest are the historical alternatives.
+      const med = dwellMedAt(bus.route_id, bus.at_stop_id!, now);
+      let cancellable = med > 0 ? med : segAvg * STALL_CREDIT_MAX_FRACTION;
+      if (mode === "uncapped") cancellable = segAvg;
+      if (mode === "cappedStallHalfSeg") cancellable = 0.5 * segAvg;
+      if (mode === "cappedStallQuarterSeg") cancellable = 0.25 * segAvg;
+      let applied = Math.min(stallCredit, cancellable, segAvg);
+      // The drive floor: a credit may cancel waiting, never driving. It is part
+      // of what SHIPS, so the default family carries it and `noFloor` is the
+      // behaviour it replaced (dwell bound alone, which could bill a hop at 0).
+      // 6 m/s is the app's TYPICAL bus speed; MAX_PLAUSIBLE_M_S is the fastest
+      // a shuttle is believed to cover the straight line. Only the latter is an
+      // upper bound on speed, so only it yields a true lower bound on time.
+      if (mode !== "noFloor") {
+        const speed = mode === "driveFloor6" ? BUS_SPEED_M_S : MAX_PLAUSIBLE_M_S;
+        const floor = driveFloorSec(stops, prevI, curI, speed, mode !== "driveFloorNoMin");
+        applied = Math.min(applied, Math.max(0, segAvg - floor));
+      }
       segAvg -= applied;
       stallCredit -= applied;
     }
@@ -478,7 +512,7 @@ function replicaEtas(
 }
 
 // -- Score ----------------------------------------------------------------------
-const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "oracleAnchor"];
+const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
 interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
@@ -616,6 +650,19 @@ if (replicaStaleShare > REPLICA_TOLERANCE) {
   console.error("");
 }
 
+// How often the drive floor actually bites, and by how much. A floor that
+// fires everywhere would be re-tuning the estimator by the back door; one that
+// fires only where the credit had erased the whole drive is the narrow repair
+// it is meant to be.
+{
+  const k1 = pairs.filter((p) => p.k === 1 && p.atStop);
+  const lifted = k1.filter((p) => p.eta.chord - p.eta.noFloor > 0.5);
+  const zeroed = k1.filter((p) => p.eta.noFloor < 0.5);
+  const ups = lifted.map((p) => p.eta.chord - p.eta.noFloor).sort((a, b) => a - b);
+  const med = ups.length ? ups[Math.floor(ups.length / 2)]! : 0;
+  log(`driveFloor: at-stop k=1 pairs ${k1.length}; shipped bills 0 s on ${zeroed.length} (${(100 * zeroed.length / k1.length).toFixed(1)}%); floor lifts ${lifted.length} (${(100 * lifted.length / k1.length).toFixed(1)}%), median lift ${med.toFixed(1)} s, max ${(ups[ups.length - 1] ?? 0).toFixed(1)} s`);
+}
+
 function score(truth: "det" | "prox", mode: Proration | "client", filter: (p: Pair) => boolean) {
   const errs: number[] = [];
   for (const p of pairs) {
@@ -703,3 +750,4 @@ for (const truth of ["prox", "det"] as const) {
     console.log(truth.padEnd(5), tag.padEnd(22), "overall", JSON.stringify(t.overall));
   }
 }
+

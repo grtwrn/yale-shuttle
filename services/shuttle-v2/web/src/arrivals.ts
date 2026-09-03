@@ -27,6 +27,56 @@ export type DwellsByBus = Record<string, DwellTimes>;
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
 
 /**
+ * The shortest time any hop may be billed at. Shared by the unmeasured-hop
+ * estimate and the stall-credit floor below, because it is the same claim in
+ * both places: a bus still standing at A is not about to be at B — it has to
+ * shut its doors, pull out and cover the block.
+ */
+export const MIN_HOP_SEC = 30;
+
+/**
+ * Mirrors `MAX_PLAUSIBLE_M_S` in `src/calibrator/calibrator.ts`, where it is
+ * defined as the fastest a shuttle can plausibly cover the straight-line
+ * distance between two stops (~79 km/h — generous, because the West Campus
+ * legs really are highway runs). `arrivals.test.ts` parses the server's
+ * source, so the two cannot drift.
+ *
+ * It must be an UPPER bound on speed, which is why it is not `BUS_SPEED_M_S`.
+ * That constant is 6 m/s, a TYPICAL speed used to guess unmeasured hops; using
+ * it here would floor a 370 m hop at 62 s and so withhold credit a bus has
+ * genuinely earned. That is the padding that broke the Red layover on
+ * 2026-09-03 (docs/eta-accuracy.md): the board promised 5 min, the bus came in
+ * 2.5, and the rider who trusted the 5 missed it. Measured
+ * over 412,994 replayed predictions, the 6 m/s floor did score a better median
+ * but paid for it in the pessimistic tail; 22 m/s is the variant that improves
+ * the median and the optimistic tail while leaving the pessimistic tail alone.
+ */
+export const MAX_PLAUSIBLE_M_S = 22;
+
+/**
+ * A stall credit may cancel WAITING. It may never cancel DRIVING.
+ *
+ * This floor is deliberately NOT derived from the dwell/segment decomposition —
+ * that premise is false (see below) and has already cost three shipped changes.
+ * It rests on geometry: the stops are a known distance apart, and no bus covers
+ * that distance faster than `MAX_PLAUSIBLE_M_S`. The straight line understates
+ * the road, so the result is a true lower bound on travel time rather than one
+ * more estimate to argue with.
+ *
+ * It exists because the dwell bound alone could erase a hop completely. On the
+ * live payload the calibrated dwell median meets or exceeds the whole segment
+ * average on 114 of 274 hops (41.6%) — the two are estimators of the same
+ * quantity, so this is common, not exceptional — and a bus that had stood long
+ * enough was promised at the next stop INSTANTLY: 0 s to cover 311 m. Replaying
+ * 88,570 production positions that fired on 9.3% of at-stop next-stop
+ * predictions.
+ */
+function driveFloorSec(a: LatLon | undefined, b: LatLon | undefined): number {
+  if (!a || !b) return 0;
+  return Math.max(MIN_HOP_SEC, haversineMeters(a, b) / MAX_PLAUSIBLE_M_S);
+}
+
+/**
  * WHAT A DWELL STATISTIC ACTUALLY MEASURES — read this before using `dwells`
  * for anything.
  *
@@ -256,7 +306,7 @@ export function computeUpcomingArrivals(
           // beat, and the planner already prices the same case that way.
           const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
           const byDistance = pc && cc
-            ? Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S)
+            ? Math.max(MIN_HOP_SEC, haversineMeters(pc, cc) / BUS_SPEED_M_S)
             : 0;
           if (avgSeg > 0 && avgSeg >= byDistance) {
             segAvg = avgSeg;
@@ -306,7 +356,16 @@ export function computeUpcomingArrivals(
           const cancellable = dwell && dwell.med > 0
             ? dwell.med
             : segAvg * STALL_CREDIT_MAX_FRACTION;
-          const applied = Math.min(stallCredit, cancellable, segAvg);
+          // ...and never past the driving the hop still contains. Before this
+          // floor the bound above could take the hop to exactly zero — see
+          // driveFloorSec. Report #80 is NOT that case and is unchanged by it:
+          // 344 Winchester -> Winchester/Division is 112 m, so the floor is
+          // 30 s against the 98.9 s the hop is already billed.
+          const room = Math.max(
+            0,
+            segAvg - driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]]),
+          );
+          const applied = Math.min(stallCredit, cancellable, room);
           segAvg -= applied;
           stallCredit -= applied;
         }

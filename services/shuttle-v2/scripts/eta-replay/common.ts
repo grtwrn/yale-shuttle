@@ -502,18 +502,29 @@ export interface Metrics {
   medianSignedSec: number;
   within60: number;
   within120: number;
+  /**
+   * The tails that decide whether a change is shippable. Error is
+   * predicted - actual, so NEGATIVE is optimistic: the app named a time the
+   * bus beat, and the rider who trusted it strolled up and watched it leave.
+   * `optimistic120` is therefore the number that must not grow, whatever the
+   * median does — see docs/eta-accuracy.md.
+   */
+  optimistic120: number;
+  pessimistic120: number;
 }
 
 export function metricsOf(errs: ArrayLike<number>): Metrics {
   const n = errs.length;
   if (n === 0) {
-    return { n: 0, medianAbsSec: NaN, p90AbsSec: NaN, meanSignedSec: NaN, medianSignedSec: NaN, within60: NaN, within120: NaN };
+    return { n: 0, medianAbsSec: NaN, p90AbsSec: NaN, meanSignedSec: NaN, medianSignedSec: NaN, within60: NaN, within120: NaN, optimistic120: NaN, pessimistic120: NaN };
   }
   const abs = new Float64Array(n);
   const signed = new Float64Array(n);
   let sum = 0;
   let w60 = 0;
   let w120 = 0;
+  let opt120 = 0;
+  let pes120 = 0;
   for (let i = 0; i < n; i++) {
     const e = errs[i]!;
     signed[i] = e;
@@ -522,6 +533,8 @@ export function metricsOf(errs: ArrayLike<number>): Metrics {
     sum += e;
     if (a <= 60) w60++;
     if (a <= 120) w120++;
+    if (e < -120) opt120++;
+    if (e > 120) pes120++;
   }
   abs.sort();
   signed.sort();
@@ -540,6 +553,8 @@ export function metricsOf(errs: ArrayLike<number>): Metrics {
     medianSignedSec: r1(q(signed, 0.5)),
     within60: Math.round((w60 / n) * 1000) / 10,
     within120: Math.round((w120 / n) * 1000) / 10,
+    optimistic120: Math.round((opt120 / n) * 1000) / 10,
+    pessimistic120: Math.round((pes120 / n) * 1000) / 10,
   };
 }
 
