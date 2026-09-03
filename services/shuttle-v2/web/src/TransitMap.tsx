@@ -16,7 +16,7 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, nextArrivalAfterPinned, type UpcomingArrival } from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -3595,14 +3595,16 @@ const TripPlanner: FC<{
             // than the pinned arrival so an earlier, uncatchable bus never
             // masquerades as "next"; the same vehicle a loop later counts.
             const nextArrLive = busEtaLive !== null && !o.departed
-              ? (computeUpcomingArrivals(
-                  // dwellTimes matters here: #32 made a dwell able to cancel
-                  // the waiting inside a segment, and hoisting this call must
-                  // not quietly drop that argument.
-                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+              ? nextArrivalAfterPinned(
+                  computeUpcomingArrivals(
+                    // dwellTimes matters here: #32 made a dwell able to cancel
+                    // the waiting inside a segment, and hoisting this call must
+                    // not quietly drop that argument.
+                    [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+                  ).filter((a) => a.routeLabel === o.routeLabel),
+                  o.busName,
+                  busEtaLive,
                 )
-                  .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
-                  .sort((a, b) => a.eta - b.eta)[0] ?? null)
               : null;
             return (
               // Keyed by IDENTITY (route label), not list position — the
