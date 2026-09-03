@@ -558,6 +558,47 @@ describe("the real list against every live stop", () => {
     expect(top("phelps gate")?.poi).toBeUndefined();
   });
 
+  /**
+   * `scripts/lookup-sweep.mjs` found these by reading each landmark's OSM id
+   * back out of the trailing comment on its own line: the sweep matched the
+   * OSM object we had ALREADY curated, but the name OSM (and Yale) publishes
+   * scored zero against our shorter label. Every one is a place a rider can
+   * reach only through the external layer today.
+   *
+   * The mechanism is worth remembering, because it is a whole class and not
+   * eight accidents. The matcher asks whether a candidate word STARTS WITH a
+   * query token, so a rider typing a PREFIX of our label is fine ("gym" finds
+   * "Payne Whitney Gym") while a rider typing the longer official name is not:
+   * seven of the eight fail because the official name carries tokens our label
+   * has no counterpart for at all ("department", "harvey", "ice", "rare"),
+   * and the eighth ("gymnasium" against "gym") is a clipping that no typo tier
+   * could bridge — six edits apart. So whenever a label is the short form,
+   * the official name belongs in `aliases`.
+   */
+  it("finds a curated place by the full official name OSM publishes", () => {
+    const pairs: readonly [string, string][] = [
+      ["Payne Whitney Gymnasium", "Payne Whitney Gym"],
+      ["Yale Police Department", "Yale Police (101 Ashmun)"],
+      ["Laboratory of Epidemiology and Public Health", "School of Public Health (YSPH)"],
+      ["Harvey Cushing/John Hay Whitney Medical Library", "Cushing/Whitney Medical Library"],
+      ["Slifka Center for Jewish Life", "Slifka Center"],
+      ["Ingalls Ice Rink", "Ingalls Rink"],
+      ["Dwight Hall & Memorial Chapel", "Dwight Hall"],
+      ["Beinecke Rare Book and Manuscript Library", "Beinecke Library"],
+    ];
+    for (const [official, label] of pairs) {
+      expect(top(official)?.label, `${official} -> ${top(official)?.label}`).toBe(label);
+    }
+  });
+
+  it("answers the words the rider actually used", () => {
+    // Report #75, "Can't find ice rink destination" — the triage note told the
+    // rider to type "Ingalls" instead. The official-name alias fixes the bare
+    // phrase too, so the workaround is no longer needed.
+    expect(top("ice rink")?.label).toBe("Ingalls Rink");
+    expect(top("memorial chapel")?.label).toBe("Dwight Hall");
+  });
+
   it("ranks every live stop name first when typed verbatim", () => {
     for (const s of LIVE_STOPS) {
       const hit = top(s.name)!;
