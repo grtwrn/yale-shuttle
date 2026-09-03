@@ -168,6 +168,52 @@
   .chart-scroll svg { display: block; }
   .empty { font-size: 14px; color: var(--ink-2); padding: 24px 0; }
 
+  /* Hour-of-day lines. One path per day; today is the only one that gets the
+     accent colour — with seven days on one set of axes, seven hues would be a
+     palette nobody validated, and the question ("when is it used?") is
+     answered by the SHAPE, with today picked out of it. */
+  .hours { width: 100%; height: 190px; display: block; overflow: visible; }
+  .hours .grid { stroke: var(--grid); stroke-width: 1; }
+  .hours .axis-text { fill: var(--ink-2); font-size: 10px; }
+  .hours path { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  .hours .past { stroke: var(--ink-2); stroke-width: 1.5; }
+  .hours .today { stroke: var(--series-new); stroke-width: 2.5; }
+  .hours-legend {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    font-size: 12px; color: var(--ink-2); margin-top: 6px;
+  }
+  .hours-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .hours-legend i {
+    width: 14px; height: 0; border-top: 2px solid var(--ink-2);
+    display: inline-block;
+  }
+  .hours-legend i.today { border-top-color: var(--series-new); border-top-width: 3px; }
+
+  /* Rider mail. Loud only when something is unread — the point of the
+     section is that a stranger's report should not sit unnoticed among the
+     operator's own (2026-09-03). */
+  .mail { display: grid; gap: 8px; }
+  .mail-new {
+    display: inline-block; font-size: 12px; font-weight: 700;
+    color: #fff; background: var(--series-returning);
+    border-radius: 999px; padding: 2px 9px; margin-left: 8px;
+  }
+  .note {
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .note.unread { border-color: var(--series-returning); border-width: 2px; }
+  .note-meta {
+    font-size: 12px; color: var(--ink-2);
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 4px;
+  }
+  .note-body { font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+  .note-tag {
+    font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px;
+  }
+
   /* -- Login / error states --------------------------------------------- */
   .panel {
     background: var(--raised);
@@ -251,6 +297,27 @@
       </div>
       <div id="chart-empty" class="empty" hidden>No days with riders yet.</div>
     </section>
+
+    <section>
+      <div class="chart-head">
+        <h2>Riders by hour</h2>
+        <div class="legend"><span id="hours-note"></span></div>
+      </div>
+      <svg id="hours" class="hours" role="img" aria-label="Riders by hour of day, one line per day"></svg>
+      <div id="hours-legend" class="hours-legend"></div>
+      <div id="hours-empty" class="empty" hidden>No hourly data yet.</div>
+    </section>
+
+    <section>
+      <div class="chart-head">
+        <h2>From riders<span id="mail-new" class="mail-new" hidden></span></h2>
+        <div class="legend"><span id="mail-total"></span></div>
+      </div>
+      <div id="mail" class="mail"></div>
+      <div id="mail-empty" class="empty" hidden>
+        Nobody but you has written in yet.
+      </div>
+    </section>
   </div>
 </main>
 
@@ -261,6 +328,9 @@
   var SVG_NS = "http://www.w3.org/2000/svg";
   var REFRESH_MS = 60000;
   var HISTORY_DAYS = 30;
+  // Seven lines is the most this chart stays readable with — past that the
+  // older days are a smudge and the legend outgrows the phone.
+  var HOURLY_DAYS = 7;
 
   var el = {
     loading: document.getElementById("loading"),
@@ -280,8 +350,29 @@
     chartEmpty: document.getElementById("chart-empty"),
     since: document.getElementById("since"),
     chartScroll: document.getElementById("chart-scroll"),
-    refresh: document.getElementById("refresh")
+    refresh: document.getElementById("refresh"),
+    hours: document.getElementById("hours"),
+    hoursLegend: document.getElementById("hours-legend"),
+    hoursNote: document.getElementById("hours-note"),
+    hoursEmpty: document.getElementById("hours-empty"),
+    mail: document.getElementById("mail"),
+    mailNew: document.getElementById("mail-new"),
+    mailTotal: document.getElementById("mail-total"),
+    mailEmpty: document.getElementById("mail-empty")
   };
+
+  // Which reports this browser has already been shown. Highest id seen, in
+  // localStorage — every access guarded, because a browser with storage
+  // blocked must still see the reports, just always as "new".
+  var SEEN_KEY = "statsReportsSeenId";
+  function seenId() {
+    try { return parseInt(localStorage.getItem(SEEN_KEY) || "0", 10) || 0; }
+    catch (e) { return 0; }
+  }
+  function markSeen(id) {
+    try { if (id) localStorage.setItem(SEEN_KEY, String(id)); }
+    catch (e) { /* storage blocked — everything just stays "new" */ }
+  }
 
   // -- formatting -----------------------------------------------------------
   // Everything time-related is resolved in Eastern Time explicitly: the
@@ -356,10 +447,16 @@
     pending = true;
     Promise.all([
       getJson("/api/stats"),
-      getJson("/api/stats/history?days=" + HISTORY_DAYS)
+      getJson("/api/stats/history?days=" + HISTORY_DAYS),
+      // A failure here must not take the numbers down with it: the rider
+      // count is the page's job, the mail is the addition.
+      getJson("/api/stats/reports?limit=15").catch(function () { return null; }),
+      getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
+      renderMail(both[2]);
+      renderHours(both[3] && both[3].hourly);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -402,6 +499,166 @@
       d.appendChild(n);
     }
     return d;
+  }
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function svgEl(name, attrs) {
+    var node = document.createElementNS(SVG_NS, name);
+    for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) {
+      node.setAttribute(k, String(attrs[k]));
+    }
+    return node;
+  }
+  function hourTick(h) {
+    if (h === 0) return "12a";
+    if (h === 12) return "12p";
+    return h < 12 ? h + "a" : (h - 12) + "p";
+  }
+
+  /**
+   * Riders by hour of day, one path per day. Drawn by hand in SVG because
+   * this page loads no libraries and makes no external request — the whole
+   * point of it working when the bundle does not.
+   */
+  function renderHours(days) {
+    var list = days || [];
+    var svg = el.hours;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    el.hoursLegend.textContent = "";
+    el.hoursEmpty.hidden = list.length > 0;
+    el.hoursNote.textContent = list.length ? "each line is a day" : "";
+    if (!list.length) { svg.setAttribute("viewBox", "0 0 340 190"); return; }
+
+    var W = 340, H = 190, padL = 26, padR = 8, padT = 10, padB = 10 + 16;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var peak = 1;
+    for (var i = 0; i < list.length; i++) {
+      for (var h = 0; h < 24; h++) peak = Math.max(peak, list[i].hours[h] || 0);
+    }
+    var x = function (h) { return padL + (h / 23) * plotW; };
+    var y = function (v) { return padT + plotH - (v / peak) * plotH; };
+
+    // Baseline, peak line, and the two of them labelled — no more grid than
+    // that; the shape is the message.
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(0), x2: W - padR, y2: y(0) }));
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(peak), x2: W - padR, y2: y(peak) }));
+    var peakLabel = svgEl("text", { class: "axis-text", x: 0, y: y(peak) + 3 });
+    peakLabel.textContent = String(peak);
+    svg.appendChild(peakLabel);
+    var zeroLabel = svgEl("text", { class: "axis-text", x: 0, y: y(0) + 3 });
+    zeroLabel.textContent = "0";
+    svg.appendChild(zeroLabel);
+    [0, 6, 12, 18, 23].forEach(function (h) {
+      var t = svgEl("text", { class: "axis-text", x: x(h), y: H - 4, "text-anchor": "middle" });
+      t.textContent = hourTick(h);
+      svg.appendChild(t);
+    });
+
+    // Today's line must STOP at the current hour rather than running along
+    // the floor to 11p: hours that have not happened yet are not zeroes, and
+    // drawing them as a dive to the axis reads as a collapse in usage.
+    var etNow = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date());
+    var etHourNow = parseInt(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York", hour: "numeric", hour12: false
+    }).format(new Date()), 10) % 24;
+
+    // Oldest first so today is drawn last and sits on top of the others.
+    for (var d = 0; d < list.length; d++) {
+      var hours = list[d].hours || [];
+      var isToday = d === list.length - 1;
+      var lastHour = isToday && list[d].day === etNow ? etHourNow : 23;
+      var parts = [];
+      for (var hh = 0; hh <= lastHour; hh++) {
+        parts.push((hh === 0 ? "M" : "L") + x(hh).toFixed(1) + " " + y(hours[hh] || 0).toFixed(1));
+      }
+      var path = svgEl("path", {
+        class: isToday ? "today" : "past",
+        d: parts.join(" "),
+        // Older days fade back rather than taking a colour of their own.
+        opacity: isToday ? 1 : Math.max(0.18, 0.5 - (list.length - 1 - d) * 0.06)
+      });
+      svg.appendChild(path);
+    }
+
+    // Legend, newest first — the order the eye looks for "today".
+    for (var L = list.length - 1; L >= 0; L--) {
+      var parts2 = dayParts(list[L].day);
+      var item = document.createElement("span");
+      var swatch = document.createElement("i");
+      var isTodayL = L === list.length - 1;
+      if (isTodayL) swatch.className = "today";
+      else swatch.style.opacity = String(Math.max(0.18, 0.5 - (list.length - 1 - L) * 0.06));
+      item.appendChild(swatch);
+      var label = document.createElement("span");
+      label.textContent = isTodayL ? "today" : parts2.short;
+      item.appendChild(label);
+      el.hoursLegend.appendChild(item);
+    }
+  }
+
+  function ago(ms) {
+    var mins = Math.round((Date.now() - ms) / 60000);
+    if (!isFinite(mins) || mins < 0) return "";
+    if (mins < 60) return mins + " min ago";
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + (hrs === 1 ? " hour ago" : " hours ago");
+    var days = Math.round(hrs / 24);
+    return days + (days === 1 ? " day ago" : " days ago");
+  }
+
+  /**
+   * Reports from someone other than the operator. Built with textContent and
+   * createElement throughout — every word here is public input, and this page
+   * has no framework to escape it for us.
+   */
+  function renderMail(payload) {
+    var data = payload || {};
+    var list = data.reports || [];
+    var seen = seenId();
+    var unread = 0;
+    el.mail.textContent = "";
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      var isNew = r.id > seen;
+      if (isNew) unread++;
+      var card = document.createElement("div");
+      card.className = isNew ? "note unread" : "note";
+
+      var meta = document.createElement("div");
+      meta.className = "note-meta";
+      var when = document.createElement("span");
+      when.textContent = "#" + r.id + " · " + ago(r.createdAt);
+      meta.appendChild(when);
+      var tag = document.createElement("span");
+      tag.className = "note-tag";
+      tag.textContent = r.status === "open" && !r.answered ? "needs a reply" : r.status;
+      meta.appendChild(tag);
+      if (isNew) {
+        var badge = document.createElement("span");
+        badge.className = "note-tag";
+        badge.textContent = "new";
+        meta.appendChild(badge);
+      }
+      card.appendChild(meta);
+
+      var body = document.createElement("div");
+      body.className = "note-body";
+      body.textContent = r.excerpt || "(no text)";
+      card.appendChild(body);
+      el.mail.appendChild(card);
+    }
+    el.mailEmpty.hidden = list.length > 0;
+    el.mailTotal.textContent = data.total
+      ? data.total + (data.total === 1 ? " report" : " reports") + " from riders"
+      : "";
+    el.mailNew.hidden = unread === 0;
+    el.mailNew.textContent = unread + " new";
+    // Reading the page IS the acknowledgement: the badge clears on the next
+    // load, not on a button nobody would press.
+    markSeen(data.newestId);
   }
 
   function render(r, history, since) {

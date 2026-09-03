@@ -382,6 +382,28 @@ Chart colours are tokens on `:root`, redefined for dark mode, and the pair was
 run through the dataviz palette validator in both modes — don't re-pick them by
 eye.
 
+**The dashboard answers two more questions** (2026-09-03):
+
+- **"Has anyone but me written in?"** — `GET /api/stats/reports` lists reports
+  that are NOT from the operator's own browsers and not the map-bot's own
+  filings, newest first, with an unread badge the page keeps in localStorage.
+  It matters because 60 of the first 69 reports were the operator's own
+  testing and the ONE report from a real outside rider had to be found by
+  hand. Operator browsers live in `operator_anon_ids` — deliberately NOT
+  `excluded_anon_ids`, because the operator's phone is a real rider and must
+  keep counting in the usage numbers. Seed it with the `SHUTTLE_OPERATOR_ANON_IDS`
+  secret (comma-separated) or `POST /api/stats/operator {anonId}`. A report
+  with no anon id counts as OUTSIDE: storage may simply have been blocked, and
+  a false "someone wrote in" is cheaper than missing the one person who did.
+  **The payload carries no IP, no anon id and no context** — this route is
+  reachable with the stats cookie, so its shape is the security boundary.
+- **"When is it used?"** — `GET /api/stats/hourly` gives 24 counts per day,
+  one line per day on the page. It is DERIVED from the first/last sighting
+  already stored per (day, browser): nothing new is collected, and it reads
+  back to launch. A browser counts in every hour of its span, so this is an
+  upper bound on "present at that moment". Today's line stops at the current
+  hour — future hours are not zeroes.
+
 **Test traffic is excluded, not deleted.** Browser harnesses drive the live
 site, so they mint real ids and would otherwise appear as riders who never
 return — dragging week-1 retention toward zero for a month. `excluded_anon_ids`
