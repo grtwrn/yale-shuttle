@@ -234,13 +234,20 @@ export function tempTrend(
 }
 
 /**
- * "↑80° by 1pm" — rendered on its own row under the sentence, not inside it:
- * in the sentence it pushed every branch past one line on a 390px phone, and
- * the dry branch ("69°F ↑80° ↓69° · Cloudy · no rain expected") shipped
- * wrapped on 2026-09-03 before this was caught live.
+ * "warming to 80° by 1pm" — spelled out, not "↑80°": a bare arrow beside a
+ * plain number reads as a DELTA ("up 80 degrees") rather than a destination,
+ * which is exactly the reading an operator got from it live (2026-09-03).
+ *
+ * Rides in the SAME sentence as the rest of the line, not its own row — a
+ * second row was tried first and read as two separate facts when it is one.
+ * To fit, it only ever appears in the quietest branch (temperature + no
+ * near-term rain), which is also the branch where it is most useful: a rider
+ * who is not about to get rained on is the one asking "what should I expect
+ * the next couple hours". See weatherMessage for how that trade is made.
  *
  * Null when the destination reads the same as now IN THE UNIT ON SCREEN —
- * 66°F and 67°F are both 19°C, and "19° by 1pm" beside "19°C" says nothing.
+ * 66°F and 67°F are both 19°C, and "warming to 19°" beside "19°C" says
+ * nothing.
  */
 export function trendText(
   trend: TempTrend | null | undefined,
@@ -252,7 +259,8 @@ export function trendText(
   const from = temperatureIn(nowF, unit);
   if (to == null || to === from) return null;
   const label = hourLabel(trend.timeMs);
-  return `${trend.dir === "up" ? "↑" : "↓"}${to}°${label ? ` by ${label}` : ""}`;
+  const verb = trend.dir === "up" ? "warming" : "cooling";
+  return `${verb} to ${to}°${label ? ` by ${label}` : ""}`;
 }
 
 /** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
@@ -344,10 +352,22 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * are NOT in here for the same reason; they render on their own row (see
  * trendText). The hour-by-hour lives behind the tap.
  */
+/**
+ * True exactly when weatherMessage will spend its words on the temperature
+ * trend rather than rain or the condition word — i.e. the quietest branch.
+ * Shared with the caller so the hourly strip marks a cell ONLY when the line
+ * actually named it; string-matching the rendered message to answer this
+ * would work but silently rot the moment the wording changes.
+ */
+export function trendShownInMessage(v: RainVerdict, later: ForecastHour | null | undefined): boolean {
+  return v.known && v.probability < RAIN_MENTION_THRESHOLD && !later;
+}
+
 export function weatherMessage(
   v: RainVerdict,
   later?: ForecastHour | null,
   unit: TempUnit = "F",
+  trend?: TempTrend | null,
 ): string {
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
@@ -370,6 +390,13 @@ export function weatherMessage(
   if (later) {
     return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
+  // Nothing about rain left to say (trendShownInMessage agrees), so the
+  // line's spare words go to the temperature trend instead of the condition
+  // word — "warming to 80° by 2pm" answers "what should I expect the next
+  // couple hours" better than "Cloudy" does, and MEASURED (390px), the two
+  // together wrap the line.
+  const trendClause = trendText(trend, v.temperatureF, unit);
+  if (trendClause) return `${head}${trendClause}`;
   const cond = conditionText(v.weatherCode);
   // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain
   // expected" — the condition alone is the honest line.
