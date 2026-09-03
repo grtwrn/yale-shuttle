@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
@@ -396,5 +396,39 @@ describe("segment statistics", () => {
     );
     expect(all.length).toBeGreaterThan(0);
     expect(Math.max(...all.map((a) => a.eta))).toBeLessThanOrEqual(90 * 60);
+  });
+});
+
+describe("billedDwellSec — one number, shown and billed (report #73)", () => {
+  // A rider read the route page and did the arithmetic: "it says arrive in 8
+  // but expected dwell is 10". Both numbers came from this app — the 10 was
+  // the stop's MEDIAN hold on screen, the 8 was an ETA computed from the LOW
+  // quantile. Displaying one while billing the other is a bug whichever is
+  // right, so there is one definition now and the page calls it too.
+  const rest = { med: 600, low: 420 };
+
+  it("bills the low quantile for a stop still ahead", () => {
+    expect(billedDwellSec(rest, false)).toBe(420);
+  });
+
+  it("bills the median at the stop the bus is standing at", () => {
+    // Step 1 is where the elapsed-dwell credit lives, and it caps against the
+    // median — so that is the honest number to show there.
+    expect(billedDwellSec(rest, true)).toBe(600);
+  });
+
+  it("falls back to the median when no low quantile exists yet", () => {
+    // A stop the calibrator has not placed a quantile for.
+    expect(billedDwellSec({ med: 240 }, false)).toBe(240);
+  });
+
+  it("never bills a low quantile that exceeds the median", () => {
+    // The calibrator clamps this, but the display must not depend on that.
+    expect(billedDwellSec({ med: 200, low: 260 }, false)).toBe(200);
+  });
+
+  it("says nothing when there is no statistic at all", () => {
+    expect(billedDwellSec(undefined, false)).toBeNull();
+    expect(billedDwellSec({ med: NaN }, false)).toBeNull();
   });
 });

@@ -15,7 +15,7 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
+import { billedDwellSec, computeUpcomingArrivals, type UpcomingArrival } from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
   suggLabel,
@@ -3929,11 +3929,18 @@ const TripPlanner: FC<{
                   // the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
                   const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
-                  const typDwell = (sid: number): number | null => {
+                  // The hold shown must be the hold BILLED — see
+                  // billedDwellSec. `started` is true only for the stop the
+                  // bus is standing at; every other stop on the approach is
+                  // still ahead of it and is priced at the low quantile
+                  // (report #73: "it says arrive in 8 but expected dwell is
+                  // 10", which was the median on screen and the low quantile
+                  // in the arithmetic).
+                  const typDwell = (sid: number, started = false): number | null => {
                     const pb = busDwells[String(sid)];
-                    if (pb && pb.n >= 5) return pb.med;
+                    if (pb && pb.n >= 5) return billedDwellSec(pb, started);
                     const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return r.med;
+                    if (r && r.n >= 3) return billedDwellSec(r, started);
                     return null;
                   };
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
@@ -3961,7 +3968,7 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid);
+                            const typ = typDwell(sid, isBusHere);
                             const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
                             return (
                               <div key={sid} style={{
