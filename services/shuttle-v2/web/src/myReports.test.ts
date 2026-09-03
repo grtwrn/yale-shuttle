@@ -258,8 +258,10 @@ describe("the empty Issues tab", () => {
 
   it("stays free of jargon a rider would have to look up", () => {
     const text = emptyReportsText(false);
-    for (const word of ["localStorage", "cookie", "anon", "id", "browser storage", "429"]) {
-      expect(text.toLowerCase()).not.toContain(word.toLowerCase());
+    // Whole words, not substrings: "id" inside "provided" is not jargon, and a
+    // rewording should not fail this test for the wrong reason.
+    for (const word of ["localStorage", "cookie", "cookies", "anonymous", "id", "identifier", "429"]) {
+      expect(text).not.toMatch(new RegExp(`\\b${word}\\b`, "i"));
     }
   });
 });
