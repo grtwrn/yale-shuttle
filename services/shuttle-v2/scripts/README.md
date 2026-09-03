@@ -137,3 +137,102 @@ serve it, `2` the harness itself broke.
 Flags: `--refresh` (re-pull), `--route=14`, `--json`, `-v`, `--geojson=13`
 (writes `scripts/.cache/route-13.geojson` with the derived line, upstream's line
 and the stops, for eyeballing on a map).
+
+---
+
+# `npm run canary` — the rider that never stops riding
+
+A synthetic rider that uses the app the way a person does and **watches until
+the shuttle actually arrives**. One rider at a time, one browser, launched and
+closed per run; `--loop` keeps one going whenever a line is running and sleeps
+when none is.
+
+It exists for a measurement nothing else here makes. `eta-accuracy.mjs` and
+`eta-replay/` score predictions against truth **in aggregate** — median error,
+share within two minutes. Neither looks at the **sequence one rider sees**, and
+that is the whole of the operator's complaint:
+
+> "i'm not worried about a few seconds. i'm worried about saying a bus is 10min
+> away and then a few seconds later dropping to 1 second."
+
+Riders have filed the same thing twice (#64 "4:06 … then 3:55", #32 "6 min then
+it said 16"). A run of predictions can be individually excellent and still read
+as broken in that order.
+
+## What one run does
+
+1. Picks a line that is **actually running** — all fifteen, round-robin —
+   where "running" means the server is reporting live buses on it. That is the
+   service-hours gate, and it needs no schedule table: `/api/buses` already
+   drops out-of-service ghosts (report #30), so a line with no buses is a line
+   with nothing to watch whatever the timetable says.
+2. Plans the trip for that line in the real UI at 390×844 with
+   `/usr/bin/chromium`, geolocation as the origin. **Prospect / Canner →
+   School of Public Health (YSPH)** — the operator's own trip — for every line
+   that comes within 700 m of both ends: Red, Blue Day, Orange Day, Brown and
+   the evening blues. For a line that does not (Pink's nearest stop to the
+   origin is 2.5 km away), a trip **derived from that line's own published
+   stops**: board at its first, ride a quarter of the loop. Fifteen hand-typed
+   stop pairs would be fifteen things rotting against upstream, and stop lists
+   are not hand-edited here.
+
+   The 700 m is not `MAX_WALK_M`. At the planner's 1500 m limit fourteen of
+   fifteen lines "serve" this trip, including ones the app is right to bury,
+   and the canary would report every one of them as a missing line. 700 m is
+   ~8.5 min on the app's own walk model — the walk the planner itself chose for
+   Blue Day's board stop on this very trip.
+3. Reads the app's **own** answer to "which stop am I walking to" out of the
+   details view's Directions link, rather than assuming the nearest one — the
+   planner walks a Blue Day rider 8 min down Whitney to skip eight stops.
+4. Watches: `/api/buses` every 5 s for ground truth (nothing in that channel
+   reads the app's numbers), the rendered countdown every 15 s, until the bus
+   reaches that stop.
+
+## What it measures
+
+Every number the rider is shown, in order. The display is **bucketed** —
+`fmtMin` renders "now", "<1 min", "N min" — so `canary-metrics.mjs` works on
+intervals and reports the **smallest** movement consistent with two readings.
+A reported jump is one the app provably made; bucket edges can never invent one.
+
+| term | meaning |
+|---|---|
+| drift | seconds the countdown moved beyond what elapsed time explains. 0 = healthy |
+| reversal | drift > 0 — the countdown went **up** |
+| catastrophic | \|drift\| ≥ 180 s — the bound `accuracy-layover.test.ts` already puts on a lurch, applied without its exemption for the departure moment |
+| first-sight miss | how far outside its first promise the bus actually arrived |
+
+Every finding is attributed where it can be: the app's own "You can't catch
+#40 — showing the next bus" line, the pinned vehicle re-read from the details
+view immediately after a jump, and the per-tick distance of every bus on the
+line to the board stop.
+
+## Output
+
+Silent and exit 0 when healthy. On a finding it prints the run to **stderr**
+and exits 1. **A run that parsed no countdown fails** (`no-countdown`) rather
+than passing: a scraper that has silently stopped reading looks exactly like a
+healthy line, and the neighbouring watch at `~/eta-live` filed "Purple kept its
+promises" off a ride with zero recorded promises on 2026-09-03. Every run — healthy or not — appends one JSON object to
+`scripts/.canary/runs.jsonl` (last 400 kept, ~a fortnight of continuous
+riding), holding the full tick-by-tick sequence, the bus snapshots beside it,
+the pins and the failures.
+
+```bash
+npm run canary                    # one rider, then exit
+CANARY_LINE=Purple CANARY_WATCH_MAX_MIN=3 npm run canary -- --verbose
+                                  # probe one line: does it plan at all?
+                                  # (a short ceiling reports `no-arrival` by
+                                  # construction — that is the probe, not a bug)
+npm run canary -- --loop          # keep a rider going
+npm run canary -- --summary       # health digest across the log
+npm run canary -- --verbose       # narrate the watch
+CANARY_LINE="Blue Day" npm run canary -- --verbose   # force one line
+```
+
+Env: `BOT_BASE_URL`, `BOT_CHROMIUM_PATH`, `CANARY_DIR`, `CANARY_LINE`,
+`CANARY_TICK_MS`, `CANARY_WATCH_MAX_MIN`, `CANARY_CATASTROPHIC_SEC`,
+`CANARY_FIRST_SIGHT_MISS_SEC`, `CANARY_IDLE_SLEEP_MIN`, `CANARY_REST_MIN`.
+
+**It never files a report.** Findings go to the log and to whoever is reading
+stderr; a bot that filed its own reports was turned off once already.
