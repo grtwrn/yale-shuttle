@@ -139,10 +139,49 @@ describe("suggLabel", () => {
 });
 
 describe("suggIcon", () => {
-  it("distinguishes stops, Yale places and everything else", () => {
-    expect(suggIcon({ display_name: "x", lat: 0, lon: 0, type: "bus_stop" })).toBe("🚏");
-    expect(suggIcon({ display_name: "x", lat: 0, lon: 0, class: "yale" })).toBe("🏛️");
-    // 📍 is the origin marker throughout the app; 🏁 is the destination.
-    expect(suggIcon({ display_name: "x", lat: 0, lon: 0 })).toBe("📍");
+  const hit = (extra: Partial<GeocodeResult>): GeocodeResult =>
+    ({ display_name: "x", lat: 0, lon: 0, ...extra });
+
+  it("marks a shuttle stop, a curated place and an address", () => {
+    expect(suggIcon(hit({ type: "bus_stop" }))).toBe("🚏");
+    expect(suggIcon(hit({ class: "yale" }))).toBe("🏛️");
+    expect(suggIcon(hit({}))).toBe("📍");
+  });
+
+  // The operator's ask (2026-09-03): "elenas and Pepe's are eateries. elenas
+  // is an ice cream shop. could you ice cream / pizza / plate and fork /
+  // coffee cup for known places?"
+  it.each([
+    ["ice_cream", "🍦"],
+    ["pizza", "🍕"],
+    ["restaurant", "🍽️"],
+    ["cafe", "☕"],
+    ["fast_food", "🍔"],
+    ["bakery", "🥐"],
+    ["bar", "🍺"],
+    ["supermarket", "🛒"],
+    ["pharmacy", "💊"],
+    ["library", "📚"],
+    ["museum", "🏛️"],
+    ["hospital", "🏥"],
+    ["college", "🎓"],
+    ["park", "🌳"],
+    ["theatre", "🎭"],
+    ["hotel", "🛏️"],
+    ["station", "🚉"],
+    ["books", "📖"],
+    ["gym", "🏋️"],
+  ])("draws a %s as %s", (type, icon) => {
+    // Same table for a curated place and an OpenStreetMap result: the server
+    // serves OSM's own vocabulary in `type` for both.
+    expect(suggIcon(hit({ type, class: "yale" }))).toBe(icon);
+    expect(suggIcon(hit({ type, class: "osm" }))).toBe(icon);
+  });
+
+  it("falls back rather than drawing nothing for an unknown category", () => {
+    expect(suggIcon(hit({ type: "gardener", class: "osm" }))).toBe("📍");
+    expect(suggIcon(hit({ type: "landmark", class: "yale" }))).toBe("🏛️");
+    // A stop is a stop even if a category ever leaked into its type.
+    expect(suggIcon(hit({ type: "bus_stop", class: "shuttle" }))).toBe("🚏");
   });
 });

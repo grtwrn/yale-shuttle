@@ -498,17 +498,36 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
   return out;
 }
 
+/**
+ * A local hit this good means the rider typed the NAME of a place we know, so
+ * there is nothing for a general geocoder to add. Below it (a word match, a
+ * substring, a typo) the query is still open and the outside world may hold
+ * the answer.
+ *
+ * This is the exact/prefix tier of `scoreMatch`. Without it every strong
+ * query dragged a loose OSM hit along beneath the right answer, because
+ * "near the shuttle network" is a wide area — the weekend runs reach Milford
+ * and West Haven. The operator saw "pepes" answer Frank Pepe Pizzeria AND
+ * Pepe's Lawn Care 8 km away in West Haven, "elenas" answer Elena's on
+ * Orange and a clothing shop on Whalley, and "trader joes" list the Milford
+ * store the shuttle serves beside the Hamden one it does not (2026-09-03).
+ */
+const STRONG_LOCAL_SCORE = 0.75;
+
 export async function geocodeV1(
   network: TransitNetwork,
   q: string,
   external: ExternalGeocoder,
 ): Promise<GeocodeV1Hit[]> {
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
-  const local: GeocodeV1Hit[] = geocode(network, q).map((h) => ({
+  const hits = geocode(network, q);
+  const local: GeocodeV1Hit[] = hits.map((h) => ({
     display_name: h.label,
     lat: h.lat,
     lon: h.lon,
-    type: h.kind === "stop" ? "bus_stop" : "landmark",
+    // The curated category ('pizza', 'library') rides in `type`, where the
+    // client's icon table already reads OSM's own values for external hits.
+    type: h.kind === "stop" ? "bus_stop" : h.poi ?? "landmark",
     class: h.kind === "stop" ? "shuttle" : "yale",
   }));
 
@@ -516,6 +535,8 @@ export async function geocodeV1(
   // Skip the external lookup for short queries.
   // Gate on what the matcher saw: "!!!" is three characters and no query.
   if (normalizeName(query).length < 3) return local;
+  // ...and when we already know the place by that name (see above).
+  if ((hits[0]?.score ?? 0) >= STRONG_LOCAL_SCORE) return local;
 
   // The shipped geocoder never throws, but the interface is injectable and a
   // rejection here would 500 the route: degrade to local instead.

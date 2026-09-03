@@ -280,8 +280,19 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    Stop names come from upstream and may NOT be hand-edited even when misspelt
    ("Orange / Audobon"); the fuzzy tier is how "audubon" reaches them. Dedup:
    a landmark on its serving stop replaces the stop row; two stops on one
-   corner collapse to one; two landmarks never merge.
-3. **External** (`src/server/v1compat.ts`): Photon (komoot) first — it tolerates
+   corner collapse to one; two landmarks never merge. Each entry also carries
+   a `poi` category in OSM's own vocabulary ("pizza", "ice_cream", "library"),
+   served in the v1 `type` field, which is what `suggIcon` (web/src/format.ts)
+   turns into the row's emoji — one table for curated places and OSM results
+   alike. A new landmark without a `poi` fails the suite.
+3. **External** — asked ONLY when no local hit reaches the exact/prefix tier
+   (`STRONG_LOCAL_SCORE`). If the rider typed the name of a place we know,
+   there is nothing for a general geocoder to add, and appending its guess is
+   how "pepes" answered Frank Pepe Pizzeria *and* a lawn-care business 8 km
+   away, "elenas" a clothing shop, and "trader joes" the Hamden store the
+   shuttle does not serve (operator, 2026-09-03). The 2.5 km reachability
+   rule cannot catch those: the weekend grocery runs really do reach Milford
+   and West Haven. When it IS asked: Photon (komoot) first — it tolerates
    a missing apostrophe and typos, which Nominatim does not ("elenas" returned
    nothing until 2026-09-02) — then Nominatim only when Photon errors or is
    empty. One shared 1.1 s throttle, one 2.5 s budget per lookup, cache keyed

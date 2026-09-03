@@ -315,8 +315,9 @@ describe("rankExternal", () => {
 
 describe("geocodeV1 merge", () => {
   it("puts local results first and drops an external twin within 60 m of one", async () => {
-    // The local hit for "union" is the curated landmark (it absorbs the
-    // "Union Station (N)" stop 50 m away); put the external twin 30 m from it.
+    // "station" is only a word match, so the external lookup still runs (a
+    // rider may mean a place we do not list). The curated Union Station
+    // absorbs the stop 50 m away; the external twin 30 m from it is noise.
     const union = STOPS[0]!;
     const external = {
       lookup: async () => [
@@ -324,17 +325,64 @@ describe("geocodeV1 merge", () => {
         { display_name: "Elena's on Orange, Orange Street, New Haven", lat: 41.323, lon: -72.9108, type: "ice_cream", class: "osm" },
       ],
     };
-    const results = await geocodeV1(network, "union", external);
-    expect(results[0]).toMatchObject({ display_name: "Union Station", class: "yale", type: "landmark" });
+    const results = await geocodeV1(network, "station", external);
     expect(results.filter((r) => r.display_name.startsWith("Union Station"))).toHaveLength(1);
+    expect(results[0]).toMatchObject({ class: "yale" });
     expect(results.at(-1)).toMatchObject({ display_name: "Elena's on Orange, Orange Street, New Haven", class: "osm" });
   });
 
   it("keeps the v1 class/type vocabulary for local hits", async () => {
+    // `type` carries the place's category so the client can draw an icon;
+    // `class` is what the frontend auto-picks on, and it does not move.
     const results = await geocodeV1(network, "SOM", { lookup: async () => [] });
-    expect(results[0]).toMatchObject({ display_name: "School of Management (SOM)", type: "landmark", class: "yale" });
+    expect(results[0]).toMatchObject({ display_name: "School of Management (SOM)", type: "college", class: "yale" });
+    const pizza = await geocodeV1(network, "pepes", { lookup: async () => [] });
+    expect(pizza[0]).toMatchObject({ display_name: "Frank Pepe Pizzeria", type: "pizza", class: "yale" });
     const stop = await geocodeV1(network, "Chapel / York", { lookup: async () => [] });
     expect(stop[0]).toMatchObject({ display_name: "Chapel / York", type: "bus_stop", class: "shuttle" });
+  });
+
+  /**
+   * Reported by the operator on 2026-09-03, three screenshots in a row:
+   * "pepes" answered Frank Pepe Pizzeria AND "Pepe's Lawn Care" in West
+   * Haven; "elenas" answered Elena's on Orange and a clothing shop; "trader
+   * joes" listed the Milford store the shuttle serves beside the Hamden one
+   * it does not. The 2.5 km reachability rule cannot catch these — the
+   * weekend grocery runs genuinely reach Milford and West Haven.
+   */
+  describe("a place we know by name ends the search", () => {
+    const noisy = () => ({
+      calls: 0,
+      lookup: async function (this: { calls: number }) {
+        this.calls++;
+        return [{ display_name: "Pepe's Lawn Care, 71 Lucey Avenue, West Haven", lat: 41.2472, lon: -72.9683, type: "gardener", class: "osm" }];
+      },
+    });
+
+    it.each(["pepes", "elenas", "trader joes", "stop and shop"])(
+      "%o is answered locally, with no external lookup at all",
+      async (q) => {
+        const ext = noisy();
+        const results = await geocodeV1(network, q, ext);
+        expect(ext.calls).toBe(0);
+        expect(results.every((r) => r.class === "yale" || r.class === "shuttle")).toBe(true);
+      },
+    );
+
+    it("still asks outside when the query only half-matches something we list", async () => {
+      // "lawn" matches nothing curated; "pepe" would, so use a word that
+      // only brushes the list.
+      const ext = noisy();
+      const results = await geocodeV1(network, "lawn care", ext);
+      expect(ext.calls).toBe(1);
+      expect(results.some((r) => r.class === "osm")).toBe(true);
+    });
+
+    it("still asks outside for a typo, which only reaches the fuzzy tier", async () => {
+      const ext = noisy();
+      await geocodeV1(network, "peobody", ext);
+      expect(ext.calls).toBe(1);
+    });
   });
 
   it("skips the external lookup for queries under three characters", async () => {

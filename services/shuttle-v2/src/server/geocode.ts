@@ -22,6 +22,8 @@ export interface GeocodeHit {
   /** "stop" for shuttle stops, "landmark" for curated POIs. */
   kind: "stop" | "landmark";
   score: number;
+  /** The curated place's OSM category ("pizza", "library"), for its icon. */
+  poi?: string;
   /** Set when the best match came through an alias rather than the label. */
   viaAlias?: true;
 }
@@ -46,6 +48,7 @@ export function geocode(
       lon: l.lon,
       kind: "landmark" as const,
       score: 0,
+      ...(l.poi ? { poi: l.poi } : {}),
     }));
   }
 
@@ -69,6 +72,7 @@ export function geocode(
     if (score > 0) {
       out.push({
         label: l.label, lat: l.lat, lon: l.lon, kind: "landmark", score,
+        ...(l.poi ? { poi: l.poi } : {}),
         ...(labelScore < score ? { viaAlias: true as const } : {}),
       });
     }
