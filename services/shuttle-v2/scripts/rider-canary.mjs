@@ -296,6 +296,10 @@ async function runOnce(line) {
           const key = `${b.bus_id}`;
           const d = haversineM(b, board);
           const was = nearFlags.get(key) ?? false;
+          // Arm on the first poll: a bus already standing at the stop when the
+          // rider arrives is not an arrival this run watched for, and counting
+          // it would end the run before a single countdown had been read.
+          if (tick === 0) { nearFlags.set(key, d <= ARRIVAL_M); continue; }
           if (!was && d <= ARRIVAL_M) {
             nearFlags.set(key, true);
             record.arrivals.push({ atMs: now, busName: b.bus_name, distM: Math.round(d) });
