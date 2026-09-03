@@ -11,6 +11,7 @@ import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours, outlookRange, rangeText,
+  temperatureIn,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -3108,9 +3109,14 @@ const TripPlanner: FC<{
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
                   // Which cell each arrow in the line points at. Only marked
                   // when the two differ — a flat window has no high or low.
-                  const peak = span && range && h.temperatureF === range.highF
+                  // Compared in the unit ON SCREEN. In °C two hours often
+                  // print the same number (60°F and 61°F are both 16°C), and
+                  // marking one of two identical cells is arbitrary — every
+                  // cell showing the extreme value carries the arrow.
+                  const shown = temperatureIn(h.temperatureF, tempUnit);
+                  const peak = span && range && shown != null && shown === temperatureIn(range.highF, tempUnit)
                     ? "↑"
-                    : span && range && h.temperatureF === range.lowF
+                    : span && range && shown != null && shown === temperatureIn(range.lowF, tempUnit)
                       ? "↓"
                       : "";
                   return (
@@ -3832,9 +3838,10 @@ const TripPlanner: FC<{
                             </button>
                           </>
                         )}
-                        {o.mode === "shuttle" && (
-                          <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
-                        )}
+                        {/* Always reached: this whole row renders only for a
+                            shuttle option, so "I'm on it" always precedes
+                            Report and the separator is unconditional. */}
+                        <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); reportOption(o); }}
                           title="Report that this route is wrong or confusing"

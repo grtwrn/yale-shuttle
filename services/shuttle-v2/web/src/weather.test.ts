@@ -329,7 +329,13 @@ describe("the window's high and low (operator, 2026-09-03)", () => {
   const now = Date.parse("2026-09-03T18:30:00-04:00");
 
   it("reads the hours the strip shows, not the calendar day", () => {
-    const hours = outlookHours([H(18, 5, 66), H(19, 10, 64), H(20, 35, 67), H(21, 70, 60)], now);
+    // The 3am bucket is the day's real low and the 2am one its real high;
+    // both are outside the window, so neither may reach the line.
+    const hours = outlookHours(
+      [H(2, 0, 88), H(3, 0, 41), H(18, 5, 66), H(19, 10, 64), H(20, 35, 67), H(21, 70, 60),
+       { timeMs: now + 9 * 60 * 60_000, probability: 0, temperatureF: 95 }],
+      now,
+    );
     expect(outlookRange(hours)).toEqual({ highF: 67, lowF: 60 });
   });
 

@@ -1,0 +1,20 @@
+{
+  "caption": "Celsius: every cell at the extreme carries its arrow",
+  "base": "http://127.0.0.1:8153",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/weather"
+  ],
+  "shots": [
+    "/tmp/shots-w/celsius/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

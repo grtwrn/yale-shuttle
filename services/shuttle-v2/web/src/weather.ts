@@ -310,10 +310,11 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * The collapsed line: temperature, then WHEN IT WILL NEXT RAIN, in as few
  * words as that takes.
  *
- * It has to fit one line on a phone, so the condition word is dropped
+ * It has to fit ONE line on a phone, so the condition word is dropped
  * whenever there is a rain time to give — "Clear" is the least useful thing
- * on the line once it can say "rain likely 10pm". The hour-by-hour lives
- * behind the tap.
+ * on the line once it can say "rain likely 10pm". The window's high and low
+ * are NOT in here for the same reason; they render on their own row (see
+ * rangeText). The hour-by-hour lives behind the tap.
  */
 export function weatherMessage(
   v: RainVerdict,

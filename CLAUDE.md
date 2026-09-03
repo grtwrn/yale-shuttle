@@ -150,7 +150,16 @@ per refresh, or a cold request would wait 5 s twice.
 The weather line answers ONE question — when will it next rain — in as few
 words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
-the useful half. Tapping it opens the next six hours as a sideways-scrolling
+the useful half.
+
+**The window's high and low ride on a SECOND row**, muted and labelled with
+the hour they run to ("↑80° ↓69° through 1pm"). They are the warmest and
+coolest of the hours the strip lists — not the calendar day, most of which a
+rider has already lived through. Inside the sentence they wrapped it: that
+shipped on 2026-09-03 and was caught on production, so measure the LONGEST
+branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
+touching this line, not the shortest. The ≥70% branch still takes two rows by
+choice — it is the amber warning and the second row carries the advice. Tapping it opens the next six hours as a sideways-scrolling
 strip of temperature and rain chance, each percentage carrying a 💧 so it is
 not read as anything else; that strip is collapsed by default, since the
 sentence usually suffices. Hours are spelled `11pm`, not the app's usual
