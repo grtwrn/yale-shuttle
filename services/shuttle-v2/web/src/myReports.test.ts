@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  ReportActionError,
+  actionErrorText,
+  emptyReportsText,
   hasUnseenChanges,
+  postReportAction,
   loadSeenStatuses,
   markAllSeen,
   saveSeenStatuses,
@@ -202,5 +206,62 @@ describe("threadOf — the report's conversation in order", () => {
       { from: "us", text: "ok", at: 1 },
       { from: "rider", text: "hi", at: 3 },
     ]);
+  });
+});
+
+describe("a rider action the server refused", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const stubFetch = (status: number) =>
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: status < 400, status }) as unknown as Response));
+
+  it("carries the status out of postReportAction", async () => {
+    stubFetch(429);
+    await expect(postReportAction(7, { action: "archive" })).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("resolves quietly when the server accepts it", async () => {
+    stubFetch(200);
+    await expect(postReportAction(7, { action: "archive" })).resolves.toBeUndefined();
+  });
+
+  // The bug this exists for: a rider archiving a long list hit the ceiling and
+  // was told to try again, which inside the same minute fails again.
+  it("tells a rate-limited rider to wait, not to retry", () => {
+    const text = actionErrorText(new ReportActionError(429));
+    expect(text).toMatch(/moment/i);
+    expect(text).not.toMatch(/try again/i);
+  });
+
+  it("keeps the old wording for every other failure", () => {
+    for (const err of [new ReportActionError(500), new ReportActionError(404), new TypeError("offline"), undefined]) {
+      expect(actionErrorText(err)).toBe("Didn’t go through — try again");
+    }
+  });
+});
+
+describe("the empty Issues tab", () => {
+  it("invites a report when the browser can be shown one later", () => {
+    expect(emptyReportsText(true)).toMatch(/No reports yet/);
+  });
+
+  // A browser with no id is never sent its own reports, so "No reports yet"
+  // is a promise the app cannot keep (report #51).
+  it("explains itself when the browser keeps no id, and says the report arrived", () => {
+    const text = emptyReportsText(false);
+    expect(text).not.toMatch(/No reports yet/);
+    expect(text).toMatch(/private browsing/i);
+    expect(text).toMatch(/still reaches us/i);
+  });
+
+  it("stays free of jargon a rider would have to look up", () => {
+    const text = emptyReportsText(false);
+    // Whole words, not substrings: "id" inside "provided" is not jargon, and a
+    // rewording should not fail this test for the wrong reason.
+    for (const word of ["localStorage", "cookie", "cookies", "anonymous", "id", "identifier", "429"]) {
+      expect(text).not.toMatch(new RegExp(`\\b${word}\\b`, "i"));
+    }
   });
 });
