@@ -315,7 +315,7 @@ describe("the outlook — answering \"and later?\"", () => {
   });
 
   it("ignores hours beyond the outlook horizon", () => {
-    const tomorrow = [H(18, 5), { timeMs: now + 9 * 60 * 60_000, probability: 90 }];
+    const tomorrow = [H(18, 5), { timeMs: now + 15 * 60 * 60_000, probability: 90 }];
     expect(nextWetHour(tomorrow, now)).toBeNull();
     expect(outlookHours(tomorrow, now)).toHaveLength(1);
   });
@@ -453,7 +453,7 @@ describe("the outlook horizon", () => {
   const now = Date.parse("2026-09-03T18:30:00-04:00");
 
   it("ignores hours beyond the outlook horizon", () => {
-    const tomorrow = [H(18, 5), { timeMs: now + 9 * 60 * 60_000, probability: 90 }];
+    const tomorrow = [H(18, 5), { timeMs: now + 15 * 60 * 60_000, probability: 90 }];
     expect(nextWetHour(tomorrow, now)).toBeNull();
     expect(outlookHours(tomorrow, now)).toHaveLength(1);
   });
@@ -469,10 +469,10 @@ describe("the window still bounds what can be named", () => {
 
   it("reads the hours the strip shows, not the calendar day", () => {
     // 88° at 2am is the day's high and 41° at 3am its low; both are outside
-    // the window, as is the 95° nine hours out. None may reach the line.
+    // the window, as is the 95° fifteen hours out. None may reach the line.
     const hours = outlookHours(
       [H(2, 0, 88), H(3, 0, 41), H(18, 5, 66), H(19, 10, 64), H(20, 35, 71), H(21, 70, 60),
-       { timeMs: now + 9 * 60 * 60_000, probability: 0, temperatureF: 95 }],
+       { timeMs: now + 15 * 60 * 60_000, probability: 0, temperatureF: 95 }],
       now,
     );
     const t = tempTrend(hours, 66)!;
