@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  ANCHOR_GPS_THRESHOLD_M, ANCHOR_HEADING_TOLERANCE_DEG, findRouteAnchor, isBusOnRoute,
+  ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute,
   OFF_ROUTE_THRESHOLD_M, registerRoutePaths,
 } from "./anchor";
 import { haversineMeters } from "./geo";
@@ -209,7 +209,7 @@ describe("isBusOnRoute measures against the road polyline when one is registered
   });
 });
 
-describe("findRouteAnchor on an out-and-back with a highway: road legs and heading", () => {
+describe("findRouteAnchor on an out-and-back with a highway: road legs", () => {
   // A miniature West Campus route (Green/Purple shaped): a downtown hub, a
   // highway out to a campus spur that the bus drives out and back through
   // the same stops, and the highway home to the hub's twin stop 30 m away.
@@ -257,42 +257,36 @@ describe("findRouteAnchor on an out-and-back with a highway: road legs and headi
 
   it("anchors a bus on the outbound highway to the outbound leg", () => {
     registerRoutePaths({ [ROUTE]: path });
-    const bus = { ...onOutboundHighway, heading: 270, last_stop_id: 1 };
-    expect(findRouteAnchor(bus, stops, coords)).toBe(LEG.out);
+    // Both carriageways are within 150 m; forward order from the hub picks
+    // the outbound leg — the chord scan could not even find a candidate here.
+    expect(findRouteAnchor({ ...onOutboundHighway, last_stop_id: 1 }, stops, coords)).toBe(LEG.out);
   });
 
-  it("anchors a bus heading home to the return leg despite a stale last_stop_id from the way out", () => {
-    // TransLoc refreshes last_stop_id only at timepoints: the bus still says
-    // "last stop: hub" the whole way back. Forward order from the hub prefers
-    // the outbound leg; the heading is what says otherwise.
+  it("anchors a bus on the homeward highway to the return leg once the feed has refreshed last_stop_id", () => {
     registerRoutePaths({ [ROUTE]: path });
-    const bus = { ...onHomewardHighway, heading: 90, last_stop_id: 1 };
-    expect(findRouteAnchor(bus, stops, coords)).toBe(LEG.home);
-    // Same position, no heading: the stale hint wins, which is the measured
-    // failure mode this test pins the fix against.
+    // last stop W1 (the spur's exit): forward order lands on the way home.
+    expect(findRouteAnchor({ ...onHomewardHighway, last_stop_id: 11 }, stops, coords)).toBe(LEG.home);
+    // With a stale hint from the way out the forward-order rule still prefers
+    // the outbound leg. That is the known limit of this fix: filtering by the
+    // feed's heading closed it in the replay but raised multi-stop anchor
+    // swings on the downtown routes by 70 %, so it is not used.
     expect(findRouteAnchor({ ...onHomewardHighway, last_stop_id: 1 }, stops, coords)).toBe(LEG.out);
   });
 
   it("anchors a bus on the return half of the spur to the return-leg occurrence", () => {
     registerRoutePaths({ [ROUTE]: path });
-    // Three-quarters of the way from W3 back to W2, driving north-east. (At
-    // the midpoint the leg just left is still within 150 m of the bus and the
-    // scan's forward-order rule legitimately lags one leg — report #27.)
+    // Three-quarters of the way from W3 back to W2, turnaround just passed.
     const between = { lat: W3.lat + 0.75 * (W2.lat - W3.lat), lon: W3.lon + 0.75 * (W2.lon - W3.lon), route_id: ROUTE };
-    const heading = 40;
-    // Fresh hint (turnaround just passed) and stale hint (from the way out)
-    // both land on the return leg.
-    expect(findRouteAnchor({ ...between, heading, last_stop_id: 14 }, stops, coords)).toBe(LEG.w3w2);
-    expect(findRouteAnchor({ ...between, heading, last_stop_id: 11 }, stops, coords)).toBe(LEG.w3w2);
+    expect(findRouteAnchor({ ...between, last_stop_id: 14 }, stops, coords)).toBe(LEG.w3w2);
   });
 
   it("anchors a bus on the outbound half of the spur to the outbound occurrence", () => {
     registerRoutePaths({ [ROUTE]: path });
     const between = { lat: W2.lat + 0.75 * (W3.lat - W2.lat), lon: W2.lon + 0.75 * (W3.lon - W2.lon), route_id: ROUTE };
-    expect(findRouteAnchor({ ...between, heading: 220, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
+    expect(findRouteAnchor({ ...between, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
     // and with no path registered at all the chord scan gives the same answer
     registerRoutePaths(null);
-    expect(findRouteAnchor({ ...between, heading: 220, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
+    expect(findRouteAnchor({ ...between, last_stop_id: 11 }, stops, coords)).toBe(LEG.w2w3);
   });
 
   it("at_stop_id at a repeated stop never throws a returning bus back to the first occurrence", () => {
@@ -300,66 +294,28 @@ describe("findRouteAnchor on an out-and-back with a highway: road legs and headi
     // W1's FIRST occurrence is index 1 (outbound); accepting it would send the
     // bus round the spur again — the report #37/#38 guarantee in a new guise.
     registerRoutePaths({ [ROUTE]: path });
-    const bus = { ...W1, route_id: ROUTE, heading: 45, last_stop_id: 12, at_stop_id: 11 };
+    const bus = { ...W1, route_id: ROUTE, last_stop_id: 12, at_stop_id: 11 };
     const idx = findRouteAnchor(bus, stops, coords);
     expect([LEG.w2w1, LEG.home]).toContain(idx);
     expect(idx).not.toBe(LEG.w1w2);
     expect(idx).not.toBe(LEG.out);
   });
 
-  it("ignores the heading while the bus is at a stop", () => {
-    // A dwelling bus reports whatever it last drove; the stop-side hints are
-    // the fresh signal there. Outbound at W2 with a heading pointing home.
-    registerRoutePaths({ [ROUTE]: path });
-    const bus = { ...W2, route_id: ROUTE, heading: 45, last_stop_id: 11, at_stop_id: 12 };
-    expect(findRouteAnchor(bus, stops, coords)).toBe(LEG.w1w2 + 1); // refined one ahead, onto W2 → W3
-  });
-
-  it("keeps the candidate set when every candidate runs against the heading", () => {
-    // Triangle: A → B bears 0°, B → C bears ~135°; a bus at B with a heading
-    // between 245° and 250° is > 110° from both. The filter must not leave the
-    // scan with nothing — forward order from last_stop_id still decides.
-    const A = { lat: 41.3000, lon: -72.9300 };
-    const B = { lat: 41.3090, lon: -72.9300 };
-    const Cc = { lat: 41.3000, lon: -72.9180 };
-    const tri = { 1: A, 2: B, 3: Cc };
-    const bus = { ...B, heading: 247, last_stop_id: 1 };
-    expect(findRouteAnchor(bus, [1, 2, 3], tri)).toBe(0);
-    expect(findRouteAnchor({ ...bus, last_stop_id: 2 }, [1, 2, 3], tri)).toBe(1);
-  });
-
   it("is unchanged for a bus with no route_id or no registered path", () => {
     registerRoutePaths({ [ROUTE]: path });
-    const noRoute = { lat: onOutboundHighway.lat, lon: onOutboundHighway.lon, heading: 270, last_stop_id: 1 };
+    const noRoute = { lat: onOutboundHighway.lat, lon: onOutboundHighway.lon, last_stop_id: 1 };
     const chordAnswer = findRouteAnchor(noRoute, stops, coords);
     registerRoutePaths(null);
-    expect(findRouteAnchor({ ...onOutboundHighway, heading: 270, last_stop_id: 1 }, stops, coords)).toBe(chordAnswer);
+    expect(findRouteAnchor({ ...onOutboundHighway, last_stop_id: 1 }, stops, coords)).toBe(chordAnswer);
   });
 
   it("re-traces legs after registerRoutePaths replaces the polylines", () => {
     registerRoutePaths({ [ROUTE]: path });
-    const bus = { ...onHomewardHighway, heading: 90, last_stop_id: 1 };
+    const bus = { ...onHomewardHighway, last_stop_id: 11 };
     expect(findRouteAnchor(bus, stops, coords)).toBe(LEG.home);
     registerRoutePaths({ [ROUTE]: [pt(H), pt(W1)] }); // a path that supplies no leg usefully
     const after = findRouteAnchor(bus, stops, coords);
     expect(after).toBeGreaterThanOrEqual(0);
     expect(after).toBeLessThan(stops.length);
-  });
-
-  it("treats a heading of exactly 0 as unknown", () => {
-    // 0 is what a feed emits for "no bearing" (and what the shared fixture's
-    // makeBus defaults to); a genuine due-north reading is 22 of 11,867 moving
-    // production samples. So 0 must not filter anything: the homeward bus
-    // with a stale hint falls back to the forward-order answer, exactly as
-    // with no heading at all.
-    registerRoutePaths({ [ROUTE]: path });
-    const noHeading = findRouteAnchor({ ...onHomewardHighway, last_stop_id: 1 }, stops, coords);
-    expect(findRouteAnchor({ ...onHomewardHighway, heading: 0, last_stop_id: 1 }, stops, coords)).toBe(noHeading);
-    // whereas 1° is a real heading and does its job
-    expect(findRouteAnchor({ ...onHomewardHighway, heading: 89, last_stop_id: 1 }, stops, coords)).toBe(LEG.home);
-  });
-
-  it("documents the tolerance the replay measured as flat", () => {
-    expect(ANCHOR_HEADING_TOLERANCE_DEG).toBe(110);
   });
 });
