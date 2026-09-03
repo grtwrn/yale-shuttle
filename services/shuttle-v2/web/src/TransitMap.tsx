@@ -8,6 +8,7 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
+import { liveAnchorStore } from "./anchorGate";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -1991,7 +1992,7 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
@@ -3592,7 +3593,7 @@ const TripPlanner: FC<{
                   // dwellTimes matters here: #32 made a dwell able to cancel
                   // the waiting inside a segment, and hoisting this call must
                   // not quietly drop that argument.
-                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
                 )
                   .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
                   .sort((a, b) => a.eta - b.eta)[0] ?? null)
@@ -4475,7 +4476,7 @@ const NextShuttles: FC<{
 }> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
   if (savedStops.size === 0) return null;
 
-  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes);
+  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore);
   const arrivals: Record<number, UpcomingArrival[]> = {};
   for (const a of all) {
     (arrivals[a.stopId] ??= []).push(a);
@@ -4817,7 +4818,7 @@ const FavoriteStopsPage: FC<{
         </div>
       )}
       {groups.map((g, idx) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore).slice(0, 5);
         const editing = editingId === g.id;
         return (
           <div key={g.id} style={{
@@ -4988,7 +4989,7 @@ const StopGroupsSummary: FC<{
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
       {groups.map((g) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
+        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore).slice(0, 5);
         const name = g.name || "Unnamed";
         return (
           <div key={g.id} style={{
@@ -5842,7 +5843,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
@@ -5988,7 +5989,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),

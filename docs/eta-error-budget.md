@@ -334,6 +334,104 @@ arms are scored identically — not an absolute.
 
 ---
 
+## Smoothing the GPS (EMA) — measured, and it fails the operator's test
+
+The operator asked whether EMA on the raw positions was worth doing before a
+Kalman filter. Measured as an arm on the same board, exponential smoothing of
+lat/lon with a time constant, before anchoring:
+
+| arm | jumps ≥300 s | vs shipped | twitch | **eventless** | folding routes | accuracy median | frozen |
+|---|---|---|---|---|---|---|---|
+| shipped | 16,128 (1.0%) | — | 7,047 | **437** | 2.2% | 160.4 s | 32.5% |
+| EMA τ=15 s | 14,634 (0.9%) | −9% | 4,908 | **1,394** | 1.8% | 162.6 s | 19.3% |
+| EMA τ=30 s | 16,418 (1.0%) | **+2%** | 5,826 | **3,181** | 2.0% | 165.5 s | 19.6% |
+| corroborated anchor | 12,881 (0.8%) | **−20%** | 3,289 | 379 | 1.6% | 161.7 s | 33.6% |
+| both | 13,903 (0.9%) | −14% | 3,024 | 1,894 | 1.5% | 166.3 s | 21.0% |
+
+**It makes the eventless population three to seven times worse.** That was the
+prediction to check — smoothing should have done *nothing* to jumps where the
+GPS fix is byte-identical, because `last_stop_id` is the cause — and the
+measurement says the opposite, for a reason worth keeping: a smoothed position
+keeps converging on polls where the raw fix has not changed. EMA therefore
+manufactures anchor movement out of **zero new sensor information**. It is not
+merely that smoothing invents a position the bus was never at; it invents
+*motion* on polls that carry no observation at all.
+
+**And it delays departures, which is disqualifying on its own.** Measured
+across every real departure in the window (the collector's `at_stop_id` going
+non-null → null), as the arm's ETA minus production's in the following 60 s:
+
+| arm | median | p90 | polls later than production |
+|---|---|---|---|
+| corroborated anchor | **0 s** | **0 s** | **0.8%** |
+| EMA τ=15 s | +1.5 s | +29.8 s | **44.8%** |
+| EMA τ=30 s | +14.8 s | +61.9 s | **58.3%** |
+| both | +15.4 s | +63.8 s | 59.0% |
+
+EMA is the rate limiter moved upstream: the same indiscriminate damping, now
+applied to the input, with the same inability to tell a real move from a
+quantisation step. It withholds the 5 → 1 on nearly half of all departures.
+Rejected on the operator's own criterion.
+
+It also adds nothing on top of corroboration — the combined arm is *worse* than
+the gate alone (−14% against −20%) and inherits the departure lag.
+
+**What this implies for a Kalman filter.** EMA is the simplest member of the
+family the operator was heading toward, and the two objections that sink it are
+structural, not tuning: this feed's error is a 30 m deadband rather than
+Gaussian noise, so there is nothing for a smoother to average away, and any
+smoother that produces a position estimate on an observation-free poll will
+invent movement. The mode-switching filter already tested here cut anchor flips
+84% and did not move the catastrophic tail. Read `docs/bus-speed.md` too: a
+30 s trailing window already beat a constant-velocity Kalman on this feed.
+Nothing measured here disagrees with that document.
+
+## What shipped: the corroborated anchor
+
+`web/src/anchorGate.ts`. The anchor may only relocate the bus when something
+corroborates the move:
+
+- **`at_stop_id` changed** — the collector says the bus arrived or departed.
+  Releases in the SAME poll, which is what keeps 5 → 1 instant.
+- **the move is consistent with ground covered** — the raw anchor may advance
+  as far along the sequence as the distance travelled can account for, one hop
+  per `ANCHOR_M_PER_HOP` (120 m), and the first hop is not free: it needs at
+  least one 30 m deadband step of real displacement.
+- **`last_stop_id` changed AND the bus moved** — kept as an input, because
+  withholding it was measured and is worse (16,128 → 24,986), but required to
+  be corroborated rather than obeyed.
+- otherwise the previous anchor is held, for at most 5 minutes.
+
+Displacement is measured **net, from where the anchor was last accepted**, not
+as path length. A parked bus twitching 38 m back and forth accumulates
+unlimited path while never leaving a 40 m circle, so a cumulative measure would
+open the gate on precisely the population the gate exists to reject. There is a
+test for that.
+
+Measured (1.59 M transitions, one weekday):
+
+| | shipped | gated |
+|---|---|---|
+| jumps ≥ 300 s | 16,128 (1.00%) | **12,881 (0.80%) — −20%** |
+| twitch jumps | 7,047 | **3,289 — −53%** |
+| eventless jumps | 437 | 379 |
+| folding routes (Green/Purple/Pink) | 2.2% | **1.6% — −27%** |
+| every other route | 0.5% | 0.5% |
+| departure lag, median / p90 | — | **0 s / 0 s** |
+| accuracy median / mean bias | 160.4 s / +106.9 s | 161.7 s / +111.7 s |
+| ETA frozen | 32.5% | 33.6% |
+
+It costs 1.3 s of median accuracy and 1.1 points of freeze share. The freeze
+figure is the one to watch on any future change here: an arm that "wins" by
+raising it is holding a stale number, which is how the first version of the
+progress filter looked like a 97% win before a NaN in its geometry was found.
+
+The named regression case, Red #309 (the canary bus that sat 400 m out, left,
+and arrived 84 s later): across 189 polls covering three departures the gated
+ETA is **identical to production at every departure poll**, and the anchor is
+held on 2% of polls. `scripts/eta-replay/trace-departure.ts` replays it from
+the captured corpus.
+
 ## Recommendation
 
 **Build the output-side rate limiter. Start at 45 s per poll.**
