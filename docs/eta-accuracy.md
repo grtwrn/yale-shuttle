@@ -177,6 +177,38 @@ compounded over five hops.
 
 `DwellStats.low` is still calibrated and served, and is now dormant.
 
+### It was also a source of visible JUMPS, which is what riders complain about
+
+Median error says how wrong the board is on average; a rider does not
+experience an average, they watch one number for a minute. Replaying every raw
+GPS position of a service day at 5 s cadence through the real anchor
+(`scripts/eta-replay/stability-replay.ts`, 361,112 consecutive-poll pairs), a
+healthy ETA counts down in real time, so
+
+    jump = (eta2 - eta1) + elapsed
+
+is 0 when the number is honest. **Step 1 is exempt from the re-pricing and step
+2 is not**, so the instant a bus advances a stop the hop that was surcharged
+stops being surcharged — a jump built into the rule rather than into the data:
+
+| at a stop advance (18,551 pairs) | with re-pricing | without (shipped) |
+|---|---|---|
+| median absolute jump | 48.0 s | **34.8 s** |
+| jumps over 30 s | 76.4% | **55.8%** |
+| jumps over 60 s | 36.5% | **28.8%** |
+| jumps UP by over 60 s | 16.0% | **11.8%** |
+
+Between stops (342,561 pairs) the two are identical to the decimal — the
+re-pricing does not drift a bus mid-segment, it lurches at the stop boundary.
+Removing it cuts the median lurch by 28% and upward lurches over a minute by a
+quarter. Note the replay recalibrates hourly where production recalibrates
+every 5 min, so this *understates* any additional flapping from the 30 s floor
+crossing as calibration moves.
+
+This is a different mechanism from the layover clock resetting under a parked
+bus that creeps (`BusState.stationarySince` and `STATIONARY_RADIUS_M`); that
+one lives in the collector and is not touched here.
+
 ## Does a bus's holding-so-far predict its holding ahead? No. (2026-09-03)
 
 Tested because a bucket table suggested a bus that had held far LESS than
