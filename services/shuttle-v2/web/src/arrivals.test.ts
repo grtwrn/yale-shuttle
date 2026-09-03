@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeUpcomingArrivals } from "./arrivals";
+import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
 import {
   at, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -87,9 +87,13 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     const arrivals = computeUpcomingArrivals(
       [STOP.collegeWallN], [bus], routeStops, stopCoords, segmentTimes, NOW,
     );
-    // 20 minutes of dwell swallows the whole first segment: the bus is about
-    // to pull out, so the next stop is imminent.
-    expect(etaFor(arrivals, STOP.collegeWallN)).toBeLessThan(5);
+    // 20 minutes of dwell cancels as much of the first segment as the cap
+    // allows — the bus is about to pull out, but the hop still has to be
+    // driven (the replay showed 'imminent' was 3 min optimistic after a long
+    // layover). Half the segment remains: ~370 m at the 6 m/s fallback ≈ 60 s.
+    const eta = etaFor(arrivals, STOP.collegeWallN)!;
+    expect(eta).toBeGreaterThan(20);
+    expect(eta).toBeLessThan(40);
   });
 
   it("withholds credit when the feed names a DIFFERENT stop than the anchor", () => {
@@ -130,6 +134,29 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
     )!;
     // Half a ~790 m segment at the 6 m/s fallback ≈ 66 s, not "arriving now".
     expect(eta).toBeGreaterThan(30);
+  });
+
+  it("never credits more than the capped share of the first hop", () => {
+    // Replay finding (2026-09-02): a bus that has sat 5+ min was promised at
+    // the next stop ~3.4 min early because every elapsed second came off the
+    // hop. Whatever the dwell, at least (1 - cap) of the hop must remain.
+    const uncapped = etaFor(
+      computeUpcomingArrivals([STOP.collegeWallN], [makeBus({
+        ...at(STOP.elmYorkTyco), route_id: 4, last_stop_id: STOP.stopAndShop,
+        at_stop_id: STOP.elmYorkTyco, at_stop_since: dwellingSince(0),
+      })], routeStops, stopCoords, segmentTimes, NOW),
+      STOP.collegeWallN,
+    )!;
+    for (const minutes of [2, 5, 20, 60]) {
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [makeBus({
+          ...at(STOP.elmYorkTyco), route_id: 4, last_stop_id: STOP.stopAndShop,
+          at_stop_id: STOP.elmYorkTyco, at_stop_since: dwellingSince(minutes * 60),
+        })], routeStops, stopCoords, segmentTimes, NOW),
+        STOP.collegeWallN,
+      )!;
+      expect(eta).toBeGreaterThanOrEqual(uncapped * (1 - STALL_CREDIT_MAX_FRACTION) - 1e-6);
+    }
   });
 
   it("a fresh dwell earns no credit; a long one does", () => {

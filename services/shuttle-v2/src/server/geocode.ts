@@ -79,7 +79,14 @@ export function geocode(
   // a spot, the LANDMARK survives regardless of score: its label carries more
   // information ("Trader Joe's (Milford)" vs "Trader Joe's"), and several
   // curated entries sit on their serving stops by design (SOM, Divinity).
+  // Two STOPS on one corner ((N)/(S) platforms, "Audubon / Orange" beside
+  // "Orange / Audobon") collapse to one row too — the planner picks the
+  // platform, the rider only needs the corner. Two LANDMARKS never merge:
+  // the verified list keeps distinct places that share a block (a cafe in
+  // the British Art Center's ground floor, the Apple Store beside the Yale
+  // Bookstore), and folding them would hide the label the rider typed.
   const near = (a: GeocodeHit, b: GeocodeHit) =>
+    !(a.kind === "landmark" && b.kind === "landmark") &&
     Math.abs(a.lat - b.lat) < 6e-4 && Math.abs(a.lon - b.lon) < 8e-4;
   const deduped: GeocodeHit[] = [];
   for (const h of out) {

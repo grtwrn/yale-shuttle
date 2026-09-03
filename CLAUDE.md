@@ -43,7 +43,7 @@ cd services/shuttle-v2
 
 npm run dev          # backend on :8092 (collector + server, tsx watch)
 npm run typecheck    # backend AND frontend types (a web/ scope error once shipped a live crash)
-npm test             # vitest — 427 tests, covers src/ AND web/src/
+npm test             # vitest — ~870 tests, covers src/ AND web/src/
 npm run riders       # how many unique browsers are using the app
 
 # frontend
@@ -215,6 +215,47 @@ feature to see it before approving?". To preview any branch by hand: build
 scripts/pr-preview.mjs`. Riders see everything in the in-app
 Issues tab (`/api/my-reports`): statuses, notes (which are replies to them),
 follow-ups (these reopen + wake the bot), archive, and self-rated priority.
+
+## Destination lookup (`/api/geocode`)
+
+Three layers, local first, and the response shape is v1's
+(`{results:[{display_name,lat,lon,type,class}]}`; the frontend auto-picks on
+class `yale`, type `bus_stop`/`house`, or a single result — keep those values):
+
+1. **Curated landmarks** — `src/server/landmarks.ts`, 148 entries, every one
+   VERIFIED against OpenStreetMap on 2026-09-02 and pinned to the live stop
+   that serves it (`anchorStop`). `geocode.test.ts` recomputes the nearest
+   stop from the checked-in 172-stop fixture (`src/server/__fixtures__/stops.json`)
+   for every entry, so a moved or mistyped coordinate fails the suite. **To add
+   a place: look it up in OSM, copy the coordinate, set its anchor** — the
+   2026-08-31 audit found seven of fourteen hand-typed entries wrong, one by
+   1.2 km, and the 2026-09-02 audit moved five more. One entry per physical
+   place; other names go in `aliases` ("kbt", "commons", "med school", the
+   former name, the street address) — no misspellings, the fuzzy tier handles
+   those. Adjacent-but-distinct places (a cafe inside a museum) stay separate.
+2. **The matcher** (`src/server/geocode.ts`) normalises both sides (apostrophes
+   deleted, `&` → "and", diacritics stripped), drops query stopwords (yale,
+   university, the, at, of, on, in, and, new, haven, st, street) and scores in
+   tiers: exact > prefix > word-prefix > every-token-prefixes > fuzzy
+   (Damerau-Levenshtein ≤ 1 from 5 letters, ≤ 2 from 8, never shorter — "som"
+   must not become "some") > substring. Aliases score exactly like labels.
+   Stop names come from upstream and may NOT be hand-edited even when misspelt
+   ("Orange / Audobon"); the fuzzy tier is how "audubon" reaches them. Dedup:
+   a landmark on its serving stop replaces the stop row; two stops on one
+   corner collapse to one; two landmarks never merge.
+3. **External** (`src/server/v1compat.ts`): Photon (komoot) first — it tolerates
+   a missing apostrophe and typos, which Nominatim does not ("elenas" returned
+   nothing until 2026-09-02) — then Nominatim only when Photon errors or is
+   empty. One shared 1.1 s throttle, one 2.5 s budget per lookup, cache keyed
+   by provider+query, in-flight collapse. External hits are ranked by distance
+   to the nearest shuttle stop and dropped past 2.5 km when a closer one
+   exists: the service area is "near the network", not a rectangle. The
+   fetcher is injected (`buildApp({ geocoder })`), so tests stub it; nothing in
+   the suite touches the network.
+
+The frontend's 8 km radius filter exempts class `yale`/`shuttle` rows — a
+curated destination is by definition reachable, and Trader Joe's (Milford) at
+9.8 km used to vanish whenever an unrelated in-range OSM hit came back too.
 
 ## Usage metrics
 
@@ -394,6 +435,35 @@ These are load-bearing; several rider-visible bugs traced to them:
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
 
+## ETA accuracy: measure with the replay, not by eye
+
+`docs/eta-accuracy.md` records the 2026-09-02 replay of the exact client
+arithmetic against three months of arrivals and 69k raw positions
+(`scripts/eta-replay/`, README there — take a snapshot of the production DB
+and run both scripts; a few minutes each). Findings that constrain changes:
+
+- **Calibration is at its floor.** 28 variants (window shape, shrinkage k,
+  medians, recency, recent traffic, live pace, route drift) moved the median by
+  at most −1.9 s. Don't retune `calibrator.ts` without a replay showing more.
+- **Stall credit is capped at half the first hop** (`STALL_CREDIT_MAX_FRACTION`
+  in `web/src/arrivals.ts`). Segment samples run arrival to arrival, so the
+  served time already holds the typical dwell; subtracting every elapsed second
+  promised a bus that had sat 5 min at the next stop 3.4 min early. The cap cut
+  the at-stop next-stop median error 71 → 51.5 s and the all-positions median
+  115 → 104 s. A quarter is as good on the median but pessimistic after long
+  layovers.
+- **The anchor is the next lever**: where `findRouteAnchor` disagrees with the
+  detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
+  the median error is 367 s vs 99 s. A perfect anchor would take the median to
+  103 s and the mean bias to +2 s.
+- **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
+  Not built; the numbers are in the doc.
+- `predictions_log` is empty — nothing records what riders were told. The
+  replay is the substitute; the live browser harness
+  (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
+  `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
+  see, so it is a sanity check, not a measurement.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
@@ -411,7 +481,8 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `gps-tier-check.mjs` | one live high-accuracy geolocation watch, no downgrade |
 | `timezone-check.mjs` | identical service state across 5 device timezones |
 | `walk-fallback-check.mjs` | a long trip shows a walk, never "No trip options found" |
-| `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals |
+| `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals (live, ~10 pairs a run) |
+| `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 
 `eta-accuracy.mjs` is the honest one: it reads what the app tells a rider while

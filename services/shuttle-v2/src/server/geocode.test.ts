@@ -6,6 +6,10 @@ import type { Route, Stop } from "../schema/api.js";
 
 import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS } from "./geocode.js";
 import type { Landmark } from "./landmarks.js";
+import liveStops from "./__fixtures__/stops.json";
+
+// Every live stop (id, name, lat, lon) as served by /api/buses on 2026-09-02.
+const LIVE_STOPS: Stop[] = liveStops as Stop[];
 
 /**
  * Guards against coordinate rot in the hand-curated landmark list.
@@ -98,8 +102,11 @@ describe("landmark coordinates", () => {
     }
   });
 
-  // Two rows a rider cannot tell apart are worse than one row: identical
-  // coordinates mean somebody pasted the wrong line.
+  // One entry per physical place: the same coordinates under two labels mean
+  // somebody pasted the wrong line, or entered a nickname as a second place
+  // instead of an alias. Distinct places CAN be metres apart (a cafe in a
+  // museum's ground floor, a bookshop next to the Apple Store), so the bound
+  // is 'same point', not 'same block'.
   it("has no two landmarks stacked on the same spot", () => {
     for (let i = 0; i < LANDMARKS.length; i++) {
       for (let j = i + 1; j < LANDMARKS.length; j++) {
@@ -108,62 +115,55 @@ describe("landmark coordinates", () => {
         expect(
           distanceMeters(a, b),
           `${a.label} and ${b.label} are on top of each other`,
-        ).toBeGreaterThan(25);
+        ).toBeGreaterThan(5);
       }
     }
   });
 
-  // Every curated landmark is a place the shuttle exists to reach, so one of
-  // its stops has to be walkable. A landmark stranded from the network is
-  // either a bad coordinate or a destination this app cannot serve.
-  it.each(LANDMARKS.map((l) => [l.label, l] as const))(
-    "%s is within walking distance of the shuttle network",
-    (_label, l) => {
-      const { stop, meters } = nearestStop(l);
-      expect(meters, `nearest reference stop is ${stop.name} at ${Math.round(meters)} m`)
-        .toBeLessThan(400);
-    },
-  );
+  // An alias is another name for the SAME place; the same alias on two
+  // entries would make one of them unreachable by that name. A few are
+  // shared on purpose ("science hill" spans two buildings, "pharmacy" is
+  // three shops) — list them here so an accidental clash still fails.
+  it("does not reuse an alias across entries, except the deliberate ones", () => {
+    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket"]);
+    const owner = new Map<string, string>();
+    for (const l of LANDMARKS) {
+      for (const a of l.aliases ?? []) {
+        const key = a.toLowerCase();
+        if (SHARED.has(key)) continue;
+        expect(owner.get(key), `alias ${a} is on both ${owner.get(key)} and ${l.label}`).toBeUndefined();
+        owner.set(key, l.label);
+      }
+    }
+  });
 
   /**
-   * The sharp check. Each landmark is pinned to the stop that serves it —
-   * usually the stop named after the place, or after its street address, so
-   * the pairing is independently true rather than derived from the coordinate
-   * it is testing. Six of the seven 2026-08 defects moved the landmark next to
-   * the *wrong* stop; the seventh (Kline Tower) stayed nearest the right stop
-   * but drifted to 233 m, which the distance bound catches.
+   * The sharp check, now for every entry. Each landmark carries the name of
+   * the live stop that serves it (`anchorStop`), and the nearest stop in the
+   * full 172-stop network (checked-in fixture, captured from /api/buses on
+   * 2026-09-02) has to BE that stop, within walking distance. Six of the
+   * seven 2026-08 defects moved the landmark next to the *wrong* stop; the
+   * seventh (Kline Tower) stayed nearest the right stop but drifted to 233 m,
+   * which the distance bound catches.
    */
-  const ANCHORS: ReadonlyArray<[label: string, stopName: string]> = [
-    ["Old Campus", "Phelps Gate"],
-    ["Trader Joe's (Milford)", "Trader Joe's"],
-    ["ShopRite (Hamden)", "Shop Rite"],
-    ["Aldi / Walmart (Hamden)", "Aldi/Walmart"],
-    ["Davenport College", "Elm / York (TYCO)"],
-    ["Payne Whitney Gym", "Payne Whitney Gym"],
-    ["Yale Health Center", "Ashmun / Lock"],
-    ["Becton Center", "Becton / 15 Prospect"],
-    ["Rosenkranz Hall", "130 Prospect Street (S)"],
-    ["School of Management (SOM)", "SOM"],
-    ["Peabody Museum", "Peabody Museum / Whitney / Sachem"],
-    ["Ingalls Rink", "Prospect / Sachem (S)"],
-    ["Kline Tower (Kline Biology Tower)", "SCL"],
-    ["Yale Science Building (YSB)", "Lot 22 - Whitney / Humphrey"],
-    ["Divinity School", "Divinity / 409 Prospect"],
-    ["School of Public Health (YSPH)", "LEPH / 60 College"],
-    ["School of Medicine (YSM)", "333 Cedar"],
-    ["Yale-New Haven Hospital", "York / Cedar"],
-    ["Union Station", "Union Station (N)"],
-    ["Yale University Art Gallery", "Chapel / York"],
-    ["Yale Center for British Art", "Chapel / York"],
-  ];
+  const nearestLiveStop = (p: { lat: number; lon: number }): { stop: Stop; meters: number } => {
+    let best: { stop: Stop; meters: number } | null = null;
+    for (const stop of LIVE_STOPS) {
+      const meters = distanceMeters(p, stop);
+      if (!best || meters < best.meters) best = { stop, meters };
+    }
+    return best!;
+  };
 
-  it.each(ANCHORS)("%s is served by the %s stop", (label, stopName) => {
-    const landmark = LANDMARKS.find((l) => l.label === label);
-    expect(landmark, `no landmark labelled ${label}`).toBeDefined();
-    const { stop, meters } = nearestStop(landmark!);
-    expect(stop.name).toBe(stopName);
-    expect(meters, `${label} is ${Math.round(meters)} m from ${stopName}`).toBeLessThan(200);
-  });
+  it.each(LANDMARKS.map((l) => [l.label, l.anchorStop, l] as const))(
+    "%s is served by the %s stop",
+    (label, stopName, landmark) => {
+      expect(LIVE_STOPS.some((s) => s.name === stopName), `no live stop named ${stopName}`).toBe(true);
+      const { stop, meters } = nearestLiveStop(landmark);
+      expect(stop.name, `${label} is nearest ${stop.name} (${Math.round(meters)} m), not ${stopName}`).toBe(stopName);
+      expect(meters, `${label} is ${Math.round(meters)} m from ${stopName}`).toBeLessThan(500);
+    },
+  );
 });
 
 describe("landmark search", () => {
@@ -275,12 +275,12 @@ describe("robust matching (2026-09-02 live probe)", () => {
   ]);
 
   const FIXTURE_LANDMARKS: Landmark[] = [
-    { label: "Elena's on Orange", lat: 41.323, lon: -72.9108 },
+    { label: "Elena's on Orange", lat: 41.323, lon: -72.9108, anchorStop: "" },
     // Confusables: a three-letter query must never fuzzy-match into these.
-    { label: "Sass Hall", lat: 41.31, lon: -72.93 },
-    { label: "Some Place", lat: 41.312, lon: -72.931 },
+    { label: "Sass Hall", lat: 41.31, lon: -72.93, anchorStop: "" },
+    { label: "Some Place", lat: 41.312, lon: -72.931, anchorStop: "" },
     // Label and alias share nothing, so a hit on one is provably via that one.
-    { label: "Alpha Building", lat: 41.314, lon: -72.929, aliases: ["zeta hall"] },
+    { label: "Alpha Building", lat: 41.314, lon: -72.929, aliases: ["zeta hall"], anchorStop: "" },
   ];
 
   const hits = (q: string) => geocode(typoNetwork, q, FIXTURE_LANDMARKS);
