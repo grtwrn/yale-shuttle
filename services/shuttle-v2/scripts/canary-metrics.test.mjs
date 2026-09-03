@@ -285,7 +285,7 @@ describe("which trip a line is ridden on", () => {
   it("uses the operator's own trip for a line that reaches both ends", () => {
     const t = tripForLine(payload, line(3));
     expect(t.kind).toBe("canonical");
-    expect(t.destination.label).toBe("School of Public Health (YSPH)");
+    expect(t.destination.display_name).toBe("School of Public Health (YSPH)");
   });
 
   it("derives a trip from the line's own stops when it does not", () => {
@@ -293,7 +293,7 @@ describe("which trip a line is ridden on", () => {
     expect(t.kind).toBe("derived");
     expect(t.origin.label).toBe("E0");
     // A quarter of eight stops is index 2.
-    expect(t.destination.label).toBe("E2");
+    expect(t.destination.display_name).toBe("E2");
     // A stop is auto-picked by the frontend the way a curated landmark is.
     expect(t.destination.type).toBe("bus_stop");
   });
@@ -331,5 +331,32 @@ describe("rideableLines", () => {
     expect(byLabel.Green.rideable).toBe(false);
     // Blue Day has the trip but no bus on the road.
     expect(byLabel["Blue Day"].rideable).toBe(false);
+  });
+});
+
+describe("the destination the canary serves to the app", () => {
+  it("is written in the geocoder's own response shape, display_name and all", () => {
+    // The canary fulfils /api/geocode with this object verbatim. The frontend
+    // calls display_name.split() to build the suggestion row, so an object
+    // that carries `label` instead takes the whole app down through its error
+    // boundary — "Cannot read properties of undefined (reading 'split')",
+    // which is exactly what happened live on 2026-09-03 the first time a
+    // derived trip was passed straight through.
+    const payload = {
+      routes: { 9: [10, 11, 12, 13] },
+      stop_coords: {
+        10: { lat: 41.30, lon: -72.68 }, 11: { lat: 41.30, lon: -72.67 },
+        12: { lat: 41.30, lon: -72.66 }, 13: { lat: 41.30, lon: -72.65 },
+      },
+      stop_names: { 10: "E0", 11: "E1" },
+    };
+    const line = CANARY_LINES.find((l) => l.busRouteIds[0] === 9);
+    for (const dest of [CANONICAL_TRIP.destination, tripForLine(payload, line).destination]) {
+      expect(typeof dest.display_name).toBe("string");
+      expect(dest.display_name.length).toBeGreaterThan(0);
+      expect(dest).not.toHaveProperty("label");
+      expect(typeof dest.lat).toBe("number");
+      expect(typeof dest.lon).toBe("number");
+    }
   });
 });

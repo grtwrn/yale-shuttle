@@ -60,6 +60,12 @@ const SCRAPE_EVERY = 3;
 const ARRIVAL_M = 45;
 const IDLE_SLEEP_MS = (Number(process.env.CANARY_IDLE_SLEEP_MIN) || 10) * 60_000;
 /**
+ * Hard ceiling on one rider's watch, minutes. 25 by default — see the deadline
+ * note below. Lowering it is how a derived trip gets probed ("does this line
+ * even appear?") without spending a full headway on the answer.
+ */
+const WATCH_MAX_MIN = Number(process.env.CANARY_WATCH_MAX_MIN) || 25;
+/**
  * Pause between riders in --loop. Zero by design — "we should always have a
  * rider going when a line is up" — but one browser costs ~0.95 GB of process
  * tree on this Pi (measured 2026-09-03, 10 processes), and this Pi rebooted
@@ -188,7 +194,7 @@ async function plan(page, ctx, trip) {
   const input = page.getByPlaceholder(/where do you want to go/i).first();
   await input.click({ timeout: 20_000 });
   await input.fill("");
-  await input.type(trip.destination.label, { delay: 15 });
+  await input.type(trip.destination.display_name, { delay: 15 });
   await sleep(1_200);
   await input.press("Enter");
   await sleep(4_500);
@@ -213,12 +219,16 @@ async function runOnce(line) {
   const record = {
     startedAt, startedAtEt: clock(startedAt), base: BASE, line: line.label,
     busRouteIds: line.busRouteIds, thresholds: THRESH,
-    trip: { from: line.trip.origin.label, to: line.trip.destination.label, kind: line.trip.kind },
+    trip: { from: line.trip.origin.label, to: line.trip.destination.display_name, kind: line.trip.kind },
     samples: [], pins: [], arrivals: [], pageErrors: [], failures: [],
   };
   const fail = (kind, detail) => record.failures.push({ kind, detail, atMs: Date.now() });
 
   const { chromium } = await import("playwright-core").catch(() => import("playwright"));
+  // Hoisted so a fatal can say what the page LOOKED like. A stack trace with
+  // no page state is nearly unactionable when the failure is "the app was not
+  // where the harness expected it".
+  let page = null;
   const browser = await chromium.launch({
     executablePath: CHROMIUM,
     args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
@@ -233,7 +243,7 @@ async function runOnce(line) {
     // canary running around the clock never shows up as a rider who visited
     // once and never came back.
     await seedTestId(ctx);
-    const page = await ctx.newPage();
+    page = await ctx.newPage();
     page.on("pageerror", (e) => record.pageErrors.push(String(e.message)));
     page.on("console", (m) => { if (m.type() === "error") record.pageErrors.push(`console: ${m.text()}`); });
 
@@ -264,7 +274,7 @@ async function runOnce(line) {
     // slack, bounded to [8, 25] min. A bus that has not arrived by twice its
     // own promise is either broken down or badly mispredicted — both worth
     // saying — and 25 min bounds the browser's life on this Pi.
-    let deadline = startedAt + 12 * 60_000;
+    let deadline = startedAt + Math.min(12, WATCH_MAX_MIN) * 60_000;
     let firstSight = null;
     let arrived = null;
     let lastScrape = 0;
@@ -323,7 +333,7 @@ async function runOnce(line) {
           firstSight = { atMs: now, first: mine.eta.first, raw: mine.eta.raw };
           record.firstSight = firstSight;
           const promisedMin = firstSight.first[1] / 60;
-          deadline = now + Math.min(25, Math.max(8, promisedMin * 2 + 6)) * 60_000;
+          deadline = now + Math.min(WATCH_MAX_MIN, Math.max(1, Math.min(8, WATCH_MAX_MIN), promisedMin * 2 + 6)) * 60_000;
           say(`first sight: ${firstSight.raw} — watching for up to ${Math.round((deadline - now) / 60000)} min`, now);
         }
         say(`${line.label}: ${mine ? (mine.eta?.raw ?? (mine.departed ? "Departed" : "no countdown")) : "OPTION GONE"}`, now);
@@ -390,6 +400,9 @@ async function runOnce(line) {
     record.endedAt = Date.now();
     record.ok = false;
     record.failures.push({ kind: "fatal", detail: String(e?.stack ?? e), atMs: Date.now() });
+    record.pageAtFailure = page
+      ? await page.evaluate(() => document.body.innerText).catch((x) => `unreadable: ${x.message}`)
+      : "no page";
     record.sequence = scoreSequence(record.samples, THRESH);
     return record;
   } finally {
@@ -490,7 +503,7 @@ async function oneRider() {
   const st = readState();
   const line = pool[st.cursor % pool.length];
   if (!forced) writeState({ ...st, cursor: (st.cursor + 1) % 1e6, lastLine: line.label });
-  say(`riding ${line.label} (${line.liveBuses} live buses) — ${line.trip.origin.label} → ${line.trip.destination.label} [${line.trip.kind}]`);
+  say(`riding ${line.label} (${line.liveBuses} live buses) — ${line.trip.origin.label} → ${line.trip.destination.display_name} [${line.trip.kind}]`);
   const record = await runOnce(line);
   append(record);
   if (!record.ok) process.stderr.write(`${describeFailure(record)}\n`);

@@ -280,9 +280,14 @@ export const CANARY_LINES = [
 export const CANONICAL_TRIP = {
   origin: { label: "Prospect / Canner", lat: 41.325351, lon: -72.922891 },
   // The curated landmark, verbatim from src/server/landmarks.ts (OSM W239527110),
-  // anchored on the LEPH / 60 College stop. class "yale" so the app auto-picks it.
+  // anchored on the LEPH / 60 College stop. class "yale" so the app auto-picks
+  // it. Every destination is written in the geocoder's OWN response shape,
+  // `display_name` and all, because the canary serves it to the app verbatim —
+  // and an object missing that field crashes the suggestion list outright
+  // (`Cannot read properties of undefined (reading 'split')`, caught live on
+  // 2026-09-03 the first time this was passed through as `label`).
   destination: {
-    label: "School of Public Health (YSPH)",
+    display_name: "School of Public Health (YSPH)",
     lat: 41.303735, lon: -72.932155, type: "college", class: "yale",
   },
 };
@@ -354,7 +359,7 @@ export function tripForLine(payload, line) {
         kind: "derived",
         origin: { label: name(stops[0]), lat: board.lat, lon: board.lon },
         destination: {
-          label: name(stops[i]), lat: c.lat, lon: c.lon,
+          display_name: name(stops[i]), lat: c.lat, lon: c.lon,
           // A stop is auto-picked by the frontend on type "bus_stop", the same
           // as a curated landmark on class "yale".
           type: "bus_stop", class: "shuttle",
