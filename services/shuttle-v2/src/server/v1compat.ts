@@ -340,8 +340,11 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
   };
 
   const lookup = async (query: string): Promise<GeocodeV1Hit[]> => {
-    // Someone is already fetching this exact query — ride along on their request.
-    const pending = inFlight.get(query);
+    // Someone is already fetching this query — ride along on their request.
+    // Keyed like the cache, so "Union Station" and "union station" typed at
+    // the same moment cost one slot, not two.
+    const flightKey = query.trim().toLowerCase().replace(/\s+/g, " ");
+    const pending = inFlight.get(flightKey);
     if (pending) return pending;
 
     const req = (async () => {
@@ -358,8 +361,8 @@ export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): E
       } finally {
         clearTimeout(timer);
       }
-    })().finally(() => inFlight.delete(query));
-    inFlight.set(query, req);
+    })().finally(() => inFlight.delete(flightKey));
+    inFlight.set(flightKey, req);
     return req;
   };
 
@@ -459,10 +462,11 @@ const EXTERNAL_DEDUP_M = 150;
 const MERGED_MAX = 12;
 
 /**
- * Orders external results by how reachable they are — distance to the
- * nearest shuttle stop — and drops the unreachable ones when there is a
- * reachable alternative. Two external hits for the same place (Photon lists
- * a shop's node and its building) collapse on name + proximity.
+ * Keeps the provider's order (it ranks by relevance; a distance sort once put
+ * a street centreline ahead of the house the rider typed) and drops the hits
+ * out of reach of the shuttle network when a reachable one exists. Two
+ * external hits for the same place (Photon lists a shop's node and its
+ * building) collapse on name + proximity.
  */
 export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): GeocodeV1Hit[] {
   const stops = [...network.stops.values()];
@@ -510,9 +514,12 @@ export async function geocodeV1(
 
   const query = q.trim();
   // Skip the external lookup for short queries.
-  if (query.length < 3) return local;
+  // Gate on what the matcher saw: "!!!" is three characters and no query.
+  if (normalizeName(query).length < 3) return local;
 
-  const ranked = rankExternal(network, await external.lookup(query));
+  // The shipped geocoder never throws, but the interface is injectable and a
+  // rejection here would 500 the route: degrade to local instead.
+  const ranked = rankExternal(network, await external.lookup(query).catch(() => []));
   // Local results always come first; an external hit for a place we already
   // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];

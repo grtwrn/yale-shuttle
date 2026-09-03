@@ -111,6 +111,20 @@ describe("Photon", () => {
     expect(parsePhoton("html")).toEqual([]);
   });
 
+  it("collapses concurrent lookups that differ only in case or spacing into one request", async () => {
+    // Three riders typing one popular destination must cost one slot of the
+    // 1.1 s throttle, not three — only ~3 external lookups fit a budget.
+    const { fetchImpl, calls } = stubFetch({ photon: () => json({ features: [ELENAS] }) });
+    const time = fakeTime();
+    const ext = createExternalGeocoder({ fetchImpl, now: time.now, sleep: time.sleep });
+    const hits = await Promise.all([
+      ext.lookup("Union Station"), ext.lookup("union station"), ext.lookup("  union   station "),
+    ]);
+    expect(calls).toHaveLength(1);
+    expect(hits[1]).toBe(hits[0]);
+    expect(hits[2]).toBe(hits[0]);
+  });
+
   it("asks Photon with the New Haven bbox and never Nominatim when Photon answers", async () => {
     const { fetchImpl, calls } = stubFetch({ photon: () => json({ features: [ELENAS] }) });
     const time = fakeTime();

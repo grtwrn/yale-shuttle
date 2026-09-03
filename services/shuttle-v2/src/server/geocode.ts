@@ -22,6 +22,8 @@ export interface GeocodeHit {
   /** "stop" for shuttle stops, "landmark" for curated POIs. */
   kind: "stop" | "landmark";
   score: number;
+  /** Set when the best match came through an alias rather than the label. */
+  viaAlias?: true;
 }
 
 const MAX_RESULTS = 10;
@@ -52,17 +54,24 @@ export function geocode(
   // when the rider is typing an address: without a number in the query, the
   // street word alone would pull every cafe on Chapel Street into a search
   // for the Chapel stops (review finding, 2026-09-02).
-  const queryHasNumber = /\d/.test(query.text);
+  // A bare number is a stop ("800" is Building 800), not an address.
+  const queryHasNumber = /\d/.test(query.text) && query.tokens.length >= 2;
   for (const l of landmarks) {
     // A landmark answers to its label AND every alias, and the best of them
     // counts: "kbt" must rank Kline Tower exactly as "kline tower" does.
-    let score = 0;
-    for (const name of [l.label, ...(l.aliases ?? [])]) {
-      if (name !== l.label && !queryHasNumber && /^\d+ /.test(name)) continue;
-      score = Math.max(score, scoreMatch(query, candidate(name)));
+    let score = scoreMatch(query, candidate(l.label));
+    const labelScore = score;
+    for (const name of l.aliases ?? []) {
       if (score === 1) break;
+      if (!queryHasNumber && /^\d+ /.test(name)) continue;
+      score = Math.max(score, scoreMatch(query, candidate(name)));
     }
-    if (score > 0) out.push({ label: l.label, lat: l.lat, lon: l.lon, kind: "landmark", score });
+    if (score > 0) {
+      out.push({
+        label: l.label, lat: l.lat, lon: l.lon, kind: "landmark", score,
+        ...(labelScore < score ? { viaAlias: true as const } : {}),
+      });
+    }
   }
   for (const stop of network.stops.values()) {
     const score = scoreMatch(query, candidate(stop.name));
@@ -80,8 +89,14 @@ export function geocode(
   // At equal score a stop outranks a landmark: "york" is a request for the
   // York Street stops, and a landmark that only mentions the street in an
   // alias must not take the row from them.
+  // ...and a match on the label outranks one through an alias: "sterlin"
+  // is Sterling Memorial Library before the three places whose alias merely
+  // mentions Sterling.
   const kindRank = (h: GeocodeHit) => (h.kind === "stop" ? 0 : 1);
-  out.sort((a, b) => b.score - a.score || kindRank(a) - kindRank(b) || a.label.localeCompare(b.label));
+  const aliasRank = (h: GeocodeHit) => (h.viaAlias ? 1 : 0);
+  out.sort((a, b) =>
+    b.score - a.score || kindRank(a) - kindRank(b) || aliasRank(a) - aliasRank(b) ||
+    a.label.localeCompare(b.label));
 
   // A curated landmark that IS a shuttle stop (the grocery destinations sit on
   // the stops' own coordinates) would otherwise appear twice — a rider typing

@@ -303,7 +303,11 @@ export function buildApp(opts: AppOptions): Hono {
 
   // -- Geocode (v1 shape: {results:[{display_name,lat,lon,type,class}]}) ----
 
-  const geocoder = opts.geocoder ?? createExternalGeocoder();
+  // Tests that build the app without injecting a geocoder must not reach
+  // photon.komoot.io / nominatim from CI or the Pi — that is how an egress IP
+  // gets banned, silently, for good.
+  const geocoder = opts.geocoder ??
+    (process.env.VITEST ? { lookup: async () => [] } : createExternalGeocoder());
 
   app.get("/api/geocode", async (c) => {
     // Cap the query before it reaches the matcher: the prefix-match tier is

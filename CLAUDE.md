@@ -285,9 +285,11 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    a missing apostrophe and typos, which Nominatim does not ("elenas" returned
    nothing until 2026-09-02) — then Nominatim only when Photon errors or is
    empty. One shared 1.1 s throttle, one 2.5 s budget per lookup, cache keyed
-   by provider+query, in-flight collapse. External hits are ranked by distance
-   to the nearest shuttle stop and dropped past 2.5 km when a closer one
-   exists: the service area is "near the network", not a rectangle. The
+   by provider+query, in-flight collapse. External hits keep the provider's
+   order (a distance sort put a street centreline ahead of the house the
+   rider typed); any hit more than 2.5 km from every shuttle stop is dropped
+   when a closer one exists: the service area is "near the network", not a
+   rectangle. The
    fetcher is injected (`buildApp({ geocoder })`), so tests stub it; nothing in
    the suite touches the network.
 

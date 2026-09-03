@@ -28,7 +28,10 @@ const RUN_MS = (Number(process.env.RUN_MIN) || 35) * 60_000;
 // Defaults are the daytime Blue trip; override with BOARD_ID / DEST_ID /
 // ROUTES (comma-separated route ids) to score another line — e.g. Blue Night:
 //   BOARD_ID=97 DEST_ID=121 ROUTES=13 node scripts/eta-accuracy.mjs
-const STOPS = await (await fetch(`${BASE}/api/buses`)).json();
+const STOPS = await fetch(`${BASE}/api/buses`).then((r) => r.json()).catch((err) => {
+  console.error(`cannot reach ${BASE}: ${err.message}`);
+  process.exit(2);
+});
 const stopAt = (id, fallback) => {
   const c = STOPS.stop_coords?.[id];
   return c ? { id, name: STOPS.stop_names?.[id] ?? String(id), lat: c.lat, lon: c.lon } : fallback;

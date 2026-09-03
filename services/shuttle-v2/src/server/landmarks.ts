@@ -155,7 +155,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Good Nature Market", lat: 41.311777, lon: -72.922352, aliases: ["good nature", "gourmet heaven", "gheav"], anchorStop: "Whitney / Audubon" }, // OSM N2469492025
   { label: "Nica's Market", lat: 41.316586, lon: -72.915592, aliases: ["nicas"], anchorStop: "Orange / Bishop (N)" }, // OSM N183611496
   { label: "P&M Orange Street Market", lat: 41.319965, lon: -72.913062, aliases: ["p and m", "orange street market", "pm market"], anchorStop: "Orange / Cottage" }, // OSM N2383870592
-  { label: "ShopRite (Hamden)", lat: 41.369614, lon: -72.922158, aliases: ["shop rite", "shoprite"], anchorStop: "Shop Rite" }, // OSM N3449770445
+  { label: "ShopRite (Hamden)", lat: 41.36879, lon: -72.92047, aliases: ["shop rite", "shoprite"], anchorStop: "Shop Rite" }, // OSM N3449770445
   { label: "Stop & Shop (Whalley Ave)", lat: 41.315041, lon: -72.938202, aliases: ["stop and shop", "stop n shop", "whalley stop and shop", "grocery store"], anchorStop: "Stop & Shop" }, // OSM W141129254; sits ON the stop (77 m from the store polygon) so the two merge into one row, as the grocery-run entries do
   { label: "Trader Joe's (Milford)", lat: 41.251309, lon: -73.017729, aliases: ["trader joes", "tj", "tjs"], anchorStop: "Trader Joe's" }, // OSM N3106269418
   { label: "Walgreens (York St)", lat: 41.306167, lon: -72.934017, aliases: ["walgreens", "pharmacy", "drugstore"], anchorStop: "129 York" }, // OSM W114136522

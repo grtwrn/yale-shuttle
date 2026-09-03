@@ -407,6 +407,24 @@ describe("the real list against every live stop", () => {
     expect(norm(hit.label)).toContain(word);
   });
 
+  it("a bare number is a stop, not an address alias", () => {
+    // "800" used to resolve to the Yale Physicians Building (alias "800
+    // howard") ahead of the Building 800 stop, 6.6 km away, and the
+    // frontend auto-picks a landmark on Enter.
+    expect(top("800")?.label).toBe("Building 800");
+    expect(top("60")?.label).toBe("Building 600");
+    expect(top("800 howard")?.label).toBe("Yale Physicians Building");
+  });
+
+  it("a match on the label outranks the same score through an alias", () => {
+    // Mid-typing "sterlin": two LABELS start with it (the library and the
+    // chemistry lab); Divinity School, YSM and friends only have an alias
+    // that does, and used to tie with them alphabetically.
+    const labels = geocode(live, "sterlin").map((h) => h.label);
+    expect(labels.slice(0, 2)).toEqual(expect.arrayContaining(["Sterling Memorial Library"]));
+    expect(labels.indexOf("Divinity School")).toBeGreaterThan(labels.indexOf("Sterling Memorial Library"));
+  });
+
   it("a street word alone does not reach an address alias", () => {
     // "1000 chapel" is an alias of Claire's; "chapel" must not surface it.
     expect(geocode(live, "chapel").some((h) => h.label.startsWith("Claire"))).toBe(false);
