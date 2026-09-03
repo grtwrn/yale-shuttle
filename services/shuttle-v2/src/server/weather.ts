@@ -46,7 +46,10 @@ const FORECAST_URL =
   // always on, and "12% chance of rain" alone is a strange thing to read on a
   // clear afternoon.
   "&hourly=precipitation_probability,precipitation,temperature_2m,weather_code" +
-  "&forecast_hours=3&timezone=America%2FNew_York&temperature_unit=fahrenheit";
+  // Six hours, not three: a rider heading out for the evening is asking "will
+  // I get rained on before I come back", and a one-hour horizon cannot answer
+  // it (operator, 2026-09-02).
+  "&forecast_hours=6&timezone=America%2FNew_York&temperature_unit=fahrenheit";
 
 /** One upstream call per this interval, shared by every client. */
 export const WEATHER_TTL_MS = 10 * 60_000;
@@ -92,7 +95,7 @@ export function parseNwsForecast(raw: unknown): WeatherHour[] | null {
   const periods = (raw as { properties?: { periods?: unknown } }).properties?.periods;
   if (!Array.isArray(periods)) return null;
   const out: WeatherHour[] = [];
-  for (const p of periods.slice(0, 6)) {
+  for (const p of periods.slice(0, 8)) {
     if (!p || typeof p !== "object") continue;
     const o = p as Record<string, unknown>;
     const t = typeof o.startTime === "string" ? Date.parse(o.startTime) : NaN;
