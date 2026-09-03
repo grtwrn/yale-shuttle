@@ -12,6 +12,7 @@ then compare every prediction with the bus's real arrival.
 |---|---|---|
 | `eta-replay.ts` | a bus standing at a stop: sum of served segment times to the next 1–10 stops (the ride leg, and the wait leg before the bus moves) | ~100k per 2 days |
 | `gps-replay.ts` | every raw GPS position through the REAL `findRouteAnchor` + `computeUpcomingArrivals` to the next 1–5 stops: anchoring, mid-segment proration, stall credit | ~300k per 7 h of `raw_positions` |
+| `layover-replay.ts` | the stationary/layover clock: how often a PARKED bus restarts it, what that costs the ETA, and which (radius, hysteresis) fixes it | 879 stop visits per 7 h |
 | `report.mjs` | renders the JSON both write into `report.md` | |
 
 ```bash
@@ -26,6 +27,13 @@ cd services/shuttle-v2
 TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/eta-replay.ts
 TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/gps-replay.ts
 node scripts/eta-replay/report.mjs      # -> scripts/.eta-replay/report.md
+
+# the layover clock (findings in docs/layover-clock.md). BUSES_JSON is a saved
+# `curl -s https://yale-shuttle.fly.dev/api/buses` and supplies the dwell/segment
+# tables the client bills, which is what turns a clock reset into seconds of ETA.
+curl -s https://yale-shuttle.fly.dev/api/buses -o ./store/buses.json
+REPLAY_DB=./store/snap.db BUSES_JSON=./store/buses.json \
+  npx tsx scripts/eta-replay/layover-replay.ts   # -> scripts/.eta-replay/layover.json
 ```
 
 Env: `REPLAY_DB` (default `./store/snap.db`), `REPLAY_OUT` (default
