@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_ANON_ID } from "./actives.js";
 import { Collector } from "../collector/collector.js";
 import type { UpstreamClient, RawBus } from "../collector/upstream.js";
 import { openDb, type DbBundle } from "../db/client.js";
@@ -1421,5 +1422,36 @@ describe("GET /api/stats/searches — what riders looked for", () => {
 
   it("refuses an unauthenticated caller", async () => {
     expect((await app.request("/api/stats/searches")).status).toBe(401);
+  });
+
+  /**
+   * The whole point of this table is to prioritise lookup work by RIDER
+   * evidence, and on 2026-09-03 its loudest zero-result term was
+   * walk-fallback-check.mjs's own hardcoded destination — 8 of the 12
+   * coordinate searches in the window. Because rows carry no anon id BY
+   * DESIGN, `daily_actives`'s after-the-fact exclusion is impossible here, so
+   * the decision has to happen before the write.
+   */
+  it("does not record a search from a verification harness", async () => {
+    await app.request("/api/geocode?q=zzz robot plaza", {
+      headers: { "x-anon-id": TEST_ANON_ID },
+    });
+    const res = await app.request("/api/stats/searches", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { searches: number; missing: Array<{ q: string }> };
+    expect(body.searches).toBe(0);
+    expect(body.missing.map((m) => m.q)).not.toContain("zzz robot plaza");
+  });
+
+  it("still records a rider who sends no id at all", async () => {
+    // Storage disabled means no header. That rider is not a harness, and a
+    // zero-result search from them is exactly the signal we want.
+    await app.request("/api/geocode?q=zzz storageless plaza");
+    const res = await app.request("/api/stats/searches", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { missing: Array<{ q: string }> };
+    expect(body.missing.map((m) => m.q)).toContain("zzz storageless plaza");
   });
 });

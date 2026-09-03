@@ -329,13 +329,26 @@ export function buildApp(opts: AppOptions): Hono {
     // would block the single event loop for seconds.
     // A destination search is a deliberate action, unlike the automatic poll,
     // so it is the honest measure of "queries".
-    actives.seen(c.req.header("x-anon-id"), "search", now());
+    const anonId = c.req.header("x-anon-id");
+    actives.seen(anonId, "search", now());
     const q = (c.req.query("q") ?? "").slice(0, 100);
     const results = await geocodeV1(opts.collector.ref.get(), q, geocoder);
     // The words and whether they found anything — no id, no IP, no time of
     // day. A search that finds nothing is the only reliable signal that a
     // place is missing from the list.
-    searchTerms.record(q, results.length, now());
+    //
+    // ...which is why our own harnesses must not be in it. `search_terms`
+    // stores no anon id BY DESIGN, so unlike `daily_actives` it cannot filter
+    // test traffic after the fact — the decision has to happen here, before
+    // the write. On 2026-09-03 the loudest zero-result term in the whole log
+    // was walk-fallback-check.mjs's hardcoded destination, 8 of 12 coordinate
+    // searches; a list meant to prioritise work by RIDER evidence was topped
+    // by a robot. This reuses the exclusion the harnesses already carry
+    // (`TEST_ANON_ID`, seeded into `excluded_anon_ids` at startup), so a new
+    // harness is covered the moment it calls `seedTestId` and nothing extra
+    // is stored to make it work: the id is read from the header, compared in
+    // memory, and dropped.
+    if (!actives.isExcluded(anonId)) searchTerms.record(q, results.length, now());
     c.header("Cache-Control", "no-store");
     return c.json({ results });
   });
