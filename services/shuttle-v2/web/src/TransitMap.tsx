@@ -3011,6 +3011,12 @@ const TripPlanner: FC<{
         // number in Celsius), and then the line carries no arrows — so the
         // strip must not mark cells the line never mentioned.
         const span = rangeText(range, tempUnit);
+        const lastHour = hours.length ? hours[hours.length - 1] : null;
+        const lastHourLabel = lastHour ? hourLabel(lastHour.timeMs) : "";
+        // Screen readers get words, not arrow glyphs.
+        const rangeSpeech = range
+          ? `${degreesText(range.highF, tempUnit)}, low ${degreesText(range.lowF, tempUnit)}`
+          : "";
         return (
           <div style={{
             marginBottom: 8,
@@ -3038,7 +3044,27 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, range)}</span>
+                <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                  <span>{weatherMessage(rain, later, tempUnit)}</span>
+                  {/* The window's high and low get their OWN row, labelled
+                      with the hour they run to. Inside the sentence they
+                      pushed it onto a second line anyway — "69°F ↑80° ↓69° ·
+                      Cloudy · no rain expected" shipped wrapped on
+                      2026-09-03 — and an unlabelled pair of numbers in the
+                      middle of a sentence never said which hours it meant. */}
+                  {span && lastHourLabel && (
+                    <span
+                      role="img"
+                      aria-label={`High ${rangeSpeech} through ${lastHourLabel}`}
+                      style={{
+                        fontSize: 11, fontWeight: 400,
+                        color: warn ? "#a06a10" : "#90a4ae",
+                      }}
+                    >
+                      {span} through {lastHourLabel}
+                    </span>
+                  )}
+                </span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}

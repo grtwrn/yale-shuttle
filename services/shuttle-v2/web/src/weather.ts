@@ -208,7 +208,11 @@ export function outlookRange(
 }
 
 /**
- * "↑67° ↓60°", in the rider's unit. Null when there is nothing to add: no
+ * "↑67° ↓60°", in the rider's unit — rendered on its own row under the
+ * sentence, not inside it: in the sentence it pushed every branch past one
+ * line on a 390px phone, and the dry branch ("69°F ↑80° ↓69° · Cloudy · no
+ * rain expected") shipped wrapped on 2026-09-03 before this was caught live.
+ * Null when there is nothing to add: no
  * temperatures at all, or a window flat enough that both ends round to the
  * same number in the unit being shown (66°F and 67°F are both 19°C).
  */
@@ -315,15 +319,10 @@ export function weatherMessage(
   v: RainVerdict,
   later?: ForecastHour | null,
   unit: TempUnit = "F",
-  range?: OutlookRange | null,
 ): string {
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
-  // "66°F ↑67° ↓60°" — now, then the window's ends, in that order: the
-  // number a rider reads first should be the one they are standing in.
-  const span = rangeText(range, unit);
-  const lead = [temp, span].filter(Boolean).join(" ");
-  const head = lead ? `${lead} · ` : "";
+  const head = temp ? `${temp} · ` : "";
   // "within the hour", never "now": `probability` is the PEAK across every
   // bucket that overlaps the next hour (see rainLikely), so at 20:05 an 85%
   // bucket at 21:00 would have the line announcing rain up to 55 minutes
@@ -339,11 +338,8 @@ export function weatherMessage(
   // Dry for the next hour: spend the words on when that ends. This branch is
   // BELOW the near-term one deliberately — a rider with 45% in the next hour
   // must not be told about 9pm instead.
-  // "rain 11am (70%)", not "rain likely 11am (70%)": with the window's high
-  // and low now ahead of it, the longer phrasing wrapped the line onto a
-  // second row on a 390px phone (measured, 2026-09-03).
   if (later) {
-    return `${head}rain ${hourLabel(later.timeMs)} (${later.probability}%)`;
+    return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
   const cond = conditionText(v.weatherCode);
   // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain
