@@ -279,6 +279,11 @@ async function runOnce(line) {
     let arrived = null;
     let lastScrape = 0;
     let tick = 0;
+    // The page's own words on either side of a jump. Without them every claim
+    // about what the rider SAW ("and no warning line was shown") rests on the
+    // parser rather than on the page, which is not good enough to hand an
+    // operator.
+    let prevText = null;
     const nearFlags = new Map();
 
     while (Date.now() < deadline) {
@@ -344,6 +349,11 @@ async function runOnce(line) {
         const seq = scoreSequence(record.samples, THRESH);
         const last = seq.transitions[seq.transitions.length - 1];
         if (last && last.atMs === now && Math.abs(last.driftSec) >= THRESH.pinSampleSec) {
+          (record.rawAtJump ??= []).push({
+            atMs: now, driftSec: last.driftSec,
+            before: prevText ? prevText.slice(0, 3000) : null,
+            after: text.slice(0, 3000),
+          });
           const pin = await readPin(page, line.label).catch(() => null);
           if (pin) record.pins.push({ atMs: Date.now(), ...pin, why: "jump" });
           if (pin?.stuckInDetails) {
@@ -351,6 +361,7 @@ async function runOnce(line) {
             break;
           }
         }
+        prevText = text;
       }
 
       if (arrived) break;
