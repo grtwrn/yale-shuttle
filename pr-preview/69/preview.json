@@ -1,0 +1,18 @@
+{
+  "caption": "Search change (server-side): 'elenas', 'elanas', 'one6three' and '163' now find Elena's on Orange and One 6 Three in East Rock. The harness cannot type into the search box, so this shot plans a trip from Elm / Orange to the Orange / Canner stop beside Elena's.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 157,
+    "dest": 82
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788394908/pr-preview/69/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
