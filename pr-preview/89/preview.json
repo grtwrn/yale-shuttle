@@ -1,0 +1,29 @@
+{
+  "caption": "Trip options. The change is in the '🚌 in N, M min' pair on each row: the second number is the same bus projected a full lap later, and it is now dropped when that lap would land after the route stops running. Report #89 saw 'in 25, 78 min' on Red at 6:14pm — Red's published day ends at 6pm, so the 78-min lap was never going to happen. The bus you can see (the first number) is untouched.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 127,
+    "dest": 23
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788473678/pr-preview/89/trip-failed.png",
+    "/tmp/feedback-bot-wt-1788473678/pr-preview/89/map-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    },
+    {
+      "view": "map",
+      "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /^\\s*(\\S+\\s+)?Map\\s*$/i }).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
