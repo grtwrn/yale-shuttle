@@ -1,6 +1,6 @@
 {
   "caption": "Rain chance and trend together; bus ETA on the top line",
-  "base": "http://127.0.0.1:8157",
+  "base": "http://127.0.0.1:8158",
   "trip": {
     "board": 44,
     "dest": 124
@@ -12,7 +12,7 @@
     "/api/weather"
   ],
   "shots": [
-    "/tmp/shots-w/pair/trip.png"
+    "/tmp/shots-ol/trip.png"
   ],
   "failedViews": [],
   "pageErrors": [],
