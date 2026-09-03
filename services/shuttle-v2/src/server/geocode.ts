@@ -33,7 +33,19 @@ export interface GeocodeHit {
  * rider across town. **If you add or move an entry, cross-check it externally
  * and add its anchor to that test** — do not eyeball it.
  */
-export const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
+export interface Landmark {
+  label: string;
+  lat: number;
+  lon: number;
+  /**
+   * Other things riders type for this place — a stylised brand name, a street
+   * number used as a nickname. Each is scored as extra words appended to the
+   * label and the best score wins; they are never shown.
+   */
+  aliases?: ReadonlyArray<string>;
+}
+
+export const LANDMARKS: ReadonlyArray<Landmark> = [
   // -- Weekend grocery runs (report #45 asked for these by name) ------------
   // Coordinates are copied from the serving shuttle stops themselves (ids
   // 119, 169, 170), not hand-entered; the anchor test pins them there.
@@ -94,20 +106,45 @@ export const LANDMARKS: ReadonlyArray<Omit<GeocodeHit, "score" | "kind">> = [
   { label: "School of Medicine (YSM)", lat: 41.3032, lon: -72.9337 },
   { label: "Yale-New Haven Hospital", lat: 41.3035, lon: -72.9358 },
   { label: "Union Station", lat: 41.2974, lon: -72.9266 },
+
+  // -- East Rock (report #69 asked for both by name) --------------------------
+  // Coordinates are OSM's own POI nodes as returned by Nominatim on
+  // 2026-09-02; each is ~40 m from the shuttle stop the anchor test pins it
+  // to. Nominatim only finds Elena's WITH the apostrophe and never finds
+  // One 6 Three by its written-out name, which is why they are curated.
+  { label: "Elena's on Orange", lat: 41.32295, lon: -72.91081 },
+  {
+    label: "One 6 Three (pizza)",
+    lat: 41.32108,
+    lon: -72.90911,
+    aliases: ["one6three", "163", "one six three"],
+  },
 ];
 
 const MAX_RESULTS = 10;
 
 export function geocode(network: TransitNetwork, rawQuery: string): GeocodeHit[] {
   const q = normalize(rawQuery);
+  const asHit = (l: Landmark, score: number): GeocodeHit => ({
+    label: l.label,
+    lat: l.lat,
+    lon: l.lon,
+    kind: "landmark",
+    score,
+  });
   if (q.length === 0) {
-    return LANDMARKS.map((l) => ({ ...l, kind: "landmark" as const, score: 0 }));
+    return LANDMARKS.map((l) => asHit(l, 0));
   }
 
   const out: GeocodeHit[] = [];
   for (const l of LANDMARKS) {
-    const score = scoreMatch(q, normalize(l.label));
-    if (score > 0) out.push({ ...l, kind: "landmark", score });
+    let score = scoreMatch(q, normalize(l.label));
+    // An alias extends the label's vocabulary rather than replacing it, so
+    // "163 pizza" matches "One 6 Three (pizza)" + "163" token by token.
+    for (const a of l.aliases ?? []) {
+      score = Math.max(score, scoreMatch(q, normalize(`${l.label} ${a}`)));
+    }
+    if (score > 0) out.push(asHit(l, score));
   }
   for (const stop of network.stops.values()) {
     const score = scoreMatch(q, normalize(stop.name));
@@ -164,7 +201,8 @@ const STOPWORDS = new Set(["yale", "university", "the", "at"]);
 /**
  * 1.0 for an exact match, 0.75 for prefix, 0.5 for any-word match, 0.4 when
  * every meaningful query token prefixes some candidate word (superset queries
- * like "yale school of public health"), 0.25 for substring, 0 otherwise.
+ * like "yale school of public health"), 0.3 when they do so allowing one typo
+ * per token, 0.25 for substring, 0 otherwise.
  * Keeps the dialer simple while still putting `som` ahead of
  * "social some thing" — the more specific the hit, the higher.
  */
@@ -180,6 +218,49 @@ function scoreMatch(query: string, candidate: string): number {
   ) {
     return 0.4;
   }
+  if (
+    qTokens.length > 0 &&
+    qTokens.every((t) => words.some((w) => w.startsWith(t) || nearMiss(t, w)))
+  ) {
+    return 0.3;
+  }
   if (candidate.includes(query)) return 0.25;
   return 0;
+}
+
+/**
+ * Typo tolerance: a query token of at least this many characters may differ
+ * from the start of a candidate word by one edit (a wrong, missing, extra or
+ * swapped letter). "elanas" reaches "elenas"; "sam" does not reach "som" —
+ * with three letters, one edit is a third of the word and every short stop
+ * name would light up. Report #69.
+ */
+const FUZZY_MIN_TOKEN_LEN = 5;
+
+function nearMiss(token: string, word: string): boolean {
+  if (token.length < FUZZY_MIN_TOKEN_LEN) return false;
+  // Compare against the word's prefix of the token's length (a wrong or
+  // swapped letter, or an extra one) and one longer (a dropped letter).
+  return (
+    withinOneEdit(token, word.slice(0, token.length)) ||
+    withinOneEdit(token, word.slice(0, token.length + 1))
+  );
+}
+
+/** Optimal-string-alignment distance ≤ 1: one substitution, insertion, deletion or adjacent swap. */
+function withinOneEdit(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) {
+    // Substitution, or adjacent transposition.
+    return (
+      a.slice(i + 1) === b.slice(i + 1) ||
+      (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    );
+  }
+  // One is the other with a single character inserted at i.
+  const [shorter, longer] = a.length < b.length ? [a, b] : [b, a];
+  return shorter.slice(i) === longer.slice(i + 1);
 }

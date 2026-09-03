@@ -47,6 +47,11 @@ const REFERENCE_STOPS: Stop[] = [
   { id: 121, name: "Union Station (N)", lat: 41.297857, lon: -72.926763 },
   { id: 149, name: "York / Cedar", lat: 41.303784, lon: -72.935017 },
   { id: 162, name: "Ashmun / Lock", lat: 41.31541, lon: -72.92892 },
+  // East Rock (report #69), copied from the live payload on 2026-09-02.
+  { id: 82, name: "Orange / Canner", lat: 41.323303, lon: -72.910898 },
+  { id: 94, name: "Orange / Willow (N)", lat: 41.321894, lon: -72.911811 },
+  { id: 95, name: "Orange / Willow (S)", lat: 41.32224, lon: -72.911692 },
+  { id: 142, name: "Willow / Foster", lat: 41.321121, lon: -72.909616 },
 ];
 
 const routes: Route[] = [
@@ -154,6 +159,8 @@ describe("landmark coordinates", () => {
     ["Union Station", "Union Station (N)"],
     ["Yale University Art Gallery", "Chapel / York"],
     ["Yale Center for British Art", "Chapel / York"],
+    ["Elena's on Orange", "Orange / Canner"],
+    ["One 6 Three (pizza)", "Willow / Foster"],
   ];
 
   it.each(ANCHORS)("%s is served by the %s stop", (label, stopName) => {
@@ -234,6 +241,44 @@ describe("apostrophe-insensitive matching (report #45)", () => {
   it("finds the Hamden groceries by store name", () => {
     expect(geocode(network, "shoprite").some((h) => h.label === "ShopRite (Hamden)")).toBe(true);
     expect(geocode(network, "aldi").some((h) => h.label === "Aldi / Walmart (Hamden)")).toBe(true);
+  });
+});
+
+describe("misspellings, missing apostrophes and nicknames (report #69)", () => {
+  const labels = (q: string) => geocode(network, q).map((h) => h.label);
+
+  // "can't find elenas without apostrophe or mispelled as elanas"
+  it.each(["elena's", "elenas", "elanas", "elena", "elana"])(
+    "%o finds Elena's on Orange",
+    (q) => expect(labels(q)).toContain("Elena's on Orange"),
+  );
+
+  // "also can't find one6three pizza, or when written as 163"
+  it.each(["one6three", "one6three pizza", "163", "163 pizza", "one six three", "one 6 three"])(
+    "%o finds One 6 Three",
+    (q) => expect(labels(q)).toContain("One 6 Three (pizza)"),
+  );
+
+  it("ranks a one-letter typo below a real prefix hit, but still finds it", () => {
+    const hits = geocode(network, "elanas");
+    const hit = hits.find((h) => h.label === "Elena's on Orange");
+    expect(hit).toBeDefined();
+    expect(hit!.score).toBeLessThan(0.4);
+    expect(hit!.score).toBeGreaterThan(0.25);
+  });
+
+  // Typo tolerance must not turn short queries into a lottery: "sam" is not
+  // "som", and a rider typing an address number must not be offered the
+  // pizza place once they have typed past it.
+  it("does not fuzz short tokens or address-shaped queries", () => {
+    expect(labels("sam")).not.toContain("School of Management (SOM)");
+    expect(labels("elan")).not.toContain("Elena's on Orange");
+    expect(labels("163 orange st")).not.toContain("One 6 Three (pizza)");
+  });
+
+  it("does not leak the alias list into the response", () => {
+    for (const h of geocode(network, "163")) expect(h).not.toHaveProperty("aliases");
+    for (const h of geocode(network, "")) expect(h).not.toHaveProperty("aliases");
   });
 });
 
