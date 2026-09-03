@@ -178,12 +178,17 @@ async function readPin(page, label) {
 }
 
 async function plan(page, ctx, trip) {
-  // Intercept the lookup. `searchTerms.record` in src/server/app.ts has no
-  // anon-id filter — excluding the canary from the RIDER counts does not
-  // exclude it from `search_terms` — so a canary that typed a real query
-  // would, running continuously, become the most-searched destination in New
-  // Haven. The trip planner is what this harness is testing; lookup has its
-  // own. The shape is the v1 contract, class "yale" so the app auto-picks it.
+  // Intercept the lookup, for DETERMINISM. What this harness measures is the
+  // countdown, and every run would otherwise open with a live Photon call
+  // behind a shared 1.1 s throttle and a 2.5 s budget — a network flake in the
+  // first four seconds would be logged as a canary finding about the planner.
+  // Lookup has its own harness (`lookup-sweep.mjs`).
+  //
+  // It was ALSO the only thing keeping a continuously-running rider out of
+  // `search_terms`, which had no anon-id filter. That is no longer this
+  // harness's job: as of #61 the server drops a search from an excluded id
+  // (`actives.isExcluded` in src/server/app.ts), and `seedTestId` covers us.
+  // Kept anyway for the reason above; the shape is the geocoder's own.
   await ctx.route("**/api/geocode*", (route) => route.fulfill({
     status: 200, contentType: "application/json",
     body: JSON.stringify({ results: [trip.destination] }),
