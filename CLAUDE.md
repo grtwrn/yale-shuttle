@@ -147,14 +147,52 @@ invisible. NWS carries no condition code, so the line degrades to temperature
 plus rain chance with a neutral icon. Both providers share ONE timeout budget
 per refresh, or a cold request would wait 5 s twice.
 
+The weather line answers ONE question — when will it next rain — in as few
+words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
+condition word ("Clear") whenever it has an hour to name, because the hour is
+the useful half. Tapping it opens the next six hours as a sideways-scrolling
+strip of temperature and rain chance, each percentage carrying a 💧 so it is
+not read as anything else; that strip is collapsed by default, since the
+sentence usually suffices. Hours are spelled `11pm`, not the app's usual
+`11p` — a bare letter beside a temperature and a percentage was one
+abbreviation too many. The server asks upstream for six hours for the same
+reason.
+
+**Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
+right of the line and persists in `localStorage` (`shuttle.tempUnit`, read
+through `loadTempUnit()` which never throws). Printing "68°F (20°C)" spent a
+third of the line saying the same thing twice. The toggle is a SIBLING of the
+line's expand button, not nested inside it: a button within a button is
+invalid HTML and iOS ignores the inner one.
+
 The weather line above the trip options is ALWAYS shown when a forecast
-exists (`web/src/weather.ts`): temperature, condition and the chance of rain
-within the hour, quiet by default and an amber "Take an umbrella" past 70%.
-It was rain-only and hidden below 50%, which meant nobody learned to look for
-it. It never reorders or hides an option — a shuttle is not faster in the
-rain, only drier at the ends. Temperature and the WMO code are optional all
-the way through, so an upstream that stops sending them degrades to the
-rain-only wording rather than to no line.
+exists (`web/src/weather.ts`), quiet by default and amber past 70%. It was
+rain-only and hidden below 50%, which meant nobody learned to look for it. It
+never reorders or hides an option — a shuttle is not faster in the rain, only
+drier at the ends. Temperature and the WMO code are optional all the way
+through, so an upstream that stops sending them degrades to the rain-only
+wording rather than to no line.
+
+**The line says "within the hour", never "now".** `probability` is the PEAK
+across every bucket overlapping the next hour, so "raining now" would fire up
+to 55 minutes early on a dry evening. For the same reason the number is quoted
+without an adjective — 45% is neither likely nor unlikely — and only the
+"take an umbrella" clause changes at 70%, so no wording flips at the boundary.
+A near-term chance always outranks the later hour: a rider with 45% in the
+next hour must not be told about nine o'clock instead. A wet WMO code with a
+low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
+no rain expected".
+
+**Reload lives beside the tabs** (right of Issues) and is always rendered,
+including on the ride page where the tabs themselves are hidden. It used to be
+installed-app-only AND post-search-only, which is exactly the state a stuck app
+never reaches. The pull-to-refresh gesture (`web/src/pullToRefresh.ts`) still
+works; the button is the one riders find.
+
+**The expanded map has Back at top-left as well as ✕ at top-right**, and
+Escape closes it. Leaflet's zoom control shares that corner, so the wrapper
+takes a `map-fs` class in fullscreen and the stylesheet drops the control
+below the button.
 
 The site is an installable PWA (`web/public/manifest.webmanifest`, `sw.js`).
 The service worker is deliberately network-first for everything and never

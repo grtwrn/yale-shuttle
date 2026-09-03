@@ -30,8 +30,14 @@ export type WeatherPayload =
 
 /** At or above this chance we say something. Below it, silence. */
 export const RAIN_PROBABILITY_THRESHOLD = 50;
-/** How far ahead we look — one walk leg's worth. */
+/** How far ahead the "will I get wet on this trip" verdict looks. */
 export const RAIN_HORIZON_MS = 60 * 60_000;
+/**
+ * How far ahead the line will look to answer "and later?". A rider out for
+ * the evening is not helped by "no rain within the hour" if it starts at
+ * nine, so when the next hour is dry the line says when the dry spell ends.
+ */
+export const OUTLOOK_HORIZON_MS = 6 * 60 * 60_000;
 
 export type RainVerdict = {
   likely: boolean;
@@ -52,6 +58,10 @@ const NO_RAIN: RainVerdict = { likely: false, probability: 0, known: false };
  * still shows the forecast, quietly.
  */
 export const RAIN_PROMINENT_THRESHOLD = 70;
+/** Below this the line stops quoting a number: "12% chance of rain" is noise
+ *  a rider cannot act on. At or above it the number is quoted plainly, with
+ *  no adjective — 45% is neither "likely" nor "unlikely", it is 45%. */
+export const RAIN_MENTION_THRESHOLD = 20;
 
 /** Plain words for the WMO code — only the distinctions a rider acts on. */
 export function conditionText(code: number | undefined): string | null {
@@ -123,6 +133,124 @@ export function rainLikelyFrom(
   return rainLikely(payload.hourly, nowMs);
 }
 
+/**
+ * The temperature, in both units.
+ *
+ * Fahrenheit leads — this is a New Haven shuttle — but plenty of riders grew
+ * up on Celsius, so the conversion rides along in brackets rather than behind
+ * a setting nobody would find (rider report #66). Converting the ALREADY
+ * ROUNDED Fahrenheit keeps the halves consistent: whatever °F a rider reads is
+ * exactly what the °C was computed from.
+ */
+/**
+ * Which unit the rider reads. Yale's students are half international, so
+ * neither unit is "the" unit — but printing BOTH ("68°F (20°C)") spent a third
+ * of a one-line summary on saying the same thing twice, so the rider picks
+ * one and it sticks (operator, 2026-09-02).
+ */
+export type TempUnit = "F" | "C";
+
+export const TEMP_UNIT_LS_KEY = "shuttle.tempUnit";
+
+/** Fahrenheit unless the rider said otherwise. Never throws: a browser with
+ *  storage blocked (private mode, "block all cookies") just gets the default. */
+export function loadTempUnit(): TempUnit {
+  try {
+    return localStorage.getItem(TEMP_UNIT_LS_KEY) === "C" ? "C" : "F";
+  } catch {
+    return "F";
+  }
+}
+
+export function saveTempUnit(unit: TempUnit): void {
+  try {
+    localStorage.setItem(TEMP_UNIT_LS_KEY, unit);
+  } catch {
+    /* storage blocked — the choice just won't outlive the tab */
+  }
+}
+
+/** The number the rider sees, already rounded. Both feeds report Fahrenheit. */
+export function temperatureIn(fahrenheit: number | undefined, unit: TempUnit): number | null {
+  if (typeof fahrenheit !== "number" || !Number.isFinite(fahrenheit)) return null;
+  const f = Math.round(fahrenheit);
+  if (unit === "F") return f;
+  const c = Math.round(((f - 32) * 5) / 9);
+  // -0 would print as "-0°"; only 32°F lands there, but the guard is free.
+  return Object.is(c, -0) ? 0 : c;
+}
+
+/** "68°F" / "20°C" — for the summary line. */
+export function temperatureText(
+  fahrenheit: number | undefined,
+  unit: TempUnit = "F",
+): string | null {
+  const v = temperatureIn(fahrenheit, unit);
+  return v == null ? null : `${v}°${unit}`;
+}
+
+/** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
+export function degreesText(fahrenheit: number | undefined, unit: TempUnit): string {
+  const v = temperatureIn(fahrenheit, unit);
+  return v == null ? "—" : `${v}°`;
+}
+
+export type ForecastHour = { timeMs: number; temperatureF?: number; probability: number };
+
+/**
+ * The hours the line and its expanded view describe: from the one the rider
+ * is standing in, out to the outlook horizon, in order.
+ */
+export function outlookHours(
+  hourly: readonly WeatherHour[] | null | undefined,
+  nowMs: number,
+): ForecastHour[] {
+  if (!Array.isArray(hourly) || !Number.isFinite(nowMs)) return [];
+  return hourly
+    .filter((h) => h && Number.isFinite(h.timeMs) && Number.isFinite(h.probability)
+      && h.timeMs + 60 * 60_000 > nowMs && h.timeMs < nowMs + OUTLOOK_HORIZON_MS)
+    .map((h) => ({
+      timeMs: h.timeMs,
+      probability: Math.max(0, Math.min(100, Math.round(h.probability))),
+      ...(typeof h.temperatureF === "number" ? { temperatureF: Math.round(h.temperatureF) } : {}),
+    }))
+    .sort((a, b) => a.timeMs - b.timeMs);
+}
+
+/**
+ * The first hour past the next one that is wet enough to mention, if any.
+ *
+ * This is what turns "no rain within the hour" into an answer for a rider who
+ * will be out for three: the useful fact is not a table of hours, it is the
+ * hour the dry spell ends.
+ */
+export function nextWetHour(
+  hourly: readonly WeatherHour[] | null | undefined,
+  nowMs: number,
+): ForecastHour | null {
+  for (const h of outlookHours(hourly, nowMs)) {
+    // Skip the hour the near-term verdict already covers.
+    if (h.timeMs < nowMs + RAIN_HORIZON_MS && h.probability < RAIN_PROBABILITY_THRESHOLD) continue;
+    if (h.probability >= RAIN_PROBABILITY_THRESHOLD) return h;
+  }
+  return null;
+}
+
+/**
+ * "9pm" / "12am". Spelled out rather than the app's usual "9p", because a
+ * bare letter beside a temperature and a percentage is one abbreviation too
+ * many to decode at a glance (operator, 2026-09-02).
+ */
+export function hourLabel(timeMs: number, tz = "America/New_York"): string {
+  try {
+    const s = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: true })
+      .format(new Date(timeMs));
+    return s.replace(/\s?AM$/i, "am").replace(/\s?PM$/i, "pm");
+  } catch {
+    return "";
+  }
+}
+
 /** How loudly to say it: nothing at all, a quiet line, or a warning. */
 export type WeatherTone = "hidden" | "quiet" | "warning";
 
@@ -140,23 +268,51 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * and a line that only ever appears on rainy days is one nobody learns to
  * look for. It gets louder as the chance climbs.
  */
-export function weatherMessage(v: RainVerdict): string {
+/**
+ * The collapsed line: temperature, then WHEN IT WILL NEXT RAIN, in as few
+ * words as that takes.
+ *
+ * It has to fit one line on a phone, so the condition word is dropped
+ * whenever there is a rain time to give — "Clear" is the least useful thing
+ * on the line once it can say "rain likely 10pm". The hour-by-hour lives
+ * behind the tap.
+ */
+export function weatherMessage(
+  v: RainVerdict,
+  later?: ForecastHour | null,
+  unit: TempUnit = "F",
+): string {
   if (!v.known) return "";
-  const bits: string[] = [];
-  if (typeof v.temperatureF === "number") bits.push(`${v.temperatureF}°F`);
-  const cond = conditionText(v.weatherCode);
-  if (cond) bits.push(cond);
-  const head = bits.join(" · ");
+  const temp = temperatureText(v.temperatureF, unit);
+  const head = temp ? `${temp} · ` : "";
+  // "within the hour", never "now": `probability` is the PEAK across every
+  // bucket that overlaps the next hour (see rainLikely), so at 20:05 an 85%
+  // bucket at 21:00 would have the line announcing rain up to 55 minutes
+  // early. The number and the window are quoted as they are; only the
+  // umbrella clause changes with severity, so nothing about the wording
+  // flips at the 69→70 boundary.
   if (v.probability >= RAIN_PROMINENT_THRESHOLD) {
-    return `Take an umbrella — ${v.probability}% chance of rain within the hour${head ? ` · ${head}` : ""}`;
+    return `${head}${v.probability}% chance of rain within the hour — take an umbrella`;
   }
-  if (v.likely) {
-    return `${v.probability}% chance of rain within the hour — the walk legs may get wet${head ? ` · ${head}` : ""}`;
+  if (v.probability >= RAIN_MENTION_THRESHOLD) {
+    return `${head}${v.probability}% chance of rain within the hour`;
   }
-  if (v.probability > 0) {
-    return `${head}${head ? " · " : ""}${v.probability}% chance of rain within the hour`;
+  // Dry for the next hour: spend the words on when that ends. This branch is
+  // BELOW the near-term one deliberately — a rider with 45% in the next hour
+  // must not be told about 9pm instead.
+  if (later) {
+    return `${head}rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
   }
-  return `${head}${head ? " · " : ""}No rain expected within the hour`;
+  const cond = conditionText(v.weatherCode);
+  // A wet code with a low chance ("Rain", 10%) must not print "Rain · no rain
+  // expected" — the condition alone is the honest line.
+  if (cond && isWetCode(v.weatherCode)) return `${head}${cond}`;
+  return `${head}${cond ? `${cond} · ` : ""}no rain expected`;
+}
+
+/** WMO codes from 50 up are drizzle/rain/snow/showers/thunderstorms. */
+function isWetCode(code: number | undefined): boolean {
+  return typeof code === "number" && Number.isFinite(code) && code >= 50;
 }
 
 /** The emoji that leads the line. */
@@ -173,6 +329,3 @@ export function weatherEmoji(v: RainVerdict): string {
 }
 
 /** Kept for the leave-alert prefix, which only cares about the warning case. */
-export function rainMessage(v: RainVerdict): string {
-  return `${weatherEmoji(v)} ${weatherMessage(v)}`;
-}
