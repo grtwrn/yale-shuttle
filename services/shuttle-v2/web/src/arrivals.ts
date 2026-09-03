@@ -1,6 +1,7 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { gateAnchor, type AnchorStore } from "./anchorGate";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -145,6 +146,14 @@ export function computeUpcomingArrivals(
   segmentTimes: SegmentTimes,
   now = Date.now(),
   dwellTimes: DwellTimes = {},
+  /**
+   * Per-vehicle anchor memory. Supplied, a bus is only relocated on the loop
+   * when something corroborates the move (see anchorGate.ts); omitted, the
+   * anchor is the raw stateless one and this function stays pure — which is
+   * what every hypothetical/replayed call wants, and what the existing tests
+   * assert.
+   */
+  anchorStore?: AnchorStore,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -174,8 +183,16 @@ export function computeUpcomingArrivals(
       // advance one stop at a time" pattern which stalled when
       // last_stop_id was multi-stops-stale and the bus had drifted
       // off-axis from subsequent segment lines.
-      const gpsAnchorIdx = findRouteAnchor(bus, stops, stopCoords);
-      if (gpsAnchorIdx < 0) continue;
+      const rawAnchorIdx = findRouteAnchor(bus, stops, stopCoords);
+      if (rawAnchorIdx < 0) continue;
+      // A 35 m GPS wobble must not relocate the bus a third of a lap. The gate
+      // holds the previous anchor until an arrival/departure, real movement, or
+      // a corroborated last_stop_id change says the bus actually went
+      // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
+      // early still collapses the countdown immediately.
+      const gpsAnchorIdx = anchorStore
+        ? gateAnchor(anchorStore, `${cfg.label}|${bus.bus_name}`, rawAnchorIdx, bus, now, stops.length).index
+        : rawAnchorIdx;
 
       // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
       // current than last_stop_id (the feed lags by one stop on arrival).
