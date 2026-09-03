@@ -457,6 +457,107 @@ describe("the real list against every live stop", () => {
     expect(top(q)?.label).toBe(label);
   });
 
+  /**
+   * The queries riders actually type, against the real list and the real
+   * network. This is the check the operator asked for after finding "pepes"
+   * answering with a lawn-care business: it is the top ROW of the dropdown,
+   * so a landmark that quietly loses its query to a stop, an alias clash or
+   * a new entry shows up here rather than in a screenshot.
+   */
+  it.each([
+    // eateries — the icon vocabulary hangs off these too
+    ["pepes", "Frank Pepe Pizzeria"],
+    ["frank pepe", "Frank Pepe Pizzeria"],
+    ["sallys", "Sally's Apizza"],
+    ["modern apizza", "Modern Apizza"],
+    ["yorkside", "Yorkside Pizza"],
+    ["elenas", "Elena's on Orange"],
+    ["ashleys", "Ashley's Ice Cream"],
+    ["insomnia", "Insomnia Cookies"],
+    ["shake shack", "Shake Shack"],
+    ["louis lunch", "Louis' Lunch"],
+    ["junzi", "Junzi Kitchen"],
+    ["mamouns", "Mamoun's Falafel"],
+    ["claires", "Claire's Corner Copia"],
+    ["atticus", "Atticus Bookstore Cafe"],
+    ["blue state", "Blue State Coffee (Cedar St)"],
+    ["koffee", "Koffee?"],
+    ["book trader", "Book Trader Cafe"],
+    ["toads", "Toad's Place"],
+    ["archies", "Archie Moore's"],
+    // shops and groceries
+    ["stop and shop", "Stop & Shop (Whalley Ave)"],
+    ["trader joes", "Trader Joe's (Milford)"],
+    ["elm city market", "Elm City Market"],
+    ["nicas", "Nica's Market"],
+    ["cvs", "CVS (Church St)"],
+    ["walgreens", "Walgreens (York St)"],
+    ["apple store", "Apple Store (Broadway)"],
+    ["yale bookstore", "Yale Bookstore"],
+    // libraries, museums, campus
+    ["sterling", "Sterling Memorial Library"],
+    ["bass library", "Bass Library"],
+    ["beinecke", "Beinecke Library"],
+    ["kbt", "Kline Tower (Kline Biology Tower)"],
+    ["marx library", "Kline Tower (Kline Biology Tower)"],
+    ["peabody", "Peabody Museum"],
+    ["art gallery", "Yale University Art Gallery"],
+    ["british art", "Yale Center for British Art"],
+    ["commons", "Schwarzman Center"],
+    ["payne whitney", "Payne Whitney Gym"],
+    ["ingalls", "Ingalls Rink"],
+    ["old campus", "Old Campus"],
+    ["cross campus", "Cross Campus"],
+    ["branford", "Branford College"],
+    ["pauli murray", "Pauli Murray College"],
+    ["sss", "Sheffield-Sterling-Strathcona Hall (SSS)"],
+    ["wlh", "William L. Harkness Hall (WLH)"],
+    ["hgs", "Humanities Quadrangle (HQ)"],
+    ["becton", "Becton Center"],
+    ["evans hall", "School of Management (SOM)"],
+    ["som", "School of Management (SOM)"],
+    ["med school", "School of Medicine (YSM)"],
+    ["law school", "Yale Law School"],
+    ["ysb", "Yale Science Building (YSB)"],
+    // health, transit, outdoors, venues
+    ["yale health", "Yale Health Center"],
+    ["ynhh", "Yale-New Haven Hospital"],
+    ["smilow", "Smilow Cancer Hospital"],
+    ["union station", "Union Station"],
+    ["state street station", "State Street Station"],
+    ["new haven green", "New Haven Green"],
+    ["wooster square", "Wooster Square"],
+    ["grove street cemetery", "Grove Street Cemetery"],
+    ["shubert", "Shubert Theatre"],
+    ["criterion", "Criterion Cinemas"],
+    ["omni", "Omni New Haven Hotel"],
+    ["the study", "The Study at Yale"],
+    ["city hall", "New Haven City Hall"],
+    ["public library", "New Haven Free Public Library"],
+    ["slifka", "Slifka Center"],
+    ["dwight hall", "Dwight Hall"],
+    ["admissions", "Undergraduate Admissions (38 Hillhouse)"],
+  ])("a rider typing %o gets %o first", (q, expected) => {
+    expect(top(q)?.label).toBe(expected);
+  });
+
+  it("every curated place carries a category for its icon", () => {
+    // `poi` is what `suggIcon` turns into 🍕 / 🍦 / 📚; an entry without one
+    // falls back to the generic building glyph, which is the state this
+    // replaced.
+    const missing = LANDMARKS.filter((l) => !l.poi).map((l) => l.label);
+    expect(missing).toEqual([]);
+  });
+
+  it("carries the category through to the hit", () => {
+    expect(top("pepes")?.poi).toBe("pizza");
+    expect(top("elenas")?.poi).toBe("ice_cream");
+    expect(top("koffee")?.poi).toBe("cafe");
+    expect(top("bass library")?.poi).toBe("library");
+    // A stop is a stop; the bus-stop icon does not come from this field.
+    expect(top("phelps gate")?.poi).toBeUndefined();
+  });
+
   it("ranks every live stop name first when typed verbatim", () => {
     for (const s of LIVE_STOPS) {
       const hit = top(s.name)!;

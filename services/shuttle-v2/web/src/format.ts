@@ -128,6 +128,29 @@ export function suggLabel(g: GeocodeResult, siblings?: GeocodeResult[]): string 
   return elsewhere ? parts.slice(0, 3).join(", ") : short;
 }
 
+/**
+ * What kind of place each row is, at a glance. Keyed on `type`, which carries
+ * OpenStreetMap's own value for an external result and the same vocabulary
+ * for a curated one (`poi` in src/server/landmarks.ts), so one table serves
+ * both. A rider scanning for Elena's finds 🍦 faster than the third identical
+ * building glyph in a list (operator, 2026-09-03).
+ *
+ * Every `poi` the server ships must be a key here — `geocode.test.ts` fails
+ * otherwise, because a value with no entry falls silently back to the generic
+ * glyph this table exists to replace.
+ */
+export const PLACE_ICONS: Record<string, string> = {
+  ice_cream: "🍦", pizza: "🍕", restaurant: "🍽️", cafe: "☕", fast_food: "🍔",
+  bakery: "🥐", bar: "🍺", pub: "🍺", biergarten: "🍺", nightclub: "🍺",
+  supermarket: "🛒", convenience: "🛒", greengrocer: "🛒", department_store: "🛒",
+  pharmacy: "💊", chemist: "💊", books: "📖", shop: "🛍️", clothes: "🛍️",
+  library: "📚", museum: "🏛️", gallery: "🏛️", civic: "🏛️", townhall: "🏛️",
+  hospital: "🏥", clinic: "🏥", doctors: "🏥", college: "🎓", university: "🎓",
+  school: "🎓", park: "🌳", garden: "🌳", theatre: "🎭", cinema: "🎬",
+  hotel: "🛏️", station: "🚉", gym: "🏋️", ice_rink: "⛸️",
+  worship: "⛪", place_of_worship: "⛪", synagogue: "🕍",
+  neighbourhood: "🏙️", bank: "🏦", fuel: "⛽", parking: "🅿️",
+};
 const suggSegments = (display: string): string[] =>
   display.split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -142,6 +165,15 @@ const suggPlaceName = (display: string): string =>
 /** Row icon by result kind so stops and landmarks are scannable at a glance. */
 export function suggIcon(g: GeocodeResult): string {
   if (g.type === "bus_stop") return "🚏";
+  // `type` is an upstream string, so read the table by own-property only:
+  // PLACE_ICONS["__proto__"] is an object, and React throws on an object
+  // child — a blank screen behind the ErrorBoundary.
+  const icon = g.type && Object.prototype.hasOwnProperty.call(PLACE_ICONS, g.type)
+    ? PLACE_ICONS[g.type]
+    : undefined;
+  if (icon) return icon;
+  // A curated place with no category, then anything else (an address, a
+  // street, an OSM value we have no icon for).
   if (g.class === "yale") return "🏛️";
   return "📍";
 }

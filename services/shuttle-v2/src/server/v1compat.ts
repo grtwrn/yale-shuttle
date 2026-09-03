@@ -18,7 +18,7 @@ import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
-import { geocode, normalizeName } from "./geocode.js";
+import { geocode, normalizeName, relevanceOf } from "./geocode.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
@@ -501,7 +501,20 @@ export function parseNominatim(body: unknown): GeocodeV1Hit[] {
 // The right area is "near the shuttle network", not a rectangle: a viewbox
 // admits a street in Branford as readily as one on Orange Street. Any result
 // farther than this from every stop is dropped when a closer one exists.
-const EXTERNAL_REACH_M = 2_500;
+//
+// The bound is the planner's own walking limit (`MAX_WALK_M` in
+// web/src/walk.ts, pinned by a test in v1compat.geocode.test.ts): past it the
+// app cannot offer a shuttle trip to the place at all, so listing it only
+// invites the rider to pick a destination the shuttle does not serve. It used
+// to be 2.5 km, which is how "pepes" reached Pepe's Lawn Care in West Haven
+// (1,971 m from any stop) and Pepes Farm Road in Orange (2,224 m), both of
+// them under the pizzeria the rider meant (operator, 2026-09-03).
+//
+// It does NOT remove the second Trader Joe's from that operator's third
+// screenshot, and an earlier draft claiming it did was measuring an invented
+// coordinate: Photon's Hamden node is 286 m from Aldi/Walmart, which route 18
+// serves. Both stores are genuinely plannable, so both are listed.
+export const EXTERNAL_REACH_M = 1_500;
 const LOCAL_DEDUP_M = 60;
 const EXTERNAL_DEDUP_M = 150;
 const MERGED_MAX = 12;
@@ -513,7 +526,11 @@ const MERGED_MAX = 12;
  * external hits for the same place (Photon lists a shop's node and its
  * building) collapse on name + proximity.
  */
-export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): GeocodeV1Hit[] {
+export function rankExternal(
+  network: TransitNetwork,
+  hits: GeocodeV1Hit[],
+  query?: string,
+): GeocodeV1Hit[] {
   const stops = [...network.stops.values()];
   const nearest = (h: GeocodeV1Hit) => {
     let best = Infinity;
@@ -523,10 +540,33 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
     }
     return best;
   };
+  // A result has to be a plausible answer to what the rider typed. Photon
+  // matches loosely: "elenas" returned EbLens, a clothing shop, and it sat
+  // directly under the ice cream shop the rider meant. No distance rule could
+  // catch that one — the shop is 292 m from a stop, genuinely reachable
+  // (operator, 2026-09-03). The test is the SAME matcher the curated list
+  // uses, at its weakest tier, so a real alternative survives ("police" still
+  // reaches New Haven Police Department, "cvs" the other branches) and only
+  // an unrelated name goes. It may empty the external list: the local answer
+  // is then the whole answer, which is the honest outcome.
+  //
+  // An ADDRESS is exempt, and has to be. Nominatim writes a house as
+  // "517, Prospect Street, Prospect Hill, ..." — its first segment is the bare
+  // number "517", which no relevance test can match against "517 Prospect St",
+  // so the exact building the rider typed scored zero and was dropped. That is
+  // the whole of report #59/#69's street-address fix undone (it shipped this
+  // morning; its test caught this). A house-typed hit answering an
+  // address-shaped query IS the answer, so it never faces this filter.
+  const addressQuery = query !== undefined && looksLikeStreetAddress(query);
+  const related = query
+    ? hits.filter((h) =>
+        (addressQuery && h.type === "house") ||
+        relevanceOf(query, h.display_name.split(",").slice(0, 2).join(" ").trim()) > 0)
+    : hits;
   // Keep the provider's order — it ranks by relevance, and re-sorting by
   // distance put a street centreline ahead of the house the rider typed —
   // and only DROP hits that are out of reach when a reachable one exists.
-  const scored = hits.map((h) => ({ h, d: nearest(h) }));
+  const scored = related.map((h) => ({ h, d: nearest(h) }));
   const reachable = scored.some((s) => s.d <= EXTERNAL_REACH_M)
     ? scored.filter((s) => s.d <= EXTERNAL_REACH_M)
     : scored;
@@ -549,11 +589,14 @@ export async function geocodeV1(
   external: ExternalGeocoder,
 ): Promise<GeocodeV1Hit[]> {
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
-  const local: GeocodeV1Hit[] = geocode(network, q).map((h) => ({
+  const hits = geocode(network, q);
+  const local: GeocodeV1Hit[] = hits.map((h) => ({
     display_name: h.label,
     lat: h.lat,
     lon: h.lon,
-    type: h.kind === "stop" ? "bus_stop" : "landmark",
+    // The curated category ('pizza', 'library') rides in `type`, where the
+    // client's icon table already reads OSM's own values for external hits.
+    type: h.kind === "stop" ? "bus_stop" : h.poi ?? "landmark",
     class: h.kind === "stop" ? "shuttle" : "yale",
   }));
 
@@ -564,7 +607,7 @@ export async function geocodeV1(
 
   // The shipped geocoder never throws, but the interface is injectable and a
   // rejection here would 500 the route: degrade to local instead.
-  const ranked = rankExternal(network, await external.lookup(query).catch(() => []));
+  const ranked = rankExternal(network, await external.lookup(query).catch(() => []), query);
   // Local results always come first; an external hit for a place we already
   // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];

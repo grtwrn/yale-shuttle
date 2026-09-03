@@ -315,18 +315,46 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    Stop names come from upstream and may NOT be hand-edited even when misspelt
    ("Orange / Audobon"); the fuzzy tier is how "audubon" reaches them. Dedup:
    a landmark on its serving stop replaces the stop row; two stops on one
-   corner collapse to one; two landmarks never merge.
-3. **External** (`src/server/v1compat.ts`): Photon (komoot) first — it tolerates
-   a missing apostrophe and typos, which Nominatim does not ("elenas" returned
-   nothing until 2026-09-02) — then Nominatim only when Photon errors or is
-   empty. One shared 1.1 s throttle, one 2.5 s budget per lookup, cache keyed
-   by provider+query, in-flight collapse. External hits keep the provider's
-   order (a distance sort put a street centreline ahead of the house the
-   rider typed); any hit more than 2.5 km from every shuttle stop is dropped
-   when a closer one exists: the service area is "near the network", not a
-   rectangle. The
-   fetcher is injected (`buildApp({ geocoder })`), so tests stub it; nothing in
-   the suite touches the network.
+   corner collapse to one; two landmarks never merge. Each entry also carries
+   a `poi` category in OSM's own vocabulary ("pizza", "ice_cream", "library"),
+   served in the v1 `type` field, which is what `suggIcon` (web/src/format.ts)
+   turns into the row's emoji — one table for curated places and OSM results
+   alike. A new landmark without a `poi` fails the suite.
+3. **External** — ALWAYS asked (over 2 characters), and filtered twice.
+   Photon (komoot) first — it tolerates a missing apostrophe and typos, which
+   Nominatim does not ("elenas" returned nothing until 2026-09-02) — then
+   Nominatim only when Photon errors or is empty. One shared 1.1 s throttle,
+   one 2.5 s budget per lookup, cache keyed by provider+query, in-flight
+   collapse. External hits keep the provider's order (a distance sort put a
+   street centreline ahead of the house the rider typed). The fetcher is
+   injected (`buildApp({ geocoder })`), so tests stub it; nothing in the suite
+   touches the network. The two filters:
+
+   - **Reach** — `EXTERNAL_REACH_M` is 1500 m, and a test pins it equal to the
+     planner's `MAX_WALK_M` (`web/src/walk.ts`): past the walking limit no
+     shuttle trip can be planned to the place at all. A hit beyond it is
+     dropped only when a nearer one exists, so a genuinely distant query still
+     answers. This is what removes Pepe's Lawn Care (1,971 m) and Pepes Farm
+     Road (2,224 m) from "pepes".
+   - **Name relevance** — a hit whose name scores 0 against the query under
+     `relevanceOf` (the same matcher the curated list uses, weakest tier) is
+     dropped. Photon returned EbLens, a shoe shop 290 m from Elm / Lynwood,
+     for "elenas"; it is perfectly reachable, so only the name can rule it out.
+
+   **Do not replace these with "skip the external lookup when a local hit is
+   strong".** That shipped for a day and an adversarial review killed it: a
+   curated place then hides every real alternative — "police" and even "new
+   haven police" answered only the Yale Police office and buried the New Haven
+   Police Department, and "cvs"/"walgreens"/"hospital" went the same way.
+
+   **"trader joes" legitimately returns two stores.** The Hamden one is 286 m
+   from the Aldi/Walmart stop that route 18 serves — a shorter walk than many
+   curated places — so it is a real destination, not noise. A draft that
+   claimed the reach rule dropped it was measuring an invented coordinate
+   (1,590 m); Photon's node is at 41.37523, -72.91366. Every geocode fixture
+   in `v1compat.geocode.test.ts` is now Photon's real answer, coordinates
+   included, precisely so a green test cannot disagree with the live server
+   again.
 
 The frontend's 8 km radius filter exempts class `yale`/`shuttle` rows — a
 curated destination is by definition reachable, and Trader Joe's (Milford) at
