@@ -58,8 +58,13 @@ jobs:
             services/shuttle-v2/package-lock.json
             services/shuttle-v2/web/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      # Both trees. The replay imports web/src, and the type-check below needs
+      # React's own type declarations, which live in web/node_modules —
+      # installing only the backend turned this job red on its own PR while the
+      # replay it exists to run passed. deploy.yml installs both for the same
+      # reason.
+      - name: Install dependencies (backend + web)
+        run: npm ci && npm ci --prefix web
 
       # No network, no browser, no database: one recorded pass and the real
       # client functions. If this is red, a rider is about to be told the
