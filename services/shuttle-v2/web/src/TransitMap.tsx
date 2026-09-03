@@ -27,7 +27,7 @@ import {
   findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
-import { topVisibleOptions,
+import { topVisibleOptions, keptThirdLabel,
   dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
@@ -2147,6 +2147,27 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options, toLL?.lat, toLL?.lon]);
 
+  // Which of those the collapsed list shows — computed ONCE per render and
+  // shared by the map overview and the rows below, so the two cannot disagree
+  // about the third route. The label of the third row carries over between
+  // polls: it is what keeps a row that is already on screen from vanishing
+  // when the gap behind the second wobbles across the slack line (report #76,
+  // "Orange route flashes in and out"). Same hysteresis idea as the display
+  // order above, applied to visibility instead of position.
+  const thirdShownRef = useRef<string | null>(null);
+  const thirdDestRef = useRef<string>("");
+  const visibleOptions = useMemo(() => {
+    if (!orderedOptions) { thirdShownRef.current = null; return null; }
+    // New destination → a fresh judgement, exactly as the order forgets itself.
+    if (orderDestRef.current !== thirdDestRef.current) {
+      thirdDestRef.current = orderDestRef.current;
+      thirdShownRef.current = null;
+    }
+    const visible = topVisibleOptions(orderedOptions, thirdShownRef.current);
+    thirdShownRef.current = keptThirdLabel(visible);
+    return visible;
+  }, [orderedOptions]);
+
   // Auto-boarding detection: offer to board when user is within 60 m of the
   // planned board stop and a matching bus is dwelling at that stop.
   // NOTE: must live BELOW the `options` useMemo — the deps array is
@@ -3232,7 +3253,7 @@ const TripPlanner: FC<{
             // currently shown to the rider, and grows when they reveal more.
             const _sortedForMap = orderedOptions ?? [];
             // Same rule as the list below — the map shows what the list shows.
-            const _visibleForMap = showAllOptions ? _sortedForMap : topVisibleOptions(_sortedForMap);
+            const _visibleForMap = showAllOptions ? _sortedForMap : (visibleOptions ?? []);
             // Route-details view open: the map narrows to just that route,
             // like Google Maps' directions-detail screen.
             const _mapOpts = expandedKey
@@ -3395,7 +3416,7 @@ const TripPlanner: FC<{
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
-            const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
+            const _visibleBase = showAllOptions ? _sorted : (visibleOptions ?? []);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested

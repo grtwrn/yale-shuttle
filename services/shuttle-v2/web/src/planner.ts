@@ -501,17 +501,61 @@ export function findPotentialRoutes(
  */
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 
-export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
+/**
+ * ...and once it is on screen it stays there until it falls THIS far behind —
+ * the appear and disappear thresholds are deliberately different.
+ *
+ * With one threshold, a third shuttle sitting near the 5 min line vanished and
+ * came back on every 5 s poll, because both totals wander by tens of seconds
+ * as the buses move (report #76: "Orange route flashes in and out. Need
+ * smooth decision whether it should be shown" — Blue 26 min, Orange 31 min,
+ * i.e. the gap was the boundary). The list order already uses this shape of
+ * rule for exactly the same reason (the 90 s hysteresis in TransitMap's
+ * `orderedOptions`, user feedback 2026-07-17: "make sure there's some
+ * stability — avoid flicker"); the visibility cut was the one place that
+ * still decided afresh each render.
+ *
+ * The band is generous on purpose: 3 min of extra room costs nothing (the row
+ * was already judged worth showing once) and is far wider than poll-to-poll
+ * ETA noise, so a row that appears stays put for as long as the rider is
+ * looking at it.
+ */
+export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
+
+/**
+ * @param shownThird the route label of the third shuttle currently on screen,
+ *   from {@link keptThirdLabel} of the previous render — that row, and only
+ *   that row, gets the wider slack. A different route in the third slot has
+ *   not earned it and must clear the normal bar.
+ */
+export function topVisibleOptions(
+  sorted: readonly TripOption[],
+  shownThird?: string | null,
+): TripOption[] {
   const shuttles = sorted.filter((o) => o.mode === "shuttle");
   const second = shuttles[1];
   const third = shuttles[2];
+  const slack = third !== undefined && third.routeLabel === shownThird
+    ? THIRD_SHUTTLE_KEEP_SLACK_SEC
+    : THIRD_SHUTTLE_SLACK_SEC;
   const keepThird =
     second !== undefined && third !== undefined &&
-    third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
+    third.totalSec <= second.totalSec + slack;
   let seen = 0;
   return sorted.filter((o) => {
     if (o.mode !== "shuttle") return true;
     seen++;
     return seen <= 2 || (seen === 3 && keepThird);
   });
+}
+
+/**
+ * The third shuttle in a visible list, if it kept its slot — what the caller
+ * feeds back into the next {@link topVisibleOptions} call. Null when only two
+ * shuttles are showing, which is what makes the widened slack expire the
+ * moment the row actually goes away.
+ */
+export function keptThirdLabel(visible: readonly TripOption[]): string | null {
+  const shuttles = visible.filter((o) => o.mode === "shuttle");
+  return shuttles.length >= 3 ? shuttles[2]!.routeLabel : null;
 }

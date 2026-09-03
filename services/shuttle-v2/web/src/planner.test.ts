@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { dwellBoardWindowSec, findPotentialRoutes, keptThirdLabel, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_KEEP_SLACK_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -548,5 +548,61 @@ describe("topVisibleOptions", () => {
   it("handles fewer than three shuttles", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
+  });
+
+  describe("stability of the third row (report #76)", () => {
+    // The reported trip: Red, then Blue 26 min, then Orange 31 min — the gap
+    // sits exactly on the slack line and both totals move every poll.
+    const poll = (orangeSec: number) => [
+      opt("shuttle", "Red", 17 * 60), opt("walk", "Walk", 14 * 60),
+      opt("shuttle", "Blue Day", 26 * 60), opt("shuttle", "Orange Day", orangeSec),
+    ];
+
+    it("keeps a row that is on screen when the gap wobbles past the slack", () => {
+      // Straddling the boundary by half a minute either way is ordinary
+      // poll-to-poll noise; before the fix this sequence flashed the Orange
+      // row in and out four times.
+      const gaps = [300, 318, 296, 330, 305, 291, 324];
+      let shownThird = keptThirdLabel(topVisibleOptions(poll(26 * 60 + 300)));
+      expect(shownThird).toBe("Orange Day");
+      for (const gap of gaps) {
+        const visible = topVisibleOptions(poll(26 * 60 + gap), shownThird);
+        expect(visible.map((o) => o.routeLabel))
+          .toEqual(["Red", "Walk", "Blue Day", "Orange Day"]);
+        shownThird = keptThirdLabel(visible);
+      }
+    });
+
+    it("still hides a row that was never on screen at the same gap", () => {
+      expect(topVisibleOptions(poll(26 * 60 + 318), null).map((o) => o.routeLabel))
+        .toEqual(["Red", "Walk", "Blue Day"]);
+    });
+
+    it("lets the row go once it is genuinely far behind", () => {
+      const visible = topVisibleOptions(
+        poll(26 * 60 + THIRD_SHUTTLE_KEEP_SLACK_SEC + 1), "Orange Day");
+      expect(visible.map((o) => o.routeLabel)).toEqual(["Red", "Walk", "Blue Day"]);
+      // And having gone, it has to clear the normal bar to come back.
+      expect(keptThirdLabel(visible)).toBeNull();
+      expect(topVisibleOptions(poll(26 * 60 + 318), keptThirdLabel(visible))
+        .map((o) => o.routeLabel)).toEqual(["Red", "Walk", "Blue Day"]);
+    });
+
+    it("does not lend the wider slack to a different route", () => {
+      // Orange dropped out of the list entirely and Green took the slot: it
+      // has not been on screen, so it is judged by the normal rule.
+      const sorted = [
+        opt("shuttle", "Red", 17 * 60), opt("walk", "Walk", 14 * 60),
+        opt("shuttle", "Blue Day", 26 * 60), opt("shuttle", "Green", 26 * 60 + 318),
+      ];
+      expect(topVisibleOptions(sorted, "Orange Day").map((o) => o.routeLabel))
+        .toEqual(["Red", "Walk", "Blue Day"]);
+    });
+
+    it("reports the third row only while it is showing", () => {
+      expect(keptThirdLabel(topVisibleOptions(poll(26 * 60 + 60)))).toBe("Orange Day");
+      expect(keptThirdLabel(topVisibleOptions(poll(26 * 60 + 900)))).toBeNull();
+      expect(keptThirdLabel([opt("walk", "Walk", 600), opt("shuttle", "A", 900)])).toBeNull();
+    });
   });
 });
