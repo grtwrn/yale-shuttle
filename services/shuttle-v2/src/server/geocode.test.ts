@@ -575,6 +575,47 @@ describe("the real list against every live stop", () => {
     }
   });
 
+  /**
+   * Report #85: "harkness memorial auditorium -- this should get a match".
+   *
+   * The place is the Mary S. Harkness Memorial Auditorium inside Sterling
+   * Hall of Medicine, which the School of Medicine entry already answers to
+   * as "harkness auditorium". Its FULL name found nothing, and the reason is
+   * worth keeping: one unaccounted query token fails every tier at once.
+   * "memorial" prefixes no word of "harkness auditorium", so the 0.4
+   * token-prefix tier is out; it is eight letters from either word, so the
+   * fuzzy tier is out; and the query is not a substring of the alias. A name
+   * a rider half-remembers therefore scores exactly zero, not "less". The
+   * fix for that is the alias, not a looser tier — see the sibling test.
+   */
+  it("finds the Harkness auditorium by its full name (report #85)", () => {
+    for (
+      const q of [
+        "harkness auditorium",
+        "harkness memorial auditorium",
+        "mary harkness auditorium",
+        "mary s harkness memorial auditorium",
+      ]
+    ) {
+      expect(top(q)?.label, q).toBe("School of Medicine (YSM)");
+    }
+  });
+
+  it("leaves the other Harkness places alone", () => {
+    // Three distinct places share the surname, and the auditorium's aliases
+    // must not take a query aimed at one of the others: William L. Harkness
+    // Hall on Wall Street, and Harkness Tower at Branford College.
+    expect(top("wlh")?.label).toBe("William L. Harkness Hall (WLH)");
+    expect(top("harkness hall")?.label).toBe("William L. Harkness Hall (WLH)");
+    expect(top("harkness tower")?.label).toBe("Branford College");
+    // Harkness Memorial HALL is a fourth, genuinely different building (367
+    // Cedar) that OSM knows and we do not curate. The new aliases must not
+    // answer for it: "hall" prefixes no word of them and is too short to
+    // fuzzy-match, so the local layer stays silent and the external one
+    // returns the real building — which is the behaviour today.
+    expect(geocode(live, "harkness memorial hall")).toEqual([]);
+  });
+
   it("does not let the Chaplain's Office take Bingham Hall or the Post Office row", () => {
     // "bingham" belongs to Old Campus, whose alias covers the dorm itself.
     expect(top("bingham")?.label).toBe("Old Campus");
