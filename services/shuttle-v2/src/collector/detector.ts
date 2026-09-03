@@ -71,6 +71,29 @@ export interface BusState extends TrackedIdentity {
   /** Where the bus was when `stationarySince` started. */
   stationaryLat: number;
   stationaryLon: number;
+  /**
+   * First observation of an UNCONFIRMED departure, or null when the bus is
+   * standing still.
+   *
+   * A single fix beyond {@link STATIONARY_RADIUS_M} is not proof the bus left.
+   * Red #316 at 344 Winchester on 2026-09-03 reached 85.3 m from where it had
+   * parked, then came back and sat for another minute before genuinely
+   * departing at 20:46:23. That one excursion restarted the clock, so the live
+   * payload reported 25 s of standing for a bus that had been there six
+   * minutes, and every downstream ETA was charged the ~5 min layover a second
+   * time. The operator watched a trip jump from 15 min to 20 min and filed it
+   * as urgent: "it jumped from 3min to 8 min!"
+   *
+   * So a departure must be confirmed by a SECOND consecutive observation
+   * beyond the radius. The delay costs one poll (~5 s) of detection latency
+   * and no accuracy at all: once confirmed, the clock restarts from this
+   * timestamp — when the bus actually started moving — not from the later
+   * observation that confirmed it.
+   */
+  stationaryBreachAt: EpochMs | null;
+  /** Where the bus was at `stationaryBreachAt`; the anchor a confirmed departure adopts. */
+  stationaryBreachLat: number | null;
+  stationaryBreachLon: number | null;
 }
 
 // Outputs ---------------------------------------------------------------------
@@ -213,16 +236,33 @@ export const MAX_OBSERVATION_GAP_MS = 10 * 60_000;
  */
 export const STATIONARY_RADIUS_M = 75;
 
+/** The fields {@link stationaryFields} carries. */
+type StationaryState = Pick<
+  BusState,
+  | "stationarySince"
+  | "stationaryLat"
+  | "stationaryLon"
+  | "stationaryBreachAt"
+  | "stationaryBreachLat"
+  | "stationaryBreachLon"
+>;
+
 /**
  * Carry the stationary clock when the bus has not actually gone anywhere,
  * restart it when it has. Crucially this is decided on DISTANCE from where
  * the bus stopped, not on which stop is nearest — the nearest stop flips on a
  * few metres of drift, which is the bug this exists to fix.
+ *
+ * A departure needs TWO consecutive observations beyond the radius. One is not
+ * enough: see {@link BusState.stationaryBreachAt} for the Red #316 case where a
+ * single 85.3 m excursion at a garage — followed by the bus coming back and
+ * sitting another minute — reset a six-minute layover to 25 s and added ~5 min
+ * to every downstream ETA.
  */
 function stationaryFields(
-  prev: Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon">,
+  prev: StationaryState,
   obs: BusObservation,
-): Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon"> {
+): StationaryState {
   const moved = distanceMeters(
     obs,
     { lat: prev.stationaryLat, lon: prev.stationaryLon },
@@ -230,16 +270,42 @@ function stationaryFields(
   if (moved <= STATIONARY_RADIUS_M) {
     // Still in the same place: keep the clock AND the original point, so a
     // slow drift cannot walk the anchor across town one metre at a time.
+    // Coming back inside the radius also withdraws any pending departure —
+    // that is the excursion-and-return case.
     return {
       stationarySince: prev.stationarySince,
       stationaryLat: prev.stationaryLat,
       stationaryLon: prev.stationaryLon,
+      stationaryBreachAt: null,
+      stationaryBreachLat: null,
+      stationaryBreachLon: null,
     };
   }
+  if (
+    prev.stationaryBreachAt === null ||
+    prev.stationaryBreachLat === null ||
+    prev.stationaryBreachLon === null
+  ) {
+    // First observation beyond the radius. Hold the clock and remember where
+    // and when, pending confirmation.
+    return {
+      stationarySince: prev.stationarySince,
+      stationaryLat: prev.stationaryLat,
+      stationaryLon: prev.stationaryLon,
+      stationaryBreachAt: obs.collectedAt,
+      stationaryBreachLat: obs.lat,
+      stationaryBreachLon: obs.lon,
+    };
+  }
+  // Confirmed: two in a row away from where it stood. Backdate the clock to
+  // the first one, so confirmation costs detection latency and not accuracy.
   return {
-    stationarySince: obs.collectedAt,
-    stationaryLat: obs.lat,
-    stationaryLon: obs.lon,
+    stationarySince: prev.stationaryBreachAt,
+    stationaryLat: prev.stationaryBreachLat,
+    stationaryLon: prev.stationaryBreachLon,
+    stationaryBreachAt: null,
+    stationaryBreachLat: null,
+    stationaryBreachLon: null,
   };
 }
 
@@ -518,10 +584,13 @@ export function step(
         lat: obs.lat,
         lon: obs.lon,
         // A reanchor means we lost track of this bus; nothing about how long
-        // it had been standing survives that.
+        // it had been standing survives that — including any pending departure.
         stationarySince: obs.collectedAt,
         stationaryLat: obs.lat,
         stationaryLon: obs.lon,
+        stationaryBreachAt: null,
+        stationaryBreachLat: null,
+        stationaryBreachLon: null,
       },
       events: [
         {
