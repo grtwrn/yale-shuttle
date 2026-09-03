@@ -78,8 +78,8 @@ export const LANDMARKS: readonly Landmark[] = [
 
   // -- Libraries -------------------------------------------------------------
   { label: "Bass Library", lat: 41.310591, lon: -72.927578, aliases: ["bass", "bass lib", "cross campus library"], poi: "library", anchorStop: "Elm / College" }, // OSM R5420164
-  { label: "Beinecke Library", lat: 41.311597, lon: -72.927324, aliases: ["beinecke", "rare book library"], poi: "library", anchorStop: "College / Wall (S)" }, // OSM W114134159
-  { label: "Cushing/Whitney Medical Library", lat: 41.303002, lon: -72.933244, aliases: ["cushing", "medical library", "med library", "cushing library"], poi: "library", anchorStop: "333 Cedar" }, // OSM N367138655
+  { label: "Beinecke Library", lat: 41.311597, lon: -72.927324, aliases: ["beinecke rare book and manuscript library", "beinecke", "rare book library"], poi: "library", anchorStop: "College / Wall (S)" }, // OSM W114134159
+  { label: "Cushing/Whitney Medical Library", lat: 41.303002, lon: -72.933244, aliases: ["harvey cushing/john hay whitney medical library", "cushing", "medical library", "med library", "cushing library"], poi: "library", anchorStop: "333 Cedar" }, // OSM N367138655
   { label: "Sterling Memorial Library", lat: 41.311184, lon: -72.929022, aliases: ["sterling", "sml", "sterling library", "poorvu center", "ctl", "center for teaching and learning", "manuscripts and archives"], poi: "library", anchorStop: "York / Elm" }, // OSM R2840329
 
   // -- Academic buildings ----------------------------------------------------
@@ -114,24 +114,24 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
   { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine", "harkness auditorium (shm)", "harkness auditorium", "med school auditorium"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
   { label: "School of Nursing (West Campus)", lat: 41.255831, lon: -72.992846, aliases: ["nursing", "nursing school", "ysn", "400 west campus"], poi: "college", anchorStop: "Building 400" }, // OSM W336607422
-  { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["ysph", "public health", "leph", "60 college", "epidemiology"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W239527110
+  { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["laboratory of epidemiology and public health", "ysph", "public health", "leph", "60 college", "epidemiology"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W239527110
   { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall", "law"], poi: "college", anchorStop: "Wall / York" }, // OSM R2840491
 
   // -- Student life ----------------------------------------------------------
   { label: "Afro-American Cultural Center", lat: 41.309406, lon: -72.93288, aliases: ["af am house", "afam house", "the house", "afro american cultural center", "211 park"], poi: "college", anchorStop: "180 York (A&A)" }, // OSM W224889712
   { label: "Asian American Cultural Center", lat: 41.306987, lon: -72.931583, aliases: ["aacc", "asian american center", "295 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240137
-  { label: "Dwight Hall", lat: 41.308947, lon: -72.929297, aliases: ["dwight", "dwight chapel", "67 high"], poi: "college", anchorStop: "Phelps Gate" }, // OSM W139753858
+  { label: "Dwight Hall", lat: 41.308947, lon: -72.929297, aliases: ["dwight hall & memorial chapel", "dwight", "dwight chapel", "67 high"], poi: "college", anchorStop: "Phelps Gate" }, // OSM W139753858
   { label: "Graduate & Professional Student Center (GPSCY)", lat: 41.309255, lon: -72.931882, aliases: ["gpscy", "gypsy", "grad center", "204 york", "gryphon", "gryphons", "gryphon's pub", "the gryphon"], poi: "college", anchorStop: "180 York (A&A)" }, // OSM W224973083
   { label: "La Casa Cultural", lat: 41.307061, lon: -72.931765, aliases: ["la casa", "latino cultural center", "301 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240136
   { label: "Native American Cultural Center", lat: 41.306961, lon: -72.93118, aliases: ["nacc", "native american center", "26 high"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606236056
   { label: "Schwarzman Center", lat: 41.311808, lon: -72.92644, aliases: ["commons", "the commons", "schwarzman", "schwarzman commons", "the elm", "the well", "dome"], poi: "college", anchorStop: "College / Grove (N)" }, // OSM W363426802
-  { label: "Slifka Center", lat: 41.31018, lon: -72.925293, aliases: ["slifka", "hillel", "jewish life", "80 wall"], poi: "synagogue", anchorStop: "College / Wall (N)" }, // OSM W114626279
+  { label: "Slifka Center", lat: 41.31018, lon: -72.925293, aliases: ["slifka center for jewish life", "slifka", "hillel", "jewish life", "80 wall"], poi: "synagogue", anchorStop: "College / Wall (N)" }, // OSM W114626279
   { label: "St. Thomas More Chapel", lat: 41.310967, lon: -72.932378, aliases: ["stm", "saint thomas more", "catholic chapel", "catholic center", "268 park"], poi: "worship", anchorStop: "Elm / Lynwood" }, // OSM R5463450
   { label: "Yale Farm", lat: 41.320491, lon: -72.921337, aliases: ["the farm", "sustainable food program", "345 edwards"], poi: "park", anchorStop: "Prospect / Edwards" }, // OSM W45092131
 
   // -- Athletics -------------------------------------------------------------
-  { label: "Ingalls Rink", lat: 41.316811, lon: -72.925004, aliases: ["the whale", "hockey rink", "ingalls", "73 sachem"], poi: "ice_rink", anchorStop: "Prospect / Sachem (S)" }, // OSM W76235245
-  { label: "Payne Whitney Gym", lat: 41.313722, lon: -72.931086, aliases: ["pwg", "gym", "payne whitney", "lanman center", "lanman", "the gym", "70 tower parkway"], poi: "gym", anchorStop: "Payne Whitney Gym" }, // OSM W49602467
+  { label: "Ingalls Rink", lat: 41.316811, lon: -72.925004, aliases: ["ingalls ice rink", "the whale", "hockey rink", "ingalls", "73 sachem"], poi: "ice_rink", anchorStop: "Prospect / Sachem (S)" }, // OSM W76235245
+  { label: "Payne Whitney Gym", lat: 41.313722, lon: -72.931086, aliases: ["payne whitney gymnasium", "pwg", "gym", "payne whitney", "lanman center", "lanman", "the gym", "70 tower parkway"], poi: "gym", anchorStop: "Payne Whitney Gym" }, // OSM W49602467
 
   // -- Museums ---------------------------------------------------------------
   { label: "McGivney Pilgrimage Center (Knights of Columbus Museum)", lat: 41.30212, lon: -72.923823, aliases: ["knights of columbus", "mcgivney center", "1 state street"], poi: "museum", anchorStop: "Union / Fair" }, // OSM R2248306
@@ -229,6 +229,6 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], poi: "library", anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
   { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "neighbourhood", anchorStop: "Chapel / Church" }, // OSM W777642209
-  { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
+  { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police department", "yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], poi: "civic", anchorStop: "Elm / High" }, // OSM N359283573
 ];
