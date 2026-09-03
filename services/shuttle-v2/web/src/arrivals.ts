@@ -8,7 +8,7 @@ import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 
 export type SegmentStat = { avg: number; sd?: number; n: number };
 export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
-export type DwellStat = { med: number; sd: number; n: number };
+export type DwellStat = { med: number; sd: number; n: number; low?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
@@ -20,6 +20,9 @@ export type DwellsByBus = Record<string, DwellTimes>;
  * only the fallback for a stop the calibrator has never measured.
  */
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
+
+/** Floor on a hop's driving time, whatever the dwell arithmetic says. */
+const MIN_HOP_SEC = 30;
 
 /**
  * The credit is spent on the FIRST hop only, and never beyond the dwell that
@@ -70,6 +73,7 @@ export function computeUpcomingArrivals(
     if (routeBuses.length === 0) continue;
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
+    const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
@@ -155,6 +159,36 @@ export function computeUpcomingArrivals(
         if (seg && seg.n >= 1) {
           segAvg = seg.avg;
           segVar = (seg.sd ?? 0) ** 2;
+          // A hop's served time is the dwell at its from-stop plus the drive.
+          // For a stop the bus has NOT REACHED YET, price that dwell at a low
+          // quantile rather than the median.
+          //
+          // A rest is a wide distribution, not a number: at Red's 344
+          // Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes
+          // and one visit in seventeen is under two. Billing the middle of it
+          // made the board pessimistic by over two minutes on a third to a
+          // half of the estimates that span a rest — and pessimistic is the
+          // costly direction, because the rider strolls down and the bus has
+          // gone. Measured on 30 days of arrivals over Red, Blue Day, Orange
+          // Day and Green (31k chains that contain an unstarted rest), p35
+          // moves the median error from +0.8..+2.0 min to about zero and the
+          // share more than 2 min pessimistic from 36-50% to 17-32%. p25
+          // overshoots into optimism (-1.8..-2.7 min). docs/eta-accuracy.md
+          // has the table.
+          //
+          // Step 1 is exempt: the bus is AT that stop, so its dwell belongs to
+          // the elapsed-dwell credit below, which knows how long it has really
+          // sat. This only re-prices rests still in the future. Conditioning
+          // it on whether the bus ALREADY rested somewhere was tried and
+          // measured wrong — see the note above STALL_CREDIT_MAX_FRACTION.
+          if (step > 1) {
+            const d = routeDwells[String(stops[prevI])];
+            if (d && d.low !== undefined && d.low < d.med) {
+              // Keep a floor on the drive so a hop that is almost all dwell
+              // still prices the driving.
+              segAvg = Math.max(MIN_HOP_SEC, segAvg - d.med) + d.low;
+            }
+          }
         } else {
           // Unmeasured hop. The route-average segment time is a fair guess
           // for a typical block-to-block hop, but never for a long one:

@@ -44,6 +44,13 @@ const SEGMENT_WINDOW_DAYS = 30;
 const DWELL_WINDOW_DAYS = 14;
 
 /**
+ * Quantile served as `DwellStats.low` and the samples needed to place it.
+ * 0.35 is measured, not chosen — see DwellStats.low and docs/eta-accuracy.md.
+ */
+const DWELL_LOW_QUANTILE = 0.35;
+const DWELL_LOW_MIN_SAMPLES = 5;
+
+/**
  * Hour-window half-width: a sample at hour H is considered "current" for
  * any of (H-1, H, H+1) modulo 24. Mirrors the v1 `hour BETWEEN h-1 AND h+1`
  * but wraps midnight correctly (the v1 bug fixed in the recent commit).
@@ -351,11 +358,19 @@ export function computeDwellStats(
     // stddev so a single 4-minute dwell doesn't ruin the whole stop's stats.
     const priorMedian = median(group.all);
 
+    // The low quantile is drawn from the WHOLE lookback, never the current
+    // (dow, hour) slice: a slice can hold a handful of visits, and a quantile
+    // of five samples is noise. See DwellStats.low for what it is for.
+    const low = group.all.length >= DWELL_LOW_MIN_SAMPLES
+      ? percentile(group.all, DWELL_LOW_QUANTILE)
+      : undefined;
+
     if (group.windowed.length === 0) {
       out.set(group.key, {
         mean: priorMedian,
         stddev: Math.max(percentile(group.all, 0.9) - priorMedian, 5),
         n: 0,
+        ...(low !== undefined ? { low } : {}),
       });
       continue;
     }
@@ -366,6 +381,10 @@ export function computeDwellStats(
       mean: med,
       stddev: Math.max(p90 - med, 5),
       n: group.windowed.length,
+      // A quantile of the whole history can land above the current window's
+      // median (a stop that is quiet this hour); it is a floor on optimism,
+      // not a second estimate, so never let it exceed the median it replaces.
+      ...(low !== undefined ? { low: Math.min(low, med) } : {}),
     });
   }
 

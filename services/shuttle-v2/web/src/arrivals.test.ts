@@ -246,6 +246,103 @@ describe("dwell credit is gated on at_stop_id agreeing with the GPS anchor", () 
   });
 });
 
+  /**
+   * A layover the bus has NOT started is priced at a low quantile, not the
+   * median. The operator's watchers found the board pessimistic by 3-5 min on
+   * Blue, Red and Green whenever the estimate spanned a rest the bus had yet
+   * to take, which is the direction that costs a rider the bus.
+   *
+   * Numbers below are Red's live calibration: the 344 Winchester hop averages
+   * 452 s because the dwell there is 395 s (median) with a 35th percentile of
+   * about 240 s; the drive is the ~57 s remainder.
+   */
+  describe("a rest the bus has not reached yet", () => {
+    const LAYOVER_SEG = 452, DWELL_MED = 395, DWELL_LOW = 240;
+    const segs: SegmentTimes = {
+      "4": {
+        // stopAndShop -> elmYorkTyco is the layover hop; the two beyond it are
+        // quick, as they are on Red.
+        [`${STOP.stopAndShop}-${STOP.elmYorkTyco}`]: { avg: LAYOVER_SEG, sd: 60, n: 34 },
+        [`${STOP.elmYorkTyco}-${STOP.collegeWallN}`]: { avg: 26, sd: 8, n: 32 },
+      },
+    };
+    const dwells: DwellTimes = {
+      "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13, low: DWELL_LOW } },
+    };
+    // The bus is at York/Chapel, one hop BEFORE the layover stop.
+    const approaching = () => makeBus({
+      ...at(STOP.yorkChapel), route_id: 4, last_stop_id: STOP.stopAndShop,
+      at_stop_id: STOP.yorkChapel, at_stop_since: dwellingSince(5),
+    });
+
+    it("bills the low quantile for the rest, not the median", () => {
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, dwells),
+        STOP.collegeWallN,
+      )!;
+      // Without this the layover hop costs the full 452 s; with it the rest is
+      // priced at 240 s and the drive survives, so the estimate drops by about
+      // the difference between the median and the low quantile.
+      const withoutLow = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, {
+          "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+        }),
+        STOP.collegeWallN,
+      )!;
+      expect(withoutLow - eta).toBeGreaterThan(DWELL_MED - DWELL_LOW - 30);
+      expect(eta).toBeLessThan(withoutLow);
+    });
+
+    it("still prices the driving, even when the hop is almost all rest", () => {
+      // A pathological stop whose whole segment average is dwell: the estimate
+      // must not collapse to the low quantile alone.
+      const allDwell: DwellTimes = {
+        "4": { [String(STOP.stopAndShop)]: { med: LAYOVER_SEG, sd: 150, n: 13, low: 60 } },
+      };
+      const eta = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [approaching()], routeStops, stopCoords, segs, NOW, allDwell),
+        STOP.elmYorkTyco,
+      )!;
+      expect(eta).toBeGreaterThan(60);
+    });
+
+    it("does not touch the stop the bus is standing at", () => {
+      // Step 1 is the anchor's own hop: its dwell is handled by the elapsed
+      // credit, which knows how long the bus has really sat. Re-pricing it
+      // here would double-count.
+      const atLayover = makeBus({
+        ...at(STOP.stopAndShop), route_id: 4, last_stop_id: STOP.yorkChapel,
+        at_stop_id: STOP.stopAndShop, at_stop_since: dwellingSince(30),
+      });
+      const withLow = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [atLayover], routeStops, stopCoords, segs, NOW, dwells),
+        STOP.elmYorkTyco,
+      )!;
+      const withoutLow = etaFor(
+        computeUpcomingArrivals([STOP.elmYorkTyco], [atLayover], routeStops, stopCoords, segs, NOW, {
+          "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+        }),
+        STOP.elmYorkTyco,
+      )!;
+      expect(withLow).toBe(withoutLow);
+    });
+
+    it("is inert at a stop with no low quantile yet", () => {
+      const noLow: DwellTimes = {
+        "4": { [String(STOP.stopAndShop)]: { med: DWELL_MED, sd: 150, n: 13 } },
+      };
+      const a = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW, noLow),
+        STOP.collegeWallN,
+      )!;
+      const b = etaFor(
+        computeUpcomingArrivals([STOP.collegeWallN], [approaching()], routeStops, stopCoords, segs, NOW),
+        STOP.collegeWallN,
+      )!;
+      expect(a).toBe(b);
+    });
+  });
+
 describe("mid-segment proration", () => {
   it("shrinks the first-segment ETA as the bus approaches the next stop", () => {
     const a = at(STOP.phelpsGate);
