@@ -461,10 +461,14 @@ export function parseNominatim(body: unknown): GeocodeV1Hit[] {
 // web/src/walk.ts, pinned by a test in v1compat.geocode.test.ts): past it the
 // app cannot offer a shuttle trip to the place at all, so listing it only
 // invites the rider to pick a destination the shuttle does not serve. It used
-// to be 2.5 km, which is how "trader joes" answered with the Hamden store
-// (1.6 km from the Aldi/Walmart stop — a 24-minute walk) beside the Milford
-// one the shuttle actually visits, and how "pepes" reached a lawn-care
-// business 2 km off the West Campus highway (operator, 2026-09-03).
+// to be 2.5 km, which is how "pepes" reached Pepe's Lawn Care in West Haven
+// (1,971 m from any stop) and Pepes Farm Road in Orange (2,224 m), both of
+// them under the pizzeria the rider meant (operator, 2026-09-03).
+//
+// It does NOT remove the second Trader Joe's from that operator's third
+// screenshot, and an earlier draft claiming it did was measuring an invented
+// coordinate: Photon's Hamden node is 286 m from Aldi/Walmart, which route 18
+// serves. Both stores are genuinely plannable, so both are listed.
 export const EXTERNAL_REACH_M = 1_500;
 const LOCAL_DEDUP_M = 60;
 const EXTERNAL_DEDUP_M = 150;

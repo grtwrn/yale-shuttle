@@ -352,14 +352,28 @@ describe("geocodeV1 merge", () => {
    * Reported by the operator on 2026-09-03, three screenshots in a row:
    * "pepes" answered Frank Pepe Pizzeria AND "Pepe's Lawn Care" in West
    * Haven; "elenas" answered Elena's on Orange and a clothing shop called
-   * EbLens; "trader joes" listed the Milford store the shuttle serves beside
-   * the Hamden one it does not ("are there really two trader Joe's? this is
-   * confusing as a user").
+   * EbLens; "trader joes" listed the Milford store beside the Hamden one
+   * ("are there really two trader Joe's? this is confusing as a user").
    *
-   * Two rules answer all three, and each is needed: the lawn care and the
-   * Hamden store are REACHABLE-looking but out of walking range of any stop,
-   * while EbLens is 292 m from one — genuinely reachable, and simply not what
-   * anybody typing "elenas" meant.
+   * EVERY fixture below is Photon's real answer to that query, coordinates
+   * included, captured on 2026-09-03 and re-measured against the checked-in
+   * stop list. That matters: an earlier draft of this file invented a
+   * coordinate for the Hamden Trader Joe's (41.372, -72.8985), measured it at
+   * 1,590 m and asserted that the reach rule dropped it. Photon's actual node
+   * is at 41.37523, -72.91366 — **286 m from the Aldi/Walmart stop**, which
+   * route 18 serves. The test was green and the live server disagreed.
+   *
+   * So two of the three screenshots are answered here, by two rules that are
+   * each needed:
+   *   - REACH: Pepe's Lawn Care is 1,971 m from the nearest stop and Pepes
+   *     Farm Road 2,224 m — past MAX_WALK_M, so no trip can be planned to
+   *     them at all.
+   *   - NAME: EbLens is 290 m from Elm / Lynwood, entirely reachable, and no
+   *     answer to "elenas" under our own matcher. Distance can never catch it.
+   *
+   * The third is NOT a defect and is left alone: both Trader Joe's are within
+   * walking range of a stop a Grocery run serves, so the honest answer to
+   * "are there really two" is yes — see the test below.
    *
    * The rule that does NOT work, and was reverted before shipping: skipping
    * the external lookup whenever a local hit matched well. That hides real
@@ -380,56 +394,88 @@ describe("geocodeV1 merge", () => {
     const osm = (display_name: string, lat: number, lon: number, type = "yes"): GeocodeV1Hit =>
       ({ display_name, lat, lon, type, class: "osm" });
 
-    it("drops a lawn-care business off the West Campus highway from 'pepes'", async () => {
-      // 1,971 m from the nearest stop: no shuttle trip can be planned to it.
-      // Photon's real answer: the pizzeria itself (which then dedups against
-      // the curated entry) and the lawn care. A reachable hit exists, so the
-      // unreachable one goes.
+    it("answers 'pepes' with the pizzeria alone", async () => {
+      // Photon's real four hits, with their measured distance to the nearest
+      // live stop: a street in Orange twice (2,224 m / 1,764 m), the pizzeria
+      // (295 m, which then dedups into the curated entry) and a lawn-care
+      // business in West Haven (1,971 m). Everything past MAX_WALK_M goes,
+      // because a reachable hit exists.
       const ext = stub([
+        osm("Pepes Farm Road, Orange", 41.23139, -73.01915, "tertiary"),
+        osm("Pepes Farm Road, Orange", 41.23592, -73.01337, "tertiary"),
         osm("Frank Pepe Pizzeria Napoletana, Wooster Street", 41.30296, -72.91696, "restaurant"),
-        osm("Pepe's Lawn Care, 71 Lucey Avenue, West Haven", 41.2472, -72.9683, "gardener"),
+        osm("Pepe's Lawn Care, 71 Lucey Avenue, West Haven", 41.24725, -72.96826, "gardener"),
       ]);
       const results = await geocodeV1(liveNetwork, "pepes", ext);
       expect(ext.calls).toBe(1);
-      expect(results.map((r) => r.display_name)).not.toContain(expect.stringContaining("Lawn Care"));
-      expect(results.some((r) => r.display_name.includes("Lawn Care"))).toBe(false);
+      expect(results.map((r) => r.display_name)).toEqual(["Frank Pepe Pizzeria"]);
     });
 
     it("drops a clothing shop that merely looks like 'elenas'", async () => {
-      // 292 m from Elm / Lynwood — reachable, so only the NAME can rule it
+      // 290 m from Elm / Lynwood — reachable, so only the NAME can rule it
       // out, and "eblens" is no answer to "elenas" under our own matcher.
-      const ext = stub([osm("EbLens, Whalley Avenue, New Haven", 41.3136, -72.9351, "clothes")]);
+      const ext = stub([
+        osm("Elena's on Orange, Orange Street, New Haven", 41.32295, -72.9108, "ice_cream"),
+        osm("EbLens, Whalley Avenue, New Haven", 41.31359, -72.93508, "shoes"),
+      ]);
       const results = await geocodeV1(liveNetwork, "elenas", ext);
-      expect(results.some((r) => r.display_name.startsWith("EbLens"))).toBe(false);
-      expect(results[0]!.display_name).toBe("Elena's on Orange");
+      expect(ext.calls).toBe(1);
+      // One row: the curated shop, with Photon's own node for it deduped away.
+      expect(results.map((r) => r.display_name)).toEqual(["Elena's on Orange"]);
     });
 
-    it("drops the Hamden Trader Joe's, which the shuttle does not reach", async () => {
-      // 1,590 m from the Aldi/Walmart stop: a 24-minute walk, and the name
-      // matches perfectly, so distance is the only thing that can rule it out.
+    it("keeps the Hamden Trader Joe's, because a Grocery run stops 286 m away", async () => {
+      // The screenshot the operator called confusing, and the one this change
+      // does NOT make disappear. Photon's real nodes: Milford at 30 m from
+      // the "Trader Joe's" stop (route 6 parks at the door) and Hamden at
+      // 286 m from Aldi/Walmart (route 18) — a 3.5-minute walk, well inside
+      // MAX_WALK_M. Both are plannable destinations, so both are true
+      // answers; suppressing the second would need exactly the blanket rule
+      // the review rejected. What the rider sees is two rows that name their
+      // streets, not two rows reading "Trader Joe's".
       const ext = stub([
-        osm("Trader Joe's, Boston Post Road, Milford", 41.251375, -73.018082, "supermarket"),
-        osm("Trader Joe's, 46 Skiff Street, Hamden", 41.372, -72.8985, "supermarket"),
+        osm("Trader Joe's, Boston Post Road, Milford", 41.25131, -73.01773, "supermarket"),
+        osm("Trader Joe's, 46 Skiff Street, Hamden", 41.37523, -72.91366, "supermarket"),
       ]);
       const results = await geocodeV1(liveNetwork, "trader joes", ext);
-      expect(results.some((r) => r.display_name.includes("Skiff"))).toBe(false);
-      expect(results[0]!.display_name).toBe("Trader Joe's (Milford)");
+      // The curated store comes first (local always does) and Photon's node
+      // for it is deduped away, so the Milford store is one row, not two.
+      expect(results.map((r) => r.display_name)).toEqual([
+        "Trader Joe's (Milford)",
+        "Trader Joe's, 46 Skiff Street, Hamden",
+      ]);
     });
 
     it("keeps a real alternative that is near a stop and answers the query", async () => {
       // The regression the first attempt at this caused: a curated place must
-      // not hide a genuine one. New Haven Police Department is 64 m from the
-      // Union Station stop and is exactly what "police" can mean.
-      const ext = stub([osm("New Haven Police Department, 1 Union Avenue", 41.2985, -72.9268, "police")]);
+      // not hide a genuine one. Photon's node for New Haven Police Department
+      // is 270 m from the Union Station stop and is exactly what "police" can
+      // mean; the shooting range 2,437 m out is not walkable and goes.
+      const ext = stub([
+        osm("New Haven Police Department, 1 Union Avenue", 41.30005, -72.92533, "police"),
+        osm("New Haven Police Substation, Congress Avenue", 41.30014, -72.93882, "police"),
+        osm("New Haven Police Shooting Range, New Haven", 41.33477, -72.95458, "yes"),
+      ]);
       const results = await geocodeV1(liveNetwork, "police", ext);
       expect(ext.calls).toBe(1);
-      expect(results.some((r) => r.display_name.startsWith("New Haven Police"))).toBe(true);
+      // The curated Yale Police office still leads; it no longer hides them.
+      expect(results[0]!.display_name).toBe("Yale Police (101 Ashmun)");
+      expect(results.some((r) => r.display_name.startsWith("New Haven Police Department"))).toBe(true);
+      expect(results.some((r) => r.display_name.includes("Shooting Range"))).toBe(false);
     });
 
     it("keeps another branch of a chain we curate one of", async () => {
-      const ext = stub([osm("CVS Pharmacy, 122 Whitney Avenue, New Haven", 41.3115, -72.9235, "pharmacy")]);
+      // Photon returns eight CVS nodes; the Hamden one at 203 m from a stop
+      // is reachable and the ones 2–4.6 km out are not.
+      const ext = stub([
+        osm("CVS Pharmacy, Dixwell Avenue, Hamden", 41.36724, -72.91918, "pharmacy"),
+        osm("CVS Pharmacy, Amity Road, Woodbridge", 41.32881, -72.96818, "chemist"),
+        osm("CVS Pharmacy, Boston Post Road, East Haven", 41.28029, -72.87543, "chemist"),
+      ]);
       const results = await geocodeV1(liveNetwork, "cvs", ext);
-      expect(results.some((r) => r.display_name.startsWith("CVS Pharmacy"))).toBe(true);
+      expect(results[0]!.display_name).toBe("CVS (Church St)");
+      expect(results.some((r) => r.display_name.includes("Dixwell"))).toBe(true);
+      expect(results.some((r) => r.display_name.includes("East Haven"))).toBe(false);
     });
 
     it("still asks outside for a typo and for a half match", async () => {
@@ -440,12 +486,25 @@ describe("geocodeV1 merge", () => {
       }
     });
 
+    it("still resolves a street address the curated list does not hold", async () => {
+      // The relevance filter reads the name Photon returns, and an address IS
+      // its name: "270 Crown Street" answers "270 crown" at the prefix tier.
+      // A house is also what the frontend auto-picks on (type "house"), so
+      // dropping one would break typing an address outright.
+      const ext = stub([osm("270 Crown Street, New Haven", 41.30636, -72.93079, "house")]);
+      const results = await geocodeV1(liveNetwork, "270 crown", ext);
+      expect(ext.calls).toBe(1);
+      expect(results.some((r) => r.display_name.startsWith("270 Crown Street"))).toBe(true);
+    });
+
     it("keeps everything when nothing at all is within walking range", async () => {
       // The rider may genuinely mean somewhere far out; the filter drops the
       // unreachable only when a reachable answer exists.
+      // Photon's real answer: 1,872 m, 1,712 m and 1,642 m from the nearest
+      // stop — every one past MAX_WALK_M, and the rider still gets them.
       const ext = stub([
-        osm("Yale Bowl, Chapel Street, New Haven", 41.3122, -72.9601, "stadium"),
-        osm("Westville Music Bowl, Yale Avenue", 41.3155, -72.9622, "stadium"),
+        osm("Yale Bowl, Chapel Street, New Haven", 41.31323, -72.96049, "stadium"),
+        osm("Westville Music Bowl, Yale Avenue", 41.31184, -72.95739, "stadium"),
       ]);
       const results = await geocodeV1(liveNetwork, "yale bowl", ext);
       expect(results.some((r) => r.display_name.startsWith("Yale Bowl"))).toBe(true);
