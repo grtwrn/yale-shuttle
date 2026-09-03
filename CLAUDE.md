@@ -306,6 +306,11 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    place; other names go in `aliases` ("kbt", "commons", "med school", the
    former name, the street address) — no misspellings, the fuzzy tier handles
    those. Adjacent-but-distinct places (a cafe inside a museum) stay separate.
+   **What is missing is measured, not guessed**: `node scripts/lookup-sweep.mjs`
+   runs every named Yale/campus place OSM knows about through all three layers
+   and lists the ones NO layer answers — 5 as of 2026-09-03, not the 213 that
+   scoring against this list alone appeared to show (see Verification
+   harnesses).
 2. **The matcher** (`src/server/geocode.ts`) normalises both sides (apostrophes
    deleted, `&` → "and", diacritics stripped), drops query stopwords (yale,
    university, the, at, of, on, in, and, new, haven, st, street) and scores in
@@ -672,6 +677,7 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals (live, ~10 pairs a run) |
 | `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
+| `lookup-sweep.mjs` | every named Yale/campus place in OSM is findable by the pipeline a rider hits (no browser) |
 
 `eta-accuracy.mjs` reads what the app tells a rider while independently
 watching raw positions for the actual arrival. Last daytime measurement
@@ -684,6 +690,96 @@ because #38 passed Peabody 297 m away on Whitney and never stopped, while the
 app counted down "3 min" to it and the detector still logged an arrival there
 (no distance gate on arrivals). The offline replay is the measurement; this is
 the sanity check.
+
+`lookup-sweep.mjs` answers "what can a rider NOT find?" without waiting for a
+report to arrive — the Chaplain's Office cost one. It pulls every NAMED
+node/way in the New Haven bbox whose `name` or `operator` mentions Yale, plus
+every place of worship, from Overpass, and runs each name through the lookup
+pipeline. A place counts as answered when a hit within **250 m of it ranks in
+the top 3**: name equality is the wrong test ("Yale University" matches a dozen
+labels) and rank matters because the dropdown is short. Places farther than the
+planner's `MAX_WALK_M` from every stop are set aside before any lookup is spent
+on them — no trip exists to them, so a landmark would answer a search with a
+journey the app cannot plan.
+
+**"Found" has to mean found by the pipeline a rider actually hits.** The first
+cut of this measurement scored against `geocode()` alone — curated landmarks
+plus stop names — and reported **213 of 311 places missing. That number was
+wrong.** Production does not stop at the local layer: `geocodeV1` falls through
+to Photon and then Nominatim, and those know every object Overpass just handed
+us, because it all came out of OSM in the first place. Sampled against the real
+stack, 16 of 18 supposed misses were findable. Curating 200 entries off that
+list would have diluted ranking for nothing — `landmarks.ts` warns about
+exactly that in its own header. So the script scores against `geocodeV1` with a
+real external geocoder and sorts into three buckets that mean three different
+things:
+
+| bucket | meaning | action |
+|---|---|---|
+| `curated` | the local layer answers it | none — the goal state |
+| `uncurated` | only Photon/Nominatim answer it | **not a defect.** Curating buys rank, latency and a better label; it is an improvement |
+| `UNFINDABLE` | no layer answers it | **the defect.** Only a curated entry can fix it |
+
+Measured 2026-09-03 (149 landmarks, 172 stops, 342 places, none out of reach):
+**98 curated (28.7%), 239 uncurated (69.9%), 5 UNFINDABLE (1.5%)** — the Yale
+New Haven Hospital heliport, Harkness Memorial Auditorium, and SHM's I-, L- and
+B-Wings. **Five**, not 213 — and fewer than the 18-place hand sample implied,
+because the sample could not see how many of its misses the local layer catches
+at rank ≤3.
+
+It also reports **8 places we already curate that answer to a name the matcher
+scores at zero** — it reads each landmark's OSM id back out of the trailing
+comment on its own line, so a hit on an id we already hold is a missing ALIAS,
+not a missing place: `Payne Whitney Gymnasium` vs our "Payne Whitney Gym"
+("gymnasium" is 9 letters, "gym" is 3 — past the fuzzy tier's length rule),
+`Yale Police Department` vs "Yale Police (101 Ashmun)", `Ingalls Ice Rink` vs
+"Ingalls Rink" (the same "ice rink" a rider already wrote in about). One line
+each.
+
+Flags: `--sample=N` (with `--seed`) for a quick reproducible check, `--json`,
+`--all` to include the uncurated list, `--max-unfindable=N` as a CI gate,
+`--cache` to reuse the last Overpass answer. `--local-only` skips the network
+entirely and is deliberately reported as `not answered locally / UNCLASSIFIED`,
+never as unfindable — that conflation is the mistake above, and
+`--max-unfindable` refuses to arm on it.
+
+Two constraints the script exists inside. **The external path is throttled to
+one lookup per 1.1 s by design**, to keep our egress IP off Nominatim's block
+list, so the sweep calls `geocodeV1` in-process (the same throttle applies),
+runs strictly sequentially and prints its own ETA. Calling `geocodeV1` rather
+than a server's `/api/geocode` is also what keeps the sweep out of the rider
+data: that route records every query in `search_terms`, and a few hundred
+synthetic OSM names would be indistinguishable from demand.
+
+Overpass answers **406 to Node's default User-Agent**; the script names itself,
+and that is why.
+
+### "5 unfindable" does not mean lookup is 98.5% complete
+
+It means lookup is 98.5% complete **against OpenStreetMap**, which is a
+different and much weaker claim. There are two failure classes, they need
+different instruments, and the sweep can only see one of them:
+
+| failure | instrument | reading, 2026-09-03 |
+|---|---|---|
+| **OSM knows the place, we cannot answer it** | `lookup-sweep.mjs` | 5 of 342 |
+| **The place exists, OSM does not know it** | `search_terms` (`GET /api/stats/searches`) | invisible to any sweep |
+
+The second class is the one that started all of this. **The Chaplain's Office
+does not appear in a sweep run at all** — not as a miss, not as a hit. An
+unbounded Overpass search for `[Cc]haplain` returns **zero objects** — checked
+twice, and the second time across ANY tag rather than `name` alone and over a
+bbox far wider than the sweep's (41.20,-73.05,41.45,-72.80) — and both external
+providers answer with unrelated offices. An OSM-derived sweep can only grade against OSM, so a place OSM has
+never heard of is not scored, not counted, and not in any bucket. The same goes
+for every office, centre and department that a rider knows by a name Yale
+publishes and OSM never imported. "The anchor bar" surfaced this way too.
+
+So do not read a clean sweep as a complete lookup, and do not size the curation
+backlog from it. The sweep says *we answer what OSM knows*; only what riders
+actually typed and got nothing for (PR #49's table) says *we answer what riders
+ask*. Run both, and treat a zero-result search term as the higher-priority
+signal of the two — it is a rider who already failed.
 
 ## Don'ts
 
