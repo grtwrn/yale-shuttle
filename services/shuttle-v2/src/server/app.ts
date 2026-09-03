@@ -29,7 +29,13 @@ import {
 import { createActivesTracker } from "./actives.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
-import { buildAccuracyV1, createBusesPayloadCache, geocodeV1 } from "./v1compat.js";
+import {
+  buildAccuracyV1,
+  createBusesPayloadCache,
+  createExternalGeocoder,
+  geocodeV1,
+  type ExternalGeocoder,
+} from "./v1compat.js";
 
 /**
  * Build the HTTP app. Owns no state of its own — everything routes through
@@ -129,6 +135,11 @@ export interface AppOptions {
    * the network; the default talks to Open-Meteo (see weather.ts).
    */
   weather?: WeatherService;
+  /**
+   * External half of /api/geocode (Photon, then Nominatim). Injectable so
+   * tests never reach the network; the default is created in v1compat.ts.
+   */
+  geocoder?: ExternalGeocoder;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -292,6 +303,12 @@ export function buildApp(opts: AppOptions): Hono {
 
   // -- Geocode (v1 shape: {results:[{display_name,lat,lon,type,class}]}) ----
 
+  // Tests that build the app without injecting a geocoder must not reach
+  // photon.komoot.io / nominatim from CI or the Pi — that is how an egress IP
+  // gets banned, silently, for good.
+  const geocoder = opts.geocoder ??
+    (process.env.VITEST ? { lookup: async () => [] } : createExternalGeocoder());
+
   app.get("/api/geocode", async (c) => {
     // Cap the query before it reaches the matcher: the prefix-match tier is
     // O(query tokens x candidate words) per candidate, so an unbounded ?q=
@@ -300,7 +317,7 @@ export function buildApp(opts: AppOptions): Hono {
     // so it is the honest measure of "queries".
     actives.seen(c.req.header("x-anon-id"), "search", now());
     const q = (c.req.query("q") ?? "").slice(0, 100);
-    const results = await geocodeV1(opts.collector.ref.get(), q);
+    const results = await geocodeV1(opts.collector.ref.get(), q, geocoder);
     c.header("Cache-Control", "no-store");
     return c.json({ results });
   });

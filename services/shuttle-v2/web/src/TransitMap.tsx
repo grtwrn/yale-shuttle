@@ -246,6 +246,15 @@ type SavedTrip = {
 // geocoder result is noise for this app's purpose.
 const SERVICE_CENTER: LatLon = { lat: 41.31, lon: -72.93 };
 const SERVICE_RADIUS_M = 8_000;
+// A shuttle stop or a curated destination is by definition somewhere the
+// shuttle goes, however far from the centre: Trader Joe's (Milford) is 9.8 km
+// out and used to vanish from the dropdown whenever an unrelated in-range OSM
+// hit was also returned (the raw-list fallback only fires when the filter
+// empties the list). The server ranks external hits by distance to the
+// network, so the radius only has to keep far-off OSM noise out.
+const inServiceArea = (g: GeocodeResult): boolean =>
+  g.class === "yale" || g.class === "shuttle" ||
+  haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M;
 
 
 // An active ride the rider has boarded — drives the on-bus tracking banner.
@@ -1781,7 +1790,7 @@ const TripPlanner: FC<{
       // noise here) and cap the list so the dropdown stays scannable.
       // If the filter kills everything, fall back to the raw list — the
       // rider may genuinely be searching somewhere farther out.
-      let results = raw.filter((g) => haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M).slice(0, 8);
+      let results = raw.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = raw.slice(0, 8);
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
@@ -4402,7 +4411,7 @@ const NearbyStopsPicker: FC<{
       const d = await r.json();
       if (abortRef.current !== ctrl) return;
       const rawR: GeocodeResult[] = d.results ?? [];
-      let results = rawR.filter((g) => haversineMeters(SERVICE_CENTER, g) <= SERVICE_RADIUS_M).slice(0, 8);
+      let results = rawR.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = rawR.slice(0, 8);
       if (results.length === 0) {
         setSugg([]);

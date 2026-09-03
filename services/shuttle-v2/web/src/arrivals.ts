@@ -12,6 +12,12 @@ export type DwellStat = { med: number; sd: number; n: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
+/**
+ * How much of the first hop's calibrated time an elapsed dwell may cancel.
+ * Measured, not chosen: see the stall-credit comment in computeUpcomingArrivals.
+ */
+export const STALL_CREDIT_MAX_FRACTION = 0.5;
+
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
   routeLabel: string; color: string; busName: string; stopId: number;
@@ -143,10 +149,21 @@ export function computeUpcomingArrivals(
             segVar = (segAvg * 0.5) ** 2;
           }
         }
-        // Burn stall credit on the first segment only, capped by the
-        // segment itself so we don't go negative.
+        // Burn stall credit on the first segment only, and never more than
+        // STALL_CREDIT_MAX_FRACTION of it. A segment sample runs arrival to
+        // arrival, so seg.avg already contains the TYPICAL dwell at this
+        // stop; crediting every elapsed second assumed the bus would leave
+        // the instant it had sat that long. It does not: replaying 69k raw
+        // positions (2026-09-02) against real arrivals, the next-stop error
+        // for a dwelling bus grew from -19 s after 30 s of dwell to -112 s
+        // after 2-5 min and -203 s past 5 min — the 'wait leg 20-25%
+        // optimistic' the live harness kept reporting. Capping the credit at
+        // half the hop cut the at-stop next-stop median error 71 -> 51.5 s
+        // and its bias -54 -> -26 s, and the all-positions median 115 ->
+        // 104 s (docs/eta-accuracy.md). A quarter scores the same on the
+        // median but turns pessimistic (+61 s) for buses that sat over 5 min.
         if (step === 1 && stallCredit > 0) {
-          const applied = Math.min(stallCredit, segAvg);
+          const applied = Math.min(stallCredit, segAvg * STALL_CREDIT_MAX_FRACTION);
           segAvg -= applied;
           stallCredit -= applied;
         }

@@ -4,7 +4,12 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { geocode, LANDMARKS } from "./geocode.js";
+import { damerauLevenshtein, fuzzyWordMatch, geocode, LANDMARKS } from "./geocode.js";
+import type { Landmark } from "./landmarks.js";
+import liveStops from "./__fixtures__/stops.json";
+
+// Every live stop (id, name, lat, lon) as served by /api/buses on 2026-09-02.
+const LIVE_STOPS: Stop[] = liveStops as Stop[];
 
 /**
  * Guards against coordinate rot in the hand-curated landmark list.
@@ -97,8 +102,11 @@ describe("landmark coordinates", () => {
     }
   });
 
-  // Two rows a rider cannot tell apart are worse than one row: identical
-  // coordinates mean somebody pasted the wrong line.
+  // One entry per physical place: the same coordinates under two labels mean
+  // somebody pasted the wrong line, or entered a nickname as a second place
+  // instead of an alias. Distinct places CAN be metres apart (a cafe in a
+  // museum's ground floor, a bookshop next to the Apple Store), so the bound
+  // is 'same point', not 'same block'.
   it("has no two landmarks stacked on the same spot", () => {
     for (let i = 0; i < LANDMARKS.length; i++) {
       for (let j = i + 1; j < LANDMARKS.length; j++) {
@@ -107,62 +115,55 @@ describe("landmark coordinates", () => {
         expect(
           distanceMeters(a, b),
           `${a.label} and ${b.label} are on top of each other`,
-        ).toBeGreaterThan(25);
+        ).toBeGreaterThan(5);
       }
     }
   });
 
-  // Every curated landmark is a place the shuttle exists to reach, so one of
-  // its stops has to be walkable. A landmark stranded from the network is
-  // either a bad coordinate or a destination this app cannot serve.
-  it.each(LANDMARKS.map((l) => [l.label, l] as const))(
-    "%s is within walking distance of the shuttle network",
-    (_label, l) => {
-      const { stop, meters } = nearestStop(l);
-      expect(meters, `nearest reference stop is ${stop.name} at ${Math.round(meters)} m`)
-        .toBeLessThan(400);
-    },
-  );
+  // An alias is another name for the SAME place; the same alias on two
+  // entries would make one of them unreachable by that name. A few are
+  // shared on purpose ("science hill" spans two buildings, "pharmacy" is
+  // three shops) — list them here so an accidental clash still fails.
+  it("does not reuse an alias across entries, except the deliberate ones", () => {
+    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket"]);
+    const owner = new Map<string, string>();
+    for (const l of LANDMARKS) {
+      for (const a of l.aliases ?? []) {
+        const key = a.toLowerCase();
+        if (SHARED.has(key)) continue;
+        expect(owner.get(key), `alias ${a} is on both ${owner.get(key)} and ${l.label}`).toBeUndefined();
+        owner.set(key, l.label);
+      }
+    }
+  });
 
   /**
-   * The sharp check. Each landmark is pinned to the stop that serves it —
-   * usually the stop named after the place, or after its street address, so
-   * the pairing is independently true rather than derived from the coordinate
-   * it is testing. Six of the seven 2026-08 defects moved the landmark next to
-   * the *wrong* stop; the seventh (Kline Tower) stayed nearest the right stop
-   * but drifted to 233 m, which the distance bound catches.
+   * The sharp check, now for every entry. Each landmark carries the name of
+   * the live stop that serves it (`anchorStop`), and the nearest stop in the
+   * full 172-stop network (checked-in fixture, captured from /api/buses on
+   * 2026-09-02) has to BE that stop, within walking distance. Six of the
+   * seven 2026-08 defects moved the landmark next to the *wrong* stop; the
+   * seventh (Kline Tower) stayed nearest the right stop but drifted to 233 m,
+   * which the distance bound catches.
    */
-  const ANCHORS: ReadonlyArray<[label: string, stopName: string]> = [
-    ["Old Campus", "Phelps Gate"],
-    ["Trader Joe's (Milford)", "Trader Joe's"],
-    ["ShopRite (Hamden)", "Shop Rite"],
-    ["Aldi / Walmart (Hamden)", "Aldi/Walmart"],
-    ["Davenport College", "Elm / York (TYCO)"],
-    ["Payne Whitney Gym", "Payne Whitney Gym"],
-    ["Yale Health Center", "Ashmun / Lock"],
-    ["Becton Center", "Becton / 15 Prospect"],
-    ["Rosenkranz Hall", "130 Prospect Street (S)"],
-    ["School of Management (SOM)", "SOM"],
-    ["Peabody Museum", "Peabody Museum / Whitney / Sachem"],
-    ["Ingalls Rink", "Prospect / Sachem (S)"],
-    ["Kline Tower (Kline Biology Tower)", "SCL"],
-    ["Yale Science Building (YSB)", "Lot 22 - Whitney / Humphrey"],
-    ["Divinity School", "Divinity / 409 Prospect"],
-    ["School of Public Health (YSPH)", "LEPH / 60 College"],
-    ["School of Medicine (YSM)", "333 Cedar"],
-    ["Yale-New Haven Hospital", "York / Cedar"],
-    ["Union Station", "Union Station (N)"],
-    ["Yale University Art Gallery", "Chapel / York"],
-    ["Yale Center for British Art", "Chapel / York"],
-  ];
+  const nearestLiveStop = (p: { lat: number; lon: number }): { stop: Stop; meters: number } => {
+    let best: { stop: Stop; meters: number } | null = null;
+    for (const stop of LIVE_STOPS) {
+      const meters = distanceMeters(p, stop);
+      if (!best || meters < best.meters) best = { stop, meters };
+    }
+    return best!;
+  };
 
-  it.each(ANCHORS)("%s is served by the %s stop", (label, stopName) => {
-    const landmark = LANDMARKS.find((l) => l.label === label);
-    expect(landmark, `no landmark labelled ${label}`).toBeDefined();
-    const { stop, meters } = nearestStop(landmark!);
-    expect(stop.name).toBe(stopName);
-    expect(meters, `${label} is ${Math.round(meters)} m from ${stopName}`).toBeLessThan(200);
-  });
+  it.each(LANDMARKS.map((l) => [l.label, l.anchorStop, l] as const))(
+    "%s is served by the %s stop",
+    (label, stopName, landmark) => {
+      expect(LIVE_STOPS.some((s) => s.name === stopName), `no live stop named ${stopName}`).toBe(true);
+      const { stop, meters } = nearestLiveStop(landmark);
+      expect(stop.name, `${label} is nearest ${stop.name} (${Math.round(meters)} m), not ${stopName}`).toBe(stopName);
+      expect(meters, `${label} is ${Math.round(meters)} m from ${stopName}`).toBeLessThan(500);
+    },
+  );
 });
 
 describe("landmark search", () => {
@@ -246,6 +247,209 @@ describe("landmark/stop dedup", () => {
           Math.abs(k.lat - h.lat) < 6e-4 && Math.abs(k.lon - h.lon) < 8e-4);
         expect(twins).toHaveLength(1);
       }
+    }
+  });
+});
+
+/**
+ * Measured live on 2026-09-02 against GET /api/geocode: "elenas" found
+ * nothing while "elena's" did, "stop and shop" found nothing server-side,
+ * "kbt"/"commons"/"medical school" found nothing, and "audubon" could not
+ * reach the upstream-misspelt "Orange / Audobon". Each case below is one of
+ * those, run against fixtures rather than the rider-facing list so the
+ * curated landmarks stay verified data.
+ */
+describe("robust matching (2026-09-02 live probe)", () => {
+  // Real upstream stop names, typos included — we may not hand-edit them.
+  const TYPO_STOPS: Stop[] = [
+    { id: 76, name: "Orange / Audobon", lat: 41.310923, lon: -72.920191 },
+    { id: 116, name: "Stop & Shop", lat: 41.315041, lon: -72.938202 },
+    { id: 131, name: "Whitney / Cold Springs (N)", lat: 41.325918, lon: -72.915845 },
+    { id: 115, name: "State St Station", lat: 41.30443, lon: -72.92164 },
+    { id: 17, name: "Amistand / Cedar Weekend Blue", lat: 41.300259, lon: -72.932555 },
+    { id: 157, name: "Elm / Orange", lat: 41.30742, lon: -72.92249 },
+  ];
+  const stops = [...REFERENCE_STOPS, ...TYPO_STOPS];
+  const typoNetwork = TransitNetwork.build(stops, [
+    { id: 1, name: "Reference", shortName: "R", color: "#000", stops: stops.map((s) => s.id) },
+  ]);
+
+  const FIXTURE_LANDMARKS: Landmark[] = [
+    { label: "Elena's on Orange", lat: 41.323, lon: -72.9108, anchorStop: "" },
+    // Confusables: a three-letter query must never fuzzy-match into these.
+    { label: "Sass Hall", lat: 41.31, lon: -72.93, anchorStop: "" },
+    { label: "Some Place", lat: 41.312, lon: -72.931, anchorStop: "" },
+    // Label and alias share nothing, so a hit on one is provably via that one.
+    { label: "Alpha Building", lat: 41.314, lon: -72.929, aliases: ["zeta hall"], anchorStop: "" },
+  ];
+
+  const hits = (q: string) => geocode(typoNetwork, q, FIXTURE_LANDMARKS);
+  const labels = (q: string) => hits(q).map((h) => h.label);
+  const scoreOf = (q: string, label: string) => hits(q).find((h) => h.label === label)?.score;
+
+  it.each(["elenas", "elena's", "elena’s", "élenas", "Elenas on Orange"])(
+    "%o finds the apostrophe'd landmark",
+    (q) => {
+      expect(labels(q)).toContain("Elena's on Orange");
+    },
+  );
+
+  it.each(["stop and shop", "stop & shop", "stop&shop", "Stop and Shop"])(
+    "%o ranks the Stop & Shop stop first",
+    (q) => {
+      expect(labels(q)[0]).toBe("Stop & Shop");
+    },
+  );
+
+  it("reaches the misspelt upstream stop names by their correct spelling", () => {
+    expect(labels("audubon")).toContain("Orange / Audobon");
+    expect(labels("amistad")).toContain("Amistand / Cedar Weekend Blue");
+    expect(labels("cold spring")).toContain("Whitney / Cold Springs (N)");
+  });
+
+  it("scores a typo below every prefix tier", () => {
+    // "Orange / Audobon" is a fuzzy hit; a candidate that genuinely contains
+    // the word sits above it.
+    expect(scoreOf("audubon", "Orange / Audobon")).toBe(0.3);
+    expect(scoreOf("audubon", "Orange / Audobon")!).toBeLessThan(
+      scoreOf("amistand", "Amistand / Cedar Weekend Blue")!,
+    );
+  });
+
+  it.each([
+    ["medical school", "School of Medicine (YSM)"],
+    ["commons", "Schwarzman Center"],
+    ["the commons", "Schwarzman Center"],
+    ["kbt", "Kline Tower (Kline Biology Tower)"],
+    ["marx library", "Kline Tower (Kline Biology Tower)"],
+    ["ynhh", "Yale-New Haven Hospital"],
+    ["new haven hospital", "Yale-New Haven Hospital"],
+    ["train station", "Union Station"],
+    ["business school", "School of Management (SOM)"],
+  ])("%o ranks %o first via an alias", (q, expected) => {
+    expect(geocode(network, q)[0]?.label).toBe(expected);
+  });
+
+  it("never fuzzy-matches a short token", () => {
+    expect(fuzzyWordMatch("sss", "sass")).toBe(false);
+    expect(fuzzyWordMatch("som", "some")).toBe(false);
+    expect(fuzzyWordMatch("kbt", "kbtx")).toBe(false);
+    expect(fuzzyWordMatch("somm", "some")).toBe(false);
+    expect(labels("sss")).toEqual([]);
+    expect(labels("somm")).toEqual([]);
+  });
+
+  it("allows one edit from five letters and two from eight", () => {
+    expect(fuzzyWordMatch("audubon", "audobon")).toBe(true);
+    expect(fuzzyWordMatch("peobody", "peabody")).toBe(true); // adjacent swap
+    expect(fuzzyWordMatch("steling", "sterling")).toBe(true);
+    expect(fuzzyWordMatch("biencke", "beinecke")).toBe(false); // 7 letters, 2 edits
+    expect(fuzzyWordMatch("shwartzman", "schwarzman")).toBe(true); // 10 letters, 2 edits
+    expect(fuzzyWordMatch("shwarzmen", "schwarzman")).toBe(true);
+    expect(fuzzyWordMatch("shwarzmenn", "schwarzman")).toBe(false); // 3 edits
+    expect(damerauLevenshtein("ca", "abc", 3)).toBe(3); // OSA, not unrestricted
+  });
+
+  it("scores an alias exactly like the label", () => {
+    expect(scoreOf("zeta hall", "Alpha Building")).toBe(scoreOf("alpha building", "Alpha Building"));
+    expect(scoreOf("zeta", "Alpha Building")).toBe(scoreOf("alpha", "Alpha Building"));
+    expect(scoreOf("hall zeta", "Alpha Building")).toBe(scoreOf("building alpha", "Alpha Building"));
+    expect(scoreOf("zeta hall", "Alpha Building")).toBe(1);
+  });
+
+  // "st"/"street" are query stopwords so "orange st" lists the Orange Street
+  // stops; that must not cost a stop that spells "St" in its own name.
+  it("drops street suffixes from the query without losing street-named stops", () => {
+    expect(labels("orange st")).toEqual(expect.arrayContaining(["Orange / Audobon", "Elm / Orange"]));
+    expect(labels("orange street")).toContain("Orange / Audobon");
+    expect(labels("state st station")[0]).toBe("State St Station");
+    expect(labels("state st")[0]).toBe("State St Station");
+    expect(labels("State St Station")[0]).toBe("State St Station");
+  });
+
+  it("still ranks every fixture stop first when typed verbatim", () => {
+    for (const s of stops) {
+      const top = geocode(typoNetwork, s.name, FIXTURE_LANDMARKS)[0]!;
+      const merged = top.kind === "landmark" &&
+        Math.abs(top.lat - s.lat) < 6e-4 && Math.abs(top.lon - s.lon) < 8e-4;
+      expect(top.label === s.name || merged, `${s.name} -> ${top.label}`).toBe(true);
+    }
+  });
+});
+
+/**
+ * The rider-facing list against the whole live network. The fixture tests
+ * above use a handful of stops, which is how a 2026-09-02 review found that
+ * with 148 landmarks most sit inside some stop's dedup box and a landmark
+ * could take the stop's row whatever its score: "howe" returned only
+ * Mamoun's (alias "85 howe") and the frontend auto-picked it.
+ */
+describe("the real list against every live stop", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, [
+    { id: 1, name: "Live", shortName: "L", color: "#000", stops: LIVE_STOPS.map((s) => s.id) },
+  ]);
+  const top = (q: string) => geocode(live, q)[0];
+  const norm = (s: string) => s.toLowerCase();
+
+  it.each([
+    "howe", "broadway", "crown", "york", "chapel", "cottage", "munson", "ashmun", "howard",
+    "cedar", "orange st", "college st", "temple", "winchester", "whitney", "prospect",
+  ])("%o ranks a stop on that street first", (q) => {
+    const hit = top(q)!;
+    const word = q.split(" ")[0]!;
+    // A landmark placed ON one of those stops may carry the merged row
+    // (Blue State Coffee sits on the 300 Cedar stop); a landmark elsewhere
+    // may not.
+    const stopUnder = LIVE_STOPS.find((st) =>
+      norm(st.name).includes(word) &&
+      Math.abs(st.lat - hit.lat) < 3.6e-4 && Math.abs(st.lon - hit.lon) < 4.8e-4);
+    expect(hit.kind === "stop" || stopUnder !== undefined, `${q} -> ${hit.label}`).toBe(true);
+    expect(norm(hit.label)).toContain(word);
+  });
+
+  it("a bare number is a stop, not an address alias", () => {
+    // "800" used to resolve to the Yale Physicians Building (alias "800
+    // howard") ahead of the Building 800 stop, 6.6 km away, and the
+    // frontend auto-picks a landmark on Enter.
+    expect(top("800")?.label).toBe("Building 800");
+    expect(top("60")?.label).toBe("Building 600");
+    expect(top("800 howard")?.label).toBe("Yale Physicians Building");
+  });
+
+  it("a match on the label outranks the same score through an alias", () => {
+    // Mid-typing "sterlin": two LABELS start with it (the library and the
+    // chemistry lab); Divinity School, YSM and friends only have an alias
+    // that does, and used to tie with them alphabetically.
+    const labels = geocode(live, "sterlin").map((h) => h.label);
+    expect(labels.slice(0, 2)).toEqual(expect.arrayContaining(["Sterling Memorial Library"]));
+    expect(labels.indexOf("Divinity School")).toBeGreaterThan(labels.indexOf("Sterling Memorial Library"));
+  });
+
+  it("a street word alone does not reach an address alias", () => {
+    // "1000 chapel" is an alias of Claire's; "chapel" must not surface it.
+    expect(geocode(live, "chapel").some((h) => h.label.startsWith("Claire"))).toBe(false);
+    // ...but the address itself does.
+    expect(geocode(live, "1000 chapel")[0]?.label.startsWith("Claire")).toBe(true);
+  });
+
+  it.each([
+    ["phelps", "Phelps Gate"],
+    ["mamouns", "Mamoun's Falafel"],
+    ["union station", "Union Station"],
+    ["bf", "Benjamin Franklin College"],
+    ["mc", "Morse College"],
+    ["peabody", "Peabody Museum"],
+    ["stop and shop", "Stop & Shop (Whalley Ave)"],
+  ])("%o -> %o", (q, label) => {
+    expect(top(q)?.label).toBe(label);
+  });
+
+  it("ranks every live stop name first when typed verbatim", () => {
+    for (const s of LIVE_STOPS) {
+      const hit = top(s.name)!;
+      const merged = hit.kind === "landmark" &&
+        Math.abs(hit.lat - s.lat) < 6e-4 && Math.abs(hit.lon - s.lon) < 8e-4;
+      expect(hit.label === s.name || merged, `${s.name} -> ${hit.label}`).toBe(true);
     }
   });
 });

@@ -17,8 +17,10 @@
 //     "mock":  { "/api/weather": { "available": true, "hourly": [{ "timeMs": "${now}", "probability": 80 }] } },
 //     "trip":  { "board": 118, "dest": 38,            // stop ids; default = two stops of a live route
 //                "from": { "lat": 41.32, "lon": -72.92 } },  // optional: stand here instead of at the board stop
-//     "views": ["trip", "map"],                       // any of trip | map | favorites | issues
+//     "views": ["trip", "map"],                       // any of trip | map | favorites | issues | search
 //     "focus": "Rain likely",                         // text to scroll into view before the shot
+//     "search": "elenas",                              // type this into the destination box and shoot the
+//                                                     // suggestion list instead of planning a trip (view "search")
 //     "actions": [ { "click": "Blue Day", "which": "last" }, { "wait": 2000 },
 //                  { "click": "Purple", "on": "map" } ],  // after that view opens, before its shot
 //     "fullPage": false                               // frame the viewport (a fullscreen overlay), not the whole page
@@ -171,6 +173,21 @@ for (const view of views) {
       await sleep(1500);
       await input.press("Enter");
       await sleep(4000);
+    } else if (view === "search") {
+      // A destination lookup: type the recipe's query and capture the
+      // suggestion dropdown as the rider sees it — no Enter, no auto-pick.
+      await openTab("Trip").catch(() => {});
+      const input = page.getByPlaceholder(/where do you want to go/i).first();
+      await input.click({ timeout: 20_000 });
+      await input.fill("");
+      await input.type(String(recipe.search ?? ""), { delay: 60 });
+      // The box debounces 300 ms and the lookup may go upstream; give it time.
+      await sleep(3500);
+      const listed = await page.getByRole("listbox").first().isVisible().catch(() => false);
+      if (!listed) {
+        const anyOption = await page.getByRole("option").first().isVisible().catch(() => false);
+        if (!anyOption) throw new Error("no suggestions appeared for " + JSON.stringify(recipe.search));
+      }
     } else {
       await openTab(view[0].toUpperCase() + view.slice(1));
       await sleep(view === "map" ? 3000 : 500);

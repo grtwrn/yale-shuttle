@@ -16,8 +16,9 @@
 
 import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
+import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
-import { geocode } from "./geocode.js";
+import { geocode, normalizeName } from "./geocode.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
@@ -180,7 +181,7 @@ export function createBusesPayloadCache(collector: Collector): () => string {
 
 // -- /api/geocode (v1 shape) --------------------------------------------------
 
-interface GeocodeV1Hit {
+export interface GeocodeV1Hit {
   display_name: string;
   lat: number;
   lon: number;
@@ -188,31 +189,320 @@ interface GeocodeV1Hit {
   class: string;
 }
 
-// New Haven bounding box (lon/lat) so address lookups stay local.
+// New Haven bounding box for the two external providers. Nominatim wants
+// lon/lat as left,top,right,bottom; Photon wants minLon,minLat,maxLon,maxLat.
 const NH_VIEWBOX = "-73.05,41.38,-72.83,41.22";
-const geoCache = new Map<string, { at: number; results: GeocodeV1Hit[] }>();
+const PHOTON_BBOX = "-73.05,41.22,-72.83,41.38";
+// Bias point for Photon's ranking: central campus.
+const PHOTON_BIAS = { lat: 41.31, lon: -72.93 };
 const GEO_TTL_MS = 24 * 60 * 60 * 1000;
 const GEO_CACHE_MAX = 500;
 
-// Nominatim's usage policy caps a single application at 1 request/second.
-// The frontend fires one lookup per debounced keystroke from two call sites,
-// so a few hundred riders typing destinations would blow straight past that
-// and get this machine's egress IP blocked. That failure is *silent* — a
-// block just yields empty results forever, and address search quietly dies —
-// so we throttle ourselves rather than find out the hard way.
-const NOMINATIM_MIN_INTERVAL_MS = 1100;
+// Nominatim's usage policy caps a single application at 1 request/second and
+// Photon asks for fair use. The frontend fires one lookup per debounced
+// keystroke from two call sites, so a few hundred riders typing destinations
+// would blow straight past that and get this machine's egress IP blocked.
+// That failure is *silent* — a block just yields empty results forever, and
+// address search quietly dies — so we throttle ourselves rather than find out
+// the hard way. ONE queue covers both providers: a Photon miss followed by a
+// Nominatim fallback is two outbound requests and takes two slots.
+const GEOCODE_MIN_INTERVAL_MS = 1100;
 // Rather than drop a lookup that arrives inside the interval, hold it for the
 // next slot — a rider typing one address should still get an answer, and the
-// frontend debounces keystrokes so this queue stays shallow in practice. Past
-// this much backlog we shed load and answer from local stops/landmarks alone:
-// degrading beats getting the egress IP banned, which breaks search for good.
-const NOMINATIM_MAX_WAIT_MS = 2_500;
-let nextSlotAt = 0;
-// Collapses concurrent identical lookups (50 riders typing "union station"
-// should cost one outbound request, not 50).
-const nominatimInFlight = new Map<string, Promise<GeocodeV1Hit[]>>();
+// frontend debounces keystrokes so this queue stays shallow in practice. The
+// budget is the whole wall-clock a lookup may take, queue wait AND both
+// providers' requests included: past it we answer from local stops and
+// landmarks alone. Degrading beats getting the egress IP banned, which breaks
+// search for good — and beats a cold request that waits 2.5 s twice.
+const GEOCODE_BUDGET_MS = 2_500;
 
-export async function geocodeV1(network: TransitNetwork, q: string): Promise<GeocodeV1Hit[]> {
+/**
+ * The external half of destination lookup. Injectable into `buildApp` (and
+ * `geocodeV1`) so tests exercise the merge/rank/fallback with a stubbed
+ * fetch and never touch the network.
+ */
+export interface ExternalGeocoder {
+  /** Best-effort results for `query`. Never throws; [] when nothing answers. */
+  lookup(query: string): Promise<GeocodeV1Hit[]>;
+}
+
+export interface ExternalGeocoderOptions {
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+  /** Wall-clock budget per lookup, queue wait included. Default 2.5 s. */
+  budgetMs?: number;
+}
+
+type Provider = "photon" | "nominatim";
+type ProviderFetch = (query: string, signal: AbortSignal) => Promise<GeocodeV1Hit[] | null>;
+
+/**
+ * Photon first, Nominatim when Photon errors or returns nothing.
+ *
+ * Photon (komoot) is the primary because it tolerates what riders actually
+ * type: measured on 2026-09-02, "elenas" found Elena's on Orange, "steling
+ * library" found Sterling, "peobody" found the Peabody. Nominatim returned
+ * nothing for "elenas" until the apostrophe went in — the operator hit that
+ * one personally — and nothing for "stop and shop". Nominatim stays as the
+ * fallback because it is a different service on different infrastructure:
+ * when one sheds load the other usually does not.
+ */
+export function createExternalGeocoder(options: ExternalGeocoderOptions = {}): ExternalGeocoder {
+  const doFetch: typeof fetch | undefined = options.fetchImpl ?? globalThis.fetch;
+  const now = options.now ?? Date.now;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const budgetMs = options.budgetMs ?? GEOCODE_BUDGET_MS;
+
+  // Keyed by provider + query, so a Photon miss (cached as empty) does not
+  // hide the Nominatim answer, and vice versa.
+  const cache = new Map<string, { at: number; results: GeocodeV1Hit[] }>();
+  // Collapses concurrent identical lookups (50 riders typing "union station"
+  // should cost one outbound request, not 50).
+  const inFlight = new Map<string, Promise<GeocodeV1Hit[]>>();
+  let nextSlotAt = 0;
+
+  const remember = (key: string, results: GeocodeV1Hit[]) => {
+    // Evict oldest-first. Clearing the whole map (an earlier behaviour) threw
+    // away the hot queries too, so every flush caused a burst of re-fetches
+    // against the very rate limit we're trying to respect.
+    while (cache.size >= GEO_CACHE_MAX) {
+      const oldest = cache.keys().next().value;
+      if (oldest === undefined) break;
+      cache.delete(oldest);
+    }
+    cache.set(key, { at: now(), results });
+  };
+
+  /**
+   * One provider's answer, or null when it could not be asked (no slot inside
+   * the budget, aborted, network error, non-2xx). Only a real answer — even
+   * an empty one — is cached; a failure must be retried next time.
+   */
+  const ask = async (
+    provider: Provider,
+    query: string,
+    deadline: number,
+    signal: AbortSignal,
+    run: ProviderFetch,
+  ): Promise<GeocodeV1Hit[] | null> => {
+    // "Union Station" and "union station" are one lookup, not two slots.
+    const key = `${provider}:${query.trim().toLowerCase().replace(/\s+/g, " ")}`;
+    const cached = cache.get(key);
+    if (cached && now() - cached.at < GEO_TTL_MS) return cached.results;
+
+    // Claim the next slot. If it falls outside this lookup's budget, give up
+    // on this provider and let the caller degrade.
+    const t = now();
+    const slotAt = Math.max(t, nextSlotAt);
+    if (slotAt > deadline) return null;
+    nextSlotAt = slotAt + GEOCODE_MIN_INTERVAL_MS;
+    if (slotAt > t) await sleep(slotAt - t);
+    if (signal.aborted) return null;
+
+    try {
+      const results = await run(query, signal);
+      if (results === null) return null;
+      remember(key, results);
+      return results;
+    } catch {
+      return null;
+    }
+  };
+
+  const photon: ProviderFetch = async (query, signal) => {
+    if (!doFetch) return null;
+    const url =
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}` +
+      `&lat=${PHOTON_BIAS.lat}&lon=${PHOTON_BIAS.lon}&limit=8&lang=en&bbox=${PHOTON_BBOX}`;
+    const res = await doFetch(url, {
+      signal,
+      headers: { "User-Agent": "yale-shuttle (https://yale-shuttle.fly.dev)" },
+    });
+    if (!res.ok) return null;
+    return parsePhoton(await res.json());
+  };
+
+  const nominatim: ProviderFetch = async (query, signal) => {
+    if (!doFetch) return null;
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5` +
+      `&viewbox=${NH_VIEWBOX}&bounded=1&q=${encodeURIComponent(query)}`;
+    const res = await doFetch(url, {
+      signal,
+      // Nominatim requires a real, reachable contact. This advertised
+      // yale-shuttle-v2.fly.dev, an app destroyed in the v2 migration — a
+      // dead URL invites exactly the block we're trying to avoid.
+      headers: { "User-Agent": "yale-shuttle (https://yale-shuttle.fly.dev)" },
+    });
+    if (!res.ok) return null;
+    return parseNominatim(await res.json());
+  };
+
+  const lookup = async (query: string): Promise<GeocodeV1Hit[]> => {
+    // Someone is already fetching this query — ride along on their request.
+    // Keyed like the cache, so "Union Station" and "union station" typed at
+    // the same moment cost one slot, not two.
+    const flightKey = query.trim().toLowerCase().replace(/\s+/g, " ");
+    const pending = inFlight.get(flightKey);
+    if (pending) return pending;
+
+    const req = (async () => {
+      const deadline = now() + budgetMs;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), budgetMs);
+      try {
+        const first = await ask("photon", query, deadline, ctrl.signal, photon);
+        if (first && first.length > 0) return first;
+        const second = await ask("nominatim", query, deadline, ctrl.signal, nominatim);
+        return second ?? [];
+      } catch {
+        return [];
+      } finally {
+        clearTimeout(timer);
+      }
+    })().finally(() => inFlight.delete(flightKey));
+    inFlight.set(flightKey, req);
+    return req;
+  };
+
+  return { lookup };
+}
+
+/**
+ * Photon answers GeoJSON. `display_name` is built as "name, street, city"
+ * (with the house number ahead of the street, as a New Haven address is
+ * written) because the frontend shows the first two comma-parts: a rider
+ * reads "Elena's on Orange, Orange Street".
+ */
+export function parsePhoton(body: unknown): GeocodeV1Hit[] {
+  const features = (body as { features?: unknown[] } | null)?.features;
+  if (!Array.isArray(features)) return [];
+  const results: GeocodeV1Hit[] = [];
+  for (const f of features) {
+    if (!f || typeof f !== "object") continue;
+    const feat = f as {
+      geometry?: { coordinates?: unknown };
+      properties?: Record<string, unknown>;
+    };
+    const coords = feat.geometry?.coordinates;
+    const p = feat.properties ?? {};
+    if (!Array.isArray(coords)) continue;
+    const lon = Number(coords[0]);
+    const lat = Number(coords[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const str = (k: string) => (typeof p[k] === "string" ? (p[k] as string).trim() : "");
+    const name = str("name");
+    const street = [str("housenumber"), str("street")].filter(Boolean).join(" ");
+    const city = str("city");
+    const kind = str("type");
+    // A country, state or county is never where a rider is going.
+    if (kind === "country" || kind === "state" || kind === "county") continue;
+    const parts: string[] = [];
+    if (name) parts.push(name);
+    if (street && street !== name) parts.push(street);
+    if (city && city !== name) parts.push(city);
+    if (parts.length === 0) continue;
+    const osmKey = str("osm_key");
+    const osmValue = str("osm_value");
+    // "house" is the value the frontend auto-picks on for an exact address,
+    // so an address-shaped answer must keep it whatever OSM tagged it. Photon
+    // labels every point result `type: "house"` — a shop as much as a
+    // building — so that field alone says nothing; the OSM tags do, as does
+    // a nameless hit that is only a house number on a street.
+    const isHouse =
+      osmKey === "building" ||
+      osmValue === "house" ||
+      osmValue === "building" ||
+      (!name && str("housenumber") !== "");
+    results.push({
+      display_name: parts.join(", "),
+      lat,
+      lon,
+      type: isHouse ? "house" : osmValue || kind || "place",
+      class: "osm",
+    });
+  }
+  return results;
+}
+
+export function parseNominatim(body: unknown): GeocodeV1Hit[] {
+  if (!Array.isArray(body)) return [];
+  const rows = body as Array<{
+    display_name?: string;
+    lat?: string;
+    lon?: string;
+    type?: string;
+    class?: string;
+    addresstype?: string;
+  }>;
+  const results: GeocodeV1Hit[] = [];
+  for (const r of rows) {
+    const lat = Number(r.lat);
+    const lon = Number(r.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !r.display_name) continue;
+    const isHouse = r.type === "house" || r.addresstype === "building" || r.addresstype === "house";
+    results.push({
+      display_name: r.display_name,
+      lat,
+      lon,
+      type: isHouse ? "house" : r.type ?? "place",
+      class: r.class ?? "osm",
+    });
+  }
+  return results;
+}
+
+// The right area is "near the shuttle network", not a rectangle: a viewbox
+// admits a street in Branford as readily as one on Orange Street. Any result
+// farther than this from every stop is dropped when a closer one exists.
+const EXTERNAL_REACH_M = 2_500;
+const LOCAL_DEDUP_M = 60;
+const EXTERNAL_DEDUP_M = 150;
+const MERGED_MAX = 12;
+
+/**
+ * Keeps the provider's order (it ranks by relevance; a distance sort once put
+ * a street centreline ahead of the house the rider typed) and drops the hits
+ * out of reach of the shuttle network when a reachable one exists. Two
+ * external hits for the same place (Photon lists a shop's node and its
+ * building) collapse on name + proximity.
+ */
+export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): GeocodeV1Hit[] {
+  const stops = [...network.stops.values()];
+  const nearest = (h: GeocodeV1Hit) => {
+    let best = Infinity;
+    for (const s of stops) {
+      const d = distanceMeters(h, s);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  // Keep the provider's order — it ranks by relevance, and re-sorting by
+  // distance put a street centreline ahead of the house the rider typed —
+  // and only DROP hits that are out of reach when a reachable one exists.
+  const scored = hits.map((h) => ({ h, d: nearest(h) }));
+  const reachable = scored.some((s) => s.d <= EXTERNAL_REACH_M)
+    ? scored.filter((s) => s.d <= EXTERNAL_REACH_M)
+    : scored;
+  const out: GeocodeV1Hit[] = [];
+  for (const { h } of reachable) {
+    const name = normalizeName(h.display_name.split(",")[0] ?? "");
+    const twin = out.some(
+      (k) =>
+        normalizeName(k.display_name.split(",")[0] ?? "") === name &&
+        distanceMeters(k, h) < EXTERNAL_DEDUP_M,
+    );
+    if (!twin) out.push(h);
+  }
+  return out;
+}
+
+export async function geocodeV1(
+  network: TransitNetwork,
+  q: string,
+  external: ExternalGeocoder,
+): Promise<GeocodeV1Hit[]> {
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
   const local: GeocodeV1Hit[] = geocode(network, q).map((h) => ({
     display_name: h.label,
@@ -223,99 +513,21 @@ export async function geocodeV1(network: TransitNetwork, q: string): Promise<Geo
   }));
 
   const query = q.trim();
-  // Skip the external lookup for short queries and under tests (keeps the
-  // suite hermetic and off the network).
-  if (query.length < 3 || process.env.VITEST) return local;
+  // Skip the external lookup for short queries.
+  // Gate on what the matcher saw: "!!!" is three characters and no query.
+  if (normalizeName(query).length < 3) return local;
 
-  const external = await nominatim(query);
-  // Merge, deduping anything within ~30 m of a local hit.
+  // The shipped geocoder never throws, but the interface is injectable and a
+  // rejection here would 500 the route: degrade to local instead.
+  const ranked = rankExternal(network, await external.lookup(query).catch(() => []));
+  // Local results always come first; an external hit for a place we already
+  // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];
-  for (const e of external) {
-    if (merged.some((m) => Math.abs(m.lat - e.lat) < 3e-4 && Math.abs(m.lon - e.lon) < 3e-4)) {
-      continue;
-    }
+  for (const e of ranked) {
+    if (local.some((m) => distanceMeters(m, e) < LOCAL_DEDUP_M)) continue;
     merged.push(e);
   }
-  return merged.slice(0, 12);
-}
-
-async function nominatim(query: string): Promise<GeocodeV1Hit[]> {
-  const cached = geoCache.get(query);
-  if (cached && Date.now() - cached.at < GEO_TTL_MS) return cached.results;
-
-  // Someone is already fetching this exact query — ride along on their request.
-  const pending = nominatimInFlight.get(query);
-  if (pending) return pending;
-
-  // Claim the next 1-per-second slot. If the backlog is already deeper than
-  // we're willing to make a rider wait, give up on the external lookup and let
-  // the caller answer from local stops and Yale landmarks alone.
-  const nowMs = Date.now();
-  const slotAt = Math.max(nowMs, nextSlotAt);
-  if (slotAt - nowMs > NOMINATIM_MAX_WAIT_MS) return cached?.results ?? [];
-  nextSlotAt = slotAt + NOMINATIM_MIN_INTERVAL_MS;
-
-  const req = (async () => {
-    const delay = slotAt - Date.now();
-    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-    return nominatimFetch(query);
-  })().finally(() => nominatimInFlight.delete(query));
-  nominatimInFlight.set(query, req);
-  return req;
-}
-
-async function nominatimFetch(query: string): Promise<GeocodeV1Hit[]> {
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5` +
-    `&viewbox=${NH_VIEWBOX}&bounded=1&q=${encodeURIComponent(query)}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 2500);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      // Nominatim requires a real, reachable contact. This advertised
-      // yale-shuttle-v2.fly.dev, an app destroyed in the v2 migration — a
-      // dead URL invites exactly the block we're trying to avoid.
-      headers: { "User-Agent": "yale-shuttle (https://yale-shuttle.fly.dev)" },
-    });
-    if (!res.ok) return [];
-    const rows = (await res.json()) as Array<{
-      display_name?: string;
-      lat?: string;
-      lon?: string;
-      type?: string;
-      class?: string;
-      addresstype?: string;
-    }>;
-    const results: GeocodeV1Hit[] = [];
-    for (const r of rows) {
-      const lat = Number(r.lat);
-      const lon = Number(r.lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lon) || !r.display_name) continue;
-      const isHouse = r.type === "house" || r.addresstype === "building" || r.addresstype === "house";
-      results.push({
-        display_name: r.display_name,
-        lat,
-        lon,
-        type: isHouse ? "house" : r.type ?? "place",
-        class: r.class ?? "osm",
-      });
-    }
-    // Evict oldest-first. Clearing the whole map (the previous behaviour)
-    // threw away the hot queries too, so every flush caused a burst of
-    // re-fetches against the very rate limit we're trying to respect.
-    while (geoCache.size >= GEO_CACHE_MAX) {
-      const oldest = geoCache.keys().next().value;
-      if (oldest === undefined) break;
-      geoCache.delete(oldest);
-    }
-    geoCache.set(query, { at: Date.now(), results });
-    return results;
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timer);
-  }
+  return merged.slice(0, MERGED_MAX);
 }
 
 // -- /api/accuracy (v1 shape) -------------------------------------------------
