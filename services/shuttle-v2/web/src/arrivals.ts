@@ -8,7 +8,7 @@ import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 
 export type SegmentStat = { avg: number; sd?: number; n: number };
 export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
-export type DwellStat = { med: number; sd: number; n: number };
+export type DwellStat = { med: number; sd: number; n: number; low?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
@@ -20,6 +20,30 @@ export type DwellsByBus = Record<string, DwellTimes>;
  * only the fallback for a stop the calibrator has never measured.
  */
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
+
+/** Floor on any hop's driving time, shared with the unmeasured-hop fallback. */
+const MIN_HOP_SEC = 30;
+
+/** A dwell this long is a REST — the driver's layover, taken once a lap. */
+const REST_SEC = 5 * 60;
+
+/**
+ * What an upcoming rest is worth once the bus has already taken one.
+ *
+ * A lap holds one rest and the timetable does not say where. On Red it lands
+ * at Canal/Munson or at 344 Winchester: over 597 laps in 30 days Canal/Munson
+ * held the bus 5 min or more on 2% of them, 344 Winchester on most of the
+ * rest, and BOTH on 0.0%. The two dwells correlate at -0.27 — one or the
+ * other. A board that bills the median at both is billing a rest that will
+ * not happen, which is how a rider was told 9 min for a bus about 4 min away
+ * while it sat out its layover at the FIRST of the two (operator screenshot,
+ * 2026-09-03).
+ *
+ * 165 s is the measured conditional median: when the bus had rested at
+ * Canal/Munson its 344 Winchester dwell ran 2.7 min, against 8.6 min when it
+ * had not.
+ */
+const RESTED_DWELL_SEC = 165;
 
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
@@ -48,6 +72,7 @@ export function computeUpcomingArrivals(
     if (routeBuses.length === 0) continue;
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
+    const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
@@ -89,6 +114,11 @@ export function computeUpcomingArrivals(
           );
         }
       }
+
+      // Has this bus already taken its rest? Sitting at its anchor stop well
+      // past a normal stop IS the lap's rest, and a big dwell still ahead of
+      // it will not happen — see RESTED_DWELL_SEC.
+      const restTaken = stallCredit >= REST_SEC;
 
       // Mid-segment proration: if the bus is en route (not dwelling at
       // the anchor) and GPS shows it between A and B, scale the first
@@ -133,6 +163,36 @@ export function computeUpcomingArrivals(
         if (seg && seg.n >= 1) {
           segAvg = seg.avg;
           segVar = (seg.sd ?? 0) ** 2;
+          // A hop's served time is the dwell at its from-stop plus the drive.
+          // For a stop the bus has NOT REACHED YET, re-price that dwell at a
+          // low quantile instead of the median: a layover is a wide
+          // distribution (Red's 344 Winchester runs 3.1 min at the tenth
+          // percentile to 12.6 at the ninetieth, and one visit in seventeen is
+          // under two minutes), and billing the middle of it made the board
+          // pessimistic by more than two minutes on a third to a half of the
+          // readings that span a layover. Pessimistic is the costly direction:
+          // the rider walks down and the bus has gone. Measured over 30 days
+          // on Red, Blue Day, Orange Day and Green, this moves the median
+          // error on such estimates from +0.8..+2.0 min to about zero and the
+          // >2-min-pessimistic share from 36-50% to 17-32% (p25 overshoots
+          // into optimism; see docs/eta-accuracy.md).
+          //
+          // Step 1 is exempt: the bus is AT that stop, so its dwell is handled
+          // by the elapsed-dwell credit below, which knows how long it has
+          // actually sat. This only re-prices rests still in the future.
+          if (step > 1) {
+            const d = routeDwells[String(stops[prevI])];
+            if (d && d.med > 0) {
+              // Keep a floor on the drive so a hop whose average is almost all
+              // dwell still prices the driving.
+              const drive = Math.max(MIN_HOP_SEC, segAvg - d.med);
+              // A rest already taken elsewhere will not be taken again here.
+              const rest = restTaken && d.med > REST_SEC
+                ? Math.min(d.low ?? d.med, RESTED_DWELL_SEC)
+                : d.low;
+              if (rest !== undefined && rest < d.med) segAvg = drive + rest;
+            }
+          }
         } else {
           // Unmeasured hop. The route-average segment time is a fair guess
           // for a typical block-to-block hop, but never for a long one:

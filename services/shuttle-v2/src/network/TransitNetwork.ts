@@ -62,6 +62,27 @@ export interface DwellStats {
   mean: number;
   stddev: number;
   n: number;
+  /**
+   * A LOW quantile of the dwell (the 35th percentile), for a dwell the bus has
+   * not started yet.
+   *
+   * A layover's dwell is not a number, it is a wide distribution: at Red's
+   * 344 Winchester the deciles run 3.1 / 5.5 / 8.3 / 10.7 / 12.6 minutes, and
+   * one visit in seventeen is under two minutes. Billing the median for a rest
+   * the bus has not begun makes the board pessimistic about a third to half of
+   * the time by more than two minutes — and pessimistic is the direction that
+   * costs a rider the bus, because they stroll down and it has gone.
+   *
+   * Measured over 30 days of arrivals on the four busiest routes, re-pricing
+   * only the not-yet-started dwells at p35 moves the median error on estimates
+   * that span a layover from +0.8..+2.0 min to about zero, and the share more
+   * than 2 min pessimistic from 36-50% down to 17-32%. p25 overshoots into
+   * optimism (-1.8..-2.7 min). See docs/eta-accuracy.md.
+   *
+   * Undefined until the calibrator has enough samples to place a quantile;
+   * callers must fall back to `mean`.
+   */
+  low?: number;
 }
 
 export interface WalkTransfer {

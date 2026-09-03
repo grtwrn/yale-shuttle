@@ -66,7 +66,7 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
   const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number }>> = {};
+  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -102,10 +102,15 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number }> = {};
+    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number }> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
-      dwMap[String(sid)] = { med: round1(d.mean), sd: round1(d.stddev), n: d.n };
+      dwMap[String(sid)] = {
+        med: round1(d.mean), sd: round1(d.stddev), n: d.n,
+        // `low` is what the client bills for a dwell the bus has not started
+        // (see DwellStats.low). Absent until the stop has enough history.
+        ...(d.low !== undefined ? { low: round1(d.low) } : {}),
+      };
     }
     dwells[rid] = dwMap;
   }
