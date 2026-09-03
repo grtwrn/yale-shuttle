@@ -125,6 +125,9 @@ describe("step", () => {
       stationarySince: T0,
       stationaryLat: stops[0]!.lat,
       stationaryLon: stops[0]!.lon,
+      stationaryBreachAt: null,
+      stationaryBreachLat: null,
+      stationaryBreachLon: null,
     };
     const obsOnRouteTwo: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 2 };
     const result = step(twoRouteNet, stateOnRouteOne, obsOnRouteTwo);
@@ -146,6 +149,9 @@ describe("step", () => {
       stationarySince: T0,
       stationaryLat: stops[0]!.lat,
       stationaryLon: stops[0]!.lon,
+      stationaryBreachAt: null,
+      stationaryBreachLat: null,
+      stationaryBreachLon: null,
     };
     const obsOnUnknown: BusObservation = { ...obsAt(stops[1]!, T0 + 30_000, 7), routeId: 999 };
     const result = step(net, stateOnRouteOne, obsOnUnknown);
@@ -679,8 +685,15 @@ describe("the stationary clock survives a parked shuffle (2026-09-03)", () => {
 
   it("restarts once the bus has actually gone somewhere", () => {
     const parked = step(nearNet, null, at(0, T0)).state!;
-    const left = step(nearNet, parked, at(300, T0 + 8 * 60_000)).state!;
+    // One observation away is not proof; it is held pending.
+    const leaving = step(nearNet, parked, at(300, T0 + 8 * 60_000)).state!;
+    expect(leaving.stationarySince).toBe(T0);
+    expect(leaving.stationaryBreachAt).toBe(T0 + 8 * 60_000);
+    // The second confirms it, and the clock is backdated to the first, so
+    // confirmation costs detection latency and not accuracy.
+    const left = step(nearNet, leaving, at(340, T0 + 8 * 60_000 + 5_000)).state!;
     expect(left.stationarySince).toBe(T0 + 8 * 60_000);
+    expect(left.stationaryBreachAt).toBeNull();
   });
 
   it("cannot be walked across town one metre at a time", () => {
@@ -692,5 +705,79 @@ describe("the stationary clock survives a parked shuffle (2026-09-03)", () => {
     }
     // 120 m from where it stopped: the clock must have restarted on the way.
     expect(st.stationarySince).toBeGreaterThan(T0);
+  });
+});
+
+describe("step: the Red #316 layover, replayed from production", () => {
+  // Every coordinate below is a real `raw_positions` row for bus #316 on
+  // 2026-09-03, the incident the operator filed as urgent (#82, "it jumped
+  // from 3min to 8 min!"). The bus was parked at 344 Winchester from 20:39:43.
+  //
+  // At 20:45:23 it wandered 85.6 m from where it had stopped — past the 75 m
+  // radius by ten metres — and then came straight back and sat for another
+  // minute. The old guard took that single fix as a departure and restarted
+  // the layover clock, so the payload reported 25 s of standing for a bus that
+  // had been there six minutes. The client re-billed the whole ~5 min hold and
+  // the rider's trip went from 15 min / arrive 5:00p to 20 min / arrive 5:06p.
+  //
+  // The real departure is at 20:46:23, and it leaves by looping back past the
+  // parking spot first — which is why a bigger radius alone would not do: at
+  // 20:46:23 the departing bus is only ~10 m from its anchor.
+  const PARK = { lat: 41.324417, lon: -72.928099 }; // 20:39:43, clock starts
+  const garage: Stop = { id: 10, name: "344 Winchester", ...PARK };
+  const onward: Stop = { id: 11, name: "Munson", lat: 41.3255, lon: -72.9195 };
+  const yardNet = TransitNetwork.build([garage, onward], [
+    { id: 1, name: "Red", shortName: "R", color: "#c00", stops: [10, 11] },
+  ]);
+  const obs = (lat: number, lon: number, afterSec: number): BusObservation => ({
+    busId: 65901, // one id throughout — this was never a reissue
+    busName: "#316",
+    routeId: 1,
+    lat,
+    lon,
+    heading: 0,
+    lastStopId: 10,
+    collectedAt: T0 + afterSec * 1000,
+  });
+
+  // (seconds after 20:39:43, lat, lon) — the feed, unedited.
+  const PARKED_AND_SHUFFLING: Array<[number, number, number]> = [
+    [0, 41.324417, -72.928099],   // parks
+    [200, 41.32450, -72.92868],   // settles 49 m away, sits ~2 min
+    [335, 41.32418, -72.92879],   // 63 m
+    [340, 41.32392, -72.92888],   // 86 m — the excursion that broke it
+    [355, 41.32404, -72.92855],   // 56 m — and straight back
+    [360, 41.32433, -72.92845],   // 31 m
+    [395, 41.32433, -72.92845],   // still sitting, a minute later
+  ];
+
+  const DEPARTURE: Array<[number, number, number]> = [
+    [400, 41.32450, -72.92813],   // 20:46:23 — actually leaving, but only 10 m out
+    [410, 41.32506, -72.92789],   // 74 m
+    [415, 41.32537, -72.92779],   // 109 m — first observation clear of the yard
+    [420, 41.32537, -72.92779],   // 109 m — confirms it
+  ];
+
+  function replay(rows: Array<[number, number, number]>, from: BusState | null) {
+    let st = from;
+    for (const [sec, lat, lon] of rows) {
+      st = step(yardNet, st, obs(lat, lon, sec)).state!;
+    }
+    return st!;
+  }
+
+  it("does not restart the layover clock when the bus wanders and comes back", () => {
+    const parked = replay(PARKED_AND_SHUFFLING, null);
+    // The whole point: at 20:46:18 this bus had been standing since 20:39:43,
+    // and the rider must be told so. The old guard said 25 s.
+    expect(parked.stationarySince).toBe(T0);
+    expect(parked.stationaryBreachAt).toBeNull();
+  });
+
+  it("still notices the real departure a minute later", () => {
+    const left = replay(DEPARTURE, replay(PARKED_AND_SHUFFLING, null));
+    // Confirmed on the second clear observation, backdated to the first.
+    expect(left.stationarySince).toBe(T0 + 415 * 1000);
+    expect(left.stationaryBreachAt).toBeNull();
   });
 });
