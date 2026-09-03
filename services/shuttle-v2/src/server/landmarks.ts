@@ -230,5 +230,6 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
   { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "neighbourhood", anchorStop: "Chapel / Church" }, // OSM W777642209
   { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
+  { label: "Yale Chaplain's Office (Bingham Hall)", lat: 41.3077098, lon: -72.928779, aliases: ["chaplain", "chaplains office", "yale chaplain", "chaplaincy", "bingham d", "300 college"], poi: "college", anchorStop: "Chapel / College" }, // OSM W139759942
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], poi: "civic", anchorStop: "Elm / High" }, // OSM N359283573
 ];

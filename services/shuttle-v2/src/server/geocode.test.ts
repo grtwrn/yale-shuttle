@@ -558,6 +558,33 @@ describe("the real list against every live stop", () => {
     expect(top("phelps gate")?.poi).toBeUndefined();
   });
 
+  /**
+   * The search that started the campus sweep, and now confirmed by live rider
+   * data: `/api/stats/searches` shows "chaplains office" searched four times
+   * in seven days, returning nothing every time.
+   *
+   * It could only ever be fixed here. The word "chaplain" appears on NO OSM
+   * object in New Haven — verified twice, the second time across any tag and a
+   * bbox far wider than campus — so no external provider can answer it. This
+   * is the failure class `lookup-sweep.mjs` is structurally blind to: an
+   * office inside a building, which OSM has no object for at all.
+   */
+  it("finds the Chaplain's Office, which no external provider can", () => {
+    for (const q of ["chaplain", "chaplains office", "chaplain's office", "yale chaplain", "chaplaincy"]) {
+      expect(top(q)?.label, q).toBe("Yale Chaplain's Office (Bingham Hall)");
+    }
+  });
+
+  it("does not let the Chaplain's Office take Bingham Hall or the Post Office row", () => {
+    // "bingham" belongs to Old Campus, whose alias covers the dorm itself.
+    expect(top("bingham")?.label).toBe("Old Campus");
+    // A bare "office" is genuinely ambiguous and the two tie at 0.5; what must
+    // not happen is the Post Office falling off the list altogether.
+    const office = geocode(live, "office").map((h) => h.label);
+    expect(office).toContain("Yale Station Post Office");
+    expect(office.indexOf("Yale Station Post Office")).toBeLessThan(3);
+  });
+
   it("ranks every live stop name first when typed verbatim", () => {
     for (const s of LIVE_STOPS) {
       const hit = top(s.name)!;
