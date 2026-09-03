@@ -21,6 +21,9 @@ import {
   suggLabel,
   type GeocodeResult,
 } from "./format";
+import {
+  CURRENT_LOCATION_TEXT, isCurrentLocationText, unresolvedEndpoint, unresolvedEndpointHint,
+} from "./endpoints";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
@@ -331,13 +334,6 @@ const POPULAR_DESTS: { name: string; lat: number; lon: number }[] = [
   { name: "Old Campus", lat: 41.30815, lon: -72.92915 },
 ];
 
-// What the From box reads after the rider taps 📍. It is a sentinel, not a
-// geocoded place: the origin should keep tracking live GPS while they walk.
-// The live-origin checks used to test `!fromText`, which is only true when the
-// box is BLANK — so tapping 📍 (which fills in this text) silently froze the
-// origin at the first fix, the exact bug report #19 was about.
-const CURRENT_LOCATION_TEXT = "Current location";
-const isCurrentLocationText = (t: string) => !t || t === CURRENT_LOCATION_TEXT;
 
 
 // Road-following polylines per (from_stop, to_stop) pair. Fetched from
@@ -1850,6 +1846,37 @@ const TripPlanner: FC<{
     };
   }, [toText, toLL]);
 
+  // The blur handlers below act 180 ms late (so a suggestion click lands
+  // first), by which time their closed-over `fromText`/`fromLL` may be a
+  // render out of date — and acting on a stale null coord would re-search a
+  // box the rider has just settled. Refs are read at fire time instead.
+  const fromLLRef = useRef<LatLon | null>(fromLL);
+  fromLLRef.current = fromLL;
+  const fromTextRef = useRef(fromText);
+  fromTextRef.current = fromText;
+  const toLLRef = useRef<LatLon | null>(toLL);
+  toLLRef.current = toLL;
+  const toTextRef = useRef(toText);
+  toTextRef.current = toText;
+
+  /**
+   * Leaving a box with text in it that never became a place: search it, the
+   * same way Enter does.
+   *
+   * Report #84 — the operator typed "517 Prospect St" into From, left the
+   * box, and the app planned nothing and said nothing, because only a PICK
+   * (or Enter) ever sets the coordinate the planner needs. Typing an address
+   * and moving on is what a rider thinks "changing the start" means, so it
+   * now resolves on its own; an ambiguous query still opens the list rather
+   * than guessing, and the hint below the form says so.
+   */
+  const resolveOnLeave = (which: "from" | "to") => {
+    const text = (which === "from" ? fromTextRef : toTextRef).current;
+    const coord = (which === "from" ? fromLLRef : toLLRef).current;
+    if (coord || isCurrentLocationText(text.trim())) return;
+    geocode(text, which);
+  };
+
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
   const [editingSavedMode, setEditingSavedMode] = useState(false);
@@ -2690,6 +2717,9 @@ const TripPlanner: FC<{
                        setFromLL(userLatLon);
                        setFromExpanded(false);
                        setFromSugg([]);
+                     } else {
+                       // Text, but no place yet (report #84).
+                       resolveOnLeave("from");
                      }
                    }, 180);
                  }}
@@ -2851,6 +2881,8 @@ const TripPlanner: FC<{
                        setToText(prevToTextRef.current);
                        setToExpanded(false);
                        setToSugg([]);
+                     } else {
+                       resolveOnLeave("to");
                      }
                    }, 180);
                  }}
@@ -2907,7 +2939,12 @@ const TripPlanner: FC<{
         )}
       </div>
       )}
-      {locateError && (
+      {/* Only while the start still depends on GPS. Once the rider has a
+          start of their own — resolved, or even just typed — this is a stale
+          complaint about a request they have already routed around, and in
+          report #84's screenshot it was the only red text on a screen whose
+          real problem was elsewhere. */}
+      {locateError && !effectiveFromLL && isCurrentLocationText(fromText) && (
         <div style={{ fontSize: 10, color: "#C62828", marginBottom: 6, marginLeft: 32 }}>
           📍 {locateError}
         </div>
@@ -3151,6 +3188,24 @@ const TripPlanner: FC<{
         );
       })()}
 
+      {/* Nothing is planned because one end is still just text (report #84).
+          Without this the screen is indistinguishable from "no trip asked
+          for": the address sits in the box and the app looks broken. */}
+      {!options && (() => {
+        const pending = unresolvedEndpoint(
+          { text: fromText, hasCoord: fromLL != null },
+          { text: toText, hasCoord: toLL != null },
+        );
+        // Not while that end is mid-lookup: the "Looking up…" banner above
+        // is already saying so, and two messages about one box is one too
+        // many.
+        if (!pending || searching === pending) return null;
+        return (
+          <div style={{ fontSize: 13, color: "#78909c", padding: "14px 8px", textAlign: "center" }}>
+            {unresolvedEndpointHint(pending)}
+          </div>
+        );
+      })()}
       {/* Results */}
       {/* A trip of no distance is not a trip. Say the true thing FIRST.
           Measured on master with the rider standing at Phelps Gate and Phelps
