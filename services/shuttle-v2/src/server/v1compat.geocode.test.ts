@@ -11,6 +11,7 @@ import {
   createExternalGeocoder,
   geocodeV1,
   looksLikeStreetAddress,
+  parseCoordinateQuery,
   parsePhoton,
   rankExternal,
   type GeocodeV1Hit,
@@ -315,6 +316,72 @@ describe("rankExternal", () => {
     const a = hit("A", 41.3, -72.9);
     const b = hit("B", 41.4, -72.8);
     expect(rankExternal(empty, [b, a]).map((h) => h.display_name)).toEqual(["B", "A"]);
+  });
+});
+
+/**
+ * A destination pasted as a coordinate. This shipped broken for part of
+ * 2026-09-03: Photon answers nothing for a bare coordinate, Nominatim
+ * reverse-geocodes it to the nearest house, and the name-relevance filter
+ * added that morning scored that house 0 against a query with no words in it
+ * and dropped it — so `/api/geocode?q=41.296105,-72.955812` returned
+ * `{"results":[]}` and the rider got no options at all. `walk-fallback-check`
+ * (report #35's own regression harness) was red against production and, until
+ * this commit, exited 0 while saying so.
+ *
+ * The fix does not touch the relevance filter — that guard is load-bearing.
+ * A coordinate simply never reaches it.
+ */
+describe("a destination given as a coordinate", () => {
+  const REPORT_35_DEST = { q: "41.296105,-72.955812", lat: 41.296105, lon: -72.955812 };
+
+  it("answers the exact point, and asks no provider", async () => {
+    let asked = 0;
+    const external = { lookup: async () => { asked++; return []; } };
+    const results = await geocodeV1(network, REPORT_35_DEST.q, external);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      lat: REPORT_35_DEST.lat,
+      lon: REPORT_35_DEST.lon,
+      class: "coordinate",
+      type: "coordinate",
+    });
+    // The coordinate IS the answer; spending a throttled external lookup on it
+    // would be both slower and less accurate (Nominatim's house was 127 m off).
+    expect(asked).toBe(0);
+  });
+
+  it("never returns empty for a coordinate, whatever the providers do", async () => {
+    for (const q of ["41.296105,-72.955812", "41.31, -72.93", " 41.3163,-72.925 ", "-33.8688,151.2093"]) {
+      const results = await geocodeV1(network, q, { lookup: async () => [] });
+      expect(results.length, q).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not hijack a query that merely contains digits", () => {
+    // Anything here that parsed as a coordinate would stop reaching the
+    // matcher: "800" is Building 800, and "517 Prospect St" is report #59/#69.
+    for (const q of ["800", "517 Prospect St", "41.29", "-72.9", "1,2", "130 Prospect",
+                     "Chapel / York", "25 Science Park", "41.29,", "abc,def"]) {
+      expect(parseCoordinateQuery(q), q).toBeNull();
+    }
+  });
+
+  it("accepts the spellings a rider actually pastes, and rejects impossible ones", () => {
+    expect(parseCoordinateQuery("41.296105,-72.955812")).toEqual({ lat: 41.296105, lon: -72.955812 });
+    expect(parseCoordinateQuery(" 41.296105 , -72.955812 ")).toEqual({ lat: 41.296105, lon: -72.955812 });
+    expect(parseCoordinateQuery("+41.3,+72.9")).toEqual({ lat: 41.3, lon: 72.9 });
+    // Out of range is not a coordinate; let the matcher have it.
+    expect(parseCoordinateQuery("91.5,-72.9")).toBeNull();
+    expect(parseCoordinateQuery("41.3,-181.2")).toBeNull();
+  });
+
+  it("still lets a street address reach the address path", async () => {
+    // The address exemption and the coordinate path are separate mechanisms;
+    // widening `looksLikeStreetAddress` to cover coordinates would have blurred
+    // them, which is why it was not the fix.
+    expect(looksLikeStreetAddress(REPORT_35_DEST.q)).toBe(false);
+    expect(looksLikeStreetAddress("517 Prospect St")).toBe(true);
   });
 });
 

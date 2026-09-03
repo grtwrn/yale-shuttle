@@ -233,6 +233,42 @@ export function looksLikeStreetAddress(query: string): boolean {
   return /^\s*\d{1,6}\s+\S/.test(query);
 }
 
+/**
+ * A destination the rider gave as a coordinate — "41.296105,-72.955812",
+ * pasted from a map or a message.
+ *
+ * This is NOT a name, and that is the whole point. Every layer below is built
+ * to compare names: the curated matcher, the reach filter, and above all the
+ * name-relevance filter that drops a hit whose name has no relationship to the
+ * query. A coordinate has no name to relate to anything, so it scored zero
+ * against every candidate and the rider's own destination was thrown away.
+ *
+ * It used to survive by accident. Photon returns nothing for a bare
+ * coordinate; Nominatim reverse-geocodes it to the nearest house ("452, Front
+ * Avenue, Allingtown…"), and before the relevance filter shipped that house
+ * was passed through as the answer — 127 m from the point the rider actually
+ * typed. So the pre-regression behaviour was an approximation nobody chose.
+ *
+ * A coordinate needs no geocoding: it IS the answer. Recognising it here is
+ * exact, costs no external call and no rate limit, cannot be changed by a
+ * provider, and leaves the relevance filter untouched — the guard that keeps
+ * EbLens out of "elenas" is load-bearing and is not what this fix pays with.
+ *
+ * Deliberately strict: comma-separated, and BOTH parts must carry a decimal
+ * point. "800" is Building 800, and a hypothetical "1,2" is far likelier to be
+ * something a rider typed than a destination in the Gulf of Guinea. Every real
+ * pasted coordinate has decimals.
+ */
+export function parseCoordinateQuery(q: string): { lat: number; lon: number } | null {
+  const m = /^\s*([+-]?\d{1,3}\.\d+)\s*,\s*([+-]?\d{1,3}\.\d+)\s*$/.exec(q);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat, lon };
+}
+
 /** An address-level hit: the building the rider actually typed. */
 function hasAddressHit(hits: readonly GeocodeV1Hit[]): boolean {
   return hits.some((h) => h.type === "house");
@@ -588,6 +624,23 @@ export async function geocodeV1(
   q: string,
   external: ExternalGeocoder,
 ): Promise<GeocodeV1Hit[]> {
+  // A coordinate is already the answer — see parseCoordinateQuery. Answered
+  // before anything else so it never meets a filter built to compare names,
+  // and so it costs no external lookup.
+  const point = parseCoordinateQuery(q);
+  if (point) {
+    return [{
+      display_name: `${point.lat}, ${point.lon}`,
+      lat: point.lat,
+      lon: point.lon,
+      // Its own class/type rather than a borrowed one: calling a coordinate a
+      // "house" would be a lie, and `suggIcon` already falls back to 📍 for a
+      // type it has no glyph for. The frontend auto-picks a single result, so
+      // the rider still goes straight to the plan.
+      type: "coordinate",
+      class: "coordinate",
+    }];
+  }
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
   const hits = geocode(network, q);
   const local: GeocodeV1Hit[] = hits.map((h) => ({
