@@ -3835,12 +3835,18 @@ const TripPlanner: FC<{
                           fontSize: 13, fontWeight: 500, color: "#202124",
                           whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
                         }}>
-                          {/* Live mode: arrival only — the start is always "now"
-                              (user feedback 2026-07-17). Future mode keeps the
-                              range, since the start is the chosen departure. */}
+                          {/* Live mode: the bare clock — the start is always
+                              "now" (user feedback 2026-07-17), and sitting
+                              directly under the duration in a right-aligned
+                              column, the number no longer needs a word to say
+                              what it is (operator, 2026-09-04: "remove
+                              'arrive' from arrival time and just show the
+                              time"). Future mode already printed a bare range,
+                              since the start is the chosen departure; the two
+                              modes now agree. */}
                           {isFuture
                             ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                            : `arrive ${fmtClock(o.totalSec)}`}
+                            : fmtClock(o.totalSec)}
                         </span>
                       )}
                     </div>

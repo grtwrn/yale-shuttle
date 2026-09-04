@@ -313,6 +313,21 @@ const NOT_A_ROUTE = new Set(["Find next bus", "Clear", "Walk", "Departed"]);
 const IS_PAGE_CHROME = /^(Show \d+ more route|Clear$|Contribute$|💬|🧪|Not affiliated)/;
 const isLabelish = (l) =>
   /^[A-Za-z][A-Za-z ]{0,19}$/.test(l) && !NOT_A_ROUTE.has(l) && !/^arrive/i.test(l);
+/**
+ * The card's arrival clock, in EITHER spelling. The word was dropped on
+ * 2026-09-04 — sitting under the duration in a right-aligned column, the
+ * number says what it is — but the `arrive …` form is still accepted, because
+ * this harness watches PRODUCTION, which is always a deploy behind the branch
+ * that changes the layout. Requiring the new spelling alone is precisely the
+ * mistake #111 made and #113 fixed, twelve blind minutes later.
+ *
+ * The bare form is anchored at both ends, which is what keeps it off the map
+ * overview's own clock lines: those read "(B) 10:33a" / "🏁 (B) 10:33a" after
+ * trimming, so they carry a prefix and cannot match. The page header's
+ * "11:22 AM" cannot either — space, and upper case. Verified against captured
+ * innerText in the tests, not reasoned about.
+ */
+const IS_ARRIVAL_CLOCK = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
 export function parseOptions(bodyText) {
   const lines = String(bodyText).split("\n").map((l) => l.trim()).filter(Boolean);
   const isHeader = (l) => /^\d+\s*min$/.test(l) || l === "Departed";
@@ -349,7 +364,7 @@ export function parseOptions(bodyText) {
     const body = [...pre, ...post];
     // A real card either quotes an arrival clock or is a Departed card. This
     // is what keeps a stray "16 min" in the map overview out of the list.
-    const arrive = body.find((l) => /^arrive\s+\d{1,2}:\d{2}[ap]$/i.test(l));
+    const arrive = body.find((l) => IS_ARRIVAL_CLOCK.test(l));
     if (!arrive && lines[h] !== "Departed") continue;
     // The countdown is whatever line parses as one. It carried a 🚌 until
     // 2026-09-04, when the glyph was dropped so "in" could follow the route
@@ -372,7 +387,7 @@ export function parseOptions(bodyText) {
       mode: body.includes("🚶 Walk") ? "walk" : "shuttle",
       departed: lines[h] === "Departed",
       totalMin: lines[h] === "Departed" ? null : Number(lines[h].match(/(\d+)/)[1]),
-      arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,
+      arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,  // both spellings collapse to the clock
       eta: busLine ? parseBusEtaText(busLine) : null,
       waitFallback: waitLine ? parseWaitFallback(waitLine) : null,
       missedBus: missed ? missed[1] : null,

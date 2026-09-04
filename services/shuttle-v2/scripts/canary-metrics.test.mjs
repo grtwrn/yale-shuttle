@@ -496,6 +496,138 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38, arriveText: "12:22p" });
   });
 
+  // 2026-09-04, later still: the word "arrive" is gone (operator: "remove
+  // 'arrive' from arrival time and just show the time"). That word was how
+  // `parseOptions` RECOGNISED a card at all — `if (!arrive && lines[h] !==
+  // "Departed") continue` — so shipping it without the parser would have
+  // dropped every card on the page, which is the exact blindness of #111.
+  //
+  // The bare pattern is anchored at both ends, and this capture is the proof
+  // it collides with nothing: the map overview quotes the SAME clock values
+  // ("(B) 12:31p" is Blue Day's own arrival) but every one of its lines
+  // carries a route prefix, and the page header reads "12:13 PM" — space,
+  // upper case. Five lines on the whole page match, and they are the five
+  // cards.
+  const LIVE_BARE_CLOCK = `YALE SHUTTLE
+12:13 PM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☀️
+78°F · Clear · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌
+🏁 (R) 12:27p
+ (B) 12:31p
+ (O) 12:34p
+🚌 (R) 6 min
+ (B) 4 min
+ (O) 8 min
+ (B) 10 min
+🏁 (B) 12:30p
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Blue Day
+Orange Day
+Brown
+Red
+in 6, 14 min
+14 min
+🚶 1 min
+›
+🚌 7 min
+12:27p
+›
+Blue Day
+in 4, 7 min
+17 min
+🚌 12 min
+12:31p
+›
+Orange Day
+in 8, 31 min
+20 min
+🚶 9 min
+›
+🚌 12 min
+12:34p
+›
+Brown
+in 10, 28 min
+26 min
+🚶 3 min
+›
+🚌 6 min
+›
+🚶 10 min
+12:40p
+›
+🚶 Walk
+38 min
+12:52p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the card after the word 'arrive' was dropped from the clock", () => {
+    const opts = parseOptions(LIVE_BARE_CLOCK);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day", "Orange Day", "Brown", "Walk"]);
+    expect(opts.map((o) => o.arriveText))
+      .toEqual(["12:27p", "12:31p", "12:34p", "12:40p", "12:52p"]);
+    expect(opts[0]).toMatchObject({ totalMin: 14, walkToMin: 1, walkFromMin: 0 });
+    expect(opts[0].eta.raw).toBe("in 6, 14 min");
+    expect(opts[1]).toMatchObject({ totalMin: 17, walkToMin: 0, walkFromMin: 0 });
+    expect(opts[3]).toMatchObject({ totalMin: 26, walkToMin: 3, walkFromMin: 10 });
+    expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38 });
+  });
+
+  it("finds the clock ONLY on the cards, never in the map overview above them", () => {
+    // The overview prints the same times with a route prefix, and the header
+    // prints a third one in another format. Anchoring is what separates them,
+    // so this asserts the count over the whole page rather than per card.
+    const clockish = LIVE_BARE_CLOCK.split("\n").map((l) => l.trim())
+      .filter((l) => /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i.test(l));
+    expect(clockish).toEqual(["12:27p", "12:31p", "12:34p", "12:40p", "12:52p"]);
+    // The lines it must NOT take, quoted from the same capture.
+    for (const near of ["\u{1F3C1} (R) 12:27p", "(B) 12:31p", "(O) 12:34p", "12:13 PM"]) {
+      expect(/^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i.test(near)).toBe(false);
+    }
+  });
+
+  it("still reads the 'arrive ...' spelling production is serving", () => {
+    // The canary watches production, which is a deploy behind this branch.
+    // Both spellings must parse until the new one has shipped everywhere.
+    const old = LIVE_BARE_CLOCK.replace(/^(\d{1,2}:\d{2}[ap])$/gm, "arrive $1");
+    expect(parseOptions(old).map((o) => o.arriveText))
+      .toEqual(["12:27p", "12:31p", "12:34p", "12:40p", "12:52p"]);
+  });
+
   it("does not take the map overview's legend for the first card's line", () => {
     // The legend lists every drawn route immediately above the first card, so
     // the walk-back that finds the pill must stop after one label.
