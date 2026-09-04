@@ -3657,6 +3657,13 @@ const TripPlanner: FC<{
                   busEtaLive,
                 )
               : null;
+            // Whether line 2's left column draws the walk/ride legs. "most
+            // direct" carries its own leading "·" and would otherwise open
+            // that column with an orphaned bullet: the arrival clock used to
+            // sit to its left and always supplied the neighbour, and it is the
+            // right column now, so the separator has to ask.
+            const legsShown = !isExpanded && o.mode === "shuttle"
+              && (o.walkToSec > 0 || o.walkFromSec > 0);
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3774,7 +3781,7 @@ const TripPlanner: FC<{
                       gap: 8, marginTop: 4, minHeight: 18,
                     }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-                        {!isExpanded && o.mode === "shuttle" && (o.walkToSec > 0 || o.walkFromSec > 0) && (
+                        {legsShown && (
                           <>
                             {o.walkToSec > 0 && (
                               <>
@@ -3810,7 +3817,7 @@ const TripPlanner: FC<{
                             a ranking. */}
                         {!isExpanded && o.mode === "shuttle" && _direct && o.routeLabel === _direct.routeLabel && (
                           <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
-                            · most direct
+                            {legsShown ? "· most direct" : "most direct"}
                           </span>
                         )}
                       </span>
