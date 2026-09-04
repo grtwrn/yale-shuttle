@@ -39,7 +39,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as METRICS from "./canary-metrics.mjs";
 import {
-  CANARY_LINES, haversineM, parseOptions, scoreSequence, THRESHOLDS, tripForLine,
+  brokenPromise, CANARY_LINES, deadlineForPromise, haversineM, isAtBoardStop,
+  parseOptions, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { seedTestId } from "./testId.mjs";
 
@@ -298,6 +299,11 @@ async function runOnce(line) {
     let deadline = startedAt + Math.min(12, WATCH_MAX_MIN) * 60_000;
     let firstSight = null;
     let arrived = null;
+    // The arrival the canary WATCHED happen, as opposed to one it walked up
+    // to. Only this one ends the run: a bus already at the stop at first sight
+    // is credited (see below) but leaves the interesting question — the next
+    // bus — still open.
+    let watchedArrival = null;
     let lastScrape = 0;
     let tick = 0;
     // The page's own words on either side of a jump. Without them every claim
@@ -336,21 +342,36 @@ async function runOnce(line) {
         for (const b of routeBuses) {
           const key = `${b.bus_id}`;
           const d = haversineM(b, board);
-          // The feed saying the bus is AT this stop outranks our distance:
-          // a run on 2026-09-04 filed `no-arrival` while #304 sat 49 m out
-          // with `at_stop_id` naming this very stop.
-          const here = d <= ARRIVAL_M
-            || (boardStopId != null && b.at_stop_id === boardStopId);
+          const here = isAtBoardStop(d, b.at_stop_id ?? null, boardStopId);
           const was = nearFlags.get(key) ?? false;
-          // Arm on the first poll: a bus already standing at the stop when the
-          // rider arrives is not an arrival this run watched for, and counting
-          // it would end the run before a single countdown had been read.
-          if (tick === 0) { nearFlags.set(key, here); continue; }
+          // A bus ALREADY at the stop on the first poll is an arrival, and it
+          // used to be silently armed away as "not an arrival this run watched
+          // for". That reasoning was half right and cost seven of the ten
+          // `no-arrival` findings in the log: the rider is being shown "now,
+          // then 72 min" precisely BECAUSE a bus is at the stop, it pulls away
+          // seconds later, and the run then failed for never seeing an
+          // arrival it had been looking straight at (2026-09-04, #310 at 38 m
+          // with `at_stop_id` naming this stop; #316 at 12 m; #304 at 13 m).
+          //
+          // So credit it — and keep watching. What was right about the old
+          // note is that this arrival must not END the run: nothing has been
+          // read yet, and the interesting question is now the NEXT bus. Hence
+          // `watchedArrival`, which is what breaks the loop, stays null here.
+          if (tick === 0) {
+            nearFlags.set(key, here);
+            if (here) {
+              record.arrivals.push({ atMs: now, busName: b.bus_name, distM: Math.round(d), atStart: true });
+              say(`AT THE STOP ALREADY ${b.bus_name} (${Math.round(d)} m) — credited, now watching for the next bus`, now);
+              arrived ??= { atMs: now, busName: b.bus_name, atStart: true };
+            }
+            continue;
+          }
           if (!was && here) {
             nearFlags.set(key, true);
             record.arrivals.push({ atMs: now, busName: b.bus_name, distM: Math.round(d) });
             say(`ARRIVAL ${b.bus_name} at the board stop (${Math.round(d)} m)`, now);
             arrived ??= { atMs: now, busName: b.bus_name };
+            watchedArrival ??= { atMs: now, busName: b.bus_name };
           } else if (was && d > 120) nearFlags.set(key, false);
         }
       }
@@ -381,9 +402,19 @@ async function runOnce(line) {
         if (mine?.eta && !firstSight) {
           firstSight = { atMs: now, first: mine.eta.first, raw: mine.eta.raw };
           record.firstSight = firstSight;
-          const promisedMin = firstSight.first[1] / 60;
-          deadline = now + Math.min(WATCH_MAX_MIN, Math.max(1, Math.min(8, WATCH_MAX_MIN), promisedMin * 2 + 6)) * 60_000;
-          say(`first sight: ${firstSight.raw} — watching for up to ${Math.round((deadline - now) / 60000)} min`, now);
+        }
+        // Re-derive the deadline from whatever is on screen NOW, and only ever
+        // extend it. A watch that opened on a bus already at the stop was
+        // given the 8 minute floor and kept it after the card re-pinned to one
+        // 19 min out, so it expired mid-approach and blamed the app. Bounded
+        // by WATCH_MAX_MIN from the START of the watch, so a countdown that
+        // keeps re-promising cannot hold a browser open for ever.
+        if (mine?.eta) {
+          const want = deadlineForPromise(now, mine.eta.first[1], WATCH_MAX_MIN, startedAt);
+          if (want > deadline) {
+            deadline = want;
+            say(`watching "${mine.eta.raw}" for up to ${Math.round((deadline - now) / 60000)} more min`, now);
+          }
         }
         say(`${line.label}: ${mine ? (mine.eta?.raw ?? (mine.departed ? "Departed" : "no countdown")) : "OPTION GONE"}`, now);
 
@@ -419,7 +450,7 @@ async function runOnce(line) {
         prevText = text;
       }
 
-      if (arrived) break;
+      if (watchedArrival) break;
       await sleep(TICK_MS);
       tick++;
     }
@@ -465,7 +496,19 @@ async function runOnce(line) {
     }
     if (!arrived && record.samples.some((s) => s.present)) {
       const lastSeen = [...record.samples].reverse().find((s) => s.present);
-      fail("no-arrival", `watched ${record.watchedMin} min; no ${line.label} bus reached the board stop. Last shown: ${lastSeen?.etaRaw ?? "(no countdown)"}`);
+      // "No bus came" is two different things wearing one face, and calling
+      // them both a failure made the canary cry wolf through every long Red
+      // headway. A promise that ELAPSED with us still watching is the app's
+      // fault. A watch the 25-minute ceiling cut short before the bus was
+      // ever due is ours, and is not a finding.
+      const broken = brokenPromise(record.samples, record.endedAt);
+      record.brokenPromise = broken;
+      if (broken) {
+        fail("no-arrival", `watched ${record.watchedMin} min; no ${line.label} bus reached the board stop. The app said "${broken.raw}" and that came due ${Math.round(broken.overdueSec / 60)} min before the watch ended. Last shown: ${lastSeen?.etaRaw ?? "(no countdown)"}`);
+      } else {
+        record.unfinished = `watched ${record.watchedMin} min and stopped before any promise came due; last shown "${lastSeen?.etaRaw ?? "(no countdown)"}"`;
+        say(`unfinished: ${record.unfinished}`);
+      }
     }
     if (record.samples.length > 2 && !record.samples.some((s) => s.present)) {
       fail("option-vanished", `${line.label} disappeared from the plan and never came back`);
@@ -532,7 +575,7 @@ function summary(days = 7) {
   if (!runs.length) { console.log(`no canary runs in the last ${days} d`); return; }
   const byLine = new Map();
   for (const r of runs) {
-    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, drifts: [], miss: [] };
+    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, unfin: 0, drifts: [], miss: [] };
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
@@ -551,17 +594,21 @@ function summary(days = 7) {
       e.drop++;
       if (d.lastShownEtaSec <= THRESH.droppedSevereSec) e.sev++;
     }
+    // A watch the 25-minute ceiling cut short before any promise came due.
+    // Not a finding, but invisible otherwise, and the operator needs to know
+    // how much of the rotation is spending its browser on nothing.
+    if (r.unfinished) e.unfin++;
     if (r.firstSightMissSec != null) e.miss.push(r.firstSightMissSec);
     byLine.set(r.line, e);
   }
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
   console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; a drop is severe within ${THRESH.droppedSevereSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
-  console.log("line           runs    ok  arrived  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
+  console.log("line           runs    ok  arrived  unfin  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
       `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
-      `${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(e.unfin).padStart(6)} ${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
       `${String(e.drop).padStart(8)} ${String(e.sev).padStart(7)} ` +
       `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
       `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);

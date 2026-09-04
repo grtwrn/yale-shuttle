@@ -665,6 +665,70 @@ export const DEPARTURE_M = 30;
  *   "none"       nothing was near the stop; there was no arrival to have
  *   "unknown"    the feed dropped it, or the reading carries no bus list
  */
+/**
+ * Is this bus at the stop the app told the rider to walk to?
+ *
+ * Two ways, and the feed's own word outranks our metres: `at_stop_id` naming
+ * the board stop is the operator's reckoning, and a run filed `no-arrival`
+ * with #304 sitting 49 m out under exactly that flag. The distance test is
+ * the fallback for a bus the feed has not flagged yet.
+ */
+export function isAtBoardStop(distM, atStopId, boardStopId) {
+  if (boardStopId != null && atStopId != null && atStopId === boardStopId) return true;
+  return Number.isFinite(distM) && distM <= ARRIVAL_M;
+}
+
+/**
+ * How long the canary should keep watching, given the promise on screen.
+ *
+ * Twice what the app promised plus six minutes of slack, floored at the eight
+ * minutes that make a watch worth anything and ceilinged at `watchMaxMin`,
+ * which bounds one browser's life on this Pi.
+ *
+ * IT IS RE-DERIVED ON EVERY READING, not once at first sight. A watch that
+ * opens on "now, then 72 min" takes its promise from a bus already at the
+ * stop — `first` is the [0, 10) bucket, so `promisedMin` is 0 and the whole
+ * watch is the 8 minute floor. When that bus pulls away and the card re-pins
+ * to one 19 minutes out, the deadline used to stay where it was: the watch
+ * expired with "in 19, 31 min" on screen and filed `no-arrival` against an
+ * app that had done nothing wrong (2026-09-04, 12:02 ET). Keying the
+ * extension on the READING rather than on the pinned vehicle's name is
+ * deliberate — the canary samples the pin every two minutes at best, so it
+ * would miss the very change that matters.
+ */
+export function deadlineForPromise(atMs, promiseHiSec, watchMaxMin, startedAtMs = null) {
+  const promisedMin = promiseHiSec / 60;
+  const want = Math.max(1, Math.min(8, watchMaxMin), promisedMin * 2 + 6);
+  const at = atMs + Math.min(watchMaxMin, want) * 60_000;
+  // The hard cap runs from the START of the watch, not from this reading, or
+  // a countdown that keeps re-promising would extend the watch for ever.
+  return startedAtMs == null ? at : Math.min(at, startedAtMs + watchMaxMin * 60_000);
+}
+
+/**
+ * The first promise the app made that ELAPSED while the canary was still
+ * watching — a bus that was due and did not come.
+ *
+ * This is what tells `no-arrival` (a defect: the app said a bus would be here
+ * by now) apart from `unfinished` (not a defect: the watch's own ceiling cut
+ * it short before the bus was ever due). Both look identical from the outside
+ * — no bus reached the stop — and conflating them made the canary cry wolf on
+ * a working route through a long headway, which is most of Red's evening.
+ *
+ * Deliberately the FIRST such promise rather than the last: it is the one the
+ * rider acted on, and quoting it says what was actually broken.
+ */
+export function brokenPromise(samples, endedAtMs) {
+  for (const s of samples ?? []) {
+    if (!s?.present || !s.eta) continue;
+    const dueBy = s.atMs + s.eta.first[1] * 1000;
+    if (endedAtMs >= dueBy) {
+      return { atMs: s.atMs, raw: s.eta.raw, dueByMs: dueBy, overdueSec: Math.round((endedAtMs - dueBy) / 1000) };
+    }
+  }
+  return null;
+}
+
 export function departureBetween(prevBuses, nextBuses) {
   const nearest = (list) => (list ?? [])
     .filter((b) => b && Number.isFinite(b.distM))
