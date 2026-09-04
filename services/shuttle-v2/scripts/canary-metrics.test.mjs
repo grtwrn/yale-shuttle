@@ -71,6 +71,21 @@ describe("conservativeDrift", () => {
     expect(drift).toBeGreaterThanOrEqual(THRESHOLDS.catastrophicSec);
   });
 
+  it("does not call the display's own floor a reversal", () => {
+    // "arriving now" is the [0, 10) bucket. A card sitting there cannot fall
+    // by the fifteen seconds that pass, so the naive expectation of
+    // `prev - dt` is unreachable and every tick scored as a small rise. A Red
+    // bus standing at Division/Prospect on 2026-09-04 produced a run of
+    // +5..+8 s "reversals" this way — the floor, not a defect.
+    const now = [0, 10];
+    expect(conservativeDrift(now, now, 15)).toBe(0);
+    expect(conservativeDrift(now, now, 60)).toBe(0);
+    // A near-floor bucket behaves the same once the clamp bites.
+    expect(conservativeDrift([10, 60], now, 60)).toBe(0);
+    // But a genuine rise off the floor is still a rise.
+    expect(conservativeDrift(now, [600, 660], 15)).toBe(600);
+  });
+
   it("gives +15 s for a bare one-minute step up at a 15 s sample", () => {
     // This is the floor the notable-reversal threshold is set above: a single
     // minute gained is real but common; a whole minute gained ON TOP of the
