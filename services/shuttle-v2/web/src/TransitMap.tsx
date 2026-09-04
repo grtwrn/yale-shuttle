@@ -4220,31 +4220,37 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
-                                    // "3/~4 min left" where the split is priced
-                                    // — the operator's own shape: "I want to see
-                                    // X/~Y min left for pause stops". The second
-                                    // figure is what remains, which is what they
-                                    // wanted from the old "3 of 10" and could not
-                                    // get by subtracting, because 10 was the
-                                    // wrong total. Elsewhere "3 min / ~10 min"
-                                    // stands, since there the old number IS the
-                                    // one being billed.
+                                    // "2 min / ~3 min" — elapsed over EXPECTED
+                                    // TOTAL, the operator's shape: "X is current
+                                    // dwell and Y is expected dwell".
                                     //
-                                    // One unit for the pair when both sides are
-                                    // minutes; a sub-minute elapsed keeps its own
-                                    // ("45s/~4 min left"), because "45/~4 min"
-                                    // would read as forty-five minutes.
+                                    // The bug this fixes was never the shape; it
+                                    // was that Y came from `dwell.med`, an
+                                    // arrival-to-arrival figure containing drive
+                                    // time that the estimator stopped billing
+                                    // when the stand/drive split shipped. A
+                                    // rider read "3 of 10", subtracted, expected
+                                    // seven more minutes, and the app said four.
+                                    //
+                                    // So Y is now elapsed + the remainder the
+                                    // ETA actually bills. That keeps the shape
+                                    // AND makes the subtraction a rider does
+                                    // instinctively come out right — Y - X is
+                                    // exactly what is left. It grows as the bus
+                                    // sits, which is correct rather than odd: a
+                                    // bus twelve minutes into a hold really does
+                                    // have a longer expected total than one two
+                                    // minutes in. Elsewhere the old figure
+                                    // stands, since there it IS what is billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                           title={stand == null
                                             ? "Time the bus has been sitting here"
                                             : stand.remaining
                                               ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
                                               : `Typically holds ~${fmtShort(stand.sec)}`}>
-                                      ⏸ {stand?.remaining && liveElapsedSec! >= 60 && stand.sec >= 60
-                                        ? Math.round(liveElapsedSec! / 60)
-                                        : fmtShort(liveElapsedSec!)}
+                                      ⏸ {fmtShort(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
-                                        ? `/~${fmtShort(stand.sec)} left`
+                                        ? ` / ~${fmtShort(liveElapsedSec! + stand.sec)}`
                                         : ` / ~${fmtShort(stand.sec)}`}
                                     </span>
                                   )}
