@@ -1432,6 +1432,13 @@ declined class is only scorable with `ORIGIN_OFFSET_M` set.
 
 ## Investigations that did not become code
 
+- `docs/bus-goes-quiet.md` — what happens after a bus stops reporting, and the
+  two readings of it that were WRONG (a 6 h window said "9 of 9 came back in
+  4.4 min"; that is survivorship). Also the per-stop return table — where a bus
+  goes quiet predicts whether it comes back, 0% to 78% against a 33% baseline —
+  which is deliberately not used, because the ghost row makes no claim about
+  the bus returning and the rate would only tune how long a true sentence
+  stays on screen. Read it before conditioning anything on the vanish place.
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
   trailing window beats a constant-velocity Kalman filter on this feed, and
   the number is only informative about two minutes ahead, so it must never

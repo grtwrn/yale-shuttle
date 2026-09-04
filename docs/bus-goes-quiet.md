@@ -154,6 +154,36 @@ Red   was due in 8 min                                    23 min
   on a ghost: a card can say "signal lost"; a notification that says "time to
   leave" cannot.
 
+## What the rider simulator can and cannot see
+
+`rider-sim`, base vs `GHOST=1` on the same driver and capture (2026-09-03,
+`ORIGIN_OFFSET_M=250` so the declined class is scorable), **3,671 paired
+waits**, per route as FIXED/INTRODUCED:
+
+| route | n | strand | jump ≥180 s | reversal | dropped |
+|---|---|---|---|---|---|
+| Green | 205 | 0/0 | 0/0 | 0/0 | 0/0 |
+| Purple | 335 | 0/0 | 0/0 | 0/0 | 1/1 |
+| Red | 3,131 | 0/0 | 0/0 | **2/0** | 0/0 |
+| ALL | 3,671 | 0/0 | 0/0 | **2/0** | 1/1 |
+
+drops 2,497 → 2,492 (declined unchanged at 1,576; repriced 921 → 916); worst
+drift **improved 6, worsened 0**, same 3,415.
+
+**Only 28 of the 3,671 waits (0.76%) score differently at all** — Red 16,
+Purple 9, Green 3 — because a rider has to be watching a bus at the moment it
+stops reporting. On those 28, worst drift is **better on 11 and worse on 0**.
+
+**The simulator under-credits this change by construction, and that is worth
+saying plainly.** `droppedApproaching` counts "a bus the rider was shown
+disappeared before it arrived or departed" — and a ghost expiring after ten
+minutes is still such a disappearance, so the metric scores the fix as a drop
+eight minutes later rather than as a drop avoided. What it cannot score at all
+is the thing the operator actually reported: that the countdown went from 8 min
+to 42 min *with no explanation*. There is no flag for "the rider was told why".
+The screenshot and the unit tests are the evidence for that half; these numbers
+only establish that nothing regressed.
+
 ## Reproducing the measurement
 
 ```bash
