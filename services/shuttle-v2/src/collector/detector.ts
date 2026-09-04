@@ -266,8 +266,44 @@ export type StationaryState = Pick<
 >;
 
 /**
- * Recovers the stationary clock for a bus the detector is seeing for the FIRST
- * time, from history the detector itself does not hold.
+ * What the recorded feed says about the stand a bus is already in — the pure
+ * half of the restart seed.
+ *
+ * Every field is the reducers' own quantity, reconstructed from
+ * `raw_positions` rather than from state this process never had:
+ * `stationarySince` is the clock (`at_stop_since`, and `stop_visits.pinned_at`),
+ * and the three rest fields are what `departure.ts` would be holding had it
+ * watched the whole stand.
+ */
+export interface StandRun extends StationaryState {
+  /**
+   * Earliest sample reachable from `obs` with no hole longer than
+   * {@link MAX_HANDOFF_GAP_MS}, distance ignored.
+   *
+   * The bound on how far back a CALLER may join anything to this observation.
+   * `stationarySince` cannot serve for that: it is the first sample inside the
+   * pin radius, and a bus rolling in is anchored to the stop well before it
+   * gets there (`pinned_at − anchored_at` is a median 10 s but a p95 of 95 s),
+   * so an arrival row for this very stand routinely predates it.
+   */
+  unbrokenSince: EpochMs;
+  /**
+   * Start of the FIRST resting plateau inside the run — the visit's
+   * `arrivedAt`. Null when the bus never came to rest in it (still rolling in).
+   */
+  restedSince: EpochMs | null;
+  /**
+   * Start of the plateau `obs` itself sits on, or null when `obs` is a fresh
+   * fix — i.e. the bus is moving right now and this is not a stand to resume.
+   */
+  restSince: EpochMs | null;
+  /** Repeated polls of that plateau inside the run. */
+  restPolls: number;
+}
+
+/**
+ * Recovers the state of a bus the detector is seeing for the FIRST time, from
+ * history the detector itself does not hold.
  *
  * `states` is in-memory only, so every process restart makes each bus a first
  * sighting again — and a bus standing at a stop across one had its wait
@@ -287,7 +323,29 @@ export type StationaryState = Pick<
 export type StationarySeed = (
   obs: BusObservation,
   anchorStop: Stop | null,
-) => StationaryState | null;
+) => StandSeed | null;
+
+/**
+ * A {@link StandRun} the caller has been able to match to the `arrivals` row
+ * the stand already opened.
+ *
+ * Only the caller can decide that — the rule is pure and has no database — so
+ * `enteredAt` is filled in by the collector and is null everywhere else,
+ * including in every test that feeds {@link seedStationaryFromHistory}
+ * straight into {@link step}.
+ */
+export interface StandSeed extends StandRun {
+  /**
+   * `arrivals.arrived_at` of the row this stand opened before the restart, or
+   * null when there is none to resume.
+   *
+   * Non-null makes {@link step} RESUME the visit: it takes this as
+   * `enteredAt` and emits no arrival event, so one stand keeps one row and the
+   * departure closes that row with the whole stand rather than the sliver
+   * after the restart.
+   */
+  enteredAt?: EpochMs | null;
+}
 
 /** One recorded position, as `raw_positions` stores it. */
 export interface PositionSample {
@@ -311,6 +369,11 @@ export interface PositionSample {
  *    thrown away.
  *  - The caller's window bounds how far back it can look at all.
  *
+ * The rest fields mirror `departure.ts`'s plateau bookkeeping over the same
+ * run, because the feed repeats a coordinate rather than interpolating: a
+ * plateau begins at the poll on which the repeating fix was FIRST reported,
+ * which is what `Pass.restSince` holds and what `arrivedAt` is taken from.
+ *
  * `history` is newest-first (the order the index yields) and must exclude `obs`
  * itself. `null` means "no better answer than now" — the behaviour without a
  * seed at all.
@@ -319,17 +382,48 @@ export function seedStationaryFromHistory(
   history: readonly PositionSample[],
   obs: BusObservation,
   anchorStop: Stop | null,
-): StationaryState | null {
+): StandRun | null {
   // Not at a stop: there is nothing to pin to, and `stationaryFields`'s
   // fallback-radius branch reaches the same answer without any history.
   if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
   let since = obs.collectedAt;
+  let unbrokenSince = obs.collectedAt;
+  let inRun = true;
+  // Newest-first, so this collects the run in reverse.
+  const run: PositionSample[] = [];
   for (const sample of history) {
-    if (since - sample.collectedAt > MAX_HANDOFF_GAP_MS) break;
-    if (distanceMeters(sample, anchorStop) > AT_STOP_PIN_M) break;
+    if (unbrokenSince - sample.collectedAt > MAX_HANDOFF_GAP_MS) break;
+    unbrokenSince = sample.collectedAt;
+    if (!inRun) continue;
+    if (distanceMeters(sample, anchorStop) > AT_STOP_PIN_M) {
+      // The pinned run ends here, but the observed one may not: keep walking so
+      // `unbrokenSince` can reach back over the roll-in.
+      inRun = false;
+      continue;
+    }
     since = sample.collectedAt;
+    run.push(sample);
   }
   if (since >= obs.collectedAt) return null;
+
+  // Oldest-first, with `obs` on the end: the plateaus as the reducer sees them.
+  const ordered: PositionSample[] = run.reverse();
+  ordered.push({ lat: obs.lat, lon: obs.lon, collectedAt: obs.collectedAt });
+  let restedSince: EpochMs | null = null;
+  let plateauStart = ordered[0]!.collectedAt;
+  let plateauPolls = 0;
+  for (let i = 1; i < ordered.length; i++) {
+    const before = ordered[i - 1]!;
+    const now = ordered[i]!;
+    if (before.lat === now.lat && before.lon === now.lon) {
+      plateauPolls++;
+      if (restedSince === null) restedSince = plateauStart;
+    } else {
+      plateauStart = now.collectedAt;
+      plateauPolls = 0;
+    }
+  }
+
   return {
     stationarySince: since,
     // Pinned to the STOP, exactly as `stationaryFields` would have stored it:
@@ -337,6 +431,12 @@ export function seedStationaryFromHistory(
     stationaryLat: anchorStop.lat,
     stationaryLon: anchorStop.lon,
     stationaryStopId: anchorStop.id,
+    unbrokenSince,
+    restedSince,
+    // A fresh fix on this very poll means the bus is moving; there is no
+    // plateau to hand the visit reducer and nothing to resume.
+    restSince: plateauPolls > 0 ? plateauStart : null,
+    restPolls: plateauPolls,
   };
 }
 
@@ -598,12 +698,12 @@ export function step(
   prev: BusState | null,
   obs: BusObservation,
   seed: StationarySeed | null = null,
-): { state: BusState | null; events: DetectorEvent[] } {
+): { state: BusState | null; events: DetectorEvent[]; resumed: StandSeed | null } {
   const global = network.nearestStopOnRoute(obs.routeId, obs);
   if (!global) {
     // Bus is on a route we don't know about, or the route has no stops yet.
     // Drop state so we re-anchor cleanly once the route shows up.
-    return { state: null, events: [] };
+    return { state: null, events: [], resumed: null };
   }
 
   // Reject an observation that is not strictly newer than the one already
@@ -617,7 +717,7 @@ export function step(
   // duplicate row for one bus in a single payload, whose only possible
   // "segment" has travelSec 0.
   if (prev && obs.collectedAt <= prev.lastObservedAt) {
-    return { state: prev, events: [] };
+    return { state: prev, events: [], resumed: null };
   }
 
   const gap = prev ? obs.collectedAt - prev.lastObservedAt : Infinity;
@@ -675,11 +775,20 @@ export function step(
   // "arrived at a different stop" and throw the wait away.
   const anchorStop = network.stops.get(nearest.stopId) ?? null;
 
+  // The one reanchor that is not a lost track is the first sighting of a bus by
+  // a freshly started process: the bus never went anywhere, we did. Consulted
+  // here and nowhere else, so every other reanchor is untouched.
+  const seeded = prev ? null : (seed?.(obs, anchorStop) ?? null);
+  // ...and the DB agreed this stand already has a row. Resuming its instant is
+  // what keeps one stand to one arrival, and what lets the departure close it
+  // with the whole stand rather than the piece after the restart.
+  const resumed = seeded && seeded.enteredAt != null ? seeded : null;
+
   // Re-anchor on first sight, after a long gap, on a route change, or when
-  // the bus left the modelled path (above). We always emit an arrival event
-  // so downstream consumers (the live UI, the dwell updater) have an anchor
-  // row, but we never emit a dwell or segment because we don't trust the
-  // missing time window.
+  // the bus left the modelled path (above). We emit an arrival event so
+  // downstream consumers (the live UI, the dwell updater) have an anchor row —
+  // unless we RESUMED one, which already exists — but we never emit a dwell or
+  // segment, because we don't trust the missing time window.
   const reanchor =
     !prev ||
     gap > MAX_OBSERVATION_GAP_MS ||
@@ -694,7 +803,12 @@ export function step(
         routeId: obs.routeId,
         nearestStopId: nearest.stopId,
         nearestIndex: nearest.index,
-        enteredAt: obs.collectedAt,
+        // A resumed stand keeps the anchor instant the row it is resuming was
+        // written under, so the dwell patch finds that row and `stop_visits`
+        // joins to it. It also lifts the 15 s `at_stop_id` gate in
+        // `updateLivePositions`, which is measured from here and would
+        // otherwise withhold the stop for three polls after every deploy.
+        enteredAt: resumed?.enteredAt ?? obs.collectedAt,
         lastObservedAt: obs.collectedAt,
         lat: obs.lat,
         lon: obs.lon,
@@ -704,22 +818,27 @@ export function step(
         // bus is at one, so the frame is right from the very first poll rather
         // than from wherever the bus happened to be seen.
         //
-        // The one reanchor that is NOT a lost track is the first sighting of a
-        // bus by a freshly started process: the bus never went anywhere, we
-        // did. {@link StationarySeed} recovers that clock from recorded
-        // positions; every other reanchor still restarts it.
-        ...stationaryFields(prev ? null : (seed?.(obs, anchorStop) ?? null), obs, anchorStop),
+        // {@link StationarySeed} is the exception, and only on a first
+        // sighting: it recovers the clock from recorded positions.
+        ...stationaryFields(seeded, obs, anchorStop),
       },
-      events: [
-        {
-          kind: "arrival",
-          busId: obs.busId,
-          busName: obs.busName,
-          routeId: obs.routeId,
-          stopId: nearest.stopId,
-          arrivedAt: obs.collectedAt,
-        },
-      ],
+      // A resumed stand already HAS its arrival row. Writing another is the
+      // duplicate this exists to end — and each one truncated the measured
+      // stand, because `stop_visits.pinned_at` and the dwell patch both key on
+      // the anchor instant above.
+      events: resumed
+        ? []
+        : [
+            {
+              kind: "arrival",
+              busId: obs.busId,
+              busName: obs.busName,
+              routeId: obs.routeId,
+              stopId: nearest.stopId,
+              arrivedAt: obs.collectedAt,
+            },
+          ],
+      resumed,
     };
   }
 
@@ -745,6 +864,7 @@ export function step(
         ...stationaryFields(prev, obs, anchorStop),
       },
       events: [],
+      resumed: null,
     };
   }
 
@@ -828,6 +948,7 @@ export function step(
       ...stationaryFields(prev, obs, anchorStop),
     },
     events,
+    resumed: null,
   };
 }
 

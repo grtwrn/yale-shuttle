@@ -29,7 +29,7 @@ import type {
   BusState,
   DetectorEvent,
   PositionSample,
-  StationaryState,
+  StandSeed,
   TrackPlan,
 } from "./detector.js";
 import {
@@ -175,6 +175,16 @@ const STATIONARY_SEED_WINDOW_MS = STATE_TTL_MS;
 
 /** Hard row cap on the seed scan, so a dense window can never make it unbounded. */
 const STATIONARY_SEED_MAX_ROWS = 600;
+
+/**
+ * How many of a bus's most recent arrivals `resumeArrival` inspects.
+ *
+ * It walks back over consecutive OPEN rows at one stop and stops at the first
+ * row that is not one, so in the ordinary case it reads one row and in the
+ * worst recorded case (seven arrivals for a single stand, 2026-09-04) seven.
+ * The cap is only there so a pathological history cannot make the scan grow.
+ */
+const RESUME_ARRIVAL_MAX_ROWS = 20;
 
 // Retention windows -----------------------------------------------------------
 
@@ -335,6 +345,7 @@ export class Collector {
   private readonly countRouteSamplesStmt: Database.Statement;
   private readonly selectRouteSamplesStmt: Database.Statement;
   private readonly recentBusSamplesStmt: Database.Statement;
+  private readonly recentBusArrivalsStmt: Database.Statement;
 
   /**
    * Route geometry derived from observed GPS, best-so-far per route.
@@ -489,6 +500,14 @@ export class Collector {
       "SELECT lat, lon, collected_at AS collectedAt FROM raw_positions " +
         "WHERE bus_id = ? AND collected_at >= ? AND collected_at < ? " +
         "ORDER BY collected_at DESC LIMIT ?",
+    );
+    // Hits `arrivals_bus_time_idx` (bus_id, arrived_at). Newest first, so
+    // `resumeArrival` can stop at the first row that is not part of the stand.
+    this.recentBusArrivalsStmt = this.sqlite.prepare(
+      "SELECT stop_id AS stopId, route_id AS routeId, arrived_at AS arrivedAt, " +
+        "departed_at AS departedAt FROM arrivals " +
+        "WHERE bus_id = ? AND arrived_at >= ? AND arrived_at < ? " +
+        "ORDER BY arrived_at DESC LIMIT ?",
     );
     this.pathStore = new PathStore(this.sqlite);
     this.derivedPathsByRoute = this.pathStore.loadAll();
@@ -805,11 +824,14 @@ export class Collector {
    * it. The positions the reconstruction needs were on disk the whole time.
    *
    * The rule lives in {@link seedStationaryFromHistory}; this supplies the
-   * history and the window. Reads only, and it reaches `stationarySince` and
-   * nothing else — not `enteredAt` — so no dwell, segment, arrival or visit
-   * changes and no statistic can move.
+   * history, the window, and the one thing no pure rule can know — whether the
+   * database still holds the `arrivals` row this stand opened. Reads only.
+   *
+   * That row is what {@link resumeArrival} looks for, and finding it is what
+   * makes the restart free rather than merely cheaper: the detector then keeps
+   * the anchor instant instead of writing a second arrival for one stand.
    */
-  private seedStationary(obs: BusObservation, anchorStop: Stop | null): StationaryState | null {
+  private seedStationary(obs: BusObservation, anchorStop: Stop | null): StandSeed | null {
     // Cheap gate first: a bus that is not at a stop needs no query at all, and
     // that includes every bus on a route the network does not know.
     if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
@@ -820,7 +842,13 @@ export class Collector {
         obs.collectedAt,
         STATIONARY_SEED_MAX_ROWS,
       ) as PositionSample[];
-      return seedStationaryFromHistory(history, obs, anchorStop);
+      const run = seedStationaryFromHistory(history, obs, anchorStop);
+      if (!run) return null;
+      // `restSince === null` means the bus is reporting a FRESH fix on this very
+      // poll — it is moving, so there is no stand to resume and the ordinary
+      // rules (which may be watching a departure) must have it.
+      if (run.restSince === null) return run;
+      return { ...run, enteredAt: this.resumeArrival(obs, anchorStop, run.unbrokenSince) };
     } catch (err) {
       // A seed is an improvement, never a requirement: a failed read leaves the
       // clock exactly where it would have been without this method.
@@ -830,6 +858,55 @@ export class Collector {
       });
       return null;
     }
+  }
+
+  /**
+   * The `arrivals` row this stand already opened, if the database holds one.
+   *
+   * Three things have to agree before a row is resumable, and they are the
+   * whole safety of resuming it:
+   *
+   *  1. The bus's LATEST recorded arrival is at this very stop, on this route,
+   *     and still open (`departed_at IS NULL`). A row from an earlier lap has
+   *     arrivals at other stops after it and is rejected on the first test —
+   *     which is why no time window has to be guessed at.
+   *  2. It lies inside the unbroken observed run (`unbrokenSince`). A bus that
+   *     went off the air between the arrival and now is one the live rules
+   *     re-anchor anyway, so its old row must not be resumed across the hole.
+   *  3. Its `bus_id` is the one reporting now. An id reissue across the restart
+   *     is exactly the case {@link MAX_HANDOFF_GAP_MS} refuses to inherit, and
+   *     the dwell patch keys on the arriving id, so resuming across a reissue
+   *     would leave a row this process could never close.
+   *
+   * Walking back over consecutive open rows at the same stop and taking the
+   * EARLIEST is what merges a stand a PREVIOUS release already split into
+   * several: within one unbroken run inside `AT_STOP_PIN_M` the bus never left,
+   * so every open row there belongs to this one stand.
+   */
+  private resumeArrival(
+    obs: BusObservation,
+    anchorStop: Stop,
+    unbrokenSince: number,
+  ): number | null {
+    const rows = this.recentBusArrivalsStmt.all(
+      obs.busId,
+      unbrokenSince,
+      obs.collectedAt,
+      RESUME_ARRIVAL_MAX_ROWS,
+    ) as Array<{ stopId: number; routeId: number; arrivedAt: number; departedAt: number | null }>;
+    let resumeAt: number | null = null;
+    // Newest first: stop at the first row that is not part of this stand.
+    for (const row of rows) {
+      if (
+        row.stopId !== anchorStop.id ||
+        row.routeId !== obs.routeId ||
+        row.departedAt !== null
+      ) {
+        break;
+      }
+      resumeAt = row.arrivedAt;
+    }
+    return resumeAt;
   }
 
   private updateLivePositions(
