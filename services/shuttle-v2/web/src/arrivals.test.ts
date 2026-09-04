@@ -46,6 +46,40 @@ describe("computeUpcomingArrivals", () => {
     expect(arrivals[0].eta).toBeLessThan(arrivals[1].eta);
   });
 
+  // Report #89 ("isn't red closed for the day?"): at 6:14pm ET on a Thursday
+  // — Red is published 7am–6pm — the trip row read "🚌 in 25, 78 min". The 78
+  // was the last Red of the day projected to lap at 7:32pm, long after the
+  // route stops running. The lap-2 entry is a projection, so it has to answer
+  // to the timetable; the bus you can actually see does not.
+  describe("the second-lap projection stops at the end of service", () => {
+    // Blue Day runs M–F 07:00–18:00 ET. This bus is 6 min from 333 Cedar on
+    // this lap and 47 min away on the next.
+    const busOnBlueDay = () =>
+      makeBus({ ...at(STOP.phelpsGate), route_id: 1, last_stop_id: 42 });
+    const etasAt = (iso: string) =>
+      computeUpcomingArrivals(
+        [STOP.cedar333], [busOnBlueDay()], routeStops, stopCoords, segmentTimes,
+        new Date(iso).getTime(),
+      ).map((a) => Math.round(a.eta / 60));
+
+    it("keeps the next lap while the route is still running", () => {
+      // Monday 16:30 ET — the lap lands at 17:17, inside the window.
+      expect(etasAt("2026-08-31T20:30:00Z")).toEqual([6, 47]);
+    });
+
+    it("drops the next lap once the window has closed by then", () => {
+      // Monday 17:45 ET. The bus 6 min out is real and stays; the lap after
+      // it would land at 18:32, past Blue Day's 18:00 close.
+      expect(etasAt("2026-08-31T21:45:00Z")).toEqual([6]);
+    });
+
+    it("still drops it when the rider is already past the close", () => {
+      // Monday 18:10 ET — a bus finishing its last loop. It is visible; the
+      // lap after it is not offered at all.
+      expect(etasAt("2026-08-31T22:10:00Z")).toEqual([6]);
+    });
+  });
+
   it("ignores buses parked off the route", () => {
     const ghost = makeBus({
       route_id: 1,

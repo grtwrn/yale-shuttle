@@ -7,6 +7,7 @@ import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
+import { isRouteActiveAt } from "./schedule";
 
 /**
  * `drive`, when served, is the seconds from the last poll at the from-stop to
@@ -459,6 +460,28 @@ export function computeUpcomingArrivals(
         if (cumulative > MAX_ETA_SEC) break;
         const sid = stops[curI];
         const recorded = recordedForStop.get(sid) ?? 0;
+        // Past `totalStops` this is no longer a bus the rider can see coming:
+        // it is the SAME vehicle projected to come round again, and that
+        // projection silently assumes the route is still running when it
+        // lands. It often isn't. Report #89, Thursday 6:14pm ET: Red's
+        // published day ends at 6pm, one bus was finishing its last loop, and
+        // the board offered "🚌 in 25, 78 min" — the 78 was that same bus
+        // lapping at 7:32pm, which was never going to happen. So a second-lap
+        // entry is dropped once the route's operating window has closed by
+        // the time it would arrive.
+        //
+        // Lap ONE is never gated. A bus in front of you is real whatever the
+        // timetable says, and hiding it is the failure SERVICE_GRACE_MS
+        // exists to avoid ("fail wide" — see schedule.ts). The gate here is
+        // ROUTE_HOURS rather than the operator's published timetable for the
+        // same reason: it is the window widened against 13 weeks of observed
+        // arrivals, so a genuine last loop still counts and only the
+        // impossible lap goes.
+        const speculativeLap = step > totalStops;
+        if (
+          speculativeLap &&
+          !isRouteActiveAt(cfg.label, new Date(now + cumulative * 1000))
+        ) continue;
         if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
           recordedForStop.set(sid, recorded + 1);
           const sd = Math.sqrt(cumulativeVar);
