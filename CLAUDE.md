@@ -727,10 +727,40 @@ and run both scripts; a few minutes each). Findings that constrain changes:
 - **A bus's holding so far does not predict its holding ahead** (58,005
   windows): correlation −0.03, and −0.09 once you control for which stops are
   ahead. A perfect oracle would be worth 4.2 s. Not built.
-- **The anchor is the next lever**: where `findRouteAnchor` disagrees with the
-  detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
-  the median error is 367 s vs 99 s. A perfect anchor would take the median to
-  103 s and the mean bias to +2 s.
+- **The anchor WAS the next lever, and it was two defects in the candidate
+  test** (2026-09-04, reports #95 and #126; the write-up is
+  `docs/eta-accuracy.md`, "What the lever was"). Where `findRouteAnchor`
+  disagreed with the detector the median error was 367 s against 99 s, and a
+  perfect anchor would reach 103 s / +2 s bias.
+  - **A leg is the ROAD between two stops, not the chord.** Measuring to the
+    chord loses the leg the bus is on for 19.64% of polls (3.63% measured to
+    the published line): Blue West's Canal / Munson -> Mansfield / Division
+    bows 200 m off its own chord, so the only candidate left was the RETURN
+    down the same road and a bus 33 s from the kerb was re-priced a lap away.
+    Same mistake as the straight diagonals on the map, same fix —
+    `traceStopLegs`. A route with no registered path still uses the chord.
+  - **`last_stop_id` EXCLUDES, it does not rank.** The old sort ordered
+    candidates by forward distance from it and used GPS only as a tiebreak, so
+    it took the earliest in range however far away. Upstream froze that value
+    for seven minutes and five stops on Red #316 and the anchor sat a stop back
+    for whole hops, then caught up in one poll — 10 min to 5 min, the vanished
+    hop being 344 Winchester's layover. Now a candidate more than
+    `ANCHOR_FEED_LEAD_HOPS` (5) ahead is dropped and the GPS decides among the
+    rest, with forward order breaking a tie inside `ANCHOR_NEARER_M` (80 m).
+    **That band is the whole safety of the rule**: at 30 m the GPS overrules
+    forward order between the two anti-parallel legs of an out-and-back and the
+    anchor lands a LAP out of position more often (`branch-lock.ts`: Green 11.1
+    -> 13.7%, Purple 22.2 -> 27.8%); at 80 m both are back exactly where master
+    had them. It is bounded above by #316's own disputes, 113 m and 90 m apart.
+    And without any band a bus jittering at a kerb flips the anchor at 96.7% of
+    the network's stops.
+  - Together on `gps-replay`: mean bias −88.7 -> −58.2 s, moving-bus next-stop
+    median 47.6 -> 45.2 s, and where the anchor disagrees with the detector
+    −431.8 -> −137.1 s. **Do not read the disagreement RATE as the arbiter on a
+    fold** — it rises on Pink and Purple while their rider error does not. It
+    scores against `nearestStopOnRoute`, which by its own documentation has no
+    direction and no occurrence disambiguation, so on a folding route it cannot
+    tell the two passes apart.
 - **On an out-and-back, direction of travel picks the branch — and only for a
   bus that is moving.** Green and Purple run out to West Campus and back along
   the same road, so the same coordinates belong to two legs at once; neither

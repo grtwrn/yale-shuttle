@@ -153,34 +153,45 @@ export const ANCHOR_FEED_LEAD_HOPS = 5;
 
 /**
  * How much nearer one candidate leg must be than another before GPS is allowed
- * to overrule forward order. Inside this band the legs are indistinguishable
- * and `last_stop_id` breaks the tie, exactly as it always did.
+ * to overrule forward order. Inside this band the legs are treated as
+ * indistinguishable and `last_stop_id` breaks the tie, exactly as it always
+ * did.
  *
- * THIS IS NOT A SOFTENING OF THE RULE ABOVE, it is the resolution of the
- * instrument. The feed publishes a new coordinate only once a bus has moved
- * ~30 m (2 of 33,118 distinct fixes moved less, and the floor is 30.0 m whether
- * 5 s or 20 s elapsed), so a 20 m difference between two legs is not a
- * measurement, it is noise.
+ * THE BAND IS THE WHOLE SAFETY OF THE RULE ABOVE, and it has two measured
+ * bounds that leave one narrow range.
  *
- * And it matters most exactly where a rider is watching. The two legs that meet
- * AT a stop are both ~0 m from a bus standing at it, so with no band the choice
- * between "has reached this stop" and "is still approaching it" is decided by
- * float noise. Displacing a bus perpendicular to the road by up to 30 m at
- * every stop on the network (`scripts/.eta-replay/jitter-probe.ts`, 274 stops):
+ * FROM BELOW — the folds. Two anti-parallel legs of an out-and-back sit within
+ * tens of metres of each other, and choosing between them by distance does not
+ * cost a stop, it costs a LAP. `scripts/eta-replay/branch-lock.ts` counts
+ * exactly that (the anchor a quarter of the loop out of position), replaying
+ * the whole 2026-09-03 capture through the production sequence:
  *
- *   band  0 m — the anchor changes at 96.7% of stops
- *   band 15 m — 10.6%
- *   band 30 m — 0.7%
+ *   band        Green    Purple   Blue Day   Orange Day
+ *   master      11.1%     22.2%       0.3%         0.5%
+ *   30 m        13.7%     27.8%       1.2%         0.0%
+ *   60 m        12.7%     26.0%       0.3%         0.0%
+ *   80 m        11.1%     22.2%       0.3%         0.0%
  *
- * A flip there adds or removes that stop's whole dwell from the countdown, which
- * is the "6 min then 16 min" of report #32. `anchor.test.ts`'s "unmoved by GPS
- * jitter perpendicular to the segment" is the unit-sized version and fails
- * without this.
+ * At 80 m the two out-and-backs are back exactly where master had them and
+ * Orange Day's improvement is kept. **Anything smaller trades the folds for
+ * the incident**, which is not a trade to make: `docs/rider-sim.md` prices a
+ * lap on Green and Purple at more than anything the incident costs.
  *
- * It costs nothing on the incidents this file exists for — #316's disputes are
- * 32 m against 145 m and 46 m against 136 m, four times the band.
+ * FROM ABOVE — the incidents. Red #316's two disputed polls are 32 m against
+ * 145 m and 46 m against 136 m, so the band must stay under 90 m or the second
+ * one goes back to the feed's stale answer. 80 is the largest round value that
+ * clears it.
+ *
+ * It also settles the jitter that has its own shipped test. The two legs
+ * meeting AT a stop are both ~0 m from a bus standing there, so with no band
+ * the choice between "has reached this stop" and "is still approaching it" is
+ * float noise: displacing a bus perpendicular to the road by up to 30 m at
+ * every stop on the network (`scripts/.eta-replay/jitter-probe.ts`, 274 stops)
+ * changes the anchor at 96.7% of them with no band, 10.6% at 15 m, 0.7% at
+ * 30 m and 0.0% from 60 m up. Each flip adds or removes that stop's whole
+ * dwell, which is report #32's "6 min then 16 min".
  */
-export const ANCHOR_NEARER_M = 30;
+export const ANCHOR_NEARER_M = 80;
 
 // --- what a leg IS: the road, not the chord ---------------------------------
 //

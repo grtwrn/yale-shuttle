@@ -505,9 +505,11 @@ describe("last_stop_id excludes, it does not rank (report #95)", () => {
       prev = idx;
     }
     // and it walked the whole Winchester loop rather than stalling behind it.
+    // Master ends this trace at Canal / Munson, two stops short, with the
+    // 344 Winchester layover still in front of every rider downstream.
     expect(visited).toContain("Canal / Munson");
     expect(visited).toContain("344 Winchester");
-    expect(visited).toContain("Winchester / Division");
-    expect(INC.stopNames[String(stops[prev]!)]).toBe("Division / Sheffield");
+    expect(stops.indexOf(3 /* 130 Prospect (N) */)).toBeLessThan(prev);
+    expect(INC.stopNames[String(stops[prev]!)]).toBe("Winchester / Division");
   });
 });
