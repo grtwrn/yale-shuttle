@@ -13,10 +13,13 @@
  *   cd services/shuttle-v2
  *   TZ=America/New_York npx tsx scripts/backfill-departures.ts --db ./store/snap.db
  *       [--capture a.jsonl,b.jsonl]   default: every ~/shuttle-captures/positions-*.jsonl
- *       [--before <ISO>]              default: the earliest live row already in the DB
+ *       [--target <path>]             the database the rows are FOR — the cutoff and the
+ *                                     dedup keys come from it. Default: --db.
+ *       [--before <ISO>]              override the cutoff explicitly
  *       [--out rows.json]             write the rows instead of inserting (for the
  *                                     production apply step, scripts/backfill-departures-apply.cjs)
  *       [--dry-run]                   report only
+ *       [--allow-empty]               a run that keeps nothing is a pass (idempotent rerun)
  *
  * Two safety rules, both about not double counting the live collector:
  *
@@ -30,17 +33,29 @@
  *  - EXACT-KEY DEDUP against whatever is already there, so the script is
  *    idempotent: rerunning it inserts nothing.
  *
- * The DB supplies stops and routes (the network the reducer indexes into) and
- * receives the rows. Run with TZ=America/New_York: `dow`/`hour` are ET.
+ * Both are properties of the TARGET, which is not always `--db`. `--db` supplies
+ * stops and routes (the network the reducer indexes into) and, when no `--out`
+ * is given, receives the rows; when the rows are for another database (the
+ * production machine's), name it with `--target` so the cutoff is that
+ * database's earliest live visit and not a local scratch copy's. Getting this
+ * wrong is what emptied the 2026-09-04 run: the local copy had itself been
+ * backfilled from this archive, so its earliest row WAS the archive's first
+ * sample and every derived event landed at or after the cutoff. `checkBackfill`
+ * (scripts/backfill-guards.ts) now refuses that state, and refuses an empty
+ * result generally; the script exits non-zero and writes nothing.
+ *
+ * Run with TZ=America/New_York: `dow`/`hour` are ET.
  */
 process.env.TZ ??= "America/New_York";
 if (Intl.DateTimeFormat().resolvedOptions().timeZone !== "America/New_York") {
   throw new Error("run with TZ=America/New_York (dow/hour columns are ET, like the collector's)");
 }
 
+import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
+import { checkBackfill } from "./backfill-guards.js";
 import { openDb } from "../src/db/client.js";
 import { legs as legsTable, stopVisits } from "../src/db/schema.js";
 import { TransitNetwork } from "../src/network/TransitNetwork.js";
@@ -62,7 +77,9 @@ const arg = (name: string): string | undefined => {
 const DB_PATH = arg("--db");
 if (!DB_PATH) throw new Error("--db <path> is required (a writable copy, or the live DB on the machine)");
 const DRY = argv.includes("--dry-run");
+const ALLOW_EMPTY = argv.includes("--allow-empty");
 const OUT = arg("--out");
+const TARGET_PATH = arg("--target") ?? DB_PATH;
 const CAPTURE = (arg("--capture") ?? defaultCaptures().join(",")).split(",").map((s) => s.trim()).filter(Boolean);
 if (CAPTURE.length === 0) throw new Error("no capture files");
 
@@ -87,22 +104,30 @@ const routeName = new Map(routes.map((r) => [r.id, r.name]));
 const stopName = new Map(stops.map((s) => [s.id, s.name]));
 log(`network: ${stops.length} stops, ${routes.length} routes from ${DB_PATH}`);
 
-// -- cutoff and existing keys ----------------------------------------------------------
-const liveMin = (sqlite.prepare("SELECT MIN(anchored_at) m FROM stop_visits").get() as { m: number | null }).m;
+// -- cutoff and existing keys, from the TARGET ---------------------------------------------
+// The target is `--db` unless `--target` names another database: the cutoff and
+// the dedup keys are properties of whatever will receive these rows.
+const target = TARGET_PATH === DB_PATH ? sqlite : new Database(TARGET_PATH, { readonly: true });
+const liveMin = (target.prepare("SELECT MIN(anchored_at) m FROM stop_visits").get() as { m: number | null }).m;
 const beforeArg = arg("--before");
 const CUTOFF = beforeArg ? Date.parse(beforeArg) : liveMin ?? Infinity;
 if (!Number.isFinite(CUTOFF) && beforeArg) throw new Error(`--before ${beforeArg} did not parse`);
-log(`cutoff: ${Number.isFinite(CUTOFF) ? new Date(CUTOFF).toISOString() : "none (no live rows yet)"}${liveMin ? ` (earliest live row ${new Date(liveMin).toISOString()})` : ""}`);
+const CUTOFF_SOURCE = beforeArg
+  ? `--before ${beforeArg}`
+  : liveMin != null
+    ? `${TARGET_PATH}, earliest stop_visits row`
+    : `${TARGET_PATH}, which holds no visits yet`;
+log(`cutoff: ${Number.isFinite(CUTOFF) ? new Date(CUTOFF).toISOString() : "none (no live rows yet)"} (${CUTOFF_SOURCE})`);
 
 const existingVisits = new Set<string>();
-for (const r of sqlite.prepare("SELECT bus_name b, route_id r, stop_id s, anchored_at t FROM stop_visits").iterate() as Iterable<{ b: string; r: number; s: number; t: number }>) {
+for (const r of target.prepare("SELECT bus_name b, route_id r, stop_id s, anchored_at t FROM stop_visits").iterate() as Iterable<{ b: string; r: number; s: number; t: number }>) {
   existingVisits.add(`${r.b}|${r.r}|${r.s}|${r.t}`);
 }
 const existingLegs = new Set<string>();
-for (const r of sqlite.prepare("SELECT bus_name b, route_id r, from_stop_id f, to_stop_id t, departed_at d FROM legs").iterate() as Iterable<{ b: string; r: number; f: number; t: number; d: number }>) {
+for (const r of target.prepare("SELECT bus_name b, route_id r, from_stop_id f, to_stop_id t, departed_at d FROM legs").iterate() as Iterable<{ b: string; r: number; f: number; t: number; d: number }>) {
   existingLegs.add(`${r.b}|${r.r}|${r.f}|${r.t}|${r.d}`);
 }
-log(`existing rows: ${existingVisits.size} visits, ${existingLegs.size} legs`);
+log(`target ${TARGET_PATH}: ${existingVisits.size} visits, ${existingLegs.size} legs already there`);
 
 // -- corpus --------------------------------------------------------------------------
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
@@ -174,16 +199,21 @@ for (const r of legRows) {
   if (existingLegs.has(`${r.busName}|${r.routeId}|${r.fromStopId}|${r.toStopId}|${t}`)) { legsDup++; continue; }
   keptLegs.push(r);
 }
-console.log(`\n=== cutoff ${Number.isFinite(CUTOFF) ? new Date(CUTOFF).toISOString() : "none"} ===`);
-console.log(`visits: ${keptVisits.length} to insert, ${visitsPastCutoff} at/after cutoff (live collector's), ${visitsDup} already present`);
-console.log(`legs:   ${keptLegs.length} to insert, ${legsPastCutoff} at/after cutoff (live collector's), ${legsDup} already present`);
-if (keptVisits.length === 0 && keptLegs.length === 0) {
-  console.log(
-    "\nNOTHING TO INSERT. The cutoff is the earliest row already in the target; a target that has ALREADY been\n" +
-    "backfilled has the archive's first row there, so every derived row falls at or after it. That is the\n" +
-    "idempotent case. If this target has NOT been backfilled and you expected rows, its earliest row is not\n" +
-    "the live collector's first — pass --before <ISO of the live collector's first visit> explicitly.\n",
-  );
+const verdict = checkBackfill({
+  cutoff: CUTOFF,
+  cutoffSource: CUTOFF_SOURCE,
+  corpusFirstMs: pos[0]!.t,
+  visits: { kept: keptVisits.length, pastCutoff: visitsPastCutoff, dup: visitsDup },
+  legs: { kept: keptLegs.length, pastCutoff: legsPastCutoff, dup: legsDup },
+  allowEmpty: ALLOW_EMPTY,
+});
+console.log("\n" + verdict.lines.join("\n"));
+if (!verdict.ok) {
+  // Nothing is written on a failed run: an empty rows file is exactly the
+  // artefact that got mistaken for a successful backfill.
+  sqlite.close();
+  if (target !== sqlite) target.close();
+  process.exit(1);
 }
 
 // -- write ----------------------------------------------------------------------------
@@ -204,14 +234,15 @@ if (OUT) {
 }
 
 // -- coverage, as the calibrator and the client's gate will see it -----------------------
-// Counted from the DB plus, when nothing was inserted (dry run / --out), the
-// rows this run would have added — i.e. always "the DB after this backfill".
+// Counted from the TARGET plus, when nothing was inserted (dry run / --out),
+// the rows this run would have added — i.e. always "the target after this
+// backfill".
 {
   const stopsStand = new Map<string, number>();   // route|stop -> stopped visits with a pinned stand
   const hopsDrive = new Map<string, number>();    // route|from|to -> one-hop legs with a positive pinned drive
   const count = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
-  for (const r of sqlite.prepare("SELECT route_id r, stop_id s FROM stop_visits WHERE outcome = 'stopped' AND pinned_at IS NOT NULL AND departed_at IS NOT NULL").iterate() as Iterable<{ r: number; s: number }>) count(stopsStand, `${r.r}|${r.s}`);
-  for (const r of sqlite.prepare("SELECT route_id r, from_stop_id f, to_stop_id t FROM legs WHERE hops = 1 AND COALESCE(to_pinned_at, arrived_at) > departed_at").iterate() as Iterable<{ r: number; f: number; t: number }>) count(hopsDrive, `${r.r}|${r.f}|${r.t}`);
+  for (const r of target.prepare("SELECT route_id r, stop_id s FROM stop_visits WHERE outcome = 'stopped' AND pinned_at IS NOT NULL AND departed_at IS NOT NULL").iterate() as Iterable<{ r: number; s: number }>) count(stopsStand, `${r.r}|${r.s}`);
+  for (const r of target.prepare("SELECT route_id r, from_stop_id f, to_stop_id t FROM legs WHERE hops = 1 AND COALESCE(to_pinned_at, arrived_at) > departed_at").iterate() as Iterable<{ r: number; f: number; t: number }>) count(hopsDrive, `${r.r}|${r.f}|${r.t}`);
   if (OUT || DRY) {
     for (const r of keptVisits) if (r.outcome === "stopped" && r.pinnedAt && r.departedAt) count(stopsStand, `${r.routeId}|${r.stopId}`);
     for (const r of keptLegs) if (r.hops === 1 && ms(r.toPinnedAt ?? r.arrivedAt)! > ms(r.departedAt)!) count(hopsDrive, `${r.routeId}|${r.fromStopId}|${r.toStopId}`);
@@ -230,9 +261,10 @@ if (OUT) {
     if (s1 + h1 === 0) continue;
     rows.push(`| ${routeName.get(r.id) ?? r.id} | ${uniq.length} | ${s1} | ${s20} | ${hops.length} | ${h1} | ${h10} | ${both} |`);
   }
-  console.log(`\nCoverage (the DB after this backfill); the client prices a hop from the split only when its from-stop has stand n≥${MIN_STAND_SAMPLES} AND the hop has drive n≥${MIN_DRIVE_SAMPLES}:\n`);
+  console.log(`\nCoverage (${TARGET_PATH} after this backfill); the client prices a hop from the split only when its from-stop has stand n≥${MIN_STAND_SAMPLES} AND the hop has drive n≥${MIN_DRIVE_SAMPLES}:\n`);
   console.log(rows.join("\n"));
   const w = [...stopsStand.entries()].filter(([k]) => k.startsWith("3|")).map(([k, n]) => ({ stop: stopName.get(Number(k.split("|")[1])) ?? k, n })).filter((x) => x.stop.startsWith("344 Winchester"));
   if (w.length) console.log(`\nRed, 344 Winchester: stand n = ${w[0]!.n}`);
 }
 sqlite.close();
+if (target !== sqlite) target.close();

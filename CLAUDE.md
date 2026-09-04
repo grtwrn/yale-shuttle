@@ -780,6 +780,22 @@ production path. Without it the live tables start at 22:21 ET 2026-09-03 and
 Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 60
 hops clear them at once (Red 29, Blue Day 31).
 
+**The cutoff belongs to the TARGET, and an empty backfill is a failure.** The
+first production run of this script emitted `{"visits":[],"legs":[]}` and exited
+0, under a per-route coverage table that looked exactly right — the table counts
+"the target after this backfill", so it reads the same whether the rows came
+from the run or were already there. The `--db` it was given had itself been
+backfilled from this archive, so its earliest `stop_visits` row WAS the
+archive's first sample, and every derived event landed at or after the cutoff
+and was correctly skipped. Two things now make that impossible to miss: `--target
+<path>` names the database the rows are FOR (the cutoff and dedup keys come from
+it; `--db` still supplies the network), and `checkBackfill`
+(`scripts/backfill-guards.ts`, unit-tested) refuses **any** run that keeps zero
+rows, and refuses a cutoff at or before the corpus's first sample even when
+`--allow-empty` is passed — since that one can only ever keep nothing. A failed
+run prints a `=== BACKFILL SUMMARY ===` block with the cutoff and its
+provenance, writes nothing, and exits 1.
+
 ### The rider canary (`scripts/rider-canary.mjs`)
 
 Everything above scores predictions **in aggregate** — median error, share
