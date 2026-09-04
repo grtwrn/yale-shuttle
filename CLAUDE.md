@@ -1461,6 +1461,33 @@ are never summed:
   favour of a DIFFERENT vehicle. Departure still clears the row: once the bus
   really goes, its own soonest entry IS the lap, it is catchable again, and
   the loyalty branch takes over.
+
+  **`canCatch` also deletes a bus for being TOO CLOSE, and that was the other
+  half** (canary, Red, 2026-09-04 16:03 ET, on the operator's own trip). The
+  rider was at Prospect / Canner, 83 m from the board stop Division /
+  Prospect — a 76 s walk, and just outside `AT_PLACE_M` (80 m), so unlike
+  every default rider-sim rider they HAD a walk. `canCatch` is
+  `walk <= eta + STOP_DWELL_SEC`, so at `eta < 16 s` #304 dropped out of
+  `catchable` while it was 97 m from the kerb and closing; the report-#49
+  dominance branch then compared the pinned vehicle against what survived
+  that filter — #310, twenty-six minutes out — and handed it the row:
+
+      16:03:15  "in <1, 19 min"   #304 235 m out, live [304:23s, 316, 310]
+      16:03:30  "in 26, 46 min"   #304  97 m out, live [304:11s, 310:1580s]
+      16:03:37  #304 at the kerb, 6 m
+
+  `computeUpcomingArrivals` never withdrew it — **the anchor is innocent
+  here**, and the replay pins that: it held Division / Sheffield (slot 16)
+  through the whole approach and offered #304 at 23 / 16 / 11 / 7 / 0 s.
+  The dominance candidate is now the SOONEST arrival rather than the soonest
+  catchable one, bounded by `SWITCH_BUFFER_SEC` so a bus pulling in long
+  before the rider can arrive still does not take the row. `boardable` is
+  untouched, so the wait and the total stay priced on a bus the rider can
+  reach (report #99) — only the vehicle the row FOLLOWS changes.
+  `web/src/accuracy-closing-bus.test.ts` replays the production rows
+  (`__fixtures__/red-closing-bus.json`, `scripts/record-closing-bus.mjs`) and
+  fails on master with the exact card: "in 26, 46 min", total 39 min.
+
 Over 25,585 scored waits on all fifteen lines (2026-09-03), **18% of riders
 saw a drop, 4,853 in all — 66 declined and 4,787 repriced.** The anchor owns
 98.6% of this defect; the trip card owns 1.4%. Beware one artefact: the

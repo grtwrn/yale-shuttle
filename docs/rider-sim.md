@@ -511,6 +511,67 @@ rider can act on. `pickLiveArrival` now releases the pin for uncatchability
 only in favour of a DIFFERENT vehicle. On the same rider the sequence runs
 `in <1, 57 min` to the kerb: worst drift 3,370 s -> 0 s, reversals 1 -> 0.
 
+### Bug 1b — the same filter, the other branch (`pickLiveArrival`), FIXED
+
+Bug 1 closed the uncatchability release. **The DOMINANCE branch was picking
+out of the same filtered list**, and the canary caught it live on Red,
+2026-09-04 16:03 ET, on the operator's own trip — Prospect / Canner -> YSPH,
+board stop Division / Prospect, the rider 83 m away (a 76 s walk, just outside
+`AT_PLACE_M`):
+
+```
+16:03:15  d=235 m  live=[304:23 s, 316:1176 s, 310:1598 s]  "in <1, 19 min"  total 14 min
+16:03:30  d=97 m   live=[304:11 s, 310:1580 s, 316:2842 s]  "in 26, 46 min"  total 39 min
+16:03:37  #304 at the kerb, 6 m
+```
+
+`canCatch` is `walk <= eta + STOP_DWELL_SEC`, so it deletes a bus for being
+**too close**: below eta 16 s, #304 left `catchable` while it was 97 m out and
+closing. `const better = catchable[0]` then compared the pinned vehicle only
+against the survivors — #310, twenty-six minutes away — cleared
+`PIN_SWITCH_MARGIN_SEC` and took the row.
+
+**The anchor is innocent here and the replay pins that**: `findRouteAnchor`
+held Division / Sheffield (slot 16) through the whole approach and
+`computeUpcomingArrivals` offered #304 at 23 / 16 / 11 / 7 / 0 s without a
+break. `predictions_log` has no client rows in the window at all — no browser
+was sampling — so its silence is not evidence about the anchor either.
+
+The candidate is now the SOONEST arrival, bounded by `SWITCH_BUFFER_SEC` so a
+bus pulling in long before the rider could arrive still does not take the row.
+`boardable` is untouched: the wait and the total stay priced on a bus the
+rider can reach (report #99).
+
+**Measured**, `positions-20260903+04.jsonl`, `snap-2026-09-04-pre-merge.db`,
+`PAYLOAD_PATCH=split-patch-0903.json`, `ORIGIN_OFFSET_M=85` (the incident's own
+geometry — the default population stands AT the stop and cannot see this at
+all), 16,907 paired waits, master -> fixed:
+
+```
+route            n            strand       jump>=180        reversal         dropped
+                      fixed/intro     fixed/intro     fixed/intro     fixed/intro
+Green           1113               0/3             1/1             1/2            43/1
+Pink             948               0/0             5/0             4/2            19/2
+Purple          1200              10/5             7/1             3/1            44/4
+Red            13646               0/0             1/0             3/0           287/4
+ALL            16907              10/8            14/2            11/5          393/11
+```
+
+Headline shares move the same way and nothing else moves: dropped 7.7% ->
+7.1% (1,273 -> 1,188 drops, of which **declined 87 -> 24**), drop% down on
+every line (Red 3.6 -> 3.2, Green 10.4 -> 8.7, Purple 35.4 -> 33.4, Pink 35.8
+-> 35.6), jumps >=180 s 20.9 -> 20.8%, reversals 14.7 -> 14.6%, strand flat at
+8.3% (per line within 0.2 pt), first-promise |miss| p90 454 -> 435 s. **The
+whole CHAIN block is byte-identical** — departure-poll displayed drift p50/p90
+still 0/0, >=180 s on 38, >=300 s on 36, and every same-poll landing per stop
+unchanged.
+
+`web/src/accuracy-closing-bus.test.ts` is the named gate: it replays the
+production rows (`__fixtures__/red-closing-bus.json`, written by
+`scripts/record-closing-bus.mjs`) through the anchor and the arrivals list and
+asserts the row follows #304 until it arrives. On master it fails with the
+card the rider actually saw.
+
 ### Bug 2 — the estimator withdrew it (the anchor), NOT FIXED, handed over
 
 Blue West #126, rider at Mansfield / Division (163), `TRACE=1` on master:
