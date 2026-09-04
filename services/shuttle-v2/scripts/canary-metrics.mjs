@@ -175,7 +175,11 @@ export function parseOptions(bodyText) {
   // the card before, so the walk-back is deliberately short.
   const startOf = (h) => {
     let start = h;
-    if (h > 0 && !isHeader(lines[h - 1]) && lines[h - 1].startsWith("🚌")) start = h - 1;
+    // Either form of the countdown line: the glyph-prefixed one production may
+    // still be serving, or the bare one shipped 2026-09-04. Parsing it is the
+    // stricter test, so both are accepted rather than swapping one for the other.
+    if (h > 0 && !isHeader(lines[h - 1])
+        && (lines[h - 1].startsWith("🚌") || parseBusEtaText(lines[h - 1]) !== null)) start = h - 1;
     const p = start - 1;
     if (p >= 0 && !isHeader(lines[p]) && (isLabelish(lines[p]) || lines[p] === "🚶 Walk")) start = p;
     return start;

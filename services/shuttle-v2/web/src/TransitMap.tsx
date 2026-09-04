@@ -3695,17 +3695,25 @@ const TripPlanner: FC<{
                         maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>{o.routeLabel}</span>
                     )}
-                    {/* The live bus, now directly right of the line it belongs
-                        to. Secondary weight so the pill and the total frame the
-                        row; nowrap + ellipsis so a narrow phone clips the
-                        second figure rather than wrapping the row in two. */}
+                    {/* The live bus, directly right of the line it belongs to.
+                        No glyph: the pill already says this is a shuttle, and
+                        the operator asked for the "in" to follow the line with
+                        nothing between them (2026-09-04). Secondary weight so
+                        the pill and the total frame the row; nowrap + ellipsis
+                        so a narrow phone clips the second figure rather than
+                        wrapping the row in two.
+
+                        The canary reads this line as TEXT and used to key on
+                        the glyph — scripts/canary-metrics.mjs now accepts both
+                        forms, because it watches production, which is always a
+                        deploy behind this. */}
                     {busEtaLive !== null && !o.departed && !isExpanded && (
                       <span style={{
                         fontSize: 13, color: "#5f6368", fontWeight: 500,
                         minWidth: 0, overflow: "hidden",
                         textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>
-                        {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
+                        {fmtBusPair(busEtaLive, nextArrLive?.eta)}
                       </span>
                     )}
                   </span>
@@ -3758,15 +3766,18 @@ const TripPlanner: FC<{
                             <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
                           </>
                         )}
-                        {/* The ride, in the line's colour — the pill it replaces
-                            is now on line 1. */}
-                        <span
-                          title="ride"
-                          style={{
-                            display: "inline-block", width: 14, height: 4, borderRadius: 2,
-                            background: o.color, flexShrink: 0,
-                          }}
-                        />
+                        {/* The ride leg, named and timed like the walks
+                            either side of it. It was a bare coloured bar whose
+                            only label was a `title` nobody on a phone can
+                            reach — the operator: "the horizonal bar should say
+                            ride X min or bus icon instead of 'ride'". The
+                            expanded card already spells it this way. Colour
+                            stays on the pill on line 1, so this reads in the
+                            same ink as the walks and cannot land on a light
+                            route colour. */}
+                        <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
+                          🚌 {fmtMin(o.rideSec)}
+                        </span>
                         {o.walkFromSec > 0 && (
                           <>
                             <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
