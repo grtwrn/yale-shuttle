@@ -17,6 +17,7 @@ import {
   calibrate,
   computeDwellStats,
   computeSegmentStats,
+  foldRoutes,
   hourWindow,
   parseValueList,
   STAND_Q_COUNT,
@@ -522,6 +523,43 @@ describe("stand tables and drives", () => {
     expect(dwells.get("1:1")).toEqual({ mean: 310, stddev: 20, n: 4, low: 200, q: standQuantiles([100, 300]), qn: 2 });
     expect(dwells.get("1:9")).toEqual({ mean: 15, stddev: 10, n: 0, q: standQuantiles([60]), qn: 1 });
     expect(dwells.has("1:5")).toBe(false);
+  });
+
+  // The out-and-backs list a stop twice, so one stop id would carry one table
+  // pooled over two different passes; the rider simulator measured Purple
+  // 163 -> 188 strands with the split served there. Withheld by structure,
+  // not by name: a route that stops repeating a stop starts being served.
+  it("withholds both halves on a route that visits a stop more than once", () => {
+    const stops = [
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.311, lon: -72.931 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.932 },
+    ];
+    const network = TransitNetwork.build(stops, [
+      { id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] },
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] },
+    ]);
+    expect([...foldRoutes(network)]).toEqual([10]);
+
+    const withheld = foldRoutes(network);
+    const dwells = new Map<string, DwellStats>();
+    expect(attachStandTables(dwells, [
+      { key: "10:2", n: 30, all: [20, 300], windowed: [] },
+      { key: "3:2", n: 2, all: [20, 40], windowed: [] },
+    ], withheld)).toBe(1);
+    expect(dwells.has("10:2")).toBe(false);
+    expect(dwells.get("3:2")!.qn).toBe(2);
+
+    const segments = new Map<string, SegmentStats>([
+      ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+      ["3:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+    ]);
+    expect(attachDrives(segments, [
+      { key: "10:2:3", n: 12, all: [30, 31], windowed: [] },
+      { key: "3:2:3", n: 12, all: [30, 31], windowed: [] },
+    ], withheld)).toBe(1);
+    expect(segments.get("10:2:3")!.drive).toBeUndefined();
+    expect(segments.get("3:2:3")!.drive).toBe(30.5);
   });
 
   it("attaches the median drive only where a calibrated segment exists", () => {

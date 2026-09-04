@@ -129,8 +129,9 @@ export function calibrate(
 
   const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
   const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-  const standCount = attachStandTables(dwellStats, standGroups);
-  const driveCount = attachDrives(segmentStats, driveGroups);
+  const withheld = foldRoutes(network);
+  const standCount = attachStandTables(dwellStats, standGroups, withheld);
+  const driveCount = attachDrives(segmentStats, driveGroups, withheld);
 
   network.setCalibration(segmentStats, dwellStats);
 
@@ -366,6 +367,31 @@ export function standQuantiles(samples: readonly number[]): number[] {
 }
 
 /**
+ * Routes on which the split is WITHHELD: those that list a stop more than once
+ * — the West Campus out-and-backs (Green 9, Purple 10).
+ *
+ * Two reasons, one structural and one measured. The payload keys a stop's
+ * stand table by stop id, so a stop the loop visits twice gets ONE table
+ * pooled over two different passes (Building 800 outbound is a pass-through;
+ * inbound it is a layover); and the departure derivation inherits the
+ * detector's anchor, which on the folds credits a stand to whichever twin leg
+ * it picked (docs/departure-derivation.md, Limits). The rider simulator
+ * (docs/rider-sim.md) scored the served tables on 2026-09-03: Red's
+ * departure-poll rise went +220 s -> +1 s, and Purple went 163 -> 188 strands
+ * (26 introduced, 1 fixed — on stops 23/24/25/9, the repeated buildings),
+ * Green 165 -> 173. Withheld, both are byte-identical to master. Lift this
+ * when the anchor lane resolves the fold, not before.
+ */
+export function foldRoutes(network: TransitNetwork): ReadonlySet<number> {
+  const out = new Set<number>();
+  if (!network.routes) return out;
+  for (const r of network.routes.values()) if (new Set(r.stops).size !== r.stops.length) out.add(r.id);
+  return out;
+}
+
+const routeOf = (key: string): number => Number(key.slice(0, key.indexOf(":")));
+
+/**
  * Put a stand table on every stop that has one. A stop with visits but no
  * arrival-based dwell entry gets the same warm-up defaults `getDwellStats`
  * would have answered with, so the table is not lost. Returns the number of
@@ -374,10 +400,11 @@ export function standQuantiles(samples: readonly number[]): number[] {
 export function attachStandTables(
   dwells: Map<string, DwellStats>,
   groups: readonly ValueGroup[],
+  withheld: ReadonlySet<number> = new Set(),
 ): number {
   let count = 0;
   for (const g of groups) {
-    if (g.all.length === 0) continue;
+    if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
     const q = standQuantiles(g.all);
     const cur = dwells.get(g.key) ?? { mean: 15, stddev: 10, n: 0 };
     dwells.set(g.key, { ...cur, q, qn: g.all.length });
@@ -397,10 +424,11 @@ export function attachStandTables(
 export function attachDrives(
   segments: Map<string, SegmentStats>,
   groups: readonly ValueGroup[],
+  withheld: ReadonlySet<number> = new Set(),
 ): number {
   let count = 0;
   for (const g of groups) {
-    if (g.all.length === 0) continue;
+    if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
     const cur = segments.get(g.key);
     if (!cur) continue;
     segments.set(g.key, { ...cur, drive: median(g.all), driveN: g.all.length });
