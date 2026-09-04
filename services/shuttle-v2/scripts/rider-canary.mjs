@@ -33,7 +33,7 @@
  *      CANARY_TICK_MS, CANARY_WATCH_MAX_MIN, CANARY_CATASTROPHIC_SEC,
  *      CANARY_FIRST_SIGHT_MISS_SEC, CANARY_IDLE_SLEEP_MIN, CANARY_REST_MIN.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -623,6 +623,17 @@ if (!RUN_AS_SCRIPT) {
   // sequentially, for ever; when nothing is running it sleeps rather than
   // spinning up a chromium to look at an empty map.
   for (;;) {
+    // The keepalive asks for a restart by touching this file rather than
+    // killing the process: a kill mid-watch aborts the run, files
+    // "page-unreadable" + "no-arrival" against a healthy app, and on a day
+    // master moves every twenty minutes that is most runs. Honoured only
+    // between riders, so the current watch always completes.
+    const flag = join(DIR, "restart-requested");
+    if (existsSync(flag)) {
+      try { unlinkSync(flag); } catch {}
+      console.log("[canary] restart requested; exiting between riders");
+      process.exit(0);
+    }
     const r = await oneRider();
     if (r.status === "idle" || r.status === "unreachable") await sleep(IDLE_SLEEP_MS);
     else await sleep(Math.max(5_000, REST_MS));
