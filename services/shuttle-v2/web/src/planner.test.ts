@@ -318,6 +318,80 @@ describe("pickLiveArrival", () => {
     expect(pick.departed).toBe(false);
   });
 
+  // The canary, 2026-09-03 21:48 UTC on Brown: "in 1, 57 min" became "in 56
+  // min" in fifteen seconds while #301 was 77 m from the kerb, and the card
+  // sank to the bottom of the list. The rider's billed walk (204 m, 185 s)
+  // had crossed the pinned bus's eta + 60 + 90, so the first CATCHABLE entry
+  // was that same vehicle a lap later. Swapping to it says nothing — it is
+  // the same bus — and it deletes the only actionable fact on the row.
+  it("does not swap a still-approaching pinned bus for its own next lap", () => {
+    const live = [arr("301", 24), arr("301", 3439)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.eta).toBe(24);
+    expect(pick.departed).toBe(false);
+    expect(pick.missedBus).toBeUndefined();
+  });
+
+  it("still hands over to a DIFFERENT catchable bus, and names the one that got away", () => {
+    // Same rider, but a second vehicle is genuinely reachable: that is a real
+    // alternative and the card says why it moved.
+    const live = [arr("301", 24), arr("302", 600), arr("301", 3439)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.busName).toBe("302");
+    expect(pick.missedBus).toBe("301");
+  });
+
+  it("does not reach past its own lap for a later vehicle", () => {
+    // Both buses are out of reach this time round. The soonest thing the
+    // rider can catch is #301's own next lap, so #302's lap — 200 s LATER —
+    // must not take the row just because it is a different vehicle.
+    const live = [arr("301", 100), arr("302", 150), arr("301", 2400), arr("302", 2600)];
+    const pick = pickLiveArrival(live, "301", 400)!;
+    expect(pick.match.busName).toBe("301");
+    expect(pick.match.eta).toBe(100);
+  });
+
+  it("lets the departure clear the row: once the bus has gone, its lap is all there is", () => {
+    // #301 has left the stop, so computeUpcomingArrivals prices it a lap out
+    // and its soonest entry IS that lap. Catchable again, so the row follows
+    // it honestly at 40 min rather than defending a number the bus no longer
+    // owns.
+    const live = [arr("301", 2400)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.eta).toBe(2400);
+    expect(pick.departed).toBe(false);
+  });
+
+  // Report #99, 2026-09-04: "How could I catch the blue if its a 7min walk and
+  // it arrives in 5?" — the card read `Blue Day · in 5, 17 min · 16 min ·
+  // arrive 11:46a · 🚶 7 min › 🚌 4 min › 🚶 5 min`. The pin is right to stay
+  // (a 60 s shortfall is ~66 m, inside the walking-GPS buffer the constant
+  // exists for); the TOTAL must not price a boarding on it.
+  it("prices the wait on a bus the rider can reach, not the one they are watching", () => {
+    const live = [arr("B1", 300), arr("B2", 1020)];
+    const pick = pickLiveArrival(live, "B1", 420)!;
+    // The countdown still follows the bus that is 5 min out...
+    expect(pick.match.eta).toBe(300);
+    // ...and the trip is priced on the one 17 min out, which is the one a
+    // rider seven minutes' walk away will actually board.
+    expect(pick.boardable.eta).toBe(1020);
+  });
+
+  it("keeps boardable identical to match for a rider at the stop", () => {
+    // walk 0 makes every arrival catchable, so the two questions have one
+    // answer and every existing verdict is untouched.
+    for (const live of [[arr("101", 30)], [arr("202", 220), arr("101", 2440)], [arr("101", 1500)]]) {
+      const pick = pickLiveArrival(live, "101", 0)!;
+      expect(pick.boardable).toBe(pick.match);
+    }
+  });
+
+  it("falls back to the watched bus when nothing at all is catchable", () => {
+    const pick = pickLiveArrival([arr("101", 100)], "101", 1000)!;
+    expect(pick.departed).toBe(true);
+    expect(pick.boardable).toBe(pick.match);
+  });
+
   it("declares departed only when nothing is catchable", () => {
     const pick = pickLiveArrival([arr("101", 100)], "101", 1000)!;
     expect(pick.departed).toBe(true);

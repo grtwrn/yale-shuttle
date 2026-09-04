@@ -1036,6 +1036,50 @@ Two things to take from it rather than the anecdote:
   #32 ("6 min then it said 16") describes. Look for it in
   `scripts/.canary/runs.jsonl` before designing against it.
 
+### A bus that is CLOSING is neither dropped nor re-priced away
+
+The canary's worst overnight finding (operator, 2026-09-04): "the bus that is
+about to arrive disappears from the card." The invariant, and the
+discriminator that makes it safe:
+
+**A bus whose distance to the board stop is DECREASING must stay on the row.
+A bus whose distance is increasing may and must vanish instantly** — that is
+the 5 -> 1 -> gone the layover work exists to protect. Three of the five
+transitions handed over as evidence were buses that had reached the kerb and
+pulled away; suppressing those would be the regression. `rider-sim` scores the
+invariant as `droppedApproaching` (`pctDropped`, and a `--compare` row) with
+the board stop's own 45 m visit list as ground truth — not the sign of a
+distance, because a bus can be momentarily closing on a stop it has already
+served.
+
+Every drop is attributed to one of two causes, which need different fixes and
+are never summed:
+
+- **declined** — `computeUpcomingArrivals` still offered the near arrival and
+  the trip card chose something else. This was `pickLiveArrival`: the pinned
+  entry fell past `canCatch` (`walk <= eta + 60`, +90 s buffer) in the last
+  hundred metres of an approach, and the first CATCHABLE arrival was **the
+  same vehicle a lap later**. Swapping a bus for itself is not an alternative
+  — the old code's own tell was that it had to suppress "You can't catch #301"
+  in exactly that case. The pin is now released for uncatchability only in
+  favour of a DIFFERENT vehicle. Departure still clears the row: once the bus
+  really goes, its own soonest entry IS the lap, it is catchable again, and
+  the loyalty branch takes over.
+Over 25,585 scored waits on all fifteen lines (2026-09-03), **18% of riders
+saw a drop, 4,853 in all — 66 declined and 4,787 repriced.** The anchor owns
+98.6% of this defect; the trip card owns 1.4%. Beware one artefact: the
+simulator's default riders stand AT the board stop, which makes `canCatch`
+true for every arrival and the catchability branches unreachable, so the
+declined class is only scorable with `ORIGIN_OFFSET_M` set.
+
+- **repriced** — the estimator withdrew the arrival, i.e. the anchor put the
+  bus past the stop. **Open, and it is the large half.** `docs/rider-sim.md` records the case: Blue West
+  (route 16) folds back — Mansfield / Division at index 8, then south to Pauli
+  Murray at index 9 on the same road — and is not in the fold list, so
+  `findRouteAnchor` placed an approaching #126 on the return leg 400 m before
+  the turning stop, `gateAnchor` accepted it on one 30 m deadband step and
+  latched it. The card said 37 min and the bus was at the kerb 33 s later.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s

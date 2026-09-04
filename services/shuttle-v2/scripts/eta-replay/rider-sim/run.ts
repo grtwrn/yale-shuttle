@@ -379,10 +379,40 @@ const alightFor = (label: string, board: number): number | null => {
   const idx = stops.indexOf(board);
   return idx < 0 ? null : chooseAlight(stops, idx, net.stopCoords);
 };
+/**
+ * WHERE THE RIDER STANDS, and why it is not always the kerb.
+ *
+ * The default population stands AT the board stop, which makes `walkToSec` 0
+ * and `canCatch` (`walk <= eta + 60`) true for every arrival — so the whole
+ * catchability half of `pickLiveArrival` is unreachable and the defects that
+ * live there are invisible to the instrument. The canary's rider is not at
+ * the kerb (its geolocation is ~200 m from Brown's board stop), and neither
+ * is a real one: the app plans from wherever they are and walks them to a
+ * stop.
+ *
+ * `ORIGIN_OFFSET_M` puts every generated rider that many metres from their
+ * board stop, on the far side from the stop they are riding to — so the
+ * walk is "backwards" along the route and the planner still chooses this
+ * board stop rather than re-boarding them somewhere else (riders it re-boards
+ * are reported as skipped, as always). 0, the default, is the old population
+ * exactly.
+ */
+const ORIGIN_OFFSET_M = Number(process.env.ORIGIN_OFFSET_M) || 0;
+const offsetOrigin = (board: number, alight: number): { lat: number; lon: number } | undefined => {
+  if (ORIGIN_OFFSET_M <= 0) return undefined;
+  const b = net.stopCoords[board], a = net.stopCoords[alight];
+  if (!b || !a) return undefined;
+  const mPerLat = 111_320, mPerLon = 111_320 * Math.cos((b.lat * Math.PI) / 180);
+  let dx = (b.lon - a.lon) * mPerLon, dy = (b.lat - a.lat) * mPerLat;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) { dx = 0; dy = 1; } else { dx /= len; dy /= len; }
+  return { lat: b.lat + (dy * ORIGIN_OFFSET_M) / mPerLat, lon: b.lon + (dx * ORIGIN_OFFSET_M) / mPerLon };
+};
 const mkSpec = (label: string, board: number, t0: number, source: RiderSpec["source"], why?: string, origin?: { lat: number; lon: number }, event?: { t: number; bus: string }): RiderSpec | null => {
   if (t0 < FROM || t0 > TO || t0 < dataStart || t0 > dataEnd) return null;
   const alight = alightFor(label, board);
   if (alight === null) return null;
+  origin = origin ?? offsetOrigin(board, alight);
   return { id: riderId(label, board, t0), label, boardStopId: board, alightStopId: alight, t0, source, ...(why ? { why } : {}), ...(origin ? { origin } : {}), ...(event ? { eventT: event.t, eventBus: event.bus } : {}) };
 };
 /**
@@ -529,9 +559,10 @@ function detectorArrival(busName: string | null, stopId: number, t0: number): nu
 function finish(a: Active, outcome: WaitResult["outcome"]) {
   active.delete(a);
   cohorts.get(a.cohort)?.riders.delete(a);
-  const r = scoreWait(a.spec, a.ticks, a.truth, detectorArrival(a.truth.kind === "arrived" ? a.truth.busName : null, a.spec.boardStopId, a.spec.t0), outcome, { sampleMs: SAMPLE_MS }, a.busAtStopOnArrival);
-  const c = scoreWait(a.spec, a.ticks, a.truth, r.detectorArrivedAt, outcome, { sampleMs: CANARY_MS }, a.busAtStopOnArrival);
-  (r as any).canary = { readings: c.readings, worstDriftSec: c.worstDriftSec, catastrophic: c.catastrophic, reversals: c.reversals, strand: c.strand, sequence: c.sequence };
+  const bv = visits.get(a.spec.boardStopId) ?? [];
+  const r = scoreWait(a.spec, a.ticks, a.truth, detectorArrival(a.truth.kind === "arrived" ? a.truth.busName : null, a.spec.boardStopId, a.spec.t0), outcome, { sampleMs: SAMPLE_MS }, a.busAtStopOnArrival, bv);
+  const c = scoreWait(a.spec, a.ticks, a.truth, r.detectorArrivedAt, outcome, { sampleMs: CANARY_MS }, a.busAtStopOnArrival, bv);
+  (r as any).canary = { readings: c.readings, worstDriftSec: c.worstDriftSec, catastrophic: c.catastrophic, reversals: c.reversals, strand: c.strand, sequence: c.sequence, droppedApproaching: c.droppedApproaching, droppedDeclined: c.droppedDeclined, droppedRepriced: c.droppedRepriced };
   results.push(r);
 }
 
@@ -540,6 +571,17 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   const o = a.o;
   const cfg = cfgByLabel.get(o.routeLabel)!;
   const live = arr.filter((x) => x.stopId === o.boardStopId && x.routeLabel === o.routeLabel);
+  // What the estimator still offers for the vehicle the row followed last
+  // poll — the thing that says whether a drop was the card's choice or the
+  // estimator's. Read BEFORE the pick, from the same list the pick sees.
+  const prevBus = a.ticks.length ? a.ticks[a.ticks.length - 1]!.bus : null;
+  let prevSoonest: number | null = null;
+  if (prevBus) {
+    for (const x of live) {
+      if (norm(x.busName) !== norm(prevBus)) continue;
+      if (prevSoonest === null || x.eta < prevSoonest) prevSoonest = x.eta;
+    }
+  }
   const effectiveWalkToSec = walkToSecFor(a.spec);
   const busesAtBoard = buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId);
   const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
@@ -563,13 +605,13 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   const busEtaLive = busMatch && stopsAway !== null
     ? formatMod.remainingSec(u.busEtaSec ?? o.walkToSec + o.waitSec, u.computedAtMs, t)
     : null;
-  if (u.departed) return { t, state: "departed", token: null, etaSec: null, nextSec: null, bus: u.busName, missedBus: null };
-  if (busEtaLive === null) return { t, state: "nopin", token: null, etaSec: null, nextSec: null, bus: u.busName, missedBus: u.missedBus ?? null };
+  if (u.departed) return { t, state: "departed", token: null, etaSec: null, nextSec: null, bus: u.busName, missedBus: null, prevSoonest };
+  if (busEtaLive === null) return { t, state: "nopin", token: null, etaSec: null, nextSec: null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest };
   const nextArr: UpcomingArrival | null = hasNextRule
     ? arrivalsMod.nextArrivalAfterPinned(live, u.busName, busEtaLive)
     : (live.filter((x) => x.eta > busEtaLive + 30).sort((x, y) => x.eta - y.eta)[0] ?? null);
   const token = formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
-  return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null };
+  return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest };
 }
 
 {

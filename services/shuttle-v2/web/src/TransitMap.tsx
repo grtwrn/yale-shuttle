@@ -2090,8 +2090,21 @@ const TripPlanner: FC<{
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
       if (!picked) return { ...o, departed: true };
-      const { match, departed, missedBus } = picked;
-      const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
+      const { match, boardable, departed, missedBus } = picked;
+      // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
+      // the one the rider can see coming, which must not vanish while it is
+      // still closing on the stop. `boardable` is the one they can actually
+      // reach, and the wait and the total are priced on THAT. They are the
+      // same object unless the followed bus is out of reach by the walk model.
+      //
+      // Report #99: "How could I catch the blue if its a 7min walk and it
+      // arrives in 5?" — the card read `in 5, 17 min · 16 min · arrive
+      // 11:46a · 🚶 7 min › 🚌 4 min › 🚶 5 min`. `max(0, eta - walk)` clamps
+      // the wait to zero exactly when the bus beats the rider to the stop,
+      // which is right when they can catch it (dwell covers the gap) and a
+      // lie when they cannot. The countdown was not the problem; the total
+      // was, and the total now waits for a bus the rider can board.
+      const waitSec = Math.max(0, boardable.eta - effectiveWalkToSec);
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,

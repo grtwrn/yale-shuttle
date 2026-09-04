@@ -98,7 +98,33 @@ export const STOP_DWELL_SEC = 60;
 export const SWITCH_BUFFER_SEC = 90;
 export const PIN_SWITCH_MARGIN_SEC = 5 * 60;
 
-export type LiveArrivalPick<A> = { match: A; departed: boolean; missedBus?: string };
+export type LiveArrivalPick<A> = {
+  /** The arrival the row COUNTS DOWN to — the bus the rider can see coming. */
+  match: A;
+  /**
+   * The arrival the rider can actually REACH, which is what the option's wait
+   * and total are priced on. Identical to `match` except when `match` is out
+   * of reach by the walk model, which is the only case where the two
+   * questions have different answers:
+   *
+   *   "where is my bus?"        -> match     (report: the closing bus vanished)
+   *   "when will I get there?"  -> boardable (report #99: "How could I catch
+   *                                the blue if its a 7min walk and it arrives
+   *                                in 5?")
+   *
+   * #99's card read `Blue Day · in 5, 17 min · 16 min · arrive 11:46a ·
+   * 🚶 7 min › 🚌 4 min › 🚶 5 min` — a 7-minute walk, a bus 5 minutes out,
+   * and a total that quietly assumed a wait of zero. The pin was right to
+   * stay (SWITCH_BUFFER_SEC is a spurious-flip guard against walking GPS
+   * reading 50-100 m long, and 60 s is ~66 m); what was wrong was pricing a
+   * boarding on it. `waitSec` is `max(0, eta - walk)`, which clamps to zero
+   * exactly when the bus beats the rider to the stop — right when they can
+   * catch it and dwell covers the gap, a lie when they cannot.
+   */
+  boardable: A;
+  departed: boolean;
+  missedBus?: string;
+};
 
 /**
  * Which live arrival an already-planned option should follow this poll.
@@ -121,6 +147,18 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
     effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
   const catchable = live.filter(canCatch);
   const pinned = live.find((a) => norm(a.busName) === norm(pinnedBusName));
+  /**
+   * Every verdict below answers "which bus does the row follow"; this answers
+   * "which one can the rider get on". They differ only when the followed bus
+   * is out of reach, so on a rider standing at the stop — walk 0, `canCatch`
+   * true for every entry — `boardable` IS `match` and nothing changes.
+   */
+  const pick = (match: A, departed: boolean, missedBus?: string): LiveArrivalPick<A> => ({
+    match,
+    boardable: canCatch(match) ? match : (catchable[0] ?? match),
+    departed,
+    ...(missedBus ? { missedBus } : {}),
+  });
   if (pinned && canCatch(pinned)) {
     // Dominance check (report #49): stay loyal to the pinned bus unless a
     // different catchable vehicle beats it by the full margin. Same-name
@@ -131,29 +169,58 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
       norm(better.busName) !== norm(pinned.busName) &&
       pinned.eta - better.eta >= PIN_SWITCH_MARGIN_SEC
     ) {
-      return { match: better, departed: false };
+      return pick(better, false);
     }
-    return { match: pinned, departed: false };
+    return pick(pinned, false);
   }
   if (pinned && canCatchWithBuffer(pinned)) {
     // Borderline — GPS may be reading long. Stay on the planned bus. (A
     // sooner catchable alternative cannot exist here: catchable requires
     // eta >= walk - 60, which in this branch exceeds the pinned eta.)
-    return { match: pinned, departed: false };
+    return pick(pinned, false);
   }
   if (catchable.length > 0) {
+    // A LATER LAP OF THE PINNED VEHICLE IS NOT ANOTHER BUS.
+    //
+    // `live` carries each vehicle twice — this lap and the next — and the
+    // pinned entry above is its SOONEST. When that entry is out of reach by
+    // the walk model, the first catchable arrival on a route the rider's own
+    // bus is running alone is that same vehicle a loop later. Swapping to it
+    // does not offer an alternative: it deletes the one fact the rider can
+    // act on ("your bus is a minute away, run") and replaces it with a lap.
+    //
+    // The canary caught it as "in 1, 57 min" -> "in 56 min" in fifteen
+    // seconds on Brown, 77 m before #301 pulled in (it reached the kerb 7 s
+    // after the row stopped showing it), and the card sank to the bottom of
+    // the list with no explanation. The old code's own tell was that it had
+    // to SUPPRESS "You can't catch #301" whenever the missed bus and the new
+    // match were the same vehicle — a swap that cannot be explained is a swap
+    // that should not happen. The operator's invariant (2026-09-04): a bus
+    // that has been shown is not removed until it has actually arrived or
+    // actually departed.
+    //
+    // So the pin is released for uncatchability only in favour of a
+    // DIFFERENT vehicle — the case that has something to say, and that says
+    // it in the "#X just passed" line. Once the pinned bus really does reach
+    // the stop and leave, `computeUpcomingArrivals` re-prices it a lap out on
+    // its own, its soonest entry becomes catchable again, and the first
+    // branch above takes over: departure still clears the row, and nothing
+    // here holds a stale number — every value returned is this poll's.
+    //
+    // The test is on the SOONEST catchable arrival only, so this is master's
+    // pick everywhere else: a genuinely different vehicle that beats the
+    // pinned one's next lap still takes the row, and still says so.
     const match = catchable[0];
-    // The planned bus is still in the feed but we can no longer make it —
-    // record it as missed so the card can surface "#X just passed"... but
-    // only if it's genuinely a DIFFERENT vehicle. Arrivals include a second
-    // lap per bus, so on a single-bus route the next catchable arrival is
-    // usually the same bus a loop later; naming it produced "You can't
-    // catch #12" directly above an ETA for #12.
-    const missed = pinned ? norm(pinned.busName) : undefined;
-    const missedBus = missed && missed !== norm(match.busName) ? missed : undefined;
-    return { match, departed: false, missedBus };
+    if (pinned && norm(match.busName) === norm(pinned.busName)) {
+      return pick(pinned, false);
+    }
+    // The planned bus is still in the feed, a different one is taking the
+    // row, and we can no longer make the planned one — so name it. (The
+    // same-vehicle case that used to need suppressing here has returned
+    // above; it is no longer reachable.)
+    return pick(match, false, pinned ? norm(pinned.busName) : undefined);
   }
-  return { match: pinned ?? live[0], departed: true };
+  return pick(pinned ?? live[0], true);
 }
 
 export function planTrip(

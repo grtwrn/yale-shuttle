@@ -105,7 +105,7 @@ describe("riders", () => {
 
 const spec: RiderSpec = { id: "Red|48|x", label: "Red", boardStopId: 48, alightStopId: 11, t0: T0, source: "named" };
 const tick = (sec: number, token: string | null, bus = "309", state: Tick["state"] = token ? "countdown" : "departed"): Tick =>
-  ({ t: T0 + sec * 1000, state, token, etaSec: null, nextSec: null, bus, missedBus: null });
+  ({ t: T0 + sec * 1000, state, token, etaSec: null, nextSec: null, bus, missedBus: null, prevSoonest: null });
 
 describe("scoreWait", () => {
   it("a healthy countdown scores zero drift and a first-sight miss inside the bucket", () => {
@@ -179,7 +179,7 @@ describe("chain: the departure moment", () => {
   it("scores the raw rise beyond the clock at +0/+30/+60 s and the displayed drift at the departure poll", () => {
     const T = T0 + 100_000;
     const chainSpec: RiderSpec = { ...spec, id: "Red|146|c", boardStopId: 146, source: "chain", eventT: T, eventBus: "#316" };
-    const tk = (sec: number, eta: number): Tick => ({ t: T0 + sec * 1000, state: "countdown", token: `in ${Math.floor(eta / 60)} min`, etaSec: eta, nextSec: null, bus: "316", missedBus: null });
+    const tk = (sec: number, eta: number): Tick => ({ t: T0 + sec * 1000, state: "countdown", token: `in ${Math.floor(eta / 60)} min`, etaSec: eta, nextSec: null, bus: "316", missedBus: null, prevSoonest: null });
     // parked: ticking down 5 s a poll; at the departure the ETA jumps +180 s beyond the clock, then keeps rising
     const ticks = [tk(80, 200), tk(85, 195), tk(90, 190), tk(95, 185), tk(100, 360), tk(105, 355), tk(130, 420), tk(160, 430)];
     const r = scoreWait(chainSpec, ticks, { kind: "arrived", at: T0 + 400_000, busName: "#316" }, null, "arrived", { sampleMs: 5000 });
@@ -200,10 +200,56 @@ describe("chain: the departure moment", () => {
   it("a rider who was not watching at the departure contributes no rise", () => {
     const T = T0 + 100_000;
     const chainSpec: RiderSpec = { ...spec, id: "Red|146|c2", boardStopId: 146, source: "chain", eventT: T, eventBus: "#316" };
-    const ticks: Tick[] = [{ t: T0 + 90_000, state: "departed", token: null, etaSec: null, nextSec: null, bus: "316", missedBus: null }];
+    const ticks: Tick[] = [{ t: T0 + 90_000, state: "departed", token: null, etaSec: null, nextSec: null, bus: "316", missedBus: null, prevSoonest: null }];
     const r = scoreWait(chainSpec, ticks, { kind: "arrived", at: T0 + 400_000, busName: "#316" }, null, "arrived", { sampleMs: 5000 });
     expect(r.departure!.watching).toBe(false);
     expect(r.departure!.riseAt0).toBeNull();
+  });
+});
+
+// THE DROP RULE — the operator's invariant of 2026-09-04. Ground truth is the
+// board stop's own visit list, so "it actually departed" and "it is still
+// approaching" are answered by where the bus was, not by what the card said.
+describe("scoreWait: a bus dropped while still approaching", () => {
+  const tk = (sec: number, eta: number, bus: string, prevSoonest: number | null = null): Tick =>
+    ({ t: T0 + sec * 1000, state: "countdown", token: `in ${Math.floor(eta / 60)} min`, etaSec: eta, nextSec: null, bus, missedBus: null, prevSoonest });
+  const visit = (sec: number, busName: string) => ({ enter: T0 + sec * 1000, exit: null, busName, routeId: 3 });
+  const truth = { kind: "arrived" as const, at: T0 + 200_000, busName: "#301" };
+
+  it("counts the swap to a lap later while the bus is 40 s from the kerb, and calls it declined", () => {
+    // The Brown incident: "in 1 min" then "in 56 min", #301 still approaching,
+    // and its 24 s arrival was still in the live list when the card looked away.
+    const ticks = [tk(0, 84, "301"), tk(15, 3360, "301", 24)];
+    const r = scoreWait(spec, ticks, truth, null, "arrived", { sampleMs: 5000 }, null, [visit(60, "#301")]);
+    expect(r.droppedApproaching).toBe(1);
+    expect(r.droppedDeclined).toBe(1);
+    expect(r.droppedRepriced).toBe(0);
+  });
+
+  it("calls it repriced when the estimator no longer offers the near arrival", () => {
+    const ticks = [tk(0, 84, "301"), tk(15, 3360, "301", 3360)];
+    const r = scoreWait(spec, ticks, truth, null, "arrived", { sampleMs: 5000 }, null, [visit(60, "#301")]);
+    expect(r.droppedApproaching).toBe(1);
+    expect(r.droppedRepriced).toBe(1);
+  });
+
+  it("does NOT count a bus that had already reached the stop — that one really left", () => {
+    // #301 was at the kerb at +0 s and pulls away; the row is right to drop it.
+    const ticks = [tk(30, 5, "301"), tk(45, 2400, "301", 2400)];
+    const r = scoreWait(spec, ticks, truth, null, "arrived", { sampleMs: 5000 }, null, [visit(0, "#301")]);
+    expect(r.droppedApproaching).toBe(0);
+  });
+
+  it("does NOT count a re-price of a bus that never comes back within the window", () => {
+    const ticks = [tk(0, 84, "301"), tk(15, 3360, "301", 24)];
+    const r = scoreWait(spec, ticks, truth, null, "arrived", { sampleMs: 5000 }, null, [visit(3600, "#301")]);
+    expect(r.droppedApproaching).toBe(0);
+  });
+
+  it("does NOT count an ordinary tick, however noisy, that keeps the same arrival", () => {
+    const ticks = [tk(0, 84, "301"), tk(15, 200, "301", 200)];
+    const r = scoreWait(spec, ticks, truth, null, "arrived", { sampleMs: 5000 }, null, [visit(60, "#301")]);
+    expect(r.droppedApproaching).toBe(0);
   });
 });
 
@@ -214,6 +260,7 @@ describe("aggregate and compare", () => {
     firstSight: { atMs: T0, raw: "in 5 min", lo: 300, hi: 360 }, firstSightMissSec: 0,
     transitions: [], reversals: 0, notableReversals: 0, catastrophic: 0, worstDriftSec: 0, worst: null,
     pins: ["1"], pinChanged: false, vanished: 0, returned: false, lapRepriced: false, strand: false, overshoot: false, neverShown: false,
+    droppedApproaching: 0, droppedDeclined: 0, droppedRepriced: 0, droppedDetail: null,
     sequence: "", ...over,
   });
   const a = [mk("w1", {}), mk("w2", { worstDriftSec: 200, catastrophic: 1, strand: true }), mk("w3", { outcome: "gaveUp", arrivedAt: null, waitSec: null }), mk("w4", { busAtStopOnArrival: "#1" })];
