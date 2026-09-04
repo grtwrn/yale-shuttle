@@ -3695,17 +3695,25 @@ const TripPlanner: FC<{
                         maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>{o.routeLabel}</span>
                     )}
-                    {/* The live bus, now directly right of the line it belongs
-                        to. Secondary weight so the pill and the total frame the
-                        row; nowrap + ellipsis so a narrow phone clips the
-                        second figure rather than wrapping the row in two. */}
+                    {/* The live bus, directly right of the line it belongs to.
+                        No glyph: the pill already says this is a shuttle, and
+                        the operator asked for the "in" to follow the line with
+                        nothing between them (2026-09-04). Secondary weight so
+                        the pill and the total frame the row; nowrap + ellipsis
+                        so a narrow phone clips the second figure rather than
+                        wrapping the row in two.
+
+                        The canary reads this line as TEXT and used to key on
+                        the glyph — scripts/canary-metrics.mjs now accepts both
+                        forms, because it watches production, which is always a
+                        deploy behind this. */}
                     {busEtaLive !== null && !o.departed && !isExpanded && (
                       <span style={{
                         fontSize: 13, color: "#5f6368", fontWeight: 500,
                         minWidth: 0, overflow: "hidden",
                         textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>
-                        {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
+                        {fmtBusPair(busEtaLive, nextArrLive?.eta)}
                       </span>
                     )}
                   </span>
