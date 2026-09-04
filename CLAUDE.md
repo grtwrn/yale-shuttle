@@ -765,10 +765,15 @@ and run both scripts; a few minutes each). Findings that constrain changes:
     is Purple-positive (strand 82 fixed / 28 introduced); adding the selection
     rule makes it 65/75, while buying Red (strand introduced 48 -> 13) and Pink
     (50/102 -> 55/67). Purple's headline strand share moves only 12.0 -> 12.3%,
-    so a totals reading calls that clean and it is not. **PR #128 is open and
-    unmerged on exactly this**: the window is the larger, cleaner half, and
-    whether the selection rule is worth Purple is a judgement nobody has made
-    yet.
+    so a totals reading calls that clean and it is not. **Shipped both anyway**
+    (operator, 2026-09-04): Red and Blue Day are what riders use and Red is the
+    founding complaint, so Red's 938-jumps-against-12 outweighs half a percent
+    on the West Campus route while totals, Green, departures and the fold count
+    all pass. The trade is GEOMETRIC — Purple's out-and-back puts two
+    candidates on the same physical road facing opposite ways, where forward
+    distance is the right tiebreaker, while Red's disputed candidates are on
+    distinct geometry where GPS should win. **Fix that with a fold-aware
+    selection rule, never with a per-route switch.**
 - **On an out-and-back, direction of travel picks the branch — and only for a
   bus that is moving.** Green and Purple run out to West Campus and back along
   the same road, so the same coordinates belong to two legs at once; neither

@@ -438,13 +438,25 @@ route, and `ANCHOR_NEARER_M` at 80 m already spends the fold budget: it puts
 so Purple's remaining cost is not the fold and cannot be bought back with a
 wider band.
 
-**Not merged**, per the brief's own instruction: the run is worse on Purple, so
-the table is reported and the change stops here. The decision that needs making
-is whether Red's transformation (938 riders' jumps fixed against 12 introduced,
-221 strands against 13) is worth Purple's +10 strands, or whether the window
-should ship alone — it is the larger effect, it is Purple-positive, and it is
-what fixes the dropped-approaching-bus defect that owns 98.6% of arrival
-withdrawals. `git revert` of the second commit is the whole difference.
+### Decision: ship both (operator, 2026-09-04)
+
+Red and Blue Day are what riders actually use, and Red is the operator's
+founding complaint. Both halves give Red **938 jumps fixed against 12 and 221
+strands against 13**; Purple pays **+10 strands and +12 jumps on 2,048 waits**
+— half a percent, on the West Campus route — while the totals, Green, the
+departure trace and the fold count all pass.
+
+The per-route FIXED/INTRODUCED split is what makes that a decision rather than
+a guess, and it stays as the gate for anything that touches this function.
+`scripts/eta-replay/rider-sim/pair-by-route.mjs` is the instrument.
+
+**The follow-up is a separate PR, not a per-route switch.** The halves trade by
+route for a reason that is geometric, not statistical: Purple's out-and-back
+puts two candidates on the SAME physical road running opposite ways, where
+GPS-nearest is genuinely ambiguous and forward distance is the right tiebreaker
+— whereas on Red the disputed candidates sit on distinct geometry, where the
+GPS should win. Making the selection rule fold-aware on that basis is the fix;
+special-casing a route id is not.
 
 **Decided 2026-09-04, so nobody re-imposes it:** the anchor/detector
 disagreement rate is **not a gate on a change to the candidate window**. It rose
