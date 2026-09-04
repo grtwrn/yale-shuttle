@@ -53,15 +53,6 @@ describe("priceFirstHop — stand is never prorated, drive is never credited", (
   });
 });
 
-// Fixtures for the next stage (the branch mixture), kept here so they exist
-// before the code does. Each is a verified production trace, not a guess.
-describe.todo("anchor as a distribution — fixtures from verified traces", () => {
-  it.todo("two chords out of one repeated stop tie at forward-distance 0: must not be settled by centimetres");
-  it.todo("a stationary bus on a shared out-and-back segment with no history reports ~50/50 and says so");
-  it.todo("a departure in each direction on the shared segment resolves within two fresh fixes");
-  it.todo("a stale last_stop_id held across a 5 km run (Green, I-95) carries no evidence while unchanged");
-});
-
 describe("standingAt — the flag is a publication signal, the clock is the standing test", () => {
   const stopCoords = { 11: { lat: 41.3170, lon: -72.9280 } };
   const at = (dm: number) => ({ lat: 41.3170 + dm / 111_000, lon: -72.9280 });

@@ -1,7 +1,15 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
-import { findRouteAnchor, isBusOnRoute } from "./anchor";
+import { findRouteAnchor, isBusOnRoute, routePathFor } from "./anchor";
 import { gateAnchor, type AnchorStore } from "./anchorGate";
+import {
+  buildGeometry,
+  beliefStoreFor,
+  componentPosition,
+  stepStore,
+  type BeliefStore,
+  type RouteGeometry,
+} from "./belief";
 import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
@@ -25,6 +33,46 @@ export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
 export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
+
+const geometryCache = new WeakMap<object, Map<string, RouteGeometry>>();
+
+function weightedMedian(
+  values: readonly { eta: number; variance: number; weight: number }[],
+): number {
+  const total = values.reduce((sum, value) => sum + value.weight, 0);
+  if (!(total > 0)) return 0;
+  const ordered = [...values].sort((a, b) => a.eta - b.eta);
+  let cumulative = 0;
+  for (const value of ordered) {
+    cumulative += value.weight;
+    if (cumulative >= total / 2) return value.eta;
+  }
+  return ordered[ordered.length - 1]!.eta;
+}
+
+function routeGeometry(
+  path: readonly (readonly [number, number])[],
+  stops: readonly number[],
+  stopCoords: Record<number, LatLon>,
+): RouteGeometry | null {
+  let bySequence = geometryCache.get(path as object);
+  if (!bySequence) {
+    bySequence = new Map();
+    geometryCache.set(path as object, bySequence);
+  }
+  const key = stops.join(",");
+  const cached = bySequence.get(key);
+  if (cached) return cached;
+  const coords = stops.map((stop) => stopCoords[stop]).filter((p): p is LatLon => !!p);
+  if (coords.length !== stops.length) return null;
+  const geometry = buildGeometry(
+    path.map((p) => [p[0], p[1]] as [number, number]),
+    coords,
+  );
+  if (!(geometry.loopLength > 0) || geometry.legs.length !== stops.length) return null;
+  bySequence.set(key, geometry);
+  return geometry;
+}
 
 /**
  * How much of the first hop's calibrated time an elapsed dwell may cancel when
@@ -212,9 +260,18 @@ export function computeUpcomingArrivals(
    * assert.
    */
   anchorStore?: AnchorStore,
+  /**
+   * Directed-loop posterior memory. When supplied with a published route
+   * path, this replaces the point anchor for ETA pricing. Omitted calls retain
+   * the established anchor path (tests, future-mode plans, old replays).
+   */
+  beliefStore?: BeliefStore,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
+  const activeBeliefStore = beliefStore ?? (
+    anchorStore ? beliefStoreFor(anchorStore) : undefined
+  );
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     const hitsTarget = stops.some((s) => targetSet.has(s));
@@ -237,6 +294,17 @@ export function computeUpcomingArrivals(
     // below this line behaves differently from before it existed.
     const splitServed = Object.values(routeSegs).some(driveAdequate)
       && Object.values(routeDwells).some(standAdequate);
+    // Stage the posterior where a point anchor is structurally incapable of
+    // representing the route: one stop sequence visits the same spur twice.
+    // On simple loops the matched replay found no branch problem to solve and
+    // the handoff added reversals; retaining the established gate there makes
+    // this a measured rollout rather than a global algorithm switch.
+    const seenStops = new Set<number>();
+    const hasRepeatedStop = stops.some((stop) => {
+      if (seenStops.has(stop)) return true;
+      seenStops.add(stop);
+      return false;
+    });
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;
@@ -299,42 +367,116 @@ export function computeUpcomingArrivals(
       // drive and brings it back ("in 8 -> in 1 -> in 6"). The stop-pinned
       // clock survives that shuffle (PR #67); so does this memory of it.
       let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
+      let standingMemo: { stopId: number; standingSec: number } | null = null;
       if (anchorStore && splitServed) {
-        const st = standingAt(anchorStore, `${cfg.label}|${bus.bus_name}`, bus, now, stopCoords, STANDING_HOLD_M);
-        if (st) {
+        standingMemo = standingAt(
+          anchorStore,
+          `${cfg.label}|${bus.bus_name}`,
+          bus,
+          now,
+          stopCoords,
+          STANDING_HOLD_M,
+        );
+        if (standingMemo) {
           const N = stops.length;
           for (let i = 0; i < N; i++) {
-            if (stops[i] !== st.stopId) continue;
+            if (stops[i] !== standingMemo.stopId) continue;
             const d = ((i - gpsAnchorIdx) % N + N) % N;
-            if (d <= 1 || d === N - 1) { gpsAnchorIdx = i; standingSec = st.standingSec; break; }
+            if (d <= 1 || d === N - 1) {
+              gpsAnchorIdx = i;
+              standingSec = standingMemo.standingSec;
+              break;
+            }
           }
         }
       }
-      const busIdx = gpsAnchorIdx;
+      const fallbackBusIdx = gpsAnchorIdx;
       let firstSegProgressFactor = 1;
       if (stallCredit === 0 && bus.lat && bus.lon) {
-        const a = stopCoords[stops[busIdx]];
-        const b = stopCoords[stops[(busIdx + 1) % stops.length]];
+        const a = stopCoords[stops[fallbackBusIdx]];
+        const b = stopCoords[stops[(fallbackBusIdx + 1) % stops.length]];
         if (a && b) {
           const t = progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b);
           firstSegProgressFactor = Math.max(0, Math.min(1, 1 - t));
         }
       }
 
-      let cumulative = 0;
-      let cumulativeVar = 0;
+      type Hypothesis = {
+        branchId: number;
+        busIdx: number;
+        firstSegProgressFactor: number;
+        standingSec: number | null;
+        stallCredit: number;
+        weight: number;
+      };
+      let hypotheses: Hypothesis[] = [{
+        branchId: -1,
+        busIdx: fallbackBusIdx,
+        firstSegProgressFactor,
+        standingSec,
+        stallCredit,
+        weight: 1,
+      }];
+
+      const path = activeBeliefStore && hasRepeatedStop
+        ? routePathFor(cfg.routeIds[0])
+        : undefined;
+      const geometry = path ? routeGeometry(path, stops, stopCoords) : null;
+      if (activeBeliefStore && geometry && bus.lat && bus.lon) {
+        const coldStandingSec = bus.at_stop_since
+          ? Math.max(0, (now - new Date(bus.at_stop_since + "Z").getTime()) / 1000)
+          : null;
+        const posterior = stepStore(
+          activeBeliefStore,
+          `${cfg.label}|${bus.bus_name}`,
+          geometry,
+          {
+            lat: bus.lat,
+            lon: bus.lon,
+            t: now,
+            lastStopId: bus.last_stop_id,
+            stops,
+            standingSec: coldStandingSec,
+          },
+        );
+        // A 50/50 half-lap mixture has no honest scalar ETA: its mean is a
+        // route position the bus cannot occupy. Keep collecting evidence but
+        // retain the established gated anchor until one direction resolves.
+        // This is a fallback, not MAP—the losing branch remains in the store
+        // and can recover on a later fix.
+        if (posterior.resolved) {
+          hypotheses = posterior.branches.flatMap((branch) =>
+            branch.components.map((component): Hypothesis => {
+              const pos = componentPosition(geometry, component);
+              const pinned = component.mode === "standing"
+                && standingMemo?.stopId === stops[pos.leg];
+              return {
+                branchId: branch.id,
+                busIdx: pos.leg,
+                firstSegProgressFactor: pinned ? 1 : 1 - pos.progress,
+                standingSec: pinned ? standingMemo?.standingSec ?? null : null,
+                stallCredit: 0,
+                weight: component.weight,
+              };
+            })
+          );
+        }
+      }
+
+      const estimates = new Map<string, Array<{ eta: number; variance: number; weight: number; stopId: number; occurrence: number; branchId: number }>>();
       const totalStops = stops.length;
-      // Walk the loop TWICE so each stop can get two arrivals per bus: the
-      // upcoming one and the same vehicle a full lap later. On single-bus
-      // routes (Blue Weekend most weekends) that second-lap entry is the only
-      // way to answer "and the one after that?" (report #29), and it turns
-      // "departed" into an honest wait-for-it-to-come-around when the rider
-      // can't catch the current pass (report #30). It also covers the bus's
-      // own anchor stop (reachable only at step ≥ totalStops), so a bus
-      // dwelling AT a stop still yields an ETA for that stop.
-      const recordedForStop = new Map<number, number>();
       const MAX_ETA_SEC = 90 * 60; // sanity cap — beyond this the lap-2 guess is noise
-      for (let step = 1; step <= totalStops * 2; step++) {
+      for (const hypothesis of hypotheses) {
+        let cumulative = 0;
+        let cumulativeVar = 0;
+        let hypothesisStallCredit = hypothesis.stallCredit;
+        const recordedForStop = new Map<number, number>();
+        // Walk the loop TWICE so each stop can get the upcoming arrival and
+        // the same vehicle a full lap later. Each posterior component walks
+        // only forward; matching occurrences are mixed below, never exposed as
+        // duplicate buses.
+        for (let step = 1; step <= totalStops * 2; step++) {
+        const busIdx = hypothesis.busIdx;
         const prevI = (busIdx + step - 1) % totalStops;
         const curI = (busIdx + step) % totalStops;
         const seg = routeSegs[`${stops[prevI]}-${stops[curI]}`];
@@ -414,15 +556,17 @@ export function computeUpcomingArrivals(
           ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
           : null;
         if (split) {
-          const t = bus.lat && bus.lon
-            ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
-            : 0;
-          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
+          const t = 1 - hypothesis.firstSegProgressFactor;
+          segAvg = priceFirstHop(
+            { q: split.stand },
+            split.drive,
+            hypothesis.standingSec,
+            t,
+          );
           segVar = Math.min(segVar, segAvg * segAvg);
-          stallCredit = 0;
-          firstSegProgressFactor = 1;
+          hypothesisStallCredit = 0;
         }
-        if (step === 1 && stallCredit > 0) {
+        if (step === 1 && hypothesisStallCredit > 0) {
           const dwell = routeDwells[String(stops[busIdx])];
           const cancellable = dwell && dwell.med > 0
             ? dwell.med
@@ -436,17 +580,17 @@ export function computeUpcomingArrivals(
             0,
             segAvg - driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]]),
           );
-          const applied = Math.min(stallCredit, cancellable, room);
+          const applied = Math.min(hypothesisStallCredit, cancellable, room);
           segAvg -= applied;
-          stallCredit -= applied;
+          hypothesisStallCredit -= applied;
         }
         // Mid-segment proration on the first segment: scale down by the
         // fraction of the A→B distance still ahead of the bus. Scale
         // variance by fraction² so "almost there" also means "less
         // uncertainty about when."
-        if (step === 1 && firstSegProgressFactor < 1) {
-          segAvg *= firstSegProgressFactor;
-          segVar *= firstSegProgressFactor * firstSegProgressFactor;
+        if (step === 1 && !split && hypothesis.firstSegProgressFactor < 1) {
+          segAvg *= hypothesis.firstSegProgressFactor;
+          segVar *= hypothesis.firstSegProgressFactor * hypothesis.firstSegProgressFactor;
         }
         cumulative += segAvg;
         cumulativeVar += segVar;
@@ -455,17 +599,74 @@ export function computeUpcomingArrivals(
         const recorded = recordedForStop.get(sid) ?? 0;
         if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
           recordedForStop.set(sid, recorded + 1);
-          const sd = Math.sqrt(cumulativeVar);
-          result.push({
+          const key = `${sid}|${recorded}`;
+          const values = estimates.get(key) ?? [];
+          values.push({
             eta: cumulative,
-            low: Math.max(0, cumulative - sd),
-            high: cumulative + sd,
-            routeLabel: cfg.label,
-            color: cfg.color,
-            busName: bus.bus_name.replace("#", ""),
+            variance: cumulativeVar,
+            weight: hypothesis.weight,
             stopId: sid,
+            occurrence: recorded,
+            branchId: hypothesis.branchId,
           });
+          estimates.set(key, values);
         }
+      }
+      }
+
+      for (const values of estimates.values()) {
+        const weight = values.reduce((sum, value) => sum + value.weight, 0);
+        if (!(weight > 0)) continue;
+        // Modes on one geometric branch differ only by stop/run dynamics and
+        // are averaged continuously. Taking a component median made the point
+        // ETA jump whenever P(standing) crossed 0.5. Across geometric branches
+        // use the posterior median so no impossible halfway-around-the-loop
+        // ETA is invented.
+        const byBranch = new Map<number, typeof values>();
+        for (const value of values) {
+          const group = byBranch.get(value.branchId) ?? [];
+          group.push(value);
+          byBranch.set(value.branchId, group);
+        }
+        const branchValues = [...byBranch.values()].map((group) => {
+          const branchWeight = group.reduce((sum, value) => sum + value.weight, 0);
+          const branchEta = group.reduce(
+            (sum, value) => sum + value.weight * value.eta,
+            0,
+          ) / branchWeight;
+          const branchVariance = group.reduce(
+            (sum, value) => sum + value.weight * (
+              value.variance + (value.eta - branchEta) ** 2
+            ),
+            0,
+          ) / branchWeight;
+          return {
+            eta: branchEta,
+            variance: branchVariance,
+            weight: branchWeight,
+          };
+        });
+        const eta = weightedMedian(branchValues);
+        const mean = values.reduce(
+          (sum, value) => sum + value.weight * value.eta,
+          0,
+        ) / weight;
+        const variance = values.reduce(
+          (sum, value) => sum + value.weight * (
+            value.variance + (value.eta - mean) ** 2
+          ),
+          0,
+        ) / weight;
+        const sd = Math.sqrt(Math.max(0, variance));
+        result.push({
+          eta,
+          low: Math.max(0, mean - sd),
+          high: mean + sd,
+          routeLabel: cfg.label,
+          color: cfg.color,
+          busName: bus.bus_name.replace("#", ""),
+          stopId: values[0]!.stopId,
+        });
       }
     }
   }

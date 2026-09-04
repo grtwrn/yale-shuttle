@@ -8,7 +8,8 @@ import {
   nextArrivalAfterPinned, STALL_CREDIT_MAX_FRACTION,
 } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
-import { findRouteAnchor } from "./anchor";
+import { findRouteAnchor, registerRoutePaths } from "./anchor";
+import { beliefStoreFor } from "./belief";
 import {
   at, makeBus, routeStops, segmentTimes, STOP, stopCoords,
 } from "./__fixtures__/payload";
@@ -25,6 +26,77 @@ const etaFor = (arrivals: { stopId: number; eta: number }[], stopId: number) =>
   arrivals.find((a) => a.stopId === stopId)?.eta;
 
 describe("computeUpcomingArrivals", () => {
+  it("keeps a simple loop on the established anchor path", () => {
+    const path = blueWeekend.map((stop) => [
+      stopCoords[stop]!.lat,
+      stopCoords[stop]!.lon,
+    ] as [number, number]);
+    registerRoutePaths({ "4": path });
+    const store = new Map();
+    const bus = makeBus({
+      ...at(STOP.phelpsGate),
+      route_id: 4,
+      last_stop_id: STOP.phelpsGate,
+    });
+    const arrivals = computeUpcomingArrivals(
+      [STOP.cedar333],
+      [bus],
+      routeStops,
+      stopCoords,
+      segmentTimes,
+      NOW,
+      {},
+      store,
+    );
+    expect(arrivals.length).toBeGreaterThan(0);
+    expect(beliefStoreFor(store).size).toBe(0);
+    registerRoutePaths(null);
+  });
+
+  it("uses caller-owned directed-loop memory on a repeated-stop out-and-back", () => {
+    const coords = {
+      201: { lat: 41.31, lon: -72.93 },
+      202: { lat: 41.31, lon: -72.928 },
+      203: { lat: 41.31, lon: -72.926 },
+    };
+    const stops = { "9": [201, 202, 203, 202] };
+    const path: [number, number][] = [
+      [coords[201].lat, coords[201].lon],
+      [coords[202].lat, coords[202].lon],
+      [coords[203].lat, coords[203].lon],
+      [coords[202].lat, coords[202].lon],
+      [coords[201].lat, coords[201].lon],
+    ];
+    registerRoutePaths({ "9": path });
+    const store = new Map();
+    const bus = makeBus({
+      route_id: 9,
+      lat: coords[201].lat,
+      lon: (coords[201].lon + coords[202].lon) / 2,
+      last_stop_id: 201,
+    });
+    const segments = {
+      "9": {
+        "201-202": { avg: 90, sd: 20, n: 20 },
+        "202-203": { avg: 90, sd: 20, n: 20 },
+        "203-202": { avg: 90, sd: 20, n: 20 },
+        "202-201": { avg: 90, sd: 20, n: 20 },
+      },
+    };
+    computeUpcomingArrivals(
+      [203],
+      [bus],
+      stops,
+      coords,
+      segments,
+      NOW + 5_000,
+      {},
+      store,
+    );
+    expect(beliefStoreFor(store).size).toBe(1);
+    registerRoutePaths(null);
+  });
+
   it("produces ETAs in ascending order for a bus on the route", () => {
     const bus = makeBus({ ...at(STOP.phelpsGate), route_id: 1, last_stop_id: 42 });
     const targets = [STOP.cedar333, STOP.york129, STOP.elmYork];

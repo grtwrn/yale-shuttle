@@ -36,6 +36,13 @@ export function registerRoutePaths(
   routePathsById = paths ?? {};
 }
 
+/** The published directed polyline already registered for this route. */
+export function routePathFor(
+  routeId: number | string,
+): readonly (readonly [number, number])[] | undefined {
+  return routePathsById[String(routeId)];
+}
+
 function distanceToPathM(bus: LatLon, path: readonly (readonly [number, number])[]): number {
   let best = Infinity;
   for (let i = 0; i + 1 < path.length; i++) {
