@@ -78,3 +78,24 @@ trip card's "next in" rule old vs new (PR #74). Findings, 2026-09-03: at ≥300 
 6.5 h, 1,149 of them −1 flips mostly triggered by `at_stop_id` clearing);
 "twitch" transitions are buses driving at 7.5 m/s. `_detector-pre57.ts` is the
 detector before PR #57, for `DETECTOR=pre57`.
+
+## belief-scoreboard.ts / priors.ts — the estimator lane's instruments
+
+`belief-scoreboard.ts` scores anti-jitter arms at the transition level against
+the REAL gated `computeUpcomingArrivals` (its own `AnchorStore` per run; a
+`replica` arm must match it on every poll or the run is invalid). It reads the
+durable JSONL capture (`~/shuttle-captures/positions-*.jsonl`, deduplicated
+across the UTC day roll), builds `at_stop_since` from the stop-pinned
+`stationarySince` production serves, separates legitimate lap wraps from
+jitter, attributes every jump by what the feed did AND what the arm did,
+resolves truth to the right pass of a stop, scores layover departures with
+the plateau walk-back, and prints fixed-target traces for the browser-observed
+incidents. `priors.ts` measures the estimator's likelihood tables from the
+same corpus with the detector only. Findings and the design they feed:
+`docs/eta-estimator-design.md`.
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/belief-scoreboard.ts
+#   ARMS=beliefA,ungated  START="2026-09-03 16:30" END="2026-09-03 17:55"  POSITIONS_JSONL=a.jsonl,b.jsonl|db
+TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/priors.ts
+```
