@@ -186,3 +186,76 @@ so. The transcription is **self-checked against `TransitMap.tsx` on every
 run** — the script refuses to produce numbers once `StopList` gains the
 machinery it is being measured against, which is how it retires itself when
 the two are merged.
+
+## split-patch.ts — the stand/drive split a replay cannot serve itself
+
+`makeCalibCache` / `makeDwellCache` rebuild the v1 fields only (`{avg, sd, n}`
+per segment, `{med, sd, n, low}` per dwell). Production also serves the
+stand/drive split — `segments[route]["A-B"].drive`/`.driveN` and
+`dwells[route][stop].q`/`.qn` — and `web/src/hopPricing.ts` prices the first hop
+from it. A rider-sim run without those fields therefore scores the pre-split
+fallback path and says nothing about the client that is live, while looking
+exactly like a healthy run. That has already misled one measurement.
+
+`split-patch.ts` writes the `PAYLOAD_PATCH` file `rider-sim/run.ts` has always
+accepted. It re-derives nothing: `calibrate()`, `loadStandGroups` /
+`loadDriveGroups` and `attachStandTables` / `attachDrives` are the calibrator's
+own, and the emission is `v1compat.ts`'s two loops with its whole-second
+rounding. The quantile levels, the median drive and the true sample counts (the
+client gates on `MIN_STAND_SAMPLES` / `MIN_DRIVE_SAMPLES` itself; a floor here
+would drift from its) therefore stay defined in one place.
+
+**It reproduces what production serves, not everything the calibrator can
+compute.** The split goes out on `SPLIT_SERVED_ROUTE_IDS` only and never on a
+`foldRoutes` line, both read out of the calibrator so the patch follows the
+server. `SPLIT_ROUTES=all` withholds nothing — deliberately not production's
+behaviour, and there for one job: the paired before/after run CLAUDE.md requires
+before a route joins the allowlist. On the 2026-09-03 snapshot it lifts the
+patch from 60 hops to 224.
+
+```bash
+cd services/shuttle-v2
+TZ=America/New_York REPLAY_DB=./store/snap3-split.db npx tsx scripts/eta-replay/split-patch.ts
+TZ=America/New_York REPLAY_DB=./store/snap3.db \
+  PAYLOAD_PATCH=./scripts/.eta-replay/split-patch.json \
+  npx tsx scripts/eta-replay/rider-sim/run.ts --rider Red@48@2026-09-03T21:21:25Z@41.325351,-72.922891
+```
+
+Env: `REPLAY_DB`, `SPLIT_OUT` (default `scripts/.eta-replay/split-patch.json`),
+`SPLIT_NOW` (the instant the calibration is taken at; default the snapshot's
+last segment sample), `SPLIT_ROUTES=served|all` (default `served`).
+
+**The snapshot needs `stop_visits` and `legs`.** Migration 0010 created them on
+2026-09-04, so every snapshot taken before that has neither and the script
+refuses. Backfill a writable copy from the position archive the way production
+did, bounding it at the snapshot's own data end — the archive keeps running
+after the snapshot was taken, and those rows are days the replay never reaches:
+
+```bash
+cp store/snap3.db store/snap3-split.db     # writable copy
+sqlite3 store/snap3-split.db < drizzle/0010_minor_jackal.sql
+TZ=America/New_York npx tsx scripts/backfill-departures.ts \
+  --db store/snap3-split.db --before 2026-09-04T01:34:00Z
+```
+
+On the 2026-09-03 snapshot that yields 60 hops with a `drive` and 60 stops with
+a `q` — Red 29/29, Blue Day 31/31, nothing elsewhere — which is hop for hop what
+production served that night. The values check out against
+`docs/data/departure-tables-2026-09-03.json` on Red's 344 Winchester: drive
+11 -> 146 is 15 s over n = 25 against the reference's `drivePinned` median 15.1
+over n = 25, and the stand table reads 598 s at level 0.95 against the
+reference's 598.1. Its low end reads 111 s where the reference says 118.1
+because `qn` is 25 against the reference's 24 — the calibrator counts the one
+pinned pass-through as a 0 s stand, by measurement, and the reference table
+excludes it.
+
+**The patch is ONE static table, and that is a leak.** `run.ts` merges it into
+every hour bucket, so unlike the calibration around it the split is not
+time-travelled. It is defensible in kind: the split is pooled over
+`SPLIT_WINDOW_DAYS` (30) and deliberately not sliced by (dow, hour). It is not
+free in degree: these snapshots hold about one day of `stop_visits`, so the pool
+*is* the replayed day, and a rider replayed at 09:00 is priced with that
+evening's stands. Read such a run as "the split, as calibrated at the end of the
+captured day" — enough to answer whether the split helps a line, not a claim
+about what a rider was told at 09:00. Per-hour plumbing would have to go into
+`run.ts`, which is shared; this script does not touch it.
