@@ -41,6 +41,41 @@ export function fmtBusPair(firstSec: number, secondSec?: number | null): string 
   return `in ${first.replace(" min", "")}, ${second}`;
 }
 
+/**
+ * The countdown slot when the bus has stopped reporting.
+ *
+ * PAST TENSE, AND THAT IS THE WHOLE POINT. `fmtBusPair` above says "in 15 min",
+ * which is a claim about the future; for a bus that has gone off the air there
+ * is no evidence for one, and half of them never come back (ghost.ts). "was
+ * due in 15 min" says only what the app told this rider while the bus was
+ * still reporting, which stays true whatever the bus turns out to be doing.
+ *
+ * The number is frozen at the value it had when the signal went, so it must
+ * NOT be passed through `remainingSec` first — a ticking "was due" would be a
+ * countdown wearing a past tense.
+ *
+ * The second bus is deliberately absent here. It is a CONFIRMED bus and it
+ * belongs in the sentence below the row, where there is room to say so
+ * ("signal lost 3 min ago · next bus in 42 min"); crowding it in beside a
+ * frozen number would read as one pair of live figures.
+ */
+export function fmtWasDue(sec: number): string {
+  const m = fmtMin(sec);
+  return m === "now" ? "was due now" : `was due in ${m}`;
+}
+
+/**
+ * How long ago a bus stopped reporting: "signal lost 3 min ago".
+ *
+ * Under a minute is "just now" rather than "<1 min ago" — `fmtMin`'s "<1 min"
+ * spelling exists to keep a COUNTDOWN honest about a bus that may arrive at
+ * any second, and there is nothing imminent about an elapsed time.
+ */
+export function fmtSignalLost(sec: number): string {
+  if (sec < 60) return "signal lost just now";
+  return `signal lost ${Math.floor(sec / 60)} min ago`;
+}
+
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";

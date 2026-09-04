@@ -1295,6 +1295,88 @@ Two things to take from it rather than the anecdote:
   #32 ("6 min then it said 16") describes. Look for it in
   `scripts/.canary/runs.jsonl` before designing against it.
 
+### A bus that STOPS REPORTING keeps its row, and says so
+
+Red, 2026-09-04 13:47 ET. #304 made its last report while closing on
+Division/Prospect; 120 s later the collector's liveness TTL deleted it,
+`/api/buses` lost it, and the card moved to #310 a full loop away — "just
+jumped from 8 to 42 minutes. do we catch if a bus is going offline? can we?"
+
+**A dropout is a coin flip, not a hiccup**, and the first two readings of the
+data were both wrong. `docs/bus-goes-quiet.md` has the record; the numbers that
+constrain any change here, over 90 days of `arrivals` (3,136 vanish events,
+right-censored) with the route still running:
+
+| back within | 2 min | 5 min | **10 min** | 15 min | 20 min | 60 min |
+|---|---|---|---|---|---|---|
+| share | 2.1% | 13.4% | **32.8%** | 41.2% | 44.5% | 49.7% |
+
+**50.3% never come back within the hour.** Six hours of `raw_positions` said
+"9 of 9 came back in 4.4 min" — that is survivorship, a window can only hold
+gaps that ENDED inside it. Use `arrivals` (90 d) and count the events that
+never end.
+
+So the row is **not** priced as a bus that is still standing there and coming;
+that swaps a silent lie for a confident one. It shows the uncertainty:
+
+    Red   was due in 8 min                                    23 min
+          🚶 3 min › 🚌 11 min                                 1:58p   ›
+          📡 #304 — signal lost 2 min ago · next bus in 42 min
+
+Both halves are PAST TENSE, so both stay true whatever the bus is doing.
+**Nothing ticks** — the number is the last estimate made while the bus was
+still reporting, frozen, and it must never pass through `remainingSec`. And
+**the next confirmed bus is beside it**, which is what makes the row safe: the
+rider gets "#304 has gone quiet" AND "#310 in 42" and decides. Nothing is
+withheld by keeping the ghost; something is added.
+
+- **Server** (`GHOST_BUS_TTL_MS`, collector.ts): a bus past `LIVE_BUS_TTL_MS`
+  is kept for **ten minutes** — the knee of the return curve (~3.8 points a
+  minute to 10, then 1.7 / 0.65 / 0.22) — and served with `offline_since`, its
+  last fix otherwise verbatim. `getLiveBuses()` is UNCHANGED, so `/api/live`,
+  the planner's wait estimator and `/healthz` see exactly what they saw.
+- **Reconciliation is free.** `livePositions` is keyed by track key = the bus
+  NAME, so a returning bus writes over its own ghost. Every one of the 3,136
+  gaps returned under a new `bus_id`; #304 came back at 14:06, eighteen minutes
+  later, **~500 m away in the Science Park Garage lot, off route** — so the
+  radius is hundreds of metres, not tens. ⚠️ It also came back claiming
+  `last_stop_id` = Union Station (N), **seventeen hops** from where it was: a
+  freshly reissued id's `last_stop_id` is garbage and the anchor must come from
+  GPS until the feed catches up. NOT fixed — that is `anchor.ts` territory.
+- **Client** (`web/src/ghost.ts`): the row is a MEMORY of a promise, held per
+  (vehicle, stop) on the caller's own `AnchorStore` like the standing ceiling
+  and the anchor gate. A storeless caller — every hypothetical, replay and pure
+  test — has no memory and prices byte-identically to a tree without this. A
+  page opened AFTER the bus went quiet shows nothing: we never promised that
+  rider anything. `recallPromise` refuses a promise older than the grace, so a
+  bus that returns and goes quiet again cannot resurrect a stale "was due in".
+- **The row goes at the earlier of** the ten-minute cap and the promise being
+  spent (`wasDue + STOP_DWELL_SEC`), so a bus due in 3 min is held 4, not 10.
+
+**A ghost belongs ONLY where a rider was watching that particular bus** — the
+pinned trip-card row. Everywhere else answers "which bus is CONFIRMED to come
+next", and `reportingOnly` (arrivals.ts) is the one named filter every such
+caller uses: the route cards, `nextArrivalAfterPinned`, the on-bus views,
+`planTrip`, and **`leaveAlert`, which fires a push notification** — waking a
+phone to send somebody out for a bus nobody can see is the worst use of this
+data. A ghost is also never `boardable` and never wins `pickLiveArrival`'s
+dominance switch: it may keep the row it had, never take one. The two
+"a bus is parked at your stop, wait 0" paths check `offline_since == null` too.
+
+**Where a bus goes quiet predicts whether it returns — 0% to 78% against a 33%
+baseline** (Orange/Edwards (N) 78%, LEPH/60 College 70%, against 0% at
+Prospect/Sachem (N) and Willow/Whitney). Deliberately NOT used: the row makes
+no claim about the bus returning, so the rate would only tune how long a true
+sentence stays up. The table is in `docs/bus-goes-quiet.md` so nobody
+re-measures to find that out.
+
+The canary learned two things with it: `parseGhostText` reads "was due in N
+min" as a reading but NOT a countdown (drift-scoring a frozen number invents
+reversals, and `ghosted` is what stops `no-countdown` firing on a healthy
+ghosted stretch), and `feedVanishBetween` makes a bus leaving the FEED an
+event, so a jump caused by one is no longer scored as jitter.
+`GHOST=1` on `rider-sim/run.ts` reconstructs the ghosted payload for the A/B.
+
 ### A bus that is CLOSING is neither dropped nor re-priced away
 
 The canary's worst overnight finding (operator, 2026-09-04): "the bus that is

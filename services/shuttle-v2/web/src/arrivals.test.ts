@@ -5,11 +5,14 @@ import { fileURLToPath } from "node:url";
 
 import {
   billedDwellSec, computeUpcomingArrivals, MAX_PLAUSIBLE_M_S, MIN_HOP_SEC,
-  nextArrivalAfterPinned, shownStandSec, splitServedForRoute, STALL_CREDIT_MAX_FRACTION,
+  nextArrivalAfterPinned, reportingOnly, shownStandSec, splitServedForRoute, STALL_CREDIT_MAX_FRACTION,
 } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { priceFirstHop, remainingStandSec } from "./hopPricing";
 import { findRouteAnchor } from "./anchor";
+import type { AnchorStore } from "./anchorGate";
+import { ghostGraceMs } from "./ghost";
+import type { BusData } from "./map-data";
 import {
   at, makeBus, routeStops, segmentTimes, STOP, stopCoords,
 } from "./__fixtures__/payload";
@@ -620,5 +623,146 @@ describe("splitServedForRoute — one predicate for the screen and the arithmeti
       fileURLToPath(new URL("./arrivals.ts", import.meta.url)), "utf8",
     );
     expect(src).toContain("const splitServed = splitServedForRoute(routeSegs, routeDwells)");
+  });
+});
+
+/**
+ * RED #304, 2026-09-04 13:47 ET — a bus that stops reporting mid-approach.
+ *
+ * A rider at Division/Prospect was watching #304, due in about eight minutes.
+ * At 13:47:51 it made its last report and stopped appearing in the feed; two
+ * minutes later the collector deleted it, `/api/buses` lost it, and the card
+ * moved to #310 — the next bus after it, a full loop away — with no word of
+ * explanation. The operator: "just jumped from 8 to 42 minutes. do we catch if
+ * a bus is going offline? can we?"
+ *
+ * #304 came back at 14:06 — EIGHTEEN minutes later, under a new `bus_id`,
+ * resting in the Science Park Garage lot ~500 m away and off Red's route. (It
+ * was recorded as "never came back" at 13:58 and that was wrong; the corrected
+ * fact is the stronger one.) Eighteen minutes in a garage is why the row it
+ * keeps is a MEMORY of a promise and never a bus that is still coming: over 90
+ * days, a bus that goes quiet with its route still running is back inside ten
+ * minutes only 33% of the time and not within the hour half the time. The row
+ * expires at ten, and a return at eighteen is a fresh sighting.
+ *
+ * The geometry below is the fixture's Blue Day loop, not Red's — this repo has
+ * no Red stop fixture and the mechanism is route-independent. What is faithful
+ * is the SHAPE: a pinned bus shown, then absent, then (in the last case) back
+ * under a new id.
+ */
+describe("a bus that stops reporting (Red #304, 2026-09-04)", () => {
+  const boardStop = STOP.cedar333;
+  const live = () => makeBus({
+    ...at(STOP.phelpsGate), route_id: 1, bus_name: "#304", bus_id: 65960, last_stop_id: 42,
+  });
+  /** The same last fix, verbatim, flagged — which is all the payload changes. */
+  const ghost = (offlineSince: number) => ({ ...live(), offline_since: offlineSince });
+  const run = (buses: BusData[], now: number, store?: AnchorStore) =>
+    computeUpcomingArrivals(
+      [boardStop], buses, routeStops, stopCoords, segmentTimes, now, {}, store,
+    );
+
+  it("keeps the row, frozen at what the rider was last told, instead of deleting it", () => {
+    const store: AnchorStore = new Map();
+    const shown = run([live()], NOW, store).find((a) => a.busName === "304")!;
+    expect(shown).toBeTruthy();
+    expect(shown.offlineSince).toBeUndefined();
+
+    // Past the live TTL: the payload now carries #304 as a ghost.
+    const held = run([ghost(NOW)], NOW + 3 * 60_000, store).find((a) => a.busName === "304")!;
+    expect(held).toBeTruthy();
+    expect(held.offlineSince).toBe(NOW);
+    // The number is the one that was on screen when the signal went — not
+    // recomputed from a stale position, which would be a confident guess about
+    // a bus nobody can see.
+    expect(held.eta).toBe(shown.eta);
+    // No band: `low`/`high` describe the spread of a live estimate, and this
+    // is not one.
+    expect(held.low).toBe(held.eta);
+    expect(held.high).toBe(held.eta);
+  });
+
+  it("does not let the frozen number tick", () => {
+    const store: AnchorStore = new Map();
+    const shown = run([live()], NOW, store).find((a) => a.busName === "304")!;
+    const etas = [1, 3, 5, 7].map((min) =>
+      run([ghost(NOW)], NOW + min * 60_000, store).find((a) => a.busName === "304")!.eta,
+    );
+    expect(etas).toEqual([shown.eta, shown.eta, shown.eta, shown.eta]);
+  });
+
+  it("lets the row go once the grace expires, with no bus left behind", () => {
+    const store: AnchorStore = new Map();
+    const shown = run([live()], NOW, store).find((a) => a.busName === "304")!;
+    // The bound is the EARLIER of the ten-minute cap and the promise running
+    // out, so it is derived from the promise rather than hard-coded — which
+    // stop this fixture boards at must not decide whether the test passes.
+    const grace = ghostGraceMs(shown.eta);
+    const seen = (ms: number) =>
+      run([ghost(NOW)], NOW + ms, store).some((a) => a.busName === "304");
+    expect(seen(grace - 1_000)).toBe(true);
+    expect(seen(grace)).toBe(false);
+    // ...and the row goes for good, not just for a poll.
+    expect(seen(grace + 5 * 60_000)).toBe(false);
+  });
+
+  // Every one of the 3,136 measured reissue gaps came back under a NEW
+  // `bus_id`, so reconciliation cannot key on the id. It does not have to: the
+  // collector's live map is keyed by track key, which is the bus NAME while
+  // the name is uncontended, so a returning bus writes over its own ghost.
+  it("reconciles when the name comes back under a new id", () => {
+    const store: AnchorStore = new Map();
+    run([live()], NOW, store);
+    run([ghost(NOW)], NOW + 3 * 60_000, store);
+    const rejoined = run([{ ...live(), bus_id: 65981 }], NOW + 4 * 60_000, store)
+      .find((a) => a.busName === "304")!;
+    expect(rejoined).toBeTruthy();
+    // A live estimate again — not the memory, and not flagged.
+    expect(rejoined.offlineSince).toBeUndefined();
+    expect(rejoined.low).toBeLessThan(rejoined.high);
+  });
+
+  // A page opened after the bus went quiet was never told anything, so there
+  // is no promise to remind anyone of — and inventing one out of a frozen
+  // position is exactly the confident lie the ghost exists to avoid.
+  it("shows nothing for a ghost it never made a promise about", () => {
+    const store: AnchorStore = new Map();
+    expect(run([ghost(NOW)], NOW + 60_000, store).some((a) => a.busName === "304")).toBe(false);
+  });
+
+  // Every hypothetical, replay and pure test passes no store. Those must price
+  // byte-identically to a tree without ghosts in it.
+  it("emits no ghost at all for a storeless caller", () => {
+    run([live()], NOW);
+    expect(run([ghost(NOW)], NOW + 60_000).some((a) => a.busName === "304")).toBe(false);
+  });
+
+  /**
+   * #304's REAL return: 14:06, eighteen minutes after it went quiet, under
+   * `bus_id` 65982, resting in the Science Park Garage lot ~500 m away and off
+   * Red's route. That is past any grace, so the row had long gone — and the
+   * hazard is the far side of the gap. If the bus goes quiet AGAIN before the
+   * estimator has re-priced its board stop, the promise from 13:47 is still in
+   * the memory and a fresh `offline_since` would make "was due in 15 min" look
+   * newly minted. `recallPromise` refuses a promise older than the grace.
+   */
+  it("never resurrects a stale promise after a long absence", () => {
+    const store: AnchorStore = new Map();
+    run([live()], NOW, store);                       // 13:47, the promise
+    const gap = 18 * 60_000;                          // 13:47 -> 14:06
+    // The bus goes quiet again the moment it is back, before anything re-priced
+    // it — the worst case for the memory.
+    const after = run([ghost(NOW + gap)], NOW + gap + 60_000, store);
+    expect(after.some((a) => a.busName === "304")).toBe(false);
+  });
+
+  // The route cards, the ride views, `planTrip` and the push notification all
+  // ask "which bus is CONFIRMED to come next", and a ghost is not an answer.
+  it("is filtered out by reportingOnly", () => {
+    const store: AnchorStore = new Map();
+    run([live()], NOW, store);
+    const all = run([ghost(NOW)], NOW + 3 * 60_000, store);
+    expect(all.some((a) => a.busName === "304")).toBe(true);
+    expect(reportingOnly(all).some((a) => a.busName === "304")).toBe(false);
   });
 });

@@ -430,6 +430,12 @@ async function runOnce(line) {
         })).sort((a, b) => (a.distM ?? 1e9) - (b.distM ?? 1e9));
         record.samples.push({
           atMs: now, present: !!mine, eta: mine?.eta ?? null,
+          // The pinned bus has gone quiet and the card is showing what it last
+          // promised instead of a countdown. `scoreSequence` counts these as
+          // readings (so a ghosted stretch is not mistaken for a scraper that
+          // has stopped reading) without drift-scoring them.
+          ghost: mine?.ghost ?? null,
+          signalLost: mine?.signalLost ?? null,
           etaRaw: mine?.eta?.raw ?? null, totalMin: mine?.totalMin ?? null,
           arriveText: mine?.arriveText ?? null, departed: mine?.departed ?? false,
           missedBus: mine?.missedBus ?? null, walkToMin: mine?.walkToMin ?? null,
@@ -567,8 +573,15 @@ async function runOnce(line) {
     // "Purple kept its promises" off a ride with zero recorded promises on
     // 2026-09-03 16:00 — a silent scraper failure that reads exactly like
     // success. Two readings is the minimum that can show a transition at all.
-    if (record.sequence.readings < 2 && record.samples.some((s) => s.present)) {
-      fail("no-countdown", `${line.label} was on the plan but only ${record.sequence.readings} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
+    // A GHOSTED READING COUNTS AS READ. When the pinned bus has stopped
+    // reporting the card deliberately shows "was due in 15 min · signal lost
+    // 3 min ago" instead of a countdown (web/src/ghost.ts) — the scraper is
+    // working and the app is saying something true, so blaming the scraper
+    // would be exactly backwards. They are still not countdowns: `readings`
+    // excludes them and nothing drift-scores them.
+    const readable = record.sequence.readings + (record.sequence.ghosted ?? 0);
+    if (readable < 2 && record.samples.some((s) => s.present)) {
+      fail("no-countdown", `${line.label} was on the plan but only ${readable} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
     }
     if (record.pageErrors.length) fail("page-error", record.pageErrors.slice(0, 3).join(" | "));
     // One decision point, shared with the loop's status. An unreachable run is

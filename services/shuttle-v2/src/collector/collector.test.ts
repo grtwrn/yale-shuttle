@@ -317,6 +317,71 @@ describe("state pruning", () => {
   });
 });
 
+/**
+ * A BUS THAT STOPS REPORTING IS REMEMBERED, BRIEFLY AND VISIBLY.
+ *
+ * Red #304, 2026-09-04: last report 13:47:51 while closing on the rider's
+ * stop, deleted from the live set two minutes later, and the card jumped from
+ * 8 min to 42 with nothing said. It is now carried as a ghost — the last fix
+ * verbatim, disjoint from the live set — for `GHOST_BUS_TTL_MS`.
+ */
+describe("a bus that goes quiet", () => {
+  async function poll(buses: RawBus[]): Promise<void> {
+    const p = inner().runPoll();
+    await Promise.resolve();
+    upstream.deliver(buses);
+    await p;
+  }
+  /** Age the entry as if the bus had not reported for `ms`. */
+  const backdate = (key: string, ms: number) => {
+    (inner().livePositions.get(key) as { collectedAt: number }).collectedAt = Date.now() - ms;
+  };
+
+  it("leaves the live set but stays as a ghost", async () => {
+    await poll([{ ...bus({ id: 65960, lat: 41.31, lon: -72.93 }), name: "#304" } as RawBus]);
+    expect(collector.getLiveBuses()).toHaveLength(1);
+    expect(collector.getGhostBuses()).toHaveLength(0);
+
+    backdate("#304", 5 * 60_000); // past the live TTL, inside the ghost one
+    // The live set is what `/api/live`, the planner's wait estimator and
+    // /healthz read; none of them may see a ghost.
+    expect(collector.getLiveBuses()).toHaveLength(0);
+    const ghosts = collector.getGhostBuses();
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0]).toMatchObject({ busName: "#304", lat: 41.31, lon: -72.93 });
+    // Disjoint by construction — a caller concatenating the two cannot get a
+    // bus twice, which is how the map used to draw one vehicle as two.
+    expect(collector.pollStats().knownBuses).toBe(0);
+  });
+
+  it("is dropped for good once the ghost TTL passes", async () => {
+    await poll([{ ...bus({ id: 65960 }), name: "#304" } as RawBus]);
+    backdate("#304", 11 * 60_000);
+    await poll([]); // an empty tick still prunes
+    expect(inner().livePositions.size).toBe(0);
+    expect(collector.getGhostBuses()).toHaveLength(0);
+  });
+
+  // Every one of the 3,136 reissue gaps measured over 90 days came back under
+  // a NEW `bus_id`, so reconciliation cannot key on the id — and does not have
+  // to. `livePositions` is keyed by TRACK KEY, which is the bus name while the
+  // name is uncontended, so the returning bus writes straight over its ghost.
+  // #304 came back at 14:06 as id 65982, ~500 m away in a garage lot: the
+  // radius is hundreds of metres, not tens, and nothing here measures one.
+  it("is replaced by its own return under a new id", async () => {
+    await poll([{ ...bus({ id: 65960, lon: -72.93 }), name: "#304" } as RawBus]);
+    backdate("#304", 5 * 60_000);
+    expect(collector.getGhostBuses()).toHaveLength(1);
+
+    await poll([{ ...bus({ id: 65982, lon: -72.925 }), name: "#304" } as RawBus]);
+    expect(collector.getGhostBuses()).toHaveLength(0);
+    const live = collector.getLiveBuses();
+    expect(live).toHaveLength(1);
+    expect(live[0]).toMatchObject({ busName: "#304", busId: 65982 });
+    expect(inner().livePositions.size).toBe(1);
+  });
+});
+
 describe("static refresh", () => {
   it("guards against overlapping refreshes", async () => {
     let calls = 0;

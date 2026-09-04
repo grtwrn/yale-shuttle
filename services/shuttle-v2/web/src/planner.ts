@@ -38,6 +38,14 @@ export type TripOption = {
   // live bus exists to count down.
   busEtaSec?: number;
   computedAtMs?: number;
+  /**
+   * Epoch ms of the pinned bus's LAST fix, set only while that bus has stopped
+   * reporting. When it is present `busEtaSec` is not a countdown: it is the
+   * last estimate made while the bus was still on the air, frozen, and it must
+   * not be passed through `remainingSec` or rendered as "in N min". The row
+   * reads "was due in N min · signal lost M ago" instead. See web/src/ghost.ts.
+   */
+  busOfflineSince?: number;
 };
 
 /** Don't keep looping past a boarding point. */
@@ -135,17 +143,40 @@ export type LiveArrivalPick<A> = {
  * every verdict below is reachable within one poll of the data changing.
  * Returns null only for an empty `live`.
  */
-export function pickLiveArrival<A extends { eta: number; busName: string }>(
+export function pickLiveArrival<A extends { eta: number; busName: string; offlineSince?: number }>(
   live: readonly A[],
   pinnedBusName: string,
   effectiveWalkToSec: number,
 ): LiveArrivalPick<A> | null {
   if (live.length === 0) return null;
   const norm = (s: string) => s.replace(/^#/, "");
+  /**
+   * A GHOST MAY KEEP THE ROW IT ALREADY HAD. IT MAY NEVER TAKE ONE.
+   *
+   * An arrival carrying `offlineSince` is a bus that has stopped reporting,
+   * and its `eta` is a frozen memory of the last thing the rider was told
+   * rather than an estimate (ghost.ts). Two consequences, and they pull in
+   * opposite directions on purpose:
+   *
+   *  - The PINNED bus going quiet must not silently hand the row to the next
+   *    vehicle a lap away. That is the defect — Red #304, 2026-09-04, "just
+   *    jumped from 8 to 42 minutes" — and it is fixed by the ghost still being
+   *    in `live` at all, which the branches below then treat as normal.
+   *  - But a ghost must never WIN anything. It cannot be `boardable`: nobody
+   *    boards a bus that has gone off the air, and pricing a rider's wait and
+   *    total on one would put a fabricated arrival time on the card. It cannot
+   *    take the row from another vehicle through the dominance switch either,
+   *    because "a sooner bus is available" is a claim, and a ghost is the
+   *    absence of evidence for one.
+   *
+   * So a ghost is excluded from `catchable` — the pool of alternatives — and
+   * reached only through the pin.
+   */
+  const isGhost = (a: A) => a.offlineSince != null;
   const canCatch = (a: A) => effectiveWalkToSec <= a.eta + STOP_DWELL_SEC;
   const canCatchWithBuffer = (a: A) =>
     effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
-  const catchable = live.filter(canCatch);
+  const catchable = live.filter((a) => !isGhost(a) && canCatch(a));
   const pinned = live.find((a) => norm(a.busName) === norm(pinnedBusName));
   /**
    * Every verdict below answers "which bus does the row follow"; this answers
@@ -155,7 +186,12 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
    */
   const pick = (match: A, departed: boolean, missedBus?: string): LiveArrivalPick<A> => ({
     match,
-    boardable: canCatch(match) ? match : (catchable[0] ?? match),
+    // `catchable` holds no ghosts, so a ghost `match` always falls through to
+    // the soonest CONFIRMED bus here — which is the other half of the fix:
+    // the rider sees "#304 was due in 15 min, signal lost" on the countdown
+    // AND the trip priced on #310, and chooses. Only when there is no
+    // confirmed bus at all does `match` stand as its own fallback.
+    boardable: !isGhost(match) && canCatch(match) ? match : (catchable[0] ?? match),
     departed,
     ...(missedBus ? { missedBus } : {}),
   });
@@ -218,7 +254,12 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
     // row, and we can no longer make the planned one — so name it. (The
     // same-vehicle case that used to need suppressing here has returned
     // above; it is no longer reachable.)
-    return pick(match, false, pinned ? norm(pinned.busName) : undefined);
+    //
+    // Except for a GHOST, which is named by the signal-lost line instead.
+    // "You can't catch #304" says the bus came and went; about a bus that
+    // stopped reporting we know no such thing, and the row already carries
+    // the one thing we do know.
+    return pick(match, false, pinned && !isGhost(pinned) ? norm(pinned.busName) : undefined);
   }
   return pick(pinned ?? live[0], true);
 }
@@ -274,9 +315,21 @@ export function planTrip(
       // for every candidate. computeUpcomingArrivals is the expensive one, and
       // the wrap-around change above roughly doubled the (board, alight) pairs
       // — so it was running about 4x more often than it used to.
+      // `offline_since == null`: this branch promises a rider a bus they can
+      // WALK UP TO AND BOARD, wait zero. A bus that has stopped reporting was
+      // at this stop when we last heard from it and may have pulled away
+      // several minutes ago — "it's right there" is the one claim a ghost can
+      // never support. (A ghost's other fields are its last fix verbatim, so
+      // `at_stop_id` looks exactly as convincing as a live bus's.)
       const hereBus = futureMode ? undefined : buses.find(
-        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
+        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b
+          && bb.offline_since == null,
       );
+      // No `AnchorStore` is passed, and a ghost is only ever emitted from a
+      // promise held on one — so this call cannot produce one, which is what
+      // planning wants: a NEW trip must never be pinned to a bus that has gone
+      // quiet, or the app manufactures the very promise a ghost may only
+      // remember. See `reportingOnly` in arrivals.ts.
       const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
         [b], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes,
       ).filter((a) => a.routeLabel === cfg.label);

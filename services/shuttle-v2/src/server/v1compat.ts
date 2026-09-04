@@ -49,7 +49,16 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     ? collector.derivedPaths()
     : new Map<number, readonly [number, number][]>();
 
-  const buses = live.map((b) => ({
+  // Live buses, then the ones that have gone quiet. A ghost carries its last
+  // fix VERBATIM — same position, same `at_stop_id`, same `at_stop_since` —
+  // plus `offline_since`, which is the only thing that distinguishes it. The
+  // client must not be able to mistake one for a live bus, and every consumer
+  // that ignores the flag sees exactly the row it saw for the 120 s the live
+  // TTL already tolerated. See GHOST_BUS_TTL_MS (collector.ts) for why a bus
+  // is remembered at all, and web/src/ghost.ts for what is shown.
+  const ghosts = collector.getGhostBuses();
+  const ghostSince = new Set(ghosts);
+  const buses = [...live, ...ghosts].map((b) => ({
     bus_id: b.busId,
     bus_name: b.busName,
     route_id: b.routeId,
@@ -73,6 +82,11 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     ...(b.stationarySince != null
       ? { stationary_since: new Date(b.stationarySince).toISOString().replace(/Z$/, "") }
       : {}),
+    // Epoch milliseconds, not the naive-ISO spelling `at_stop_since` is stuck
+    // with: that shape exists only because v1's frontend appends its own "Z",
+    // and both ends of THIS field are ours. Present only on a ghost, so
+    // `offline_since == null` is the whole test for "this bus is reporting".
+    ...(ghostSince.has(b) ? { offline_since: b.collectedAt } : {}),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".

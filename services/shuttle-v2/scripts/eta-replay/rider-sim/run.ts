@@ -152,6 +152,18 @@ const TRACE = process.env.TRACE === "1";
 const AT_STOP_MAX_M = 75;
 const AT_STOP_MIN_DWELL_MS = 15_000;
 const LIVE_BUS_TTL_MS = 120_000;
+/**
+ * The ghost window, mirroring `GHOST_BUS_TTL_MS` in collector.ts.
+ *
+ * `GHOST=1` reconstructs the payload the way the server serves it AFTER the
+ * ghost change: a bus past the live TTL is carried for another ten minutes
+ * with `offline_since` set, instead of vanishing. Off by default, so a run of
+ * this driver against a master client reproduces master exactly — which is
+ * what makes the A/B honest. Pairing the two runs is the acceptance gate
+ * (`pair-by-route.mjs`, FIXED/INTRODUCED per route, never a total).
+ */
+const GHOST_BUS_TTL_MS = 10 * 60_000;
+const GHOST = process.env.GHOST === "1";
 /** Targeted population: where riders stand relative to an event. */
 const TARGET_OFFSETS_MS = [8, 4, 1].map((m) => m * 60_000);
 const TARGET_DOWNSTREAM_STOPS = 6;
@@ -359,14 +371,27 @@ function makeFeed() {
           stationarySince: st ? st.stationarySince : null,
         });
       }
-      for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
-      const all: BusData[] = [...livePositions.values()].map((v) => ({
-        bus_id: v.o.busId, bus_name: v.o.busName, route_id: v.o.routeId, lat: v.o.lat, lon: v.o.lon, heading: v.o.heading,
-        last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
-        ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
-        ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
-        ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
-      }));
+      // Retention: the ghost bound when ghosts are on, the live one otherwise.
+      // The FILTER below is what decides which of the survivors reach the
+      // client, so these two lines are the whole difference between the two
+      // arms of the pairing.
+      const keepMs = GHOST ? GHOST_BUS_TTL_MS : LIVE_BUS_TTL_MS;
+      for (const [k, v] of livePositions) if (v.o.collectedAt < t - keepMs) livePositions.delete(k);
+      const all: BusData[] = [...livePositions.values()]
+        .filter((v) => GHOST || v.o.collectedAt >= t - LIVE_BUS_TTL_MS)
+        .map((v) => {
+          const offline = v.o.collectedAt < t - LIVE_BUS_TTL_MS;
+          return {
+            bus_id: v.o.busId, bus_name: v.o.busName, route_id: v.o.routeId, lat: v.o.lat, lon: v.o.lon, heading: v.o.heading,
+            last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
+            ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
+            ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
+            ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
+            // The one field that distinguishes a ghost, exactly as
+            // `buildBusesPayload` emits it: the last fix's own instant.
+            ...(offline ? { offline_since: v.o.collectedAt } : {}),
+          };
+        });
       // The client drops out-of-service ghosts before anything reads `buses`.
       return all.filter((b) => scheduleMod.isBusInService(b, t));
     },

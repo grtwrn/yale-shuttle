@@ -1,0 +1,20 @@
+{
+  "caption": "Red #304 stops reporting while approaching the rider's stop. The row keeps its place, says in the past tense what it promised and when the signal went, and names the next confirmed bus — instead of silently handing the countdown to a bus a loop away.",
+  "base": "http://127.0.0.1:8099",
+  "trip": {
+    "board": 48,
+    "dest": 72
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/70fd443b-870f-4c0f-aea2-856c8edea1ec/scratchpad/shots/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

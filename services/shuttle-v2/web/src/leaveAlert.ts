@@ -113,10 +113,19 @@ export function leaveAlertMessage(
  * live bus ETA (walk options, future-mode plans, route stopped running).
  */
 export function findReminderOption<
-  T extends { mode: string; routeLabel: string; departed?: boolean; busEtaSec?: number },
+  T extends {
+    mode: string; routeLabel: string; departed?: boolean; busEtaSec?: number;
+    busOfflineSince?: number;
+  },
 >(options: readonly T[] | null | undefined, routeLabel: string): (T & { busEtaSec: number }) | null {
   const o = options?.find((x) => x.mode === "shuttle" && x.routeLabel === routeLabel);
-  if (!o || o.departed || o.busEtaSec == null) return null;
+  // `busOfflineSince`: this is the one consumer that wakes a phone. When the
+  // pinned bus has stopped reporting, `busEtaSec` is a frozen memory of the
+  // last thing the rider was told, not a countdown (ghost.ts) — sending
+  // somebody out of the door for a bus nobody can see is the worst use this
+  // number has. The card still shows the ghost, because a rider looking at
+  // the screen can read "signal lost 3 min ago"; a notification cannot say it.
+  if (!o || o.departed || o.busEtaSec == null || o.busOfflineSince != null) return null;
   return o as T & { busEtaSec: number };
 }
 

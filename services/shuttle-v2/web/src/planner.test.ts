@@ -4,6 +4,7 @@ import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
 import { DIRECT_COMMUTE_MARGIN_SEC, directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, mostDirectOption, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { findReminderOption } from "./leaveAlert";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -837,5 +838,88 @@ describe("topVisibleOptions", () => {
     ];
     // E is the most direct; C and D do not each get a row of their own.
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "E"]);
+  });
+});
+
+/**
+ * THE JUMP ITSELF: "8 to 42 minutes" (Red, 2026-09-04).
+ *
+ * `pickLiveArrival` is where the row chooses its bus, and it is the reason the
+ * ghost is worth carrying at all — a bus that stays in `live` is a bus this
+ * function can stay loyal to. The rules a ghost adds pull in opposite
+ * directions on purpose: it may KEEP the row it already had, and it may never
+ * TAKE one or be boarded.
+ */
+describe("pickLiveArrival when the pinned bus goes quiet", () => {
+  // #304 was due in ~8 min; #310, the next bus after it, was a loop away.
+  const ghost304 = { eta: 8 * 60, busName: "304", offlineSince: 1_700_000_000_000 };
+  const live310 = { eta: 42 * 60, busName: "310" };
+
+  it("keeps the row on the bus the rider was watching", () => {
+    const pick = pickLiveArrival([ghost304, live310], "304", 0)!;
+    expect(pick.match.busName).toBe("304");
+    expect(pick.departed).toBe(false);
+    // No "You can't catch #304" — that sentence claims the bus came and went,
+    // and about a bus that stopped reporting we know no such thing.
+    expect(pick.missedBus).toBeUndefined();
+  });
+
+  // The other half of the fix. The countdown says "#304 was due in 8 min,
+  // signal lost 3 min ago"; the WAIT and the TOTAL are priced on a bus
+  // somebody can still see, so the rider gets both facts and chooses.
+  it("prices the trip on the next CONFIRMED bus, never on the ghost", () => {
+    const pick = pickLiveArrival([ghost304, live310], "304", 0)!;
+    expect(pick.boardable.busName).toBe("310");
+  });
+
+  // A ghost is the ABSENCE of evidence, so it can never win the dominance
+  // switch — otherwise a bus that had gone off the air could take the row away
+  // from one that is reporting.
+  it("never takes the row from a bus that is reporting", () => {
+    const ghostSoon = { eta: 60, busName: "304", offlineSince: 1_700_000_000_000 };
+    const pick = pickLiveArrival([ghostSoon, { eta: 20 * 60, busName: "310" }], "310", 0)!;
+    expect(pick.match.busName).toBe("310");
+    expect(pick.boardable.busName).toBe("310");
+  });
+
+  // With nothing else on the line, the ghost is all there is — and saying "was
+  // due in 8 min, signal lost" beats saying nothing at all. `boardable` falls
+  // back to `match` because there is no confirmed bus to fall back to.
+  it("still shows the ghost when it is the only thing on the route", () => {
+    const pick = pickLiveArrival([ghost304], "304", 0)!;
+    expect(pick.match.busName).toBe("304");
+    expect(pick.departed).toBe(false);
+  });
+
+  // A rider whose walk is longer than the frozen promise genuinely cannot make
+  // it, so a confirmed bus takes the row — but without the "just passed" line,
+  // which would assert something we cannot see.
+  it("hands the row to a confirmed bus when the ghost is out of reach", () => {
+    const pick = pickLiveArrival([ghost304, live310], "304", 15 * 60)!;
+    expect(pick.match.busName).toBe("310");
+    expect(pick.missedBus).toBeUndefined();
+  });
+
+  // Nothing above may change what happens on a poll with no ghosts in it.
+  it("is master's pick when every bus is reporting", () => {
+    const pick = pickLiveArrival([{ eta: 8 * 60, busName: "304" }, live310], "304", 0)!;
+    expect(pick.match.busName).toBe("304");
+    expect(pick.boardable.busName).toBe("304");
+  });
+});
+
+/**
+ * The push notification is the one consumer that reaches a rider who is not
+ * looking at the screen, so it is the one that must never fire off a frozen
+ * number. A card can say "signal lost 3 min ago" beside its figure; a
+ * notification that says "Time to leave" cannot.
+ */
+describe("findReminderOption and a bus that has gone quiet", () => {
+  const base = { mode: "shuttle", routeLabel: "Red", busEtaSec: 300 };
+  it("arms on a bus that is reporting", () => {
+    expect(findReminderOption([base], "Red")).toBeTruthy();
+  });
+  it("refuses to arm on a ghost", () => {
+    expect(findReminderOption([{ ...base, busOfflineSince: 1_700_000_000_000 }], "Red")).toBeNull();
   });
 });

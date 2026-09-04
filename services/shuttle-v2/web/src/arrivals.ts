@@ -4,6 +4,7 @@ import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
 import { anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
 import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
+import { ghostStillShown, promiseKey, recallPromise, rememberPromise } from "./ghost";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -330,6 +331,15 @@ export type UpcomingArrival = {
    * collector has never seen is.
    */
   estimated: boolean;
+  /**
+   * Epoch ms of the bus's last fix, present ONLY when the bus has stopped
+   * reporting. When it is set, `eta` is not a live estimate: it is the last
+   * one made while the bus was still reporting, frozen — a memory of what the
+   * rider was told, not a claim about when the bus will arrive. A renderer
+   * that shows it as a countdown is showing a lie with a straight face; see
+   * ghost.ts, and `fmtWasDue` / `fmtSignalLost` in format.ts for the words.
+   */
+  offlineSince?: number;
 };
 
 export function computeUpcomingArrivals(
@@ -384,6 +394,43 @@ export function computeUpcomingArrivals(
       // last_stop_id was multi-stops-stale and the bus had drifted
       // off-axis from subsequent segment lines.
       const anchorKey = anchorKeyFor(cfg.label, bus.bus_name);
+
+      // A BUS THAT HAS GONE QUIET GETS NO ESTIMATE, ONLY ITS LAST ONE BACK.
+      //
+      // Everything below this point reads the bus's position, its anchor and
+      // the clock to work out when it will reach a stop. For a ghost all three
+      // are stale — the position has not moved because nothing has reported
+      // it, not because the bus is standing still — so running them would
+      // manufacture a confident number out of no evidence. Half the time it
+      // would be a number for a bus that is not coming: measured over 90 days,
+      // a bus that goes quiet with its route still running is back inside ten
+      // minutes only 33% of the time and not at all within the hour 50% of
+      // the time (ghost.ts).
+      //
+      // So the ghost's row is its own last promise, replayed, and it exists
+      // only if we made one — a rider whose page opened after the bus went
+      // quiet was never told anything and is told nothing now.
+      if (bus.offline_since != null) {
+        const offlineSince = bus.offline_since;
+        for (const sid of targetStopIds) {
+          if (!stops.includes(sid)) continue;
+          const held = recallPromise(anchorStore, promiseKey(anchorKey, sid), now);
+          if (!held || !ghostStillShown(offlineSince, held.etaSec, now)) continue;
+          result.push({
+            eta: held.etaSec,
+            // No band. `low`/`high` describe the spread of a live estimate,
+            // and this is not one; collapsing them onto the frozen value says
+            // "this number is not moving" rather than inventing a confidence
+            // interval for a bus nobody can see.
+            low: held.etaSec, high: held.etaSec,
+            routeLabel: cfg.label, color: cfg.color,
+            busName: bus.bus_name.replace("#", ""),
+            stopId: sid, stopsAhead: held.stopsAhead, estimated: held.estimated,
+            offlineSince,
+          });
+        }
+        continue;
+      }
       // Which way is it going? Two distinct fixes settle the branch of an
       // out-and-back that no amount of distance can (see anchor.ts). The
       // memory lives on the caller's store, so a hypothetical or replayed
@@ -632,12 +679,53 @@ export function computeUpcomingArrivals(
             stopsAhead: step,
             estimated: !anyMeasured,
           });
+          // Keep what this rider was just told, so that if the bus stops
+          // reporting the row can say what it promised instead of vanishing.
+          // Only ever written for a bus that IS reporting, and only on the
+          // caller's own store — a storeless call remembers nothing and so
+          // behaves exactly as it did before ghosts existed.
+          rememberPromise(anchorStore, promiseKey(anchorKey, sid), {
+            etaSec: cumulative, stopsAhead: step, estimated: !anyMeasured,
+          }, now);
         }
       }
     }
   }
   result.sort((a, b) => a.eta - b.eta);
   return result;
+}
+
+/**
+ * Arrivals from buses that are actually reporting.
+ *
+ * A GHOST BELONGS ONLY WHERE A RIDER WAS WATCHING THAT PARTICULAR BUS. That is
+ * one place: the trip card row pinned to it, which is where the promise was
+ * made and where deleting the bus was the defect (Red #304, 2026-09-04 — "just
+ * jumped from 8 to 42 minutes"). Everywhere else on screen is answering a
+ * different question — "which bus is confirmed to come next" — and a bus that
+ * has gone off the air is not an answer to it. So this is not a compromise or
+ * a place the feature was left half-finished; showing the next CONFIRMED bus
+ * is the correct content for:
+ *
+ *  - the route cards under the map (one sweep over every stop of every line —
+ *    no pin, no promise, and a frozen number there would be indistinguishable
+ *    from a live one, which is exactly the hazard);
+ *  - `nextArrivalAfterPinned`, whose entire job is to name a real alternative
+ *    to the pinned bus, and which is what puts "#310 in 42 min" beside the
+ *    ghost row;
+ *  - the on-bus ride list and banner, where the rider is already aboard;
+ *  - `planTrip`, because pinning a NEW trip to a bus that has stopped
+ *    reporting would manufacture the very promise a ghost is only ever
+ *    allowed to remember;
+ *  - and `leaveAlert`, which fires a PUSH NOTIFICATION off the number. Waking
+ *    somebody's phone to send them out of the door for a bus nobody can see
+ *    is the worst thing this data could be used for.
+ *
+ * Kept as one named helper rather than five inline `.filter`s so the list of
+ * callers is greppable and a new consumer has to choose.
+ */
+export function reportingOnly(arrivals: readonly UpcomingArrival[]): UpcomingArrival[] {
+  return arrivals.filter((a) => a.offlineSince == null);
 }
 
 /**

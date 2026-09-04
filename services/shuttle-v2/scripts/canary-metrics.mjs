@@ -67,6 +67,31 @@ export function parseBusEtaText(line) {
   return null;
 }
 
+/**
+ * "was due in 15 min" — the countdown slot when the pinned bus has stopped
+ * reporting (`fmtWasDue`, web/src/format.ts).
+ *
+ * It is deliberately NOT parsed by `parseBusEtaText`, and that is the point.
+ * The number is FROZEN at the last estimate made while the bus was still on
+ * the air, so feeding it to `conservativeDrift` would score the passage of
+ * time as the app failing to tick — a run would fill with reversals for a card
+ * that is behaving exactly as designed. It is a reading, though, not silence:
+ * `readings === 0` is a `no-countdown` failure precisely because a scraper
+ * that has stopped reading looks like a healthy line, and a ghosted card would
+ * otherwise trip it.
+ *
+ * Returns the bucket the promise fell in, so a caller can say what the rider
+ * was last told without pretending it is current.
+ */
+export function parseGhostText(line) {
+  const t = String(line).replace(/^🚌\s*/u, "").trim();
+  if (t === "was due now") return { wasDue: bucketOf("now"), raw: t };
+  const m = t.match(/^was due in (<1|\d+)\s*min$/);
+  if (!m) return null;
+  const wasDue = bucketOf(m[1]);
+  return wasDue ? { wasDue, raw: t } : null;
+}
+
 /** "⏳ wait 7 min for #40" — shown INSTEAD of a countdown when no live bus pinned. */
 export function parseWaitFallback(line) {
   const m = String(line).match(/^⏳\s*wait\s+(\d+)\s*min\s+for\s+(?:#(\S+)|next shuttle)$/);
@@ -357,11 +382,16 @@ export function parseOptions(bodyText) {
   // the card before, so the walk-back is deliberately short.
   const startOf = (h) => {
     let start = h;
-    // Either form of the countdown line: the glyph-prefixed one production may
-    // still be serving, or the bare one shipped 2026-09-04. Parsing it is the
-    // stricter test, so both are accepted rather than swapping one for the other.
+    // Every form of the countdown line: the glyph-prefixed one production may
+    // still be serving, the bare one shipped 2026-09-04, and the past-tense
+    // "was due in 15 min" a card shows when its bus has stopped reporting.
+    // Parsing it is the stricter test, so all are accepted rather than one
+    // being swapped for another — that swap is what blinded this parser for
+    // twelve minutes after #111.
     if (h > 0 && !isHeader(lines[h - 1])
-        && (lines[h - 1].startsWith("🚌") || parseBusEtaText(lines[h - 1]) !== null)) start = h - 1;
+        && (lines[h - 1].startsWith("🚌")
+            || parseBusEtaText(lines[h - 1]) !== null
+            || parseGhostText(lines[h - 1]) !== null)) start = h - 1;
     const p = start - 1;
     if (p >= 0 && !isHeader(lines[p]) && (isLabelish(lines[p]) || lines[p] === "🚶 Walk")) start = p;
     return start;
@@ -394,6 +424,14 @@ export function parseOptions(bodyText) {
     // arbiter, so there is one place to teach and it cannot half-learn again.
     // It cannot collide with the ride bar ("🚌 12 min"), which has no "in".
     const busLine = body.find((l) => parseBusEtaText(l) !== null);
+    // "was due in 15 min" — the same slot, when the pinned bus has stopped
+    // reporting. It must be READ (a card showing one is not a blind scraper)
+    // and it must not be read as a countdown (the number is frozen, so drift
+    // scoring it would invent reversals). #111 blinded this parser for twelve
+    // minutes by changing this very line, which is why the ghost form is
+    // taught here at the same time as it ships rather than after a run fails.
+    const ghostLine = body.find((l) => parseGhostText(l) !== null);
+    const lostLine = body.find((l) => /^📡\s*#\S+\s+—\s+signal lost/u.test(l));
     const waitLine = body.find((l) => l.startsWith("⏳"));
     const missed = body.map((l) => l.match(/^🚌 You can't catch #(\S+)/)).find(Boolean);
     const walks = body.filter((l) => /^🚶\s*\d+\s*min$/.test(l))
@@ -409,6 +447,10 @@ export function parseOptions(bodyText) {
       totalMin: lines[h] === "Departed" ? null : Number(lines[h].match(/(\d+)/)[1]),
       arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,  // both spellings collapse to the clock
       eta: busLine ? parseBusEtaText(busLine) : null,
+      // A ghosted card has `ghost` set and `eta` null — never both, since the
+      // two spellings occupy the one slot.
+      ghost: ghostLine ? parseGhostText(ghostLine) : null,
+      signalLost: lostLine ?? null,
       waitFallback: waitLine ? parseWaitFallback(waitLine) : null,
       missedBus: missed ? missed[1] : null,
       walkToMin: walks[0] ?? 0,
@@ -442,7 +484,13 @@ export function parseOptions(bodyText) {
 export function scoreSequence(samples, thresholds = THRESHOLDS) {
   const transitions = [], drops = [], appearances = [], events = [];
   let prev = null;
+  let ghosted = 0;
   for (const s of samples) {
+    // A card whose pinned bus has gone quiet shows "was due in 15 min" instead
+    // of a countdown. That is a READING — the scraper is working and the app
+    // is saying something — but it is a frozen memory, so it is not drift-
+    // scored and it breaks the chain rather than pairing across the gap.
+    if (s.present && !s.eta && s.ghost) { ghosted++; prev = null; continue; }
     if (!s.present || !s.eta) { prev = null; continue; }
     if (prev) {
       const dt = (s.atMs - prev.atMs) / 1000;
@@ -457,9 +505,17 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
         // and the counters below split on it. Readings with no `buses` list
         // (the rider simulator's) answer "unknown" and nothing changes.
         const event = departureBetween(prev.buses, s.buses);
+        // ...and did one leave the FEED? A bus upstream stopped reporting is
+        // as real an event as a bus pulling away, and it moves the card the
+        // same way — the countdown hands over to whatever is next. Scoring
+        // that as jitter blames the app for the feed (Red #304, 2026-09-04).
+        // `departureBetween` cannot see it: an absent bus is "unknown" to it
+        // whether it went quiet at the kerb or three kilometres away.
+        const vanished = feedVanishBetween(prev.buses, s.buses);
         const ctx = {
           atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw,
-          event, eventful: event === "departure",
+          event, vanished,
+          eventful: event === "departure" || vanished.length > 0,
         };
         // `busName` is the PINNED vehicle, i.e. the one in slot 0. Callers that
         // know it (the rider simulator) get identity pairing there; the live
@@ -507,6 +563,11 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
   const abs = transitions.map((t) => Math.abs(t.driftSec)).sort((a, b) => a - b);
   return {
     readings: samples.filter((s) => s.present && s.eta).length,
+    // Readings where the card was showing a ghost row rather than a countdown.
+    // Counted separately: they are not silence (so a run that only ever saw
+    // these is not a blind scraper) and they are not countdowns (so they are
+    // not drift-scored). Older records lack the field; read a missing one as 0.
+    ghosted,
     transitions,
     reversals: transitions.filter((t) => t.reversal).length,
     notableReversals: transitions.filter((t) => t.notable).length,
@@ -538,6 +599,11 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
     catastrophicEventless: transitions.filter((t) => t.catastrophic && !t.eventful).length,
     droppedSevereEventful: drops.filter((d) => d.severe && d.eventful).length,
     droppedSevereEventless: drops.filter((d) => d.severe && !d.eventful).length,
+    // How many transitions had a bus leave the FEED behind them. Reported on
+    // its own rather than folded into the departure counters, because the two
+    // want different fixes: a departure is the app being right, a vanishing is
+    // upstream going quiet and is what `web/src/ghost.ts` exists to survive.
+    feedVanished: events.filter((e) => (e.vanished ?? []).length > 0).length,
   };
 }
 
@@ -771,6 +837,43 @@ export function brokenPromise(samples, endedAtMs) {
     }
   }
   return null;
+}
+
+/**
+ * A BUS THAT LEFT THE FEED, not one that left the stop.
+ *
+ * `departureBetween` answers "did the nearest bus pull away", and it collapses
+ * to "unknown" whenever the bus it was watching is simply absent from the
+ * later reading — at 20 m or at 3 km, it cannot tell. That hole is this
+ * function: upstream stopped reporting the vehicle, which is a real-world
+ * EVENT and not the app misbehaving, and until now a countdown jump caused by
+ * one was scored as jitter and failed the run.
+ *
+ * Red, 2026-09-04: #304 made its last report at 13:47:51 while closing on the
+ * board stop, and the card moved to #310 a full loop away. Nothing the app did
+ * was wrong at that instant — the bus had gone.
+ *
+ * Keyed on `name` with the leading `#` stripped, like every other comparison
+ * here, because `bus_id` is reissued per service block. Returns the vanished
+ * buses nearest-first, with the distance each was last seen at, so a caller
+ * can tell a bus vanishing at the kerb from one vanishing across town.
+ * Readings with no `buses` list (the rider simulator's) return an empty array
+ * and nothing changes.
+ */
+export function feedVanishBetween(prevBuses, nextBuses) {
+  const norm = (x) => String(x ?? "").replace(/^#/, "");
+  const before = (prevBuses ?? []).filter((b) => b && b.name != null);
+  if (before.length === 0) return [];
+  // An EMPTY later reading is not evidence that every bus vanished: it is what
+  // a poll that failed looks like, and `feed-error` deliberately fails
+  // nothing. Only a reading that still carries buses can say one is missing.
+  const after = (nextBuses ?? []).filter((b) => b && b.name != null);
+  if (after.length === 0) return [];
+  const present = new Set(after.map((b) => norm(b.name)));
+  return before
+    .filter((b) => !present.has(norm(b.name)))
+    .map((b) => ({ name: b.name, distM: Number.isFinite(b.distM) ? b.distM : null }))
+    .sort((a, b) => (a.distM ?? 1e9) - (b.distM ?? 1e9));
 }
 
 export function departureBetween(prevBuses, nextBuses) {

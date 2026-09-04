@@ -155,6 +155,51 @@ const AT_STOP_MAX_M = 75;
 const LIVE_BUS_TTL_MS = 120_000;
 
 /**
+ * HOW LONG A BUS THAT HAS GONE QUIET IS STILL REMEMBERED.
+ *
+ * Past `LIVE_BUS_TTL_MS` a bus stops being live, and until now that also meant
+ * it stopped existing: the entry was deleted, `/api/buses` lost it, and the
+ * rider's countdown silently moved to whatever bus was next. On Red,
+ * 2026-09-04, #304 made its last report at 13:47:51 approaching 344 Winchester
+ * and the card jumped from "8 min" to #310 at 42 min with no explanation.
+ *
+ * A quiet bus is kept for this long instead — not as a live bus (see
+ * {@link Collector.getLiveBuses}, whose cutoff is unchanged, so `/api/live`,
+ * the trip planner's wait estimator and `/healthz` all see exactly what they
+ * saw before) but as a GHOST the payload can label. What the client does with
+ * one is `web/src/ghost.ts`; the short version is that it shows the promise
+ * the bus last made and says the signal is gone, rather than deleting both.
+ *
+ * TEN MINUTES, AND THE NUMBER IS MEASURED. Across 90 days of `arrivals`
+ * (3,136 vanish events, right-censored at 2 h) a bus that goes quiet WHILE ITS
+ * ROUTE IS STILL RUNNING comes back:
+ *
+ *     within  2 min   2.1%      within 20 min  44.5%
+ *     within  5 min  13.4%      within 30 min  46.6%
+ *     within 10 min  32.8%      within 60 min  49.7%
+ *     within 15 min  41.2%      never within an hour: 50.3%
+ *
+ * — so a dropout is a COIN FLIP, not a hiccup, and the earlier reading that
+ * "9 of 9 gaps came back" was survivorship: it only saw the gaps that ended
+ * inside a 6 h window. That is why a ghost is never priced as a bus that is
+ * still coming (see ghost.ts).
+ *
+ * The bound is the knee of that curve. Returns arrive at ~3.8 percentage
+ * points per minute from 2 to 10 minutes, then 1.7 (10-15), 0.65 (15-20) and
+ * 0.22 (20-30): past ten minutes almost nothing more comes back, so a longer
+ * memory buys a stale row rather than a reunion. And when one DOES return
+ * within ten minutes it returns where it went quiet — 96% within 600 m,
+ * median 0 m — which is what makes the reunion a continuation rather than a
+ * new sighting.
+ *
+ * Reconciliation needs no code of its own. `livePositions` is keyed by TRACK
+ * KEY, which is the bus NAME while the name is uncontended (`trackKeyFor`),
+ * so #304 coming back under a fresh `bus_id` — every one of those 3,136 gaps
+ * was an id reissue — writes straight over its own ghost.
+ */
+const GHOST_BUS_TTL_MS = 10 * 60_000;
+
+/**
  * Drop per-bus detector state after this long off the radar. The detector
  * already re-anchors after MAX_OBSERVATION_GAP_MS (10 min), so anything older
  * would re-anchor anyway — pruning just keeps the `states` map from growing
@@ -750,9 +795,13 @@ export class Collector {
    * gave us nothing — see the call site in `runPoll`.
    */
   private pruneStale(now: number): void {
-    const liveCutoff = now - LIVE_BUS_TTL_MS;
+    // The GHOST bound, not the live one: an entry past `LIVE_BUS_TTL_MS` has
+    // stopped being a live bus but is still the last thing we know about a
+    // vehicle a rider may be waiting for. `getLiveBuses` keeps applying the
+    // live cutoff, so nothing downstream of it changed.
+    const ghostCutoff = now - GHOST_BUS_TTL_MS;
     for (const [key, b] of this.livePositions) {
-      if (b.collectedAt < liveCutoff) this.livePositions.delete(key);
+      if (b.collectedAt < ghostCutoff) this.livePositions.delete(key);
     }
     const stateCutoff = now - STATE_TTL_MS;
     for (const [key, s] of this.states) {
@@ -772,7 +821,11 @@ export class Collector {
     return {
       skipped: this.pollSkipped,
       droppedObservations: this.droppedObservations,
-      knownBuses: this.livePositions.size,
+      // LIVE buses, not remembered ones. `livePositions` now also holds ghosts
+      // for up to `GHOST_BUS_TTL_MS`, and /healthz's `knownBuses` is a
+      // liveness signal — counting a bus that stopped reporting eight minutes
+      // ago as "known" would make an upstream outage look healthy.
+      knownBuses: this.getLiveBuses().length,
     };
   }
 
@@ -907,6 +960,28 @@ export class Collector {
       resumeAt = row.arrivedAt;
     }
     return resumeAt;
+  }
+
+  /**
+   * Buses that have stopped reporting but are still remembered — the last fix
+   * of each, verbatim, for anything between `LIVE_BUS_TTL_MS` and
+   * `GHOST_BUS_TTL_MS` ago. Disjoint from {@link getLiveBuses} by
+   * construction, so a caller wanting everything concatenates the two and a
+   * caller wanting only live buses is unaffected by this existing.
+   *
+   * `collectedAt` IS the answer to "when did the signal go", which is why
+   * there is no separate `offlineSince`: the two would be the same instant
+   * spelled twice, and a payload that says it twice invites them to disagree.
+   */
+  getGhostBuses(): BusPosition[] {
+    const now = Date.now();
+    const liveCutoff = now - LIVE_BUS_TTL_MS;
+    const ghostCutoff = now - GHOST_BUS_TTL_MS;
+    const out: BusPosition[] = [];
+    for (const b of this.livePositions.values()) {
+      if (b.collectedAt < liveCutoff && b.collectedAt >= ghostCutoff) out.push(b);
+    }
+    return out;
   }
 
   private updateLivePositions(
