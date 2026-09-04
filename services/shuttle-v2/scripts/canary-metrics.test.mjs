@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M, CANONICAL_TRIP, conservativeDrift,
-  ARRIVAL_M, brokenPromise, deadlineForPromise, DEPARTURE_M, departureBetween,
-  isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
+  CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
+  departureBetween, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
   pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";

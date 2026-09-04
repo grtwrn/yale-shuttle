@@ -357,6 +357,18 @@ async function runOnce(line) {
           // note is that this arrival must not END the run: nothing has been
           // read yet, and the interesting question is now the NEXT bus. Hence
           // `watchedArrival`, which is what breaks the loop, stays null here.
+          //
+          // BE PRECISE ABOUT WHAT THIS CREDITS. It says "a bus of this line
+          // was at the board stop when the rider walked up", not "the bus the
+          // card is pinned to arrived" — this runs before the scrape, so the
+          // card has not been read yet. In all seven archived cases they were
+          // the same vehicle (the card read "now" BECAUSE of it), but a bus
+          // laying over at the stop while the card counts down to a different
+          // one would also be credited and would suppress `no-arrival`. That
+          // is a deliberate trade: the rider standing there could board it,
+          // and a pinned bus that then vanishes is caught by `bus-vanished`
+          // rather than by this. `atStart` marks these so the two are never
+          // summed by accident.
           if (tick === 0) {
             nearFlags.set(key, here);
             if (here) {
