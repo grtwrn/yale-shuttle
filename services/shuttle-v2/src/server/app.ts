@@ -27,6 +27,7 @@ import {
   type RiderAction,
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
+import { canaryReport, recordCanaryRuns } from "./canary.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { createSearchTermsTracker } from "./searchTerms.js";
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -61,6 +62,11 @@ const PLAN_BODY_LIMIT = 16 * 1024;
 const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
 // The stats-login body is one token and nothing else.
 const STATS_SESSION_BODY_LIMIT = 2 * 1024;
+// A shipped canary batch: up to 50 run SUMMARIES, ~1 KB each. The samples and
+// page dumps that make a run 40 KB on disk never travel — see canary.ts.
+const CANARY_BODY_LIMIT = 256 * 1024;
+/** Default window for the /stats canary panel: a day of riding. */
+const CANARY_DEFAULT_HOURS = 24;
 
 // -- Operator stats session ---------------------------------------------------
 // The dashboard at /stats needs to re-authenticate on every load without the
@@ -727,6 +733,41 @@ export function buildApp(opts: AppOptions): Hono {
       Number.isFinite(raw) ? raw : 20,
       { sinceDay: actives.sinceDay() },
     ));
+  });
+
+  // What the rider canary saw. Same auth as the rest of /api/stats — the
+  // payload is entirely harness output (a route label, a countdown string, a
+  // timestamp) and names no rider at all, so the cookie is safe here for the
+  // same reason it is safe on the search terms.
+  app.get("/api/stats/canary", requireStatsAuth, (c) => {
+    const raw = parseInt(c.req.query("hours") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json(canaryReport(
+      opts.bundle,
+      Number.isFinite(raw) ? raw : CANARY_DEFAULT_HOURS,
+      now(),
+    ));
+  });
+
+  // Where the canary ships its runs from the Pi. ADMIN HEADER ONLY: this is a
+  // write, and the stats cookie rides along on a browser's requests — it must
+  // never be able to put words on the operator's own dashboard.
+  //
+  // The response tells the shipper which findings the server judged worth an
+  // interruption, and which lines have recovered since. That decision lives on
+  // the server because only the server has the history a cooldown needs, and
+  // because a rule about waking somebody up should be unit-tested. See
+  // canary.ts for the measurement that set the rule.
+  app.post("/api/canary/runs", requireAdmin, bodyLimit({
+    maxSize: CANARY_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { runs?: unknown } | null;
+    if (!body || !Array.isArray(body.runs)) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    c.header("Cache-Control", "no-store");
+    return c.json(recordCanaryRuns(opts.bundle, body.runs, now()));
   });
 
   // Claim (or release) a browser as the operator's own, so its reports stop

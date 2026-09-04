@@ -463,3 +463,73 @@ export type DbDailyActive = typeof dailyActives.$inferSelect;
 export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;
 export type DbOperatorAnonId = typeof operatorAnonIds.$inferSelect;
 export type DbDerivedPath = typeof derivedPaths.$inferSelect;
+
+/**
+ * Findings from the rider canary (`scripts/rider-canary.mjs`), shipped here so
+ * the operator can see them.
+ *
+ * The canary runs on the Pi and wrote only to a local JSONL file. On
+ * 2026-09-04 it caught the ETA defect the operator had been chasing —
+ * `Red  eta-jump: "now, then 66 min" -> "in 7, 25 min" in 15 s` at 07:37 ET —
+ * and the finding sat in that file until he hit the same bug himself and asked
+ * whether the canary was even watching. The detection worked; nothing read it.
+ * This table is the missing half: `scripts/canary-ship.mjs` POSTs each run's
+ * SUMMARY (never its samples or page text) to /api/canary/runs, /stats renders
+ * it, and the server decides which findings are worth waking someone for.
+ *
+ * One row per run, and small by construction: a run is ~40 KB in the local log
+ * and ~1 KB here, because everything that made it big — 100 samples, two 3 KB
+ * page dumps per jump — is diagnostic detail that belongs on the machine that
+ * captured it. What travels is what the operator reads.
+ */
+export const canaryRuns = sqliteTable(
+  "canary_runs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /**
+     * `<startedAt>-<line>`, unique. The shipper is a cursor over an
+     * append-only log and a re-ship after a failed POST must not double a
+     * finding, so re-sending a run is a no-op rather than a duplicate row.
+     */
+    runKey: text("run_key").notNull().unique(),
+    startedAt: integer("started_at").notNull(),
+    endedAt: integer("ended_at"),
+    /** Route label as the rider sees it — "Blue Day", not a route id. */
+    line: text("line").notNull(),
+    tripFrom: text("trip_from"),
+    tripTo: text("trip_to"),
+    /** 1 when the run raised no finding at all. */
+    ok: integer("ok").notNull(),
+    /** 1 when a bus actually reached the board stop while the canary watched. */
+    arrived: integer("arrived").notNull(),
+    watchedMin: real("watched_min"),
+    /** Countdown readings parsed. Under 2 the run proves nothing. */
+    readings: integer("readings").notNull().default(0),
+    reversals: integer("reversals").notNull().default(0),
+    catastrophic: integer("catastrophic").notNull().default(0),
+    worstDriftSec: real("worst_drift_sec"),
+    firstSightMissSec: integer("first_sight_miss_sec"),
+    /** `[{kind, detail}]` — the sentences the operator reads, capped. */
+    failuresJson: text("failures_json").notNull().default("[]"),
+    /**
+     * `[{atMs, fromSec, driftSec, from, to, announced}]` — the catastrophic
+     * countdown transitions, kept STRUCTURED rather than as prose because the
+     * escalation rule turns on `fromSec` (how imminent the bus was said to be)
+     * and a regex over a sentence is not a rule anyone can test.
+     */
+    jumpsJson: text("jumps_json").notNull().default("[]"),
+    /** When this run was pushed out of band, if it was. Null = never. */
+    alertedAt: integer("alerted_at"),
+    /** When the same line was later seen healthy, so the alert could close. */
+    resolvedAt: integer("resolved_at"),
+    receivedAt: integer("received_at").notNull(),
+  },
+  (t) => ({
+    // The dashboard reads "the last N hours, newest first" and the escalation
+    // rule reads "this line's recent runs" — both lead with time.
+    timeIdx: index("canary_runs_time_idx").on(t.startedAt),
+    lineTimeIdx: index("canary_runs_line_time_idx").on(t.line, t.startedAt),
+  }),
+);
+
+export type DbCanaryRun = typeof canaryRuns.$inferSelect;
