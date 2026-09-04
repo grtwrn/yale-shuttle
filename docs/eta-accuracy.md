@@ -336,7 +336,13 @@ master wait for wait. Share of riders who saw each thing:
 | **road window only** | **17.4%** | **31.0%** | **5.6%** | **15.2% (4,025)** | **370 s** |
 | selection change only | 24.1% | 40.4% | 7.0% | 20.2% (5,540) | 530 s |
 | both, 30 m band | 17.8% | 31.6% | 5.6% | 15.9% (4,232) | 370 s |
-| PLACEHOLDER_BOTH80 |
+| both, 80 m band (shipped) | see below | | | | |
+
+The 80 m arm's own rider-sim run was still in flight when this was written; what
+decided the band is `branch-lock` (the lap count, above) and `gps-replay`, where
+80 m and 30 m are the same overall (median 100.4 s both, mean bias −61.0 against
+−58.2) and 80 m is the better of the two on Green (196.8 s / +85.4 against
+198.5 s / +109.1). **Finish that run before treating the band as settled.**
 
 **The selection change on its own is a LOSS.** That is the finding to keep: with
 the chord window the candidate set frequently does not contain the leg the bus
