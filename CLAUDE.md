@@ -913,6 +913,62 @@ comparison in `canary-metrics.mjs` is between INTERVALS and reports the
 smallest movement the two readings permit. A jump it reports is one the app
 provably made; bucket edges cannot invent one. Its unit tests are the spec.
 
+**A reading holds TWO buses, and comparing them by POSITION was wrong**
+(2026-09-04). The countdown is `fmtBusPair(busEtaLive, nextArrLive?.eta)`:
+slot 0 is the pinned vehicle, slot 1 whatever `nextArrivalAfterPinned` found
+behind it. Comparing slot 0 against slot 0 charged any change of cast to the
+bus that stayed — **44 of the archive's 77 "catastrophic" jumps were not one
+bus moving at all**. The mechanism is NOT re-sorting, which was the first
+guess and is measurably rare (2 of 2104 two-bus readings print out of ETA
+order; 1 of the 77 flags). It is SUBSTITUTION: the leader vanishes and
+everything shifts up a slot. `pairBuses` now matches vehicles across a
+transition and `scoreSequence` reports three kinds — `drift` (the same bus
+moved; the ONLY kind the catastrophic/reversal thresholds apply to),
+`dropped` (a bus left the list; `severe` inside 2 min, and the only one that
+fails a run) and `appeared` (a newcomer takes the head of the list).
+Like-for-like the pinned-bus catastrophic count went 77 → 33; the balance of
+the new drift population is the SECOND bus lurching, which is real and was
+never measured before (`leaderCatastrophic` / `secondaryCatastrophic` keep
+them apart). Identity comes from the caller where it exists: `rider-sim`
+passes the pinned `busName` per tick and gets exact slot-0 pairing, so "the
+same bus re-priced a lap later" stays a lap of drift; the live canary has no
+names in the text and falls back to nearest-ETA under `pairWindowSec`
+(600 s — a judgement between two measured landmarks, not a valley in the
+data; the sweep is in the constant's comment).
+
+**A flag with an EVENT behind it is not a defect.** `docs/eta-lurch-
+classification.md` (#71) measured that 92.4% of catastrophic drops have a
+real-world event behind them: the bus reached the stop, pulled away, and the
+card honestly moved to the next one. `departureBetween` asks that question
+from the `buses` array every sample already carries — take the nearest bus in
+the earlier reading, find it BY NAME in the later one, and see which way it
+moved. Every event carries the verdict (`departure` / `closing` / `none` /
+`unknown`) and **only the eventless ones fail a run**; the rest are counted
+(`catastrophicEventful`, `droppedSevereEventful`) and reported. Over the
+archive that explains 8 of 15 severe drops — the population that fails a run
+— and only 1 of 64 catastrophic drifts, because a departure from the BOARD
+stop is a much narrower event than the ones #71 counts; **do not read the two
+as the same measurement.** The `NEAR_STOP_M` (120 m) precondition is
+load-bearing: without it a bus merely driving away on the far side of its
+loop reads as a departure and 23 of the 64 drifts talk themselves away.
+
+**`ARRIVAL_M` is 60 m, not 45** (2026-09-04), and the canary now takes the
+feed's own `at_stop_id` naming the board stop as an arrival regardless of
+distance. A run filed `no-arrival` while #304 sat **49 m out with
+`at_stop_id` naming that very stop** — four metres, on a feed with a ~30 m
+deadband. The old bound was truncating its own distribution: 32 detected
+arrivals at 12..44 m, four in [40,45) and none above. 60 m is where the
+feed's own reckoning stops agreeing — by distance band, at_stop against not:
+[0,30) 42:1, [30,45) 24:2, [45,60) 5:2, [60,80) 6:7, [80,100) 0:10.
+`eta-accuracy.mjs` deliberately KEEPS its own 45 m: its published numbers
+were taken at that bound.
+
+**A run that parsed zero countdowns is the instrument, not the app.** Eight
+runs in the log were recorded between #111 (which removed the glyph
+`parseOptions` keyed on) and #113 (which fixed it), and one of them filed
+`line-missing` against a perfectly healthy Red. Exclude `readings === 0` runs
+from any before/after over `runs.jsonl` and say how many you dropped.
+
 **What the first live run measured.** Red, 2026-09-03 17:01 ET, bus #304,
 board stop Division/Prospect (#48), on a build that already had #77's
 rest-as-a-spread work:

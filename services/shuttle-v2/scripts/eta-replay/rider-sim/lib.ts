@@ -426,6 +426,11 @@ export function scoreWait(
     eta: k.state === "countdown" && k.token ? parseBusEtaText(k.token) : null,
     missedBus: k.missedBus,
     departed: k.state === "departed",
+    // The simulator KNOWS the pinned vehicle, so `scoreSequence` pairs slot 0
+    // by identity instead of falling back to nearest-ETA the way the live
+    // canary has to. That is what keeps "the same bus re-priced a lap later"
+    // a drift of a lap rather than one bus leaving and another joining.
+    busName: k.bus,
   }));
   const seq = scoreSequence(samples, th);
   // attach vehicles to each transition
@@ -435,7 +440,16 @@ export function scoreWait(
     const i = byAt.get(t.atMs) ?? -1;
     let j = i - 1;
     while (j >= 0 && ticks[j]!.state !== "countdown") j--;
-    return { ...t, busFrom: j >= 0 ? ticks[j]!.bus : null, busTo: i >= 0 ? ticks[i]!.bus : null };
+    // Only slot 0 is the pinned vehicle. A reading holds up to two buses and
+    // scoring now reports a drift for each, so naming the pin on the SECOND
+    // one would credit the bus-after-the-pinned-one's movement to the bus the
+    // rider is waiting for — and `lapRepriced` keys on exactly that name.
+    const pinned = t.fromSlot === 0 && t.toSlot === 0;
+    return {
+      ...t,
+      busFrom: pinned && j >= 0 ? ticks[j]!.bus : null,
+      busTo: pinned && i >= 0 ? ticks[i]!.bus : null,
+    };
   });
 
   const arrivedAt = truth.kind === "arrived" ? truth.at : null;

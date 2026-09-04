@@ -108,10 +108,11 @@ function saveCursor(lastStartedAt) {
  * rule needs that the prose does not carry: how imminent the app said the bus
  * was immediately before the jump.
  *
- * `scoreSequence` records each transition's raw text but not the numeric
- * bucket behind it, so it is recovered here by walking back from the sample
- * the transition landed on to the previous readable countdown — the same
- * pairing `scoreSequence` itself made.
+ * Since 2026-09-04 a transition names its own bucket (`fromEtaSec`), because
+ * pairing means a reading can produce a drift for EITHER of the two buses it
+ * holds and slot 0 is no longer the answer. Records written before that lack
+ * the field, so the old walk-back — to the previous readable countdown's
+ * first slot — stays as the fallback for them.
  */
 function jumpsOf(record) {
   const samples = Array.isArray(record.samples) ? record.samples : [];
@@ -127,7 +128,8 @@ function jumpsOf(record) {
       atMs: t.atMs,
       // No previous reading means no claim about imminence, and the server's
       // rule must not be able to fire on an absence.
-      fromSec: prev ? Number(prev.eta.first[0]) : Number.MAX_SAFE_INTEGER,
+      fromSec: Number.isFinite(t.fromEtaSec) ? Number(t.fromEtaSec)
+        : prev ? Number(prev.eta.first[0]) : Number.MAX_SAFE_INTEGER,
       driftSec: t.driftSec,
       from: t.from,
       to: t.to,

@@ -37,6 +37,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import * as METRICS from "./canary-metrics.mjs";
 import {
   CANARY_LINES, haversineM, parseOptions, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -56,8 +57,12 @@ const TICK_MS = Number(process.env.CANARY_TICK_MS) || 5_000;
  *  times over, which is as fine as a minute-bucketed countdown can be read,
  *  and costs one innerText per tick rather than three. */
 const SCRAPE_EVERY = 3;
-/** How close counts as "the shuttle arrived", same as eta-accuracy.mjs. */
-const ARRIVAL_M = 45;
+/**
+ * How close counts as "the shuttle arrived". 60 m, derived in
+ * canary-metrics.mjs from the archive; it used to be 45 m and shared a number
+ * with eta-accuracy.mjs, which still keeps its own.
+ */
+const { ARRIVAL_M } = METRICS;
 const IDLE_SLEEP_MS = (Number(process.env.CANARY_IDLE_SLEEP_MIN) || 10) * 60_000;
 /**
  * Hard ceiling on one rider's watch, minutes. 25 by default — see the deadline
@@ -301,6 +306,7 @@ async function runOnce(line) {
     // operator.
     let prevText = null;
     let lastPinSample = 0;
+    let boardStopId;
     const nearFlags = new Map();
 
     while (Date.now() < deadline) {
@@ -310,16 +316,37 @@ async function runOnce(line) {
       try { payload = await fetchBuses(); }
       catch (e) { record.failures.push({ kind: "feed-error", detail: String(e.message), atMs: now }); }
       const routeBuses = (payload?.buses ?? []).filter((b) => line.busRouteIds.includes(b.route_id));
+      // The board stop's ID, resolved once from the payload's own coordinates.
+      // `readPin` gives a lat/lon (out of the Directions link) and nothing
+      // else, but the feed states arrival directly as `at_stop_id`, and that
+      // is the operator's own reckoning rather than our metres. The link
+      // carries the stop's exact coordinate, so the nearest stop is it — the
+      // 5 m guard is only there so a future link format cannot silently bind
+      // the wrong stop.
+      if (board && boardStopId === undefined && payload?.stop_coords) {
+        let best = null;
+        for (const [id, c] of Object.entries(payload.stop_coords)) {
+          const d = haversineM(board, c);
+          if (!best || d < best.d) best = { id: Number(id), d };
+        }
+        boardStopId = best && best.d <= 5 ? best.id : null;
+        record.boardStopId = boardStopId;
+      }
       if (board) {
         for (const b of routeBuses) {
           const key = `${b.bus_id}`;
           const d = haversineM(b, board);
+          // The feed saying the bus is AT this stop outranks our distance:
+          // a run on 2026-09-04 filed `no-arrival` while #304 sat 49 m out
+          // with `at_stop_id` naming this very stop.
+          const here = d <= ARRIVAL_M
+            || (boardStopId != null && b.at_stop_id === boardStopId);
           const was = nearFlags.get(key) ?? false;
           // Arm on the first poll: a bus already standing at the stop when the
           // rider arrives is not an arrival this run watched for, and counting
           // it would end the run before a single countdown had been read.
-          if (tick === 0) { nearFlags.set(key, d <= ARRIVAL_M); continue; }
-          if (!was && d <= ARRIVAL_M) {
+          if (tick === 0) { nearFlags.set(key, here); continue; }
+          if (!was && here) {
             nearFlags.set(key, true);
             record.arrivals.push({ atMs: now, busName: b.bus_name, distM: Math.round(d) });
             say(`ARRIVAL ${b.bus_name} at the board stop (${Math.round(d)} m)`, now);
@@ -414,8 +441,27 @@ async function runOnce(line) {
       }
     }
     // ── the failures the operator named ──
-    for (const t of record.sequence.transitions.filter((x) => x.catastrophic)) {
-      fail("eta-jump", `"${t.from}" → "${t.to}" in ${t.dtSec} s — ${t.driftSec > 0 ? "+" : ""}${(t.driftSec / 60).toFixed(1)} min beyond what the clock explains${t.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
+    // A jump with a DEPARTURE behind it is the app being honest: the bus
+    // reached the stop, pulled away, and the card moved to the next one.
+    // #71 measured that at 92.4 % of catastrophic drops, and reporting them
+    // as defects is what made every finding need triaging by hand. They are
+    // still counted (`catastrophicEventful`) — they just do not fail a run.
+    for (const t of record.sequence.transitions.filter((x) => x.catastrophic && !x.eventful)) {
+      // Which bus moved is now knowable — pairing tells drift apart from a
+      // change of cast — so the finding says it. A lurch in the bus-after-the
+      // -pinned-one is a real thing riders see, but it is not the countdown
+      // they are acting on, and reading one as the other is what this
+      // sentence exists to prevent.
+      const who = t.leader ? "the bus it is counting down" : "the bus after the pinned one";
+      fail("eta-jump", `${who}: "${t.from}" → "${t.to}" in ${t.dtSec} s — ${t.driftSec > 0 ? "+" : ""}${(t.driftSec / 60).toFixed(1)} min beyond what the clock explains${t.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
+    }
+    // A bus the rider was about to board leaving the list is its OWN defect,
+    // not a drift, and the positional metric used to bill it as one. Only the
+    // severe case fails a run: a trailing bus dropping out of the second slot
+    // is `nextArrivalAfterPinned` finding nothing later, which is routine.
+    for (const d of record.sequence.drops ?? []) {
+      if (!d.severe || d.eventful) continue;
+      fail("bus-vanished", `"${d.from}" → "${d.to}" in ${d.dtSec} s — the bus shown ${d.lastShownEtaSec < 60 ? "as arriving" : `${Math.round(d.lastShownEtaSec / 60)} min out`} left the list without arriving${d.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
     }
     if (!arrived && record.samples.some((s) => s.present)) {
       const lastSeen = [...record.samples].reverse().find((s) => s.present);
@@ -466,7 +512,9 @@ function describeFailure(record) {
   const out = [`🐤 rider-canary: ${record.line}, ${record.trip.from} → ${record.trip.to} (${record.startedAtEt} ET)`];
   for (const f of record.failures) out.push(`   ✗ ${f.kind}: ${f.detail}`);
   const s = record.sequence;
-  if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic, worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
+  if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
+  if (s?.dropped) out.push(`   vehicles: ${s.dropped} dropped out of the list (${s.droppedSevere} within ${THRESH.droppedSevereSec / 60} min, ${s.droppedSevereEventful ?? 0} of those explained by the bus pulling away), ${s.appeared} took over the head of it`);
+  if (s?.catastrophicEventful) out.push(`   not counted against the app: ${s.catastrophicEventful} catastrophic jump(s) had the bus visibly leaving the stop`);
   if (record.pins?.length > 1) {
     const names = [...new Set(record.pins.map((p) => p.busName))];
     out.push(`   pinned bus: ${names.join(" → ")}`);
@@ -484,7 +532,7 @@ function summary(days = 7) {
   if (!runs.length) { console.log(`no canary runs in the last ${days} d`); return; }
   const byLine = new Map();
   for (const r of runs) {
-    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drifts: [], miss: [] };
+    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, drifts: [], miss: [] };
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
@@ -495,17 +543,26 @@ function summary(days = 7) {
       e.drifts.push(Math.abs(t.driftSec));
       if (Math.abs(t.driftSec) >= THRESH.catastrophicSec) e.cat++;
     }
+    // Runs recorded before 2026-09-04 have no `drops` — they were scored
+    // positionally, so a vanishing bus is inside their drift column instead.
+    // Absent is counted as zero rather than back-filled, because the samples
+    // are on the record and a re-score is the honest way to restate them.
+    for (const d of r.sequence?.drops ?? []) {
+      e.drop++;
+      if (d.lastShownEtaSec <= THRESH.droppedSevereSec) e.sev++;
+    }
     if (r.firstSightMissSec != null) e.miss.push(r.firstSightMissSec);
     byLine.set(r.line, e);
   }
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
-  console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
-  console.log("line           runs    ok  arrived  readings  reversals  catastr  p90 drift  worst  1st-sight med");
+  console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; a drop is severe within ${THRESH.droppedSevereSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
+  console.log("line           runs    ok  arrived  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
       `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
       `${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(e.drop).padStart(8)} ${String(e.sev).padStart(7)} ` +
       `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
       `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);
   }
