@@ -193,6 +193,25 @@ export interface ShownStand {
    *         stall credit is bounded by. Same number, shown and billed.
    */
   remaining: boolean;
+  /**
+   * The stop's TYPICAL hold — what the same table says a bus that has only
+   * just arrived still has to stand. Present only when `remaining` is true.
+   *
+   * Deliberately unconditional, so it does not move while a bus sits. The
+   * conditional total does move, and correctly: a bus five minutes into a
+   * hold is drawn from the longer-hold population, so its expected total is
+   * genuinely larger than a bus two minutes in (339 s vs 478 s at stop 11).
+   * That is the inspection paradox and it is real — but the operator's call,
+   * having seen both: "well actually, stable makes more sense", because the
+   * figure reads as a fact about the STOP rather than a prediction about the
+   * bus, and a number that creeps upward while nothing happens invites the
+   * reader to look for a cause that is not there.
+   *
+   * The cost, stated so nobody rediscovers it: `typicalSec - elapsed` is NOT
+   * what is left. `sec` is. A rider five minutes into a typical six-minute
+   * hold may still have three minutes to go.
+   */
+  typicalSec?: number;
 }
 
 /**
@@ -228,7 +247,15 @@ export function shownStandSec(
   started = false,
 ): ShownStand | null {
   if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
-    return { sec: remainingStandSec(stat.q, elapsedSec), remaining: true };
+    return {
+      sec: remainingStandSec(stat.q, elapsedSec),
+      remaining: true,
+      // Asked of the same function at elapsed = 0, so the typical hold and the
+      // remainder can never come from two different statistics — which is the
+      // whole defect this chip has had twice (a per-bus dwell beside a route
+      // dwell, then `dwell.med` beside the conditional quantiles).
+      typicalSec: remainingStandSec(stat.q, 0),
+    };
   }
   const med = billedDwellSec(stat, started);
   return med === null ? null : { sec: med, remaining: false };

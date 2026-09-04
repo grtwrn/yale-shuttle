@@ -4220,31 +4220,46 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
-                                    // "3/~4 min left" where the split is priced
-                                    // — the operator's own shape: "I want to see
-                                    // X/~Y min left for pause stops". The second
-                                    // figure is what remains, which is what they
-                                    // wanted from the old "3 of 10" and could not
-                                    // get by subtracting, because 10 was the
-                                    // wrong total. Elsewhere "3 min / ~10 min"
-                                    // stands, since there the old number IS the
-                                    // one being billed.
+                                    // "2 min / ~3 min" — elapsed over EXPECTED
+                                    // TOTAL, the operator's shape: "X is current
+                                    // dwell and Y is expected dwell".
                                     //
-                                    // One unit for the pair when both sides are
-                                    // minutes; a sub-minute elapsed keeps its own
-                                    // ("45s/~4 min left"), because "45/~4 min"
-                                    // would read as forty-five minutes.
+                                    // The bug this fixes was never the shape; it
+                                    // was that Y came from `dwell.med`, an
+                                    // arrival-to-arrival figure containing drive
+                                    // time that the estimator stopped billing
+                                    // when the stand/drive split shipped. A
+                                    // rider read "3 of 10", subtracted, expected
+                                    // seven more minutes, and the app said four.
+                                    //
+                                    // So Y is now the stop's TYPICAL hold, taken
+                                    // from the same quantile table the ETA
+                                    // prices from — not from `dwell.med`.
+                                    //
+                                    // Unconditional, so it does not move while
+                                    // the bus sits. The conditional total does
+                                    // move, and correctly (inspection paradox:
+                                    // a bus still standing at five minutes is
+                                    // drawn from the longer-hold population).
+                                    // Both were put in front of the operator;
+                                    // their call was "well actually, stable
+                                    // makes more sense" — the figure reads as a
+                                    // fact about the STOP, and a number creeping
+                                    // upward while nothing happens invites the
+                                    // reader to hunt a cause that is not there.
+                                    //
+                                    // The cost: Y - X is NOT what is left. The
+                                    // countdown beside it is. Elsewhere the old
+                                    // figure stands, since there it IS billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                           title={stand == null
                                             ? "Time the bus has been sitting here"
                                             : stand.remaining
                                               ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
                                               : `Typically holds ~${fmtShort(stand.sec)}`}>
-                                      ⏸ {stand?.remaining && liveElapsedSec! >= 60 && stand.sec >= 60
-                                        ? Math.round(liveElapsedSec! / 60)
-                                        : fmtShort(liveElapsedSec!)}
+                                      ⏸ {fmtShort(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
-                                        ? `/~${fmtShort(stand.sec)} left`
+                                        ? ` / ~${fmtShort(stand.typicalSec ?? stand.sec)}`
                                         : ` / ~${fmtShort(stand.sec)}`}
                                     </span>
                                   )}
