@@ -91,7 +91,11 @@ export const ANCHOR_MAX_HOLD_MS = 300_000;
 export const ANCHOR_STALE_MS = 120_000;
 
 export interface GatedAnchor {
-  /** The index we are currently willing to show. */
+  /**
+   * The index we are currently willing to show. Negative means this entry
+   * exists only to carry the fix memory below — {@link noteFix} may open one
+   * before the gate has ever run — and the gate treats it as no history.
+   */
   index: number;
   /** Where the bus was when this index was accepted. */
   lat: number;
@@ -102,6 +106,20 @@ export interface GatedAnchor {
   /** When the raw anchor first disagreed with `index`, else null. */
   disagreeSince: number | null;
   seenAt: number;
+  /**
+   * The last two DISTINCT coordinates this bus reported — the step whose
+   * direction tells `findRouteAnchor` which branch of a fold the bus is on.
+   *
+   * DISTINCT, not last-poll: 53.6% of consecutive samples are byte-identical
+   * (the feed repeats a fix rather than interpolating, in runs of 15 s and up
+   * to 28 min), so "the previous poll" is most often the same point and has no
+   * direction in it. Keeping the last two distinct fixes means a bus that
+   * stands still keeps the heading of the move that brought it there, which is
+   * exactly the branch it is on, and a bus that pulls out reverses it on the
+   * first fix that moves.
+   */
+  fix?: { lat: number; lon: number } | undefined;
+  prevFix?: { lat: number; lon: number } | undefined;
 }
 
 export type AnchorStore = Map<string, GatedAnchor>;
@@ -140,6 +158,53 @@ const norm = (v: number | null | undefined): number | null =>
   v === undefined || v === null ? null : v;
 
 /**
+ * Remember this poll's coordinate and hand back the previous DISTINCT one, so
+ * `findRouteAnchor` can read the direction of travel off the step between them
+ * and tell the two branches of an out-and-back apart.
+ *
+ * Idempotent within a poll: a repeated coordinate is not a new fix, and the
+ * app computes arrivals several times per poll from the map, the route cards
+ * and the trip card off one shared store.
+ *
+ * Returns null when there is no second fix yet — a bus first seen this session,
+ * or one that has only ever reported the same point — and then nothing about
+ * the anchor changes.
+ */
+export function noteFix(
+  store: AnchorStore,
+  key: string,
+  bus: GateBus,
+  now: number,
+): { lat: number; lon: number } | null {
+  const lat = bus.lat;
+  const lon = bus.lon;
+  if (lat === undefined || lon === undefined || !lat || !lon) return null;
+  const prev = store.get(key);
+  // Away long enough to have no usable history: where it used to be is not
+  // evidence about where it came back from either.
+  if (!prev || now - prev.seenAt > ANCHOR_STALE_MS) {
+    store.set(key, {
+      index: -1,
+      lat, lon,
+      atStopId: norm(bus.at_stop_id),
+      lastStopId: norm(bus.last_stop_id),
+      disagreeSince: null,
+      seenAt: now,
+      fix: { lat, lon },
+      prevFix: undefined,
+    });
+    return null;
+  }
+  if (!prev.fix) {
+    store.set(key, { ...prev, fix: { lat, lon } });
+    return null;
+  }
+  if (prev.fix.lat === lat && prev.fix.lon === lon) return prev.prevFix ?? null;
+  store.set(key, { ...prev, prevFix: prev.fix, fix: { lat, lon } });
+  return prev.fix;
+}
+
+/**
  * Decide which anchor index to use, given the raw one and the bus's evidence.
  * Pure apart from the supplied store, which the caller owns — so a hypothetical
  * or historical computation can pass its own store (or none) and never disturb
@@ -158,8 +223,13 @@ export function gateAnchor(
   const lon = bus.lon;
   const atStopId = norm(bus.at_stop_id);
   const lastStopId = norm(bus.last_stop_id);
+  const prev = store.get(key);
   const accept = (released: GateResult["released"]): GateResult => {
     store.set(key, {
+      // The fix memory (`noteFix`) rides on the same entry and is not the
+      // gate's business — carry it through every write rather than resetting
+      // the bus's heading each time the anchor is allowed to move.
+      ...prev,
       index: rawIndex,
       lat: lat ?? 0,
       lon: lon ?? 0,
@@ -171,9 +241,9 @@ export function gateAnchor(
     return { index: rawIndex, released };
   };
 
-  const prev = store.get(key);
-  // No history, a bus that has been away, or no GPS to reason about: accept.
-  if (!prev) return accept("first");
+  // No history (`index < 0` is a memory-only entry `noteFix` opened before the
+  // gate ever ran), a bus that has been away, or no GPS to reason about: accept.
+  if (!prev || prev.index < 0) return accept("first");
   if (now - prev.seenAt > ANCHOR_STALE_MS) return accept("stale");
   if (lat === undefined || lon === undefined || !lat || !lon) return accept("stale");
 
@@ -188,6 +258,15 @@ export function gateAnchor(
   const N = Math.max(1, stopCount);
 
   // --- the raw anchor wants to move. What corroborates it?
+  //
+  // NOT direction. Letting the step between two fixes overturn a hold — the
+  // gate releasing whenever the bus drives against the leg it is holding —
+  // was built and measured on the rider simulator, and it is a LOSS: Green's
+  // strand share falls 27.4 -> 24.9% and Purple's rises 27.1 -> 32.6%, worse
+  // than master, with jumps over 300 s up on both. Direction belongs where it
+  // is unambiguous, choosing between two candidate legs the bus is ON
+  // (anchor.ts); as a licence to relocate it re-opens the gate on exactly the
+  // population the gate exists for.
   // 1. A real arrival or departure. `at_stop_id` flipping in either direction
   //    is the collector saying the bus reached or left a stop, and it is the
   //    signal that must never be delayed: a bus pulling out early goes

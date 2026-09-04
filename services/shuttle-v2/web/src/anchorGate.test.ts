@@ -5,7 +5,9 @@ import {
   ANCHOR_FEED_MOVE_M,
   ANCHOR_MAX_HOLD_MS,
   ANCHOR_M_PER_HOP,
+  ANCHOR_STALE_MS,
   gateAnchor,
+  noteFix,
   pruneAnchors,
   type AnchorStore,
 } from "./anchorGate";
@@ -210,5 +212,74 @@ describe("gateAnchor", () => {
     expect(s.size).toBe(1);
     pruneAnchors(s, 1000 + 200_000);
     expect(s.size).toBe(0);
+  });
+});
+
+describe("noteFix: the last two DISTINCT fixes", () => {
+  it("has no direction to offer on first sight", () => {
+    const s = store();
+    expect(noteFix(s, "k", at(0), 1000)).toBeNull();
+  });
+
+  it("hands back the previous fix once the bus has moved", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+  });
+
+  it("is idempotent within a poll — the map, the cards and the trip card share one store", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    // Three more calls at the same coordinate must not walk the memory forward.
+    for (let i = 0; i < 3; i++) {
+      expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    }
+  });
+
+  it("keeps the last real step while the fix repeats", () => {
+    // 53.6% of consecutive samples are byte-identical. A standing bus must
+    // keep the heading that brought it in, not lose it to its own stillness.
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    for (let t = 11_000; t < 60_000; t += 5000) {
+      expect(noteFix(s, "k", at(40), t)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    }
+  });
+
+  it("forgets a bus that has been away — where it used to be says nothing", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    expect(noteFix(s, "k", at(80), 6000 + ANCHOR_STALE_MS + 1)).toBeNull();
+  });
+
+  it("says nothing about a bus with no GPS", () => {
+    const s = store();
+    expect(noteFix(s, "k", { lat: undefined, lon: undefined }, 1000)).toBeNull();
+    expect(s.size).toBe(0);
+  });
+
+  it("leaves the gate to accept a bus it has only opened the memory for", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    expect(gateAnchor(s, "k", 7, { ...at(0), last_stop_id: 1 }, 1000, N))
+      .toEqual({ index: 7, released: "first" });
+  });
+
+  it("survives every write the gate makes", () => {
+    // The gate rewrites its entry on accept, on agreement and on a hold; the
+    // fix memory rides on the same entry and must not be reset by any of them,
+    // or the bus loses its heading every time the anchor moves.
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    gateAnchor(s, "k", 7, { ...at(0), last_stop_id: 1 }, 1000, N);        // accept
+    expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    gateAnchor(s, "k", 7, { ...at(40), last_stop_id: 1 }, 6000, N);       // agrees
+    expect(noteFix(s, "k", at(80), 11_000)).toEqual({ lat: at(40).lat, lon: at(40).lon });
+    gateAnchor(s, "k", 20, { ...at(80), last_stop_id: 1 }, 11_000, N);    // held
+    // Same poll, second caller: the heading is still there after the hold.
+    expect(noteFix(s, "k", at(80), 11_000)).toEqual({ lat: at(40).lat, lon: at(40).lon });
   });
 });

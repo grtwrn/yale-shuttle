@@ -4,7 +4,7 @@ import {
   ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute, OFF_ROUTE_THRESHOLD_M,
   registerRoutePaths,
 } from "./anchor";
-import { haversineMeters } from "./geo";
+import { distanceToSegmentM, haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
 
 const blueWeekend = routeStops["4"]!;
@@ -206,5 +206,96 @@ describe("isBusOnRoute measures against the road polyline when one is registered
     registerRoutePaths({ "10": path });
     expect(isBusOnRoute({ ...onHighway, route_id: 3 }, stops, coords)).toBe(false);
     expect(isBusOnRoute({ ...a, route_id: 3 }, stops, coords)).toBe(true);
+  });
+});
+
+describe("findRouteAnchor: two fresh fixes decide which branch of a fold", () => {
+  // The out-and-back in miniature. Four stops on one road, run out and back:
+  // the middle pair's coordinates belong to TWO legs, one in each direction,
+  // which is Green and Purple's whole problem in six stops.
+  //
+  //   idx  0    1    2    3    4    5
+  //   stop 1 -> 2 -> 3 -> 4 -> 3 -> 2 -> (1)
+  //        outbound-----  ----inbound
+  const M = 1 / 111_000; // one metre of latitude
+  const E = 1 / (111_000 * Math.cos((41.3 * Math.PI) / 180)); // one metre of longitude
+  const coords: Record<number, { lat: number; lon: number }> = {
+    1: { lat: 41.300, lon: -72.930 },
+    2: { lat: 41.305, lon: -72.930 },
+    3: { lat: 41.310, lon: -72.930 },
+    4: { lat: 41.315, lon: -72.930 },
+  };
+  const stops = [1, 2, 3, 4, 3, 2];
+  const OUTBOUND = 1; // leg 2 -> 3
+  const INBOUND = 4;  // leg 3 -> 2
+  // Between stops 2 and 3, 20 m off the road — on both legs at once.
+  const here = { lat: 41.3075, lon: -72.930 + 20 * E };
+  const northOf = (m: number) => ({ lat: here.lat + m * M, lon: here.lon });
+
+  it("the fixture really is ambiguous: both legs are within threshold and equidistant", () => {
+    const dOut = distanceToSegmentM(here, coords[2]!, coords[3]!);
+    const dIn = distanceToSegmentM(here, coords[3]!, coords[2]!);
+    expect(dOut).toBeLessThan(ANCHOR_GPS_THRESHOLD_M);
+    expect(Math.abs(dOut - dIn)).toBeLessThan(1);
+  });
+
+  it("without a previous fix it cannot tell, and behaves exactly as before", () => {
+    expect(findRouteAnchor({ ...here }, stops, coords)).toBe(OUTBOUND);
+    expect(findRouteAnchor({ ...here }, stops, coords, null)).toBe(OUTBOUND);
+    expect(findRouteAnchor({ ...here }, stops, coords, undefined)).toBe(OUTBOUND);
+  });
+
+  it("a bus travelling south is on the inbound leg", () => {
+    expect(findRouteAnchor({ ...here }, stops, coords, northOf(60))).toBe(INBOUND);
+  });
+
+  it("a bus travelling north is on the outbound leg", () => {
+    expect(findRouteAnchor({ ...here }, stops, coords, northOf(-60))).toBe(OUTBOUND);
+  });
+
+  it("direction beats a last_stop_id that has gone stale, which is the I-95 case", () => {
+    // Green #326 ran 5 km down I-95 with last_stop_id frozen at the stop it
+    // left, 135 m from the outbound chord and 139 m from the inbound one.
+    // Forward distance from the stale stop names the outbound leg; the bus is
+    // plainly driving the other way.
+    const bus = { ...here, last_stop_id: 1 };
+    expect(findRouteAnchor(bus, stops, coords)).toBe(OUTBOUND);
+    expect(findRouteAnchor(bus, stops, coords, northOf(60))).toBe(INBOUND);
+  });
+
+  it("a step smaller than the feed's deadband is not a direction", () => {
+    // The feed publishes a new coordinate only past ~30 m; anything under it
+    // is noise and must not move the bus to the other side of the loop.
+    expect(findRouteAnchor({ ...here }, stops, coords, northOf(20))).toBe(OUTBOUND);
+  });
+
+  it("never leaves the bus with no candidate when the step contradicts every leg", () => {
+    // Broadside — a shuffle in a car park, or a fix on a road the chord does
+    // not model. Nothing is excluded; the old answer stands.
+    const east = { lat: here.lat, lon: here.lon - 80 * E };
+    expect(findRouteAnchor({ ...here }, stops, coords, east)).toBe(OUTBOUND);
+  });
+});
+
+describe("findRouteAnchor: direction changes nothing on a plain loop", () => {
+  // A loop with no fold has no opposed pair to separate: consecutive legs
+  // share a stop and point roughly the same way, so nothing is ever excluded
+  // and the answer is the stateless one. Walk both fixture routes stop by
+  // stop, each with the previous fix 60 m back along the leg it arrived on —
+  // the step a bus actually takes between two polls — and assert it.
+  it("gives the same anchor at every stop of Blue Day and Blue Weekend", () => {
+    for (const stops of [blueDay, blueWeekend]) {
+      const N = stops.length;
+      for (let i = 0; i < N; i++) {
+        const bus = at(stops[i]!);
+        const from = at(stops[(i - 1 + N) % N]!);
+        const d = haversineMeters(from, bus);
+        if (d < 60) continue;
+        const f = 60 / d;
+        const prev = { lat: bus.lat + (from.lat - bus.lat) * f, lon: bus.lon + (from.lon - bus.lon) * f };
+        expect(findRouteAnchor({ ...bus }, stops, stopCoords, prev))
+          .toBe(findRouteAnchor({ ...bus }, stops, stopCoords));
+      }
+    }
   });
 });

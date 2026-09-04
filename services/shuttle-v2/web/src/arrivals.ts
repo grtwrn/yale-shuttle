@@ -1,7 +1,7 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
-import { gateAnchor, type AnchorStore } from "./anchorGate";
+import { gateAnchor, noteFix, type AnchorStore } from "./anchorGate";
 import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
@@ -246,7 +246,13 @@ export function computeUpcomingArrivals(
       // advance one stop at a time" pattern which stalled when
       // last_stop_id was multi-stops-stale and the bus had drifted
       // off-axis from subsequent segment lines.
-      const rawAnchorIdx = findRouteAnchor(bus, stops, stopCoords);
+      const anchorKey = `${cfg.label}|${bus.bus_name}`;
+      // Which way is it going? Two distinct fixes settle the branch of an
+      // out-and-back that no amount of distance can (see anchor.ts). The
+      // memory lives on the caller's store, so a hypothetical or replayed
+      // computation that passes none still gets the stateless anchor.
+      const travelFrom = anchorStore ? noteFix(anchorStore, anchorKey, bus, now) : null;
+      const rawAnchorIdx = findRouteAnchor(bus, stops, stopCoords, travelFrom);
       if (rawAnchorIdx < 0) continue;
       // A 35 m GPS wobble must not relocate the bus a third of a lap. The gate
       // holds the previous anchor until an arrival/departure, real movement, or
@@ -254,7 +260,7 @@ export function computeUpcomingArrivals(
       // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
       // early still collapses the countdown immediately.
       let gpsAnchorIdx = anchorStore
-        ? gateAnchor(anchorStore, `${cfg.label}|${bus.bus_name}`, rawAnchorIdx, bus, now, stops.length).index
+        ? gateAnchor(anchorStore, anchorKey, rawAnchorIdx, bus, now, stops.length).index
         : rawAnchorIdx;
 
       // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
@@ -300,7 +306,7 @@ export function computeUpcomingArrivals(
       // clock survives that shuffle (PR #67); so does this memory of it.
       let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
       if (anchorStore && splitServed) {
-        const st = standingAt(anchorStore, `${cfg.label}|${bus.bus_name}`, bus, now, stopCoords, STANDING_HOLD_M);
+        const st = standingAt(anchorStore, anchorKey, bus, now, stopCoords, STANDING_HOLD_M);
         if (st) {
           const N = stops.length;
           for (let i = 0; i < N; i++) {
