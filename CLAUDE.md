@@ -1278,6 +1278,48 @@ declined class is only scorable with `ORIGIN_OFFSET_M` set.
   served 0.4 of its expected rest. Fix the clock (`stationarySince`), and
   prorate in both regimes; do not build a slew limiter.
 
+### One of those restarts is OUR restart (report #100, 2026-09-04)
+
+**A deploy restarts a standing bus's wait.** `Collector.states` is in-memory
+only, so a fresh process makes every bus a first sighting: `step` re-anchors,
+`stationaryFields` gets a null `prev`, and a bus that has been sitting at a
+stop for five minutes is published as having just arrived. It also writes an
+`arrivals` row per restart, which is how to spot it after the fact — one stand,
+several arrivals.
+
+The first report from an outside rider caught it: *"Possible that the timer for
+stop at 333 cedar restarted"*. Blue Day #44 stood at 333 Cedar from 15:53:39Z
+to 16:03:34Z on 2026-09-04 without moving a metre; `arrivals` holds four rows
+for that one stand (15:53:39, 15:55:11, 15:56:53, 15:59:14) and six deploys
+landed between 15:48 and 15:58 UTC. Their fingerprint is in the report's own
+payload — **two different buses at two different stops carrying the identical
+`at_stop_since` to the millisecond**. Nothing about the buses changed; only the
+process watching them did.
+
+`seedStationaryFromHistory` (`detector.ts`) rebuilds the wait from
+`raw_positions`, which held it the whole time: the earliest sample of an
+unbroken run within `AT_STOP_PIN_M` of that same stop. It is consulted **only
+where `prev` is null** — every other reanchor (a long gap, a route change, an
+id reissue across a layover) restarts the clock deliberately and still does —
+and it stops at a `MAX_HANDOFF_GAP_MS` hole, because a bus that went off the
+air is one the live rules re-anchor anyway.
+
+Two properties to keep if you touch it. **It reaches `stationarySince` and
+nothing else** — not `enteredAt` — so no dwell, segment, arrival or visit row
+moves and no statistic can shift; the only other reader of the clock
+(`departure.ts`, "re-pinned with a fresh clock") sits in a branch that needs an
+already-open pass, which a first poll cannot have. And **`step`'s seed
+parameter defaults to null**, so every replay and backfill harness is
+byte-identical to master by construction — the reason this needed no paired
+replay. `detector.report100.test.ts` replays the real feed;
+`collector.report100.test.ts` boots a real collector against a database that
+already holds the stand.
+
+This does not make a restart free: `at_stop_id` is still withheld for the first
+15 s (that gate is measured from `enteredAt`), and the duplicate `arrivals`
+rows are untouched. Deduplicating those means seeding `enteredAt` too, which
+WOULD move calibration — a separate job, and not a small one.
+
 ## Verification harnesses
 
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all

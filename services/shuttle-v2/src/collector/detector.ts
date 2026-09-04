@@ -260,10 +260,85 @@ export const STATIONARY_RADIUS_M = 125;
 export const AT_STOP_PIN_M = 75;
 
 /** The fields {@link stationaryFields} carries. */
-type StationaryState = Pick<
+export type StationaryState = Pick<
   BusState,
   "stationarySince" | "stationaryLat" | "stationaryLon" | "stationaryStopId"
 >;
+
+/**
+ * Recovers the stationary clock for a bus the detector is seeing for the FIRST
+ * time, from history the detector itself does not hold.
+ *
+ * `states` is in-memory only, so every process restart makes each bus a first
+ * sighting again — and a bus standing at a stop across one had its wait
+ * restarted from zero. On 2026-09-04 six deploys landed between 15:48 and
+ * 15:58 UTC; #44 sat at 333 Cedar from 15:53:39 to 16:03:34 and was re-arrived
+ * four times (15:53:39, 15:55:11, 15:56:53, 15:59:14), so the rider watching it
+ * saw "⏸ 1min" beside a bus four and a half minutes into its layover, and the
+ * stall credit went with it. That is what report #100 caught — the first from
+ * an outside rider.
+ *
+ * The seed is consulted ONLY when `prev` is null. Every other re-anchor (a long
+ * gap, a route change, an id reissue across a layover) restarts the clock
+ * deliberately and must keep doing so.
+ *
+ * Returning null means "no better answer than now", which is the old behaviour.
+ */
+export type StationarySeed = (
+  obs: BusObservation,
+  anchorStop: Stop | null,
+) => StationaryState | null;
+
+/** One recorded position, as `raw_positions` stores it. */
+export interface PositionSample {
+  lat: number;
+  lon: number;
+  collectedAt: EpochMs;
+}
+
+/**
+ * The {@link StationarySeed} rule itself, over history the caller has already
+ * fetched. Pure, so the production feed can be replayed through it.
+ *
+ * Deliberately the mirror of {@link stationaryFields} case 1 — the wait began
+ * at the earliest sample of an unbroken run within {@link AT_STOP_PIN_M} of
+ * this very stop, and a shuffle inside that radius does not end it. Two limits
+ * keep the answer honest:
+ *
+ *  - {@link MAX_HANDOFF_GAP_MS} ends the run at a feed absence. A bus that went
+ *    off the air is one the live rules re-anchor anyway, so the seed must not
+ *    reach across the gap and claim a wait the running process would have
+ *    thrown away.
+ *  - The caller's window bounds how far back it can look at all.
+ *
+ * `history` is newest-first (the order the index yields) and must exclude `obs`
+ * itself. `null` means "no better answer than now" — the behaviour without a
+ * seed at all.
+ */
+export function seedStationaryFromHistory(
+  history: readonly PositionSample[],
+  obs: BusObservation,
+  anchorStop: Stop | null,
+): StationaryState | null {
+  // Not at a stop: there is nothing to pin to, and `stationaryFields`'s
+  // fallback-radius branch reaches the same answer without any history.
+  if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
+  let since = obs.collectedAt;
+  for (const sample of history) {
+    if (since - sample.collectedAt > MAX_HANDOFF_GAP_MS) break;
+    if (distanceMeters(sample, anchorStop) > AT_STOP_PIN_M) break;
+    since = sample.collectedAt;
+  }
+  if (since >= obs.collectedAt) return null;
+  return {
+    stationarySince: since,
+    // Pinned to the STOP, exactly as `stationaryFields` would have stored it:
+    // the frame is the stop, not wherever the bus came to rest.
+    stationaryLat: anchorStop.lat,
+    stationaryLon: anchorStop.lon,
+    stationaryStopId: anchorStop.id,
+  };
+}
 
 /**
  * Carry the stationary clock when the bus has not actually gone anywhere,
@@ -522,6 +597,7 @@ export function step(
   network: TransitNetwork,
   prev: BusState | null,
   obs: BusObservation,
+  seed: StationarySeed | null = null,
 ): { state: BusState | null; events: DetectorEvent[] } {
   const global = network.nearestStopOnRoute(obs.routeId, obs);
   if (!global) {
@@ -627,7 +703,12 @@ export function step(
         // state restarts the clock — but still PINS it to the stop when the
         // bus is at one, so the frame is right from the very first poll rather
         // than from wherever the bus happened to be seen.
-        ...stationaryFields(null, obs, anchorStop),
+        //
+        // The one reanchor that is NOT a lost track is the first sighting of a
+        // bus by a freshly started process: the bus never went anywhere, we
+        // did. {@link StationarySeed} recovers that clock from recorded
+        // positions; every other reanchor still restarts it.
+        ...stationaryFields(prev ? null : (seed?.(obs, anchorStop) ?? null), obs, anchorStop),
       },
       events: [
         {
