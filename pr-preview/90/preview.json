@@ -1,0 +1,20 @@
+{
+  "caption": "The weather line on the reported forecast (75°F now, bottoming out at 70° overnight): the '· cooling to 70°' clause is gone and the room goes back to the condition word.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 165,
+    "dest": 75
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/weather"
+  ],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788490480/pr-preview/90/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

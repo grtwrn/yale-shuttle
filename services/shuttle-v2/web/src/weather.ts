@@ -225,12 +225,32 @@ export function temperatureText(
  * a warming day the low is the temperature you are already standing in. So
  * this reports the extreme FURTHER from now — the high while it warms, the
  * low while it cools — with the hour it arrives.
+ *
+ * And only when the swing is worth a rider's attention: see
+ * TREND_MIN_SWING_F. Null is a normal answer, not a failure.
  */
 export interface TempTrend {
   dir: "up" | "down";
   temperatureF: number;
   timeMs: number;
 }
+
+/**
+ * How big a swing has to be before the line spends words on it, °F.
+ *
+ * Every window has a high and a low, so without a floor the clause is never
+ * absent — and overnight in New Haven it is the same non-fact every night:
+ * "73°F · cooling to 71° by 6am" (measured off the live forecast, 2026-09-03).
+ * The operator screenshotted that clause twice and wrote "I don't need to know
+ * when its cooling" (report #90, cropped to "· cooling to 70° by 1am", about
+ * five degrees off the temperature he was standing in).
+ *
+ * Ten degrees is roughly "you would dress differently", which is the only
+ * reason this clause exists — a rider is not going to fetch a jacket over 3°.
+ * Both lines he complained about are 5-8° and now say nothing; a real
+ * afternoon climb (60° at 8am to 78° by 2pm) is 18° and still speaks.
+ */
+export const TREND_MIN_SWING_F = 10;
 
 export function tempTrend(
   hours: readonly ForecastHour[] | null | undefined,
@@ -253,7 +273,10 @@ export function tempTrend(
   const now = Math.round(nowF);
   const up = hi.temperatureF - now;
   const down = now - lo.temperatureF;
-  if (up <= 0 && down <= 0) return null; // flat window: nothing to say
+  // Flat window, or a swing too small to change what a rider wears: nothing to
+  // say. Silence here is not a gap — weatherMessage gives the room back to the
+  // condition word ("73°F · Clear · no rain expected").
+  if (Math.max(up, down) < TREND_MIN_SWING_F) return null;
   // Equal swings both ways (a dip then an equal climb): name whichever
   // arrives first, since that is the one the rider meets.
   const pickUp = up > down || (up === down && hi.timeMs <= lo.timeMs);
