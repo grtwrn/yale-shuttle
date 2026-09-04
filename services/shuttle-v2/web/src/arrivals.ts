@@ -2,7 +2,8 @@
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
 import { gateAnchor, noteFix, type AnchorStore } from "./anchorGate";
-import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { mixtureQuantile, updateBelief, type Placement } from "./estimator";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -191,6 +192,27 @@ export function billedDwellSec(
  * (report #82).
  */
 
+/**
+ * The hazard of a bus leaving the stop it is standing at, per second, at
+ * elapsed rest `r` — what the IMM's standing→running transition needs while a
+ * bus is AT a stop (off-stop it uses the measured 0.01457/s).
+ *
+ * Read off the same conditional-median table `hopPricing.ts` prices with, so
+ * the two cannot say different things about the same layover: if the median
+ * remaining rest is m seconds, the hazard that reproduces it over the next
+ * second is ln 2 / m. Absent a table there is nothing to read and the caller
+ * gets null.
+ */
+export function departureHazard(
+  stat: { q?: number[] | undefined; qn?: number | undefined; n: number } | undefined,
+  r: number,
+): number | null {
+  if (!standAdequate(stat)) return null;
+  const remaining = remainingStandSec(stat.q, r);
+  if (!(remaining > 0)) return 1; // out-sat every recorded layover: leaving is imminent
+  return Math.min(1, Math.LN2 / remaining);
+}
+
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
   routeLabel: string; color: string; busName: string; stopId: number;
@@ -327,145 +349,202 @@ export function computeUpcomingArrivals(
         }
       }
 
-      let cumulative = 0;
-      let cumulativeVar = 0;
-      const totalStops = stops.length;
-      // Walk the loop TWICE so each stop can get two arrivals per bus: the
-      // upcoming one and the same vehicle a full lap later. On single-bus
-      // routes (Blue Weekend most weekends) that second-lap entry is the only
-      // way to answer "and the one after that?" (report #29), and it turns
-      // "departed" into an honest wait-for-it-to-come-around when the rider
-      // can't catch the current pass (report #30). It also covers the bus's
-      // own anchor stop (reachable only at step ≥ totalStops), so a bus
-      // dwelling AT a stop still yields an ETA for that stop.
-      const recordedForStop = new Map<number, number>();
-      const MAX_ETA_SEC = 90 * 60; // sanity cap — beyond this the lap-2 guess is noise
-      for (let step = 1; step <= totalStops * 2; step++) {
-        const prevI = (busIdx + step - 1) % totalStops;
-        const curI = (busIdx + step) % totalStops;
-        const seg = routeSegs[`${stops[prevI]}-${stops[curI]}`];
-        let segAvg: number;
-        let segVar: number;
-        if (seg && seg.n >= 1) {
-          segAvg = seg.avg;
-          segVar = (seg.sd ?? 0) ** 2;
-          // A hop is priced at the segment average and nothing else. See
-          // WHAT A DWELL STATISTIC ACTUALLY MEASURES above for why the hop is
-          // NOT split into a rest plus a drive, and what happened when it was.
-        } else {
-          // Unmeasured hop. The route-average segment time is a fair guess
-          // for a typical block-to-block hop, but never for a long one:
-          // Purple's Building 900 → LEPH leg (6.7 km, n:0 after a quiet
-          // week) was priced at the 2.9 min route average and the board
-          // promised a 19-min ride in 3. Take whichever is longer — the
-          // straight-line distance at bus speed is a floor the bus cannot
-          // beat, and the planner already prices the same case that way.
-          const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
-          const byDistance = pc && cc
-            ? Math.max(MIN_HOP_SEC, haversineMeters(pc, cc) / BUS_SPEED_M_S)
-            : 0;
-          if (avgSeg > 0 && avgSeg >= byDistance) {
-            segAvg = avgSeg;
-            segVar = fallbackSd * fallbackSd;
+      // Everything above is production's PLACEMENT of this bus: one leg, one
+      // mode, one proration. Where the route folds back the leg was decided by
+      // centimetres, so the placement is handed to the belief, which returns it
+      // unchanged when nothing disputes it and returns it WITH its alternatives
+      // — weighted — when something does. One hypothesis back means the walk
+      // below runs exactly once, on exactly production's numbers.
+      const shippedPlacement: Placement = {
+        idx: busIdx,
+        standingSec,
+        stallCredit,
+        progressFactor: firstSegProgressFactor,
+        weight: 1,
+      };
+      const placements = anchorStore
+        ? updateBelief(
+            anchorStore, anchorKey, bus, stops, stopCoords, now, shippedPlacement,
+            standingSec !== null ? departureHazard(routeDwells[String(stops[busIdx])], standingSec) : null,
+          )
+        : [shippedPlacement];
+
+      /** Per (stop, occurrence) the components of the arrival's mixture. */
+      const mix = new Map<string, Array<{ mu: number; sigma: number; w: number }>>();
+      for (const placement of placements) priceFrom(placement);
+      emitMixture();
+
+      /** One walk of the loop from one placement — this is master's arithmetic, unchanged. */
+      function priceFrom(placement: Placement): void {
+        const busIdx = placement.idx;
+        let stallCredit = placement.stallCredit;
+        const standingSec = placement.standingSec;
+        let firstSegProgressFactor = placement.progressFactor;
+        let cumulative = 0;
+        let cumulativeVar = 0;
+        const totalStops = stops.length;
+        // Walk the loop TWICE so each stop can get two arrivals per bus: the
+        // upcoming one and the same vehicle a full lap later. On single-bus
+        // routes (Blue Weekend most weekends) that second-lap entry is the only
+        // way to answer "and the one after that?" (report #29), and it turns
+        // "departed" into an honest wait-for-it-to-come-around when the rider
+        // can't catch the current pass (report #30). It also covers the bus's
+        // own anchor stop (reachable only at step ≥ totalStops), so a bus
+        // dwelling AT a stop still yields an ETA for that stop.
+        const recordedForStop = new Map<number, number>();
+        const MAX_ETA_SEC = 90 * 60; // sanity cap — beyond this the lap-2 guess is noise
+        for (let step = 1; step <= totalStops * 2; step++) {
+          const prevI = (busIdx + step - 1) % totalStops;
+          const curI = (busIdx + step) % totalStops;
+          const seg = routeSegs[`${stops[prevI]}-${stops[curI]}`];
+          let segAvg: number;
+          let segVar: number;
+          if (seg && seg.n >= 1) {
+            segAvg = seg.avg;
+            segVar = (seg.sd ?? 0) ** 2;
+            // A hop is priced at the segment average and nothing else. See
+            // WHAT A DWELL STATISTIC ACTUALLY MEASURES above for why the hop is
+            // NOT split into a rest plus a drive, and what happened when it was.
           } else {
-            segAvg = byDistance || 90;
-            segVar = (segAvg * 0.5) ** 2;
+            // Unmeasured hop. The route-average segment time is a fair guess
+            // for a typical block-to-block hop, but never for a long one:
+            // Purple's Building 900 → LEPH leg (6.7 km, n:0 after a quiet
+            // week) was priced at the 2.9 min route average and the board
+            // promised a 19-min ride in 3. Take whichever is longer — the
+            // straight-line distance at bus speed is a floor the bus cannot
+            // beat, and the planner already prices the same case that way.
+            const pc = stopCoords[stops[prevI]], cc = stopCoords[stops[curI]];
+            const byDistance = pc && cc
+              ? Math.max(MIN_HOP_SEC, haversineMeters(pc, cc) / BUS_SPEED_M_S)
+              : 0;
+            if (avgSeg > 0 && avgSeg >= byDistance) {
+              segAvg = avgSeg;
+              segVar = fallbackSd * fallbackSd;
+            } else {
+              segAvg = byDistance || 90;
+              segVar = (segAvg * 0.5) ** 2;
+            }
+          }
+          // Burn stall credit on the first segment only, bounded by the
+          // calibrated dwell for this stop.
+          //
+          // ⚠️ THIS BOUND IS EMPIRICAL, NOT PRINCIPLED. It reads as "a bus that
+          // has been sitting can cancel the DWELL part of the hop but still has
+          // to drive" — and that is the false premise corrected above: `med` is
+          // an estimate of the WHOLE hop, not of a dwell inside it. What the
+          // bound actually leaves behind is the gap between two estimators of
+          // the same quantity (a 30-day shrunk mean minus a 14-day windowed
+          // median), which on a right-skewed layover is substantial and happens
+          // to be about the right size. On the Red case below that gap is
+          // 557 - 475 = 82 s, which is close to the true drive — by luck of the
+          // skew, not by construction.
+          //
+          // It is left exactly as it is because it is the best-MEASURED of the
+          // options and a recorded pass of that Red layover gates it
+          // (`npm run test:accuracy`). Do NOT re-derive it from the old story,
+          // and do not change it without a replay: the alternatives below were
+          // all measured worse.
+          //
+          // Both wrong answers have shipped. Crediting every elapsed second
+          // (until 2026-09-02) drove the hop to zero and promised a bus that was
+          // still minutes of driving away: replaying 69k positions, the
+          // next-stop error for a dwelling bus reached -203 s past 5 min of
+          // dwell. Capping at half the hop (2026-09-02 to 09-03) fixed that
+          // average and broke the layover, which is the dangerous direction: on
+          // Red, #316 had sat 10 min of its ~8 min layover at 344 Winchester,
+          // 82 s of driving from Winchester/Division, and the board told a rider
+          // 3 stops later "5 min" — half of the 557 s segment is 279 s of pure
+          // padding — so the bus left, arrived ~2.5 min later, and the rider who
+          // trusted the 5 was too late. The dwell bound gives 557 - 475 = 82 s,
+          // which is the answer — for the reason in the warning above, not the
+          // reason originally written here.
+          // First hop only — see the note above STALL_CREDIT_MAX_FRACTION for
+          // why carrying it to the adjacent stop was tried and measured wrong.
+          // A served stand/drive split prices the first hop directly — the
+          // standing time conditioned on how long the bus has stood, plus the
+          // drive; en route, the DRIVE alone prorated. Neither the credit nor
+          // the chord proration below then runs, because both act on the whole
+          // arrival-to-arrival segment and re-bill the layover as the bus leaves
+          // (docs/eta-estimator-design.md, "the departure cliff").
+          // Both halves must be adequately sampled for THIS hop, independently
+          // of every other hop; a thin cell prices exactly as master does.
+          const standStat = routeDwells[String(stops[busIdx])];
+          const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+            ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
+            : null;
+          if (split) {
+            const t = bus.lat && bus.lon
+              ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
+              : 0;
+            segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
+            segVar = Math.min(segVar, segAvg * segAvg);
+            stallCredit = 0;
+            firstSegProgressFactor = 1;
+          }
+          if (step === 1 && stallCredit > 0) {
+            const dwell = routeDwells[String(stops[busIdx])];
+            const cancellable = dwell && dwell.med > 0
+              ? dwell.med
+              : segAvg * STALL_CREDIT_MAX_FRACTION;
+            // ...and never past the driving the hop still contains. Before this
+            // floor the bound above could take the hop to exactly zero — see
+            // driveFloorSec. Report #80 is NOT that case and is unchanged by it:
+            // 344 Winchester -> Winchester/Division is 112 m, so the floor is
+            // 30 s against the 98.9 s the hop is already billed.
+            const room = Math.max(
+              0,
+              segAvg - driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]]),
+            );
+            const applied = Math.min(stallCredit, cancellable, room);
+            segAvg -= applied;
+            stallCredit -= applied;
+          }
+          // Mid-segment proration on the first segment: scale down by the
+          // fraction of the A→B distance still ahead of the bus. Scale
+          // variance by fraction² so "almost there" also means "less
+          // uncertainty about when."
+          if (step === 1 && firstSegProgressFactor < 1) {
+            segAvg *= firstSegProgressFactor;
+            segVar *= firstSegProgressFactor * firstSegProgressFactor;
+          }
+          cumulative += segAvg;
+          cumulativeVar += segVar;
+          if (cumulative > MAX_ETA_SEC) break;
+          const sid = stops[curI];
+          const recorded = recordedForStop.get(sid) ?? 0;
+          if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
+            recordedForStop.set(sid, recorded + 1);
+            const key = `${sid}|${recorded}`;
+            let comps = mix.get(key);
+            if (!comps) mix.set(key, (comps = []));
+            comps.push({ mu: cumulative, sigma: Math.sqrt(cumulativeVar), w: placement.weight });
           }
         }
-        // Burn stall credit on the first segment only, bounded by the
-        // calibrated dwell for this stop.
-        //
-        // ⚠️ THIS BOUND IS EMPIRICAL, NOT PRINCIPLED. It reads as "a bus that
-        // has been sitting can cancel the DWELL part of the hop but still has
-        // to drive" — and that is the false premise corrected above: `med` is
-        // an estimate of the WHOLE hop, not of a dwell inside it. What the
-        // bound actually leaves behind is the gap between two estimators of
-        // the same quantity (a 30-day shrunk mean minus a 14-day windowed
-        // median), which on a right-skewed layover is substantial and happens
-        // to be about the right size. On the Red case below that gap is
-        // 557 - 475 = 82 s, which is close to the true drive — by luck of the
-        // skew, not by construction.
-        //
-        // It is left exactly as it is because it is the best-MEASURED of the
-        // options and a recorded pass of that Red layover gates it
-        // (`npm run test:accuracy`). Do NOT re-derive it from the old story,
-        // and do not change it without a replay: the alternatives below were
-        // all measured worse.
-        //
-        // Both wrong answers have shipped. Crediting every elapsed second
-        // (until 2026-09-02) drove the hop to zero and promised a bus that was
-        // still minutes of driving away: replaying 69k positions, the
-        // next-stop error for a dwelling bus reached -203 s past 5 min of
-        // dwell. Capping at half the hop (2026-09-02 to 09-03) fixed that
-        // average and broke the layover, which is the dangerous direction: on
-        // Red, #316 had sat 10 min of its ~8 min layover at 344 Winchester,
-        // 82 s of driving from Winchester/Division, and the board told a rider
-        // 3 stops later "5 min" — half of the 557 s segment is 279 s of pure
-        // padding — so the bus left, arrived ~2.5 min later, and the rider who
-        // trusted the 5 was too late. The dwell bound gives 557 - 475 = 82 s,
-        // which is the answer — for the reason in the warning above, not the
-        // reason originally written here.
-        // First hop only — see the note above STALL_CREDIT_MAX_FRACTION for
-        // why carrying it to the adjacent stop was tried and measured wrong.
-        // A served stand/drive split prices the first hop directly — the
-        // standing time conditioned on how long the bus has stood, plus the
-        // drive; en route, the DRIVE alone prorated. Neither the credit nor
-        // the chord proration below then runs, because both act on the whole
-        // arrival-to-arrival segment and re-bill the layover as the bus leaves
-        // (docs/eta-estimator-design.md, "the departure cliff").
-        // Both halves must be adequately sampled for THIS hop, independently
-        // of every other hop; a thin cell prices exactly as master does.
-        const standStat = routeDwells[String(stops[busIdx])];
-        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
-          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
-          : null;
-        if (split) {
-          const t = bus.lat && bus.lon
-            ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
-            : 0;
-          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
-          segVar = Math.min(segVar, segAvg * segAvg);
-          stallCredit = 0;
-          firstSegProgressFactor = 1;
-        }
-        if (step === 1 && stallCredit > 0) {
-          const dwell = routeDwells[String(stops[busIdx])];
-          const cancellable = dwell && dwell.med > 0
-            ? dwell.med
-            : segAvg * STALL_CREDIT_MAX_FRACTION;
-          // ...and never past the driving the hop still contains. Before this
-          // floor the bound above could take the hop to exactly zero — see
-          // driveFloorSec. Report #80 is NOT that case and is unchanged by it:
-          // 344 Winchester -> Winchester/Division is 112 m, so the floor is
-          // 30 s against the 98.9 s the hop is already billed.
-          const room = Math.max(
-            0,
-            segAvg - driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]]),
-          );
-          const applied = Math.min(stallCredit, cancellable, room);
-          segAvg -= applied;
-          stallCredit -= applied;
-        }
-        // Mid-segment proration on the first segment: scale down by the
-        // fraction of the A→B distance still ahead of the bus. Scale
-        // variance by fraction² so "almost there" also means "less
-        // uncertainty about when."
-        if (step === 1 && firstSegProgressFactor < 1) {
-          segAvg *= firstSegProgressFactor;
-          segVar *= firstSegProgressFactor * firstSegProgressFactor;
-        }
-        cumulative += segAvg;
-        cumulativeVar += segVar;
-        if (cumulative > MAX_ETA_SEC) break;
-        const sid = stops[curI];
-        const recorded = recordedForStop.get(sid) ?? 0;
-        if (targetSet.has(sid) && recorded < 2 && cumulative >= 0) {
-          recordedForStop.set(sid, recorded + 1);
-          const sd = Math.sqrt(cumulativeVar);
+      }
+
+      /**
+       * One number out of the belief.
+       *
+       * With one placement this is production's own arithmetic, arithmetic for
+       * arithmetic: `eta` is its cumulative and the interval its ±1 sd, exactly
+       * as the code above wrote them. With two it is the mixture's median and
+       * its 16th/84th percentiles, which is the design's "report the median,
+       * and if the second branch holds meaningful mass, say so rather than
+       * picking" — the interval is where the app says so, because a scalar
+       * cannot express a bimodal belief and widening the range is the one
+       * honest thing a scalar-plus-range can do.
+       */
+      function emitMixture(): void {
+        for (const [key, comps] of mix) {
+          const sid = Number(key.slice(0, key.indexOf("|")));
+          const single = comps.length === 1 ? comps[0]! : null;
+          const eta = single ? single.mu : mixtureQuantile(comps, 0.5);
+          const low = single ? Math.max(0, single.mu - single.sigma) : Math.max(0, mixtureQuantile(comps, 0.1587));
+          const high = single ? single.mu + single.sigma : mixtureQuantile(comps, 0.8413);
           result.push({
-            eta: cumulative,
-            low: Math.max(0, cumulative - sd),
-            high: cumulative + sd,
+            eta,
+            low,
+            high,
             routeLabel: cfg.label,
             color: cfg.color,
             busName: bus.bus_name.replace("#", ""),
