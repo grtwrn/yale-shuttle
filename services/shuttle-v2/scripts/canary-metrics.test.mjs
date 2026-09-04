@@ -6,7 +6,7 @@ import {
   ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
   departureBetween, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
-  pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
+  pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 
@@ -878,6 +878,43 @@ describe("a bus already at the stop when the rider walks up", () => {
     // And with no board stop resolved, distance is all there is.
     expect(isAtBoardStop(38, 48, null)).toBe(true);
     expect(isAtBoardStop(300, 48, null)).toBe(false);
+  });
+});
+
+describe("the canary's own feed failing is not the app's fault", () => {
+  // Both fixtures are archived Red runs whose ONLY reason for not being `ok`
+  // was `/api/buses` timing out on this Pi. 31 feed errors across 24 of 60
+  // runs, and no rider saw any of them.
+  it("passes a run whose only trouble was a timed-out ground-truth poll", () => {
+    // 2026-09-04 09:27:57 Red — watched 9.2 min, the bus ARRIVED, one poll
+    // aborted. It was filed as a finding.
+    expect(runVerdict({ failures: [], feedPolls: 110, feedErrorCount: 1 })).toBe("ok");
+    // 09:02:10 Red — 25.7 min, two aborted polls out of ~300.
+    expect(runVerdict({ failures: [], feedPolls: 308, feedErrorCount: 2 })).toBe("ok");
+    // The worst affected run in the archive lost three polls; still ok.
+    expect(runVerdict({ failures: [], feedPolls: 100, feedErrorCount: 3 })).toBe("ok");
+  });
+
+  it("still fails a run for anything the app actually did", () => {
+    expect(runVerdict({ failures: [{ kind: "eta-jump" }], feedPolls: 100, feedErrorCount: 2 }))
+      .toBe("finding");
+  });
+
+  it("calls total loss of the feed `unreachable` — neither ok nor a finding", () => {
+    // SYNTHETIC: no archived run lost every poll (the worst is 3 of ~100), so
+    // this shape has not been seen in the wild. It is the one case where the
+    // canary has no ground truth at all, and calling it `ok` would let a
+    // network outage read as a quiet healthy night.
+    expect(runVerdict({ failures: [], feedPolls: 120, feedErrorCount: 120 })).toBe("unreachable");
+    // It outranks a finding, because those findings were judged against
+    // nothing.
+    expect(runVerdict({ failures: [{ kind: "no-arrival" }], feedPolls: 120, feedErrorCount: 120 }))
+      .toBe("unreachable");
+    // A run that never polled at all is not "unreachable" — it is whatever
+    // its failures say, so an early crash keeps its own verdict.
+    expect(runVerdict({ failures: [{ kind: "fatal" }], feedPolls: 0, feedErrorCount: 0 }))
+      .toBe("finding");
+    expect(runVerdict()).toBe("ok");
   });
 });
 
