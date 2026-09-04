@@ -7041,13 +7041,6 @@ const TransitMap: FC = () => {
         </div>
       </div>
 
-      {/* Beta notice — persistent, and the tap opens the feedback composer at
-          the foot of the page. Near the top because the operator's aim is to
-          RECEIVE reports and the footer button is a full scroll away. Hidden
-          only on the ride page, which hides the tabs above it for the same
-          reason: that view is about the bus you are on. */}
-      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
-
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
@@ -7692,6 +7685,16 @@ const TransitMap: FC = () => {
           </div>
         )}
       </div>
+
+      {/* Beta notice — persistent, and the tap opens the feedback composer
+          just above it. It sat under the tabs until the operator asked for it
+          moved: "please put the beta banner at the bottom. it clutters the
+          top". The original argument for the top was that the footer composer
+          was a full scroll away — but down here the banner IS at the composer,
+          so the tap has less distance to travel, not more. Hidden on the ride
+          page, which hides the tabs for the same reason: that view is about
+          the bus you are on. */}
+      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
 
       {/* Last line on every page, and not dismissible: the app is named for
           Yale, serves its shuttle feed and draws its route colours, so this
