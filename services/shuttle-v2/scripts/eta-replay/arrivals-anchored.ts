@@ -21,6 +21,7 @@
  */
 import { findRouteAnchor, isBusOnRoute } from "../../web/src/anchor";
 import { gateAnchor, type AnchorStore } from "../../web/src/anchorGate";
+import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "../../web/src/hopPricing";
 import { haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { LatLon } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
@@ -98,6 +99,11 @@ export function computeUpcomingArrivalsAnchored(
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
       : 0;
     const fallbackSd = avgSeg * 0.5;
+    // The stand/drive pricing (hopPricing.ts) and its standing memory engage
+    // only on a route the calibrator serves the split for; otherwise nothing
+    // below this line behaves differently from before it existed.
+    const splitServed = Object.values(routeSegs).some(driveAdequate)
+      && Object.values(routeDwells).some(standAdequate);
 
     for (const bus of routeBuses) {
       const belief = override ? override(bus, cfg.label, stops) : null;
@@ -112,7 +118,6 @@ export function computeUpcomingArrivalsAnchored(
       }
       if (gpsAnchorIdx < 0) continue;
 
-      const busIdx = gpsAnchorIdx;
       let stallCredit = 0;
       if (belief && belief.standingSince !== undefined) {
         if (belief.standingSince !== null) {
@@ -129,6 +134,25 @@ export function computeUpcomingArrivalsAnchored(
       }
       const standing = stallCredit > 0;
 
+      // "Standing" for the split pricing is NOT "at_stop_id is set this poll".
+      // The flag is a PUBLICATION signal with a 75 m radius; a parked bus that
+      // shuffles to 85 m loses it for one poll while plainly still standing,
+      // and pricing that poll as en route collapses the countdown to the
+      // drive and brings it back ("in 8 -> in 1 -> in 6"). The stop-pinned
+      // clock survives that shuffle (PR #67); so does this memory of it.
+      let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
+      if (anchorStore && splitServed) {
+        const st = standingAt(anchorStore, `${cfg.label}|${bus.bus_name}`, bus, now, stopCoords, STANDING_HOLD_M);
+        if (st) {
+          const N = stops.length;
+          for (let i = 0; i < N; i++) {
+            if (stops[i] !== st.stopId) continue;
+            const d = ((i - gpsAnchorIdx) % N + N) % N;
+            if (d <= 1 || d === N - 1) { gpsAnchorIdx = i; standingSec = st.standingSec; break; }
+          }
+        }
+      }
+      const busIdx = gpsAnchorIdx;
       let firstSegProgressFactor = 1;
       if (belief && belief.legProgress != null) {
         if (stallCredit === 0) {
@@ -173,6 +197,21 @@ export function computeUpcomingArrivalsAnchored(
           }
         }
         if (step === 1) firstSegAvg = segAvg;
+        // Both halves must be adequately sampled for THIS hop, independently
+        // of every other hop; a thin cell prices exactly as master does.
+        const standStat = routeDwells[String(stops[busIdx])];
+        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
+          : null;
+        if (split) {
+          const t = bus.lat && bus.lon
+            ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
+            : 0;
+          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
+          segVar = Math.min(segVar, segAvg * segAvg);
+          stallCredit = 0;
+          firstSegProgressFactor = 1;
+        }
         if (step === 1 && stallCredit > 0) {
           const dwell = routeDwells[String(stops[busIdx])];
           const cancellable = dwell && dwell.med > 0
