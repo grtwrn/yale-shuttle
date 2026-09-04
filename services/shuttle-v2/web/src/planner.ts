@@ -535,6 +535,114 @@ export function findPotentialRoutes(
 }
 
 /**
+ * Time actually spent TRAVELLING on an option: walk to the stop + ride + walk
+ * from the stop. Waiting is excluded — the rider spends it at their desk, not
+ * on the trip — which is the same distinction `slowerThanWalk` already draws.
+ *
+ * Unlike `totalSec`, every term here is fixed by the plan's geometry and the
+ * calibrated segment times. The per-poll live recompute rewrites `waitSec`,
+ * `totalSec`, `busName`, `departed` and `busEtaSec` and nothing else, so this
+ * number is CONSTANT for a given (origin, destination) plan. Anything decided
+ * by it therefore cannot flicker poll to poll.
+ */
+export function commuteSec(o: TripOption): number {
+  return o.walkToSec + o.rideSec + o.walkFromSec;
+}
+
+/**
+ * A shuttle is "slower than walking" only when the time spent actually
+ * COMMUTING exceeds the direct walk — not when the arrival time does. Waiting
+ * isn't commuting: the rider can spend it at their desk and leave at the
+ * leave-by time, so a late arrival caused purely by wait shouldn't demote or
+ * tag the route. Only judged when walking is a real alternative (direct walk
+ * ≤ 60 min — the walk card itself is suppressed beyond that).
+ *
+ * Lives here rather than in the component because `mostDirectOption` must
+ * agree with the row ordering about which options are worth offering.
+ */
+export function slowerThanWalk(o: TripOption): boolean {
+  return o.mode === "shuttle" && !o.departed &&
+    o.directWalkSec <= 3600 &&
+    commuteSec(o) > o.directWalkSec;
+}
+
+/**
+ * The most DIRECT usable shuttle: the one with the least `commuteSec`.
+ *
+ * Report #93 — "red flashed off screen but should always be shown for this
+ * route … whatever is shortest ride time (and gets you closest to dest or is
+ * closest to home) is always shown. A short route that doesn't get you far
+ * wouldn't be good." That caveat is why the metric is the SUM of the three
+ * moving legs rather than ride time alone: a two-minute hop that drops the
+ * rider a twelve-minute walk short of the destination scores 14 min and loses
+ * to a route that carries them to the door. "Shortest ride", "closest to the
+ * destination" and "closest to home" are exactly walkTo + ride + walkFrom.
+ *
+ * Departed options and ones slower than walking are never candidates — the
+ * rider must never be steered onto a bus they cannot catch or that costs them
+ * time (the alternate-pickup lesson).
+ */
+export function mostDirectOption(options: readonly TripOption[]): TripOption | undefined {
+  let best: TripOption | undefined;
+  for (const o of options) {
+    if (o.mode !== "shuttle" || o.departed || slowerThanWalk(o)) continue;
+    if (!best) { best = o; continue; }
+    const d = commuteSec(o) - commuteSec(best);
+    // Deterministic tie-break so two equally direct routes can't trade places
+    // between polls: shorter ride, then lower total, then label order.
+    if (d < 0 || (d === 0 && (
+      o.rideSec < best.rideSec ||
+      (o.rideSec === best.rideSec && (
+        o.totalSec < best.totalSec ||
+        (o.totalSec === best.totalSec && o.routeLabel < best.routeLabel)
+      ))
+    ))) best = o;
+  }
+  return best;
+}
+
+/**
+ * How much more direct a hidden option must be before it earns a row of its
+ * own. Below this the top of the list already IS the direct answer and a
+ * fourth row is noise.
+ */
+export const DIRECT_COMMUTE_MARGIN_SEC = 2 * 60;
+
+/**
+ * The option promoted into the collapsed list purely for being the direct
+ * route, or undefined when the list already shows it.
+ *
+ * Report #93: Division/Prospect → LEPH ranked Blue Day 22 min, Orange Day
+ * 34, Walk 37, Red 39 — and Red is the one that runs straight there. Its
+ * 39 minutes are a 28-minute WAIT wrapped around a 13-minute commute (0 min
+ * walk, 12.2 ride, 0.8 walk, measured live 2026-09-04); Blue's commute is
+ * 23 min and Orange's 30. So Red sat below the "Show N more routes" fold,
+ * and — because a wait that long moves by minutes between polls — it crossed
+ * the third-shuttle slack boundary back and forth: the "flashing" the report
+ * describes.
+ *
+ * The promotion is measured against the first TWO shuttles only. Those two
+ * are visible unconditionally, so the decision never depends on the
+ * `keepThird` boundary that was doing the flickering — and since every term
+ * is a `commuteSec`, it does not move with the live ETA at all.
+ *
+ * This adds a row; it never removes or reorders one. The fastest option keeps
+ * the top of the list, and the direct route appears in its own ranked
+ * position — "here is the route that goes straight there, and here is when it
+ * next runs", not "take this one".
+ */
+export function directPromotion(sorted: readonly TripOption[]): TripOption | undefined {
+  const shuttles = sorted.filter((o) => o.mode === "shuttle");
+  const direct = mostDirectOption(shuttles);
+  if (!direct) return undefined;
+  const alwaysVisible = shuttles.slice(0, 2);
+  if (alwaysVisible.some((o) => o.routeLabel === direct.routeLabel)) return undefined;
+  const bestVisible = Math.min(...alwaysVisible.map(commuteSec));
+  if (commuteSec(direct) > bestVisible - DIRECT_COMMUTE_MARGIN_SEC) return undefined;
+  return direct;
+}
+
+/**
  * Which of the sorted options the collapsed list shows.
  *
  * Two shuttles plus the walk row, and a third shuttle ONLY when it is nearly
@@ -543,6 +651,8 @@ export function findPotentialRoutes(
  * quarter of the walking, and sat hidden behind "show more": report #46). A
  * distant third is noise and cedes its slot; the walk row always shows because
  * it is a different kind of answer, not a competing shuttle.
+ *
+ * Plus, always, the most direct route (`directPromotion`) — report #93.
  */
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 
@@ -553,10 +663,12 @@ export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
   const keepThird =
     second !== undefined && third !== undefined &&
     third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
+  const promoted = directPromotion(sorted);
   let seen = 0;
   return sorted.filter((o) => {
     if (o.mode !== "shuttle") return true;
     seen++;
-    return seen <= 2 || (seen === 3 && keepThird);
+    if (seen <= 2 || (seen === 3 && keepThird)) return true;
+    return promoted !== undefined && o.routeLabel === promoted.routeLabel;
   });
 }
