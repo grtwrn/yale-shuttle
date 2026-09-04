@@ -3,7 +3,7 @@
 import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
 import { anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
-import { driveAdequate, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -245,10 +245,19 @@ export function shownStandSec(
   elapsedSec: number | null,
   splitServed: boolean,
   started = false,
+  /**
+   * The same non-increasing ceiling the countdown is billed under
+   * (`flooredStandSec`). Passed, the remainder in the tooltip cannot climb
+   * while the ETA beside it holds flat; omitted, this stays the pure function
+   * the tests call.
+   */
+  floor?: StandFloorCtx,
 ): ShownStand | null {
   if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
     return {
-      sec: remainingStandSec(stat.q, elapsedSec),
+      sec: floor
+        ? flooredStandSec(floor.store, floor.key, floor.stopId, stat.q, elapsedSec, floor.now)
+        : remainingStandSec(stat.q, elapsedSec),
       remaining: true,
       // Asked of the same function at elapsed = 0, so the typical hold and the
       // remainder can never come from two different statistics — which is the
@@ -543,7 +552,13 @@ export function computeUpcomingArrivals(
           const t = bus.lat && bus.lon
             ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
             : 0;
-          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
+          // The standing term may not GROW while the bus stands still (see
+          // flooredStandSec). The ceiling rides the caller's store, so a
+          // storeless call — every hypothetical and every pure test — prices
+          // exactly as it did before.
+          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t, {
+            store: anchorStore, key: anchorKey, stopId: stops[busIdx]!, now,
+          });
           segVar = Math.min(segVar, segAvg * segAvg);
           stallCredit = 0;
           firstSegProgressFactor = 1;

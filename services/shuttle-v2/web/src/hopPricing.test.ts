@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driveAdequate, MIN_DRIVE_SAMPLES, MIN_STAND_SAMPLES, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, flooredStandSec, forgetStandFloor, MIN_DRIVE_SAMPLES, MIN_STAND_SAMPLES, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 
 // Ten quantiles (p5..p95) of a layover shaped like 344 Winchester's: median ~475 s, long right tail.
 const Q = [60, 150, 260, 360, 440, 510, 580, 660, 780, 960];
@@ -113,5 +113,145 @@ describe("sample adequacy — a thin cell is withheld, never blended", () => {
   it("thresholds are the documented ones", () => {
     expect(MIN_STAND_SAMPLES).toBe(20);
     expect(MIN_DRIVE_SAMPLES).toBe(10);
+  });
+});
+
+// The live table the operator was watching on 2026-09-04: Red #310 standing at
+// 344 Winchester (route 3, stop 11), qn = 34. Copied off the production payload.
+const Q_WINCHESTER = [83, 129, 145, 191, 288, 333, 437, 473, 543, 674];
+
+describe("flooredStandSec — a bus standing still may not push its own arrival later", () => {
+  it("the RAW curve is continuous but rises: this is the defect, stated as a fixture", () => {
+    // PR #99 interpolated the CDF, so there are no STEPS: no single second of
+    // standing moves the remainder by a whole quantile. It still climbs.
+    let prev = remainingStandSec(Q_WINCHESTER, 0);
+    let biggestJump = 0, totalRise = 0;
+    for (let r = 1; r <= 800; r++) {
+      const v = remainingStandSec(Q_WINCHESTER, r);
+      biggestJump = Math.max(biggestJump, Math.abs(v - prev));
+      if (v > prev) totalRise += v - prev;
+      prev = v;
+    }
+    expect(biggestJump).toBeLessThan(3);          // continuous — no quantile-sized step
+    expect(totalRise).toBeGreaterThan(50);        // ...and yet it climbs 56.8 s over the hold
+    // The two climbing stretches, named so a change to the CDF shows up here.
+    expect(remainingStandSec(Q_WINCHESTER, 168)).toBeGreaterThan(remainingStandSec(Q_WINCHESTER, 107));
+    expect(remainingStandSec(Q_WINCHESTER, 473)).toBeGreaterThan(remainingStandSec(Q_WINCHESTER, 456));
+  });
+
+  it("with a store, the remainder never climbs — over the whole hold, second by second", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    let prev = Infinity;
+    for (let r = 0; r <= 800; r++) {
+      const v = flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+      expect(v).toBeLessThanOrEqual(prev);
+      prev = v;
+    }
+  });
+
+  it("holds flat rather than climbing, and resumes ticking when the raw curve catches up", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    const at = (r: number) => flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+    for (let r = 0; r <= 107; r++) at(r);
+    const held = at(107);
+    expect(at(140)).toBe(held);                          // the raw curve is climbing here
+    expect(at(168)).toBe(held);
+    expect(at(240)).toBeLessThan(held);                  // and it comes back down honestly
+    expect(at(240)).toBe(remainingStandSec(Q_WINCHESTER, 240));
+  });
+
+  it("costs at most the rise it removed — it is a clamp, not a discount", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    for (let r = 0; r <= 600; r += 5) {
+      const v = flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+      const raw = remainingStandSec(Q_WINCHESTER, r);
+      expect(v).toBeLessThanOrEqual(raw);
+      expect(raw - v).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("a storeless caller is byte-identical to the raw curve", () => {
+    for (const r of [0, 60, 120, 168, 300, 456, 473, 600, 900]) {
+      expect(flooredStandSec(undefined, "Red|#310", 11, Q_WINCHESTER, r, 0)).toBe(remainingStandSec(Q_WINCHESTER, r));
+    }
+  });
+
+  it("is per store, per vehicle and per stop — no ceiling is ever inherited", () => {
+    const s1 = {}, s2 = {};
+    const t0 = 1_757_000_000_000;
+    for (let r = 0; r <= 168; r++) flooredStandSec(s1, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+    const held = flooredStandSec(s1, "Red|#310", 11, Q_WINCHESTER, 168, t0 + 168_000);
+    expect(held).toBeLessThan(remainingStandSec(Q_WINCHESTER, 168));
+    // another store (another rider's tab, a replay, a hypothetical)
+    expect(flooredStandSec(s2, "Red|#310", 11, Q_WINCHESTER, 168, t0 + 168_000)).toBe(remainingStandSec(Q_WINCHESTER, 168));
+    // another vehicle on the same store
+    expect(flooredStandSec(s1, "Red|#316", 11, Q_WINCHESTER, 168, t0 + 168_000)).toBe(remainingStandSec(Q_WINCHESTER, 168));
+    // the same vehicle at a different stop
+    expect(flooredStandSec(s1, "Red|#310", 146, Q_WINCHESTER, 168, t0 + 168_000)).toBe(remainingStandSec(Q_WINCHESTER, 168));
+  });
+
+  it("a restarted hold clock starts a fresh ceiling", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    for (let r = 0; r <= 168; r++) flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+    // the bus left, came back, and the clock is 20 s in again
+    expect(flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, 20, t0 + 200_000)).toBe(remainingStandSec(Q_WINCHESTER, 20));
+  });
+
+  it("a stale entry is not carried across a gap in the polling", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    for (let r = 0; r <= 168; r++) flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+    // 3 minutes with no poll at all: the ceiling is no longer evidence about this bus
+    expect(flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, 350, t0 + 350_000)).toBe(remainingStandSec(Q_WINCHESTER, 350));
+  });
+
+  it("forgetStandFloor drops it, and tolerates a storeless caller", () => {
+    const store = {};
+    const t0 = 1_757_000_000_000;
+    for (let r = 0; r <= 168; r++) flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, r, t0 + r * 1000);
+    forgetStandFloor(store, "Red|#310");
+    expect(flooredStandSec(store, "Red|#310", 11, Q_WINCHESTER, 168, t0 + 168_000)).toBe(remainingStandSec(Q_WINCHESTER, 168));
+    expect(() => forgetStandFloor(undefined, "Red|#310")).not.toThrow();
+  });
+});
+
+describe("priceFirstHop with a ceiling — the departure is untouched", () => {
+  const drive = 25;
+  const t0 = 1_757_000_000_000;
+  const ctx = (store: object | undefined, r: number) => ({ store, key: "Red|#310", stopId: 11, now: t0 + r * 1000 });
+
+  it("clamps the standing term and nothing else", () => {
+    const store = {};
+    for (let r = 0; r <= 168; r += 5) priceFirstHop({ q: Q_WINCHESTER }, drive, r, 0, ctx(store, r));
+    const held = priceFirstHop({ q: Q_WINCHESTER }, drive, 168, 0, ctx(store, 168));
+    expect(held).toBeLessThan(remainingStandSec(Q_WINCHESTER, 168) + drive);
+    expect(held).toBeGreaterThanOrEqual(drive); // the drive is never credited away
+  });
+
+  it("5 -> 1 on an early departure: the ceiling never delays a real collapse", () => {
+    const store = {};
+    // stood through the climbing stretch, so a ceiling is definitely held
+    for (let r = 0; r <= 168; r += 5) priceFirstHop({ q: Q_WINCHESTER }, drive, r, 0, ctx(store, r));
+    const standing = priceFirstHop({ q: Q_WINCHESTER }, drive, 168, 0, ctx(store, 168));
+    expect(standing).toBeGreaterThan(200);
+    // the very next poll it is en route, two thirds of the way to the next stop
+    const gone = priceFirstHop({ q: Q_WINCHESTER }, drive, null, 0.67, ctx(store, 173));
+    expect(gone).toBeCloseTo(drive * 0.33, 5);
+    // ...and the ceiling went with it, so the next hold starts clean
+    expect(priceFirstHop({ q: Q_WINCHESTER }, drive, 168, 0, ctx(store, 400)))
+      .toBe(remainingStandSec(Q_WINCHESTER, 168) + drive);
+  });
+
+  it("without a ceiling context it prices exactly as it did before", () => {
+    for (const r of [0, 168, 300, 600]) {
+      expect(priceFirstHop({ q: Q_WINCHESTER }, drive, r, 0))
+        .toBe(remainingStandSec(Q_WINCHESTER, r) + drive);
+    }
+    expect(priceFirstHop({ q: Q_WINCHESTER }, drive, 100, 0, ctx(undefined, 100)))
+      .toBe(remainingStandSec(Q_WINCHESTER, 100) + drive);
   });
 });

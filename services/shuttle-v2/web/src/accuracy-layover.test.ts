@@ -31,8 +31,10 @@ import type { DwellTimes, SegmentTimes } from "./arrivals";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { registerRoutePaths } from "./anchor";
+import type { AnchorStore } from "./anchorGate";
 
 import pass from "./__fixtures__/red-layover-pass.json";
+import splitTables from "./__fixtures__/red-split-tables.json";
 
 const routeStops: Record<string, number[]> = pass.routeStops;
 const stopCoords: Record<number, LatLon> = pass.stopCoords as unknown as Record<number, LatLon>;
@@ -188,5 +190,125 @@ describe(`Red through the ${names[pass.layoverStopId]} layover`, () => {
     // ~10 min of layover still ahead: the app must not read "a couple of
     // minutes" just because the hop after the layover is short.
     expect(eta).toBeGreaterThan(remaining / 2);
+  });
+});
+
+/**
+ * The same pass, replayed as a rider's BROWSER runs it: the stand/drive split
+ * served (PR #81/#85, Red and Blue Day) and an `AnchorStore` open, which is
+ * where the per-vehicle memory lives.
+ *
+ * The block above deliberately does not do either — it is the pure, storeless
+ * replay, and the split fields were not in the payload when its fixture was
+ * recorded. That left the gate blind to the defect the operator caught live on
+ * 2026-09-04: Red #310 standing at 344 Winchester, the pause chip counting up
+ * and the board stuck on "5 min". Under the split the first hop is
+ * `median(stand - r | stand > r) + drive`, and that conditional median RISES
+ * wherever the stand CDF flattens — so the app was quietly sliding the
+ * predicted arrival later while the bus sat, which is the one thing standing
+ * still cannot be evidence for.
+ *
+ * `red-split-tables.json` is route 3's own `q`/`qn` and `drive`/`driveN` as
+ * the calibrator served them on 2026-09-03, merged over the fixture's tables;
+ * nothing else about the pass changes.
+ */
+describe(`Red through the ${names[pass.layoverStopId]} layover, with the stand/drive split served`, () => {
+  registerRoutePaths(null);
+
+  const segmentsSplit: SegmentTimes = JSON.parse(JSON.stringify(pass.segments));
+  const dwellsSplit: DwellTimes = JSON.parse(JSON.stringify(pass.dwells));
+  for (const [r, tab] of Object.entries(splitTables.segments)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (segmentsSplit[r]?.[k]) Object.assign(segmentsSplit[r]![k]!, v);
+    }
+  }
+  for (const [r, tab] of Object.entries(splitTables.dwells)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (dwellsSplit[r]?.[k]) Object.assign(dwellsSplit[r]![k]!, v);
+    }
+  }
+
+  /** What the board shows a rider whose tab has been open the whole time. */
+  const boardFor = (store?: AnchorStore) => (stopId: number, t: number): number | null => {
+    const arrivals = computeUpcomingArrivals(
+      [stopId], [busAt(t)], routeStops, stopCoords, segmentsSplit, t, dwellsSplit, store,
+    ).filter((a) => a.routeLabel === pass.routeLabel);
+    return arrivals.length > 0 ? arrivals[0]!.eta : null;
+  };
+
+  const standingMoments = momentsBetween(layover.arrivedAt, LEFT_AT - 1);
+
+  it("the split really is engaged on this fixture", () => {
+    expect(dwellsSplit["3"]!["11"]!.q!.length).toBe(10);
+    expect(segmentsSplit["3"]!["11-146"]!.drive).toBeGreaterThan(0);
+    expect(standingMoments.length).toBeGreaterThan(30);
+  });
+
+  it("THE DEFECT: unclamped, the board climbs while the bus stands still", () => {
+    // Storeless is the unclamped arithmetic. Pinned as a fixture so that if a
+    // future CDF change removes the rise on its own, this test says so out
+    // loud rather than the clamp silently becoming decorative.
+    const board = boardFor();
+    let rises = 0, longestClimb = 0, run = 0;
+    let prev: number | null = null;
+    for (const t of standingMoments) {
+      const eta = board(48, t);
+      if (prev !== null && eta !== null) {
+        if (eta > prev + 0.5) { run += eta - prev; rises++; longestClimb = Math.max(longestClimb, run); }
+        else run = 0;
+      }
+      prev = eta;
+    }
+    expect(rises).toBeGreaterThanOrEqual(4);
+    expect(longestClimb).toBeGreaterThan(40); // 55 s: "5 min" becomes "6 min", nothing happened
+  });
+
+  it("THE FIX: with a store, the board never climbs while the bus stands still", () => {
+    const board = boardFor(new Map());
+    let prev = Infinity;
+    for (const t of standingMoments) {
+      const eta = board(48, t);
+      if (eta === null) continue;
+      expect(eta, `climbed at ${new Date(t).toISOString().slice(11, 19)}`).toBeLessThanOrEqual(prev + 0.5);
+      prev = eta;
+    }
+  });
+
+  it("the departure lands on the SAME poll, at the same number — 5 -> 1 is untouched", () => {
+    // The whole justification for the clamp is that it holds back nothing a
+    // rider needs. The instant the bus rolls, the standing term is gone from
+    // the price and the ceiling with it, so the clamped board and the
+    // unclamped one must agree on the very first poll after the departure.
+    const clamped = boardFor(new Map());
+    const unclamped = boardFor();
+    const lastStanding = standingMoments.at(-1)!;
+    const firstGone = pass.positions.map((p) => p.t).find((t) => t >= LEFT_AT)!;
+    const held = clamped(48, lastStanding)!;
+    const gone = clamped(48, firstGone)!;
+    expect(gone).toBeLessThan(held - 60);          // it collapses, and it collapses hard
+    expect(gone).toBeCloseTo(unclamped(48, firstGone)!, 5); // ...to exactly master's number
+  });
+
+  it("still never promises the bus much earlier than it comes", () => {
+    // The invariant that matters most, re-run under the split: a rider who
+    // relaxes because the board said five minutes must not find the bus gone.
+    const board = boardFor(new Map());
+    for (const stopId of [48, 104]) {
+      const truth = actualArrivalAt(stopId, LEFT_AT)!;
+      let worst = { at: 0, pessimisticBy: 0, shown: 0, truth: 0 };
+      for (const t of momentsBetween(pass.positions[0]!.t, truth)) {
+        const eta = board(stopId, t);
+        if (eta === null) continue;
+        const pessimisticBy = eta - (truth - t) / 1000;
+        if (pessimisticBy > worst.pessimisticBy) {
+          Object.assign(worst, { at: t, pessimisticBy, shown: eta, truth: (truth - t) / 1000 });
+        }
+      }
+      expect(
+        worst.pessimisticBy,
+        `${names[stopId]}: at ${new Date(worst.at).toISOString().slice(11, 19)} the board said ` +
+          `${Math.round(worst.shown)} s while the bus was ${Math.round(worst.truth)} s away`,
+      ).toBeLessThan(120);
+    }
   });
 });

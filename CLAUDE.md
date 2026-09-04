@@ -862,6 +862,41 @@ Validated against `docs/data/departure-tables-2026-09-03.json`: Red 344
 Winchester `q` p5/≈p50/p95 = 118/302/598 s over n=24 (reference
 118.1/302.8/598.1), drive 15 s over n=25 (reference median 15.1).
 
+**A bus standing still may not push its own arrival later**
+(`flooredStandSec`, `web/src/hopPricing.ts`). The conditional median RISES
+wherever the stand CDF flattens — on Red's 344 Winchester table it climbs 42 s
+across r = 107..168 s and 15 s across r = 456..473 s — so the app was quietly
+sliding the predicted arrival later while the bus sat. That is what the
+operator caught live on 2026-09-04: #310 parked, the pause chip counting up,
+the board frozen on "5 min". Two things it is NOT:
+
+- **It is not the step bug.** PR #99 already replaced the point-sample median
+  with the interpolated CDF; the curve is continuous (no single second moves
+  it by more than 2.3 s). Continuous is not decreasing, and the rise survived.
+- **It is not the slew limiter the operator rejected** ("it can go 5->1 if it
+  leaves early. but if it is jitter we need a fix"). A rate limiter damps real
+  corrections. A bus standing still produces NO EVENT — the rise is an
+  artifact of conditioning on elapsed time, not news arriving. The ceiling is
+  consulted only on the standing path and is dropped the instant the bus
+  rolls, so the departure collapse is bit-identical to master's.
+
+The ceiling lives per (bus, stop) on the caller's `AnchorStore`, beside
+`standingAt`'s memory and the anchor gate's, and resets on a different stop, a
+restarted hold clock, a stale entry or the departure. **A storeless caller —
+every hypothetical, every pure test — prices exactly as it did before.** The
+chip reads the same ceiling through the same key (`shownStandSec`), because
+the hold shown must be the hold billed.
+
+Do not monotonise the CDF inside `remainingStandSec` instead: the rise is the
+correct conditional median and the estimator's measured bias depends on it
+(dropping the elapsed term costs 203 s MAE / +141 s bias).
+
+`web/src/accuracy-layover.test.ts` now replays the recorded Red pass a second
+time with the split served (`__fixtures__/red-split-tables.json`, route 3's
+own tables from 2026-09-03) and a store open — the first block is storeless
+and had no way to see any of this. It pins the defect as a fixture (unclamped,
+the board climbs 55 s while the bus stands) as well as the fix.
+
 **Backfill from the archive.** `scripts/backfill-departures.ts` runs the
 collector's own reducer over `~/shuttle-captures/positions-*.jsonl` and writes
 rows through the collector's own mapping (`src/collector/visitRows.ts`, shared
