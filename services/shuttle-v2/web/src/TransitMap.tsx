@@ -34,7 +34,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
+  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -2139,16 +2139,9 @@ const TripPlanner: FC<{
     return () => clearInterval(id);
   }, [reminder]);
 
-  // A shuttle is "slower than walking" only when the time spent actually
-  // COMMUTING (walk to stop + ride + walk from stop) exceeds the direct
-  // walk — not when the arrival time does. Waiting isn't commuting: the
-  // rider can spend the wait at their desk and leave at the leave-by
-  // time. Only judged when walking is a real alternative (direct walk
-  // ≤ 60 min — the walk card itself is suppressed beyond that).
-  const slowerThanWalk = (o: TripOption) =>
-    o.mode === "shuttle" && !o.departed &&
-    o.directWalkSec <= 3600 &&
-    o.walkToSec + o.rideSec + o.walkFromSec > o.directWalkSec;
+  // `slowerThanWalk` — the commute-vs-direct-walk test — now lives in
+  // planner.ts, where `mostDirectOption` needs the same verdict about which
+  // options are worth offering at all.
   // Shared row/map order: competitive / slower-than-walk / departed,
   // fastest first within each tier by live total.
   const optionTier = (o: TripOption) => (o.departed ? 2 : slowerThanWalk(o) ? 1 : 0);
@@ -3507,6 +3500,12 @@ const TripPlanner: FC<{
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
             const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
+            // The route that goes straight there, when it isn't already at the
+            // top of the list (report #93). topVisibleOptions keeps its row
+            // out from behind "Show N more routes"; this caption says why a
+            // slower row is on screen. Computed from _sorted, not from the
+            // visible slice, so expanding the list doesn't drop the caption.
+            const _direct = directPromotion(_sorted);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested
@@ -3727,6 +3726,17 @@ const TripPlanner: FC<{
                           <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
                           <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
+                      )}
+                      {/* Why a slower row is on screen: this is the route that
+                          runs straight there — least walking + riding of any
+                          option, whatever the wait happens to be right now.
+                          Plain grey text, not a badge: FASTEST was removed
+                          from these rows deliberately and this is an
+                          explanation, not a ranking. */}
+                      {_direct && o.routeLabel === _direct.routeLabel && (
+                        <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368" }}>
+                          · most direct
+                        </span>
                       )}
                     </>
                   )}
