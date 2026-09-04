@@ -283,3 +283,48 @@ describe("noteFix: the last two DISTINCT fixes", () => {
     expect(noteFix(s, "k", at(80), 11_000)).toEqual({ lat: at(40).lat, lon: at(40).lon });
   });
 });
+
+describe("the timeout never releases a backwards jump", () => {
+  // The route is a ring served in order, so position only advances. A raw
+  // anchor proposing more than half the loop forward is proposing a backwards
+  // move, and waiting does not make it true. Operator's case, 2026-09-04:
+  // Red #316 stood eleven minutes at 344 Winchester while the stateless scan
+  // wanted the chord INTO the stop; after five minutes the timeout accepted it
+  // and the board went 3 min -> 11 min.
+  const N = 31;
+  const AT = { lat: 41.324661, lon: -72.928677 }; // 344 Winchester
+
+  function parked(atStopId: number | null) {
+    return { lat: AT.lat, lon: AT.lon, at_stop_id: atStopId, last_stop_id: 75 };
+  }
+
+  it("holds a one-stop retreat however long the bus stands there", () => {
+    const store: AnchorStore = new Map();
+    const t0 = 1_700_000_000_000;
+    // Anchor accepted at index 10 (344 Winchester).
+    expect(gateAnchor(store, "k", 10, parked(11), t0, N).index).toBe(10);
+    // The scan now wants index 9 — the chord INTO the stop — and keeps wanting
+    // it. Twenty minutes of a motionless bus must not talk the gate into it.
+    for (let m = 1; m <= 20; m++) {
+      const r = gateAnchor(store, "k", 9, parked(11), t0 + m * 60_000, N);
+      expect(r.index, `minute ${m}`).toBe(10);
+      expect(r.released, `minute ${m}`).not.toBe("timeout");
+    }
+  });
+
+  it("still times out a disputed FORWARD move, which is what the valve is for", () => {
+    const store: AnchorStore = new Map();
+    const t0 = 1_700_000_000_000;
+    expect(gateAnchor(store, "k", 10, parked(11), t0, N).index).toBe(10);
+    // Wants to advance several stops with no distance to justify it; held at
+    // first, then released once the hold has run its course.
+    // Poll steadily: a gap over ANCHOR_STALE_MS would reset the bus instead.
+    let out = gateAnchor(store, "k", 14, parked(11), t0 + 60_000, N);
+    expect(out.index).toBe(10);
+    for (let t = 120_000; t <= ANCHOR_MAX_HOLD_MS + 60_000; t += 60_000) {
+      out = gateAnchor(store, "k", 14, parked(11), t0 + t, N);
+    }
+    expect(out.index).toBe(14);
+    expect(out.released).toBe("timeout");
+  });
+});

@@ -337,9 +337,34 @@ export function gateAnchor(
     return accept("feed+moved");
   }
 
-  // 4. Bounded damage if the gate is wrong.
+  // 4. Bounded damage if the gate is wrong — but FORWARD only.
+  //
+  // The route is a ring and its stops are served in order, so a bus's position
+  // on it only ever advances; each edge is paid once per lap. A raw anchor
+  // proposing a jump of more than half the loop is therefore proposing that
+  // the bus went BACKWARDS, and no amount of waiting makes that true. Rules 2
+  // and 3 already refuse it on those grounds (`forward <= N / 2`); this one
+  // used to accept it anyway, because "bounded damage" was written as a
+  // release valve without asking which direction it opened.
+  //
+  // That is how the operator's 2026-09-04 case got through. Red #316 stood
+  // motionless at 344 Winchester for eleven minutes — 15 m from stop 11, 368 m
+  // from Canal/Munson, `last_stop_id` stale at an unrelated stop 75 throughout
+  // — while the stateless scan wanted the chord INTO the stop (a parked bus
+  // sits at the shared endpoint of the chord in and the chord out, so both
+  // score ~15 m and the tie fell to the stale feed value). After five minutes
+  // of holding, this line accepted it: the anchor slid back one stop, the whole
+  // ~8 min layover went back in front of the bus, and the rider's board went
+  // 3 min -> 11 min. It snapped forward again a poll later, giving 11 -> <1.
+  // The 3 -> 11 is the defect; the 11 -> <1 was the app recovering from it.
+  //
+  // A wrongly-held anchor that needs to move FORWARD still times out, which is
+  // what the valve was for. Genuine relocation — a vanished bus, a re-acquired
+  // one, a `bus_id` reissued at a service-block change — is handled above by
+  // ANCHOR_STALE_MS, where there is no elapsed interval to bound the move and
+  // starting fresh is the honest answer.
   const since = prev.disagreeSince ?? now;
-  if (now - since >= ANCHOR_MAX_HOLD_MS) return accept("timeout");
+  if (now - since >= ANCHOR_MAX_HOLD_MS && forward <= N / 2) return accept("timeout");
 
   store.set(key, { ...prev, disagreeSince: since, seenAt: now });
   return { index: prev.index, released: null };
