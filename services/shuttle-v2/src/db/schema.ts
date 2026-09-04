@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -219,7 +219,47 @@ export const legs = sqliteTable(
   }),
 );
 
-// Every prediction we serve, for after-the-fact accuracy scoring.
+/**
+ * What the CLIENT actually displayed — a prediction about a bus, with no
+ * viewer attached.
+ *
+ * ── The privacy shape (read this before adding a column) ──────────────────
+ *
+ * A row is a statement about a VEHICLE: "bus #310's ETA to stop 48 was being
+ * shown as 5 min at 08:12:30, by the bundle `a1b2c3`". It carries no anonymous
+ * id, no IP, no user agent, no coordinates, no origin, no destination and no
+ * session key — there is nothing here two rows could be joined on to make one
+ * browser's trail, which is the property `daily_actives` buys by storing one
+ * row per (day, id) and nothing else.
+ *
+ * Three things keep it that way, and each is load-bearing:
+ *
+ * 1. **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+ *    prices (bus → stop); the rider's location enters the app one layer up, in
+ *    `pickLiveArrival`'s catchability rule and the walk legs. Logging at the
+ *    arrivals layer means a row cannot encode where anyone was standing, only
+ *    which stop was on some screen.
+ * 2. **The server DEDUPLICATES before writing.** `(bus_id, to_stop_id,
+ *    predicted_at)` is UNIQUE and `predicted_at` is quantised to
+ *    `PREDICTION_BUCKET_MS`, so thirty riders watching one stop in one bucket
+ *    produce ONE row. A row therefore means "at least one client somewhere had
+ *    this on screen", never "a rider was here" — and the write volume is
+ *    bounded by buses x stops x time rather than by traffic.
+ * 3. **First writer wins.** `INSERT OR IGNORE`, so a late poster cannot
+ *    overwrite a value another client already established for a bucket.
+ *
+ * `client_build` is the hash out of the bundle filename the browser is running
+ * (`assets/index-<hash>.js`). It is the same for everybody on a deploy, so it
+ * identifies the CODE, not the reader — and it is the column that stops the
+ * failure this table exists to end: stability numbers measured against a
+ * client that had not shipped in months, and a hotfix's before/after credited
+ * to the wrong PR. Every row says which bundle produced it.
+ *
+ * Pair with `arrivals` on (bus_name, route_id, stop_id) — `bus_name` is the
+ * identity, `bus_id` is reissued per service block (see the data-quality
+ * invariants). The `bus_id` columns are kept because the two pre-existing
+ * accuracy readers join on them.
+ */
 export const predictionsLog = sqliteTable(
   "predictions_log",
   {
@@ -234,6 +274,8 @@ export const predictionsLog = sqliteTable(
     predictedLowSec: real("predicted_low_sec").notNull(),
     predictedHighSec: real("predicted_high_sec").notNull(),
     predictedAt: integer("predicted_at", { mode: "timestamp_ms" }).notNull(),
+    /** Bundle hash the reading came from; null for rows written before it existed. */
+    clientBuild: text("client_build"),
   },
   (t) => ({
     busToTimeIdx: index("predictions_bus_to_time_idx").on(
@@ -245,6 +287,13 @@ export const predictionsLog = sqliteTable(
     // variant) scan `WHERE predicted_at >= ?` with no bus_id — a request-path
     // query, so it must not be a full scan.
     timeIdx: index("predictions_time_idx").on(t.predictedAt),
+    // THE dedup key, and therefore half the privacy argument above: one row per
+    // (vehicle, stop, quantised instant) no matter how many browsers report it.
+    shownUniq: uniqueIndex("predictions_shown_uniq").on(
+      t.busId,
+      t.toStopId,
+      t.predictedAt,
+    ),
   }),
 );
 

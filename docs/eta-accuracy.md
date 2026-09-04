@@ -308,6 +308,9 @@ Not built. Do not rebuild it without a signal that beats that 4.2 s ceiling.
   weekday afternoon and evening — no morning peak, no weekend.
 - Calibration was time-travelled at hour granularity; production recalibrates
   every 5 min, so it is 0–60 min fresher than the replay.
-- `predictions_log` is empty: nothing in production records what riders were
-  told, which is why this had to be reconstructed. The replay is the substitute
-  until something does.
+- `predictions_log` was empty when this was measured: nothing in production
+  recorded what riders were told, which is why all of it had to be
+  reconstructed. `docs/prediction-log.md` closes that gap — a sampled share of
+  clients now posts what it displayed, every row naming the bundle that
+  produced it — so a re-measurement can be checked against observation instead
+  of asserted from a replay.

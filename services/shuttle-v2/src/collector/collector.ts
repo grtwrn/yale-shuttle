@@ -159,9 +159,41 @@ const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 
 // with arrivals/segments, not with the 6 h raw_positions window they came from.
 const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
 const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
+/**
+ * What riders were told (`predictions_log`, written by /api/shown). Shorter
+ * than its neighbours on purpose — see the retention note in
+ * server/predictions.ts: this is the one table whose volume scales with USAGE
+ * rather than with the fleet, `arrivals` outlives it so a row is pairable for
+ * as long as it exists, and shorter is the safe direction for a record of what
+ * was on somebody's screen.
+ */
+const PREDICTION_RETAIN_DAYS_DEFAULT = 30;
+function resolvePredictionRetainDays(): number {
+  // Resolved here rather than imported: nothing in src/collector depends on
+  // src/server and this sweep is not the place to start. `predictions.test.ts`
+  // parses this file and fails if the two defaults ever disagree, the same way
+  // `walk.test.ts` pins the client's walk speed to the server's.
+  const raw = Number(process.env.SHUTTLE_PREDICTION_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return PREDICTION_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const PREDICTION_RETAIN_MS = resolvePredictionRetainDays() * 24 * 60 * 60_000;
 
-type RetainedTable = "raw_positions" | "arrivals" | "segments" | "stop_visits" | "legs";
-const RETAINED_TABLES: readonly RetainedTable[] = ["raw_positions", "arrivals", "segments", "stop_visits", "legs"];
+type RetainedTable =
+  | "raw_positions"
+  | "arrivals"
+  | "segments"
+  | "stop_visits"
+  | "legs"
+  | "predictions_log";
+const RETAINED_TABLES: readonly RetainedTable[] = [
+  "raw_positions",
+  "arrivals",
+  "segments",
+  "stop_visits",
+  "legs",
+  "predictions_log",
+];
 
 // Batched-delete tuning carried forward from the v1 retention fix:
 // large transactions starved the poll loop and tripped /healthz.
@@ -885,6 +917,7 @@ export class Collector {
         ["segments", now - SEGMENT_RETAIN_MS],
         ["stop_visits", now - VISIT_RETAIN_MS],
         ["legs", now - LEG_RETAIN_MS],
+        ["predictions_log", now - PREDICTION_RETAIN_MS],
       ];
       for (const [table, cutoffMs] of trims) {
         const stmt = this.trimStmts.get(table);
@@ -1342,5 +1375,7 @@ function retentionColumn(table: RetainedTable): string {
       return "anchored_at";
     case "legs":
       return "departed_at";
+    case "predictions_log":
+      return "predicted_at";
   }
 }
