@@ -21,7 +21,7 @@
  */
 import { findRouteAnchor, isBusOnRoute } from "../../web/src/anchor";
 import { gateAnchor, type AnchorStore } from "../../web/src/anchorGate";
-import { priceFirstHop, standingAt, STANDING_HOLD_M } from "../../web/src/hopPricing";
+import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "../../web/src/hopPricing";
 import { haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { LatLon } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
@@ -102,8 +102,8 @@ export function computeUpcomingArrivalsAnchored(
     // The stand/drive pricing (hopPricing.ts) and its standing memory engage
     // only on a route the calibrator serves the split for; otherwise nothing
     // below this line behaves differently from before it existed.
-    const splitServed = Object.values(routeSegs).some((s) => s.drive !== undefined)
-      && Object.values(routeDwells).some((d) => d.q !== undefined && d.q.length > 0);
+    const splitServed = Object.values(routeSegs).some(driveAdequate)
+      && Object.values(routeDwells).some(standAdequate);
 
     for (const bus of routeBuses) {
       const belief = override ? override(bus, cfg.label, stops) : null;
@@ -197,11 +197,13 @@ export function computeUpcomingArrivalsAnchored(
           }
         }
         if (step === 1) firstSegAvg = segAvg;
-        const split = step === 1 && seg && seg.n >= 1 && seg.drive !== undefined && seg.drive >= 0
-          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])),
-              stand: routeDwells[String(stops[busIdx])]?.q }
+        // Both halves must be adequately sampled for THIS hop, independently
+        // of every other hop; a thin cell prices exactly as master does.
+        const standStat = routeDwells[String(stops[busIdx])];
+        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
           : null;
-        if (split && split.stand && split.stand.length > 0) {
+        if (split) {
           const t = bus.lat && bus.lon
             ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
             : 0;

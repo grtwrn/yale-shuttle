@@ -2,7 +2,7 @@
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
 import { gateAnchor, type AnchorStore } from "./anchorGate";
-import { priceFirstHop, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -14,7 +14,7 @@ import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
  * With it and the from-stop's `q` present, the first hop is priced by
  * `hopPricing.ts` instead of the credit below; absent, nothing changes.
  */
-export type SegmentStat = { avg: number; sd?: number; n: number; drive?: number };
+export type SegmentStat = { avg: number; sd?: number; n: number; drive?: number; driveN?: number };
 export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
 /**
  * `low` is the p35 the calibrator still serves. NOTHING in the estimator reads
@@ -22,7 +22,7 @@ export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
  * that did was reverted. Kept so a correctly-derived rest model can use it.
  */
 /** `q`: ascending quantiles of the standing time at this stop (see hopPricing.ts). */
-export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[] };
+export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
@@ -235,8 +235,8 @@ export function computeUpcomingArrivals(
     // The stand/drive pricing (hopPricing.ts) and its standing memory engage
     // only on a route the calibrator serves the split for; otherwise nothing
     // below this line behaves differently from before it existed.
-    const splitServed = Object.values(routeSegs).some((s) => s.drive !== undefined)
-      && Object.values(routeDwells).some((d) => d.q !== undefined && d.q.length > 0);
+    const splitServed = Object.values(routeSegs).some(driveAdequate)
+      && Object.values(routeDwells).some(standAdequate);
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;
@@ -407,11 +407,13 @@ export function computeUpcomingArrivals(
         // the chord proration below then runs, because both act on the whole
         // arrival-to-arrival segment and re-bill the layover as the bus leaves
         // (docs/eta-estimator-design.md, "the departure cliff").
-        const split = step === 1 && seg && seg.n >= 1 && seg.drive !== undefined && seg.drive >= 0
-          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])),
-              stand: routeDwells[String(stops[busIdx])]?.q }
+        // Both halves must be adequately sampled for THIS hop, independently
+        // of every other hop; a thin cell prices exactly as master does.
+        const standStat = routeDwells[String(stops[busIdx])];
+        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
           : null;
-        if (split && split.stand && split.stand.length > 0) {
+        if (split) {
           const t = bus.lat && bus.lon
             ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
             : 0;

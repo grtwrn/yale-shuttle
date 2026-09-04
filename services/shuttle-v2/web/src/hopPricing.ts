@@ -153,3 +153,36 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+
+/**
+ * Sample adequacy. One day of archive cannot populate every cell: the first
+ * paired run had Building 750 with no stand table at all and Green tables
+ * with n = 1, and the split MISPRICED the West Campus fold (Purple jumps
+ * 62 -> 73%) while fixing Red. A thin cell is withheld, not blended — the hop
+ * then prices exactly as master does — and switches itself on as the
+ * recorder fills it.
+ *
+ * Thresholds from what the arithmetic needs, not from taste. A 10-quantile
+ * stand table wants at least two samples behind each quantile, and the
+ * conditional median at r near the median reads only the upper half, so 20
+ * leaves 10 behind it. Drive is a low-variance mean (5% of within-hop
+ * variance, sd ~20-30 s), so 10 samples put its standard error under ~10 s.
+ * Red's 344 Winchester hop (n = 24/25 after one day) clears both; the n = 1
+ * tables do not.
+ *
+ * `qn` / `driveN` are the sample counts behind the table; when the payload
+ * carries neither, the entry's own `n` is used.
+ */
+export const MIN_STAND_SAMPLES = 20;
+export const MIN_DRIVE_SAMPLES = 10;
+
+export function standAdequate(d: { q?: number[] | undefined; qn?: number | undefined; n: number } | undefined): d is { q: number[]; qn?: number; n: number } {
+  if (!d || !d.q || d.q.length < 3) return false;
+  for (let i = 1; i < d.q.length; i++) if (!(d.q[i]! >= d.q[i - 1]!)) return false;
+  return (d.qn ?? d.n) >= MIN_STAND_SAMPLES;
+}
+
+export function driveAdequate(s: { drive?: number | undefined; driveN?: number | undefined; n: number } | undefined): s is { drive: number; driveN?: number; n: number } {
+  if (!s || s.drive === undefined || !(s.drive >= 0)) return false;
+  return (s.driveN ?? s.n) >= MIN_DRIVE_SAMPLES;
+}

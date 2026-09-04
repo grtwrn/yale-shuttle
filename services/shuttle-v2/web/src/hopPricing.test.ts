@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceFirstHop, remainingStandSec, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, MIN_DRIVE_SAMPLES, MIN_STAND_SAMPLES, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 
 // Ten quantiles (p5..p95) of a layover shaped like 344 Winchester's: median ~475 s, long right tail.
 const Q = [60, 150, 260, 360, 440, 510, 580, 660, 780, 960];
@@ -89,5 +89,29 @@ describe("standingAt — the flag is a publication signal, the clock is the stan
     standingAt(s1, "k", { ...at(10), at_stop_id: 11, at_stop_since: since }, t0, stopCoords, STANDING_HOLD_M);
     expect(standingAt(s2, "k", { ...at(10) }, t0 + 5_000, stopCoords, STANDING_HOLD_M)).toBeNull();
     expect(standingAt(s1, "k", { ...at(10) }, t0 + 200_000, stopCoords, STANDING_HOLD_M)).toBeNull();
+  });
+});
+
+describe("sample adequacy — a thin cell is withheld, never blended", () => {
+  it("stand needs an ascending table with >= MIN_STAND_SAMPLES behind it", () => {
+    expect(standAdequate({ q: Q, qn: 24, n: 3 })).toBe(true);        // Red, 344 Winchester after one day
+    expect(standAdequate({ q: Q, qn: 1, n: 40 })).toBe(false);       // a Green fold table
+    expect(standAdequate({ q: Q, n: 19 })).toBe(false);              // no qn: falls back to n
+    expect(standAdequate({ q: Q, n: 20 })).toBe(true);
+    expect(standAdequate({ q: [300, 200, 400], qn: 50, n: 50 })).toBe(false); // not a quantile table
+    expect(standAdequate({ q: [300], qn: 50, n: 50 })).toBe(false);
+    expect(standAdequate({ med: 400, sd: 50, n: 400 } as any)).toBe(false);   // Building 750: no q at all
+    expect(standAdequate(undefined)).toBe(false);
+  });
+  it("drive needs a non-negative value with >= MIN_DRIVE_SAMPLES behind it", () => {
+    expect(driveAdequate({ drive: 25, driveN: 25, n: 2 })).toBe(true);
+    expect(driveAdequate({ drive: 25, driveN: 9, n: 200 })).toBe(false);
+    expect(driveAdequate({ drive: 25, n: 10 })).toBe(true);
+    expect(driveAdequate({ drive: -1, driveN: 50, n: 50 })).toBe(false);
+    expect(driveAdequate({ avg: 300, n: 50 } as any)).toBe(false);
+  });
+  it("thresholds are the documented ones", () => {
+    expect(MIN_STAND_SAMPLES).toBe(20);
+    expect(MIN_DRIVE_SAMPLES).toBe(10);
   });
 });
