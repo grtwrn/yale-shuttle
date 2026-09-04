@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M, CANONICAL_TRIP, conservativeDrift,
-  ARRIVAL_M, DEPARTURE_M, departureBetween, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
+  CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
+  departureBetween, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
   pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -855,6 +856,88 @@ describe("was there an EVENT behind the flag?", () => {
     // Inside the feed's ~30 m deadband nothing has been shown to move.
     expect(departureBetween([{ name: "#1", distM: 20 }], [{ name: "#1", distM: 45 }])).toBe("closing");
     expect(departureBetween([{ name: "#1", distM: 20 }], [{ name: "#1", distM: 55 }])).toBe("departure");
+  });
+});
+
+describe("a bus already at the stop when the rider walks up", () => {
+  // Seven of the ten `no-arrival` findings in the log were this: the card
+  // says "now, then N min" precisely BECAUSE a bus is at the stop, and the
+  // run failed for never seeing an arrival it was looking straight at.
+  it("is at the stop, by distance or by the feed's own word", () => {
+    // 2026-09-04 11:35 — #310, 38 m, at_stop 48, which is the board stop.
+    expect(isAtBoardStop(38, 48, 48)).toBe(true);
+    // 12:02 — #304 at 13 m. 11:03 — #304 at 49 m, four metres past the old bound.
+    expect(isAtBoardStop(13, 48, 48)).toBe(true);
+    expect(isAtBoardStop(49, 48, 48)).toBe(true);
+    // The feed's word carries a bus the distance test would still miss.
+    expect(isAtBoardStop(72, 48, 48)).toBe(true);
+    // 11:50 — #316 885 m out, flagged at no stop. Not an arrival.
+    expect(isAtBoardStop(885, null, 48)).toBe(false);
+    // Flagged at a DIFFERENT stop is not this stop.
+    expect(isAtBoardStop(300, 11, 48)).toBe(false);
+    // And with no board stop resolved, distance is all there is.
+    expect(isAtBoardStop(38, 48, null)).toBe(true);
+    expect(isAtBoardStop(300, 48, null)).toBe(false);
+  });
+});
+
+describe("how long to keep watching", () => {
+  const min = (n) => n * 60_000;
+
+  it("gives a watch that opens on a bus at the stop the floor, not the promise", () => {
+    // "now, then 72 min": `first` is the [0, 10) bucket, so the promise is
+    // zero and only the eight-minute floor keeps the watch alive at all.
+    expect(deadlineForPromise(0, 10, 25, 0)).toBe(min(8));
+  });
+
+  it("extends when the card re-pins to a bus 19 min out", () => {
+    // THE 2026-09-04 12:02 DEFECT. The deadline was set once, at first sight,
+    // from a bus already at the stop — so the watch expired eight minutes in
+    // with "in 19, 31 min" on screen and blamed the app.
+    const opened = deadlineForPromise(0, 10, 25, 0);
+    const repinned = deadlineForPromise(min(1), 20 * 60, 25, 0);
+    expect(repinned).toBeGreaterThan(opened);
+    // 2 x 20 + 6 = 46 min, which the 25-minute ceiling cuts to 25 from the
+    // START of the watch — never 25 more minutes from this reading.
+    expect(repinned).toBe(min(25));
+  });
+
+  it("cannot be pushed past the ceiling by a countdown that keeps re-promising", () => {
+    for (const t of [0, min(5), min(20), min(24)]) {
+      expect(deadlineForPromise(t, 40 * 60, 25, 0)).toBeLessThanOrEqual(min(25));
+    }
+  });
+});
+
+describe("no bus came: whose fault", () => {
+  const at = (s) => 1_700_000_000_000 + s * 1000;
+  const s = (t, raw) => ({ atMs: at(t), present: true, eta: parseBusEtaText(`🚌 ${raw}`) });
+
+  it("blames the app for a promise that came due while it was still watching", () => {
+    // Purple, 2026-09-04 19:18: "in 14, 42 min" and no bus 10 min after it
+    // was due. That is the app, and it must keep failing the run.
+    const samples = [s(0, "in 14, 42 min"), s(600, "in 4, 32 min")];
+    const broken = brokenPromise(samples, at(1500));
+    expect(broken).toMatchObject({ raw: "in 14, 42 min" });
+    expect(broken.overdueSec).toBe(600);
+  });
+
+  it("blames nobody when the ceiling stopped the watch before anything was due", () => {
+    // Red, 09:02: opened on "in 30, 51 min" and the 25-minute cap cut it
+    // short. No promise ever came due, so `no-arrival` would be a lie —
+    // this is `unfinished`, and it does not fail the run.
+    const samples = [s(0, "in 30, 51 min"), s(1500, "in 5, 18 min")];
+    expect(brokenPromise(samples, at(1542))).toBeNull();
+  });
+
+  it("counts the promise from the reading that made it, not from the watch's start", () => {
+    // A bus 2 min out at minute twelve is overdue at minute fifteen even
+    // though the watch is young by its opening promise.
+    expect(brokenPromise([s(0, "in 30 min"), s(720, "in 2 min")], at(900)))
+      .toMatchObject({ raw: "in 2 min" });
+    // And a reading with no countdown cannot break a promise it never made.
+    expect(brokenPromise([{ atMs: at(0), present: true, eta: null }], at(9999))).toBeNull();
+    expect(brokenPromise([], at(9999))).toBeNull();
   });
 });
 

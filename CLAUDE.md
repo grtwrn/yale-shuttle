@@ -1045,6 +1045,37 @@ feed's own reckoning stops agreeing — by distance band, at_stop against not:
 `eta-accuracy.mjs` deliberately KEEPS its own 45 m: its published numbers
 were taken at that bound.
 
+**A bus already at the stop when the rider walks up IS an arrival**
+(2026-09-04). The first poll used to arm `nearFlags` for every bus within
+reach and move on, on the reasoning that such a bus "is not an arrival this
+run watched for". Half right, and it cost **14 of the 23 `no-arrival`
+findings in the log**: the card says "now, then 72 min" *because* a bus is at
+the kerb, it pulls away seconds later, and the run failed for never seeing an
+arrival it was looking straight at (#310 at 38 m under `at_stop 48`; #316 at
+12 m; #304 at 13 m). It is credited now — and the watch does NOT end on it,
+because the interesting question is the next bus. `watchedArrival`, not
+`arrived`, breaks the loop.
+
+**The deadline is re-derived on every reading, not once at first sight.** A
+watch that opens on a bus at the stop takes its promise from the [0, 10)
+bucket, so `deadlineForPromise` gives it the 8-minute floor — and when the
+card re-pinned to a bus 19 min out, the deadline stayed put and the watch
+expired mid-approach. It only ever extends, and is capped at `WATCH_MAX_MIN`
+from the START of the watch so a countdown that keeps re-promising cannot
+hold a browser open for ever. Keying on the READING rather than on the pinned
+vehicle's name is deliberate: the pin is sampled every two minutes at best.
+
+**`no-arrival` and `unfinished` are different things.** `brokenPromise` asks
+whether any promise the app made ELAPSED while the canary was still watching.
+One did → the app said a bus would be here and it was not → `no-arrival`, a
+finding. None did → the 25-minute ceiling stopped us before the bus was ever
+due → `unfinished`, which is counted in `--summary` and fails nothing.
+Together with the fix above, `no-arrival` goes **23 → 4** across the archive.
+**But the `ok` rate barely moves — 17% → 20%** — because `no-arrival` was the
+sole failure on only 2 runs. What actually fails runs is `eta-jump` (86
+occurrences, the sole reason on 12 runs) and then `feed-error` (31). Do not
+expect `no-arrival` work to move the health number.
+
 **A run that parsed zero countdowns is the instrument, not the app.** Eight
 runs in the log were recorded between #111 (which removed the glyph
 `parseOptions` keyed on) and #113 (which fixed it), and one of them filed
