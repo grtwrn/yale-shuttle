@@ -2,7 +2,7 @@
 
 import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
-import { anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
+import { anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
 import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
@@ -447,16 +447,15 @@ export function computeUpcomingArrivals(
       // clock survives that shuffle (PR #67); so does this memory of it.
       let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
       if (anchorStore && splitServed) {
-        // A layover taken SHORT of the marker is still that layover. The
-        // candidate is always the next stop in sequence — never the nearest —
-        // and it only qualifies if its own table says it is a layover stop.
-        // See APPROACH_ZONE_M in hopPricing.ts for the measurement.
-        const nextStopId = stops[(gpsAnchorIdx + 1) % stops.length];
-        const nextStand = nextStopId !== undefined ? routeDwells[String(nextStopId)] : undefined;
-        const approach = nextStopId !== undefined && standAdequate(nextStand)
-          ? { stopId: nextStopId, typicalStandSec: remainingStandSec(nextStand.q, 0) }
-          : undefined;
-        const st = standingAt(anchorStore, anchorKey, bus, now, stopCoords, STANDING_HOLD_M, approach);
+        // A layover taken SHORT of the marker is still that layover. The whole
+        // decision — including the approach zone — lives in `liveAnchor.ts`,
+        // because the pause chip on screen has to reach the same answer and
+        // used to reach a different one (see resolveStandingStop, report #102).
+        // The anchor index is passed in: it is already resolved for this poll
+        // and re-resolving it would consume the fix memory a second time.
+        const st = resolveStandingStop(
+          bus, cfg, routeStops, stopCoords, routeDwells, now, anchorStore, gpsAnchorIdx,
+        );
         if (st) {
           const N = stops.length;
           for (let i = 0; i < N; i++) {

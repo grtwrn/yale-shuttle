@@ -1079,9 +1079,68 @@ fixture pins it. Two details make that work and are worth keeping:
   283 s, not the three short ones a naive same-coordinate run would see, which
   is what carries it past the 150 s gate.
 
-The **previous-stop** shape is the one still open: `at_stop_id` reports Canal /
-Munson correctly, so the elapsed is attributed correctly — but 344's full stand
-is then still charged ahead, and the bus takes only a token pause there.
+**The chip reads the same answer as the price** (`resolveStandingStop` in
+`liveAnchor.ts`). The pause chip used to derive its hold straight from
+`at_stop_id` / `at_stop_since`, which agreed with the price until the approach
+zone shipped and then stopped: the countdown priced a bus as standing while the
+chip beside it showed nothing and the row read as still rolling. That is report
+#102 — "a bus sitting in a garage lot was counted down as if on its way" — and
+it is the same "two answers, one screen" this module exists to end. The
+standing decision now lives in `liveAnchor.ts` once; `computeUpcomingArrivals`
+and the chip both call it, and the chip marks an approach hold with a `~`.
+
+### Two things measured and NOT built (2026-09-04)
+
+**Attributing the approach rest to the stop's stand table.** The obvious
+follow-up — make `stop_visits` count the rest so 344 stops collecting 115 s
+samples — does not survive measurement, and the cheap version is actively
+dangerous.
+
+The observation is already in the table: `anchored_at` is when the stop became
+the bus's nearest, `pinned_at` when it came within `AT_STOP_PIN_M`, and the
+flagship visit reads `anchored 13:27:48 / pinned 13:34:58 / departed 13:36:53`.
+A normal approach closes that gap in a poll (p50 **10 s**, p90 70 s, p95 110 s);
+a rest leaves it minutes wide (3.12% of pinned visits exceed 150 s). So the gap
+looks like a free discriminator. **It is not.** Counting a wide gap as stand:
+
+- moves the target barely — Red 344 Winchester p50 **270 → 306 s** on 5 of 45
+  visits — because 11 of 13 rests are already taken at the marker, so the table
+  was mostly right;
+- and wrecks stops that are not layovers at all. The wide-gap population is
+  dominated by idle and overnight buses parked near an arbitrary stop: Blue West
+  #126 at 333 Cedar carries gaps of 1263, 1070, 1026 and 989 s between 22:00 and
+  03:00 against a 62 s median there; Purple #332 sits 1356 s near 300 George St
+  (median 70 s). Un-gated it also puts 1065 s and 1054 s onto Red's
+  130 Prospect (N), whose median is 35 s — which would make it *look* like a
+  layover stop and so arm the client's approach rule there. **That is a feedback
+  loop into #130**, and it is the reason not to do this by gap alone.
+
+A `passed` outcome is not enough of a gate either (`RD #316 16:33:41` sat 660 s
+with 344 nearest and then rolled through without stopping). Doing it properly
+means the DETECTOR recording the rest explicitly — where the bus rested, for how
+long, inside the zone — and the CALIBRATOR deciding whether to count it, gated
+on a layover median computed from never-extended samples so the gate cannot feed
+on its own output. That is a schema addition for +36 s on one stop's p50; it is
+designed here and deliberately not built.
+
+**Crediting a long hold at the PREVIOUS stop against the layover ahead.** This
+is the `[triage]`-worthy one because it has already been tried: `arrivals.ts`
+records that it shipped on 2026-09-03 and was reverted, because over a week of
+arrivals the layover was still taken as scheduled in 292 of 321 cases (91%).
+Re-measured on 2026-09-04 as fresh evidence, it does **not** overturn that.
+Fleet-wide only 10 cases clear a 150 s hold, 4 of them short — but on the pair
+the operator actually watched, **Red Canal / Munson → 344, three of four buses
+took a normal layover anyway** (145 s, 291 s, and 135 s against a 275 s median).
+Crediting them would make the ETA optimistic in the majority case, which is the
+direction that strands a rider. Green's Orange / Bishop → Orange / Edwards is
+3 for 3 short and looks like a real pattern, but it is one vehicle on one day
+and Green is a fold route excluded from the split. **Do not re-add without a
+week of evidence on the specific pair.**
+
+The **previous-stop** shape therefore stays open by decision, not by oversight:
+`at_stop_id` reports Canal / Munson correctly, so the elapsed is attributed
+correctly — but 344's full stand is still charged ahead, and sometimes the bus
+takes only a token pause there.
 
 Two things this is NOT. It is not a slew limiter: the standing term is dropped
 the instant the bus rolls, so a genuine early departure still collapses at full
