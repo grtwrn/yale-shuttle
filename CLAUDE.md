@@ -694,6 +694,56 @@ the moment and both numbers.
 Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
 changes shape, and say in the PR what moved.
 
+### The stand/drive split is served (2026-09-04)
+
+PR #81's first-hop pricing — `median(stand − r | stand > r) + drive` at the
+stop, drive alone prorated en route (`web/src/hopPricing.ts`) — was live and
+INERT for a night: `/api/buses` carried neither `dwells[route][stop].q` nor
+`segments[route]["A-B"].drive`, so every request took the fallback path. The
+calibrator now reads `stop_visits` / `legs` (PR #83's derivation) on its
+5-minute cadence and attaches, on the **`at_stop_since` clock** (the client's
+`r`), pooled over 30 days — a (stop, hour) cell has a median of two samples:
+
+- `q` / `qn` — ten ascending stand quantiles at levels `(i + 0.5) / 10`
+  (`STAND_Q_COUNT` is part of the wire contract) over stopped visits,
+  `departed_at − pinned_at`; `qn` is the visit count.
+- `drive` / `driveN` — the **median** one-hop leg, `at_stop_since(B) −
+  departure(A)`; a drive includes any hold at a light, and one red should
+  not move the number the way it moves a mean.
+
+Three rules to preserve:
+
+- **Serve what is measured with the true counts; never pre-filter.** The
+  client gates (`MIN_STAND_SAMPLES` 20 / `MIN_DRIVE_SAMPLES` 10) and prices a
+  thin hop exactly as before. A server-side floor would drift from the
+  client's and silently hide cells the client would take.
+- **Withheld on routes that repeat a stop** (`foldRoutes`: Green 9, Purple
+  10, by structure). The payload keys a stand table by stop id, so a stop the
+  loop visits twice gets one table pooled over two different passes, and the
+  derivation inherits the detector's anchor on the folds. The rider simulator
+  measured it: served everywhere, Red's departure-poll rise went +220 s →
+  +1 s and 330 → 2 riders saw ≥180 s, but **Purple 163 → 188 strands, Green
+  165 → 173**; withheld, both are byte-identical to master. Lift it when the
+  anchor lane resolves the fold — with a sim run, not by argument.
+- **Whole seconds on the wire, and the payload is not compressed in
+  production** (`content-encoding` is absent), so the cost is the raw one:
+  +12.8 KB per poll (+14.4%; +3.4 KB if it were gzipped). Compressing the
+  cached payload string once per version would be the real fix; not done.
+
+Validated against `docs/data/departure-tables-2026-09-03.json`: Red 344
+Winchester `q` p5/≈p50/p95 = 118/302/598 s over n=24 (reference
+118.1/302.8/598.1), drive 15 s over n=25 (reference median 15.1).
+
+**Backfill from the archive.** `scripts/backfill-departures.ts` runs the
+collector's own reducer over `~/shuttle-captures/positions-*.jsonl` and writes
+rows through the collector's own mapping (`src/collector/visitRows.ts`, shared
+with `persistVisits`), with a cutoff at the earliest live row and exact-key
+dedup (idempotent). `--out rows.json` + `scripts/backfill-departures-apply.cjs`
+(plain CJS, runs on the machine with `/app/node_modules/better-sqlite3`) is the
+production path. Without it the live tables start at 22:21 ET 2026-09-03 and
+Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 39
+hops clear them at once (Red 13, Blue Day 22, Pink 4).
+
 ### The rider canary (`scripts/rider-canary.mjs`)
 
 Everything above scores predictions **in aggregate** — median error, share
