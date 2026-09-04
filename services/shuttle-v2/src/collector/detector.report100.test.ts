@@ -6,6 +6,15 @@ import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Route, Stop } from "../schema/api.js";
 
 import {
+  BLUE_DAY,
+  CEDAR_333,
+  FEED,
+  RESTARTS,
+  STAND_BEGAN,
+  T0,
+} from "./__fixtures__/report100-cedar-stand.js";
+
+import {
   MAX_HANDOFF_GAP_MS,
   seedStationaryFromHistory,
   step,
@@ -37,116 +46,24 @@ import {
  * radius on that poll. A shared stamp is what a missed poll looks like from any
  * cause.
  *
- * Every coordinate below is an unedited `raw_positions` row for #44 (`bus_id`
- * 65959 throughout — no id reissue), and the stops are the real ones from the
- * checked-in 172-stop fixture, sequenced as production lists route 1.
+ * Every coordinate comes from `__fixtures__/report100-cedar-stand.ts` — the
+ * unedited `raw_positions` rows for #44 (`bus_id` 65959 throughout, no id
+ * reissue) — and the stops are the real ones from the checked-in 172-stop
+ * fixture, sequenced as production lists route 1.
  */
 describe("report #100: the Blue #44 layover at 333 Cedar, replayed from production", () => {
   const allStops: Stop[] = JSON.parse(
     readFileSync(new URL("../server/__fixtures__/stops.json", import.meta.url), "utf8"),
   ) as Stop[];
-  // Production `routes.stops_json` for route 1 (Blue - Weekday Daytime).
-  const BLUE_DAY = [
-    106, 34, 101, 47, 100, 102, 105, 69, 139, 136, 130, 129, 140, 133, 135, 138,
-    97, 118, 42, 98, 38, 39, 72, 43, 10, 2, 5, 52, 41, 20, 108,
-  ];
   const routes: Route[] = [
     { id: 1, name: "Blue - Weekday Daytime", shortName: "BD", color: "#1565C0", stops: BLUE_DAY },
   ];
   const net = TransitNetwork.build(allStops, routes);
 
-  const CEDAR_333 = 10;
-
-  /** 2026-09-04T15:53:20.751Z — the last poll before #44 turns in toward the stop. */
-  const T0 = Date.parse("2026-09-04T15:53:20.751Z");
   const at = (ms: number) => T0 + ms;
 
-  /** Milliseconds after T0, latitude, longitude — the feed, unedited. */
-  const FEED: Array<[number, number, number]> = [
-    [0, 41.301950, -72.933273],
-    [13810, 41.302422, -72.933829],
-    [18842, 41.302702, -72.933986],
-    [23829, 41.302702, -72.933986],
-    [28839, 41.302702, -72.933986],
-    [33777, 41.302953, -72.934122],
-    [38872, 41.302953, -72.934122],
-    [43803, 41.302953, -72.934122],
-    [48762, 41.302953, -72.934122],
-    [53999, 41.302953, -72.934122],
-    [58782, 41.302953, -72.934122],
-    [63871, 41.302953, -72.934122],
-    [68866, 41.302953, -72.934122],
-    [74225, 41.302953, -72.934122],
-    [79279, 41.302953, -72.934122],
-    [84187, 41.302953, -72.934122],
-    [89183, 41.302953, -72.934122],
-    [94251, 41.302953, -72.934122],
-    // 16.9 s hole: the process restarted under it.
-    [111159, 41.302953, -72.934122],
-    [116196, 41.302953, -72.934122],
-    [121134, 41.302953, -72.934122],
-    [126245, 41.302953, -72.934122],
-    [131344, 41.302953, -72.934122],
-    [136187, 41.302953, -72.934122],
-    [141137, 41.302953, -72.934122],
-    [146258, 41.302953, -72.934122],
-    [151173, 41.302953, -72.934122],
-    [156119, 41.302953, -72.934122],
-    [161177, 41.302953, -72.934122],
-    [166158, 41.302953, -72.934122],
-    [171804, 41.302953, -72.934122],
-    [176806, 41.302953, -72.934122],
-    [181921, 41.302953, -72.934122],
-    [186893, 41.302953, -72.934122],
-    [191745, 41.302953, -72.934122],
-    [196762, 41.302953, -72.934122],
-    // 16.4 s hole: the restart the rider's payload caught.
-    [213152, 41.302953, -72.934122],
-    [218071, 41.302953, -72.934122],
-    [223165, 41.302953, -72.934122],
-    [228103, 41.302953, -72.934122],
-    [233093, 41.302953, -72.934122],
-    [238245, 41.302953, -72.934122],
-    [243131, 41.302953, -72.934122],
-    [248101, 41.302953, -72.934122],
-    [253145, 41.302953, -72.934122],
-    [258098, 41.302953, -72.934122],
-    [263111, 41.302953, -72.934122],
-    [268252, 41.302953, -72.934122],
-    [273421, 41.302953, -72.934122],
-    [278451, 41.302953, -72.934122],
-    [283420, 41.302953, -72.934122],
-    [288406, 41.302953, -72.934122],
-    [293405, 41.302953, -72.934122],
-    [298357, 41.302953, -72.934122],
-    [303367, 41.302953, -72.934122],
-    [308639, 41.302953, -72.934122],
-    [313393, 41.302953, -72.934122],
-    [318408, 41.302953, -72.934122],
-    [323378, 41.302953, -72.934122],
-    [328395, 41.302953, -72.934122],
-    [333397, 41.302953, -72.934122],
-    [338648, 41.302953, -72.934122],
-    // 15.0 s hole: another restart.
-    [353684, 41.302953, -72.934122],
-    [358679, 41.302953, -72.934122],
-    [363654, 41.302953, -72.934122],
-    [368697, 41.302953, -72.934122],
-    [373678, 41.302953, -72.934122],
-    [378705, 41.302953, -72.934122],
-    [383764, 41.302953, -72.934122],
-    [388628, 41.302953, -72.934122],
-    [393792, 41.302953, -72.934122],
-    // The bus creeps 30 m up to the kerb. Same stop, same wait.
-    [398704, 41.303208, -72.934242],
-    [403647, 41.303208, -72.934242],
-    [408883, 41.303208, -72.934242],
-  ];
-
-  /** The poll on which the bus first comes within the pin radius of stop 10. */
-  const STAND_BEGAN = 18842;
   /** The restart the rider's payload carried as `at_stop_since`. */
-  const RESTART = 213152;
+  const RESTART = RESTARTS[1]!;
   /** `computedAtMs` on the trip option attached to report #100 (15:58:12.934Z). */
   const RIDER_SAW = 292183;
 

@@ -1417,21 +1417,69 @@ id reissue across a layover) restarts the clock deliberately and still does —
 and it stops at a `MAX_HANDOFF_GAP_MS` hole, because a bus that went off the
 air is one the live rules re-anchor anyway.
 
-Two properties to keep if you touch it. **It reaches `stationarySince` and
-nothing else** — not `enteredAt` — so no dwell, segment, arrival or visit row
-moves and no statistic can shift; the only other reader of the clock
-(`departure.ts`, "re-pinned with a fresh clock") sits in a branch that needs an
-already-open pass, which a first poll cannot have. And **`step`'s seed
-parameter defaults to null**, so every replay and backfill harness is
-byte-identical to master by construction — the reason this needed no paired
-replay. `detector.report100.test.ts` replays the real feed;
+**`step`'s seed parameter defaults to null**, so every replay and backfill
+harness is byte-identical to master by construction.
+`detector.report100.test.ts` replays the real feed;
 `collector.report100.test.ts` boots a real collector against a database that
-already holds the stand.
+already holds the stand. The feed itself lives in
+`src/collector/__fixtures__/report100-cedar-stand.ts` so the two cannot replay
+different rows and agree with each other about the wrong ones.
 
-This does not make a restart free: `at_stop_id` is still withheld for the first
-15 s (that gate is measured from `enteredAt`), and the duplicate `arrivals`
-rows are untouched. Deduplicating those means seeding `enteredAt` too, which
-WOULD move calibration — a separate job, and not a small one.
+#### And the restart also wrote a second arrival row
+
+PR #129 stopped at `stationarySince` deliberately — seeding `enteredAt` moves
+calibration, and it wanted the measurement first. Here it is, from a 2026-09-04
+production snapshot:
+
+| | | |
+|---|---|---|
+| **1,486** split stands in 7 days | 1,719 duplicate arrival rows | 4.3% of every arrival |
+| **1,143** segments | short by a median 98 s | 0.93% of the table |
+| **1,094** dwells | short by a median 101 s | 0.66% of the closed arrivals |
+
+96.8% of the duplicate rows land on a stamp shared by six or more buses — a
+restart re-anchors the whole fleet on one poll, which is the fingerprint that
+identifies one after the fact. The damage concentrates exactly where the
+standing model matters, because `stop_visits.pinned_at` is what the served
+stand table measures from (`departed_at − pinned_at`) and a restart moves it to
+the middle of the stand. Served-route medians, as recorded against merged:
+**344 Winchester (3:11) 273 → 310 s, Winchester / Mansfield (3:121) 383 → 479,
+333 Cedar (1:10) 405 → 475.**
+
+So the seed now also RESUMES the visit. When the recorded run says the bus is
+still standing and the database still holds the `arrivals` row this stand
+opened, `step` takes that row's instant as `enteredAt` and **emits no arrival**
+— one stand, one row, and the departure closes it with the whole stand.
+`at_stop_id` stops being withheld for 15 s with it, since that gate is measured
+from `enteredAt` too.
+
+Four conditions gate the resume, and all four are the safety (`resumeArrival`
+in `collector.ts`):
+
+- **`prev` is null** — a first sighting, exactly as #129.
+- **The bus is demonstrably still at rest**: `obs` repeats the previous fix.
+  A fresh fix means it is moving and there is nothing to resume.
+- **The bus's LATEST arrival is at this stop, on this route, still open.** A row
+  from an earlier lap has arrivals at other stops after it and fails on the
+  first test — which is why no time window has to be guessed at. Walking back
+  over consecutive open rows and taking the earliest is what merges a stand a
+  previous release already split.
+- **It lies inside the unbroken observed run** (`StandRun.unbrokenSince`, a
+  `MAX_HANDOFF_GAP_MS` walk with distance ignored). Deliberately NOT
+  `stationarySince`: that is the first sample inside the pin radius, and the
+  arrival precedes it by a median 10 s and a p95 of 95 s, so gating on it would
+  miss the row for half of all stands.
+
+The visit reducer is seeded from the same run (`openPass`'s `resume`), so
+`pinned_at` and `arrivedAt` are the stand's own instants rather than the
+restart's.
+
+**The historical rows are still short.** `scripts/merge-restart-split-arrivals.ts`
+merges them — dry run by default, idempotent, `--target <db> --apply`. It fixes
+`arrivals` and `segments` and deliberately does NOT invent a
+`stop_visits.pinned_at`: `raw_positions` is swept at six hours, so for a stand a
+month old there is nothing left to recompute it from, and the arrival instant is
+not a substitute. `stop_visits` is a 30-day window and heals itself.
 
 ## Verification harnesses
 

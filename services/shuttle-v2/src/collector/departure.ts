@@ -17,6 +17,7 @@ import {
   type BusObservation,
   type BusState,
   type DetectorEvent,
+  type StandSeed,
   type StationarySeed,
   type TrackedIdentity,
   type TrackPlan,
@@ -365,11 +366,20 @@ function anchorOf(after: BusState, obs: BusObservation): Anchor {
   };
 }
 
-function openPass(network: TransitNetwork, anchor: Anchor, after: BusState, obs: BusObservation): Pass {
+function openPass(
+  network: TransitNetwork,
+  anchor: Anchor,
+  after: BusState,
+  obs: BusObservation,
+  // The stand this process was restarted in the middle of, as `raw_positions`
+  // recorded it. Null for every ordinary pass, which is every pass but the
+  // first poll after a restart.
+  resume: StandSeed | null = null,
+): Pass {
   const stop = network.stops.get(anchor.stopId);
   const d = stop ? distanceMeters(obs, stop) : Infinity;
   const pinned = after.stationaryStopId === anchor.stopId && d <= AT_STOP_PIN_M;
-  return {
+  const pass: Pass = {
     stopId: anchor.stopId,
     stopIndex: anchor.stopIndex,
     anchoredAt: anchor.enteredAt,
@@ -387,6 +397,19 @@ function openPass(network: TransitNetwork, anchor: Anchor, after: BusState, obs:
     firstMovedAt: null,
     candidate: null,
     nextAnchor: null,
+  };
+  if (!resume || !pinned || resume.restSince === null) return pass;
+  // The stand was already running when this process started. Its two reference
+  // points come from the recorded positions rather than from this poll, which
+  // is the whole point: `pinned_at` is what the stand table measures from
+  // (`departed_at − pinned_at`), so an unseeded pass prices the sliver after
+  // the restart as the whole stand and feeds the quantiles a short sample.
+  return {
+    ...pass,
+    pinnedAt: resume.stationarySince,
+    arrivedAt: resume.restedSince,
+    restSince: resume.restSince,
+    restPolls: resume.restPolls,
   };
 }
 
@@ -582,6 +605,11 @@ export function stepVisit(
   before: BusState | null,
   after: BusState | null,
   obs: BusObservation,
+  // What `step` recovered for a bus it had never seen — non-null ONLY when the
+  // detector resumed an already-open `arrivals` row, i.e. when the database and
+  // the recorded positions agree this stand never ended. Defaulted, so every
+  // replay and backfill harness runs the code it always did.
+  resume: StandSeed | null = null,
 ): VisitStepResult {
   if (!after) return prev ? closePass(prev, obs.collectedAt) : { state: null, events: [], resolved: [] };
   if (after === before) return { state: prev, events: [], resolved: [] };
@@ -601,7 +629,15 @@ export function stepVisit(
       resolved.push(...closed.resolved);
     }
     return {
-      state: { busId: obs.busId, busName: obs.busName, routeId: obs.routeId, pass: openPass(network, anchorOf(after, obs), after, obs), transit: null },
+      state: {
+        busId: obs.busId,
+        busName: obs.busName,
+        routeId: obs.routeId,
+        // A resume only ever applies where the detector itself had nothing:
+        // `step` consults the seed only when `before` is null.
+        pass: openPass(network, anchorOf(after, obs), after, obs, before ? null : resume),
+        transit: null,
+      },
       events,
       resolved,
     };
@@ -838,12 +874,12 @@ export function stepManyWithVisits(
   for (const obs of observations) {
     const key = plan.keys.get(obs.busId) ?? obs.busName;
     const before = states.get(key) ?? null;
-    const { state: after, events: ev } = step(network, before, obs, seed);
+    const { state: after, events: ev, resumed } = step(network, before, obs, seed);
     if (after) states.set(key, after);
     else states.delete(key);
     for (const e of ev) events.push(e);
 
-    const v = stepVisit(network, visits.get(key) ?? null, before, after, obs);
+    const v = stepVisit(network, visits.get(key) ?? null, before, after, obs, resumed);
     if (v.state) visits.set(key, v.state);
     else visits.delete(key);
     for (const e of v.events) visitEvents.push(e);
