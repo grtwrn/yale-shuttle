@@ -39,8 +39,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as METRICS from "./canary-metrics.mjs";
 import {
-  brokenPromise, CANARY_LINES, deadlineForPromise, haversineM, isAtBoardStop,
-  parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
+  ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, haversineM,
+  isAtBoardStop, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { seedTestId } from "./testId.mjs";
 
@@ -135,18 +135,29 @@ function writeState(s) {
 
 /** Click the collapsed card for `label`. The cards carry no test id and every
  *  style is inline, so the handle is `cursor: pointer` — which only the
- *  collapsed, tappable rows set — plus the card's own arrival clock. */
+ *  collapsed, tappable rows set — plus the card's own arrival clock.
+ *
+ *  THE CLOCK PATTERN COMES FROM canary-metrics.mjs, never from a copy here.
+ *  This function had its own `/arrive \d{1,2}:\d{2}[ap]/`, and when #123
+ *  dropped the word "arrive" from the card it matched nothing: no card was
+ *  ever tapped, `readPin` returned null, and the whole 12:30 run on
+ *  2026-09-04 recorded `board: null`, `pins: []` and a null `distM` on every
+ *  bus for 25 minutes — then filed `no-arrival` off ground truth it did not
+ *  have. #123 taught `parseOptions` both spellings and could not know this
+ *  second reader existed. Now there is one pattern and it is passed in. */
 async function openCard(page, label) {
-  return page.evaluate((l) => {
+  return page.evaluate(({ l, src, flags }) => {
+    const re = new RegExp(src, flags);
+    const hasClock = (t) => String(t || "").split("\n").some((x) => re.test(x.trim()));
     const cards = [...document.querySelectorAll("div")].filter((d) =>
       d.style.cursor === "pointer" &&
-      /arrive \d{1,2}:\d{2}[ap]/.test(d.innerText || "") &&
+      hasClock(d.innerText) &&
       (d.innerText || "").includes(l));
     cards.sort((a, b) => a.innerText.length - b.innerText.length);
     if (!cards[0]) return false;
     cards[0].click();
     return true;
-  }, label);
+  }, { l: label, src: ARRIVAL_CLOCK_RE.source, flags: ARRIVAL_CLOCK_RE.flags });
 }
 
 /**
@@ -532,7 +543,7 @@ async function runOnce(line) {
     // With no feed at all, "no bus reached the stop" is a statement about our
     // own network, not about the app — the arrival detector never got a
     // single position to judge.
-    if (!arrived && !record.feedUnreachable && record.samples.some((s) => s.present)) {
+    if (!arrived && !record.feedUnreachable && board && record.samples.some((s) => s.present)) {
       const lastSeen = [...record.samples].reverse().find((s) => s.present);
       // "No bus came" is two different things wearing one face, and calling
       // them both a failure made the canary cry wolf through every long Red
