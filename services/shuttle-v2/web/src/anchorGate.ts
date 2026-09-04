@@ -185,12 +185,49 @@ export function gateAnchor(
     return { index: prev.index, released: "agrees" };
   }
 
+  const N = Math.max(1, stopCount);
+
   // --- the raw anchor wants to move. What corroborates it?
   // 1. A real arrival or departure. `at_stop_id` flipping in either direction
   //    is the collector saying the bus reached or left a stop, and it is the
   //    signal that must never be delayed: a bus pulling out early goes
   //    at_stop_id -> null in the same poll the rider needs to see 5 -> 1.
-  if (atStopId !== prev.atStopId) return accept("at-stop");
+  //
+  //    With ONE exception, in one direction. When the flag CLEARS, the bus has
+  //    just left the stop the anchor was standing at — and on that very poll
+  //    the stateless scan retreats one chord, to the leg INTO that stop. It
+  //    does so because `last_stop_id` still names the stop before (the feed
+  //    lags a stop on arrival) and the scan breaks ties forward from there;
+  //    the chord into the stop wins over the chord out of it until the bus is
+  //    150 m clear or the feed catches up. So the stop the bus has just pulled
+  //    away from flips from a lap away to "now", and back a poll or two later.
+  //    Replayed over 9 h of production positions with the production layover
+  //    clock: 1,500 one-stop-backward anchor flips, 1,091 of them on exactly
+  //    this signal — the largest single defect class left on the board
+  //    (Red #316 did it three times in three minutes, Prospect / Hillside,
+  //    SCL and 130 Prospect (S)).
+  //
+  //    A bus that has just left S is not approaching S. Refusing that one
+  //    retreat is not a delay: the anchor stays on the chord OUT of the stop,
+  //    which is where the departure is priced — its proration ticks in this
+  //    same poll and 5 -> 1 on an early departure is untouched. It is not a
+  //    hold either: the bus itself is not being held anywhere, only the one
+  //    answer that contradicts the event is declined, and every other
+  //    relocation the flag change vouches for (an arrival, a forward move,
+  //    even a fold-back flip) still passes as before.
+  if (atStopId !== prev.atStopId) {
+    const departed = prev.atStopId !== null && atStopId === null;
+    const retreat = rawIndex === (prev.index - 1 + N) % N;
+    if (!(departed && retreat)) return accept("at-stop");
+    // Record that the departure has been seen (`atStopId: null`), or every
+    // later disagreement would re-open the at-stop gate against a stale
+    // value and a fold-back flip an hour later would walk straight through.
+    // The origin stays where the anchor was accepted, so the distance the
+    // bus covers from the stop still counts towards corroborating its next
+    // real move.
+    store.set(key, { ...prev, atStopId: null, disagreeSince: prev.disagreeSince ?? now, seenAt: now });
+    return { index: prev.index, released: null };
+  }
 
   const movedM = haversineMeters({ lat, lon }, { lat: prev.lat, lon: prev.lon });
 
@@ -198,7 +235,6 @@ export function gateAnchor(
   //    along the loop the raw anchor wants to jump; anything the travelled
   //    distance cannot account for is a relocation, not a progression. A
   //    backwards jump (forward > half the loop) is never distance-justified.
-  const N = Math.max(1, stopCount);
   const forward = ((rawIndex - prev.index) % N + N) % N;
   // The first hop is NOT free. Granting one stop unconditionally is precisely
   // the eventless population: `last_stop_id` advances under a byte-identical
