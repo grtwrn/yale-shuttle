@@ -958,10 +958,25 @@ Two things to take from it rather than the anecdote:
   |predicted − actual|. A mode-switching route-progress filter was built and
   **lost**: it cuts anchor flips 84% and the catastrophic ETA jumps do not
   fall, because they are conserved and merely re-labelled. Even a perfect
-  anchor is worth 1.00% → 0.96% of them. What wins is an output-side rate
-  limiter: **95% fewer catastrophic jumps for 2.7 s of median accuracy**. Read
-  it before proposing a Kalman filter, a traffic model, or anchor work aimed
-  at stability.
+  anchor is worth 1.00% → 0.96% of them. It concluded an output-side rate
+  limiter wins (95% fewer catastrophic jumps for 2.7 s of median accuracy);
+  **the operator rejected that** — "it can go 5->1 if it leaves early. but if
+  it is jitter we need a fix" — and the lurch classification below explains
+  why he is right: most of those jumps are real events. Read it before
+  proposing a Kalman filter, a traffic model, or anchor work aimed at
+  stability.
+- `docs/eta-lurch-classification.md` — every ETA jump ≥ 300 s classified by
+  whether a real-world event caused it, on the SHIPPED client (the replica is
+  checked against `computeUpcomingArrivals` on all 444,409 pairs and the run
+  fails on a mismatch). **92.4% of the catastrophic DROPS are eventful** — the
+  bus really departed, arrived or moved — so the 5→1 is information and must
+  arrive instantly. The jitter is the opposite sign: 93% of the eventless jumps
+  are the number going UP, and 250 of 380 are the collector restarting a
+  standing bus's clock, which zeroes the stall credit and re-prices the whole
+  first hop in one poll. **The served-dwell credit cap is NOT the lever**: it
+  binds on 11.5% of standing observations, the median standing bus having
+  served 0.4 of its expected rest. Fix the clock (`stationarySince`), and
+  prorate in both regimes; do not build a slew limiter.
 
 ## Verification harnesses
 
