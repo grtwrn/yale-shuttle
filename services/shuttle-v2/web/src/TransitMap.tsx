@@ -4232,16 +4232,25 @@ const TripPlanner: FC<{
                                     // rider read "3 of 10", subtracted, expected
                                     // seven more minutes, and the app said four.
                                     //
-                                    // So Y is now elapsed + the remainder the
-                                    // ETA actually bills. That keeps the shape
-                                    // AND makes the subtraction a rider does
-                                    // instinctively come out right — Y - X is
-                                    // exactly what is left. It grows as the bus
-                                    // sits, which is correct rather than odd: a
-                                    // bus twelve minutes into a hold really does
-                                    // have a longer expected total than one two
-                                    // minutes in. Elsewhere the old figure
-                                    // stands, since there it IS what is billed.
+                                    // So Y is now the stop's TYPICAL hold, taken
+                                    // from the same quantile table the ETA
+                                    // prices from — not from `dwell.med`.
+                                    //
+                                    // Unconditional, so it does not move while
+                                    // the bus sits. The conditional total does
+                                    // move, and correctly (inspection paradox:
+                                    // a bus still standing at five minutes is
+                                    // drawn from the longer-hold population).
+                                    // Both were put in front of the operator;
+                                    // their call was "well actually, stable
+                                    // makes more sense" — the figure reads as a
+                                    // fact about the STOP, and a number creeping
+                                    // upward while nothing happens invites the
+                                    // reader to hunt a cause that is not there.
+                                    //
+                                    // The cost: Y - X is NOT what is left. The
+                                    // countdown beside it is. Elsewhere the old
+                                    // figure stands, since there it IS billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                           title={stand == null
                                             ? "Time the bus has been sitting here"
@@ -4250,7 +4259,7 @@ const TripPlanner: FC<{
                                               : `Typically holds ~${fmtShort(stand.sec)}`}>
                                       ⏸ {fmtShort(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
-                                        ? ` / ~${fmtShort(liveElapsedSec! + stand.sec)}`
+                                        ? ` / ~${fmtShort(stand.typicalSec ?? stand.sec)}`
                                         : ` / ~${fmtShort(stand.sec)}`}
                                     </span>
                                   )}
