@@ -45,6 +45,7 @@ import { topVisibleOptions,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { rideEndDecision } from "./rideEnd";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -6293,6 +6294,21 @@ const TransitMap: FC = () => {
     } catch { return true; }
   });
   const [locateError, setLocateError] = useState<string | null>(null);
+  // WHEN the last fix was taken, so a check can tell a live position from a
+  // frozen one (report #96 — see rideEnd.ts). The browser's own timestamp is
+  // preferred, since the rescue one-shot will hand back a fix up to two
+  // minutes old, but it is only trusted when it reads as a sane epoch: a few
+  // engines have shipped a different clock here, and a bogus one must not be
+  // able to make a stale fix look fresh (or a fresh one look stale).
+  const fixAtRef = React.useRef<number | null>(null);
+  const noteFixAge = (timestamp?: number) => {
+    const now = Date.now();
+    const t = typeof timestamp === "number" && Number.isFinite(timestamp)
+      && timestamp <= now + 60_000 && now - timestamp < 24 * 3600_000
+      ? Math.min(timestamp, now)
+      : now;
+    fixAtRef.current = t;
+  };
   const geoWatchRef = React.useRef<GeoWatchHandle | null>(null);
   // Accuracy tier the live watch is currently running at (null = none yet).
   // Every watch registration below records its tier here so the
@@ -6312,6 +6328,7 @@ const TransitMap: FC = () => {
     geoWatchRef.current = startGeoWatch(navigator.geolocation, {
       precise,
       onFix: (p) => {
+        noteFixAge(p.timestamp);
         setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
         setLocating(false);
         setLocateError(null);
@@ -6335,6 +6352,7 @@ const TransitMap: FC = () => {
     setLocateError(null);
     const applyFix = (pos: GeolocationPosition) => {
       console.log("[locate] got position", pos.coords);
+      noteFixAge(pos.timestamp);
       setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       setLocating(false);
       if (geoWatchRef.current == null) {
@@ -6463,21 +6481,17 @@ const TransitMap: FC = () => {
 
   // Auto-end forgotten trips (user request 2026-07-17) — an active trip
   // is what keeps the GPS in high-accuracy mode, so one the rider forgot
-  // to end would burn battery indefinitely. Three independent triggers:
-  //   (a) age cap — no shuttle trip takes 2 hours;
-  //   (b) rider has been ≥300 m from their bus for 3 consecutive checks
-  //       (~15 s of polls): they got off (or never boarded);
-  //   (c) the pinned bus has been absent from the feed for 10 min —
-  //       service ended with the ride page still open.
+  // to end would burn battery indefinitely. The three triggers and the
+  // evidence each one needs live in rideEnd.ts; this effect only gathers
+  // the inputs. Report #96 is why the off-bus one now asks how OLD the
+  // rider's fix is: the bus poll runs while the page is hidden and the
+  // geolocation watch does not, so composing feedback froze the rider's
+  // position while their bus drove away from it, and the ride they were
+  // sitting on was retired underneath them.
   const offBusStreakRef = React.useRef(0);
   const busLastSeenRef = React.useRef<number>(Date.now());
   useEffect(() => {
-    const TRIP_MAX_AGE_MS = 2 * 3600_000;
     const now = Date.now();
-    if (boardedRide && boardedRide.startedAt && now - boardedRide.startedAt > TRIP_MAX_AGE_MS) {
-      setBoardedRide(null);
-      return;
-    }
     if (!boardedRide) {
       offBusStreakRef.current = 0;
       busLastSeenRef.current = now;
@@ -6488,25 +6502,29 @@ const TransitMap: FC = () => {
     const bus = cfg
       ? buses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
       : undefined;
-    if (!bus) {
-      if (now - busLastSeenRef.current > 10 * 60_000) {
-        setBoardedRide(null);
-      }
-      return;
-    }
-    busLastSeenRef.current = now;
-    if (userLatLon && bus.lat && bus.lon) {
-      const d = haversineMeters(userLatLon, { lat: bus.lat, lon: bus.lon });
-      offBusStreakRef.current = d > 300 ? offBusStreakRef.current + 1 : 0;
-      if (offBusStreakRef.current >= 3) {
-        offBusStreakRef.current = 0;
-        setBoardedRide(null);
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          try {
-            new Notification("Ride ended", { body: "Looks like you've left the bus — tracking stopped to save battery." });
-          } catch { /* blocked */ }
-        }
-      }
+    const positioned = bus && bus.lat && bus.lon ? { lat: bus.lat, lon: bus.lon } : null;
+    const decision = rideEndDecision({
+      now,
+      startedAt: boardedRide.startedAt,
+      bus: bus ? { lat: bus.lat, lon: bus.lon } : null,
+      busLastSeenMs: busLastSeenRef.current,
+      user: userLatLon,
+      fixAgeMs: fixAtRef.current == null ? null : now - fixAtRef.current,
+      hidden: typeof document !== "undefined" && document.hidden === true,
+      streak: offBusStreakRef.current,
+      distanceM: userLatLon && positioned ? haversineMeters(userLatLon, positioned) : null,
+    });
+    offBusStreakRef.current = decision.streak;
+    busLastSeenRef.current = decision.busLastSeenMs;
+    if (!decision.end) return;
+    setBoardedRide(null);
+    // Only the off-bus ending is a surprise worth a notification; the other
+    // two are a ride the rider had already forgotten about.
+    if (decision.reason === "off-bus"
+      && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        new Notification("Ride ended", { body: "Looks like you've left the bus — tracking stopped to save battery." });
+      } catch { /* blocked */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buses, userLatLon?.lat, userLatLon?.lon, boardedRide]);

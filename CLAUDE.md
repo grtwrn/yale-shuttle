@@ -277,6 +277,27 @@ argument that the parser is fine. It also stops the
 last card at the page footer — "Contribute" is exactly as label-shaped as a
 route name.
 
+**A live ride ends only on evidence** (`web/src/rideEnd.ts`). Three triggers
+retire the "I'm on it" page — a 2 h age cap, the pinned bus gone from the feed
+for 10 min, and the rider ≥300 m from that bus for 3 consecutive checks — and
+the third one used to fire on a rider who had not moved at all. Report #96
+(2026-09-04): "I was riding a bus, submitted feedback and then lost my live
+ride." The two positions it compares are not measured at the same time:
+`/api/buses` keeps polling while the page is hidden (30 s) but the geolocation
+watch is deliberately torn down on `visibilitychange`, so the rider's fix
+FREEZES while the bus's keeps arriving. Composing feedback is exactly that
+minute — 📎 Attach screenshot hands the page to the OS picker outright — and a
+shuttle clears 300 m in under a minute, so three polls retired the ride and
+`saveBoardedRide(null)` deleted its localStorage copy too. **A strike now
+needs both positions current**: no fresh fix (`FIX_MAX_AGE_MS`, 60 s, measured
+from the browser's own `position.timestamp` so the rescue one-shot's
+two-minute-old fix cannot pass as live), or a hidden page, resets the streak
+rather than adding to it, and a poll the bus is missing from no longer carries
+strikes forward. The asymmetry is deliberate: keeping a finished ride a few
+minutes too long costs battery, ending a live one costs the rider the thing
+they opened the app for. The decision is pure and unit-tested because
+`TransitMap` itself cannot be rendered by this repo's harness.
+
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be
 installed-app-only AND post-search-only, which is exactly the state a stuck app
