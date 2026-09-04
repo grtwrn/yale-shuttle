@@ -52,7 +52,14 @@ const haveLeg = new Set(db.prepare("SELECT bus_name b, route_id r, from_stop_id 
 
 const keepVisits = visits.filter((v) => v.anchoredAt < cutoff && !haveVisit.has(`${v.busName}|${v.routeId}|${v.stopId}|${v.anchoredAt}`));
 const keepLegs = legs.filter((l) => l.departedAt < cutoff && !haveLeg.has(`${l.busName}|${l.routeId}|${l.fromStopId}|${l.toStopId}|${l.departedAt}`));
-console.log(`to insert: ${keepVisits.length} visits (${visits.length - keepVisits.length} skipped), ${keepLegs.length} legs (${legs.length - keepLegs.length} skipped)`);
+const pastV = visits.filter((v) => v.anchoredAt >= cutoff).length;
+const pastL = legs.filter((l) => l.departedAt >= cutoff).length;
+console.log(`=== cutoff ${Number.isFinite(cutoff) ? new Date(cutoff).toISOString() : "none"} (the target's earliest visit) ===`);
+console.log(`visits: ${keepVisits.length} to insert, ${pastV} at/after cutoff, ${visits.length - keepVisits.length - pastV} already present`);
+console.log(`legs:   ${keepLegs.length} to insert, ${pastL} at/after cutoff, ${legs.length - keepLegs.length - pastL} already present`);
+if (keepVisits.length === 0 && keepLegs.length === 0) {
+  console.log("NOTHING TO INSERT — either this target was already backfilled (idempotent rerun) or its earliest row is not the live collector's first; compare the cutoff above with the file's.");
+}
 
 const insVisit = db.prepare(`INSERT INTO stop_visits (bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
   anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec, outcome, how, confidence, first_step_m, steps,

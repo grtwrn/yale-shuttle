@@ -174,7 +174,17 @@ for (const r of legRows) {
   if (existingLegs.has(`${r.busName}|${r.routeId}|${r.fromStopId}|${r.toStopId}|${t}`)) { legsDup++; continue; }
   keptLegs.push(r);
 }
-log(`to insert: ${keptVisits.length} visits (${visitsPastCutoff} past cutoff, ${visitsDup} already present), ${keptLegs.length} legs (${legsPastCutoff} past cutoff, ${legsDup} already present)`);
+console.log(`\n=== cutoff ${Number.isFinite(CUTOFF) ? new Date(CUTOFF).toISOString() : "none"} ===`);
+console.log(`visits: ${keptVisits.length} to insert, ${visitsPastCutoff} at/after cutoff (live collector's), ${visitsDup} already present`);
+console.log(`legs:   ${keptLegs.length} to insert, ${legsPastCutoff} at/after cutoff (live collector's), ${legsDup} already present`);
+if (keptVisits.length === 0 && keptLegs.length === 0) {
+  console.log(
+    "\nNOTHING TO INSERT. The cutoff is the earliest row already in the target; a target that has ALREADY been\n" +
+    "backfilled has the archive's first row there, so every derived row falls at or after it. That is the\n" +
+    "idempotent case. If this target has NOT been backfilled and you expected rows, its earliest row is not\n" +
+    "the live collector's first — pass --before <ISO of the live collector's first visit> explicitly.\n",
+  );
+}
 
 // -- write ----------------------------------------------------------------------------
 if (OUT) {

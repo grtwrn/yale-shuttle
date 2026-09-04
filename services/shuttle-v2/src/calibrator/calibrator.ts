@@ -291,13 +291,22 @@ function loadDwellGroups(
  * (the first poll within 75 m while anchored) and `departed_at` the end of the
  * final resting plateau, so this is the `standPinned` table of
  * docs/departure-derivation.md — the clock the client's `r = now −
- * at_stop_since` runs on. A pass-through (`passed`) is an outcome, not a 0 s
- * stand, and is not a sample here.
+ * at_stop_since` runs on — with one deliberate difference: a PINNED
+ * pass-through (`passed`, `at_stop` was set for a poll or two while the bus
+ * rolled by) is a 0 s stand here, where the reference keeps `pStop` beside a
+ * stopped-only table. The client bills `median(stand − r | stand > r)` from the
+ * instant `at_stop` appears; over stopped visits only, that promised the
+ * median stopped stand (30–60 s at an ordinary stop) to a rider whose bus was
+ * about to roll through, and the rider simulator counted it as strands (Pink
+ * 280 → 431, Blue Day's Prospect / Huntington +28). With the zeros in, P(stop)
+ * enters at r = 0 and the conditional on `stand > r` drops them as soon as the
+ * bus has actually stood. A pass never pinned has no `at_stop_since` to
+ * measure from and stays out.
  *
  * `windowed` is unused for the split (see SPLIT_WINDOW_DAYS); it is left empty
  * so the group shape matches the other loaders.
  */
-const STAND_VALUE = sql.raw(losslessText("(departed_at - pinned_at) / 1000.0"));
+const STAND_VALUE = sql.raw(losslessText("CASE WHEN outcome = 'passed' THEN 0 ELSE (departed_at - pinned_at) / 1000.0 END"));
 const DRIVE_VALUE = sql.raw(losslessText("(COALESCE(to_pinned_at, arrived_at) - departed_at) / 1000.0"));
 
 interface StandGroupRow { routeId: number; stopId: number; n: number; allValues: string | null }
@@ -313,10 +322,11 @@ function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
       group_concat(${STAND_VALUE}) AS allValues
     FROM stop_visits
     WHERE anchored_at >= ${cutoff}
-      AND outcome = 'stopped'
       AND pinned_at IS NOT NULL
-      AND departed_at IS NOT NULL
-      AND departed_at >= pinned_at
+      AND (
+        (outcome = 'stopped' AND departed_at IS NOT NULL AND departed_at >= pinned_at)
+        OR outcome = 'passed'
+      )
     GROUP BY route_id, stop_id
   `);
   return rows.map((r) => ({

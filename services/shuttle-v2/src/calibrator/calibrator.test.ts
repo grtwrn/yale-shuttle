@@ -384,14 +384,17 @@ describe("calibrate over a real database", () => {
     // The hop 1→2 has arrival-to-arrival samples (what `avg` is made of)...
     for (const v of [300, 320, 340]) addSegment(1, 1, 2, v, inWindow);
     addArrival(1, 1, 310, inWindow);
-    // ...and, from the derivation, three stopped visits at stop 1 and three
-    // one-hop legs 1→2. A passed visit is not a stand sample; a visit never
-    // pinned has no at_stop_since to measure from; a two-hop leg is a
-    // different hop; a leg pinned at B before it left A (0 s) is not a drive.
+    // ...and, from the derivation, three stopped visits at stop 1, one PINNED
+    // pass-through (at_stop was set while the bus rolled by: a 0 s stand on
+    // the client's clock, so P(stop) enters the table), and three one-hop legs
+    // 1→2. A visit never pinned has no at_stop_since to measure from and is
+    // not a sample; a two-hop leg is a different hop; a leg pinned at B before
+    // it left A (0 s) is not a drive.
     addVisit(1, 1, 100);
     addVisit(1, 1, 200);
     addVisit(1, 1, 400);
     addVisit(1, 1, null, { outcome: "passed" });
+    addVisit(1, 1, null, { outcome: "passed", pinned: false });
     addVisit(1, 1, 50, { pinned: false });
     addLeg(1, 1, 2, 20);
     addLeg(1, 1, 2, 25);
@@ -410,9 +413,9 @@ describe("calibrate over a real database", () => {
     const stats = calibrate(bundle.db, sink, now);
 
     const dwell = captured.dwells.get("1:1")!;
-    expect(dwell.q).toEqual(standQuantiles([100, 200, 400]));
+    expect(dwell.q).toEqual(standQuantiles([0, 100, 200, 400]));
     expect(dwell.q).toHaveLength(STAND_Q_COUNT);
-    expect(dwell.qn).toBe(3);
+    expect(dwell.qn).toBe(4);
     // ...and the arrival-based numbers beside it are untouched.
     expect(dwell.mean).toBe(310);
 
@@ -430,7 +433,7 @@ describe("calibrate over a real database", () => {
 
     expect(stats.standCount).toBe(2);
     expect(stats.driveCount).toBe(1);
-    expect(stats.splitSampleCount).toBe(4 + 4); // stand samples + one-hop legs with a positive drive (7→8 counts as a sample even though it is not attached)
+    expect(stats.splitSampleCount).toBe(5 + 4); // stand samples (incl. the pinned pass) + one-hop legs with a positive drive (7→8 counts as a sample even though it is not attached)
   });
 });
 
