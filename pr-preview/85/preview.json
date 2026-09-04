@@ -1,0 +1,23 @@
+{
+  "caption": "Report #85: typing the auditorium's full name now matches. The `search` view types the query into the destination box and shoots the real suggestion list — nothing is mocked, so this is the live lookup answering a query that returned an empty dropdown before.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 36,
+    "dest": 4
+  },
+  "views": [
+    "search"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788472738/pr-preview/85/search-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "search",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
