@@ -102,6 +102,18 @@ const BUILD_PATTERN = /^[A-Za-z0-9_-]{1,24}$/;
 const MATCH_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 /** One reading as the wire carries it, already parsed. */
+/**
+ * The screens that report. A closed set on purpose: it is part of the dedup
+ * key, so an unrecognised value would silently create a parallel population
+ * rather than an obvious error. Anything else is recorded as `trip`-less and
+ * dropped by `parseShownBatch`.
+ */
+export const SHOWN_SURFACES = ["trip", "ride", "card"] as const;
+export type ShownSurface = (typeof SHOWN_SURFACES)[number];
+export function isShownSurface(x: unknown): x is ShownSurface {
+  return typeof x === "string" && (SHOWN_SURFACES as readonly string[]).includes(x);
+}
+
 export interface ShownReading {
   /** As displayed, `#` optional. Resolved against the live fleet server-side. */
   busName: string;
@@ -110,6 +122,8 @@ export interface ShownReading {
   lowSec: number;
   highSec: number;
   stopsAhead: number;
+  /** Which screen showed it. See `predictionsLog.surface`. */
+  surface: ShownSurface;
   /**
    * Age of the reading at the moment the batch was sent, in ms — NOT a
    * timestamp. The server owns the clock: a client whose clock is wrong (or
@@ -219,6 +233,7 @@ interface PendingRow {
   predictedHighSec: number;
   predictedAt: number;
   clientBuild: string | null;
+  surface: ShownSurface;
 }
 
 export function createPredictionRecorder(
@@ -238,11 +253,11 @@ export function createPredictionRecorder(
       INSERT OR IGNORE INTO predictions_log
         (bus_id, bus_name, route_id, from_stop_id, to_stop_id, stops_ahead,
          predicted_sec, predicted_low_sec, predicted_high_sec, predicted_at,
-         client_build)
+         client_build, surface)
       VALUES
         (@busId, @busName, @routeId, @fromStopId, @toStopId, @stopsAhead,
          @predictedSec, @predictedLowSec, @predictedHighSec, @predictedAt,
-         @clientBuild)
+         @clientBuild, @surface)
     `);
   } catch {
     // Pre-migration database. Recording degrades to a no-op rather than
@@ -291,6 +306,7 @@ export function createPredictionRecorder(
         if (r.lowSec < 0 || r.highSec < r.lowSec || r.highSec > MAX_ETA_SEC * 2) continue;
         if (!Number.isInteger(r.stopsAhead) || r.stopsAhead < 1 || r.stopsAhead > 200) continue;
         if (!Number.isInteger(r.stopId)) continue;
+        if (!isShownSurface(r.surface)) continue;
 
         // The stop must be one this bus's route actually serves. Cheap, and it
         // is the difference between "a reading" and "an arbitrary row a
@@ -300,10 +316,12 @@ export function createPredictionRecorder(
 
         // The server owns the clock (see ShownReading.ageMs) and quantises.
         const at = Math.floor((now - r.ageMs) / PREDICTION_BUCKET_MS) * PREDICTION_BUCKET_MS;
-        const key = `${bus.busId}:${r.stopId}:${at}`;
+        const key = `${bus.busId}:${r.stopId}:${at}:${r.surface}`;
         if (pending.has(key)) {
-          // Same bucket, same vehicle, same stop: one row. First writer wins
-          // here exactly as it does in SQLite, so the two layers agree.
+          // Same bucket, same vehicle, same stop, same screen: one row. First
+          // writer wins here exactly as it does in SQLite, so the two layers
+          // agree — and the key carries the surface for the same reason the
+          // index does (see `predictionsLog.surface`).
           accepted++;
           continue;
         }
@@ -322,6 +340,7 @@ export function createPredictionRecorder(
           predictedHighSec: r.highSec,
           predictedAt: at,
           clientBuild: build,
+          surface: r.surface,
         });
         accepted++;
       }

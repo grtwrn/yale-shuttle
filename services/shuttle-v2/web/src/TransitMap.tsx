@@ -54,7 +54,7 @@ import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
-  BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
 import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
@@ -2017,7 +2017,7 @@ const TripPlanner: FC<{
       // THE countdown — the number every accuracy and stability finding is
       // about, and until now the one nothing recorded. Sampled and dedup'd
       // inside noteShown; this call allocates nothing on an unsampled load.
-      noteShown(live, nowMs);
+      noteShown(live, "trip", nowMs);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
       // This has two distinct causes:
@@ -4931,43 +4931,115 @@ const StopList: FC<{
   const [isolatedRouteId, setIsolatedRouteId] = useState<string | null>(null);
   useEffect(() => { setIsolatedRouteId(null); }, [listView]);
 
-  // GPS-based: find nearest route stop for each bus
-  function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
-    if (!bus.lat || !bus.lon) return null;
-    let bestStop: number | null = null;
-    let bestD = Infinity;
-    for (const rid of routeIds) {
-      for (const sid of routeStops[rid] ?? []) {
-        const sc = stopCoords[sid];
-        if (!sc) continue;
-        const dLat = bus.lat - sc.lat;
-        const dLon = bus.lon - sc.lon;
-        const d = dLat * dLat + dLon * dLon;
-        if (d < bestD) { bestD = d; bestStop = sid; }
-      }
-    }
-    return bestStop;
-  }
-  // Build bus-at-stop lookup: for each config entry, map stopId → bus
-  const busLookups: Record<number, Record<number, BusData>> = {}; // keyed by list index
+  // ── ONE estimator, one anchor, for the whole page ──────────────────────
+  //
+  // Until 2026-09-04 everything below this comment was computed HERE, by a
+  // second ETA estimator this component carried inline: the nearest stop by
+  // squared lat/lon DEGREE delta as the anchor, and a bare sum of segment
+  // averages as the number. It had none of `arrivals.ts` — no gated anchor, no
+  // direction of travel, no stall credit, no stand/drive split, no mid-hop
+  // proration — and it walked a DE-DUPLICATED stop list, which on Green and
+  // Purple silently deletes the West Campus legs the bus actually drives.
+  //
+  // Measured over a day (`docs/card-vs-trip.md`, 948,072 paired rows): the two
+  // surfaces printed the same minute on 14.4% of rows and were five or more
+  // minutes apart on 36.8%. The buses agreed with THIS function — |err| p50
+  // 126 s against 174 s, and at a layover the card's promise ran +185 s late
+  // against +14 s.
+  //
+  // But the number that decided it is the SEQUENCE. The old arithmetic was not
+  // a function of `now` at all, so it could only change when the naive anchor
+  // jumped a stop — frozen on 95.6% of consecutive polls against this
+  // function's 29.2%, and then falling by a whole hop at once. A rider at
+  // Division / Prospect watched it hold "6 min" for four and a half minutes
+  // through a layover and drop to "1 min" in a single 5-second poll. That is
+  // the operator's founding complaint — "saying a bus is 10min away and then a
+  // few seconds later dropping to 1 second" — and every fix for it had gone to
+  // the OTHER estimator, because the reports came in tagged `view=trip`.
+  //
+  // Two things about the shape, both measured, neither free to change:
+  //
+  //   ONE call over every stop, not one per line. `computeUpcomingArrivals`
+  //   already loops `ROUTE_LISTS` internally; fifteen calls is fifteen sweeps.
+  //   0.93 ms shared against 6.25 ms per-line, on the Pi, at the busiest poll
+  //   of the day — and 16.7 ms is the frame.
+  //
+  //   `anchorIndexOnList`, not `findRouteAnchor`. The gate's memory is an
+  //   INDEX into the canonical `mergedRouteStops` sequence; the list below is
+  //   de-duplicated (Green 23 -> 20, Purple 15 -> 11), so the same integer
+  //   means two different stops. That helper anchors on the canonical list and
+  //   translates back by stop id, which is why it exists (liveAnchor.ts). This
+  //   component is the render site PR #102 missed.
+  const displayStops: Record<number, number[]> = {}; // keyed by ROUTE_LISTS index
+  const busLookups: Record<number, Record<number, BusData>> = {};
   const nextLookups: Record<number, Set<number>> = {};
-  ROUTE_LISTS.forEach((cfg, idx) => {
-    busLookups[idx] = {};
-    nextLookups[idx] = new Set();
-    for (const bus of buses) {
-      if (!cfg.busRouteIds.includes(bus.route_id)) continue;
-      // Use GPS to find nearest stop on this route (more accurate than last_stop_id)
-      const gpsStop = nearestRouteStop(bus, cfg.routeIds);
-      const busStop = gpsStop ?? bus.last_stop_id;
-      busLookups[idx][busStop] = bus;
-      // Compute next stop from the bus's actual route
-      const stops = routeStops[String(bus.route_id)];
-      if (stops) {
-        const i = stops.indexOf(busStop);
-        if (i !== -1) nextLookups[idx].add(stops[(i + 1) % stops.length]);
+  const etaLookups: Record<number, Record<number, UpcomingArrival>> = {};
+  /** Buses on the line that the estimator will actually price from. */
+  const onRouteCounts: Record<number, number> = {};
+  {
+    // One clock for the whole page: the anchor and the ETA must be answers
+    // about the same instant, or the badge and the countdown beside it can
+    // disagree by a poll.
+    const nowMs = Date.now();
+    const targets: number[] = [];
+    ROUTE_LISTS.forEach((cfg, idx) => {
+      const seen = new Set<number>();
+      let stops: number[] = [];
+      for (const rid of cfg.routeIds) {
+        for (const sid of routeStops[rid] ?? []) {
+          if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
+        }
       }
+      if (cfg.sliceStart !== undefined || cfg.sliceEnd !== undefined) {
+        stops = stops.slice(cfg.sliceStart ?? 0, cfg.sliceEnd);
+      }
+      displayStops[idx] = stops;
+      busLookups[idx] = {};
+      nextLookups[idx] = new Set();
+      etaLookups[idx] = {};
+      onRouteCounts[idx] = 0;
+      for (const sid of stops) targets.push(sid);
+    });
+
+    const live = computeUpcomingArrivals(
+      targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+    );
+    // Sorted by eta ascending, so the first entry for a (line, stop) is this
+    // lap and any later one is the same vehicle coming round again. A card row
+    // wants the former.
+    const idxByLabel = new Map<string, number>();
+    ROUTE_LISTS.forEach((cfg, idx) => idxByLabel.set(cfg.label, idx));
+    for (const a of live) {
+      const idx = idxByLabel.get(a.routeLabel);
+      if (idx === undefined) continue;
+      if (!etaLookups[idx]![a.stopId]) etaLookups[idx]![a.stopId] = a;
     }
-  });
+    // What the screen just said, for the accuracy log. The route cards are a
+    // DIFFERENT population from the trip card — every line and every stop
+    // rather than the one stop a rider chose — so they report under their own
+    // surface and no query can pool the two by accident.
+    noteShown(live, "card", nowMs);
+
+    ROUTE_LISTS.forEach((cfg, idx) => {
+      const stops = displayStops[idx]!;
+      if (stops.length === 0) return;
+      const canonical = mergedRouteStops(cfg, routeStops);
+      for (const bus of buses) {
+        if (!cfg.busRouteIds.includes(bus.route_id)) continue;
+        // The same gate the ETA used. A bus the estimator will not price from
+        // (deadheading off the line — Blue Night runs a 2.1 km relief leg past
+        // no stops) gets no badge either: a vehicle marked as sitting at a
+        // stop it is not serving, above a list with no times in it, is two
+        // contradictory claims on one card.
+        if (!isBusOnRoute(bus, canonical, stopCoords)) continue;
+        onRouteCounts[idx]!++;
+        const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
+        if (i < 0) continue;
+        busLookups[idx]![stops[i]!] = bus;
+        nextLookups[idx]!.add(stops[(i + 1) % stops.length]!);
+      }
+    });
+  }
 
   return (
     <div style={{
@@ -4991,21 +5063,15 @@ const StopList: FC<{
         >← All routes</button>
       )}
       {ROUTE_LISTS.map((cfg, listIdx) => {
-        // Merge stops from all route IDs in this config (deduplicated, preserving order)
-        const seen = new Set<number>();
-        let stops: number[] = [];
-        for (const rid of cfg.routeIds) {
-          for (const sid of routeStops[rid] ?? []) {
-            if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
-          }
-        }
+        // Built once above, beside the anchor and the ETAs, so the three
+        // cannot be indexing different sequences.
+        const stops = displayStops[listIdx] ?? [];
         if (stops.length === 0) return null;
-        if (cfg.sliceStart !== undefined || cfg.sliceEnd !== undefined) {
-          stops = stops.slice(cfg.sliceStart ?? 0, cfg.sliceEnd);
-        }
         const busMap = busLookups[listIdx] ?? {};
         const nextSet = nextLookups[listIdx] ?? new Set<number>();
-        const hasBuses = Object.keys(busMap).length > 0;
+        const etaAtStop = etaLookups[listIdx] ?? {};
+        const onRoute = onRouteCounts[listIdx] ?? 0;
+        const hasBuses = onRoute > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
         const isolated = isolatedRouteId === primaryRouteId;
@@ -5067,64 +5133,6 @@ const StopList: FC<{
         const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
-
-        // ── ETAs: cumulative from each bus to the stops ahead of it ──
-        const routeSegs = segmentTimes[primaryRouteId] ?? {};
-        const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
-        const avgSeg = segValues.length > 0
-          ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
-          : 0;
-
-        const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
-        for (const [sid, b] of Object.entries(busMap)) {
-          const busIdx = stops.indexOf(Number(sid));
-          if (busIdx === -1) continue;
-          let cumulative = 0;
-          let cumulativeVar = 0;
-          let hasAnyData = false;
-          const totalStops = stops.length;
-          const fallbackSd = avgSeg * 0.5;
-          // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-          for (let step = 1; step < totalStops; step++) {
-            const prevIdx = (busIdx + step - 1) % totalStops;
-            const curIdx = (busIdx + step) % totalStops;
-
-            const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-            if (seg && seg.n >= 1) {
-              cumulative += seg.avg;
-              cumulativeVar += (seg.sd ?? 0) ** 2;
-              hasAnyData = true;
-            } else if (avgSeg > 0) {
-              cumulative += avgSeg;
-              cumulativeVar += fallbackSd * fallbackSd;
-            } else {
-              // No calibration at all — a fresh database, or a route the
-              // collector has not yet learned. Price the hop by distance at
-              // bus speed, exactly as planTrip and the loop-time line above
-              // already do, rather than giving up: this loop used to `break`,
-              // and the card that reads from it then showed a route with two
-              // running buses and not one stop.
-              const pc = stopCoords[stops[prevIdx]], cc = stopCoords[stops[curIdx]];
-              if (!pc || !cc) break;
-              const est = Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
-              cumulative += est;
-              cumulativeVar += (est * 0.5) ** 2;
-            }
-            if (cumulative > 0) {
-              const sd = Math.sqrt(cumulativeVar);
-              const existing = etaAtStop[stops[curIdx]];
-              if (!existing || cumulative < existing.eta) {
-                etaAtStop[stops[curIdx]] = {
-                  eta: cumulative,
-                  low: Math.max(0, cumulative - sd),
-                  high: cumulative + sd,
-                  busName: (b as BusData).bus_name,
-                  estimated: !hasAnyData,
-                };
-              }
-            }
-          }
-        }
 
         // One stop row. Shared by the collapsed card (a handful of them, in
         // arrival order) and the isolated view (all of them, in route order),
@@ -5197,12 +5205,20 @@ const StopList: FC<{
                 )}
               </span>
               {etaAtStop[stopId] && !bus && (() => {
-                const e = etaAtStop[stopId];
-                const lo = Math.round(e.low / 60);
+                const e = etaAtStop[stopId]!;
                 return (
                   <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
-                      {e.estimated ? "~" : ""}{lo} min
+                      {/* `fmtMin(eta)`, the trip card's own rule — not the LOW
+                          end of the interval, which is what this row used to
+                          print. Two surfaces now share an estimator; printing
+                          its answer through two different transforms would put
+                          them a minute or two apart again for no reason, and
+                          `Math.round(low / 60)` could reach "0 min" for a bus
+                          at the kerb, which PR #98 already established is not a
+                          countdown. The interval has not gone: it is the clock
+                          time beside it. */}
+                      {e.estimated ? "~" : ""}{fmtMin(e.eta)}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
                       {fmtClock(e.eta)}
@@ -5422,7 +5438,19 @@ const StopList: FC<{
                   >
                     {upcoming.length > 0
                       ? `and ${moreStops} more stops ›`
-                      : `${stops.length} stops${hasBuses ? "" : " · no buses en route"} ›`}
+                      // Three states, because there are three, and a card that
+                      // says "2 buses" above an empty list has to say why.
+                      // `onRoute === 0` with vehicles on the line is a bus
+                      // deadheading: Blue Night drives a 2.1 km relief leg past
+                      // no stops, and the old arithmetic cheerfully promised
+                      // arrivals off it (7,566 rows in a day — Pink, Blue Night
+                      // and Green, docs/card-vs-trip.md). Declining to answer
+                      // is right; declining silently is not.
+                      : routeBuses.length === 0
+                        ? `${stops.length} stops · no buses en route ›`
+                        : onRoute === 0
+                          ? `${stops.length} stops · ${routeBuses.length} bus${routeBuses.length === 1 ? "" : "es"} off route ›`
+                          : `${stops.length} stops ›`}
                   </button>
                 )}
               </>
@@ -5660,9 +5688,9 @@ const RideStopList: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
-    // The ride page's countdown to the alight stop. Same estimator as the trip
-    // card, so it lands in the same table with no discriminator needed.
-    noteShown(arr);
+    // The ride page's countdown to the alight stop. Same estimator, different
+    // population — one stop the rider is already travelling to — so it says so.
+    noteShown(arr, "ride");
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
   }
@@ -5811,7 +5839,7 @@ const OnBusBanner: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
-    noteShown(arr);
+    noteShown(arr, "ride");
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
