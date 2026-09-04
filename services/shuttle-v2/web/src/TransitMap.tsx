@@ -9,7 +9,7 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
-import { anchorIndexOnList, anchorKeyFor } from "./liveAnchor";
+import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -4276,9 +4276,30 @@ const TripPlanner: FC<{
                     const t = Math.max(0, Math.round(s));
                     return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
                   };
-                  const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
-                    ? Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000)
+                  /**
+                   * WHERE THE BUS IS STANDING — the estimator's answer, not a
+                   * second reading of the payload.
+                   *
+                   * This used to derive the hold straight from
+                   * `at_stop_id`/`at_stop_since`. That agreed with the price
+                   * until #130 shipped the approach zone, and then stopped: a
+                   * bus taking its layover short of the marker publishes no
+                   * `at_stop_id`, so the countdown priced it as standing while
+                   * the chip beside it showed nothing and the row read as a bus
+                   * still rolling. Report #102 is a rider seeing exactly that —
+                   * "a bus sitting in a garage lot was counted down as if on
+                   * its way".
+                   *
+                   * `resolveStandingStop` is the one the price uses. The hold
+                   * shown must be the hold billed, and now the STOP shown is
+                   * the stop billed too.
+                   */
+                  const standing = busMatch
+                    ? resolveStandingStop(
+                        busMatch, cfg, routeStops, stopCoords, routeDwells, Date.now(), liveAnchorStore,
+                      )
                     : null;
+                  const liveElapsedSec = standing ? standing.standingSec : null;
                   /**
                    * The hold to show at `sid`. `elapsed` is passed only for the
                    * stop the bus is actually standing at — everywhere else
@@ -4323,7 +4344,7 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
+                            const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
                             const stand = standAt(sid, showLive ? liveElapsedSec : null);
                             return (
                               <div key={sid} style={{
@@ -4378,15 +4399,39 @@ const TripPlanner: FC<{
                                     // countdown beside it is. Elsewhere the old
                                     // figure stands, since there it IS billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                          title={stand == null
+                                          title={(standing?.approach
+                                            ? "Waiting for this stop, holding just short of the marker. "
+                                            : "") + (stand == null
                                             ? "Time the bus has been sitting here"
                                             : stand.remaining
                                               ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
-                                              : `Typically holds ~${fmtShort(stand.sec)}`}>
+                                              : `Typically holds ~${fmtShort(stand.sec)}`)}>
                                       ⏸ {fmtMmss(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
                                         ? ` / ~${fmtMmss(stand.typicalSec ?? stand.sec)}`
                                         : ` / ~${fmtMmss(stand.sec)}`}
+                                    </span>
+                                  )}
+                                  {showLive && standing?.approach && (
+                                    // WHERE it is waiting, in one word.
+                                    //
+                                    // Report #102: a bus holding in the Science
+                                    // Park Garage lot showed as "here" at
+                                    // 344 Winchester, 144 m away. The countdown
+                                    // is right — it IS taking that layover — but
+                                    // a rider standing at the marker looks up
+                                    // and sees no bus.
+                                    //
+                                    // Deliberately NOT a "~" prefix on the
+                                    // clock, which was the first draft: this UI
+                                    // already spends "~" on approximate
+                                    // DURATIONS ("/ ~5:00" right beside it), so
+                                    // the same mark for approximate PLACE reads
+                                    // as fuzziness about the number instead.
+                                    // A word cannot be misread that way.
+                                    <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
+                                          title="Holding just short of the stop, not at the kerb">
+                                      nearby
                                     </span>
                                   )}
                                   {!showLive && stand != null && stand.sec >= 180 && (
@@ -4450,9 +4495,11 @@ const TripPlanner: FC<{
                               {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
                               {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                               {name}
-                              {isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null && (
+                              {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
                                 <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                      title="Time the bus has been sitting here">
+                                      title={standing.approach
+                                        ? "The bus is waiting for this stop — it is holding just short of the marker"
+                                        : "Time the bus has been sitting here"}>
                                   ⏸ {fmtMmss(liveElapsedSec)}
                                 </span>
                               )}

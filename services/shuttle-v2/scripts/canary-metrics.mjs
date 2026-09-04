@@ -308,7 +308,13 @@ export function pairBuses(prev, next, dtSec, thresholds = THRESHOLDS, pin = null
  * behind whatever branch introduces a layout change, and a parser that only
  * knows the new shape reports every card as label-less on the old one.
  */
-const NOT_A_ROUTE = new Set(["Find next bus", "Clear", "Walk", "Departed"]);
+// "nearby" is the expanded card's marker for a bus holding just short of a
+// stop (report #102). It is lower-case and letters-only, so `isLabelish` takes
+// it for a route pill — and because `label` prefers a match found BELOW the
+// duration, an expanded card would have reported its line as "nearby" rather
+// than "Red". Exactly the "Contribute" failure IS_PAGE_CHROME was added for;
+// caught here before it shipped rather than after, and fixtured below.
+const NOT_A_ROUTE = new Set(["Find next bus", "Clear", "Walk", "Departed", "nearby"]);
 /** Page furniture below the option list — where the last card stops. */
 const IS_PAGE_CHROME = /^(Show \d+ more route|Clear$|Contribute$|💬|🧪|Not affiliated)/;
 const isLabelish = (l) =>
