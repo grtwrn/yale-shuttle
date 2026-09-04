@@ -7,8 +7,9 @@ import {
 } from "./map-data";
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
+import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
+import { anchorIndexOnList } from "./liveAnchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -3387,7 +3388,12 @@ const TripPlanner: FC<{
               // current anchor to the pickup stop.
               let approach: [number, number][] | undefined;
               if (expandedKey === o.routeLabel && busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                // The gated anchor, off the app's one live store — the dashed
+                // approach must start where the cards and the countdown say
+                // the bus is (liveAnchor.ts).
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
                     ? allStops.slice(busIdx, bi + 1)
@@ -3583,7 +3589,9 @@ const TripPlanner: FC<{
               ) ?? null;
               let stopsAway: number | null = null;
               if (busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0) {
                   stopsAway = (bi - busIdx + allStops.length) % allStops.length;
                 }
@@ -4094,7 +4102,15 @@ const TripPlanner: FC<{
                     cfg.busRouteIds.includes(b.route_id) &&
                     isBusOnRoute(b, allStops, stopCoords),
                   );
-                  const busAnchorIdx = busMatch ? findRouteAnchor(busMatch, allStops, stopCoords) : -1;
+                  // THE number the rider reads on the "🚌 #316 · N stops away"
+                  // line below. Ungated it oscillated 3/4/4/2/4 across polls
+                  // beside a countdown that was not moving; it now comes from
+                  // the same gated anchor the countdown does.
+                  const busAnchorIdx = busMatch
+                    ? anchorIndexOnList(
+                        busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                      )
+                    : -1;
                   const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
                   // Approach: bus's current stop → the stop before the
                   // pickup, only while the bus is genuinely upstream.
@@ -5967,7 +5983,9 @@ const RideStopList: FC<{
       )
     : undefined;
 
-  const busIdx = bus ? findRouteAnchor(bus, allStops, stopCoords) : -1;
+  const busIdx = bus && cfg
+    ? anchorIndexOnList(bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore)
+    : -1;
   const boardIdx = allStops.indexOf(ride.boardStopId);
   const alightIdx = allStops.indexOf(ride.alightStopId);
   const n = allStops.length;
@@ -6110,8 +6128,10 @@ const OnBusBanner: FC<{
     : undefined;
 
   let stopsRemaining: number | null = null;
-  if (bus && allStops.length > 0) {
-    const anchor = findRouteAnchor(bus, allStops, stopCoords);
+  if (bus && cfg && allStops.length > 0) {
+    const anchor = anchorIndexOnList(
+      bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+    );
     const alightIdx = allStops.indexOf(ride.alightStopId);
     if (anchor >= 0 && alightIdx >= 0) {
       stopsRemaining = (alightIdx - anchor + allStops.length) % allStops.length;
