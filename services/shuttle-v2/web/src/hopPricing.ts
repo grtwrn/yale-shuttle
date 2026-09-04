@@ -213,6 +213,30 @@ const STANDING_MEMO_STALE_MS = 120_000;
  *    layover would cancel a hop the bus still has to drive, which is the
  *    direction that makes a rider miss the bus.
  *
+ * ## The engagement step is not a new jump
+ *
+ * The rule switching on moves the number, and the move is large: -225 s on
+ * #310, -215 s on #304. That is worth stating plainly rather than burying,
+ * because it looks exactly like the lurch this whole area exists to prevent.
+ *
+ * Measured over both recordings, in the window from the start of the rest to
+ * the last poll at the marker, EACH ARM HAS EXACTLY ONE JUMP >= 180 s:
+ *
+ *     #310   master  -182 s at 13:34:58 (reaching the marker)
+ *            fixed   -225 s at 13:30:13 (the rule engaging, 4.75 min earlier)
+ *     #304   master  -183 s at 14:11:03 (reaching the marker)
+ *            fixed   -215 s at 14:08:48 (the rule engaging, 2.25 min earlier)
+ *
+ * So the fix does not ADD a jump. It moves the one jump earlier and pays ~40 s
+ * more magnitude for it, and what it buys is the five minutes in between: on
+ * master those are a number that is 300 s wrong and frozen, and after the fix
+ * they track the truth. The step also has information behind it — the bus has
+ * demonstrably been standing for 150 s — where master's has none a rider can
+ * see, since a bus rolling the last 140 m onto its marker is not news.
+ *
+ * Engaging EARLIER to shrink the step is the obvious idea and it is
+ * measurably unsafe: see the sweep above, where 45 s admits 23 episodes.
+ *
  * ## One visit, one stand
  *
  * When the bus finally rolls in, the detector re-pins its clock to the stop
