@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals } from "./arrivals";
-import { mixtureQuantile, normalCdf, peekBelief, tobitUpdate, updateBelief, type Placement } from "./estimator";
+import { mixtureQuantile, normalCdf, peekBelief, SWITCH_AT, tobitUpdate, updateBelief, type Placement } from "./estimator";
 import type { AnchorStore } from "./anchorGate";
 import { at, makeBus, routeStops, segmentTimes, STOP, stopCoords } from "./__fixtures__/payload";
 
@@ -32,7 +32,7 @@ const LEG_OUT = 1;
 const LEG_IN = 4;
 
 const shippedAt = (idx: number): Placement => ({
-  idx, standingSec: null, stallCredit: 0, progressFactor: 1, weight: 1,
+  idx, standingSec: null, stallCredit: 0, progressFactor: 1, weight: 1, lead: true,
 });
 
 const poll = (
@@ -123,6 +123,32 @@ describe("the branch posterior", () => {
     expect(weightOf(ps, LEG_OUT)).toBeGreaterThan(0.8);
     const alt = ps.find((p) => p.idx !== LEG_OUT);
     if (alt) expect(alt.weight).toBeGreaterThanOrEqual(0.02);
+  });
+
+  it("the number a rider reads stays on production's branch until the belief passes SWITCH_AT", () => {
+    // Cold and ambiguous: the belief has one poll of evidence and no right to
+    // overrule an anchor built from the same fix, so the lead is production's.
+    const store = new Map();
+    const lat = (OUT_LAT + IN_LAT) / 2;
+    const cold = poll(store, { lat, lon: -72.934 }, T0, LEG_OUT);
+    expect(cold.find((p) => p.lead)!.idx).toBe(LEG_OUT);
+    // Now the bus drives WEST — the inbound chord's way, against the leg
+    // production is holding. One fresh fix is ~20:1 of direction evidence, so
+    // the lead moves as soon as the belief does, not on a timer.
+    poll(store, { lat, lon: -72.9345 }, T0 + 5_000, LEG_OUT);
+    const after = poll(store, { lat, lon: -72.935 }, T0 + 10_000, LEG_OUT);
+    expect(after.find((p) => p.lead)!.idx).toBe(LEG_IN);
+    expect(weightOf(after, LEG_IN)).toBeGreaterThanOrEqual(SWITCH_AT);
+  });
+
+  it("does not hand the lead to a branch the evidence merely prefers", () => {
+    // A single ambiguous poll after a cold start moves the weights a little.
+    // A little is not SWITCH_AT, and the countdown does not move a lap on it.
+    const store = new Map();
+    const lat = (OUT_LAT + IN_LAT) / 2;
+    poll(store, { lat, lon: -72.9325 }, T0, LEG_OUT);
+    const next = poll(store, { lat, lon: -72.9325 }, T0 + 5_000, LEG_OUT);
+    expect(next.find((p) => p.lead)!.idx).toBe(LEG_OUT);
   });
 
   it("the shipped placement is always in the mixture, whatever the belief thinks", () => {

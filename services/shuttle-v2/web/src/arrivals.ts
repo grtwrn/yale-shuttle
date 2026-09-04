@@ -361,6 +361,7 @@ export function computeUpcomingArrivals(
         stallCredit,
         progressFactor: firstSegProgressFactor,
         weight: 1,
+        lead: true,
       };
       const placements = anchorStore
         ? updateBelief(
@@ -370,7 +371,7 @@ export function computeUpcomingArrivals(
         : [shippedPlacement];
 
       /** Per (stop, occurrence) the components of the arrival's mixture. */
-      const mix = new Map<string, Array<{ mu: number; sigma: number; w: number }>>();
+      const mix = new Map<string, Array<{ mu: number; sigma: number; w: number; lead: boolean }>>();
       for (const placement of placements) priceFrom(placement);
       emitMixture();
 
@@ -517,7 +518,7 @@ export function computeUpcomingArrivals(
             const key = `${sid}|${recorded}`;
             let comps = mix.get(key);
             if (!comps) mix.set(key, (comps = []));
-            comps.push({ mu: cumulative, sigma: Math.sqrt(cumulativeVar), w: placement.weight });
+            comps.push({ mu: cumulative, sigma: Math.sqrt(cumulativeVar), w: placement.weight, lead: placement.lead });
           }
         }
       }
@@ -525,20 +526,27 @@ export function computeUpcomingArrivals(
       /**
        * One number out of the belief.
        *
-       * With one placement this is production's own arithmetic, arithmetic for
-       * arithmetic: `eta` is its cumulative and the interval its ±1 sd, exactly
-       * as the code above wrote them. With two it is the mixture's median and
-       * its 16th/84th percentiles, which is the design's "report the median,
-       * and if the second branch holds meaningful mass, say so rather than
-       * picking" — the interval is where the app says so, because a scalar
-       * cannot express a bimodal belief and widening the range is the one
-       * honest thing a scalar-plus-range can do.
+       * `eta` is the LEADING branch's own arithmetic — production's when the
+       * belief has not moved off it — and never an interpolation between two
+       * branches. Arm A reported the mixture's median instead, on the argument
+       * that it moves continuously in the weight; it does, and its derivative
+       * near an even split is so large that ordinary evidence noise moved the
+       * promise by minutes. Measured, that took eventless jitter from 4,975 to
+       * 11,361 over 2.58 M transitions and Purple's rider strand share from
+       * 32.7% to 46.5% (docs/eta-estimator-imm.md). The switch belongs at the
+       * belief (`SWITCH_AT`), not in the arithmetic.
+       *
+       * The OTHER branches set the INTERVAL. That is the design's "if the
+       * second branch holds meaningful mass, say so rather than picking":
+       * widening the range is the one honest thing a scalar-plus-range can do
+       * with a bimodal belief, and it moves no countdown.
        */
       function emitMixture(): void {
         for (const [key, comps] of mix) {
           const sid = Number(key.slice(0, key.indexOf("|")));
           const single = comps.length === 1 ? comps[0]! : null;
-          const eta = single ? single.mu : mixtureQuantile(comps, 0.5);
+          const lead = single ?? comps.find((c) => c.lead) ?? comps[0]!;
+          const eta = lead.mu;
           const low = single ? Math.max(0, single.mu - single.sigma) : Math.max(0, mixtureQuantile(comps, 0.1587));
           const high = single ? single.mu + single.sigma : mixtureQuantile(comps, 0.8413);
           result.push({

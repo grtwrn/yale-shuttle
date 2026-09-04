@@ -103,6 +103,28 @@ const MAX_BRANCHES = 2;
 /** A bus unseen for this long has no usable belief; start fresh. (Mirrors ANCHOR_STALE_MS.) */
 const STALE_MS = 120_000;
 
+/**
+ * How sure the belief must be before the number a rider reads moves to the
+ * OTHER branch.
+ *
+ * THIS IS MEASURED, AND THE ALTERNATIVE WAS MEASURED FIRST. Arm A reported the
+ * mixture's median — continuous in the weight, and on that argument it should
+ * have been the whole point. It is not: with two branches a lap apart the
+ * median's derivative in the weight is enormous near 50/50, so every poll of
+ * ordinary evidence noise moved the promise by minutes. Over 2.58 M
+ * transitions it took EVENTLESS jitter from 4,975 to 11,361 and Green's jitter
+ * rate from 1.92% to 2.63% — worse precisely on the routes it was built for
+ * (docs/eta-estimator-imm.md).
+ *
+ * So the countdown is one branch's own arithmetic and the switch is where the
+ * belief is, not where the arithmetic interpolates. 0.7 is one fresh fix of
+ * direction evidence (~20:1) from an even split, so a bus that pulls out still
+ * moves the number in the same poll it moves — the operator's rule, "it can go
+ * 5->1 if it leaves early. but if it is jitter we need a fix." What it will not
+ * do is flip back and forth while the evidence is 51/49.
+ */
+export const SWITCH_AT = 0.7;
+
 /** Speed prior when a branch is born, m/s, and the process noise on it. */
 const V0_M_S = 7;
 const SIGMA_V0 = 4;
@@ -147,6 +169,8 @@ interface BusBelief {
   seenAt: number;
   fix: LatLon;
   lastStopId: number | null;
+  /** The leg whose number is currently on screen — see {@link SWITCH_AT}. */
+  reported: number;
 }
 
 const beliefs = new WeakMap<object, Map<string, BusBelief>>();
@@ -163,6 +187,12 @@ export interface Placement {
   progressFactor: number;
   /** Mixture weight, summing to 1 across the returned placements. */
   weight: number;
+  /**
+   * The placement whose number the rider is shown. See {@link SWITCH_AT}: the
+   * countdown is a branch's own arithmetic, never an interpolation between
+   * two, and the OTHER branches set the interval around it.
+   */
+  lead: boolean;
 }
 
 const legLengthM = (
@@ -435,8 +465,10 @@ export function updateBelief(
       branches[branches.length - 1] = born(shipped.idx, branches[branches.length - 1]?.w ?? 1);
     }
     normalise(branches);
-    byBus.set(key, { branches, seenAt: now, fix: here, lastStopId });
-    return place(branches, shipped, stops, stopCoords);
+    // A cold client shows what production shows: the belief has one poll of
+    // evidence and no right to overrule an anchor built from the same fix.
+    byBus.set(key, { branches, seenAt: now, fix: here, lastStopId, reported: shipped.idx });
+    return place(branches, shipped, stops, stopCoords, shipped.idx);
   }
 
   const dt = Math.max(0.001, Math.min(60, (now - prev.seenAt) / 1000));
@@ -532,8 +564,17 @@ export function updateBelief(
   for (const b of kept) if (isCandidate.has(b.leg) && b.w < WEIGHT_FLOOR) b.w = WEIGHT_FLOOR;
   normalise(kept);
 
-  byBus.set(key, { branches: kept, seenAt: now, fix: here, lastStopId });
-  return place(kept, shipped, stops, stopCoords);
+  // Which branch's arithmetic the rider reads. It stays where it is until some
+  // OTHER branch is believed at `SWITCH_AT` — the number follows the belief,
+  // not the arithmetic's interpolation between two of them.
+  let reported = prev.reported;
+  if (!kept.some((b) => b.leg === reported)) reported = shipped.idx;
+  const leader = kept.reduce((a, b) => (b.w > a.w ? b : a), kept[0]!);
+  if (leader.leg !== reported && leader.w >= SWITCH_AT) reported = leader.leg;
+  if (!kept.some((b) => b.leg === reported)) reported = leader.leg;
+
+  byBus.set(key, { branches: kept, seenAt: now, fix: here, lastStopId, reported });
+  return place(kept, shipped, stops, stopCoords, reported);
 }
 
 function normalise(branches: Branch[]): void {
@@ -559,11 +600,13 @@ function place(
   shipped: Placement,
   stops: number[],
   stopCoords: Record<number, LatLon>,
+  reported: number,
 ): Placement[] {
   const out: Placement[] = [];
   for (const b of branches) {
+    const lead = b.leg === reported;
     if (b.leg === shipped.idx) {
-      out.push({ ...shipped, weight: b.w });
+      out.push({ ...shipped, weight: b.w, lead });
       continue;
     }
     const len = legLengthM(b.leg, stops, stopCoords);
@@ -572,11 +615,13 @@ function place(
     // given the standing clock: `at_stop_since` names the stop the collector
     // pinned the bus at, which is the shipped branch's stop, and handing that
     // rest to a different leg would credit a layover the bus never took there.
-    out.push({ idx: b.leg, standingSec: null, stallCredit: 0, progressFactor: 1 - t, weight: b.w });
+    out.push({ idx: b.leg, standingSec: null, stallCredit: 0, progressFactor: 1 - t, weight: b.w, lead });
   }
   const tot = out.reduce((n, p) => n + p.weight, 0);
   if (tot > 0) for (const p of out) p.weight /= tot;
-  return out.length ? out : [shipped];
+  if (out.length === 0) return [shipped];
+  if (!out.some((p) => p.lead)) out[0]!.lead = true;
+  return out;
 }
 
 /**
