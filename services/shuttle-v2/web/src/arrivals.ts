@@ -260,7 +260,7 @@ export function computeUpcomingArrivals(
       // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
       // early still collapses the countdown immediately.
       let gpsAnchorIdx = anchorStore
-        ? gateAnchor(anchorStore, anchorKey, rawAnchorIdx, bus, now, stops.length).index
+        ? gateAnchor(anchorStore, anchorKey, rawAnchorIdx, bus, now, stops.length, stops).index
         : rawAnchorIdx;
 
       // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
