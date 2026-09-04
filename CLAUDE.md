@@ -705,8 +705,12 @@ calibrator now reads `stop_visits` / `legs` (PR #83's derivation) on its
 `r`), pooled over 30 days — a (stop, hour) cell has a median of two samples:
 
 - `q` / `qn` — ten ascending stand quantiles at levels `(i + 0.5) / 10`
-  (`STAND_Q_COUNT` is part of the wire contract) over stopped visits,
-  `departed_at − pinned_at`; `qn` is the visit count.
+  (`STAND_Q_COUNT` is part of the wire contract) over PINNED visits:
+  `departed_at − pinned_at` for a stopped one, **0 s for a pass-through the
+  detector pinned**. That zero is deliberate and measured: over stopped visits
+  only, the client billed the median stopped stand from the instant `at_stop`
+  appeared to riders whose bus was rolling through — Pink 280 → 431 strands,
+  Blue Day's Prospect / Huntington +28 in the simulator. `qn` counts both.
 - `drive` / `driveN` — the **median** one-hop leg, `at_stop_since(B) −
   departure(A)`; a drive includes any hold at a light, and one red should
   not move the number the way it moves a mean.
@@ -723,8 +727,13 @@ Three rules to preserve:
   derivation inherits the detector's anchor on the folds. The rider simulator
   measured it: served everywhere, Red's departure-poll rise went +220 s →
   +1 s and 330 → 2 riders saw ≥180 s, but **Purple 163 → 188 strands, Green
-  165 → 173**; withheld, both are byte-identical to master. Lift it when the
-  anchor lane resolves the fold — with a sim run, not by argument.
+  165 → 173**; withheld, both are byte-identical to master. **This is an
+  interim rule, not a finding that the folds cannot be helped** — they are the
+  two worst lines on the network (strand ~31% vs Blue Day's 4%). A moving bus
+  reveals its branch over two fresh fixes (progress rises on one, falls on the
+  other); only a bus stationary on a shared segment with no history is
+  genuinely undecidable (`docs/eta-estimator-design.md`). Lift the rule when a
+  direction-based anchor lands — with a sim run, not by argument.
 - **Whole seconds on the wire, and the payload is not compressed in
   production** (`content-encoding` is absent), so the cost is the raw one:
   +12.8 KB per poll (+14.4%; +3.4 KB if it were gzipped). Compressing the
