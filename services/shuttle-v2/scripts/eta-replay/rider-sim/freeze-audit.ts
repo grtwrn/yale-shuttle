@@ -63,12 +63,32 @@ for (const f of captureFiles) {
 }
 const polls = groupPolls(dedupeAndSort(rows));
 const pollAt = polls.map((p) => p[0]!.t);
-/** poll index -> bus_name -> "lat,lon", so an identical fix is a string compare. */
+/**
+ * poll index -> bus name -> "lat,lon", so an identical fix is a string compare.
+ * The feed spells the name "#309" and the client strips the hash (`busName` in
+ * `computeUpcomingArrivals`), so both sides are normalised here — without it
+ * every lookup misses and the audit silently reports zero pairs.
+ */
+const busKey = (name: string) => name.replace(/^#/, "");
 const fixAt = polls.map((p) => {
-  const m = new Map<string, string>();
-  for (const r of p) m.set(r.b, `${r.lat},${r.lon}`);
+  const m = new Map<string, { lat: number; lon: number }>();
+  for (const r of p) m.set(busKey(r.b), { lat: r.lat, lon: r.lon });
   return m;
 });
+
+function metres(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const R = 6_371_000, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+/**
+ * The feed's position deadband is ~30 m, so the smallest reportable move is
+ * about that. A bus at a kerb still reports 30-90 m twitches while plainly
+ * standing; only real ground makes a frozen countdown suspect. Same 100 m
+ * threshold `jitter-classify.ts` uses, for the same reason.
+ */
+const REAL_MOVE_M = 100;
 console.error(`captures: ${rows.length} rows, ${polls.length} polls`);
 
 /** Poll indices covering [from, to]. */
@@ -89,19 +109,19 @@ const pct = (a: number, b: number) => (b === 0 ? "  n/a" : `${((100 * a) / b).to
 for (const file of files) {
   const waits = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean)
     .map((l) => JSON.parse(l) as WaitResult);
-  const byRoute = new Map<string, { still: Tally; moved: Tally }>();
-  const all = { still: zero(), moved: zero() };
+  const byRoute = new Map<string, { still: Tally; twitch: Tally; moved: Tally }>();
+  const all = { still: zero(), twitch: zero(), moved: zero() };
   let scored = 0;
 
   for (const w of waits) {
     if (w.outcome !== "arrived" || w.arrivedAt === null) continue;
     if (w.neverShown || w.vanished > 0 || w.pinChanged) continue;
     if (!w.firstSight || w.pins.length !== 1) continue;
-    const bus = w.pins[0]!;
+    const bus = busKey(w.pins[0]!);
     const idx = pollRange(w.firstSight.atMs, w.arrivedAt);
     if (idx.length < 3) continue;
     const changedAt = new Set(w.transitions.map((t) => t.atMs));
-    const r = byRoute.get(w.label) ?? { still: zero(), moved: zero() };
+    const r = byRoute.get(w.label) ?? { still: zero(), twitch: zero(), moved: zero() };
     byRoute.set(w.label, r);
     scored++;
     for (let k = 1; k < idx.length; k++) {
@@ -109,21 +129,28 @@ for (const file of files) {
       if (pollAt[cur]! - pollAt[prev]! > MAX_POLL_GAP_MS) continue;
       const a = fixAt[prev]!.get(bus), b = fixAt[cur]!.get(bus);
       if (a === undefined || b === undefined) continue;  // bus off the feed this poll
-      const bucket = a === b ? "still" : "moved";
+      const d = a.lat === b.lat && a.lon === b.lon ? 0 : metres(a, b);
+      const bucket = d === 0 ? "still" : d < REAL_MOVE_M ? "twitch" : "moved";
       const frozen = !changedAt.has(pollAt[cur]!);
       r[bucket].pairs++; all[bucket].pairs++;
       if (frozen) { r[bucket].frozen++; all[bucket].frozen++; }
     }
   }
 
-  const tot = { pairs: all.still.pairs + all.moved.pairs, frozen: all.still.frozen + all.moved.frozen };
+  const sum = (t: { still: Tally; twitch: Tally; moved: Tally }) => ({
+    pairs: t.still.pairs + t.twitch.pairs + t.moved.pairs,
+    frozen: t.still.frozen + t.twitch.frozen + t.moved.frozen,
+  });
+  const tot = sum(all);
+  if (tot.pairs === 0) { console.error(`FAIL: ${file} scored no poll pairs — the capture and the run do not line up`); process.exitCode = 1; }
   console.log(`\n=== ${file}`);
   console.log(`  waits scored ${scored}, poll pairs ${tot.pairs}`);
-  console.log(`  frozen overall            ${pct(tot.frozen, tot.pairs)}  (${tot.frozen}/${tot.pairs})`);
-  console.log(`  ...with the fix IDENTICAL ${pct(all.still.frozen, all.still.pairs)}  (${all.still.frozen}/${all.still.pairs})   <- honest: nothing happened`);
-  console.log(`  ...with the fix MOVED     ${pct(all.moved.frozen, all.moved.pairs)}  (${all.moved.frozen}/${all.moved.pairs})   <- the failure mode`);
+  console.log(`  frozen overall                  ${pct(tot.frozen, tot.pairs)}  (${tot.frozen}/${tot.pairs})`);
+  console.log(`  ...fix IDENTICAL                ${pct(all.still.frozen, all.still.pairs)}  (${all.still.frozen}/${all.still.pairs})   nothing happened; freezing is right`);
+  console.log(`  ...fix twitched < ${REAL_MOVE_M} m         ${pct(all.twitch.frozen, all.twitch.pairs)}  (${all.twitch.frozen}/${all.twitch.pairs})   the feed's 30 m deadband at a kerb`);
+  console.log(`  ...bus MOVED >= ${REAL_MOVE_M} m           ${pct(all.moved.frozen, all.moved.pairs)}  (${all.moved.frozen}/${all.moved.pairs})   <- THE FAILURE MODE: real ground, no reaction`);
   for (const [label, r] of [...byRoute].sort()) {
-    const t = { pairs: r.still.pairs + r.moved.pairs, frozen: r.still.frozen + r.moved.frozen };
-    console.log(`    ${label.padEnd(14)} all ${pct(t.frozen, t.pairs)}  still ${pct(r.still.frozen, r.still.pairs)}  moved ${pct(r.moved.frozen, r.moved.pairs)}  (${t.pairs} pairs)`);
+    const t = sum(r);
+    console.log(`    ${label.padEnd(14)} all ${pct(t.frozen, t.pairs)}  still ${pct(r.still.frozen, r.still.pairs)}  twitch ${pct(r.twitch.frozen, r.twitch.pairs)}  moved ${pct(r.moved.frozen, r.moved.pairs)}  (${t.pairs} pairs)`);
   }
 }
