@@ -422,6 +422,130 @@ PAYLOAD_PATCH=… OUT_NAME=red0903-pr81` followed by `--compare` against the
 master file above, chain section first, then the three Red acceptance riders,
 then the hold-out rows.
 
+## The drop rule: a bus removed while it was still approaching (2026-09-04)
+
+The canary's worst overnight finding, in the operator's words: **"the bus that
+is about to arrive disappears from the card"**. Five transitions were handed
+over as evidence. Adjudicated against the canary's own `buses` arrays and its
+45 m curb rule, they are **three different things**, and two of them are the
+app being right:
+
+| transition | line | the bus | verdict |
+|---|---|---|---|
+| `arriving now` -> `in 42, 52 min` | Red | #316 at the kerb (30 m, `at_stop` 48), then 86 -> 284 -> 383 m | **correct** — it left |
+| `now, then 54 min` -> `in 54 min` | Brown | #301 23 m `at_stop` 145, then 147 m | **correct** — it left |
+| `in 1, 57 min` -> `in 56 min` | Brown | #301 **225 -> 77 m, closing**; kerb 7 s later | **bug 1** |
+| `in 1, 40 min` -> `in 38, 77 min` | Blue West | #126 **448 -> 347 m, closing**; kerb 33 s later | **bug 2** |
+| `in 1, 39 min` -> `in 37, 75 min` | Blue West | #126 **429 -> 332 m, closing**; kerb 23 s later | **bug 2** |
+
+A bus whose distance to the board stop is INCREASING may and must vanish the
+instant it goes — that is the 5 -> 1 -> gone the operator insisted on. The
+defect is only ever a bus that is measurably CLOSING.
+
+### The metric
+
+`droppedApproaching` on every wait, with `pctDropped` / `drops` in every
+summary and a `--compare` row. A drop is counted when, between two consecutive
+countdown readings, the vehicle the row was following loses its near arrival —
+the row switches vehicle, or re-prices the SAME vehicle a lap later — the shown
+number lands at least `DROP_MIN_RISE_SEC` (180 s, the canary's catastrophic
+bar) later, AND the vanished vehicle had **not** yet reached the board stop and
+**did** reach it within `DROP_APPROACH_WINDOW_MS` (10 min).
+
+Ground truth is the board stop's own visit list, not the sign of `distM`: a bus
+can be momentarily closing on a stop it has already served, and the visit list
+cannot be fooled by that. All three "correct" rows above are excluded by it
+automatically.
+
+Every drop is also attributed, because the two causes need different fixes and
+must never be summed:
+
+- **declined** — the near arrival was still in `computeUpcomingArrivals`'
+  output and the trip card chose something else. That is `pickLiveArrival`.
+- **repriced** — the estimator no longer offered it. That is the anchor.
+
+The tick now carries `prevSoonest`, the soonest arrival still on offer for the
+vehicle the row followed on the previous poll, which is what separates the two.
+
+### How big each one is
+
+All fifteen lines, capture `positions-20260903.jsonl`, snapshot
+`snap3-split.db` with `PAYLOAD_PATCH=split-patch-0903.json`, 25,585 scored
+waits on master:
+
+**18% of riders saw a drop; 4,853 drops in all — 66 declined (1.4%), 4,787
+repriced (98.6%).** Per line, share of riders seeing one: Brown 62.7, Pink
+49.6, Blue Night 35.5, Purple 27.7, Green 22.3, Gold 18.3, Orange Day 16.1,
+Orange Night 15.0, Blue West 13.5, Red 9.8, Orange East 6.7, Blue Day 3.5.
+
+**The anchor owns this defect, not the trip card.** That is the number to
+quote, and it points the work at `findRouteAnchor`, not at `pickLiveArrival`.
+
+One caveat that is itself a finding: **the default population stands AT the
+board stop**, so `walkToSec` is 0, `canCatch` (`walk <= eta + 60`) is true for
+every arrival, and the entire catchability half of `pickLiveArrival` is
+unreachable. Bug 1 is therefore almost invisible to the default run by
+construction — the 66 declined drops it does see are report #49's dominance
+switch, not this. `ORIGIN_OFFSET_M=200` puts every rider a walk away (the
+canary's own geometry, ~185 s) and is how the catchability branches get
+scored at all.
+
+### Bug 1 — the card declined a live arrival (`pickLiveArrival`), FIXED
+
+Already recorded above as "Two findings nobody asked for / 2". Trace on master,
+Brown #301, rider at Divinity / 409 Prospect with the canary's origin
+(204 m away, a billed walk of 185 s):
+
+```
+21:48:04  d=147 m  live=[301:46 s, 301:3461 s]   "in <1, 57 min"
+21:48:09  d=107 m  live=[301:33 s, 301:3449 s]   "in 57, 57 min"   <- the flip
+21:48:14  d=77 m   live=[301:24 s, 301:3439 s]   "in 57, 57 min"
+21:48:19  d=43 m   at_stop 47                     "in 56 min"
+```
+
+The near arrival never left the list. `canCatch` is `walk <= eta + 60`, with a
+90 s buffer, so at eta 24 the pinned entry fell out of reach, the first
+CATCHABLE arrival was **the same vehicle a lap later**, and the row took it.
+Swapping a bus for itself is not an alternative; it deletes the only fact the
+rider can act on. `pickLiveArrival` now releases the pin for uncatchability
+only in favour of a DIFFERENT vehicle. On the same rider the sequence runs
+`in <1, 57 min` to the kerb: worst drift 3,370 s -> 0 s, reversals 1 -> 0.
+
+### Bug 2 — the estimator withdrew it (the anchor), NOT FIXED, handed over
+
+Blue West #126, rider at Mansfield / Division (163), `TRACE=1` on master:
+
+```
+01:37:40  d=448 m  anchor=7/gate=7/11  live=[126:99 s,  126:2459 s]  "in 1, 40 min"
+01:37:45  d=417 m  anchor=8/gate=8/11  live=[126:2300 s, 126:4660 s] "in 38, 77 min"
+...
+01:38:20  d=56 m   at_stop 163                                        "now, then 78 min"
+```
+
+**The "1 min" was right and the "38 min" was the lie.** #126 reached the kerb
+at 01:38:28, 33 s after the row said 37 minutes; on the earlier run (22:53) the
+card said 34 min and the bus was at the kerb 23 s later, then the row snapped
+back to `<1 min` on the very next poll. The correction is not the app
+recovering — it is a one-to-three-poll excursion in the last 400 m of an
+approach.
+
+Mechanism: **Blue West (route 16) folds back and is not in the fold list.** Its
+eleven stops run north to Mansfield / Division at index 8 and then back south
+to Pauli Murray College at index 9 (41.32486 -> 41.31540 at essentially the
+same longitude, -72.9247 vs -72.92466) — the outbound approach and the return
+leg share the road, exactly the Green/Purple ambiguity `docs/eta-estimator-design.md`
+describes. `findRouteAnchor` put an approaching bus on the return leg 400 m
+before the turning stop; `gateAnchor` then accepted the advance under rule 2
+(the bus had moved 31 m, one `ANCHOR_FEED_MOVE_M` deadband step, which buys one
+hop) and, on the 01:37 run, latched it for three polls while the raw anchor had
+already fallen back to 7.
+
+Nothing in `pickLiveArrival` can see this: the near arrival is gone from the
+list before the card is consulted. The next step is the 127-degree direction
+filter in `anchor.ts` / `noteFix`, on a route the fold work never considered.
+It is deliberately NOT bundled with bug 1 — a speculative anchor change would
+put Green and Purple at risk in a change that otherwise measures clean.
+
 ## What the simulation cannot see
 
 It replays the *arithmetic*, not the rendering. It cannot see a card reorder

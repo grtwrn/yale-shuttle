@@ -276,6 +276,15 @@ export interface Tick {
   bus: string | null;
   /** "🚌 You can't catch #X" is on the card. */
   missedBus: string | null;
+  /**
+   * The soonest arrival `computeUpcomingArrivals` still offers for the vehicle
+   * the row followed on the PREVIOUS poll, or null when that vehicle has no
+   * arrival left at all. This is what tells a drop's two causes apart: the
+   * near arrival was still on offer and the row declined it (the trip card's
+   * own choice — `pickLiveArrival`), or the estimator itself stopped offering
+   * it (the anchor moved the bus past the stop).
+   */
+  prevSoonest: number | null;
 }
 
 export interface Transition {
@@ -353,6 +362,32 @@ export interface WaitResult {
   overshoot: boolean;
   /** Countdown was never shown at all during the wait. */
   neverShown: boolean;
+  /**
+   * THE OPERATOR'S INVARIANT (2026-09-04): "a bus that has been shown to the
+   * rider is not removed from the list until it has actually arrived or
+   * actually departed."
+   *
+   * A drop counts when, between two consecutive countdown readings, the
+   * vehicle the row was following loses its near arrival — the row switches
+   * vehicle, or re-prices the SAME vehicle a lap later — the shown number
+   * jumps at least `DROP_MIN_RISE_SEC` later, AND the vehicle that vanished
+   * had NOT yet reached the board stop and DID reach it within
+   * `DROP_APPROACH_WINDOW_MS` afterwards. That last clause is what separates
+   * the defect from a bus that genuinely left: a departed bus has a visit at
+   * or before the drop and is rightly gone.
+   */
+  droppedApproaching: number;
+  /** The first such drop, for the incident list: "in 1, 40 min -> in 38, 77 min (#126, curb in 40 s)". */
+  droppedDetail: string | null;
+  /**
+   * Those drops by cause. `declined` — the near arrival was still in the live
+   * list and the card chose another; that is `pickLiveArrival`. `repriced` —
+   * the estimator no longer offered it, i.e. the anchor put the bus past the
+   * stop. The two need different fixes, so they are never summed into one
+   * number without being shown apart.
+   */
+  droppedDeclined: number;
+  droppedRepriced: number;
   /** Compressed sequence for humans: "21:21:40 in 9, 23 min | …". */
   sequence: string;
   /**
@@ -375,6 +410,19 @@ export const STRAND_ARRIVE_WITHIN_SEC = 120;
  */
 export const STRAND_MIN_DROP_SEC = 120;
 export const LAP_REPRICE_SEC = 600;
+/**
+ * How much later the shown arrival must land for the vehicle that vanished to
+ * count as DROPPED rather than jittered. 180 s is the canary's own
+ * catastrophic bar, so the two instruments agree about what a rider notices.
+ */
+export const DROP_MIN_RISE_SEC = 180;
+/**
+ * How soon the dropped vehicle must actually reach the curb for the drop to be
+ * a lie. Ten minutes is far beyond any approach a card shows in single
+ * minutes and far short of the shortest loop (~20 min), so a bus re-priced a
+ * lap later cannot be counted as "still approaching" by accident.
+ */
+export const DROP_APPROACH_WINDOW_MS = 10 * 60_000;
 
 const hhmmss = (t: number) => new Date(t).toISOString().slice(11, 19);
 
@@ -417,6 +465,8 @@ export function scoreWait(
   outcome: WaitResult["outcome"],
   opts: ScoreOpts,
   busAtStopOnArrival: string | null = null,
+  /** Every approach to the BOARD stop in the capture — ground truth for the drop rule. */
+  boardVisits: readonly StopVisit[] = [],
 ): WaitResult {
   const th = opts.thresholds ?? THRESHOLDS;
   const ticks = subsample(allTicks, spec.t0, opts.sampleMs);
@@ -506,6 +556,41 @@ export function scoreWait(
     if (t.driftSec >= LAP_REPRICE_SEC && t.busFrom && t.busFrom === t.busTo) lapRepriced = true;
   }
 
+  // The drop rule. Walk consecutive COUNTDOWN readings; a reading with no
+  // countdown between them is a `vanished` episode, already counted, and is
+  // not a drop — the row said nothing rather than saying someone else.
+  const nb = (s: string | null) => (s ? s.replace(/^#/, "") : null);
+  const visitsOf = (bus: string) =>
+    boardVisits.filter((v) => nb(v.busName) === bus);
+  let droppedApproaching = 0;
+  let droppedDeclined = 0;
+  let droppedRepriced = 0;
+  let droppedDetail: string | null = null;
+  const shown = ticks.filter((k) => k.state === "countdown" && k.etaSec !== null && k.bus);
+  for (let i = 1; i < shown.length; i++) {
+    const a = shown[i - 1]!, b = shown[i]!;
+    const v = nb(a.bus)!;
+    const sameVehicle = nb(b.bus) === v;
+    const rise = b.etaSec! - a.etaSec!;
+    // The row still follows this vehicle at about the same arrival: nothing
+    // was dropped, whatever the number did.
+    if (sameVehicle && rise < DROP_MIN_RISE_SEC) continue;
+    if (!sameVehicle && rise < DROP_MIN_RISE_SEC) continue;
+    // Had the vanished vehicle already reached this stop? Then it is gone by
+    // right, and the row is correct to stop showing it.
+    const mine = visitsOf(v);
+    if (mine.some((x) => x.enter >= spec.t0 && x.enter <= b.t)) continue;
+    const next = mine.find((x) => x.enter > b.t && x.enter - b.t <= DROP_APPROACH_WINDOW_MS);
+    if (!next) continue;
+    droppedApproaching++;
+    // Was the near arrival still on offer when the card looked away from it?
+    const declined = b.prevSoonest !== null && b.prevSoonest < b.etaSec! - 60;
+    if (declined) droppedDeclined++; else droppedRepriced++;
+    if (!droppedDetail) {
+      droppedDetail = `${hhmmss(b.t)} "${a.token}" -> "${b.token}" (#${v} still ${Math.round((next.enter - b.t) / 1000)} s from the curb, ${declined ? "declined" : "repriced"})`;
+    }
+  }
+
   const waitSec = arrivedAt !== null ? Math.round((arrivedAt - spec.t0) / 1000) : null;
   const worstDriftSec: number = seq.worstDriftSec ?? 0;
   let departure: WaitResult["departure"];
@@ -535,6 +620,7 @@ export function scoreWait(
     pins, pinChanged: pins.length > 1,
     vanished, returned, lapRepriced, strand, overshoot,
     neverShown: !sawCountdown,
+    droppedApproaching, droppedDeclined, droppedRepriced, droppedDetail,
     sequence: fmtSequence(ticks),
     ...(departure ? { departure } : {}),
   };
@@ -562,6 +648,13 @@ export interface GroupSummary {
   pctVanished: number;
   pctLapRepriced: number;
   pctNeverShown: number;
+  /** Share of scored waits that saw at least one drop of a still-approaching bus. */
+  pctDropped: number;
+  /** Total such drops across the group — one wait can suffer several. */
+  drops: number;
+  /** ...split by cause: the card declined a live arrival, or the estimator withdrew it. */
+  dropsDeclined: number;
+  dropsRepriced: number;
   worstDrift: { p50: number | null; p90: number | null; max: number | null };
 }
 
@@ -612,6 +705,10 @@ export function summarise(waits: readonly WaitResult[]): GroupSummary {
     pctVanished: share(scored.filter((w) => w.vanished > 0).length, scored.length),
     pctLapRepriced: share(scored.filter((w) => w.lapRepriced).length, scored.length),
     pctNeverShown: share(arrived.filter((w) => w.neverShown).length, arrived.length),
+    pctDropped: share(scored.filter((w) => w.droppedApproaching > 0).length, scored.length),
+    drops: scored.reduce((n, w) => n + w.droppedApproaching, 0),
+    dropsDeclined: scored.reduce((n, w) => n + w.droppedDeclined, 0),
+    dropsRepriced: scored.reduce((n, w) => n + w.droppedRepriced, 0),
     worstDrift: { p50: r1(pct(worst, 0.5)), p90: r1(pct(worst, 0.9)), max: worst.length ? Math.max(...worst) : null },
   };
 }
@@ -720,6 +817,9 @@ export interface Compare {
   jump180: { both: number; onlyA: number; onlyB: number; neither: number };
   strand: { both: number; onlyA: number; onlyB: number; neither: number };
   reversal60: { both: number; onlyA: number; onlyB: number; neither: number };
+  dropped: { both: number; onlyA: number; onlyB: number; neither: number };
+  /** Total drops on each side of the pairing, and the cause split. */
+  dropCounts: { a: number; b: number; aDeclined: number; bDeclined: number; aRepriced: number; bRepriced: number };
   /** b.worstDrift - a.worstDrift over paired scored waits */
   worstDriftDelta: { p10: number | null; p50: number | null; p90: number | null; improved: number; worsened: number; same: number };
   firstSightAbsMissDelta: { p50: number | null; improved: number; worsened: number };
@@ -751,6 +851,15 @@ export function compareRuns(a: readonly WaitResult[], b: readonly WaitResult[]):
     jump180: quad(j),
     strand: quad((w) => w.strand),
     reversal60: quad((w) => w.notableReversals > 0),
+    dropped: quad((w) => w.droppedApproaching > 0),
+    dropCounts: {
+      a: scored.reduce((n, id) => n + ma.get(id)!.droppedApproaching, 0),
+      b: scored.reduce((n, id) => n + mb.get(id)!.droppedApproaching, 0),
+      aDeclined: scored.reduce((n, id) => n + ma.get(id)!.droppedDeclined, 0),
+      bDeclined: scored.reduce((n, id) => n + mb.get(id)!.droppedDeclined, 0),
+      aRepriced: scored.reduce((n, id) => n + ma.get(id)!.droppedRepriced, 0),
+      bRepriced: scored.reduce((n, id) => n + mb.get(id)!.droppedRepriced, 0),
+    },
     worstDriftDelta: {
       p10: r1(pct(dd, 0.1)), p50: r1(pct(dd, 0.5)), p90: r1(pct(dd, 0.9)),
       improved: dd.filter((x) => x < 0).length, worsened: dd.filter((x) => x > 0).length, same: dd.filter((x) => x === 0).length,
@@ -773,9 +882,10 @@ export function renderSummary(title: string, s: Summary): string {
   out.push(`  wait median ${g.medianWaitMin} min, p90 ${g.p90WaitMin} min; first promise |miss| median ${g.firstSight.medianAbsSec} s, p90 ${g.firstSight.p90AbsSec} s (early>60 s ${g.firstSight.earlyOver60Pct}%, late>60 s ${g.firstSight.lateOver60Pct}%)`);
   out.push(`  riders who saw: jump>=180 s ${g.pctJump180}% | jump>=300 s ${g.pctJump300}% | reversal>=60 s ${g.pctReversal60}% | STRAND ${g.pctStrand}% | overshoot ${g.pctOvershoot}% | pin changed ${g.pctPinChanged}% | countdown vanished ${g.pctVanished}% | lap re-priced ${g.pctLapRepriced}% | never shown ${g.pctNeverShown}%`);
   out.push(`  worst drift per wait: p50 ${g.worstDrift.p50} s, p90 ${g.worstDrift.p90} s, max ${g.worstDrift.max} s`);
-  out.push(`  ${padR("route", 14)}${padL("scored", 7)}${padL("wait", 6)}${padL("miss", 6)}${padL("j180", 6)}${padL("j300", 6)}${padL("rev", 6)}${padL("strand", 7)}${padL("pin", 6)}${padL("vanish", 7)}${padL("lap", 6)}${padL("p90dr", 7)}`);
+  out.push(`  DROPPED while still approaching: ${g.pctDropped}% of riders, ${g.drops} drops (${g.dropsDeclined} the card declined a live arrival, ${g.dropsRepriced} the estimator withdrew it)`);
+  out.push(`  ${padR("route", 14)}${padL("scored", 7)}${padL("wait", 6)}${padL("miss", 6)}${padL("j180", 6)}${padL("j300", 6)}${padL("rev", 6)}${padL("strand", 7)}${padL("pin", 6)}${padL("vanish", 7)}${padL("lap", 6)}${padL("drop%", 7)}${padL("p90dr", 7)}`);
   for (const [label, r] of Object.entries(s.byRoute)) {
-    out.push(`  ${padR(label, 14)}${padL(r.scored, 7)}${padL(r.medianWaitMin ?? "-", 6)}${padL(r.firstSight.medianAbsSec ?? "-", 6)}${padL(r.pctJump180, 6)}${padL(r.pctJump300, 6)}${padL(r.pctReversal60, 6)}${padL(r.pctStrand, 7)}${padL(r.pctPinChanged, 6)}${padL(r.pctVanished, 7)}${padL(r.pctLapRepriced, 6)}${padL(r.worstDrift.p90 ?? "-", 7)}`);
+    out.push(`  ${padR(label, 14)}${padL(r.scored, 7)}${padL(r.medianWaitMin ?? "-", 6)}${padL(r.firstSight.medianAbsSec ?? "-", 6)}${padL(r.pctJump180, 6)}${padL(r.pctJump300, 6)}${padL(r.pctReversal60, 6)}${padL(r.pctStrand, 7)}${padL(r.pctPinChanged, 6)}${padL(r.pctVanished, 7)}${padL(r.pctLapRepriced, 6)}${padL(r.pctDropped, 7)}${padL(r.worstDrift.p90 ?? "-", 7)}`);
   }
   if (s.worstStops.length) {
     out.push(`  worst stops (>=3 scored waits): ` + s.worstStops.slice(0, 8).map((x) => `${x.label}@${x.stopId} ${x.pctJump180}%/${x.pctStrand}% (${x.waits})`).join("; "));
@@ -791,6 +901,8 @@ export function renderCompare(c: Compare, nameA: string, nameB: string): string 
     `  jump>=180 s: ${q(c.jump180)}`,
     `  strand:      ${q(c.strand)}`,
     `  reversal>=60 s: ${q(c.reversal60)}`,
+    `  DROPPED while approaching: ${q(c.dropped)}`,
+    `    drops ${nameA} ${c.dropCounts.a} (${c.dropCounts.aDeclined} declined / ${c.dropCounts.aRepriced} repriced) -> ${nameB} ${c.dropCounts.b} (${c.dropCounts.bDeclined} declined / ${c.dropCounts.bRepriced} repriced)`,
     `  worst drift ${nameB} - ${nameA}: p10 ${c.worstDriftDelta.p10} p50 ${c.worstDriftDelta.p50} p90 ${c.worstDriftDelta.p90} s; improved ${c.worstDriftDelta.improved}, worsened ${c.worstDriftDelta.worsened}, same ${c.worstDriftDelta.same}`,
     `  first promise |miss| ${nameB} - ${nameA}: p50 ${c.firstSightAbsMissDelta.p50} s; improved ${c.firstSightAbsMissDelta.improved}, worsened ${c.firstSightAbsMissDelta.worsened}`,
     c.examples.fixed.length ? `  fixed in ${nameB}: ${c.examples.fixed.join(", ")}` : "",
