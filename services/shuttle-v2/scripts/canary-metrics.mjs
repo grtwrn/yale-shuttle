@@ -327,7 +327,27 @@ const isLabelish = (l) =>
  * "11:22 AM" cannot either — space, and upper case. Verified against captured
  * innerText in the tests, not reasoned about.
  */
-const IS_ARRIVAL_CLOCK = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
+/**
+ * The card's arrival clock, in both spellings: "arrive 5:13p" until
+ * 2026-09-04 and a bare "10:33a" after (#123 dropped the word).
+ *
+ * EXPORTED because there are TWO readers of this text and they live in
+ * different files. `parseOptions` below is one; `openCard` in
+ * rider-canary.mjs — which finds the collapsed row to tap for the pinned
+ * vehicle and the board stop — is the other, and it was missed when #123
+ * taught this one both spellings. The canary then ran for 25 minutes with no
+ * board stop at all: every `distM` null, `pins` empty, and `no-arrival` filed
+ * against an app it had no ground truth to judge. That is the SECOND time a
+ * layout change blinded a reader that "needed no change" (#111 was the
+ * first), so the pattern is exported rather than copied, and the anchored
+ * per-line test comes with it.
+ */
+export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
+/** Does this block of innerText contain an arrival clock on a line of its own? */
+export function hasArrivalClock(text) {
+  return String(text ?? "").split("\n").some((l) => ARRIVAL_CLOCK_RE.test(l.trim()));
+}
+const IS_ARRIVAL_CLOCK = ARRIVAL_CLOCK_RE;
 export function parseOptions(bodyText) {
   const lines = String(bodyText).split("\n").map((l) => l.trim()).filter(Boolean);
   const isHeader = (l) => /^\d+\s*min$/.test(l) || l === "Departed";

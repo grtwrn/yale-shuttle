@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
+  ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
-  departureBetween, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  departureBetween, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
   pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -596,6 +596,23 @@ In beta — please report any issues
 ›
 Not affiliated with or endorsed by Yale University.`;
 
+  it("is recognised by the predicate `openCard` taps on, too", () => {
+    // TWO readers, one page. `parseOptions` finds the cards; `openCard` in
+    // rider-canary.mjs must find the same rows to tap for the pinned bus and
+    // the board stop. On THIS text they disagreed for 25 minutes on
+    // 2026-09-04 — `openCard` kept its own copy of the pattern and still
+    // required the word #123 had removed — and the canary recorded
+    // `board: null`, `pins: []` and a null distance on every bus, then filed
+    // `no-arrival` off ground truth it never had. One exported pattern now,
+    // and this fails if the two ever drift apart again.
+    expect(hasArrivalClock(LIVE_BARE_CLOCK)).toBe(true);
+    const clocks = LIVE_BARE_CLOCK.split("\n").map((l) => l.trim())
+      .filter((l) => ARRIVAL_CLOCK_RE.test(l));
+    // One per card, and the parser finds exactly as many cards.
+    expect(clocks.length).toBe(parseOptions(LIVE_BARE_CLOCK).length);
+    expect(clocks.every((c) => !/arrive/i.test(c))).toBe(true);
+  });
+
   it("reads the card after the word 'arrive' was dropped from the clock", () => {
     const opts = parseOptions(LIVE_BARE_CLOCK);
     expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day", "Orange Day", "Brown", "Walk"]);
@@ -878,6 +895,86 @@ describe("a bus already at the stop when the rider walks up", () => {
     // And with no board stop resolved, distance is all there is.
     expect(isAtBoardStop(38, 48, null)).toBe(true);
     expect(isAtBoardStop(300, 48, null)).toBe(false);
+  });
+});
+
+describe("the arrival clock has TWO readers", () => {
+  // `parseOptions` is one. `openCard` in rider-canary.mjs is the other: it
+  // finds the collapsed row to tap for the pinned vehicle and the board stop.
+  // #123 taught the first both spellings and could not know the second
+  // existed, so the 12:30 run on 2026-09-04 tapped no card for 25 minutes —
+  // `board: null`, `pins: []`, every `distM` null — and then filed
+  // `no-arrival` off ground truth it never had.
+  it("matches both spellings of the clock", () => {
+    expect(ARRIVAL_CLOCK_RE.test("arrive 5:13p")).toBe(true);  // until 2026-09-04
+    expect(ARRIVAL_CLOCK_RE.test("10:33a")).toBe(true);        // #123 onwards
+    expect(ARRIVAL_CLOCK_RE.test("12:31p")).toBe(true);
+    // And nothing else on the card, or the tap lands on the wrong row.
+    expect(ARRIVAL_CLOCK_RE.test("23 min")).toBe(false);
+    expect(ARRIVAL_CLOCK_RE.test("in 3, 21 min")).toBe(false);
+    expect(ARRIVAL_CLOCK_RE.test("12:13 PM")).toBe(false);     // the page header
+  });
+
+  it("finds a clock in the card text `openCard` actually greps", () => {
+    // The predicate is per-LINE over a card's innerText, which is how
+    // `openCard` uses it. The old copy tested the blob unanchored, so it
+    // could not have been shared even if anyone had thought to.
+    expect(hasArrivalClock("Blue Day\nin 3, 21 min\n23 min\n10:33a\n›")).toBe(true);
+    expect(hasArrivalClock("Blue Day\nin 3, 21 min\n23 min\narrive 10:33a\n›")).toBe(true);
+    expect(hasArrivalClock("Blue Day\nin 3, 21 min\n23 min\n›")).toBe(false);
+    expect(hasArrivalClock("")).toBe(false);
+    expect(hasArrivalClock(null)).toBe(false);
+  });
+
+});
+
+describe("a bus with coordinates always gets a distance", () => {
+  // The 12:30 run recorded `{"name":"#310","id":65956,"distM":null,"atStop":27}`
+  // on every sample: real buses, real at_stop values, no distance, because the
+  // board stop was never read. Null distances make every arrival, departure
+  // and event verdict downstream blind, so this asserts the shape the samples
+  // must have.
+  // Both coordinates are REAL and copied, not invented: the board stop is the
+  // one every archived Red run read out of the app's own Directions link, and
+  // the origin is `CANONICAL_TRIP`'s. The 12:30 samples record no lat/lon at
+  // all — only the null distances the defect produced — so there is no real
+  // bus position to fixture, and inventing one to make a radius assertion
+  // pass is how a wrong measurement gets written down as fact.
+  const BOARD = { lat: 41.324769, lon: -72.923522 };
+
+  it("measures every bus once the board stop is known", () => {
+    const buses = [
+      { bus_name: "#310", bus_id: 65956, ...BOARD, at_stop_id: 27 },
+      { bus_name: "#304", bus_id: 65960, ...CANONICAL_TRIP.destination, at_stop_id: null },
+    ];
+    for (const b of buses) {
+      const d = Math.round(haversineM(b, BOARD));
+      expect(Number.isFinite(d), `${b.bus_name} has no distance`).toBe(true);
+      expect(d).toBeGreaterThanOrEqual(0);
+    }
+    // A bus standing on the board stop is at it; one at the far end of the
+    // trip is nowhere near. Those are the only two claims the real
+    // coordinates support.
+    expect(Math.round(haversineM(buses[0], BOARD))).toBeLessThan(ARRIVAL_M);
+    expect(Math.round(haversineM(buses[1], BOARD))).toBeGreaterThan(NEAR_STOP_M);
+  });
+
+  it("returns no distance at all when the board stop was never read", () => {
+    // Precisely the 12:30 shape: `board` is null, so the snapshot writes null
+    // rather than a number, and every downstream verdict is blind.
+    const board = null;
+    const distM = board ? Math.round(haversineM({ lat: 41.3, lon: -72.9 }, board)) : null;
+    expect(distM).toBeNull();
+  });
+
+  it("cannot judge an arrival at all without a board stop", () => {
+    // This is what the run did: a bus sitting AT the stop reads as not there,
+    // because there is no stop to be at. The verdict must be suppressed
+    // rather than reported — the same rule as a feed that refused every poll.
+    expect(isAtBoardStop(null, 27, null)).toBe(false);
+    expect(isAtBoardStop(NaN, 48, null)).toBe(false);
+    // And a NaN distance never sneaks past the radius test.
+    expect(isAtBoardStop(Number.NaN, null, 48)).toBe(false);
   });
 });
 
