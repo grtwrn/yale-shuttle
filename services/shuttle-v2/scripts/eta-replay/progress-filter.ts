@@ -141,6 +141,8 @@ const P_RUN_TO_STAND_PER_S = 0.01612;
 const P_STAND_TO_RUN_PER_S = 0.01457;
 /** Perpendicular distance beyond which a leg is not a candidate at all. */
 const MAX_PERP_M = 70;
+/** ...unless NO leg is within that, in which case the bus is off the modelled path and this is the budget. */
+const MAX_PERP_OFFPATH_M = 400;
 /** Cost per metre of disagreement with the predicted progress. */
 const LAMBDA = 0.55;
 /** Speed floor/ceiling for the running mode (m/s). */
@@ -190,8 +192,20 @@ export function step(
   prev: FilterState | null,
   obs: { lat: number; lon: number; t: number },
 ): { state: FilterState; out: FilterOut } {
-  const cands = candidates(geo, obs, MAX_PERP_M);
-  // Cold start, or the bus is nowhere near the modelled path: trust geometry.
+  let cands = candidates(geo, obs, MAX_PERP_M);
+  // A fix off the modelled polyline (Green's West Campus spur, a detour, a
+  // yard) used to RESET the filter to progress 0 -- the start of the loop --
+  // which is how a bus at Building 400 was promised a full lap late while it
+  // departed (independent audit, 2026-09-03). Off-path is not "unknown": the
+  // forward-cost selection below still applies, only with a wider perp budget,
+  // and if nothing is within that either the previous belief is held.
+  if (prev && cands.length === 0) cands = candidates(geo, obs, MAX_PERP_OFFPATH_M);
+  if (prev && cands.length === 0 && obs.t - prev.lastT <= 120_000) {
+    const pt = pointAt(geo, prev.progress);
+    const state: FilterState = { ...prev, lastT: obs.t };
+    return { state, out: { progress: prev.progress, leg: pt.leg, lat: pt.lat, lon: pt.lon, pStand: prev.pStand, standingSince: prev.standingSince, v: prev.v, censored: false } };
+  }
+  // Cold start, or the bus has been away: trust geometry.
   if (!prev || cands.length === 0 || obs.t - prev.lastT > 120_000) {
     const best = cands.length
       ? cands.reduce((a, b) => (a.perp <= b.perp ? a : b))
