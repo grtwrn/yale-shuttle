@@ -12,14 +12,22 @@ import type {
 import { TransitNetwork } from "../network/TransitNetwork.js";
 
 import {
+  attachStandDrive,
   calibrate,
   computeDwellStats,
   computeSegmentStats,
   hourWindow,
+  MIN_DRIVE_SAMPLES,
+  MIN_STAND_SAMPLES,
   parseValueList,
+  STAND_QUANTILE_LEVELS,
   type ValueGroup,
 } from "./calibrator.js";
 import { median, percentile, shrink } from "./shrinkage.js";
+import {
+  MIN_DRIVE_SAMPLES as CLIENT_MIN_DRIVE,
+  MIN_STAND_SAMPLES as CLIENT_MIN_STAND,
+} from "../../web/src/hopPricing.js";
 
 describe("hourWindow", () => {
   it("returns a centered window inside the day", () => {
@@ -165,6 +173,72 @@ describe("computeDwellStats", () => {
   });
 });
 
+describe("attachStandDrive", () => {
+  it("pins the adequacy thresholds to hopPricing.ts", () => {
+    expect(MIN_STAND_SAMPLES).toBe(CLIENT_MIN_STAND);
+    expect(MIN_DRIVE_SAMPLES).toBe(CLIENT_MIN_DRIVE);
+    expect(STAND_QUANTILE_LEVELS).toHaveLength(11);
+    expect(STAND_QUANTILE_LEVELS[5]).toBe(0.5);
+  });
+
+  it("withholds a thin cell and attaches an adequate one", () => {
+    const dwells = new Map<string, DwellStats>();
+    const segments = new Map<string, SegmentStats>([
+      ["1:11:146", { mean: 400, stddev: 50, n: 30, source: "specific" }],
+      ["1:12:13", { mean: 80, stddev: 10, n: 8, source: "route-segment" }],
+    ]);
+    const thinStand: ValueGroup = {
+      key: "1:99",
+      n: 5,
+      all: [10, 20, 30, 40, 50],
+      windowed: [],
+    };
+    const fatStand: ValueGroup = {
+      key: "1:11",
+      n: 20,
+      all: Array.from({ length: 20 }, (_, i) => 100 + i * 20),
+      windowed: [],
+    };
+    const thinDrive: ValueGroup = {
+      key: "1:12:13",
+      n: 9,
+      all: Array.from({ length: 9 }, () => 25),
+      windowed: [],
+    };
+    const fatDrive: ValueGroup = {
+      key: "1:11:146",
+      n: 10,
+      all: Array.from({ length: 10 }, () => 4),
+      windowed: [],
+    };
+    attachStandDrive(dwells, segments, [thinStand, fatStand], [thinDrive, fatDrive]);
+
+    expect(dwells.has("1:99")).toBe(false);
+    const stand = dwells.get("1:11")!;
+    expect(stand.qn).toBe(20);
+    expect(stand.q).toHaveLength(11);
+    expect(stand.q![0]).toBe(percentile(fatStand.all, 0.05));
+    expect(stand.q![5]).toBe(percentile(fatStand.all, 0.5));
+    expect(stand.mean).toBe(15); // no arrivals row — fallback, q still served
+
+    expect(segments.get("1:12:13")!.drive).toBeUndefined();
+    expect(segments.get("1:11:146")!.drive).toBe(4);
+    expect(segments.get("1:11:146")!.driveN).toBe(10);
+  });
+
+  it("does not invent a segment that calibration omitted", () => {
+    const dwells = new Map<string, DwellStats>();
+    const segments = new Map<string, SegmentStats>();
+    attachStandDrive(
+      dwells,
+      segments,
+      [],
+      [{ key: "1:1:2", n: 20, all: Array.from({ length: 20 }, () => 30), windowed: [] }],
+    );
+    expect(segments.size).toBe(0);
+  });
+});
+
 /**
  * End-to-end guard on the SQL half: the aggregation, the (dow, hour) window
  * predicate, the null-dwell filter and the lossless sample encoding all live in
@@ -297,6 +371,7 @@ describe("calibrate over a real database", () => {
     const dwellB = captured.dwells.get("1:11")!;
     expect(dwellB.mean).toBe(2);
     expect(dwellB.n).toBe(0);
+    expect(dwellB.q).toBeUndefined();
     expect(captured.dwells.has("1:12")).toBe(false);
   });
 
@@ -325,6 +400,74 @@ describe("calibrate over a real database", () => {
     });
     expect(captured.segments.size).toBe(0);
     expect(captured.dwells.size).toBe(0);
+  });
+
+  it("serves stand quantiles and clear-clock drive from stop_visits/legs", () => {
+    addSegment(1, 11, 146, 400, inWindow);
+    const stands = Array.from({ length: 20 }, (_, i) => 120 + i * 15);
+    for (let i = 0; i < stands.length; i++) {
+      const ts = inWindow.ts + i * 60_000;
+      const inside = stands[i]!;
+      bundle.sqlite
+        .prepare(
+          `INSERT INTO stop_visits (
+             bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
+             anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec,
+             outcome, how, steps, rest_polls, shuffles, closest_m, dow, hour
+           ) VALUES (1, ?, 1, 1, 11, 0, ?, ?, ?, ?, ?, ?, 'stopped', 'far', 3, 4, 0, 8, ?, ?)`,
+        )
+        .run(
+          `Bus ${i}`,
+          ts,
+          ts,
+          ts,
+          ts + inside * 1000,
+          inside,
+          inside,
+          inWindow.dow,
+          inWindow.hour,
+        );
+      bundle.sqlite
+        .prepare(
+          `INSERT INTO legs (
+             bus_id, bus_name, route_id, from_stop_id, from_index, to_stop_id, to_index,
+             hops, departed_at, arrived_at, to_pinned_at, leg_sec, hold_sec, drive_sec,
+             holds, reached, dow, hour
+           ) VALUES (1, ?, 1, 11, 0, 146, 1, 1, ?, ?, ?, 30, 0, 30, 0, 1, ?, ?)`,
+        )
+        .run(
+          `Bus ${i}`,
+          ts + inside * 1000,
+          ts + inside * 1000 + 25_000,
+          ts + inside * 1000 + 25_000,
+          inWindow.dow,
+          inWindow.hour,
+        );
+    }
+    // Thin stop: 5 stands, must not grow a q.
+    for (let i = 0; i < 5; i++) {
+      const ts = inWindow.ts + i * 1_000;
+      bundle.sqlite
+        .prepare(
+          `INSERT INTO stop_visits (
+             bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
+             anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec,
+             outcome, how, steps, rest_polls, shuffles, closest_m, dow, hour
+           ) VALUES (1, 'Thin', 1, 1, 99, 0, ?, ?, ?, ?, 40, 40, 'stopped', 'far', 3, 4, 0, 8, ?, ?)`,
+        )
+        .run(ts, ts, ts, ts + 40_000, inWindow.dow, inWindow.hour);
+    }
+
+    calibrate(bundle.db, sink, now);
+
+    const dwell = captured.dwells.get("1:11")!;
+    expect(dwell.qn).toBe(20);
+    expect(dwell.q).toEqual(STAND_QUANTILE_LEVELS.map((p) => percentile(stands, p)));
+    expect(captured.dwells.get("1:99")?.q).toBeUndefined();
+
+    const hop = captured.segments.get("1:11:146")!;
+    expect(hop.drive).toBe(25);
+    expect(hop.driveN).toBe(20);
   });
 });
 

@@ -56,6 +56,15 @@ export interface SegmentStats {
    *   `prior`        — distance-based prior; no samples seen
    */
   source: "specific" | "route-segment" | "route" | "prior";
+  /**
+   * Seconds from the last poll at the from-stop to arrival at the to-stop
+   * (the hop without the standing time at A). Served from `legs` on the
+   * clear clock; omitted when the cell is thinner than MIN_DRIVE_SAMPLES.
+   * The client prices the first hop from this plus `DwellStats.q`.
+   */
+  drive?: number;
+  /** Sample count behind `drive`. */
+  driveN?: number;
 }
 
 export interface DwellStats {
@@ -92,6 +101,17 @@ export interface DwellStats {
    * Undefined until the calibrator has enough samples to place a quantile.
    */
   low?: number;
+  /**
+   * Ascending quantiles of standing time at this stop (clear clock:
+   * last poll within 75 m minus `at_stop_since`), from `stop_visits`.
+   * The client conditions remaining stand on elapsed r; omitted when
+   * thinner than MIN_STAND_SAMPLES. Independent of `mean`/`low`, which
+   * still come from the arrival-to-arrival `dwell_sec` and are unused
+   * by the first-hop price.
+   */
+  q?: number[];
+  /** Sample count behind `q`. */
+  qn?: number;
 }
 
 export interface WalkTransfer {

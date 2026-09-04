@@ -14,6 +14,8 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { buildApp } from "./app.js";
 import { resetRateLimits } from "./reports.js";
+import { buildBusesPayload } from "./v1compat.js";
+import { TransitNetwork } from "../network/TransitNetwork.js";
 
 // A fake upstream that returns a fixed snapshot. The collector contract
 // is just "give me these three methods" so we don't need network access.
@@ -239,6 +241,28 @@ describe("GET /api/buses", () => {
     ]);
     expect(Object.keys(body.stop_names as object).sort()).toEqual(["1", "2", "3"]);
     expect((body.routes as Record<string, number[]>)["10"]).toEqual([1, 2, 3]);
+  });
+
+  it("emits stand quantiles and drive when calibration has them", () => {
+    const q = [100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600];
+    collector.ref.get().setCalibration(
+      new Map([
+        [TransitNetwork.segmentKey(10, 1, 2), {
+          mean: 80, stddev: 10, n: 30, source: "specific", drive: 4.04, driveN: 25,
+        }],
+      ]),
+      new Map([
+        [TransitNetwork.dwellKey(10, 1), { mean: 40, stddev: 10, n: 12, q, qn: 24 }],
+      ]),
+    );
+    const body = buildBusesPayload(collector) as {
+      segments: Record<string, Record<string, { drive?: number; driveN?: number }>>;
+      dwells: Record<string, Record<string, { q?: number[]; qn?: number }>>;
+    };
+    expect(body.segments["10"]!["1-2"]).toMatchObject({ drive: 4, driveN: 25 });
+    expect(body.dwells["10"]!["1"]).toMatchObject({ q, qn: 24 });
+    expect(body.segments["10"]!["2-3"]!.drive).toBeUndefined();
+    expect(body.dwells["10"]!["2"]!.q).toBeUndefined();
   });
 
   it("publishes the operator's timetable per route as route_hours", async () => {

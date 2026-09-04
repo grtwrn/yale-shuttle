@@ -8,7 +8,7 @@ import type {
   SegmentStats,
 } from "../network/TransitNetwork.js";
 
-import { median, percentile, shrink } from "./shrinkage.js";
+import { mean, median, percentile, shrink } from "./shrinkage.js";
 
 // Tuning ---------------------------------------------------------------------
 
@@ -58,6 +58,26 @@ const DWELL_LOW_QUANTILE = 0.35;
 const DWELL_LOW_MIN_SAMPLES = 5;
 
 /**
+ * Quantiles of standing time served as `DwellStats.q`. Same knots as
+ * `scripts/eta-replay/departure-replay.ts` (p5..p95). `remainingStandSec`
+ * reads them as CDF knots at (i + 0.5) / n, so eleven levels put the
+ * median knot at 0.5.
+ *
+ * Thresholds are hopPricing.ts's — a thin cell is withheld, not blended
+ * (a Green n=1 table mispriced the West Campus fold). Pinned equal by
+ * calibrator.test.ts. Pooled over the whole lookback, not the (dow, hour)
+ * slice: Winchester has ~25 stands per day and the evening canary would
+ * miss MIN_DRIVE_SAMPLES if we hour-windowed.
+ */
+export const STAND_QUANTILE_LEVELS: readonly number[] = [
+  0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95,
+];
+export const MIN_STAND_SAMPLES = 20;
+export const MIN_DRIVE_SAMPLES = 10;
+/** Same window as segments — stand/drive need the longer lookback. */
+const SPLIT_WINDOW_DAYS = SEGMENT_WINDOW_DAYS;
+
+/**
  * Hour-window half-width: a sample at hour H is considered "current" for
  * any of (H-1, H, H+1) modulo 24. Mirrors the v1 `hour BETWEEN h-1 AND h+1`
  * but wraps midnight correctly (the v1 bug fixed in the recent commit).
@@ -93,6 +113,18 @@ export function calibrate(
 
   const segmentStats = computeSegmentStats(segmentGroups, network);
   const dwellStats = computeDwellStats(dwellGroups);
+
+  // Stand/drive from stop_visits/legs, when the snapshot has them. snap3
+  // does not; production does after migration 0010. Thin cells stay off
+  // the payload so hopPricing prices those hops exactly as master does.
+  if (hasSplitTables(db)) {
+    attachStandDrive(
+      dwellStats,
+      segmentStats,
+      loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs),
+      loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs),
+    );
+  }
 
   network.setCalibration(segmentStats, dwellStats);
 
@@ -157,6 +189,13 @@ export interface ValueGroup {
  */
 const SEG_VALUE = sql.raw(losslessText("travel_sec"));
 const DWELL_VALUE = sql.raw(losslessText("dwell_sec"));
+const STAND_VALUE = sql.raw(losslessText("inside_sec"));
+/** Clear-clock drive: at_stop_since(B) − last poll inside 75 m at A. */
+const CLEAR_DRIVE = sql.raw(
+  losslessText(
+    "MAX(0.0, (COALESCE(l.to_pinned_at, l.arrived_at) - (v.pinned_at + v.inside_sec * 1000.0)) / 1000.0)",
+  ),
+);
 
 function losslessText(column: string): string {
   return (
@@ -241,6 +280,106 @@ function loadDwellGroups(
     all: parseValueList(r.allValues),
     windowed: parseValueList(r.windowValues),
   }));
+}
+
+function hasSplitTables(db: DB): boolean {
+  const rows = db.all<{ n: number }>(sql`
+    SELECT COUNT(*) AS n FROM sqlite_master
+    WHERE type = 'table' AND name IN ('stop_visits', 'legs')
+  `);
+  return (rows[0]?.n ?? 0) >= 2;
+}
+
+function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<DwellGroupRow>(sql`
+    SELECT
+      route_id AS routeId,
+      stop_id  AS stopId,
+      COUNT(*) AS n,
+      group_concat(${STAND_VALUE}) AS allValues,
+      NULL AS windowValues
+    FROM stop_visits
+    WHERE anchored_at >= ${cutoff}
+      AND outcome = 'stopped'
+      AND inside_sec IS NOT NULL
+    GROUP BY route_id, stop_id
+  `);
+  return rows.map((r) => ({
+    key: TransitNetwork.dwellKey(r.routeId, r.stopId),
+    n: r.n,
+    all: parseValueList(r.allValues),
+    windowed: [],
+  }));
+}
+
+function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<SegmentGroupRow>(sql`
+    SELECT
+      l.route_id     AS routeId,
+      l.from_stop_id AS fromStopId,
+      l.to_stop_id   AS toStopId,
+      COUNT(*)       AS n,
+      group_concat(${CLEAR_DRIVE}) AS allValues,
+      NULL AS windowValues
+    FROM legs l
+    INNER JOIN stop_visits v
+      ON v.bus_name = l.bus_name
+     AND v.departed_at = l.departed_at
+     AND v.route_id = l.route_id
+    WHERE l.departed_at >= ${cutoff}
+      AND l.hops = 1
+      AND v.outcome = 'stopped'
+      AND v.pinned_at IS NOT NULL
+      AND v.inside_sec IS NOT NULL
+    GROUP BY l.route_id, l.from_stop_id, l.to_stop_id
+  `);
+  return rows.map((r) => ({
+    key: TransitNetwork.segmentKey(r.routeId, r.fromStopId, r.toStopId),
+    n: r.n,
+    all: parseValueList(r.allValues),
+    windowed: [],
+  }));
+}
+
+/**
+ * Attach `q`/`qn` and `drive`/`driveN` onto the maps the payload already
+ * serves. A stop with enough stands but no `arrivals` row still gets a
+ * dwell entry so the client can price the first hop; a hop with drive
+ * samples but no `segments` row is left alone (getSegmentStats would
+ * otherwise lose the distance prior's mean).
+ */
+export function attachStandDrive(
+  dwellStats: Map<string, DwellStats>,
+  segmentStats: Map<string, SegmentStats>,
+  standGroups: readonly ValueGroup[],
+  driveGroups: readonly ValueGroup[],
+): void {
+  for (const g of standGroups) {
+    if (g.all.length < MIN_STAND_SAMPLES) continue;
+    const q = STAND_QUANTILE_LEVELS.map((p) => percentile(g.all, p));
+    const existing = dwellStats.get(g.key);
+    if (existing) {
+      existing.q = q;
+      existing.qn = g.all.length;
+    } else {
+      dwellStats.set(g.key, {
+        mean: 15,
+        stddev: 10,
+        n: 0,
+        q,
+        qn: g.all.length,
+      });
+    }
+  }
+  for (const g of driveGroups) {
+    if (g.all.length < MIN_DRIVE_SAMPLES) continue;
+    const existing = segmentStats.get(g.key);
+    if (!existing) continue;
+    existing.drive = mean(g.all);
+    existing.driveN = g.all.length;
+  }
 }
 
 /** `hour IN (…)` list, parameterised so the hours can't be interpolated raw. */

@@ -65,8 +65,8 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
 
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
-  const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>> = {};
+  const segments: Record<string, Record<string, { avg: number; sd: number; n: number; drive?: number; driveN?: number }>> = {};
+  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number }>> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -93,16 +93,19 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
     const n = r.stops.length;
-    const segMap: Record<string, { avg: number; sd: number; n: number }> = {};
+    const segMap: Record<string, { avg: number; sd: number; n: number; drive?: number; driveN?: number }> = {};
     for (let i = 0; i < n; i++) {
       const from = r.stops[i]!;
       const to = r.stops[(i + 1) % n]!;
       const s = net.getSegmentStats(r.id, from, to);
-      segMap[`${from}-${to}`] = { avg: round1(s.mean), sd: round1(s.stddev), n: s.n };
+      segMap[`${from}-${to}`] = {
+        avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
+        ...(s.drive !== undefined ? { drive: round1(s.drive), driveN: s.driveN ?? s.n } : {}),
+      };
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number }> = {};
+    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number }> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
       dwMap[String(sid)] = {
@@ -110,6 +113,8 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         // `low` is what the client bills for a dwell the bus has not started
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
+        // Stand quantiles + sample count; hopPricing withholds a thin table.
+        ...(d.q ? { q: d.q.map(round1), qn: d.qn ?? d.n } : {}),
       };
     }
     dwells[rid] = dwMap;
