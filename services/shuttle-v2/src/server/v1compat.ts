@@ -23,6 +23,15 @@ import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
 
+/**
+ * One hop / one stop in the v1 payload. `avg`/`sd`/`n` and `med`/`sd`/`n` are
+ * v1's arrival-to-arrival numbers; `drive`/`driveN` and `q`/`qn` are the
+ * stand/drive split the client's `hopPricing.ts` consumes — mirror its
+ * `SegmentStat` / `DwellStat` types in `web/src/arrivals.ts`.
+ */
+type SegmentEntry = { avg: number; sd: number; n: number; drive?: number; driveN?: number };
+type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number };
+
 // -- /api/buses ---------------------------------------------------------------
 
 export function buildBusesPayload(collector: Collector): Record<string, unknown> {
@@ -65,8 +74,8 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
 
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
-  const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>> = {};
+  const segments: Record<string, Record<string, SegmentEntry>> = {};
+  const dwells: Record<string, Record<string, DwellEntry>> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -93,16 +102,23 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
     const n = r.stops.length;
-    const segMap: Record<string, { avg: number; sd: number; n: number }> = {};
+    const segMap: Record<string, SegmentEntry> = {};
     for (let i = 0; i < n; i++) {
       const from = r.stops[i]!;
       const to = r.stops[(i + 1) % n]!;
       const s = net.getSegmentStats(r.id, from, to);
-      segMap[`${from}-${to}`] = { avg: round1(s.mean), sd: round1(s.stddev), n: s.n };
+      segMap[`${from}-${to}`] = {
+        avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
+        // The DRIVE half of the hop, on the at_stop_since clock, with the legs
+        // behind it — the client prorates this en route instead of `avg`
+        // (web/src/hopPricing.ts) once `driveN` clears its gate. Whole
+        // seconds: the feed's poll quantum is 5 s.
+        ...(s.drive !== undefined && s.driveN !== undefined ? { drive: Math.round(s.drive), driveN: s.driveN } : {}),
+      };
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number }> = {};
+    const dwMap: Record<string, DwellEntry> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
       dwMap[String(sid)] = {
@@ -110,6 +126,10 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         // `low` is what the client bills for a dwell the bus has not started
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
+        // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
+        // whole seconds, with the stopped visits behind them. This is the
+        // `stand` half the client conditions on r with; `qn` is its gate.
+        ...(d.q !== undefined && d.qn !== undefined ? { q: d.q.map((x) => Math.round(x)), qn: d.qn } : {}),
       };
     }
     dwells[rid] = dwMap;
