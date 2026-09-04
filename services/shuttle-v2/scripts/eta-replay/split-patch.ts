@@ -10,6 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { SPLIT_SERVED_ROUTE_IDS } from "../../src/calibrator/calibrator.js";
 import { MIN_DRIVE_SAMPLES, MIN_STAND_SAMPLES } from "../../web/src/hopPricing.js";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
@@ -27,11 +28,13 @@ const dwells: Record<string, Record<string, { q: number[]; qn: number }>> = {};
 const segments: Record<string, Record<string, { drive: number; driveN: number }>> = {};
 let nStand = 0, nDrive = 0;
 for (const s of tables.stops) {
+  if (!SPLIT_SERVED_ROUTE_IDS.has(s.routeId)) continue;
   if (!s.standClear || s.standClear.n < MIN_STAND_SAMPLES) continue;
   (dwells[String(s.routeId)] ??= {})[String(s.stopId)] = { q: s.standClear.q, qn: s.standClear.n };
   nStand++;
 }
 for (const h of tables.hops) {
+  if (!SPLIT_SERVED_ROUTE_IDS.has(h.routeId)) continue;
   if (h.hops !== 1 || !h.driveClear || h.driveClear.n < MIN_DRIVE_SAMPLES) continue;
   (segments[String(h.routeId)] ??= {})[`${h.fromStopId}-${h.toStopId}`] = {
     drive: h.driveClear.mean, driveN: h.driveClear.n,
