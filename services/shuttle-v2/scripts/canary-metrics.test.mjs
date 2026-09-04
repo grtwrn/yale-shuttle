@@ -160,6 +160,94 @@ Clear`;
     expect(parseOptions(LIVE)).toHaveLength(3);
   });
 
+  // The SAME page after the 2026-09-04 card redesign: the route pill leads
+  // the card (top-left) with the countdown beside it, so both now sit ABOVE
+  // the duration instead of below it. Captured from a phone-sized browser on
+  // a frozen /api/buses payload, Prospect/Canner -> LEPH/60 College.
+  const LIVE_LINE_FIRST = `OVERVIEW — ALL 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌
+🚌 (O) 15 min
+🏁 (B) 10:33a
+ (O) 10:39a
+ (R) 10:47a
+🚌 (B) 3 min
+ (R) 25 min
+ (B) 36 min
+🏁 (B) 11:08a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue Day
+Orange Day
+Red
+Brown
+Blue Day
+🚌 in 3, 21 min
+23 min
+arrive 10:33a
+›
+Orange Day
+🚌 in 15, 39 min
+29 min
+arrive 10:39a
+·
+🚶 16 min
+›
+›
+Red
+🚌 in 25, 31 min
+37 min
+arrive 10:47a
+·
+🚶 1 min
+›
+· most direct
+›
+🚶 Walk
+38 min
+arrive 10:48a
+›
+Brown
+🚌 in 36 min
+68 min
+arrive 11:17a
+·
+🚶 3 min
+›
+›
+🚶 10 min
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the redesigned card, whose pill sits above the duration", () => {
+    const opts = parseOptions(LIVE_LINE_FIRST);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day", "Red", "Walk", "Brown"]);
+    expect(opts[0]).toMatchObject({ totalMin: 23, arriveText: "10:33a", walkToMin: 0, walkFromMin: 0 });
+    expect(opts[0].eta.raw).toBe("in 3, 21 min");
+    expect(opts[1]).toMatchObject({ totalMin: 29, walkToMin: 16 });
+    expect(opts[3]).toMatchObject({ mode: "walk", totalMin: 38 });
+    // The last card runs into the page footer, and "Contribute" is exactly
+    // as label-shaped as a route name.
+    expect(opts[4]).toMatchObject({ routeLabel: "Brown", walkToMin: 3, walkFromMin: 10 });
+  });
+
+  it("does not take the map overview's legend for the first card's line", () => {
+    // The legend lists every drawn route immediately above the first card, so
+    // the walk-back that finds the pill must stop after one label.
+    expect(parseOptions(LIVE_LINE_FIRST)[0].routeLabel).toBe("Blue Day");
+  });
+
   it("reads a departed card and its missed-bus warning", () => {
     const text = `Departed
 🚶 1 min

@@ -148,38 +148,72 @@ export const THRESHOLDS = {
  * Split the page's innerText into option cards.
  *
  * The plan list has no test ids and every style is inline, so structure comes
- * from the text itself: a card starts at its duration ("23 min") or at
- * "Departed", and runs to the next such header. Within a card the route name
- * is the one chip that is not a walk/bus/hourglass line and not the arrival
- * clock — derived rather than matched against a hard-coded list of the 15
- * route labels, which would be a fourth copy of ROUTE_LISTS waiting to drift.
+ * from the text itself: a card is anchored on its duration ("23 min") or on
+ * "Departed". Within a card the route name is the one chip that is not a
+ * walk/bus/hourglass line and not the arrival clock — derived rather than
+ * matched against a hard-coded list of the 15 route labels, which would be a
+ * fourth copy of ROUTE_LISTS waiting to drift.
+ *
+ * A card's own lines can sit on EITHER side of that anchor. Since 2026-09-04
+ * the route pill leads the card (top-left) with the "🚌 in …" countdown beside
+ * it, so both precede the duration; before that they followed it. Both orders
+ * parse, deliberately — the canary watches production, which is a deploy
+ * behind whatever branch introduces a layout change, and a parser that only
+ * knows the new shape reports every card as label-less on the old one.
  */
 const NOT_A_ROUTE = new Set(["Find next bus", "Clear", "Walk", "Departed"]);
+/** Page furniture below the option list — where the last card stops. */
+const IS_PAGE_CHROME = /^(Show \d+ more route|Clear$|Contribute$|💬|🧪|Not affiliated)/;
+const isLabelish = (l) =>
+  /^[A-Za-z][A-Za-z ]{0,19}$/.test(l) && !NOT_A_ROUTE.has(l) && !/^arrive/i.test(l);
 export function parseOptions(bodyText) {
   const lines = String(bodyText).split("\n").map((l) => l.trim()).filter(Boolean);
   const isHeader = (l) => /^\d+\s*min$/.test(l) || l === "Departed";
+  const headers = lines.map((l, i) => (isHeader(l) ? i : -1)).filter((i) => i >= 0);
+  // Where the card anchored at `h` begins: at most one countdown line and one
+  // route pill above it. Anything further up belongs to the map overview or to
+  // the card before, so the walk-back is deliberately short.
+  const startOf = (h) => {
+    let start = h;
+    if (h > 0 && !isHeader(lines[h - 1]) && lines[h - 1].startsWith("🚌")) start = h - 1;
+    const p = start - 1;
+    if (p >= 0 && !isHeader(lines[p]) && (isLabelish(lines[p]) || lines[p] === "🚶 Walk")) start = p;
+    return start;
+  };
   const cards = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (!isHeader(lines[i])) continue;
-    let end = i + 1;
-    while (end < lines.length && !isHeader(lines[end])) end++;
-    const body = lines.slice(i + 1, end);
+  for (let k = 0; k < headers.length; k++) {
+    const h = headers[k];
+    const start = Math.max(startOf(h), k > 0 ? headers[k - 1] + 1 : 0);
+    const nextStart = k + 1 < headers.length
+      ? Math.max(h + 1, startOf(headers[k + 1]))
+      : lines.length;
+    const pre = lines.slice(start, h);
+    // The list ends where the page's own chrome begins. Without this cut the
+    // LAST card swallowed the footer, and "Contribute" — a perfectly
+    // label-shaped word — became its route name once the pill moved above the
+    // duration and stopped being the first label below it.
+    const postAll = lines.slice(h + 1, nextStart);
+    const chromeAt = postAll.findIndex((l) => IS_PAGE_CHROME.test(l));
+    const post = chromeAt >= 0 ? postAll.slice(0, chromeAt) : postAll;
+    const body = [...pre, ...post];
     // A real card either quotes an arrival clock or is a Departed card. This
     // is what keeps a stray "16 min" in the map overview out of the list.
     const arrive = body.find((l) => /^arrive\s+\d{1,2}:\d{2}[ap]$/i.test(l));
-    if (!arrive && lines[i] !== "Departed") { i = end - 1; continue; }
+    if (!arrive && lines[h] !== "Departed") continue;
     const busLine = body.find((l) => l.startsWith("🚌") && parseBusEtaText(l));
     const waitLine = body.find((l) => l.startsWith("⏳"));
     const missed = body.map((l) => l.match(/^🚌 You can't catch #(\S+)/)).find(Boolean);
     const walks = body.filter((l) => /^🚶\s*\d+\s*min$/.test(l))
       .map((l) => Number(l.match(/(\d+)/)[1]));
-    const label = body.find((l) =>
-      /^[A-Za-z][A-Za-z ]{0,19}$/.test(l) && !NOT_A_ROUTE.has(l) && !/^arrive/i.test(l));
+    // The pill below the duration (old layout) wins over anything walked back
+    // above it, so an overview legend sitting right above the first card
+    // cannot be mistaken for that card's line.
+    const label = post.find(isLabelish) ?? pre.find(isLabelish) ?? null;
     cards.push({
-      routeLabel: body.includes("🚶 Walk") ? "Walk" : (label ?? null),
+      routeLabel: body.includes("🚶 Walk") ? "Walk" : label,
       mode: body.includes("🚶 Walk") ? "walk" : "shuttle",
-      departed: lines[i] === "Departed",
-      totalMin: lines[i] === "Departed" ? null : Number(lines[i].match(/(\d+)/)[1]),
+      departed: lines[h] === "Departed",
+      totalMin: lines[h] === "Departed" ? null : Number(lines[h].match(/(\d+)/)[1]),
       arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,
       eta: busLine ? parseBusEtaText(busLine) : null,
       waitFallback: waitLine ? parseWaitFallback(waitLine) : null,
@@ -187,7 +221,6 @@ export function parseOptions(bodyText) {
       walkToMin: walks[0] ?? 0,
       walkFromMin: walks[1] ?? 0,
     });
-    i = end - 1;
   }
   return cards;
 }
