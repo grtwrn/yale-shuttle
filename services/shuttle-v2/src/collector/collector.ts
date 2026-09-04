@@ -47,6 +47,7 @@ import {
   type StoredPath,
 } from "./pathStore.js";
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
+import { UpstreamEtaPoller } from "./upstreamEta.js";
 
 // Cadences --------------------------------------------------------------------
 
@@ -215,6 +216,36 @@ function resolvePredictionRetainDays(): number {
 }
 const PREDICTION_RETAIN_MS = resolvePredictionRetainDays() * 24 * 60 * 60_000;
 
+/**
+ * The operator's own ETAs (`surface = "upstream"`) age out MUCH faster than the
+ * rider-reported rows they sit beside, and this is a capacity decision, not a
+ * policy one.
+ *
+ * The rider surfaces write ~3k rows a day, because a row needs somebody to
+ * have been looking. The upstream poller writes one per (vehicle, sampled
+ * stop) every 30 s whether or not anyone is awake — measured against the live
+ * feed that is ~5k an hour, so ~120k a day, forty times the rest of the table.
+ * At the 30-day window that is roughly 4M rows and ~440 MB of a volume with
+ * 427 MB free (measured 2026-09-04). It would fill the disk.
+ *
+ * Seven days is not a compromise: the comparison is a rolling read of the last
+ * day or two, `/api/stats` asks for 24 h, and no question anyone has wanted to
+ * ask of this arm reaches back a month. `arrivals` still outlives it 13x, so
+ * every row is pairable for as long as it exists.
+ *
+ * Override with SHUTTLE_UPSTREAM_ETA_RETAIN_DAYS. Raising it costs ~15 MB a day.
+ */
+const UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT = 7;
+function resolveUpstreamPredictionRetainDays(): number {
+  const raw = Number(process.env.SHUTTLE_UPSTREAM_ETA_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const UPSTREAM_PREDICTION_RETAIN_MS =
+  resolveUpstreamPredictionRetainDays() * 24 * 60 * 60_000;
+/** Key for the extra trim statement; not a table, so not in RETAINED_TABLES. */
+const UPSTREAM_PREDICTION_TRIM = "predictions_log(upstream)";
+
 type RetainedTable =
   | "raw_positions"
   | "arrivals"
@@ -295,6 +326,13 @@ export interface DerivedPathStats {
 export interface CollectorOptions {
   upstream?: UpstreamClient;
   logger?: Logger;
+  /**
+   * Record the operator's own ETAs beside ours (see `upstreamEta.ts`).
+   * Defaults ON in production and OFF whenever `upstream` is injected, so the
+   * suite and the harnesses never reach the network. `SHUTTLE_UPSTREAM_ETA=0`
+   * turns it off in production without a code change.
+   */
+  upstreamEta?: boolean;
 }
 
 /**
@@ -381,6 +419,9 @@ export class Collector {
   private deriveLastMs: number | null = null;
   private deriveMaxMs = 0;
 
+  /** Records the operator's own ETAs into predictions_log. Null when disabled. */
+  readonly upstreamEta: UpstreamEtaPoller | null;
+
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
   private staticHandle?: NodeJS.Timeout;
@@ -436,6 +477,24 @@ export class Collector {
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
+    // A SEPARATE timer with its own in-flight guard, deliberately: the whole
+    // point is that the operator's ETAs are a bonus measurement and the buses
+    // poll never waits on, or fails because of, anything here.
+    //
+    // Off by default whenever a caller injected its own `upstream` — that is
+    // a test or a harness, and CLAUDE.md's rule is that nothing in the suite
+    // reaches the network. Production passes no client, so it gets the poller.
+    this.upstreamEta =
+      (opts.upstreamEta
+        ?? (opts.upstream === undefined && process.env.SHUTTLE_UPSTREAM_ETA !== "0"))
+        ? new UpstreamEtaPoller({
+            sqlite: this.sqlite,
+            ref: this.ref,
+            upstream: this.upstream,
+            liveBuses: () => this.getLiveBuses(),
+            logger: this.logger,
+          })
+        : null;
 
     // Prepared once; reused on every poll. Composing these via Drizzle's
     // template SQL works too but adds parsing on each call.
@@ -522,6 +581,17 @@ export class Collector {
         ),
       );
     }
+    // The operator's own ETAs share `predictions_log` but not its window —
+    // see UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT. Same batched shape as the
+    // rest, one extra predicate.
+    this.trimStmts.set(
+      UPSTREAM_PREDICTION_TRIM,
+      this.sqlite.prepare(
+        "DELETE FROM predictions_log WHERE rowid IN " +
+          "(SELECT rowid FROM predictions_log WHERE surface = 'upstream' " +
+          "AND predicted_at < ? LIMIT ?)",
+      ),
+    );
   }
 
   /**
@@ -569,6 +639,8 @@ export class Collector {
       h?.unref();
     }
 
+    this.upstreamEta?.start();
+
     void this.runPoll();
     this.logger.info("collector.started");
   }
@@ -584,6 +656,7 @@ export class Collector {
     ]) {
       if (h) clearInterval(h);
     }
+    this.upstreamEta?.stop();
     this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
@@ -1082,12 +1155,16 @@ export class Collector {
     // and crash the process. Contain it; a failed sweep just retries next hour.
     try {
       const now = Date.now();
-      const trims: Array<[RetainedTable, number]> = [
+      const trims: Array<[RetainedTable | typeof UPSTREAM_PREDICTION_TRIM, number]> = [
         ["raw_positions", now - RAW_POSITION_RETAIN_MS],
         ["arrivals", now - ARRIVAL_RETAIN_MS],
         ["segments", now - SEGMENT_RETAIN_MS],
         ["stop_visits", now - VISIT_RETAIN_MS],
         ["legs", now - LEG_RETAIN_MS],
+        // Two windows over one table: the operator's arm is ~40x the volume of
+        // the rider surfaces and ages out at 7 d, not 30. Each entry gets its
+        // own time budget below, so the order between them does not matter.
+        [UPSTREAM_PREDICTION_TRIM, now - UPSTREAM_PREDICTION_RETAIN_MS],
         ["predictions_log", now - PREDICTION_RETAIN_MS],
       ];
       for (const [table, cutoffMs] of trims) {

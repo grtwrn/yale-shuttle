@@ -326,6 +326,13 @@
       <div class="hero-split" id="hero-split"></div>
       <div class="stamp" id="stamp"></div>
       <div class="stamp" id="since"></div>
+      <!--
+        Ours against the official Downtowner app's own ETAs, scored on the same
+        arrivals. Absent entirely until both arms have enough paired rows to
+        mean anything (the server sends null; see MIN_COMPARE_PAIRS) — a
+        comparison is a claim, and a thin one flips sign by the hour.
+      -->
+      <div class="stamp" id="eta-vs" hidden></div>
     </section>
 
     <section class="tiles" id="tiles"></section>
@@ -439,6 +446,7 @@
     chartAxis: document.getElementById("chart-axis"),
     chartEmpty: document.getElementById("chart-empty"),
     since: document.getElementById("since"),
+    etaVs: document.getElementById("eta-vs"),
     chartScroll: document.getElementById("chart-scroll"),
     refresh: document.getElementById("refresh"),
     hours: document.getElementById("hours"),
@@ -558,6 +566,7 @@
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
+      renderEtaVs(both[0] && both[0].etaVsOfficial);
       renderMail(both[2]);
       renderHours(both[3] && both[3].hourly);
       renderTerms(both[4]);
@@ -880,6 +889,25 @@
     // healthy this whole section is one grey sentence.
     el.canaryAlert.hidden = !d.openAlerts;
     el.canaryAlert.textContent = d.openAlerts + " escalated";
+  }
+
+  // Ours vs the operator's own app, both paired against the same detected
+  // arrivals. One line, and only when the server judged there was enough to
+  // say: `etaVsOfficial` is null otherwise and this stays hidden.
+  //
+  // "official" is `routes_eta.php`, which serves WHOLE MINUTES, so roughly
+  // ±30 s of its error is rounding. That is why the line names the two
+  // numbers and draws no conclusion — the controlled read is
+  // scripts/eta-replay/compare-upstream.ts.
+  function renderEtaVs(d) {
+    if (!d || !d.ours || !d.official) { el.etaVs.hidden = true; return; }
+    var secs = function (x) { return Math.round(x) + " s"; };
+    el.etaVs.textContent =
+      "ours vs official, last " + d.hours + " h: |err| p50 " +
+      secs(d.ours.medianAbsErrorSec) + " vs " + secs(d.official.medianAbsErrorSec) +
+      " · within 2 min " + d.ours.within120Pct + "% vs " + d.official.within120Pct + "%" +
+      " (" + num(d.ours.paired) + " vs " + num(d.official.paired) + " paired)";
+    el.etaVs.hidden = false;
   }
 
   function render(r, history, since) {

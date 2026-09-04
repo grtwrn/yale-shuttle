@@ -114,6 +114,25 @@ export function isShownSurface(x: unknown): x is ShownSurface {
   return typeof x === "string" && (SHOWN_SURFACES as readonly string[]).includes(x);
 }
 
+/**
+ * The operator's OWN prediction for the same bus at the same stop, collected
+ * from `routes_eta.php` by `collector/upstreamEta.ts`. It shares this table
+ * because it is the same kind of statement about the same fleet, pairs against
+ * the same `arrivals` rows, and inherits the same dedup key and retention.
+ *
+ * It is deliberately NOT a member of {@link SHOWN_SURFACES}. That list is the
+ * WIRE allowlist — what a browser may claim it displayed — and `upstream` must
+ * never be claimable from outside, or anyone could post rows into the arm we
+ * score ourselves against and the comparison would measure nothing. The two
+ * lists are separate for exactly that reason; `isShownSurface` still guards
+ * `/api/shown`, and only the in-process poller writes this value.
+ */
+export const UPSTREAM_SURFACE = "upstream";
+
+/** Every value the `surface` COLUMN may hold. A superset of the wire list. */
+export const PREDICTION_SURFACES = [...SHOWN_SURFACES, UPSTREAM_SURFACE] as const;
+export type PredictionSurface = (typeof PREDICTION_SURFACES)[number];
+
 export interface ShownReading {
   /** As displayed, `#` optional. Resolved against the live fleet server-side. */
   busName: string;
@@ -183,6 +202,44 @@ export interface PairedQuery {
   now?: number | undefined;
 }
 
+/**
+ * Below this many paired rows in an arm, the dashboard says nothing at all.
+ *
+ * A comparison is a claim about which app is better, and an hour of thin
+ * coverage will produce a number that flips sign the next hour. Refusing to
+ * print is the honest failure; printing "n = 6" and hoping the reader notices
+ * is not.
+ */
+export const MIN_COMPARE_PAIRS = 50;
+
+/** One arm of the head-to-head, already paired against real arrivals. */
+export interface ArmAccuracy {
+  /** Predictions in the window for this arm. */
+  n: number;
+  /** ...of which an arrival was found for. Only these feed the statistics. */
+  paired: number;
+  medianAbsErrorSec: number;
+  /** Share of paired rows within 120 s, as a percentage to one decimal. */
+  within120Pct: number;
+}
+
+/**
+ * Ours against the operator's, on the same arrivals.
+ *
+ * `official` is `surface = "upstream"` — `routes_eta.php`, whole minutes, so
+ * ~±30 s of its error is rounding; `ours` is every rider-reported surface
+ * pooled. The two arms do NOT cover the same stops (see `upstreamEta.ts`), so
+ * this is a summary, not a controlled comparison. The controlled one is
+ * `scripts/eta-replay/compare-upstream.ts`, which restricts to shared
+ * (bus, stop, minute) pairs; this line exists so the operator sees the shape
+ * on a phone without running anything.
+ */
+export interface OfficialComparison {
+  hours: number;
+  ours: ArmAccuracy;
+  official: ArmAccuracy;
+}
+
 export interface PredictionRecorder {
   /** Share of page loads that should report, 0..1. 0 disables the feature. */
   sampleRate(): number;
@@ -196,6 +253,11 @@ export interface PredictionRecorder {
   flush(now?: number): void;
   /** Logged predictions beside their outcomes. Flushes first. */
   paired(query?: PairedQuery): { summary: PairedSummary; rows: PairedPrediction[] };
+  /**
+   * Ours against the operator's over a trailing window. Null when either arm
+   * has fewer than {@link MIN_COMPARE_PAIRS} paired rows — see the constant.
+   */
+  officialComparison(hours?: number, now?: number): OfficialComparison | null;
   stop(): void;
 }
 
@@ -462,6 +524,84 @@ export function createPredictionRecorder(
         rows: rows.slice(-limit).reverse(),
       };
     },
+
+    officialComparison(hours = 24, nowMs?: number): OfficialComparison | null {
+      flush();
+      const now = nowMs ?? Date.now();
+      const window = clampInt(hours, 24, 1, 24 * 90);
+      const from = now - window * 3_600_000;
+
+      let rows: SurfacePredRow[] = [];
+      try {
+        rows = bundle.sqlite
+          .prepare(
+            `SELECT bus_name, route_id, to_stop_id, predicted_sec, predicted_at, surface
+             FROM predictions_log WHERE predicted_at >= ? ORDER BY predicted_at ASC`,
+          )
+          .all(from) as SurfacePredRow[];
+      } catch {
+        return null;
+      }
+      if (rows.length === 0) return null;
+
+      const earliest = rows[0]!.predicted_at;
+      const latest = rows[rows.length - 1]!.predicted_at + MATCH_WINDOW_MS;
+      let arrivals: ArrivalRow[] = [];
+      try {
+        arrivals = bundle.sqlite
+          .prepare(
+            `SELECT bus_name, route_id, stop_id, arrived_at FROM arrivals
+             WHERE arrived_at >= ? AND arrived_at <= ? ORDER BY arrived_at ASC`,
+          )
+          .all(earliest, latest) as ArrivalRow[];
+      } catch {
+        return null;
+      }
+      const index = new Map<string, number[]>();
+      for (const a of arrivals) {
+        const key = `${normBusName(a.bus_name)}:${a.route_id}:${a.stop_id}`;
+        const list = index.get(key);
+        if (list) list.push(a.arrived_at);
+        else index.set(key, [a.arrived_at]);
+      }
+
+      // Two arms, same arrivals, same pairing rule as `paired()` above: the
+      // FIRST arrival of that bus at that stop at or after the prediction.
+      const ourErrs: number[] = [];
+      const theirErrs: number[] = [];
+      let ourN = 0;
+      let theirN = 0;
+      for (const r of rows) {
+        const official = r.surface === UPSTREAM_SURFACE;
+        if (official) theirN += 1;
+        else ourN += 1;
+        const list = index.get(`${normBusName(r.bus_name)}:${r.route_id}:${r.to_stop_id}`);
+        const actual = list ? firstAtLeast(list, r.predicted_at) : null;
+        if (actual === null || actual > r.predicted_at + MATCH_WINDOW_MS) continue;
+        const err = (actual - r.predicted_at) / 1000 - r.predicted_sec;
+        (official ? theirErrs : ourErrs).push(err);
+      }
+
+      if (ourErrs.length < MIN_COMPARE_PAIRS || theirErrs.length < MIN_COMPARE_PAIRS) {
+        return null;
+      }
+      return {
+        hours: window,
+        ours: arm(ourN, ourErrs),
+        official: arm(theirN, theirErrs),
+      };
+    },
+  };
+}
+
+function arm(n: number, errs: readonly number[]): ArmAccuracy {
+  const abs = errs.map((e) => Math.abs(e));
+  const within = abs.filter((a) => a <= 120).length;
+  return {
+    n,
+    paired: errs.length,
+    medianAbsErrorSec: pct(abs, 0.5),
+    within120Pct: errs.length === 0 ? 0 : Math.round((within / errs.length) * 1000) / 10,
   };
 }
 
@@ -477,6 +617,16 @@ interface PredRow {
   predicted_high_sec: number;
   predicted_at: number;
   client_build: string | null;
+}
+
+/** The columns `officialComparison` needs, plus the arm each row belongs to. */
+interface SurfacePredRow {
+  bus_name: string;
+  route_id: number;
+  to_stop_id: number;
+  predicted_sec: number;
+  predicted_at: number;
+  surface: string;
 }
 
 interface ArrivalRow {

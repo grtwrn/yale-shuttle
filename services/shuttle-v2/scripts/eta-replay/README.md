@@ -13,6 +13,7 @@ then compare every prediction with the bus's real arrival.
 | `eta-replay.ts` | a bus standing at a stop: sum of served segment times to the next 1–10 stops (the ride leg, and the wait leg before the bus moves) | ~100k per 2 days |
 | `gps-replay.ts` | every raw GPS position through the REAL `findRouteAnchor` + `computeUpcomingArrivals` to the next 1–5 stops: anchoring, mid-segment proration, stall credit | ~300k per 7 h of `raw_positions` |
 | `layover-replay.ts` | the stationary/layover clock: how often a PARKED bus restarts it, what that costs the ETA, and which (radius, hysteresis) fixes it | 879 stop visits per 7 h |
+| `compare-upstream.ts` | **ours vs the official app**: `predictions_log` rows from the rider surfaces against `surface = "upstream"` (the operator's own `routes_eta.php`), both paired to the same arrivals. No replay — it scores what each app actually said | shared (bus, stop, minute) triples |
 | `report.mjs` | renders the JSON both write into `report.md` | |
 
 ```bash
@@ -27,6 +28,14 @@ cd services/shuttle-v2
 TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/eta-replay.ts
 TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/gps-replay.ts
 node scripts/eta-replay/report.mjs      # -> scripts/.eta-replay/report.md
+
+# ours vs the official Downtowner app, same arrivals (no replay, just a query)
+TZ=America/New_York REPLAY_DB=./store/snap.db \
+  npx tsx scripts/eta-replay/compare-upstream.ts
+#   env: HOURS (24), FROM/TO (ISO), ROUTES (ids), MIN_CELL (50)
+#   caveat: routes_eta.php serves WHOLE MINUTES, so ~±30 s of the official
+#   arm's error is rounding. Quote the HEAD-TO-HEAD block, not the per-arm
+#   one — the arms do not cover the same stops.
 
 # the layover clock (findings in docs/layover-clock.md). BUSES_JSON is a saved
 # `curl -s https://yale-shuttle.fly.dev/api/buses` and supplies the dwell/segment

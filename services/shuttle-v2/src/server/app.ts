@@ -775,7 +775,16 @@ export function buildApp(opts: AppOptions): Hono {
     c.header("Cache-Control", "no-store");
     // `since` travels with the numbers so the dashboard can say what it is
     // counting from without hard-coding a date of its own.
-    return c.json({ riders: actives.stats(now()), since: actives.sinceDay() });
+    //
+    // `etaVsOfficial` is null — and the dashboard then prints nothing — until
+    // BOTH arms have enough paired rows to mean anything (see
+    // MIN_COMPARE_PAIRS). Fleet operational detail, no rider identity, same
+    // auth as the rest of this route.
+    return c.json({
+      riders: actives.stats(now()),
+      since: actives.sinceDay(),
+      etaVsOfficial: predictions.officialComparison(24, now()),
+    });
   });
 
   // When the app is used, hour by hour, one row per day. Derived from spans
