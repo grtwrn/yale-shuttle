@@ -661,6 +661,23 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
   the median error is 367 s vs 99 s. A perfect anchor would take the median to
   103 s and the mean bias to +2 s.
+- **On an out-and-back, direction of travel picks the branch — and only for a
+  bus that is moving.** Green and Purple run out to West Campus and back along
+  the same road, so the same coordinates belong to two legs at once; neither
+  distance nor `last_stop_id` can separate them (a Green bus on I-95 sat 135 m
+  from the outbound chord and 139 m from the inbound one with `last_stop_id`
+  frozen for a 5 km run). `findRouteAnchor` now takes the previous DISTINCT fix
+  (`noteFix` in `anchorGate.ts` remembers it on the same store the gate uses)
+  and drops any candidate leg more than 127° against the step. Strand share on
+  the rider simulator: Green 32.3 → 27.4%, Purple 29.5 → 27.1%, Red unchanged
+  at 18.0 → 18.2%. **Do not loosen the 127°** — at 90° it helps a branch-lock
+  index count on every route and makes riders worse on Purple and Red, because
+  most of their ambiguity sits within 100 m of a stop where a "step" is a bus
+  shuffling at a kerb. And **do not let direction release the anchor gate**:
+  measured, Green improves and Purple ends up worse than master. What is left
+  is the stationary half of the ambiguity, which no geometry can settle —
+  42.8% of Purple's ambiguous polls, 23.2% of Green's; it is the estimator
+  rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
 - `predictions_log` is empty — nothing records what riders were told. The
