@@ -255,6 +255,33 @@ describe("GET /api/buses", () => {
     });
   });
 
+  // The stand/drive split the client's hopPricing.ts consumes: `q`/`qn` on the
+  // stop, `drive`/`driveN` on the hop, whole seconds, present only where the
+  // calibrator attached them and always with the true count (the client gates
+  // on it; the server never pre-filters).
+  it("carries the stand quantiles and drive beside v1's numbers, and omits them where absent", async () => {
+    const net = collector.ref.get();
+    net.setCalibration(
+      new Map([
+        ["10:1:2", { mean: 495.06, stddev: 5, n: 0, source: "route-segment" as const, drive: 15.1, driveN: 25 }],
+        ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" as const }],
+      ]),
+      new Map([
+        ["10:1", { mean: 415.3, stddev: 279.8, n: 0, q: [118.1, 136.5, 302.8, 598.1], qn: 24 }],
+        ["10:2", { mean: 20, stddev: 5, n: 2 }],
+      ]),
+    );
+    (collector as unknown as { version: number }).version++;
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+    };
+    expect(body.segments["10"]!["1-2"]).toEqual({ avg: 495.1, sd: 5, n: 0, drive: 15, driveN: 25 });
+    expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
+    expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24 });
+    expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+  });
+
   it("rebuilds when the collector observes a new position", async () => {
     const first = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
     expect(first.buses).toEqual([]);

@@ -56,6 +56,17 @@ export interface SegmentStats {
    *   `prior`        — distance-based prior; no samples seen
    */
   source: "specific" | "route-segment" | "route" | "prior";
+  /**
+   * Seconds from the bus's departure at the from-stop to `at_stop_since` at
+   * the to-stop — the DRIVE half of the hop, on the pinned clock, from `legs`
+   * (the departure derivation). `mean` above is arrival-to-arrival and holds
+   * every second the bus stood at A; this does not. The client prices the
+   * first hop as `stand(A) + drive` and prorates ONLY this en route
+   * (`web/src/hopPricing.ts`). Absent until a leg has been recorded.
+   */
+  drive?: number;
+  /** Legs behind `drive`. The client gates on it (`MIN_DRIVE_SAMPLES`). */
+  driveN?: number;
 }
 
 export interface DwellStats {
@@ -92,6 +103,19 @@ export interface DwellStats {
    * Undefined until the calibrator has enough samples to place a quantile.
    */
   low?: number;
+  /**
+   * Ascending quantiles of the STANDING time at this stop, in seconds on the
+   * `at_stop_since` clock (departure instant − `pinned_at`, over stopped
+   * visits in `stop_visits`), at levels (i + 0.5) / q.length. Unlike `mean`
+   * above this really is standing time — it comes from the departure
+   * derivation, not from anchor residence. The client reads it as the knots of
+   * a piecewise-linear CDF and prices the first hop as the conditional median
+   * of (stand − r | stand > r) plus the drive (`web/src/hopPricing.ts`).
+   * Absent until the stop has a stopped visit.
+   */
+  q?: number[];
+  /** Stopped visits behind `q`. The client gates on it (`MIN_STAND_SAMPLES`). */
+  qn?: number;
 }
 
 export interface WalkTransfer {
