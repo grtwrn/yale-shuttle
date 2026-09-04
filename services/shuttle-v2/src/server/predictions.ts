@@ -132,6 +132,28 @@ export const UPSTREAM_SURFACE = "upstream";
 /** Every value the `surface` COLUMN may hold. A superset of the wire list. */
 export const PREDICTION_SURFACES = [...SHOWN_SURFACES, UPSTREAM_SURFACE] as const;
 export type PredictionSurface = (typeof PREDICTION_SURFACES)[number];
+/**
+ * Guards a READ, not a write. `/api/predictions?surface=…` names which arm to
+ * report on; `isShownSurface` still guards what a browser may claim it showed.
+ */
+export function isPredictionSurface(x: unknown): x is PredictionSurface {
+  return typeof x === "string" && (PREDICTION_SURFACES as readonly string[]).includes(x);
+}
+
+/**
+ * The predicate EVERY reader of "how accurate are WE" must carry.
+ *
+ * `predictions_log` stopped being one population the moment the operator's own
+ * ETAs landed in it, and a scan with no surface clause silently pools two apps.
+ * It is not hypothetical: within an hour of the poller shipping, `/api/predictions`
+ * reported n=3056 of which 1586 were upstream rows, and the v1-compat
+ * `/api/accuracy` — the number RIDERS see — would have done the same. That is
+ * precisely the inference error the `surface` column exists to prevent, so the
+ * fragment lives in one place and every reader spells it the same way.
+ *
+ * A reader that genuinely wants the operator's arm asks for it explicitly.
+ */
+export const RIDER_SURFACES_SQL = "surface <> 'upstream'";
 
 export interface ShownReading {
   /** As displayed, `#` optional. Resolved against the live fleet server-side. */
@@ -197,6 +219,11 @@ export interface PairedQuery {
   stopId?: number | undefined;
   busName?: string | undefined;
   build?: string | undefined;
+  /**
+   * Which arm. Defaults to the rider-reported surfaces — see
+   * {@link RIDER_SURFACES_SQL}. Pass `"upstream"` to read the operator's.
+   */
+  surface?: string | undefined;
   /** Rows returned (default 200, max 5000). The summary always covers the window. */
   limit?: number | undefined;
   now?: number | undefined;
@@ -429,8 +456,12 @@ export function createPredictionRecorder(
 
       let preds: PredRow[] = [];
       try {
+        // The surface clause is NOT optional. Without it this reader pools our
+        // app with the operator's — see RIDER_SURFACES_SQL.
         const filters: string[] = ["predicted_at >= ?"];
         const args: Array<string | number> = [from];
+        if (query.surface !== undefined) { filters.push("surface = ?"); args.push(query.surface); }
+        else filters.push(RIDER_SURFACES_SQL);
         if (query.routeId !== undefined) { filters.push("route_id = ?"); args.push(query.routeId); }
         if (query.stopId !== undefined) { filters.push("to_stop_id = ?"); args.push(query.stopId); }
         if (query.busName !== undefined) { filters.push("bus_name = ?"); args.push(`#${normBusName(query.busName)}`); }

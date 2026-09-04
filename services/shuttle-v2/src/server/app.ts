@@ -30,6 +30,7 @@ import { createActivesTracker } from "./actives.js";
 import { canaryReport, recordCanaryRuns } from "./canary.js";
 import {
   createPredictionRecorder,
+  isPredictionSurface,
   isShownSurface,
   MAX_READING_AGE_MS,
   type PredictionRecorder,
@@ -947,6 +948,11 @@ export function buildApp(opts: AppOptions): Hono {
    * takes the admin HEADER and nothing else. The rows carry no personal data
    * (see predictions.ts), but they are operational detail about the fleet and
    * belong with triage, not with the public API.
+   *
+   * It answers about OUR app by default. `?surface=upstream` asks for the
+   * operator's own ETAs instead; there is deliberately no way to ask for both
+   * at once, because a pooled median is the error this table's `surface`
+   * column was added to prevent.
    */
   app.get("/api/predictions", requireAdmin, (c) => {
     const numeric = (name: string): number | undefined => {
@@ -962,6 +968,11 @@ export function buildApp(opts: AppOptions): Hono {
       limit: numeric("limit"),
       busName: c.req.query("bus"),
       build: c.req.query("build"),
+      // Defaults to the rider-reported arms. `?surface=upstream` reads the
+      // operator's own ETAs instead — never both, see RIDER_SURFACES_SQL.
+      surface: isPredictionSurface(c.req.query("surface"))
+        ? c.req.query("surface")
+        : undefined,
       now: now(),
     });
     c.header("Cache-Control", "no-store");

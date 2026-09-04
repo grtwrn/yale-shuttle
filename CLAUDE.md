@@ -906,6 +906,13 @@ the same vehicle at the same stop off the same feed, so
   browser may claim it displayed; `PREDICTION_SURFACES` is what the column may
   hold. Keep them separate — if a client could post `upstream`, anyone could
   write into the arm we score ourselves against.
+- **Every reader of "how accurate are WE" must carry `RIDER_SURFACES_SQL`.**
+  This shipped without it for one hour on 2026-09-04 and `/api/predictions`
+  reported n=3056 of which 1586 were the operator's rows; the v1-compat
+  `/api/accuracy`, which is the number RIDERS see, would have done the same.
+  Three readers scan the table (`accuracy.ts`, `v1compat.ts`, `paired()` in
+  `predictions.ts`) and a test pins all three by source. `/api/predictions`
+  takes `?surface=upstream` to read the other arm — never both at once.
 - `from_stop_id` / `stops_ahead` come from OUR live fleet (upstream does not
   say) and are `-1` / `0` when we cannot see the bus. Never invented.
 - **It is 40x the volume of the rider rows, and that governs two constants.**
