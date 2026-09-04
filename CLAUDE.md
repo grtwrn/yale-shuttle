@@ -721,23 +721,33 @@ Three rules to preserve:
   client gates (`MIN_STAND_SAMPLES` 20 / `MIN_DRIVE_SAMPLES` 10) and prices a
   thin hop exactly as before. A server-side floor would drift from the
   client's and silently hide cells the client would take.
-- **Withheld on routes that repeat a stop** (`foldRoutes`: Green 9, Purple
-  10, by structure). The payload keys a stand table by stop id, so a stop the
-  loop visits twice gets one table pooled over two different passes, and the
-  derivation inherits the detector's anchor on the folds. The rider simulator
-  measured it: served everywhere, Red's departure-poll rise went +220 s →
-  +1 s and 330 → 2 riders saw ≥180 s, but **Purple 163 → 188 strands, Green
-  165 → 173**; withheld, both are byte-identical to master. **This is an
-  interim rule, not a finding that the folds cannot be helped** — they are the
-  two worst lines on the network (strand ~31% vs Blue Day's 4%). A moving bus
-  reveals its branch over two fresh fixes (progress rises on one, falls on the
-  other); only a bus stationary on a shared segment with no history is
-  genuinely undecidable (`docs/eta-estimator-design.md`). Lift the rule when a
-  direction-based anchor lands — with a sim run, not by argument.
+- **Served only on routes the rider simulator has cleared**
+  (`SPLIT_SERVED_ROUTE_IDS`: Red, Blue Day), and never on a route that repeats
+  a stop (`foldRoutes`: Green 9, Purple 10 — one stop id cannot carry two
+  passes' tables, and the derivation inherits the detector's anchor on the
+  folds). The client's sample gate is NOT sufficient: Pink cleared it on 11
+  hops and went **280 → 431 strands** (LEPH / 60 College +122). The reason is
+  in the arithmetic, not the data — master is *pessimistic* at a layover-ish
+  stop (the stall credit is bounded by the dwell, so a rider at LEPH is
+  promised ~400 s while the bus stands at York / Cedar) and the conditional
+  *median* replaces that with an unbiased number, stranding the half of
+  riders whose bus leaves before its median. Red nets a win (1,041 → 769
+  strands, jumps ≥180 s 39% → 23%, the Winchester departure-poll rise
+  +220 s → +2 s) only because the cliff there was worse; Blue Day's jumps
+  fall 25.6% → 8.6% for +9 strands in 6,470. Served everywhere, Purple went
+  163 → 188 and Green 165 → 173. **Adding a route means running the pair**
+  (`scripts/eta-replay/rider-sim/run.ts`, master vs `PAYLOAD_PATCH`, then
+  `--compare`) and pasting its numbers beside the id. The fold exclusion is
+  interim, not a finding that the folds cannot be helped: a moving bus
+  reveals its branch over two fresh fixes; only a bus stationary on a shared
+  segment with no history is undecidable (`docs/eta-estimator-design.md`). A
+  lower conditional quantile than the median on the client is the obvious
+  next experiment for Pink — measure it there before serving it anywhere.
 - **Whole seconds on the wire, and the payload is not compressed in
   production** (`content-encoding` is absent), so the cost is the raw one:
-  +12.8 KB per poll (+14.4%; +3.4 KB if it were gzipped). Compressing the
-  cached payload string once per version would be the real fix; not done.
+  +3.9 KB per poll (+4.4%) for Red + Blue Day; +12.4 KB (+13.9%) if every
+  line were served. Compressing the cached payload string once per version
+  would be the real fix; not done.
 
 Validated against `docs/data/departure-tables-2026-09-03.json`: Red 344
 Winchester `q` p5/≈p50/p95 = 118/302/598 s over n=24 (reference
@@ -750,8 +760,8 @@ with `persistVisits`), with a cutoff at the earliest live row and exact-key
 dedup (idempotent). `--out rows.json` + `scripts/backfill-departures-apply.cjs`
 (plain CJS, runs on the machine with `/app/node_modules/better-sqlite3`) is the
 production path. Without it the live tables start at 22:21 ET 2026-09-03 and
-Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 39
-hops clear them at once (Red 13, Blue Day 22, Pink 4).
+Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 60
+hops clear them at once (Red 29, Blue Day 31).
 
 ### The rider canary (`scripts/rider-canary.mjs`)
 

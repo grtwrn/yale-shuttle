@@ -129,7 +129,7 @@ export function calibrate(
 
   const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
   const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
-  const withheld = foldRoutes(network);
+  const withheld = splitWithheldRoutes(network);
   const standCount = attachStandTables(dwellStats, standGroups, withheld);
   const driveCount = attachDrives(segmentStats, driveGroups, withheld);
 
@@ -396,6 +396,40 @@ export function foldRoutes(network: TransitNetwork): ReadonlySet<number> {
   const out = new Set<number>();
   if (!network.routes) return out;
   for (const r of network.routes.values()) if (new Set(r.stops).size !== r.stops.length) out.add(r.id);
+  return out;
+}
+
+/**
+ * Routes on which the split is SERVED. Every id here is a rider-simulator
+ * result (docs/rider-sim.md; master vs the served tables, paired wait for
+ * wait, 2026-09-03 capture), and a route is added ONLY with that run:
+ *
+ *   Red (3)       strands 1,041 -> 769 (477 fixed / 205 introduced), riders
+ *                 seeing a jump >= 180 s 39.1% -> 22.6%; the 344 Winchester
+ *                 chain's departure-poll rise +220 s -> +2 s.
+ *   Blue Day (1)  jumps >= 180 s 25.6% -> 8.6%, reversals 25.2% -> 13.1%,
+ *                 p90 drift 405 -> 170 s; strands 233 -> 242 (+9 of 6,470,
+ *                 46 fixed / 55 introduced) — within run-to-run noise, and
+ *                 stated here so nobody has to rediscover it.
+ *
+ * Why an allowlist and not the client's gate alone: Pink passed the gate on
+ * 11 hops and went 280 -> 431 strands (LEPH / 60 College +122). Master there
+ * is PESSIMISTIC — the stall credit is bounded by the dwell, so a rider at
+ * LEPH is promised ~400 s while the bus stands at York / Cedar — and the
+ * conditional median replaces that with an unbiased number, which strands
+ * the half of riders whose bus leaves before its median. That is a property
+ * of the client's arithmetic at every layover-ish stop, and Red only nets a
+ * win because master's departure cliff there was worse. Serving a line
+ * therefore needs its own measurement, not a sample count. Orange East and
+ * the night lines have data trickling in and are unmeasured.
+ */
+export const SPLIT_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3, 1]);
+
+/** Every route the split is withheld from: not allowlisted, or a fold. */
+export function splitWithheldRoutes(network: TransitNetwork): ReadonlySet<number> {
+  const out = new Set<number>(foldRoutes(network));
+  if (!network.routes) return out;
+  for (const id of network.routes.keys()) if (!SPLIT_SERVED_ROUTE_IDS.has(id)) out.add(id);
   return out;
 }
 

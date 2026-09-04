@@ -19,6 +19,8 @@ import {
   computeSegmentStats,
   foldRoutes,
   hourWindow,
+  SPLIT_SERVED_ROUTE_IDS,
+  splitWithheldRoutes,
   parseValueList,
   STAND_Q_COUNT,
   standQuantiles,
@@ -541,10 +543,16 @@ describe("stand tables and drives", () => {
     const network = TransitNetwork.build(stops, [
       { id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] },
       { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] },
+      { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] },
     ]);
     expect([...foldRoutes(network)]).toEqual([10]);
+    // ...and a line that is not on the measured allowlist is withheld too:
+    // Pink cleared the client's gate on 11 hops and went 280 -> 431 strands.
+    expect(SPLIT_SERVED_ROUTE_IDS.has(3)).toBe(true);
+    expect(SPLIT_SERVED_ROUTE_IDS.has(8)).toBe(false);
+    expect([...splitWithheldRoutes(network)].sort()).toEqual([10, 8]);
 
-    const withheld = foldRoutes(network);
+    const withheld = splitWithheldRoutes(network);
     const dwells = new Map<string, DwellStats>();
     expect(attachStandTables(dwells, [
       { key: "10:2", n: 30, all: [20, 300], windowed: [] },
