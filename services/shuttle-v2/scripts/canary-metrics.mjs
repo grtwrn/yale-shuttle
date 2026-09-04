@@ -692,6 +692,26 @@ export const DEPARTURE_M = 30;
  *   "unknown"    the feed dropped it, or the reading carries no bus list
  */
 /**
+ * Has this line's fleet gone off-air — no vehicles on the road at all?
+ *
+ * `buses` on each sample is THIS line's own vehicles as the feed reported them
+ * that tick, so an empty array is not missing data: it is the operator saying
+ * nobody is running. At Red's end of service on 2026-09-04 the canary rode a
+ * line with zero buses for twelve minutes and filed `line-missing` ("Red is
+ * running (0 live buses)") and `option-vanished` against an app that was
+ * correctly declining to offer a route nobody was driving.
+ *
+ * The LAST reading decides, not the first: a line can go off-air mid-watch,
+ * which is the ordinary way an evening ends, and that must retire the run
+ * rather than fail it.
+ */
+export function fleetOffAir(samples) {
+  const withBuses = (samples ?? []).filter((s) => Array.isArray(s?.buses));
+  if (!withBuses.length) return false;
+  return withBuses[withBuses.length - 1].buses.length === 0;
+}
+
+/**
  * The verdict for one finished run — the single place that decides whether a
  * watch counts against the app.
  *

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
-  departureBetween, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
   pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -975,6 +975,58 @@ describe("a bus with coordinates always gets a distance", () => {
     expect(isAtBoardStop(NaN, 48, null)).toBe(false);
     // And a NaN distance never sneaks past the radius test.
     expect(isAtBoardStop(Number.NaN, null, 48)).toBe(false);
+  });
+});
+
+describe("a line nobody is driving is idle, not broken", () => {
+  // Red's end of service, 2026-09-04 18:33:15. The keepalive forces
+  // CANARY_LINE=Red, which used to bypass the rideable check, so the canary
+  // watched a line with zero buses for twelve minutes: 46 samples, every one
+  // `present: false`, every one carrying an EMPTY bus list. It filed
+  // line-missing ("Red is running (0 live buses)"), no-board-stop and
+  // option-vanished against an app that was correctly declining to offer a
+  // route nobody was driving.
+  const sample = (t, buses) => ({
+    atMs: 1_700_000_000_000 + t * 1000, present: false, eta: null, buses,
+  });
+
+  it("knows the fleet has gone home", () => {
+    expect(fleetOffAir([sample(0, []), sample(15, []), sample(30, [])])).toBe(true);
+  });
+
+  it("reads the LAST poll, so a line going off-air mid-watch counts", () => {
+    // The ordinary way an evening ends: buses on the road at first sight,
+    // none by the end. That retires the run; it does not fail it.
+    const off = [sample(0, [{ name: "#310", distM: 400 }]), sample(15, [])];
+    expect(fleetOffAir(off)).toBe(true);
+    // And the mirror: a line that still has a bus at the end has NOT gone
+    // off-air, so a vanished option there is still a real defect.
+    const on = [sample(0, []), sample(15, [{ name: "#310", distM: 400 }])];
+    expect(fleetOffAir(on)).toBe(false);
+  });
+
+  it("says nothing when it has no bus lists to judge", () => {
+    // Samples from before the bus snapshot existed, and the empty run.
+    expect(fleetOffAir([{ atMs: 1, present: true, eta: null }])).toBe(false);
+    expect(fleetOffAir([])).toBe(false);
+    expect(fleetOffAir(undefined)).toBe(false);
+  });
+
+  it("does not make a line rideable just because it was forced", async () => {
+    // The pool bug itself: `rideableLines` already says Red is not rideable
+    // with no buses, and forcing must pick WHICH line, not whether there is
+    // anything to watch.
+    const { rideableLines } = await import("./rider-canary.mjs");
+    const payload = {
+      routes: { 3: [1, 2] },
+      stop_coords: { 1: CANONICAL_TRIP.origin, 2: CANONICAL_TRIP.destination },
+      stop_names: {},
+      buses: [],
+    };
+    const red = rideableLines(payload).find((l) => l.label === "Red");
+    expect(red.liveBuses).toBe(0);
+    expect(red.trip).not.toBeNull();   // the trip is fine; the fleet is not
+    expect(red.rideable).toBe(false);
   });
 });
 
