@@ -230,15 +230,38 @@ next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
 no rain expected".
 
-**The option row's top line is total · live bus · arrival** — "12 min · 🚌 in
-<1, 14 min · arrive 10:16a". The bus times moved up from a third line
-(operator, 2026-09-03) because that is the number deciding whether you leave
-now, and the card is two lines instead of three for it. The two ETAs share
-one unit via `fmtBusPair` ("in 12, 21 min", the operator's own wording): "in
-12 min · next in 21 min" clipped mid-number at 390px, and both times now fit
-at every ETA. The bus ETA is computed ONCE at row scope (`busEtaLive`) and
-consumed by both the top line and the departed warning, so they cannot
-disagree.
+**The option row LEADS WITH THE LINE** (operator, 2026-09-04) — route pill
+top-left, the live bus beside it, the total on the right, and the arrival
+clock opening the second line:
+
+    [Blue Day]  🚌 in 3, 21 min                        23 min
+    arrive 10:33a · 🚶 16 min › ▬ · most direct             ›
+
+The total used to hold that top-left slot with the pill a row below it, so
+picking "the Blue one" off five cards meant reading five durations first.
+Still two lines at 390px: the walk legs moved onto the arrival line rather
+than keeping a row, and the ride between them is a short bar in the line's
+own colour instead of a second copy of the pill (colour off the option, i.e.
+off `ROUTE_LISTS`). The bus times themselves had moved up from a third line
+the day before, because that is the number deciding whether you leave now.
+The two ETAs share one unit via `fmtBusPair` ("in 12, 21 min", the operator's
+own wording): "in 12 min · next in 21 min" clipped mid-number at 390px, and
+both times now fit at every ETA. The bus ETA is computed ONCE at row scope
+(`busEtaLive`) and consumed by both the top line and the departed warning, so
+they cannot disagree.
+
+**No leg is guaranteed.** A walk of 0 s is omitted, the ⏳ wait line only
+appears when no live bus is pinned (future mode), and a Departed card has no
+arrival clock at all — the row is built from whatever exists, never from a
+fixed slot per leg.
+
+**The canary reads these cards as TEXT** (`parseOptions` in
+`scripts/canary-metrics.mjs`), so a layout change is a parser change: it
+anchors on the duration line and walks back one countdown and one pill, since
+those now precede it, and prefers a pill found below (the old order) so the
+harness can watch production while a redesign is unmerged. It also stops the
+last card at the page footer — "Contribute" is exactly as label-shaped as a
+route name.
 
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be

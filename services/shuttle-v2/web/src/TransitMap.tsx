@@ -3670,39 +3670,77 @@ const TripPlanner: FC<{
               onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
                 {/* The back control lives at the TOP of the details page
                     (above the map) — see the detailOpen bar. */}
-                {/* Line 1: leave–arrival range (left) + duration (right),
-                    Google-transit style. Range starts at "leave now" (offset
-                    0) so it always spans exactly the shown duration — a
-                    board-time start read as a 3-min trip next to "27 min". */}
+                {/* Line 1: THE LINE LEADS (operator, 2026-09-04) — route pill
+                    top-left, the two-bus countdown beside it, the total
+                    duration on the right. The total used to hold the top-left
+                    slot with the pill a row below it, so picking "the Blue one"
+                    off a five-card list meant reading five durations first.
+                    Reading order is now line → when it comes → how long it
+                    takes → when you land (line 2). */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  {/* Duration leads (left), arrival trails (right) — swapped
-                      2026-07-17 on user request. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                    {/* Pill colour comes off the option, i.e. off ROUTE_LISTS —
+                        the one source. The walk option keeps its outlined
+                        chip: it is an option, not a line. */}
+                    {o.mode === "walk" ? (
+                      <span style={{
+                        fontSize: 13, fontWeight: 600, color: "#5f6368",
+                        background: "transparent", border: "1px solid #dadce0",
+                        borderRadius: 6, padding: "2px 8px", flexShrink: 0,
+                      }}>🚶 Walk</span>
+                    ) : (
+                      <span style={{
+                        fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
+                        borderRadius: 6, padding: "3px 8px", flexShrink: 0,
+                        maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{o.routeLabel}</span>
+                    )}
+                    {/* The live bus, now directly right of the line it belongs
+                        to. Secondary weight so the pill and the total frame the
+                        row; nowrap + ellipsis so a narrow phone clips the
+                        second figure rather than wrapping the row in two. */}
+                    {busEtaLive !== null && !o.departed && !isExpanded && (
+                      <span style={{
+                        fontSize: 13, color: "#5f6368", fontWeight: 500,
+                        minWidth: 0, overflow: "hidden",
+                        textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
+                      </span>
+                    )}
+                  </span>
+                  {/* Duration, right-aligned. "Departed" takes the same slot —
+                      it is what that number would have said. */}
                   {o.departed ? (
-                    <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368" }}>Departed</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368", flexShrink: 0 }}>Departed</span>
                   ) : (
-                    <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap", flexShrink: 0 }}>
                       {fmtMin(o.totalSec)}
                     </span>
                   )}
-                  {/* The live bus, between the total and the arrival: it is
-                      the number that decides whether you leave now, and it
-                      used to sit two lines further down. Secondary weight so
-                      the two bold numbers still frame the row, nowrap +
-                      ellipsis so a narrow phone clips the "next in" tail
-                      rather than wrapping the row onto two lines. */}
-                  {busEtaLive !== null && !o.departed && !isExpanded && (
-                    <span style={{
-                      fontSize: 13, color: "#5f6368", fontWeight: 500,
-                      flex: 1, minWidth: 0, overflow: "hidden",
-                      textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      textAlign: "center",
-                    }}>
-                      {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
-                    </span>
-                  )}
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                </div>
+                {/* No badges: FASTEST is implied by sort order — the top card
+                    is the recommendation, Google-style — and
+                    slower-than-walking is already communicated by the tier
+                    sort + the "walking wins" banner. */}
+                {/* Line 2: when you land, then the walk legs, then why a slower
+                    row is on screen; the chevron sits at the right under the
+                    duration. The legs used to be their own row led by the route
+                    pill — the pill has moved to line 1, so the ride between the
+                    walks is drawn as a short bar in the line's own colour
+                    rather than repeating the name. Collapsed rows only: the
+                    details view's step list carries the same durations
+                    (user feedback 2026-07-17). Every leg is optional — a walk
+                    of 0 s is omitted and the wait, when there is one, has its
+                    own line below. */}
+                {(!o.departed || !isExpanded) && (
+                <div style={{
+                  display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                  gap: 8, marginTop: 4, marginBottom: 8,
+                }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
                     {!o.departed && (
-                      <span style={{ fontSize: 16, fontWeight: 600, color: "#202124" }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "#202124", whiteSpace: "nowrap" }}>
                         {/* Live mode: arrival only — the start is always "now"
                             (user feedback 2026-07-17). Future mode keeps the
                             range, since the start is the chosen departure. */}
@@ -3711,59 +3749,47 @@ const TripPlanner: FC<{
                           : `arrive ${fmtClock(o.totalSec)}`}
                       </span>
                     )}
-                    {/* Rows navigate (Google-style ›); the details view
-                        exits via ← All routes instead. */}
-                    {!isExpanded && <span style={{ fontSize: 16, color: "#9aa0a6" }}>›</span>}
+                    {!isExpanded && o.mode === "shuttle" && (o.walkToSec > 0 || o.walkFromSec > 0) && (
+                      <>
+                        {!o.departed && <span style={{ fontSize: 13, color: "#dadce0" }}>·</span>}
+                        {o.walkToSec > 0 && (
+                          <>
+                            <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
+                            <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                          </>
+                        )}
+                        {/* The ride, in the line's colour — the pill it replaces
+                            is now on line 1. */}
+                        <span
+                          title="ride"
+                          style={{
+                            display: "inline-block", width: 14, height: 4, borderRadius: 2,
+                            background: o.color, flexShrink: 0,
+                          }}
+                        />
+                        {o.walkFromSec > 0 && (
+                          <>
+                            <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                            <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
+                          </>
+                        )}
+                      </>
+                    )}
+                    {/* Why a slower row is on screen: this is the route that
+                        runs straight there — least walking + riding of any
+                        option, whatever the wait happens to be right now.
+                        Plain grey text, not a badge: FASTEST was removed from
+                        these rows deliberately and this is an explanation, not
+                        a ranking. */}
+                    {!isExpanded && o.mode === "shuttle" && _direct && o.routeLabel === _direct.routeLabel && (
+                      <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
+                        · most direct
+                      </span>
+                    )}
                   </span>
-                </div>
-                {/* No badges: FASTEST is implied by sort order — the top card
-                    is the recommendation, Google-style — and
-                    slower-than-walking is already communicated by the tier
-                    sort + the "walking wins" banner. */}
-                {/* Line 2: leg chips — walk / route pill / walk, Google
-                    transit-style, omitting a walk leg when it's 0 sec.
-                    Collapsed rows ONLY: the details view's step list
-                    carries the same durations + route pill, so chips
-                    there were pure repetition (user feedback 2026-07-17). */}
-                {!isExpanded && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
-                  {o.mode === "walk" ? (
-                    <span style={{
-                      fontSize: 13, fontWeight: 600, color: "#5f6368",
-                      background: "transparent", border: "1px solid #dadce0",
-                      borderRadius: 6, padding: "2px 8px",
-                    }}>🚶 Walk</span>
-                  ) : (
-                    <>
-                      {o.walkToSec > 0 && (
-                        <>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                        </>
-                      )}
-                      <span style={{
-                        fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
-                        borderRadius: 6, padding: "2px 8px",
-                      }}>{o.routeLabel}</span>
-                      {o.walkFromSec > 0 && (
-                        <>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
-                        </>
-                      )}
-                      {/* Why a slower row is on screen: this is the route that
-                          runs straight there — least walking + riding of any
-                          option, whatever the wait happens to be right now.
-                          Plain grey text, not a badge: FASTEST was removed
-                          from these rows deliberately and this is an
-                          explanation, not a ranking. */}
-                      {_direct && o.routeLabel === _direct.routeLabel && (
-                        <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368" }}>
-                          · most direct
-                        </span>
-                      )}
-                    </>
-                  )}
+                  {/* Rows navigate (Google-style ›); the details view
+                      exits via ← All routes instead. */}
+                  {!isExpanded && <span style={{ fontSize: 16, color: "#9aa0a6", flexShrink: 0, lineHeight: 1.2 }}>›</span>}
                 </div>
                 )}
                 {/* Last-bus warning — shown in BOTH the collapsed row and the
