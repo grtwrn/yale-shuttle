@@ -45,6 +45,12 @@ export interface BusData {
   stationary?: boolean;
   at_stop_id?: number;
   at_stop_since?: string;
+  /**
+   * The detector's stationary clock, published whether or not the bus is at a
+   * stop — naive UTC, same spelling as `at_stop_since`. Absent from a server
+   * older than 2026-09-04. See `APPROACH_ZONE_M` in hopPricing.ts.
+   */
+  stationary_since?: string;
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────

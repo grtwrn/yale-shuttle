@@ -881,6 +881,12 @@ export class Collector {
         lastStopId: o.lastStopId,
         atStopId: atStop ? atStop.id : null,
         atStopSince: atStop ? atStop.since : null,
+        // The same clock, published unconditionally. `atStopSince` above is
+        // gated on being within AT_STOP_MAX_M of the stop; a bus resting SHORT
+        // of its layover marker is invisible without this (see
+        // BusPosition.stationarySince).
+        stationarySince: state ? state.stationarySince : null,
+        stationaryStopId: state ? state.stationaryStopId : null,
         collectedAt: o.collectedAt,
       });
     }

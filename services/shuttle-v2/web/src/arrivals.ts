@@ -447,7 +447,16 @@ export function computeUpcomingArrivals(
       // clock survives that shuffle (PR #67); so does this memory of it.
       let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
       if (anchorStore && splitServed) {
-        const st = standingAt(anchorStore, anchorKey, bus, now, stopCoords, STANDING_HOLD_M);
+        // A layover taken SHORT of the marker is still that layover. The
+        // candidate is always the next stop in sequence — never the nearest —
+        // and it only qualifies if its own table says it is a layover stop.
+        // See APPROACH_ZONE_M in hopPricing.ts for the measurement.
+        const nextStopId = stops[(gpsAnchorIdx + 1) % stops.length];
+        const nextStand = nextStopId !== undefined ? routeDwells[String(nextStopId)] : undefined;
+        const approach = nextStopId !== undefined && standAdequate(nextStand)
+          ? { stopId: nextStopId, typicalStandSec: remainingStandSec(nextStand.q, 0) }
+          : undefined;
+        const st = standingAt(anchorStore, anchorKey, bus, now, stopCoords, STANDING_HOLD_M, approach);
         if (st) {
           const N = stops.length;
           for (let i = 0; i < N; i++) {

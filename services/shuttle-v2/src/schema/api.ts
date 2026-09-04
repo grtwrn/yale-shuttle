@@ -46,6 +46,24 @@ export const BusPositionSchema = z.object({
   // Derived state: bus is currently dwelling at this stop since this timestamp.
   atStopId: z.number().int().nullable(),
   atStopSince: EpochMsSchema.nullable(),
+  /**
+   * The detector's stationary clock (`BusState.stationarySince`), published
+   * WHETHER OR NOT the bus is at a stop.
+   *
+   * `atStopSince` only exists inside `AT_STOP_MAX_M` (75 m) of a stop, so a
+   * bus taking its layover SHORT of the marker publishes nothing at all and
+   * the client can only read it as driving. Red #310 did exactly that on
+   * 2026-09-04: 7 min at rest 147 m short of 344 Winchester, then ~2 min
+   * at the marker itself. See `APPROACH_ZONE_M` in web/src/hopPricing.ts.
+   *
+   * This is the same clock, unfiltered. Off a stop it measures time since the
+   * bus last moved more than `STATIONARY_RADIUS_M` (125 m) from where it came
+   * to rest, so a bus in motion resets it every few polls and only a genuine
+   * rest lets it grow.
+   */
+  stationarySince: EpochMsSchema.nullable().optional(),
+  /** The stop the stationary clock is pinned to, or null when resting off-marker. */
+  stationaryStopId: z.number().int().nullable().optional(),
   collectedAt: EpochMsSchema,
 });
 export type BusPosition = z.infer<typeof BusPositionSchema>;
