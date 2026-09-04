@@ -146,6 +146,40 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
   const canCatchWithBuffer = (a: A) =>
     effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
   const catchable = live.filter(canCatch);
+  /**
+   * THE SOONEST ARRIVAL, catchable or not — the bus the rider can SEE coming.
+   *
+   * `catchable[0]` answers "which bus can I get on"; it is the wrong list to
+   * pick the row's countdown from, because `canCatch` deletes a bus for being
+   * TOO CLOSE. A rider 83 m from the stop is 76 s of walk away, so the moment
+   * a bus's ETA falls below `walk - STOP_DWELL_SEC` (16 s here) it drops out
+   * of `catchable` — while it is 97 m from the kerb and closing.
+   *
+   * That is the second half of the "declined" drop class. #120 closed the
+   * first half (the pin released in favour of the SAME vehicle a lap later);
+   * this is the dominance branch below, which was choosing among the
+   * survivors of that filter. The canary caught it on Red, 2026-09-04 16:03
+   * ET, on the operator's own trip (Prospect / Canner -> YSPH, board stop
+   * Division / Prospect, 83.5 m from the origin — just outside `AT_PLACE_M`):
+   *
+   *   16:03:15  "in <1, 19 min"   #304 235 m out, live [304:23s, 316, 310]
+   *   16:03:30  "in 26, 46 min"   #304  97 m out, live [304:11s, 310:1580s]
+   *   16:03:37  #304 at the kerb, 6 m
+   *
+   * #304 never left `live` — it was 11 seconds away. It fell out of
+   * `catchable` by five seconds of walk, so the dominance rule compared the
+   * pinned vehicle against #310 twenty-six minutes out and handed it the row.
+   * The rider standing at the stop was told their next bus was 26 min away
+   * while it pulled in. Replayed off the production rows in
+   * `__fixtures__/red-closing-bus.json`, this reproduces the exact card:
+   * "in 26, 46 min", total 39 min.
+   *
+   * `boardable` still comes from `catchable`, so the wait and the total stay
+   * honest (report #99) — only the vehicle the row FOLLOWS changes. On a
+   * rider standing at the stop (walk 0) `canCatch` is true for every entry,
+   * so `catchable` IS `live` and this is byte-identical to master.
+   */
+  const soonest = live.reduce((best, a) => (a.eta < best.eta ? a : best), live[0]!);
   const pinned = live.find((a) => norm(a.busName) === norm(pinnedBusName));
   /**
    * Every verdict below answers "which bus does the row follow"; this answers
@@ -161,9 +195,22 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
   });
   if (pinned && canCatch(pinned)) {
     // Dominance check (report #49): stay loyal to the pinned bus unless a
-    // different catchable vehicle beats it by the full margin. Same-name
-    // entries are the same vehicle a lap sooner/later — never a "switch".
-    const better = catchable[0];
+    // different vehicle beats it by the full margin. Same-name entries are the
+    // same vehicle a lap sooner/later — never a "switch".
+    //
+    // The candidate is the SOONEST arrival, not the soonest catchable one —
+    // see `soonest` above. Report #49's own case is unchanged, because the bus
+    // that has passed the rider's stop is the one whose next entry is a lap
+    // out, and the alternative a few minutes away is both soonest and
+    // catchable.
+    //
+    // `SWITCH_BUFFER_SEC` bounds it, and bounds it with the constant that
+    // already means "walking GPS reads 50–100 m long, do not give up on a bus
+    // this close": the soonest arrival takes the row only when the rider is
+    // within that slack of catching it. So a bus pulling in 500 s before the
+    // rider can possibly arrive is still not what the row counts down to, and
+    // the incident above — five seconds outside `canCatch` — is.
+    const better = canCatchWithBuffer(soonest) ? soonest : catchable[0];
     if (
       better &&
       norm(better.busName) !== norm(pinned.busName) &&

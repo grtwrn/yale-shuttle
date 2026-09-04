@@ -17,7 +17,7 @@
     "predictions": "node scripts/predictions-dump.mjs",
     "deploy": "node scripts/deploy.mjs",
     "approve": "node scripts/approve.mjs",
-    "test:accuracy": "vitest run web/src/accuracy-layover.test.ts web/src/accuracy-approach-rest.test.ts web/src/arrivals.test.ts web/src/anchor.test.ts web/src/planner.test.ts",
+    "test:accuracy": "vitest run web/src/accuracy-layover.test.ts web/src/accuracy-approach-rest.test.ts web/src/accuracy-closing-bus.test.ts web/src/arrivals.test.ts web/src/anchor.test.ts web/src/planner.test.ts",
     "canary": "node scripts/rider-canary.mjs"
   },
   "dependencies": {
