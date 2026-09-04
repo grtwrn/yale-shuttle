@@ -39,7 +39,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as METRICS from "./canary-metrics.mjs";
 import {
-  ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, haversineM,
+  ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, fleetOffAir, haversineM,
   isAtBoardStop, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { seedTestId } from "./testId.mjs";
@@ -289,7 +289,10 @@ async function runOnce(line) {
       opts = parseOptions(await page.evaluate(() => document.body.innerText));
     }
     if (!opts.length) fail("no-options", "the plan offered nothing at all");
-    else if (!opts.some((o) => o.routeLabel === line.label)) {
+    else if (!opts.some((o) => o.routeLabel === line.label) && line.liveBuses > 0) {
+      // Guarded on live buses as well as on the pool above: the fleet can go
+      // home between the poll that chose this line and the page loading, and
+      // "running" must mean vehicles on the road, never a schedule.
       fail("line-missing", `${line.label} is running (${line.liveBuses} live buses) but the plan never offered it; offered: ${opts.map((o) => o.routeLabel).join(", ")}`);
     }
     record.offeredAtStart = opts.map((o) => o.routeLabel);
@@ -299,7 +302,12 @@ async function runOnce(line) {
     const pin0 = await readPin(page, line.label);
     if (pin0) record.pins.push({ atMs: Date.now(), ...pin0, why: "start" });
     const board = pin0?.board ?? null;
-    if (!board) fail("no-board-stop", "could not read the board stop from the details view");
+    // Only a defect when there was a card to open at all: a line the plan is
+    // not offering has no row to tap, and blaming the details view for that
+    // is how one off-air evening produced three findings instead of none.
+    if (!board && opts.some((o) => o.routeLabel === line.label)) {
+      fail("no-board-stop", "could not read the board stop from the details view");
+    }
     if (pin0?.stuckInDetails) fail("stuck-in-details", "could not return to the option list after reading the pin; the readings below are the harness's fault, not the app's");
     record.board = board;
 
@@ -560,7 +568,15 @@ async function runOnce(line) {
       }
     }
     if (record.samples.length > 2 && !record.samples.some((s) => s.present)) {
-      fail("option-vanished", `${line.label} disappeared from the plan and never came back`);
+      // An option vanishing is a defect ONLY while the line still has buses.
+      // Once the last one goes off-air the app is right to drop the route,
+      // and the watch simply has nothing left to watch.
+      if (fleetOffAir(record.samples)) {
+        record.unfinished = `${line.label} went off-air during the watch (no live buses on the line); nothing left to watch after ${record.watchedMin} min`;
+        say(`unfinished: ${record.unfinished}`);
+      } else {
+        fail("option-vanished", `${line.label} disappeared from the plan and never came back`);
+      }
     }
     // A run that read no countdown is a BROKEN CANARY, not a healthy line, and
     // it must never pass. The neighbouring watch at ~/eta-live filed
@@ -690,7 +706,14 @@ async function oneRider() {
   }
   const lines = rideableLines(payload);
   const forced = process.env.CANARY_LINE;
-  const pool = forced ? lines.filter((l) => l.label === forced) : lines.filter((l) => l.rideable);
+  // `forced` picks WHICH line, never whether there is anything to watch.
+  // It used to skip the rideable test outright, so the keepalive's
+  // CANARY_LINE=Red kept riding Red after the last bus went home: a twelve
+  // minute watch of an empty line on 2026-09-04, filing `line-missing`
+  // ("Red is running (0 live buses)") against an app that was right to stop
+  // offering it. Zero live buses is `idle` — the loop sleeps and asks again.
+  const pool = (forced ? lines.filter((l) => l.label === forced) : lines)
+    .filter((l) => l.rideable);
   if (!pool.length) {
     say(`nothing rideable: ${lines.map((l) => `${l.label}=${l.liveBuses}`).join(" ")}`);
     return { status: "idle", lines };
