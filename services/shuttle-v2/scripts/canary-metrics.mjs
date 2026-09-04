@@ -204,7 +204,14 @@ export function parseOptions(bodyText) {
     // is what keeps a stray "16 min" in the map overview out of the list.
     const arrive = body.find((l) => /^arrive\s+\d{1,2}:\d{2}[ap]$/i.test(l));
     if (!arrive && lines[h] !== "Departed") continue;
-    const busLine = body.find((l) => l.startsWith("🚌") && parseBusEtaText(l));
+    // The countdown is whatever line parses as one. It carried a 🚌 until
+    // 2026-09-04, when the glyph was dropped so "in" could follow the route
+    // pill directly; requiring the glyph here left the canary reading zero
+    // countdowns for the twelve minutes after that shipped, while `startOf`
+    // above had already been taught both forms. parseBusEtaText is the only
+    // arbiter, so there is one place to teach and it cannot half-learn again.
+    // It cannot collide with the ride bar ("🚌 12 min"), which has no "in".
+    const busLine = body.find((l) => parseBusEtaText(l) !== null);
     const waitLine = body.find((l) => l.startsWith("⏳"));
     const missed = body.map((l) => l.match(/^🚌 You can't catch #(\S+)/)).find(Boolean);
     const walks = body.filter((l) => /^🚶\s*\d+\s*min$/.test(l))

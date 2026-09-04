@@ -242,6 +242,34 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[4]).toMatchObject({ routeLabel: "Brown", walkToMin: 3, walkFromMin: 10 });
   });
 
+  // #111, later the same day, removed the 🚌 from that countdown so "in" could
+  // follow the route pill directly. The parser had been taught the new ORDER
+  // but not the new SHAPE: `startOf` accepted a bare countdown while the line
+  // that yields the reading still demanded the glyph, so the canary read zero
+  // countdowns for the twelve minutes after the deploy and reported the app
+  // as offering no Red at all. Both shapes are fixtures now.
+  const LIVE_NO_GLYPH = LIVE_LINE_FIRST
+    .split("\n")
+    .map((l) => (/^🚌 (in |now, then |arriving now)/.test(l) ? l.replace(/^🚌 /u, "") : l))
+    .join("\n");
+
+  it("reads the countdown after the 🚌 was dropped from it", () => {
+    const opts = parseOptions(LIVE_NO_GLYPH);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day", "Red", "Walk", "Brown"]);
+    expect(opts[0].eta.raw).toBe("in 3, 21 min");
+    expect(opts[2].eta.raw).toBe("in 25, 31 min");
+    expect(opts[4].eta.raw).toBe("in 36 min");
+  });
+
+  it("does not mistake the ride bar for the countdown", () => {
+    // The expanded card carries "🚌 12 min" for the ride leg — glyph-prefixed,
+    // minute-suffixed, and NOT a countdown. It has no "in", which is the whole
+    // reason parseBusEtaText can be the single arbiter.
+    const withRide = LIVE_NO_GLYPH.replace("arrive 10:47a", "arrive 10:47a\n🚌 12 min");
+    const red = parseOptions(withRide).find((o) => o.routeLabel === "Red");
+    expect(red.eta.raw).toBe("in 25, 31 min");
+  });
+
   it("does not take the map overview's legend for the first card's line", () => {
     // The legend lists every drawn route immediately above the first card, so
     // the walk-back that finds the pill must stop after one label.
