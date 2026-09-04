@@ -16,7 +16,10 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, nextArrivalAfterPinned, type UpcomingArrival } from "./arrivals";
+import {
+  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec, splitServedForRoute,
+  type DwellStat, type SegmentStat, type UpcomingArrival,
+} from "./arrivals";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -1563,8 +1566,13 @@ const TripPlanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   routePaths: Record<string, [number, number][]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+  // The CANONICAL statistic types, not a local narrowing of them: the pause
+  // chip below has to read the same `q`/`drive` fields the estimator prices
+  // from, and a prop type that quietly drops them is how the chip ended up
+  // quoting a superseded number beside a countdown derived from a different
+  // one. Every other component here still takes the narrow shape it uses.
+  segmentTimes: Record<string, Record<string, SegmentStat>>;
+  dwellTimes: Record<string, Record<string, DwellStat>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   // Operator-published timetable per route id (`/api/buses` `route_hours`);
   // what the "Shuttles that go there" panel prints and judges "running" by.
@@ -4099,33 +4107,51 @@ const TripPlanner: FC<{
                   // Dwell readouts: the typical hold at a stop, plus the live
                   // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  // The hold SHOWN must be the hold BILLED — see billedDwellSec
+                  const routeSegs = segmentTimes?.[cfg.routeIds[0]] ?? {};
+                  // The hold SHOWN must be the hold BILLED — see shownStandSec
                   // (report #73: "it says arrive in 8 but expected dwell is
                   // 10", which was the median on screen and a low quantile in
                   // the arithmetic).
                   //
-                  // So this reads the same record computeUpcomingArrivals bills
-                  // and nothing else. It used to prefer a per-bus dwell
-                  // (dwellsByBus, n >= 5) while the arithmetic only ever read
-                  // the ROUTE dwell, which is the same class of bug wearing a
-                  // different hat: the screen would have said "held 5 min of
-                  // ~5" while the countdown charged a different ~5. It could
-                  // not fire only because the server hardcodes dwells_by_bus to
-                  // {} (src/server/v1compat.ts) — a latent trap, not a working
-                  // feature. Report #80 is a rider doing exactly this
-                  // arithmetic out loud, so the two must not be able to drift.
+                  // So this reads the same records computeUpcomingArrivals
+                  // prices from, through the same predicates, and nothing else.
+                  // Two ways it has drifted before:
+                  //
+                  //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
+                  //    while the arithmetic only ever read the ROUTE dwell:
+                  //    "held 5 min of ~5" beside a countdown charging a
+                  //    different ~5. It could not fire only because the server
+                  //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
+                  //    — a latent trap, not a working feature.
+                  //  - Once the stand/drive split went live (Red, Blue Day)
+                  //    the chip kept quoting `dwell.med`, the arrival-to-
+                  //    arrival median that CONTAINS DRIVE TIME, while the
+                  //    countdown priced the conditional standing quantiles:
+                  //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
                   //
                   // If per-bus dwells are ever really served, thread them into
                   // computeUpcomingArrivals FIRST; display follows billing.
-                  const typDwell = (sid: number, started = false): number | null => {
-                    const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return billedDwellSec(r, started);
-                    return null;
-                  };
+                  const splitServed = splitServedForRoute(routeSegs, routeDwells);
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
                   const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
                     ? Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000)
                     : null;
+                  /**
+                   * The hold to show at `sid`. `elapsed` is passed only for the
+                   * stop the bus is actually standing at — everywhere else
+                   * there is no remainder to state, so the typical hold is
+                   * still the honest answer and the legacy path is what runs.
+                   * The drive is looked up for the hop the pricing bills:
+                   * `sid` -> the next stop on the loop.
+                   */
+                  const standAt = (sid: number, elapsed: number | null) => {
+                    const stat = routeDwells[String(sid)];
+                    if (!stat || stat.n < 3) return null;
+                    const i = allStops.indexOf(sid);
+                    const next = i >= 0 ? allStops[(i + 1) % allStops.length] : undefined;
+                    const seg = next === undefined ? undefined : routeSegs[`${sid}-${next}`];
+                    return shownStandSec(stat, seg, elapsed, splitServed);
+                  };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                       {approachStops.length > 0 && busMatch && (
@@ -4147,8 +4173,8 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid, isBusHere);
                             const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
+                            const stand = standAt(sid, showLive ? liveElapsedSec : null);
                             return (
                               <div key={sid} style={{
                                 position: "relative", display: "flex", alignItems: "center",
@@ -4170,12 +4196,26 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
+                                    // "3 min · ~4 min left" where the split is
+                                    // priced: the remainder is what the rider
+                                    // wanted from "3 of 10" and could not get
+                                    // by subtracting, because 10 was the wrong
+                                    // total. Elsewhere the old "3 min / ~10
+                                    // min" stands, since there the old number
+                                    // is still the one being billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                          title={typ != null ? `Typically holds ~${fmtShort(typ)}` : "Time the bus has been sitting here"}>
-                                      ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
+                                          title={stand == null
+                                            ? "Time the bus has been sitting here"
+                                            : stand.remaining
+                                              ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
+                                              : `Typically holds ~${fmtShort(stand.sec)}`}>
+                                      ⏸ {fmtShort(liveElapsedSec!)}
+                                      {stand == null ? "" : stand.remaining
+                                        ? ` · ~${fmtShort(stand.sec)} left`
+                                        : ` / ~${fmtShort(stand.sec)}`}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (
+                                  {!showLive && stand != null && stand.sec >= 180 && (
                                     // One figure, before the bus arrives and
                                     // after. This was briefly a "5-9 min"
                                     // range, because the ETA billed a low
@@ -4188,7 +4228,7 @@ const TripPlanner: FC<{
                                     // for.
                                     <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
                                           title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(typ)}
+                                      ⏸ ~{fmtShort(stand.sec)}
                                     </span>
                                   )}
                                 </span>
