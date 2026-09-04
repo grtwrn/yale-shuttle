@@ -118,3 +118,42 @@ TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/belief
 #   ARMS=beliefA,ungated  START="2026-09-03 16:30" END="2026-09-03 17:55"  POSITIONS_JSONL=a.jsonl,b.jsonl|db
 TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/priors.ts
 ```
+
+## rider-sim/ — a day of riders, each one's countdown from first sight to boarding
+
+`rider-sim/run.ts` is the third instrument, and the one that answers the
+operator's question ("said 10 min, then a few seconds later 1 min") directly:
+it instantiates synthetic riders — (line, board stop, arrival instant, optional
+origin) — over a day of captured positions and replays, poll by poll, the exact
+text the trip card would have shown each of them until their bus reached the
+curb. The unit of output is a WAIT, not a transition. Findings and the
+acceptance record are in `docs/rider-sim.md`.
+
+```bash
+cd services/shuttle-v2
+# default: Red focus (uniform every 10 min + targeted at departures/last bus),
+# Green + Purple hold-out, and the 344 Winchester chain cohort
+TZ=America/New_York REPLAY_DB=./store/snap3.db npx tsx scripts/eta-replay/rider-sim/run.ts
+# a named rider: line@stopId@ISO[@lat,lon]; the canary's Red rider stands at Prospect / Canner
+TZ=America/New_York REPLAY_DB=./store/snap3.db npx tsx scripts/eta-replay/rider-sim/run.ts \
+  --rider Red@48@2026-09-03T21:21:25Z@41.325351,-72.922891
+# score another tree, then pair the two runs wait for wait
+CLIENT_ROOT=/path/to/worktree/services/shuttle-v2 OUT_NAME=candidate ... npx tsx scripts/eta-replay/rider-sim/run.ts
+npx tsx scripts/eta-replay/rider-sim/run.ts --compare scripts/.eta-replay/rider-sim.waits.jsonl scripts/.eta-replay/candidate.waits.jsonl
+```
+
+Env: `CAPTURE` (default every `~/shuttle-captures/positions-*.jsonl`, de-duplicated
+on (bus_id, collected_at) because each day's file re-dumps the retention
+window), `REPLAY_DB`, `CLIENT_ROOT`, `ROUTES=Red|all|…`, `HOLDOUT=Green,Purple`,
+`CHAIN=Red:11:6`, `POP=both|uniform|targeted|none`, `EVERY_MIN=10`,
+`MAX_WAIT_MIN=45`, `SAMPLE_MS=5000`, `CANARY_MS=15000`, `FROM`/`TO` (riders),
+`DETECTOR_FROM` (cold-start the detector later than the capture — production
+restarts on every deploy), `CALIB_LAG_MIN`, `TRACE=1` (every poll of every
+named rider: bus, anchor, live list, text), `OUT_NAME`.
+
+It calls the real client — `planTrip`, `computeUpcomingArrivals` with a
+per-rider `AnchorStore`, `pickLiveArrival` against the plan-time pin,
+`nextArrivalAfterPinned`, `fmtBusPair` — and the real detector, all imported
+from `CLIENT_ROOT`, whose HEAD and dirty flag go into the output. Scoring is
+`canary-metrics.mjs`'s own (display buckets, smallest movement two readings
+permit), so a simulated wait and a browser-watched wait are judged by one rule.
