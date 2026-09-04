@@ -9,7 +9,7 @@ import {
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
-import { anchorIndexOnList } from "./liveAnchor";
+import { anchorIndexOnList, anchorKeyFor } from "./liveAnchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -4274,7 +4274,14 @@ const TripPlanner: FC<{
                     const i = allStops.indexOf(sid);
                     const next = i >= 0 ? allStops[(i + 1) % allStops.length] : undefined;
                     const seg = next === undefined ? undefined : routeSegs[`${sid}-${next}`];
-                    return shownStandSec(stat, seg, elapsed, splitServed);
+                    // Same store, same key, same ceiling as the countdown —
+                    // the hold shown must be the hold billed, and since the
+                    // billed remainder is now clamped non-increasing
+                    // (flooredStandSec) the shown one has to be too.
+                    return shownStandSec(stat, seg, elapsed, splitServed, false,
+                      elapsed === null || busMatch == null
+                        ? undefined
+                        : { store: liveAnchorStore, key: anchorKeyFor(cfg.label, busMatch.bus_name), stopId: sid, now: Date.now() });
                   };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
