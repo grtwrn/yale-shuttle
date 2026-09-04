@@ -719,7 +719,14 @@ export function buildApp(opts: AppOptions): Hono {
   app.get("/api/stats/reports", requireStatsAuth, (c) => {
     const raw = parseInt(c.req.query("limit") ?? "", 10);
     c.header("Cache-Control", "no-store");
-    return c.json(outsideReports(opts.bundle, Number.isFinite(raw) ? raw : 20));
+    // Same epoch the rider numbers count from, read off the tracker rather
+    // than re-derived: the page prints "counting from Mon Aug 31" over this
+    // very panel, so a pre-launch report here would contradict it.
+    return c.json(outsideReports(
+      opts.bundle,
+      Number.isFinite(raw) ? raw : 20,
+      { sinceDay: actives.sinceDay() },
+    ));
   });
 
   // Claim (or release) a browser as the operator's own, so its reports stop
