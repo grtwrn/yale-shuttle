@@ -143,25 +143,127 @@ export function priceFirstHop(
 export const STANDING_HOLD_M = 125; // mirrors STATIONARY_RADIUS_M (detector.ts, PR #67)
 const STANDING_MEMO_STALE_MS = 120_000;
 
-interface StandingMemo { stopId: number; since: number; seenAt: number }
+/**
+ * THE LAYOVER TAKEN SHORT OF THE MARKER.
+ *
+ * `at_stop_id` is published only within 75 m of a stop, so a bus that takes
+ * its rest just SHORT of the layover marker publishes nothing: the client sees
+ * a bus with a position between two stops and prices it as DRIVING, with the
+ * whole layover still ahead of it. The operator watched this happen, live, on
+ * 2026-09-04 — Red #310, 13:28 ET:
+ *
+ *   13:28:03  comes to rest 140 m short of 344 Winchester, last_stop_id 27
+ *             (Canal / Munson, 246 m back), heading 299
+ *   13:28-13:34  79 identical fixes — 6 min 40 s at rest, going nowhere
+ *   13:34:48  rolls the 140 m in
+ *   13:35:53  reaches the marker (4 m)
+ *   13:37:08  leaves — about 1 min 15 s actually AT the stop
+ *
+ * The card read `#310 · 11 min` with 344's chip at `⏸ ~6 min`: driving toward
+ * 344, and then a six-minute stand once it gets there. It was not driving. It
+ * was doing the stand, in the wrong place, and when it finally rolled in the
+ * promised six minutes evaporated and the number fell several minutes at once.
+ * A 5 → 1 with no event behind it, which is exactly the lurch #119 exists to
+ * prevent — the ceiling could not help, because the standing term was never
+ * charged in the first place.
+ *
+ * So: a bus at rest in the approach zone of a layover stop IS STANDING AT THAT
+ * STOP. Elapsed runs from when it stopped, the remainder is conditional on it,
+ * and #119's ceiling applies — the same arithmetic as a bus resting on the
+ * marker, because it is the same wait.
+ *
+ * ## The gates, and why each one is there
+ *
+ * Measured over 90,170 production polls across all 15 routes, 04:40–13:40 ET
+ * on 2026-09-04 (`stop_visits` for the stand tables, the detector's own
+ * stationary clock replayed over `raw_positions`). Long rests (≥ 3 min) are
+ * 203 in that window; 19 of them are off-marker at all. Adding the three gates
+ * below, the rule fires on ONE episode in nine hours — #310 above — and on
+ * nothing else, at every zone radius from 150 m to 300 m. It is deliberately
+ * a scalpel: the failure is rare, it is expensive when it happens, and a rule
+ * that fired on ordinary traffic would be far worse than the bug.
+ *
+ *  - **the NEXT stop in sequence**, never the nearest. A bus resting near a
+ *    stop it has already served is not waiting for it, and on this network
+ *    stops 30 m apart can be nine apart in the loop (Orange / Pearl (N)/(S)).
+ *    This single constraint is what takes the rule from six episodes to one.
+ *  - **a real rest**, not a red light. `stationary_since` off a stop measures
+ *    time since the bus last moved more than 125 m from where it settled, so a
+ *    bus in motion resets it every few polls; {@link APPROACH_REST_MIN_SEC} of
+ *    2.5 min is far past any signal, and #310's rest was 6 min 40 s.
+ *  - **a layover stop**, judged by the same table the price comes from: its
+ *    typical hold must reach {@link APPROACH_LAYOVER_MIN_SEC}, and the table
+ *    must clear `standAdequate`. Crediting a rest to a stop with no real
+ *    layover would cancel a hop the bus still has to drive, which is the
+ *    direction that makes a rider miss the bus.
+ *
+ * ## One visit, one stand
+ *
+ * When the bus finally rolls in, the detector re-pins its clock to the stop
+ * and `at_stop_since` starts fresh — #310's would have restarted at 13:35:53
+ * after 6 min 40 s of waiting. Left alone that would hand the rider the whole
+ * layover a second time, the countdown JUMPING UP at the exact moment the bus
+ * arrives. So the memo keeps the EARLIER start across the roll-in: an approach
+ * rest and the marker touch that follows it are one wait, and the clock runs
+ * from when the bus actually stopped.
+ */
+export const APPROACH_ZONE_M = 200;
+export const APPROACH_REST_MIN_SEC = 150;
+export const APPROACH_LAYOVER_MIN_SEC = 120;
+
+/**
+ * The next stop in sequence, offered to {@link standingAt} as a candidate for
+ * an approach-zone rest. `typicalStandSec` is the stop's unconditional hold —
+ * `remainingStandSec(q, 0)` — so the layover test reads the very table the
+ * price will come from.
+ */
+export interface ApproachCandidate {
+  stopId: number;
+  typicalStandSec: number;
+}
+
+interface StandingMemo { stopId: number; since: number; seenAt: number; approach?: boolean }
 const memos = new WeakMap<object, Map<string, StandingMemo>>();
 
 export function standingAt(
   store: object,
   key: string,
-  bus: { lat?: number | undefined; lon?: number | undefined; at_stop_id?: number | null | undefined; at_stop_since?: string | null | undefined },
+  bus: {
+    lat?: number | undefined; lon?: number | undefined;
+    at_stop_id?: number | null | undefined; at_stop_since?: string | null | undefined;
+    stationary_since?: string | null | undefined;
+  },
   now: number,
   stopCoords: Record<number, { lat: number; lon: number }>,
   holdM: number,
+  /** The next stop in sequence, when it is a candidate for an approach rest. */
+  approach?: ApproachCandidate | undefined,
 ): { stopId: number; standingSec: number } | null {
   let m = memos.get(store);
   if (!m) memos.set(store, (m = new Map()));
   if (bus.at_stop_id && bus.at_stop_since) {
     const since = new Date(bus.at_stop_since + "Z").getTime();
     if (Number.isFinite(since)) {
-      m.set(key, { stopId: bus.at_stop_id, since, seenAt: now });
-      return { stopId: bus.at_stop_id, standingSec: Math.max(0, (now - since) / 1000) };
+      // One visit, one stand: if we were already crediting an approach rest to
+      // THIS stop, the wait started when the bus stopped short of it, not when
+      // it finally rolled onto the marker. Without this the countdown jumps up
+      // at the arrival — the same lurch, just moved a few minutes later.
+      const prev = m.get(key);
+      const start = prev && prev.approach && prev.stopId === bus.at_stop_id && prev.since < since
+        ? prev.since
+        : since;
+      m.set(key, { stopId: bus.at_stop_id, since: start, seenAt: now, approach: prev?.approach && prev.stopId === bus.at_stop_id });
+      return { stopId: bus.at_stop_id, standingSec: Math.max(0, (now - start) / 1000) };
     }
+  }
+  const restingAt = approachRest(bus, now, stopCoords, approach);
+  if (restingAt) {
+    const prev = m.get(key);
+    const start = prev && prev.stopId === restingAt.stopId && prev.since < restingAt.since
+      ? prev.since
+      : restingAt.since;
+    m.set(key, { stopId: restingAt.stopId, since: start, seenAt: now, approach: true });
+    return { stopId: restingAt.stopId, standingSec: Math.max(0, (now - start) / 1000) };
   }
   const memo = m.get(key);
   if (!memo) return null;
@@ -170,6 +272,31 @@ export function standingAt(
   if (now - memo.seenAt > STANDING_MEMO_STALE_MS || !near) { m.delete(key); return null; }
   memo.seenAt = now;
   return { stopId: memo.stopId, standingSec: Math.max(0, (now - memo.since) / 1000) };
+}
+
+/**
+ * Is this bus at rest in the approach zone of `approach`? Returns the instant
+ * the rest began, on the same clock `at_stop_since` uses.
+ *
+ * Every gate is documented above {@link APPROACH_ZONE_M}; this is only the
+ * arithmetic. It is a pure read of the payload, so a client whose server has
+ * not yet shipped `stationary_since` simply never takes this path.
+ */
+function approachRest(
+  bus: { lat?: number | undefined; lon?: number | undefined; stationary_since?: string | null | undefined },
+  now: number,
+  stopCoords: Record<number, { lat: number; lon: number }>,
+  approach: ApproachCandidate | undefined,
+): { stopId: number; since: number } | null {
+  if (!approach || !bus.stationary_since) return null;
+  if (!(approach.typicalStandSec >= APPROACH_LAYOVER_MIN_SEC)) return null;
+  const since = new Date(bus.stationary_since + "Z").getTime();
+  if (!Number.isFinite(since)) return null;
+  if ((now - since) / 1000 < APPROACH_REST_MIN_SEC) return null;
+  const sc = stopCoords[approach.stopId];
+  if (!sc || !bus.lat || !bus.lon) return null;
+  if (haversineM(bus.lat, bus.lon, sc.lat, sc.lon) > APPROACH_ZONE_M) return null;
+  return { stopId: approach.stopId, since };
 }
 
 /**

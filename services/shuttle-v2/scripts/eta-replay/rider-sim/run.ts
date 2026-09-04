@@ -315,7 +315,7 @@ const countDrops: CountDrop[] = [];
 /** detector arrival events: `${busName}|${stopId}` -> times */
 const detArrivals = new Map<string, number[]>();
 
-type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null };
+type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null };
 
 function makeFeed() {
   const states = new Map<string, import("../../../src/collector/detector.js").BusState>();
@@ -346,7 +346,18 @@ function makeFeed() {
         if (record && prev && prev.atStopId !== null && at === null) {
           departEvents.push({ t, busName: o.busName, routeId: o.routeId, stopId: prev.atStopId, stoodMs: prev.atStopSince !== null ? t - prev.atStopSince : 0, since: prev.atStopSince });
         }
-        livePositions.set(key, { o, atStopId: at ? at.id : null, atStopSince: at ? at.since : null });
+        livePositions.set(key, {
+          o,
+          atStopId: at ? at.id : null,
+          atStopSince: at ? at.since : null,
+          // The stationary clock WITHOUT the at-a-stop gate, exactly as
+          // `buildBusesPayload` publishes it. A bus resting SHORT of its
+          // layover marker has no `at_stop_*` at all, so this is the only
+          // thing that says it is standing rather than driving. A client tree
+          // that does not read the field is byte-identical with or without it,
+          // which is the same contract PAYLOAD_PATCH keeps.
+          stationarySince: st ? st.stationarySince : null,
+        });
       }
       for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
       const all: BusData[] = [...livePositions.values()].map((v) => ({
@@ -354,6 +365,7 @@ function makeFeed() {
         last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
         ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
         ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
+        ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
       }));
       // The client drops out-of-service ghosts before anything reads `buses`.
       return all.filter((b) => scheduleMod.isBusInService(b, t));

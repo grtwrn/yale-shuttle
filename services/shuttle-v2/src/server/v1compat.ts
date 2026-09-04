@@ -66,6 +66,13 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     ...(b.atStopSince != null
       ? { at_stop_since: new Date(b.atStopSince).toISOString().replace(/Z$/, "") }
       : {}),
+    // The stationary clock WITHOUT the at-a-stop gate, so the client can see a
+    // bus that is taking its layover short of the marker. Same naive-UTC
+    // spelling as `at_stop_since` — the client appends the "Z" itself.
+    // Consumed by the approach-zone rule in web/src/hopPricing.ts.
+    ...(b.stationarySince != null
+      ? { stationary_since: new Date(b.stationarySince).toISOString().replace(/Z$/, "") }
+      : {}),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".
