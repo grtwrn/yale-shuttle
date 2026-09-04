@@ -251,10 +251,17 @@ both times now fit at every ETA. The bus ETA is computed ONCE at row scope
 (`busEtaLive`) and consumed by both the top line and the departed warning, so
 they cannot disagree.
 
-**No leg is guaranteed.** A walk of 0 s is omitted, the ⏳ wait line only
-appears when no live bus is pinned (future mode), and a Departed card has no
-arrival clock at all — the row is built from whatever exists, never from a
-fixed slot per leg.
+**No leg is guaranteed EXCEPT the ride.** A walk of 0 s is omitted, the ⏳
+wait line only appears when no live bus is pinned (future mode), and a
+Departed card has no arrival clock at all — the row is built from whatever
+exists, never from a fixed slot per leg. But every collapsed shuttle row draws
+`🚌 {rideSec}`: `legsShown` is `!isExpanded && o.mode === "shuttle"` and
+nothing more. Gating the block on "a walk at one end or the other" left a
+rider already at the stop, bound for a stop on the line, with a blank second
+line — the one card on screen that did not say what the trip was made of.
+That card also puts a bare `🚌 N min` directly under a duration, which is
+where a countdown used to live: `parseBusEtaText` is the arbiter and the ride
+bar has no "in", and the countdown is found in `pre` first regardless.
 
 **The canary reads these cards as TEXT** (`parseOptions` in
 `scripts/canary-metrics.mjs`), so a layout change is a parser change: it

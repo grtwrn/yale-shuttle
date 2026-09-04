@@ -3633,13 +3633,23 @@ const TripPlanner: FC<{
                   busEtaLive,
                 )
               : null;
-            // Whether line 2's left column draws the walk/ride legs. "most
-            // direct" carries its own leading "·" and would otherwise open
-            // that column with an orphaned bullet: the arrival clock used to
-            // sit to its left and always supplied the neighbour, and it is the
-            // right column now, so the separator has to ask.
-            const legsShown = !isExpanded && o.mode === "shuttle"
-              && (o.walkToSec > 0 || o.walkFromSec > 0);
+            // Whether line 2's left column draws the trip's legs. EVERY
+            // collapsed shuttle row has one: the ride. This used to also
+            // require a walk at one end or the other, so a rider already at
+            // the stop whose destination is on it got a blank second line —
+            // the one card on screen that did not say what the trip was made
+            // of, next to four that did (visible on #115's own screenshot:
+            // "Blue Day  in 4, 9 min" and then nothing). The walk legs inside
+            // are each guarded on their own duration, so a 0 s walk is still
+            // omitted and a bus-only trip reads "🚌 17 min".
+            //
+            // It is also the single gate for the separator: "most direct"
+            // carries its own leading "·" and would open the column with an
+            // orphaned bullet if nothing were drawn before it. The arrival
+            // clock used to sit to its left and always supplied that
+            // neighbour; it is the right column now, so the separator has to
+            // ask.
+            const legsShown = !isExpanded && o.mode === "shuttle";
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index

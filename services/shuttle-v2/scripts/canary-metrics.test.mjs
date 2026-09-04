@@ -383,6 +383,119 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38, arriveText: "12:00p" });
   });
 
+  // Later the same day: the leg list stopped requiring a walk. A trip with no
+  // walk at either end still has a RIDE, and gating the whole block on
+  // "walkTo > 0 || walkFrom > 0" left such a card with a blank second line.
+  // So a card can now carry a bare "bus N min" as the FIRST line after its
+  // duration — where the countdown would sit if the countdown were below the
+  // duration, which is the shape this parser read before 2026-09-04. Blue Day
+  // below is that card. It is the ride-bar-vs-countdown collision the suite
+  // already guards, arriving from a new direction, so it gets a real capture:
+  // the countdown is found in `pre` (above the duration) before the ride bar
+  // in `post` is ever considered, and the ride bar parses as no countdown at
+  // all because it has no "in".
+  const LIVE_RIDE_WITHOUT_WALKS = `YALE SHUTTLE
+11:44 AM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☀️
+77°F · no rain · cooling to 69° by 8pm
+▾
+°F
+|
+°C
+OVERVIEW — ALL 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌
+🏁 (B) 12:07p
+🚌 (R) 1 min
+ (B) 7 min
+ (B) 16 min
+ (O) 22 min
+🏁 (R) 11:53a
+ (B) 12:04p
+ (O) 12:18p
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Blue Day
+Brown
+Orange Day
+Red
+in 1, 7 min
+8 min
+🚶 1 min
+›
+🚌 7 min
+arrive 11:53a
+›
+Blue Day
+in 7, 12 min
+20 min
+🚌 12 min
+arrive 12:04p
+›
+Brown
+in 16, 34 min
+32 min
+🚶 3 min
+›
+🚌 6 min
+›
+🚶 10 min
+arrive 12:16p
+›
+Orange Day
+in 22, 22 min
+34 min
+🚶 9 min
+›
+🚌 12 min
+arrive 12:18p
+›
+🚶 Walk
+38 min
+arrive 12:22p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads a card whose only leg is the ride", () => {
+    const opts = parseOptions(LIVE_RIDE_WITHOUT_WALKS);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day", "Brown", "Orange Day", "Walk"]);
+    // The card with no walks: its countdown must be the pinned pair, NOT the
+    // "bus 12 min" ride bar sitting directly under its duration.
+    const blue = opts[1];
+    expect(blue).toMatchObject({ totalMin: 20, arriveText: "12:04p", walkToMin: 0, walkFromMin: 0 });
+    expect(blue.eta.raw).toBe("in 7, 12 min");
+    // And the cards that do have walks are unchanged by it.
+    expect(opts[0]).toMatchObject({ totalMin: 8, arriveText: "11:53a", walkToMin: 1, walkFromMin: 0 });
+    expect(opts[2]).toMatchObject({ totalMin: 32, arriveText: "12:16p", walkToMin: 3, walkFromMin: 10 });
+    expect(opts[3]).toMatchObject({ totalMin: 34, arriveText: "12:18p", walkToMin: 9 });
+    expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38, arriveText: "12:22p" });
+  });
+
   it("does not take the map overview's legend for the first card's line", () => {
     // The legend lists every drawn route immediately above the first card, so
     // the walk-back that finds the pill must stop after one label.
