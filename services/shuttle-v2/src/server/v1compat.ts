@@ -19,6 +19,7 @@ import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode, normalizeName, relevanceOf } from "./geocode.js";
+import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
@@ -822,7 +823,14 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     const probedAt = Date.now();
     if (probedAt - probe.lastProbeAt < EMPTY_ACCURACY_PROBE_INTERVAL_MS) return emptyAccuracy();
     probe.lastProbeAt = probedAt;
-    if (bundle.sqlite.prepare(`SELECT 1 FROM predictions_log LIMIT 1`).get() === undefined) {
+    // Probe the same population the scan below reads: with the operator's arm
+    // in the table, a bare `SELECT 1` would latch "we have data" off rows this
+    // endpoint must not count, and then scan on every public request forever.
+    if (
+      bundle.sqlite
+        .prepare(`SELECT 1 FROM predictions_log WHERE ${RIDER_SURFACES_SQL} LIMIT 1`)
+        .get() === undefined
+    ) {
       return emptyAccuracy();
     }
     probe.seen = true;
@@ -843,8 +851,13 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
   };
   const preds = bundle.sqlite
     .prepare(
+      // The surface clause is load-bearing, and this is the reader where it
+      // matters most: this number is shown to RIDERS as our accuracy, and
+      // `predictions_log` also holds the OPERATOR's own ETAs. Pooling the two
+      // would report someone else's app as ours. See RIDER_SURFACES_SQL.
       `SELECT bus_id, route_id, to_stop_id, stops_ahead, predicted_sec, predicted_at
-       FROM predictions_log WHERE predicted_at >= ? ORDER BY predicted_at ASC`,
+       FROM predictions_log WHERE predicted_at >= ? AND ${RIDER_SURFACES_SQL}
+       ORDER BY predicted_at ASC`,
     )
     .all(cutoff) as Pred[];
 

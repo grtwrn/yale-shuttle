@@ -18,6 +18,7 @@ import {
   MAX_READING_AGE_MS,
   MIN_COMPARE_PAIRS,
   PREDICTION_BUCKET_MS,
+  RIDER_SURFACES_SQL,
   UPSTREAM_SURFACE,
   type ShownReading,
 } from "./predictions.js";
@@ -562,6 +563,61 @@ describe("GET /api/predictions", () => {
     expect(body.rows[0]!.stopId).toBe(2);
     expect(body.rows[0]!.clientBuild).toBe("abc123");
     expect(body.rows[0]!.errorSec).toBeCloseTo(60, 5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("the operator's arm must never be counted as ours", () => {
+  /** One row in each arm, for the same bus at the same stop, wildly apart. */
+  function seedBothArms(): void {
+    const ins = bundle.sqlite.prepare(
+      `INSERT OR IGNORE INTO predictions_log
+         (bus_id, bus_name, route_id, from_stop_id, to_stop_id, stops_ahead,
+          predicted_sec, predicted_low_sec, predicted_high_sec, predicted_at,
+          client_build, surface)
+       VALUES (900, '#40', 10, 1, 2, 1, ?, ?, ?, ?, NULL, ?)`,
+    );
+    const at = Math.floor((NOW - 300_000) / PREDICTION_BUCKET_MS) * PREDICTION_BUCKET_MS;
+    ins.run(300, 300, 300, at, "trip");
+    ins.run(3000, 3000, 3000, at, UPSTREAM_SURFACE);
+    bundle.sqlite
+      .prepare(
+        `INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, dow, hour)
+         VALUES (900, '#40', 10, 2, ?, 0, 0)`,
+      )
+      .run(at + 300_000);
+  }
+
+  it("the pairing reader answers about our app alone", () => {
+    // It shipped pooled for one hour on 2026-09-04: /api/predictions reported
+    // n=3056 of which 1586 were the operator's rows. That is exactly the
+    // inference error the surface column exists to prevent.
+    seedBothArms();
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    const ours = rec.paired({ now: NOW });
+    expect(ours.summary.n).toBe(1);
+    expect(ours.rows[0]!.predictedSec).toBe(300);
+  });
+
+  it("...and hands over the operator's only when asked by name", () => {
+    seedBothArms();
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    const theirs = rec.paired({ now: NOW, surface: UPSTREAM_SURFACE });
+    expect(theirs.summary.n).toBe(1);
+    expect(theirs.rows[0]!.predictedSec).toBe(3000);
+  });
+
+  it("every predictions_log reader carries the surface clause", () => {
+    // Three readers scan this table and each one answers "how accurate are
+    // WE". A fourth must not be written without the clause, so pin all three
+    // by their source rather than only by behaviour.
+    for (const file of ["src/server/accuracy.ts", "src/server/v1compat.ts"]) {
+      const src = fs.readFileSync(file, "utf8");
+      expect(src, `${file} must filter by surface`).toContain("RIDER_SURFACES_SQL");
+    }
+    // And the fragment must actually name the arm it excludes.
+    expect(RIDER_SURFACES_SQL).toContain(UPSTREAM_SURFACE);
   });
 });
 
