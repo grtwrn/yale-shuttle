@@ -152,30 +152,30 @@ words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
 the useful half.
 
-**Where the temperature is HEADING rides in the SAME sentence**, spelled out
-("warming to 80° by 2pm" / "cooling to 57° by 2pm") rather than an arrow —
-"↑80°" read live as "up 80 degrees" (a delta) rather than a destination, and a
-separate row under the sentence read as two facts when it is one. The extreme
-further from the current temperature wins, drawn from the hours the strip
-lists — not the calendar day, most of which a rider has already lived
-through. Showing both ends was the first cut and the operator cut it down
-(2026-09-03): at 9am on a warming day the low is the temperature you are
-already standing in.
+**The temperature TREND was removed on 2026-09-04** (reports #90 and #97)
+and must not come back in any wording. The line carried "· cooling to 69° by
+8pm" beside the rain half; the operator asked for it on 2026-09-03, rode with
+it for a day, and then filed twice — "I don't need to know when its cooling",
+and then "Maybe shouldn't say cooling. It's staying hot for the afternoon".
+The second one is the real defect: the clause names the extreme of the whole
+TEN-HOUR window, so at 11:21am on a 77° day the line said "cooling to 69° by
+8pm" directly above a strip reading 78° at noon, 1pm and 2pm. It was true of
+the evening and read as the afternoon. **A magnitude floor does not fix that**
+— a big evening swing is exactly the case it gets wrong — and neither does a
+different verb; the hours themselves are one tap away in the strip, which is
+where a rider asking about the afternoon should look. `tempTrend`,
+`trendText`, `trendHourFits` and the strip's ↑/↓ markers went with it, and
+`rainFragment` lost the TERSE form that existed only to make room for the
+clause. A test named for #97 pins the reported line.
 
-**The line carries BOTH facts at once** — the chance of rain and the
-temperature trend ("69°F · 35% rain · warming to 80°"). An earlier cut showed
-the trend only when there was no rain to report, which meant the two things
-the operator asked for were never on screen together. To fit at 390px,
-`rainFragment` has a TERSE form used only when the trend is beside it ("35%
-rain" rather than "35% chance of rain within the hour"), and the trend drops
-its hour ("by 2pm") whenever rain needs more than a bare percentage —
-`trendHourFits` is the one place that decides. Rain arriving later in the
-window still outranks a sub-20% near-term number, so "rain 9pm (70%)" is what
-a quiet-now-wet-later evening says. Inside the sentence they wrapped it: that
-shipped on 2026-09-03 and was caught on production, so measure the LONGEST
-branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
-touching this line, not the shortest. The ≥70% branch still takes two rows by
-choice — it is the amber warning and the second row carries the advice. Tapping it opens the next six hours as a sideways-scrolling
+The line is back to two facts, so it fits with room to spare: the widest
+quiet branch is the dry one with a condition word ("100°F · Cloudy · no rain
+expected") and the widest warning is "100°F · rain by 12am — umbrella" at
+200 px of 236. Measure at 390px by probing the rendered span if you reword —
+counting characters is how a wrapping line shipped on 2026-09-03 — and
+`weather.test.ts` pins the widest string each branch can produce.
+
+Tapping the line opens the next six hours as a sideways-scrolling
 strip of temperature and rain chance, each percentage carrying a 💧 so it is
 not read as anything else; that strip is collapsed by default, since the
 sentence usually suffices. Hours are spelled `11pm`, not the app's usual
@@ -191,19 +191,6 @@ from, and the wording follows honestly: a bucket the rider is already inside
 is named by its END ("rain by 7pm"), because naming its start would say the
 rain is happening now, and a bucket still ahead is named by its start ("rain
 6pm").
-
-**Three facts do not fit one line, and the measurement decides which gives.**
-Measured in the real line box at 390 px (238 px of room quiet, 236 px
-warning), by probing the rendered span — not by counting characters, which is
-how a wrapping line shipped on 2026-09-03. With the hour named, the
-temperature trend prints its DIRECTION only ("· cooling"): the full clause
-made the widest line 267 px. Past the umbrella threshold the trend goes
-entirely (298 px with it) and the percentage goes with it, leaving "100°F ·
-rain by 12am — umbrella" at 200 px; "take an umbrella" beside an hour is
-249 px and does not fit at all. The quiet, no-rain branch keeps the whole
-"warming to 80° by 8pm" — it was written for that branch and still fits there
-at 237 px. `weather.test.ts` pins the widest string each branch can produce,
-with those measurements in the comments; re-measure if you reword.
 
 **Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
 right of the line and persists in `localStorage` (`shuttle.tempUnit`, read

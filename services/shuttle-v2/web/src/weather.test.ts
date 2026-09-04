@@ -14,9 +14,6 @@ import {
   rainLikelyFrom,
   saveTempUnit,
   temperatureText,
-  tempTrend,
-  trendHourFits,
-  trendText,
   weatherEmoji,
   weatherMessage,
   weatherTone,
@@ -323,126 +320,46 @@ describe("the outlook — answering \"and later?\"", () => {
   });
 });
 
-describe("which way it is heading (operator, 2026-09-03)", () => {
+describe("the line does not talk about the temperature trend (reports #90, #97)", () => {
   const H = (h: number, prob: number, temp?: number) => ({
-    timeMs: Date.parse(`2026-09-03T${String(h).padStart(2, "0")}:00:00-04:00`),
+    timeMs: Date.parse(`2026-09-04T${String(h).padStart(2, "0")}:00:00-04:00`),
     probability: prob,
     ...(temp == null ? {} : { temperatureF: temp }),
   });
-  const now = Date.parse("2026-09-03T18:30:00-04:00");
 
-  it("names the HIGH while it is warming", () => {
-    const hours = outlookHours([H(18, 5, 69), H(19, 5, 72), H(20, 5, 80), H(21, 5, 77)], now);
-    const t = tempTrend(hours, 69)!;
-    expect(t.dir).toBe("up");
-    expect(t.temperatureF).toBe(80);
-    expect(trendText(t, 69, "F")).toBe("warming to 80° by 8pm");
+  // The operator screenshotted this at 11:21am on 2026-09-04 (#97): the line
+  // read "77°F · no rain · cooling to 69° by 8pm" directly above a strip
+  // showing 78° at noon, 1pm and 2pm. The clause named the far end of a
+  // ten-hour window; the rider read it as the afternoon, and the afternoon
+  // stayed hot. #90 the evening before: "I don't need to know when its
+  // cooling".
+  it("says nothing about cooling on an afternoon that stays hot", () => {
+    const now = Date.parse("2026-09-04T11:21:00-04:00");
+    const hourly = [
+      H(11, 0, 77), H(12, 0, 78), H(13, 0, 78), H(14, 0, 78),
+      H(15, 0, 77), H(16, 0, 76), H(17, 0, 74), H(18, 0, 72),
+      H(19, 0, 70), H(20, 0, 69),
+    ].map((h) => ({ ...h, weatherCode: 0 }));
+    const v = rainLikely(hourly, now);
+    const msg = weatherMessage(v, nextWetHour(hourly, now), "F");
+    expect(msg).toBe("77°F · Clear · no rain expected");
+    expect(msg).not.toContain("cooling");
+    expect(msg).not.toContain("69°");
   });
 
-  it("names the LOW while it is cooling", () => {
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 62), H(20, 5, 57), H(21, 5, 58)], now);
-    const t = tempTrend(hours, 66)!;
-    expect(t.dir).toBe("down");
-    expect(trendText(t, 66, "F")).toBe("cooling to 57° by 8pm");
-  });
-
-  it("picks the bigger swing when it goes both ways", () => {
-    // Warms 2°, then drops 9°: the drop is the fact worth carrying.
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 68), H(20, 5, 59), H(21, 5, 60)], now);
-    expect(trendText(tempTrend(hours, 66), 66, "F")).toBe("cooling to 59° by 8pm");
-  });
-
-  it("names the hour it FIRST gets there, not the last hour it stays", () => {
-    const hours = outlookHours([H(18, 5, 69), H(19, 5, 80), H(20, 5, 80), H(21, 5, 80)], now);
-    expect(trendText(tempTrend(hours, 69), 69, "F")).toBe("warming to 80° by 7pm");
-  });
-
-  it("says nothing when the window is flat, or in the unit shown", () => {
-    const flat = outlookHours([H(18, 5, 66), H(19, 5, 66)], now);
-    expect(tempTrend(flat, 66)).toBeNull();
-    // 66°F and 67°F are both 19°C: a 1°F climb is nothing to report in °C.
-    const tiny = outlookHours([H(18, 5, 66), H(19, 5, 67)], now);
-    expect(trendText(tempTrend(tiny, 66), 66, "F")).toBe("warming to 67° by 7pm");
-    expect(trendText(tempTrend(tiny, 66), 66, "C")).toBeNull();
-  });
-
-  it("survives a feed with no temperatures at all", () => {
-    const none = outlookHours([H(18, 5), H(19, 10)], now);
-    expect(tempTrend(none, 66)).toBeNull();
-    expect(tempTrend(none, undefined)).toBeNull();
-    expect(tempTrend(null, 66)).toBeNull();
-    expect(trendText(null, 66, "F")).toBeNull();
-  });
-
-  it("skips hours with no temperature rather than reading them as zero", () => {
-    const gappy = outlookHours([H(18, 5, 69), H(19, 5), H(20, 5, 78)], now);
-    expect(trendText(tempTrend(gappy, 69), 69, "F")).toBe("warming to 78° by 8pm");
-  });
-
-  it("rides in the SAME line, spelled out so it can't read as a delta", () => {
-    // "↑80°" was read live as "up 80 degrees" rather than "heading to 80
-    // degrees" (operator, 2026-09-03) — spelling it out removes the reading.
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 68), H(20, 5, 71)], now);
-    const trend = tempTrend(hours, 66);
-    const v = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
-    const msg = weatherMessage(v, null, "F", trend);
-    expect(msg).toBe("66°F · no rain · warming to 71° by 8pm");
-    expect(msg).not.toContain("\n");
-    expect(msg).not.toContain("↑");
-    expect(msg).not.toContain("↓");
-  });
-
-  it("shows the rain chance AND the trend together, at every probability", () => {
-    // The operator asked for both (2026-09-03); an earlier cut showed the
-    // trend only when there was no rain to report, so the two facts were
-    // never on screen at the same time.
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
-    const trend = tempTrend(hours, 66);
+  it("says nothing about warming either, at any probability", () => {
+    const now = Date.parse("2026-09-04T08:00:00-04:00");
+    const hourly = [H(8, 0, 60), H(9, 0, 68), H(10, 0, 78)];
     for (const p of [0, 5, 30, 60, 70, 95]) {
       const msg = weatherMessage(
-        { likely: p >= 50, probability: p, known: true, temperatureF: 66, weatherCode: 3 },
-        null, "F", trend,
+        { likely: p >= 50, probability: p, known: true, temperatureF: 60, weatherCode: 3 },
+        nextWetHour(hourly, now), "F",
       );
-      // The trend is there at EVERY probability — that is the fix.
-      expect(msg).toContain("warming to 80°");
-      // Below the mention threshold the rain half stays wordless rather than
-      // quoting a number a rider cannot act on (see RAIN_MENTION_THRESHOLD).
-      expect(msg).toContain(p < 20 ? "no rain" : `${p}% rain`);
+      expect(msg).not.toMatch(/warming|cooling/);
+      // Nor as an arrow: that was the shape before the words, and it read as
+      // a delta rather than a destination.
+      expect(msg).not.toMatch(/[↑↓]/);
     }
-  });
-
-  it("drops only the trend's HOUR to make room once rain speaks up", () => {
-    // At 390px "5% rain · warming to 80° by 2pm" fits and
-    // "60% rain · warming to 80° by 2pm" does not, so the hour is what gives.
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
-    const trend = tempTrend(hours, 66);
-    const quiet = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 3 };
-    const loud = { likely: true, probability: 60, known: true, temperatureF: 66, weatherCode: 61 };
-    expect(trendHourFits(quiet)).toBe(true);
-    expect(trendHourFits(loud)).toBe(false);
-    expect(weatherMessage(quiet, null, "F", trend)).toBe("66°F · no rain · warming to 80° by 7pm");
-    expect(weatherMessage(loud, null, "F", trend)).toBe("66°F · 60% rain · warming to 80°");
-    // Rain arriving later in the window also costs the trend its hour.
-    const later = { timeMs: Date.parse("2026-09-03T21:00:00-04:00"), probability: 70 };
-    expect(trendHourFits(quiet, later)).toBe(false);
-    expect(weatherMessage(quiet, later, "F", trend))
-      .toBe("66°F · rain 9pm (70%) · warming to 80°");
-  });
-
-  it("keeps the umbrella advice at 70% and above", () => {
-    const hours = outlookHours([H(18, 5, 66), H(19, 5, 80)], now);
-    const trend = tempTrend(hours, 66);
-    const msg = weatherMessage(
-      { likely: true, probability: 85, known: true, temperatureF: 66, weatherCode: 61 },
-      null, "F", trend,
-    );
-    expect(msg).toBe("66°F · 85% rain — take an umbrella · warming to 80°");
-  });
-
-  it("falls back to the condition word when there is nothing to warm or cool toward", () => {
-    const v = { likely: false, probability: 5, known: true, temperatureF: 66, weatherCode: 0 };
-    expect(weatherMessage(v, null, "F", null)).toBe("66°F · Clear · no rain expected");
-    expect(weatherMessage(v, null, "F")).toBe("66°F · Clear · no rain expected");
   });
 });
 
@@ -461,7 +378,7 @@ describe("the outlook horizon", () => {
   });
 });
 
-describe("the window still bounds what can be named", () => {
+describe("the window still bounds what the strip shows", () => {
   const H = (h: number, prob: number, temp?: number) => ({
     timeMs: Date.parse(`2026-09-03T${String(h).padStart(2, "0")}:00:00-04:00`),
     probability: prob,
@@ -469,24 +386,16 @@ describe("the window still bounds what can be named", () => {
   });
   const now = Date.parse("2026-09-03T18:30:00-04:00");
 
-  it("reads the hours the strip shows, not the calendar day", () => {
-    // 88° at 2am is the day's high and 41° at 3am its low; both are outside
-    // the window, as is the 95° fifteen hours out. None may reach the line.
+  it("reads the hours ahead, not the calendar day", () => {
+    // 88° at 2am and 41° at 3am are the day's extremes and both are behind
+    // the rider; the 95° fifteen hours out is beyond the window. None of the
+    // three may reach the strip.
     const hours = outlookHours(
       [H(2, 0, 88), H(3, 0, 41), H(18, 5, 66), H(19, 10, 64), H(20, 35, 71), H(21, 70, 60),
        { timeMs: now + 15 * 60 * 60_000, probability: 0, temperatureF: 95 }],
       now,
     );
-    const t = tempTrend(hours, 66)!;
-    expect(t.temperatureF).toBe(60);
-    expect(trendText(t, 66, "F")).toBe("cooling to 60° by 9pm");
-  });
-
-  it("marks in the strip exactly the number the line names", () => {
-    const hours = outlookHours([H(18, 5, 69), H(19, 10, 80), H(20, 5, 72)], now);
-    const t = tempTrend(hours, 69)!;
-    expect(trendText(t, 69, "F")).toBe("warming to 80° by 7pm");
-    expect(hours.filter((h) => h.temperatureF === t.temperatureF)).toHaveLength(1);
+    expect(hours.map((h) => h.temperatureF)).toEqual([66, 64, 71, 60]);
   });
 });
 
@@ -500,7 +409,7 @@ describe("naming the hour the near-term rain is expected", () => {
     const v = rainLikely(hours(29, 5, 0), H18 + 30 * 60_000);
     expect(v.peak).toEqual({ timeMs: H18, started: true });
     expect(nearTermRainWhen(v)).toBe("by 7pm");
-    expect(rainFragment(v, null, true)).toBe("rain by 7pm (29%)");
+    expect(rainFragment(v, null)).toBe("rain by 7pm (29%)");
   });
 
   it("names the start of a bucket that has not begun", () => {
@@ -508,7 +417,7 @@ describe("naming the hour the near-term rain is expected", () => {
     const v = rainLikely(hoursFrom(-1, 5, 29, 0), H18 - 4 * 60_000);
     expect(v.peak).toEqual({ timeMs: H18, started: false });
     expect(nearTermRainWhen(v)).toBe("6pm");
-    expect(rainFragment(v, null, true)).toBe("rain 6pm (29%)");
+    expect(rainFragment(v, null)).toBe("rain 6pm (29%)");
   });
 
   it("keeps the earlier hour when two buckets tie", () => {
@@ -520,11 +429,10 @@ describe("naming the hour the near-term rain is expected", () => {
   // and the full "take an umbrella" cannot both stay — see weather.ts.
   it("drops the percentage past the umbrella threshold, not the hour", () => {
     const v = rainLikely(hours(85, 0, 0), H18 + 30 * 60_000);
-    expect(rainFragment(v, null, true)).toBe("rain by 7pm — umbrella");
-    expect(rainFragment(v, null, false)).toBe("rain by 7pm — umbrella");
+    expect(rainFragment(v, null)).toBe("rain by 7pm — umbrella");
   });
 
-  it("gives the whole line to the warning: no trend beside an umbrella", () => {
+  it("gives the whole line to the warning", () => {
     const hourly: WeatherHour[] = [
       { timeMs: H18, probability: 85, precipitationMm: 2, temperatureF: 78, weatherCode: 61 },
       { timeMs: H18 + HOUR, probability: 40, precipitationMm: 0, temperatureF: 74 },
@@ -532,15 +440,13 @@ describe("naming the hour the near-term rain is expected", () => {
     ];
     const at = H18 + 30 * 60_000;
     const v = rainLikely(hourly, at);
-    const trend = tempTrend(outlookHours(hourly, at), v.temperatureF);
-    expect(trend).not.toBeNull();
-    expect(weatherMessage(v, null, "F", trend)).toBe("78°F · rain by 7pm — umbrella");
+    expect(weatherMessage(v, null, "F")).toBe("78°F · rain by 7pm — umbrella");
   });
 
   it("still never says the rain is happening now", () => {
     for (const at of [H18, H18 + 5 * 60_000, H18 + 30 * 60_000, H18 + 59 * 60_000]) {
       const v = rainLikely(hours(45, 45, 45), at);
-      expect(rainFragment(v, null, true)).not.toMatch(/\bnow\b/i);
+      expect(rainFragment(v, null)).not.toMatch(/\bnow\b/i);
       expect(weatherMessage(v, null)).not.toMatch(/\bnow\b/i);
     }
   });
@@ -549,8 +455,7 @@ describe("naming the hour the near-term rain is expected", () => {
     // An older server, or the NWS fallback: a verdict with no `peak`.
     const v: RainVerdict = { likely: false, probability: 29, known: true };
     expect(nearTermRainWhen(v)).toBeNull();
-    expect(rainFragment(v, null, true)).toBe("29% rain");
-    expect(rainFragment(v, null, false)).toBe("29% chance of rain within the hour");
+    expect(rainFragment(v, null)).toBe("29% chance of rain within the hour");
   });
 
   it("puts the hour on the line the operator screenshotted", () => {
@@ -560,15 +465,15 @@ describe("naming the hour the near-term rain is expected", () => {
       { timeMs: H18 + 2 * HOUR, probability: 5, precipitationMm: 0, temperatureF: 70 },
     ];
     const v = rainLikely(hourly, H18 + 20 * 60_000);
-    const trend = tempTrend(outlookHours(hourly, H18 + 20 * 60_000), v.temperatureF);
-    // The trend keeps its direction; its destination is what the hour cost.
-    expect(weatherMessage(v, null, "F", trend)).toBe("78°F · rain by 7pm (29%) · cooling");
+    // The screenshotted line was "78°F · 29% rain · cooling to 70°"; the hour
+    // replaced the bare percentage (#83) and the trend clause is gone (#97).
+    expect(weatherMessage(v, null, "F")).toBe("78°F · rain by 7pm (29%)");
   });
 
   it("still lets a near-term chance outrank a later hour", () => {
     const v = rainLikely(hours(45, 0, 0), H18 + 30 * 60_000);
     const later = { timeMs: H18 + 3 * HOUR, probability: 90 };
-    expect(rainFragment(v, later, true)).toBe("rain by 7pm (45%)");
+    expect(rainFragment(v, later)).toBe("rain by 7pm (45%)");
   });
 });
 
@@ -589,27 +494,24 @@ describe("the widest line each branch can produce", () => {
   const line = (probability: number) => {
     const hourly = wettest(probability);
     const v = rainLikely(hourly, at);
-    const trend = tempTrend(outlookHours(hourly, at), v.temperatureF);
-    return weatherMessage(v, nextWetHour(hourly, at), "F", trend);
+    return weatherMessage(v, nextWetHour(hourly, at), "F");
   };
 
-  it("quiet, with an hour and a trend — measured 235px of 238px", () => {
-    expect(line(69)).toBe("100°F · rain by 12am (69%) · warming");
+  it("quiet, with an hour — measured 235px of 238px with a trend beside it", () => {
+    expect(line(69)).toBe("100°F · rain by 12am (69%)");
   });
 
-  it("warning, where the trend gives way entirely — measured 200px of 236px", () => {
+  it("warning — measured 200px of 236px", () => {
     expect(line(85)).toBe("100°F · rain by 12am — umbrella");
   });
 
-  it("quiet with no rain to name keeps the whole trend — measured 237px of 238px", () => {
+  it("dry, with the condition word — the widest quiet branch", () => {
     const hourly: WeatherHour[] = [
-      { timeMs: H18, probability: 5, precipitationMm: 0, temperatureF: 66, weatherCode: 0 },
-      { timeMs: H18 + HOUR, probability: 8, precipitationMm: 0, temperatureF: 72 },
-      { timeMs: H18 + 2 * HOUR, probability: 10, precipitationMm: 0, temperatureF: 80 },
+      { timeMs: H18, probability: 5, precipitationMm: 0, temperatureF: 100, weatherCode: 3 },
+      { timeMs: H18 + HOUR, probability: 8, precipitationMm: 0, temperatureF: 100 },
     ];
     const v = rainLikely(hourly, H18 + 5 * 60_000);
-    const trend = tempTrend(outlookHours(hourly, H18 + 5 * 60_000), v.temperatureF);
-    expect(weatherMessage(v, nextWetHour(hourly, H18 + 5 * 60_000), "F", trend))
-      .toBe("66°F · no rain · warming to 80° by 8pm");
+    expect(weatherMessage(v, nextWetHour(hourly, H18 + 5 * 60_000), "F"))
+      .toBe("100°F · Cloudy · no rain expected");
   });
 });
