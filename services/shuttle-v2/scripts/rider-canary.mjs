@@ -65,6 +65,8 @@ const IDLE_SLEEP_MS = (Number(process.env.CANARY_IDLE_SLEEP_MIN) || 10) * 60_000
  * even appear?") without spending a full headway on the answer.
  */
 const WATCH_MAX_MIN = Number(process.env.CANARY_WATCH_MAX_MIN) || 25;
+/** How often to visit the details view for the pin + anchor column. */
+const PIN_SAMPLE_MS = (Number(process.env.CANARY_PIN_SAMPLE_MIN) || 2) * 60_000;
 /**
  * Pause between riders in --loop. Zero by design — "we should always have a
  * rider going when a line is up" — but one browser costs ~0.95 GB of process
@@ -155,9 +157,18 @@ async function readPin(page, label) {
     const bus = txt.match(/🚌\s*#(\S+)\s*·/);
     const a = [...document.querySelectorAll('a[href*="maps/dir"]')][0];
     const m = a?.getAttribute("href")?.match(/destination=(-?[\d.]+),(-?[\d.]+)/);
+    // "🚌 #316 · 3 stops away" heads the approach list in the details view.
+    // It is fed by the findRouteAnchor call at TransitMap.tsx:4079, which
+    // bypasses the live anchor store — so this is the column that would
+    // reveal an anchor flapping while the countdown itself holds still. The
+    // ride pill ("🚌 #316 · 12 min") sits earlier in the DOM, which is why
+    // `bus` above matches it and this needs its own, stricter pattern.
+    const away = txt.match(/🚌\s*#(\S+)\s*·\s*(\d+)\s*stops?\s*away/);
     return {
       busName: bus ? bus[1] : null,
       board: m ? { lat: Number(m[1]), lon: Number(m[2]) } : null,
+      stopsAway: away ? Number(away[2]) : null,
+      stopsAwayBus: away ? away[1] : null,
     };
   });
   // Back to the list, and CONFIRM it. The countdown is rendered only on
@@ -289,6 +300,7 @@ async function runOnce(line) {
     // parser rather than on the page, which is not good enough to hand an
     // operator.
     let prevText = null;
+    let lastPinSample = 0;
     const nearFlags = new Map();
 
     while (Date.now() < deadline) {
@@ -351,6 +363,17 @@ async function runOnce(line) {
         // A jump is only interesting if we can say what moved. Sampling the
         // pin costs a tap in and out, so it happens on the transitions that
         // matter rather than every tick.
+        // A slow heartbeat sample, so the anchor column can be compared with a
+        // countdown that is NOT jumping — the question is whether "stops away"
+        // moves while the number holds still. Every two minutes: often enough
+        // to catch a flap, rare enough that the two-second visit to the
+        // details view costs at most one countdown reading in eight.
+        if (now - lastPinSample >= PIN_SAMPLE_MS) {
+          lastPinSample = now;
+          const beat = await readPin(page, line.label).catch(() => null);
+          if (beat) record.pins.push({ atMs: Date.now(), ...beat, why: "heartbeat" });
+        }
+
         const seq = scoreSequence(record.samples, THRESH);
         const last = seq.transitions[seq.transitions.length - 1];
         if (last && last.atMs === now && Math.abs(last.driftSec) >= THRESH.pinSampleSec) {
