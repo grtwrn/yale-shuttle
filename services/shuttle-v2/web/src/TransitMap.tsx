@@ -2161,13 +2161,18 @@ const TripPlanner: FC<{
   // wait-noise oscillations never reorder the list mid-glance.
   const displayOrderRef = useRef<string[]>([]);
   const orderDestRef = useRef<string>("");
+  // Which rows the collapsed list showed last poll — the memory behind
+  // topVisibleOptions' hysteresis. Cleared wherever displayOrderRef is, so a
+  // new destination never inherits the old trip's held slot.
+  const shownLabelsRef = useRef<string[]>([]);
   const orderedOptions = useMemo(() => {
-    if (!options) { displayOrderRef.current = []; return null; }
+    if (!options) { displayOrderRef.current = []; shownLabelsRef.current = []; return null; }
     // New destination → forget the old trip's ranking entirely.
     const destKey = `${toLL?.lat},${toLL?.lon}`;
     if (orderDestRef.current !== destKey) {
       orderDestRef.current = destKey;
       displayOrderRef.current = [];
+      shownLabelsRef.current = [];
     }
     const byKey = new Map(options.map((o) => [o.routeLabel, o]));
     const kept = displayOrderRef.current.filter((k) => byKey.has(k));
@@ -2193,6 +2198,17 @@ const TripPlanner: FC<{
     return arr.map((k) => byKey.get(k)!);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options, toLL?.lat, toLL?.lon]);
+
+  // The collapsed list's rows, computed ONCE per plan. Both readers (the
+  // overview map's overlays and the option rows themselves) take this value,
+  // so the map cannot draw a route the list has dropped — and, because the
+  // hysteresis is stateful, calling topVisibleOptions twice per render would
+  // have fed it its own output and made the hold depend on render order.
+  const visibleOptions = useMemo(() => {
+    const next = topVisibleOptions(orderedOptions ?? [], shownLabelsRef.current);
+    shownLabelsRef.current = next.map((o) => o.routeLabel);
+    return next;
+  }, [orderedOptions]);
 
   // Auto-boarding detection: offer to board when user is within 60 m of the
   // planned board stop and a matching bus is dwelling at that stop.
@@ -3343,7 +3359,7 @@ const TripPlanner: FC<{
             // currently shown to the rider, and grows when they reveal more.
             const _sortedForMap = orderedOptions ?? [];
             // Same rule as the list below — the map shows what the list shows.
-            const _visibleForMap = showAllOptions ? _sortedForMap : topVisibleOptions(_sortedForMap);
+            const _visibleForMap = showAllOptions ? _sortedForMap : visibleOptions;
             // Route-details view open: the map narrows to just that route,
             // like Google Maps' directions-detail screen.
             const _mapOpts = expandedKey
@@ -3506,7 +3522,7 @@ const TripPlanner: FC<{
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
-            const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
+            const _visibleBase = showAllOptions ? _sorted : visibleOptions;
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested

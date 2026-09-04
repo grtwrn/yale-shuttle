@@ -546,13 +546,40 @@ export function findPotentialRoutes(
  */
 export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
 
-export function topVisibleOptions(sorted: readonly TripOption[]): TripOption[] {
+/**
+ * How much WORSE a third shuttle may get before it gives up a slot it already
+ * holds. Report #93: Division/Prospect → LEPH put Red at 39 min against Orange
+ * at 34 — exactly `THIRD_SHUTTLE_SLACK_SEC` — so a second of wait noise on a
+ * 5-second poll took the row away and gave it back, and Red "flashed off
+ * screen". A row that is present, then absent, then present is worse than
+ * either steady state: the rider cannot tell whether the route is an option.
+ *
+ * 90 s to match the reordering hysteresis in TransitMap (`HYST_SEC`, from the
+ * same operator asking for "some stability — avoid flicker" on 2026-07-17).
+ * This deliberately does NOT change which option is best or how options are
+ * ranked — an option enters the third slot on the same test it always did, and
+ * a shuttle that genuinely falls behind still leaves. It only refuses to act on
+ * movement smaller than the noise the number is already known to carry.
+ */
+export const THIRD_SHUTTLE_HOLD_SEC = 90;
+
+/**
+ * `shownLabels` is the route labels this list returned on the previous poll —
+ * pass it to get the hysteresis above; omit it (fresh plan, tests) for the
+ * plain rule. Still pure: the caller owns the memory.
+ */
+export function topVisibleOptions(
+  sorted: readonly TripOption[],
+  shownLabels?: readonly string[],
+): TripOption[] {
   const shuttles = sorted.filter((o) => o.mode === "shuttle");
   const second = shuttles[1];
   const third = shuttles[2];
+  const held = third !== undefined && !!shownLabels?.includes(third.routeLabel);
+  const slack = THIRD_SHUTTLE_SLACK_SEC + (held ? THIRD_SHUTTLE_HOLD_SEC : 0);
   const keepThird =
     second !== undefined && third !== undefined &&
-    third.totalSec <= second.totalSec + THIRD_SHUTTLE_SLACK_SEC;
+    third.totalSec <= second.totalSec + slack;
   let seen = 0;
   return sorted.filter((o) => {
     if (o.mode !== "shuttle") return true;
