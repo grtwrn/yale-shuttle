@@ -1,0 +1,5 @@
+{
+  "caption": "Collapsed trip cards: duration over arrival clock on the right, line over legs on the left",
+  "trip": { "board": 100, "dest": 72 },
+  "views": ["trip"]
+}

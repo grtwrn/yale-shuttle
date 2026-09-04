@@ -230,18 +230,32 @@ next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
 no rain expected".
 
-**The option row LEADS WITH THE LINE** (operator, 2026-09-04) — route pill
-top-left, the live bus beside it, the total on the right, and the arrival
-clock opening the second line:
+**The option row is TWO COLUMNS, each read top-down** (operator, 2026-09-04)
+— the line and what it is made of on the left, the two clock facts on the
+right, and a chevron centred across both:
 
-    [Blue Day]  🚌 in 3, 21 min                        23 min
-    arrive 10:33a · 🚶 16 min › ▬ · most direct             ›
+    [Blue Day]  in 3, 21 min                            23 min
+    🚶 5 min › 🚌 12 min › 🚶 3 min · most direct   arrive 10:33a   ›
 
-The total used to hold that top-left slot with the pill a row below it, so
+The total used to hold the top-left slot with the pill a row below it, so
 picking "the Blue one" off five cards meant reading five durations first.
-Still two lines at 390px: the walk legs moved onto the arrival line rather
-than keeping a row, and the ride between them is a short bar in the line's
-own colour instead of a second copy of the pill (colour off the option, i.e.
+The arrival clock then led line 2, which put the two numbers a rider compares
+ACROSS cards — "23 min" and "arrive 10:33a" — on opposite sides of the card,
+never lining up; the operator asked for the swap ("i want the arrive at time
+under the trip length and put the route info under the line name on the
+left"). Both right-hand figures are `flexShrink: 0` and never wrap: **future
+mode prints a RANGE there** ("1:22p – 1:48p"), and if anything has to give it
+is the leg list on the left, which merely runs onto a second line. Measured at
+390 px it does not have to — the widest real card, a Brown with both walks
+and a ride, fits the range on one line.
+
+**The chevron is the third column, not the end of line 2** — that slot is the
+arrival clock now. It is decoration: the whole card carries the `onClick`, so
+the tap target is the full row, and the glyph still gets 44 px of height.
+
+Still two lines at 390px: the walk legs share the second line with the clock
+rather than keeping a row, and the ride between them is timed in the same ink
+as the walks instead of a second copy of the pill (colour off the option, i.e.
 off `ROUTE_LISTS`). The bus times themselves had moved up from a third line
 the day before, because that is the number deciding whether you leave now.
 The two ETAs share one unit via `fmtBusPair` ("in 12, 21 min", the operator's
@@ -259,7 +273,13 @@ fixed slot per leg.
 `scripts/canary-metrics.mjs`), so a layout change is a parser change: it
 anchors on the duration line and walks back one countdown and one pill, since
 those now precede it, and prefers a pill found below (the old order) so the
-harness can watch production while a redesign is unmerged. It also stops the
+harness can watch production while a redesign is unmerged. It reads a card as
+a SET of lines around that anchor rather than an ordered one, which is why
+moving the arrival clock below the legs cost it nothing — but #111 "needed no
+change" too and blinded the canary for twelve minutes, so **every layout
+change lands a captured-innerText fixture in `canary-metrics.test.mjs`**
+(`LIVE_LINE_FIRST`, `LIVE_NO_GLYPH`, `LIVE_ARRIVAL_RIGHT`) rather than an
+argument that the parser is fine. It also stops the
 last card at the page footer — "Contribute" is exactly as label-shaped as a
 route name.
 
