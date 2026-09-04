@@ -30,6 +30,7 @@ import { createActivesTracker } from "./actives.js";
 import { canaryReport, recordCanaryRuns } from "./canary.js";
 import {
   createPredictionRecorder,
+  isShownSurface,
   MAX_READING_AGE_MS,
   type PredictionRecorder,
   type ShownReading,
@@ -1175,11 +1176,16 @@ export function buildApp(opts: AppOptions): Hono {
  * Parse the compact batch `POST /api/shown` accepts.
  *
  * The wire shape is positional on purpose — `{b, p:[[bus, stop, eta, low,
- * high, stopsAhead, ageMs], ...]}` — because this rides on a phone's radio
- * beside a 5 s poll, and named keys would roughly triple it for no reader's
- * benefit. Anything malformed is DROPPED, never rejected: a client one deploy
- * behind must degrade to fewer readings, not to an error the rider could
+ * high, stopsAhead, ageMs, surface], ...]}` — because this rides on a phone's
+ * radio beside a 5 s poll, and named keys would roughly triple it for no
+ * reader's benefit. Anything malformed is DROPPED, never rejected: a client one
+ * deploy behind must degrade to fewer readings, not to an error the rider could
  * somehow notice.
+ *
+ * `surface` is the eighth element and is OPTIONAL on the wire: a bundle from
+ * before 2026-09-04 posts seven and every reading it sends is a trip-card one,
+ * which is exactly what the default says. Making it required would have thrown
+ * away the readings of every browser that had not yet reloaded.
  *
  * Nothing here trusts a value. Ranges, types and the fleet lookup are all
  * re-checked in `predictions.record`; this only gets the shape right.
@@ -1191,13 +1197,20 @@ export function parseShownBatch(body: unknown): ShownReading[] {
   const out: ShownReading[] = [];
   for (const entry of raw.slice(0, SHOWN_MAX_READINGS)) {
     if (!Array.isArray(entry) || entry.length < 7) continue;
-    const [busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs] = entry as unknown[];
+    const [busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs, surface] = entry as unknown[];
     if (typeof busName !== "string" || busName.length === 0 || busName.length > 16) continue;
     if (typeof stopId !== "number" || typeof etaSec !== "number") continue;
     if (typeof lowSec !== "number" || typeof highSec !== "number") continue;
     if (typeof stopsAhead !== "number" || typeof ageMs !== "number") continue;
     if (ageMs > MAX_READING_AGE_MS) continue;
-    out.push({ busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs });
+    // Absent = a pre-2026-09-04 bundle, which only ever reported the trip card.
+    // Present but unrecognised = a client asserting a population that does not
+    // exist; drop the reading rather than invent a bucket for it.
+    if (surface !== undefined && !isShownSurface(surface)) continue;
+    out.push({
+      busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs,
+      surface: surface === undefined ? "trip" : surface,
+    });
   }
   return out;
 }

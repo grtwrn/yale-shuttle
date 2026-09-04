@@ -17,8 +17,8 @@
  *
  * ── What is sent, and what deliberately is not ─────────────────────────────
  *
- * One reading = (bus name, stop id, eta, low, high, stops ahead, how long ago).
- * That is a fact about a BUS. There is no id in the batch — not the anon id
+ * One reading = (bus name, stop id, eta, low, high, stops ahead, how long ago,
+ * which screen). That is a fact about a BUS and about the APP. There is no id in the batch — not the anon id
  * the poll carries, not a session key, nothing — no coordinates, no origin, no
  * destination, and no timestamp (an AGE instead, so the server's clock decides
  * when the reading happened; see the note on the wire shape below). Two
@@ -67,16 +67,30 @@ export const SHOWN_MAX_AGE_MS = 120_000;
 export const DEFAULT_SHOWN_SAMPLE = 0.25;
 
 /**
+ * Which screen a reading was on. See `predictionsLog.surface` for why this is
+ * recorded and why it is part of the dedup key rather than a decoration.
+ *
+ * The short version: until 2026-09-04 the route cards ran their OWN ETA
+ * estimator, so this log deliberately covered only the trip card. They now
+ * call `computeUpcomingArrivals` like everything else — which removes the
+ * two-estimator problem and creates a population one, because a route card
+ * reports every line and every stop while a trip card reports the one stop a
+ * rider chose. Pooled silently, the median would move because the MIX changed
+ * and it would read as the estimator changing.
+ */
+export type ShownSurface = "trip" | "ride" | "card";
+
+/**
  * One reading, positional on the wire:
- * `[busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs]`.
+ * `[busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs, surface]`.
  *
  * Positional because this rides on a phone's radio; named keys would roughly
- * triple it and no human reads the payload. The last field is an AGE, not a
+ * triple it and no human reads the payload. `ageMs` is an AGE, not a
  * timestamp — a browser's clock can be wrong by minutes (or lying), and a row
  * whose instant is wrong cannot be paired with an arrival, which is the whole
  * point of the table.
  */
-export type ShownTuple = [string, number, number, number, number, number, number];
+export type ShownTuple = [string, number, number, number, number, number, number, ShownSurface];
 
 interface Pending {
   busName: string;
@@ -85,6 +99,7 @@ interface Pending {
   lowSec: number;
   highSec: number;
   stopsAhead: number;
+  surface: ShownSurface;
   /** Bucket start, epoch ms on THIS browser's clock — converted to an age on send. */
   at: number;
 }
@@ -152,11 +167,20 @@ function isSampled(): boolean {
  * O(readings) with no allocation beyond the Map entry and must never throw.
  *
  * Idempotent within a bucket, which also makes it safe under React's
- * double-invoked render in development: the same (bus, stop, bucket) collapses
- * to one entry, first write winning, exactly as the server's
+ * double-invoked render in development: the same (bus, stop, bucket, surface)
+ * collapses to one entry, first write winning, exactly as the server's
  * `INSERT OR IGNORE` does.
+ *
+ * `surface` is required rather than defaulted: a new reporting site is exactly
+ * the moment somebody has to decide which population it joins, and a default
+ * would let one be added silently. That is the mistake this argument exists to
+ * prevent, one layer up.
  */
-export function noteShown(arrivals: readonly UpcomingArrival[], now = Date.now()): void {
+export function noteShown(
+  arrivals: readonly UpcomingArrival[],
+  surface: ShownSurface,
+  now = Date.now(),
+): void {
   try {
     if (arrivals.length === 0 || !isSampled()) return;
     install();
@@ -164,7 +188,7 @@ export function noteShown(arrivals: readonly UpcomingArrival[], now = Date.now()
     for (const a of arrivals) {
       if (pending.size >= SHOWN_MAX_BATCH) return;
       if (!Number.isFinite(a.eta) || a.eta < 0) continue;
-      const key = `${a.busName}:${a.stopId}:${at}`;
+      const key = `${a.busName}:${a.stopId}:${at}:${surface}`;
       if (pending.has(key)) continue;
       pending.set(key, {
         busName: a.busName,
@@ -173,6 +197,7 @@ export function noteShown(arrivals: readonly UpcomingArrival[], now = Date.now()
         lowSec: Math.round(Math.max(0, a.low)),
         highSec: Math.round(Math.max(0, a.high)),
         stopsAhead: a.stopsAhead,
+        surface,
         at,
       });
     }
@@ -191,7 +216,7 @@ export function drainBatch(now = Date.now()): ShownTuple[] {
     // Negative would mean the clock went backwards mid-batch; drop rather than
     // post a reading the server will reject anyway.
     if (ageMs < 0 || ageMs > SHOWN_MAX_AGE_MS) continue;
-    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs]);
+    out.push([r.busName, r.stopId, r.etaSec, r.lowSec, r.highSec, r.stopsAhead, ageMs, r.surface]);
   }
   return out.slice(0, SHOWN_MAX_BATCH);
 }
