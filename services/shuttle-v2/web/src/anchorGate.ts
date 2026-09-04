@@ -218,6 +218,15 @@ export function gateAnchor(
   now: number,
   /** Length of the route's stop sequence, for forward-distance arithmetic. */
   stopCount: number,
+  /**
+   * The route's stop sequence, for ONE question: does `at_stop_id` name the
+   * very slot the raw anchor proposes? That is the difference between the
+   * collector corroborating a backwards move and merely coinciding with one.
+   * Indexed by POSITION, so a route that repeats a stop (9/10) asks about the
+   * pass the anchor is actually on and `stops.indexOf()` never enters it.
+   * Optional: a caller with only a count keeps the strict behaviour.
+   */
+  stops?: readonly number[] | undefined,
 ): GateResult {
   const lat = bus.lat;
   const lon = bus.lon;
@@ -314,8 +323,28 @@ export function gateAnchor(
   //    not approaching it). That covered 1,091 of 1,500 one-stop-backward
   //    flips replayed over 9 h. The ring covers those and the rest: the
   //    arrival direction, and retreats of more than one slot.
+  //
+  //    ONE backwards move survives, and it is the escape hatch. `at_stop_id`
+  //    is direct positional evidence — the collector saying this bus has been
+  //    within 75 m of that stop for 15 s — so when the flag names the very
+  //    slot the scan proposes, the two agree about a FACT and the anchor may
+  //    come home. Without it the gate has no way back at all: a forward
+  //    relocation on a flag change is accepted with no distance test, so on a
+  //    fold the anchor can be planted a third of a lap early, and rules 2-4
+  //    are all forward-only (#90 included). An over-advanced anchor is the
+  //    OPTIMISTIC direction — the one that strands a rider — and measuring it
+  //    proved the point: without this clause Purple's strand share went
+  //    28.1% -> 30.7% on the rider simulator (+21 riders, concentrated at
+  //    Buildings 400/600 where its buses stand on a shared segment), while
+  //    with it Purple holds and Red and Green still take the whole win.
+  //
+  //    What stays refused is the scan's UNSUPPORTED answer, which is the
+  //    incident: the flag said 146 (slot 15) and the scan said slot 13.
   if (atStopId !== prev.atStopId) {
     if (!backwards) return accept("at-stop");
+    if (atStopId !== null && stops && stops[rawIndex] === atStopId) {
+      return accept("at-stop");
+    }
     // Record that the flag change has been seen, or every later disagreement
     // would re-open the at-stop gate against a stale value and a fold-back
     // flip an hour later would walk straight through. The origin stays where

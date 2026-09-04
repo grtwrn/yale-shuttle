@@ -173,6 +173,39 @@ describe("gateAnchor", () => {
     expect(r.released).toBeNull();
   });
 
+  // THE ESCAPE HATCH. Without it the gate has no way back at all — every other
+  // rule is forward-only — so an anchor planted a lap early on a fold stays
+  // there, which is the OPTIMISTIC direction and the one that strands people.
+  // Measured on the rider simulator: Purple's strand share 28.1% -> 30.7%
+  // without this clause, held with it.
+  it("lets the at-stop flag itself pull a backwards anchor home", () => {
+    // stops[6] IS the stop the flag names, so the collector and the scan agree
+    // about a fact — the bus has been within 75 m of it for 15 s.
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: seq[6], last_stop_id: 1 }, 6000, N, seq);
+    expect(r).toEqual({ index: 6, released: "at-stop" });
+  });
+
+  it("still declines a backwards anchor the flag does NOT name", () => {
+    // The 2026-09-04 incident exactly: the flag named the stop two slots
+    // FORWARD (Winchester / Division) while the scan answered one slot back.
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: seq[8], last_stop_id: 1 }, 6000, N, seq);
+    expect(r).toEqual({ index: 7, released: null });
+  });
+
+  it("a CLEARED flag can never corroborate a backwards move", () => {
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: seq[7], last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(80), at_stop_id: null, last_stop_id: 1 }, 6000, N, seq);
+    expect(r).toEqual({ index: 7, released: null });
+  });
+
   // The recovery must NOT be damped: the whole point of the at-stop branch is
   // that a real event lands in the poll it happens in. #316's countdown was
   // right again the instant the scan itself read forward.
