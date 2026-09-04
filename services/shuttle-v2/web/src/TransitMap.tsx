@@ -13,7 +13,6 @@ import { anchorIndexOnList } from "./liveAnchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
-  tempTrend, temperatureIn, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
@@ -3073,16 +3072,6 @@ const TripPlanner: FC<{
         const nowMs = Date.now();
         const later = nextWetHour(hourly, nowMs);
         const hours = outlookHours(hourly, nowMs);
-        // ONE number, not two: where the temperature is heading from here,
-        // and when it gets there. The low is not news at 9am on a warming
-        // day — it is the temperature the rider is already standing in
-        // (operator, 2026-09-03).
-        const trend = tempTrend(hours, rain.temperatureF);
-        // The line always names the trend now (see weatherMessage), so the
-        // strip marks that hour whenever there is one to mark. Null when the
-        // destination reads the same as now in the unit on screen — see
-        // trendText — and then nothing is marked either.
-        const span = trendText(trend, rain.temperatureF, tempUnit);
         return (
           <div style={{
             marginBottom: 8,
@@ -3110,13 +3099,11 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                {/* One line: "warming to 80° by 2pm", not "↑80°" — a bare
-                    arrow beside a number read as a DELTA to a rider who saw
-                    it live (operator, 2026-09-03), and a second row under the
-                    sentence read as two separate facts when it is one. The
-                    trend only ever appears here, in the quietest branch (see
-                    weatherMessage), which is what keeps it to one line. */}
-                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, trend)}</span>
+                {/* One question, one line: when it will next rain. The
+                    temperature trend used to ride here ("· cooling to 69° by
+                    8pm") and was removed on 2026-09-04 — reports #90 and #97;
+                    see weatherMessage. The hours are in the strip below. */}
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit)}</span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}
@@ -3158,18 +3145,6 @@ const TripPlanner: FC<{
               }}>
                 {hours.map((h) => {
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
-                  // Which cell each arrow in the line points at. Only marked
-                  // when the two differ — a flat window has no high or low.
-                  // Marks only the hour the LINE names, and compares in the
-                  // unit on screen: in °C two hours often print the same
-                  // number (60°F and 61°F are both 16°C), so every cell
-                  // showing that number is marked rather than an arbitrary
-                  // one of them.
-                  const shown = temperatureIn(h.temperatureF, tempUnit);
-                  const peak = span && trend && shown != null
-                    && shown === temperatureIn(trend.temperatureF, tempUnit)
-                    ? (trend.dir === "up" ? "↑" : "↓")
-                    : "";
                   return (
                     <div key={h.timeMs} style={{
                       flexShrink: 0, minWidth: 62, textAlign: "center",
@@ -3178,11 +3153,12 @@ const TripPlanner: FC<{
                       borderRadius: 8, padding: "6px 8px",
                     }}>
                       <div style={{ fontSize: 11, color: "#78909c", whiteSpace: "nowrap" }}>{hourLabel(h.timeMs)}</div>
+                      {/* The number, and only the number. The ↑/↓ that used
+                          to mark the trend hour went with the trend clause
+                          (reports #90, #97) — it pointed at an hour the line
+                          no longer names. */}
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
                         {degreesText(h.temperatureF, tempUnit)}
-                        {peak && (
-                          <span aria-hidden="true" style={{ fontSize: 10, color: "#90a4ae" }}>{peak}</span>
-                        )}
                       </div>
                       {/* The drop says what the number is. Without it a bare
                           "35%" beside a temperature reads as anything

@@ -217,89 +217,6 @@ export function temperatureText(
   return v == null ? null : `${v}°${unit}`;
 }
 
-/**
- * Which way the temperature is going, and how far — ONE number, not two.
- *
- * A rider asked for the high and the low; seeing both, the operator decided
- * (2026-09-03) that only the direction it is heading is actionable: at 9am on
- * a warming day the low is the temperature you are already standing in. So
- * this reports the extreme FURTHER from now — the high while it warms, the
- * low while it cools — with the hour it arrives.
- */
-export interface TempTrend {
-  dir: "up" | "down";
-  temperatureF: number;
-  timeMs: number;
-}
-
-export function tempTrend(
-  hours: readonly ForecastHour[] | null | undefined,
-  nowF: number | undefined,
-): TempTrend | null {
-  if (!Array.isArray(hours) || typeof nowF !== "number" || !Number.isFinite(nowF)) return null;
-  const withTemp = hours.filter(
-    (h): h is ForecastHour & { temperatureF: number } =>
-      !!h && typeof h.temperatureF === "number" && Number.isFinite(h.temperatureF),
-  );
-  if (withTemp.length === 0) return null;
-  // EARLIEST hour at each extreme: "by 1pm" should name when it first gets
-  // there, not the last hour it stays there.
-  let hi = withTemp[0]!;
-  let lo = withTemp[0]!;
-  for (const h of withTemp) {
-    if (h.temperatureF > hi.temperatureF) hi = h;
-    if (h.temperatureF < lo.temperatureF) lo = h;
-  }
-  const now = Math.round(nowF);
-  const up = hi.temperatureF - now;
-  const down = now - lo.temperatureF;
-  if (up <= 0 && down <= 0) return null; // flat window: nothing to say
-  // Equal swings both ways (a dip then an equal climb): name whichever
-  // arrives first, since that is the one the rider meets.
-  const pickUp = up > down || (up === down && hi.timeMs <= lo.timeMs);
-  const pick = pickUp ? hi : lo;
-  return { dir: pickUp ? "up" : "down", temperatureF: pick.temperatureF, timeMs: pick.timeMs };
-}
-
-/**
- * "warming to 80° by 1pm" — spelled out, not "↑80°": a bare arrow beside a
- * plain number reads as a DELTA ("up 80 degrees") rather than a destination,
- * which is exactly the reading an operator got from it live (2026-09-03).
- *
- * Rides in the SAME sentence as the rest of the line, not its own row — a
- * second row was tried first and read as two separate facts when it is one.
- * To fit, it only ever appears in the quietest branch (temperature + no
- * near-term rain), which is also the branch where it is most useful: a rider
- * who is not about to get rained on is the one asking "what should I expect
- * the next couple hours". See weatherMessage for how that trade is made.
- *
- * Null when the destination reads the same as now IN THE UNIT ON SCREEN —
- * 66°F and 67°F are both 19°C, and "warming to 19°" beside "19°C" says
- * nothing.
- */
-export function trendText(
-  trend: TempTrend | null | undefined,
-  nowF: number | undefined,
-  unit: TempUnit,
-  withHour = true,
-  withDestination = true,
-): string | null {
-  if (!trend) return null;
-  const to = temperatureIn(trend.temperatureF, unit);
-  const from = temperatureIn(nowF, unit);
-  if (to == null || to === from) return null;
-  const verb = trend.dir === "up" ? "warming" : "cooling";
-  // Direction only. The rain half has spent the line's remaining width on an
-  // hour (report #83) and, measured at 390px, the destination no longer fits
-  // beside it: "100°F · rain by 12am (29%) · warming to 108°" is 267px
-  // against 238px of line; the same line ending in "warming" is 230px. The
-  // full clause survives untouched in the branch it was written for — the
-  // quiet one, where there is no rain hour to name.
-  if (!withDestination) return verb;
-  const label = withHour ? hourLabel(trend.timeMs) : "";
-  return `${verb} to ${to}°${label ? ` by ${label}` : ""}`;
-}
-
 /** "68°" — for the hourly strip, where the unit is stated once on the toggle. */
 export function degreesText(fahrenheit: number | undefined, unit: TempUnit): string {
   const v = temperatureIn(fahrenheit, unit);
@@ -386,29 +303,8 @@ export function weatherTone(v: RainVerdict): WeatherTone {
  * It has to fit ONE line on a phone, so the condition word is dropped
  * whenever there is a rain time to give — "Clear" is the least useful thing
  * on the line once it can say "rain likely 10pm". The window's high and low
- * are NOT in here for the same reason; they render on their own row (see
- * trendText). The hour-by-hour lives behind the tap.
+ * are NOT in here for the same reason. The hour-by-hour lives behind the tap.
  */
-/**
- * True exactly when weatherMessage will spend its words on the temperature
- * trend rather than rain or the condition word — i.e. the quietest branch.
- * Shared with the caller so the hourly strip marks a cell ONLY when the line
- * actually named it; string-matching the rendered message to answer this
- * would work but silently rot the moment the wording changes.
- */
-/**
- * True when weatherMessage has room to name the hour the trend arrives.
- *
- * The line carries BOTH facts the operator asked for — the chance of rain and
- * which way the temperature is going (2026-09-03) — and at 390px that is all
- * it can carry. Measured: "5% rain · warming to 80° by 2pm" fits;
- * "rain 9pm (70%) · warming to 80° by 2pm" does not. So the trend keeps its
- * hour only when the rain half is a bare percentage.
- */
-export function trendHourFits(v: RainVerdict, later?: ForecastHour | null): boolean {
-  return v.known && v.probability < RAIN_MENTION_THRESHOLD && !later;
-}
-
 /**
  * The rain half of the line, in priority order:
  *
@@ -418,11 +314,6 @@ export function trendHourFits(v: RainVerdict, later?: ForecastHour | null): bool
  *     which is the whole point of the outlook (a rider out for the evening
  *     is not helped by "5% within the hour");
  *   - otherwise → nothing is coming, so say so.
- *
- * `terse` is set when the temperature trend is sharing the line, and only
- * then: "5% rain" instead of "5% chance of rain within the hour". Alone, the
- * longer wording still reads better and still fits, so the quiet-day line
- * did not change when the trend arrived beside it.
  *
  * The window is THE NEXT HOUR either way — `probability` is the peak across
  * every bucket overlapping it (see rainLikely) — which is why this never
@@ -443,7 +334,6 @@ export function nearTermRainWhen(v: RainVerdict): string | null {
 export function rainFragment(
   v: RainVerdict,
   later?: ForecastHour | null,
-  terse = false,
 ): string {
   if (!v.known) return "";
   if (v.probability >= RAIN_MENTION_THRESHOLD) {
@@ -465,49 +355,38 @@ export function rainFragment(
     }
     // No usable bucket time (an older server, or the NWS fallback): the
     // wording degrades to the number alone rather than to nothing.
-    const pct = terse
-      ? `${v.probability}% rain`
-      : `${v.probability}% chance of rain within the hour`;
+    const pct = `${v.probability}% chance of rain within the hour`;
     return v.probability >= RAIN_PROMINENT_THRESHOLD ? `${pct} — take an umbrella` : pct;
   }
-  if (later) {
-    return terse
-      ? `rain ${hourLabel(later.timeMs)} (${later.probability}%)`
-      : `rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
-  }
-  return terse ? "no rain" : "no rain expected";
+  if (later) return `rain likely ${hourLabel(later.timeMs)} (${later.probability}%)`;
+  return "no rain expected";
 }
 
 export function weatherMessage(
   v: RainVerdict,
   later?: ForecastHour | null,
   unit: TempUnit = "F",
-  trend?: TempTrend | null,
 ): string {
   if (!v.known) return "";
   const temp = temperatureText(v.temperatureF, unit);
-  // Both halves, always, in one line: what the sky is about to do and what
-  // the temperature is about to do. Neither hides the other any more — the
-  // previous cut showed the trend ONLY when there was no rain to report, so
-  // the two facts the operator asked for were never on screen together
-  // (2026-09-03).
-  // Three facts, one phone line, and at 390px they do not all fit once the
-  // rain half names an hour (report #83). Measured, in order of what a rider
-  // acts on: the hour stays, the trend's destination temperature gives, and
-  // past the umbrella threshold the trend gives entirely — "100°F · rain by
-  // 12am — umbrella · warming" is 298px against 236px of line.
-  const namesRainHour = v.probability >= RAIN_MENTION_THRESHOLD && nearTermRainWhen(v) !== null;
-  const shouting = namesRainHour && v.probability >= RAIN_PROMINENT_THRESHOLD;
-  const trendClause = shouting
-    ? null
-    : trendText(trend, v.temperatureF, unit, trendHourFits(v, later), !namesRainHour);
-  const rain = rainFragment(v, later, !!trendClause);
+  // ONE question: when will it next rain. The temperature TREND used to ride
+  // here too ("· cooling to 69° by 8pm") and was removed on 2026-09-04 after
+  // reports #90 and #97. It was unwanted ("I don't need to know when its
+  // cooling") and, worse, misleading: the clause names the extreme of a
+  // TEN-HOUR window, so at 11am on a 77° day that stayed in the high 70s all
+  // afternoon the line said "cooling to 69° by 8pm" — true of the evening,
+  // read as the afternoon, directly above a strip showing 78° at 1pm. There
+  // is no smaller version of that clause worth having: a swing floor still
+  // reports the evening while the rider is asking about now, and the hours
+  // themselves are one tap away in the strip. Do not reintroduce a
+  // temperature-trend word here.
+  const rain = rainFragment(v, later);
   const parts = [temp, rain].filter(Boolean);
-  if (trendClause) parts.push(trendClause);
-  // With no trend to carry the line there is room for the condition word.
-  // A wet code with a low chance ("Rain", 10%) replaces the rain half rather
-  // than sitting beside it — "Rain · no rain expected" is nonsense.
-  if (!trendClause && v.probability < RAIN_MENTION_THRESHOLD) {
+  // With the trend gone there is room for the condition word again. A wet
+  // code with a low chance ("Rain", 10%) replaces the rain half rather than
+  // sitting beside it — "Rain · no rain expected" is nonsense. The condition
+  // still gives way to a named hour, which is the more useful half.
+  if (v.probability < RAIN_MENTION_THRESHOLD) {
     const cond = conditionText(v.weatherCode);
     if (cond && isWetCode(v.weatherCode) && !later) {
       return [temp, cond].filter(Boolean).join(" · ");
