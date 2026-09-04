@@ -875,6 +875,51 @@ is untouched. It pairs on `bus_name` (the identity invariant), not `bus_id`.
 Use it to check `rider-sim` against reality — the procedure is at the end of
 `docs/prediction-log.md`; when the two disagree, the logged row wins.
 
+### The operator's own ETA, in the same table (`surface = "upstream"`)
+
+Every accuracy number here was ours against the arrivals we detected, which
+answers "are we good" and never "are we better than what the rider would
+otherwise have used". The official Downtowner app publishes a prediction for
+the same vehicle at the same stop off the same feed, so
+`src/collector/upstreamEta.ts` records it into `predictions_log` with
+`surface = "upstream"` — same table, same dedup key, same retention, same
+`arrivals` to pair against. A comparison is then a query, not an argument.
+
+- **The endpoint was read, not guessed.** `GET /routes_eta.php?stop=<id>` →
+  `{"etas":{"<id>":{"etas":[{avg,bus_id,bus_name,route},…]}},"calculation_time":…}`,
+  found in the official SPA's own bundle (`assets/index-*.js`). `bus_id`,
+  `bus_name` (`#310`) and `route` are byte-identical to `/routes_buses.php`, so
+  no identifier reconciliation is needed — verified against a live fleet, not
+  assumed.
+- **`avg` is WHOLE MINUTES.** ~±30 s of their error is rounding (~15 s on a
+  median |err|) before any real disagreement. Every reader prints that caveat;
+  do not read a 20 s gap as meaningful.
+- **It is per stop, so this is a SAMPLE, not a census.** No fleet-wide form
+  exists (the official app's own "many stops" path is one request each). We
+  make 12 requests per 30 s — 0.4 req/s, against the buses poll's 0.2 —
+  five focus stops every cycle (Prospect/Canner, Division/Prospect,
+  344 Winchester, 72 LEPH/60 College, 333 Cedar, resolved BY NAME so a
+  renumbering drops out rather than mis-points) plus a rotation over the stops
+  riders have actually watched, because a head-to-head needs a row in both arms
+  and ours only exist where somebody was looking.
+- **`upstream` is NOT on the wire allowlist.** `SHOWN_SURFACES` is what a
+  browser may claim it displayed; `PREDICTION_SURFACES` is what the column may
+  hold. Keep them separate — if a client could post `upstream`, anyone could
+  write into the arm we score ourselves against.
+- `from_stop_id` / `stops_ahead` come from OUR live fleet (upstream does not
+  say) and are `-1` / `0` when we cannot see the bus. Never invented.
+- Failures are invisible: own timer, own in-flight guard, every path
+  non-throwing, a failed cycle costs 30 s of measurement. Off by default
+  whenever a caller injects an `UpstreamClient`, so no test reaches the
+  network; `SHUTTLE_UPSTREAM_ETA=0` disables it in production.
+
+`scripts/eta-replay/compare-upstream.ts` is the controlled read: per-arm by
+horizon, then **head-to-head on shared (bus, stop, minute) pairs that matched
+the same arrival** — the number to quote, because the arms' coverage differs.
+It withholds any cell under 50 paired rows rather than print a median that
+flips sign the next hour. `/stats` shows the one-line version, and `/api/stats`
+sends `etaVsOfficial: null` until both arms clear that floor.
+
 ### The accuracy gate: a recorded pass, before/during/after a dwell
 
 Any change to an arrival time is replayed against a REAL bus pass before it

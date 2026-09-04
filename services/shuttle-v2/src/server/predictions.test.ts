@@ -16,7 +16,9 @@ import {
   createPredictionRecorder,
   DEFAULT_PREDICTION_RETAIN_DAYS,
   MAX_READING_AGE_MS,
+  MIN_COMPARE_PAIRS,
   PREDICTION_BUCKET_MS,
+  UPSTREAM_SURFACE,
   type ShownReading,
 } from "./predictions.js";
 
@@ -442,6 +444,16 @@ describe("POST /api/shown", () => {
       .toBe("card");
   });
 
+  it("a browser may not claim the operator's arm", () => {
+    // `upstream` is a real value of the surface COLUMN — it is how the
+    // official app's own ETAs are stored — but it is not on the WIRE
+    // allowlist. If a client could post it, anyone could write rows into the
+    // arm we score ourselves against and the comparison would measure
+    // nothing. Only the in-process poller writes it.
+    expect(parseShownBatch({ p: [["40", 2, 300, 240, 360, 1, 0, UPSTREAM_SURFACE]] }))
+      .toEqual([]);
+  });
+
   it("drops a reading naming a screen that does not exist", () => {
     // Not "falls back to trip": a client asserting an unknown population would
     // otherwise land in the trip card's, which is the one every accuracy number
@@ -536,5 +548,78 @@ describe("GET /api/predictions", () => {
     expect(body.rows[0]!.stopId).toBe(2);
     expect(body.rows[0]!.clientBuild).toBe("abc123");
     expect(body.rows[0]!.errorSec).toBeCloseTo(60, 5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("officialComparison — ours against the operator's own app", () => {
+  /**
+   * `n` predictions in one arm, each `driftSec` off the truth, one per vehicle
+   * so nothing collapses on the dedup key and each pairs with its own arrival.
+   */
+  function seed(surface: string, n: number, driftSec: number, at = NOW - 600_000): void {
+    const insertPred = bundle.sqlite.prepare(
+      `INSERT OR IGNORE INTO predictions_log
+         (bus_id, bus_name, route_id, from_stop_id, to_stop_id, stops_ahead,
+          predicted_sec, predicted_low_sec, predicted_high_sec, predicted_at,
+          client_build, surface)
+       VALUES (?, ?, 10, 1, 2, 1, ?, ?, ?, ?, NULL, ?)`,
+    );
+    const insertArr = bundle.sqlite.prepare(
+      `INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, dow, hour)
+       VALUES (?, ?, 10, 2, ?, 0, 0)`,
+    );
+    const truthSec = 300;
+    for (let i = 0; i < n; i++) {
+      // Distinct bus per arm, so the arms never share a dedup key and each
+      // arm's rows are scored against arrivals of their own.
+      const busId = (surface === UPSTREAM_SURFACE ? 10_000 : surface === "card" ? 30_000 : 20_000) + i;
+      const busName = `#${busId}`;
+      insertPred.run(
+        busId, busName,
+        truthSec + driftSec, truthSec + driftSec, truthSec + driftSec,
+        at, surface,
+      );
+      insertArr.run(busId, busName, at + truthSec * 1000);
+    }
+  }
+
+  it("says nothing at all until both arms have enough paired rows", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS + 5, 0);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS - 10, 0);
+    // A thin arm produces a median that flips sign by the hour. Refusing is
+    // the honest failure; printing "n = 6" and hoping is not.
+    expect(rec.officialComparison(24, NOW)).toBeNull();
+  });
+
+  it("scores both arms against the same arrivals", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS + 5, 30); // 30 s off
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS + 5, 150); // 150 s off
+    const cmp = rec.officialComparison(24, NOW);
+    expect(cmp).not.toBeNull();
+    expect(cmp!.hours).toBe(24);
+    expect(cmp!.ours.medianAbsErrorSec).toBeCloseTo(30, 5);
+    expect(cmp!.official.medianAbsErrorSec).toBeCloseTo(150, 5);
+    // 30 s is inside two minutes; 150 s is not.
+    expect(cmp!.ours.within120Pct).toBe(100);
+    expect(cmp!.official.within120Pct).toBe(0);
+  });
+
+  it("pools every rider-reported screen into `ours`, and only `upstream` into theirs", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 10);
+    seed("card", MIN_COMPARE_PAIRS, 10);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS + 1, 10);
+    const cmp = rec.officialComparison(24, NOW);
+    expect(cmp!.ours.paired).toBe(2 * MIN_COMPARE_PAIRS);
+    expect(cmp!.official.paired).toBe(MIN_COMPARE_PAIRS + 1);
+  });
+
+  it("is null on an empty database rather than a row of zeroes", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    expect(rec.officialComparison(24, NOW)).toBeNull();
   });
 });

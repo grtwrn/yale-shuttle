@@ -47,6 +47,7 @@ import {
   type StoredPath,
 } from "./pathStore.js";
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
+import { UpstreamEtaPoller } from "./upstreamEta.js";
 
 // Cadences --------------------------------------------------------------------
 
@@ -295,6 +296,13 @@ export interface DerivedPathStats {
 export interface CollectorOptions {
   upstream?: UpstreamClient;
   logger?: Logger;
+  /**
+   * Record the operator's own ETAs beside ours (see `upstreamEta.ts`).
+   * Defaults ON in production and OFF whenever `upstream` is injected, so the
+   * suite and the harnesses never reach the network. `SHUTTLE_UPSTREAM_ETA=0`
+   * turns it off in production without a code change.
+   */
+  upstreamEta?: boolean;
 }
 
 /**
@@ -381,6 +389,9 @@ export class Collector {
   private deriveLastMs: number | null = null;
   private deriveMaxMs = 0;
 
+  /** Records the operator's own ETAs into predictions_log. Null when disabled. */
+  readonly upstreamEta: UpstreamEtaPoller | null;
+
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
   private staticHandle?: NodeJS.Timeout;
@@ -436,6 +447,24 @@ export class Collector {
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
+    // A SEPARATE timer with its own in-flight guard, deliberately: the whole
+    // point is that the operator's ETAs are a bonus measurement and the buses
+    // poll never waits on, or fails because of, anything here.
+    //
+    // Off by default whenever a caller injected its own `upstream` — that is
+    // a test or a harness, and CLAUDE.md's rule is that nothing in the suite
+    // reaches the network. Production passes no client, so it gets the poller.
+    this.upstreamEta =
+      (opts.upstreamEta
+        ?? (opts.upstream === undefined && process.env.SHUTTLE_UPSTREAM_ETA !== "0"))
+        ? new UpstreamEtaPoller({
+            sqlite: this.sqlite,
+            ref: this.ref,
+            upstream: this.upstream,
+            liveBuses: () => this.getLiveBuses(),
+            logger: this.logger,
+          })
+        : null;
 
     // Prepared once; reused on every poll. Composing these via Drizzle's
     // template SQL works too but adds parsing on each call.
@@ -569,6 +598,8 @@ export class Collector {
       h?.unref();
     }
 
+    this.upstreamEta?.start();
+
     void this.runPoll();
     this.logger.info("collector.started");
   }
@@ -584,6 +615,7 @@ export class Collector {
     ]) {
       if (h) clearInterval(h);
     }
+    this.upstreamEta?.stop();
     this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
