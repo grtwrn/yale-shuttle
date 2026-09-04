@@ -1,7 +1,8 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
-import { findRouteAnchor, isBusOnRoute } from "./anchor";
-import { gateAnchor, noteFix, type AnchorStore } from "./anchorGate";
+import { isBusOnRoute } from "./anchor";
+import { type AnchorStore } from "./anchorGate";
+import { anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
 import { driveAdequate, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
@@ -313,22 +314,26 @@ export function computeUpcomingArrivals(
       // advance one stop at a time" pattern which stalled when
       // last_stop_id was multi-stops-stale and the bus had drifted
       // off-axis from subsequent segment lines.
-      const anchorKey = `${cfg.label}|${bus.bus_name}`;
+      const anchorKey = anchorKeyFor(cfg.label, bus.bus_name);
       // Which way is it going? Two distinct fixes settle the branch of an
       // out-and-back that no amount of distance can (see anchor.ts). The
       // memory lives on the caller's store, so a hypothetical or replayed
       // computation that passes none still gets the stateless anchor.
-      const travelFrom = anchorStore ? noteFix(anchorStore, anchorKey, bus, now) : null;
-      const rawAnchorIdx = findRouteAnchor(bus, stops, stopCoords, travelFrom);
-      if (rawAnchorIdx < 0) continue;
+      //
       // A 35 m GPS wobble must not relocate the bus a third of a lap. The gate
       // holds the previous anchor until an arrival/departure, real movement, or
       // a corroborated last_stop_id change says the bus actually went
       // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
       // early still collapses the countdown immediately.
-      let gpsAnchorIdx = anchorStore
-        ? gateAnchor(anchorStore, anchorKey, rawAnchorIdx, bus, now, stops.length, stops).index
-        : rawAnchorIdx;
+      //
+      // The whole sequence lives in liveAnchor.ts because the render sites in
+      // TransitMap.tsx must run the SAME one against the SAME store — an
+      // ungated "N stops away" beside a gated countdown is two answers on one
+      // screen.
+      let gpsAnchorIdx = resolveAnchorIndex(
+        bus, stops, stopCoords, anchorKey, now, anchorStore,
+      );
+      if (gpsAnchorIdx < 0) continue;
 
       // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
       // current than last_stop_id (the feed lags by one stop on arrival).
