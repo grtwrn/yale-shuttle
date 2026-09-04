@@ -110,13 +110,23 @@ describe("gateAnchor", () => {
     expect(r).toEqual({ index: 8, released: "at-stop" });
   });
 
-  it("still lets a departure through when the scan relocates elsewhere", () => {
+  it("still lets a departure through when the scan relocates FORWARD elsewhere", () => {
     // A fold-back flip on the departure poll is the flag change's to vouch
-    // for, exactly as it was — this is not a new hold, only a declined -1.
+    // for, exactly as it was — what is declined is only the backwards half.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    const r = gateAnchor(s, "k", 11, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
+    expect(r).toEqual({ index: 11, released: "at-stop" });
+  });
+
+  it("declines a backwards flip on the departure poll however far back", () => {
+    // The ring: reading slot 3 from slot 7 is a forward move of 26 of 30
+    // slots, which no five-second poll can cover. The old guard only checked
+    // for exactly -1 and would have let this through.
     const s = store();
     gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
     const r = gateAnchor(s, "k", 3, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
-    expect(r).toEqual({ index: 3, released: "at-stop" });
+    expect(r).toEqual({ index: 7, released: null });
   });
 
   it("records the departure, so a later flip cannot ride the stale flag", () => {
@@ -131,13 +141,47 @@ describe("gateAnchor", () => {
     expect(r.released).toBeNull();
   });
 
-  it("does not confuse an arrival with a departure", () => {
-    // Flag SET while the scan reads one back (the shared-endpoint lag report
-    // #27 fixed): the arrival releases as before.
+  // THE 2026-09-04 INCIDENT, in miniature. Red #316 left 344 Winchester and
+  // reached Winchester / Division; `at_stop_id` went null -> 146 while
+  // `last_stop_id` was still frozen ten stops back, so the stateless scan was
+  // still answering with the chord INTO 344 Winchester. The at-stop branch
+  // used to accept that unconditionally, because it only ever checked for a
+  // -1 on the CLEARING transition. One slot backwards put the whole layover
+  // in front of the bus again and a rider three stops away read "in 2" as
+  // "in 11".
+  it("declines a backwards relocation when the bus ARRIVES at a stop", () => {
     const s = store();
     gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
     const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
-    expect(r).toEqual({ index: 6, released: "at-stop" });
+    expect(r).toEqual({ index: 7, released: null });
+    // And it stays declined while the flag sits there, because nothing has
+    // changed and rules 2-4 are all forward-only.
+    const r2 = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 11_000, N);
+    expect(r2).toEqual({ index: 7, released: null });
+  });
+
+  it("records the arrival, so a later flip cannot ride the stale flag", () => {
+    // The declined poll must still bank the new at_stop_id, or the NEXT
+    // disagreement re-opens the at-stop branch against a value that has
+    // already been seen and walks a fold-back flip straight through.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
+    gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    expect(s.get("k")!.atStopId).toBe(44);
+    const r = gateAnchor(s, "k", 16, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 60_000, N);
+    expect(r.index).toBe(7);
+    expect(r.released).toBeNull();
+  });
+
+  // The recovery must NOT be damped: the whole point of the at-stop branch is
+  // that a real event lands in the poll it happens in. #316's countdown was
+  // right again the instant the scan itself read forward.
+  it("releases forward in the same poll once the scan catches up", () => {
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
+    gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    const r = gateAnchor(s, "k", 8, { ...at(300), at_stop_id: null, last_stop_id: 44 }, 11_000, N);
+    expect(r).toEqual({ index: 8, released: "at-stop" });
   });
 
   it("releases in the same poll when the bus arrives at a stop", () => {

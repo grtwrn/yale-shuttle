@@ -257,6 +257,21 @@ export function gateAnchor(
 
   const N = Math.max(1, stopCount);
 
+  // THE RING. A route is a closed loop and its stops are visited in order, so
+  // a bus's place on it is an index mod N and the only meaningful reading of a
+  // change is the SMALLEST FORWARD delta. "Backwards by one" and "forwards by
+  // N-1" are the same move on a ring, and a five-second poll cannot carry a
+  // bus N-1 stops. So a proposal that reads as backwards is not a retreat to
+  // be weighed against evidence — it is a forward move of nearly a whole loop,
+  // and it is physically impossible.
+  //
+  // This also makes repeated stops a non-issue: the index is a SEQUENCE
+  // POSITION, so routes 9/10's two passes of a West Campus building are two
+  // different slots and `stops.indexOf()`'s first-occurrence answer never
+  // enters the arithmetic.
+  const forward = ((rawIndex - prev.index) % N + N) % N;
+  const backwards = forward > N / 2;
+
   // --- the raw anchor wants to move. What corroborates it?
   //
   // NOT direction. Letting the step between two fixes overturn a hold — the
@@ -272,39 +287,41 @@ export function gateAnchor(
   //    signal that must never be delayed: a bus pulling out early goes
   //    at_stop_id -> null in the same poll the rider needs to see 5 -> 1.
   //
-  //    With ONE exception, in one direction. When the flag CLEARS, the bus has
-  //    just left the stop the anchor was standing at — and on that very poll
-  //    the stateless scan retreats one chord, to the leg INTO that stop. It
-  //    does so because `last_stop_id` still names the stop before (the feed
-  //    lags a stop on arrival) and the scan breaks ties forward from there;
-  //    the chord into the stop wins over the chord out of it until the bus is
-  //    150 m clear or the feed catches up. So the stop the bus has just pulled
-  //    away from flips from a lap away to "now", and back a poll or two later.
-  //    Replayed over 9 h of production positions with the production layover
-  //    clock: 1,500 one-stop-backward anchor flips, 1,091 of them on exactly
-  //    this signal — the largest single defect class left on the board
-  //    (Red #316 did it three times in three minutes, Prospect / Hillside,
-  //    SCL and 130 Prospect (S)).
+  //    With ONE exception: the ring. A flag change vouches for the bus being
+  //    somewhere; it does not vouch for it being somewhere BEHIND where it
+  //    already was. Every forward relocation still passes in the same poll —
+  //    including the ones that correct an anchor this gate had been holding
+  //    short, which are the recoveries a rider must never wait for — and only
+  //    the physically impossible direction is declined.
   //
-  //    A bus that has just left S is not approaching S. Refusing that one
-  //    retreat is not a delay: the anchor stays on the chord OUT of the stop,
-  //    which is where the departure is priced — its proration ticks in this
-  //    same poll and 5 -> 1 on an early departure is untouched. It is not a
-  //    hold either: the bus itself is not being held anywhere, only the one
-  //    answer that contradicts the event is declined, and every other
-  //    relocation the flag change vouches for (an arrival, a forward move,
-  //    even a fold-back flip) still passes as before.
+  //    This is where the operator's 2026-09-04 incident lived. Red #316 sat
+  //    ~8 min at 344 Winchester (stop 11, ring slot 14) with `last_stop_id`
+  //    frozen ten stops back at Olive / Chapel; `findRouteAnchor` breaks ties
+  //    by forward distance from that stale value, so the chord INTO 344
+  //    Winchester (slot 13, Canal / Munson) outranks the chord out of it even
+  //    once the bus is 89 m PAST stop 11 and 24 m from Winchester / Division.
+  //    While the flag was null the earlier one-step guard held the line. Then
+  //    the bus reached Winchester / Division, `at_stop_id` went null -> 146,
+  //    and this branch accepted slot 13 unconditionally — a one-slot retreat
+  //    that put the whole 344 Winchester layover back in front of the bus.
+  //    A rider three stops away watched "in 2" become "in 11" (the served hop
+  //    11->146 averages 605 s, nearly all of it that dwell) and then "in 1"
+  //    35 s later when `last_stop_id` finally caught up. The 11 -> 1 was the
+  //    app recovering; the 2 -> 11 was the defect, and it is this line.
+  //
+  //    An earlier version of this guard was narrower — it declined exactly a
+  //    -1 move and only when the flag CLEARED (a bus pulling out of a stop is
+  //    not approaching it). That covered 1,091 of 1,500 one-stop-backward
+  //    flips replayed over 9 h. The ring covers those and the rest: the
+  //    arrival direction, and retreats of more than one slot.
   if (atStopId !== prev.atStopId) {
-    const departed = prev.atStopId !== null && atStopId === null;
-    const retreat = rawIndex === (prev.index - 1 + N) % N;
-    if (!(departed && retreat)) return accept("at-stop");
-    // Record that the departure has been seen (`atStopId: null`), or every
-    // later disagreement would re-open the at-stop gate against a stale
-    // value and a fold-back flip an hour later would walk straight through.
-    // The origin stays where the anchor was accepted, so the distance the
-    // bus covers from the stop still counts towards corroborating its next
-    // real move.
-    store.set(key, { ...prev, atStopId: null, disagreeSince: prev.disagreeSince ?? now, seenAt: now });
+    if (!backwards) return accept("at-stop");
+    // Record that the flag change has been seen, or every later disagreement
+    // would re-open the at-stop gate against a stale value and a fold-back
+    // flip an hour later would walk straight through. The origin stays where
+    // the anchor was accepted, so the distance the bus covers from here still
+    // counts towards corroborating its next real move.
+    store.set(key, { ...prev, atStopId, disagreeSince: prev.disagreeSince ?? now, seenAt: now });
     return { index: prev.index, released: null };
   }
 
@@ -313,8 +330,7 @@ export function gateAnchor(
   // 2. The move is consistent with the ground covered. `forward` is how far
   //    along the loop the raw anchor wants to jump; anything the travelled
   //    distance cannot account for is a relocation, not a progression. A
-  //    backwards jump (forward > half the loop) is never distance-justified.
-  const forward = ((rawIndex - prev.index) % N + N) % N;
+  //    backwards jump is never distance-justified — see the ring above.
   // The first hop is NOT free. Granting one stop unconditionally is precisely
   // the eventless population: `last_stop_id` advances under a byte-identical
   // fix, the raw anchor moves one stop, and the promise jumps a whole lap on
@@ -347,16 +363,14 @@ export function gateAnchor(
   // used to accept it anyway, because "bounded damage" was written as a
   // release valve without asking which direction it opened.
   //
-  // That is how the operator's 2026-09-04 case got through. Red #316 stood
-  // motionless at 344 Winchester for eleven minutes — 15 m from stop 11, 368 m
-  // from Canal/Munson, `last_stop_id` stale at an unrelated stop 75 throughout
-  // — while the stateless scan wanted the chord INTO the stop (a parked bus
-  // sits at the shared endpoint of the chord in and the chord out, so both
-  // score ~15 m and the tie fell to the stale feed value). After five minutes
-  // of holding, this line accepted it: the anchor slid back one stop, the whole
-  // ~8 min layover went back in front of the bus, and the rider's board went
-  // 3 min -> 11 min. It snapped forward again a poll later, giving 11 -> <1.
-  // The 3 -> 11 is the defect; the 11 -> <1 was the app recovering from it.
+  // CORRECTION, 2026-09-04. This valve was first closed in the belief that it
+  // was the door the operator's Red #316 case walked through. Replaying that
+  // incident poll by poll shows it was NOT: the raw anchor disagreed for 45 s,
+  // nowhere near ANCHOR_MAX_HOLD_MS, and the retreat was accepted by rule 1
+  // above on the `at_stop_id` null -> 146 arrival. The path closed here is
+  // real and it is the same defect in a different door, but it never fired on
+  // that trace, so nothing about the fix belongs to it. Rule 1 is where the
+  // 3 min -> 11 min came from; the account is written out there.
   //
   // A wrongly-held anchor that needs to move FORWARD still times out, which is
   // what the valve was for. Genuine relocation — a vanished bus, a re-acquired
