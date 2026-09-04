@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute, OFF_ROUTE_THRESHOLD_M,
-  registerRoutePaths,
+  ANCHOR_FEED_LEAD_HOPS, ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute,
+  OFF_ROUTE_THRESHOLD_M, registerRoutePaths,
 } from "./anchor";
 import { distanceToSegmentM, haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
 import incidents from "./__fixtures__/anchor-incidents.json";
+import { resolveAnchorIndex } from "./liveAnchor";
+import type { AnchorStore } from "./anchorGate";
 
 const blueWeekend = routeStops["4"]!;
 const blueDay = routeStops["1"]!;
@@ -382,5 +384,130 @@ describe("a leg is the road between two stops, not the chord (Blue West #126)", 
     const withOtherPath = findRouteAnchor(busAt("21:37:45"), stops, incCoords);
     registerRoutePaths(null);
     expect(withOtherPath).toBe(findRouteAnchor(busAt("21:37:45"), stops, incCoords));
+  });
+});
+
+describe("last_stop_id excludes, it does not rank (report #95)", () => {
+  // Red #316, 2026-09-04. Upstream froze `last_stop_id` at Whitney / Audubon
+  // (index 9) from 11:34:56 to 11:41:57 — seven minutes, five stops — and the
+  // old sort, which ordered candidates by forward distance from that value and
+  // used GPS only as a tiebreak, therefore always took the EARLIEST candidate
+  // in range however far away it was. One stop of lag on Red is worth five
+  // minutes, because the hop that vanishes carries 344 Winchester's layover.
+  const red = INC.routes["3"]!;
+  const stops = red.stops;
+  const idxOf = (name: string) => stops.findIndex((s) => INC.stopNames[String(s)] === name);
+  const busAt = (et: string) => {
+    const p = pollAt("red316", et);
+    return { lat: p.lat, lon: p.lon, last_stop_id: p.last_stop_id, route_id: 3 };
+  };
+  const legDists = (et: string) => {
+    const p = pollAt("red316", et);
+    return stops.map((_, i) =>
+      distanceToSegmentM(p, incCoords[stops[i]!]!, incCoords[stops[(i + 1) % stops.length]!]!));
+  };
+
+  afterEach(() => registerRoutePaths(null));
+
+  it("the feed really was frozen five stops back", () => {
+    const frozen = INC.incidents["red316"]!.polls.filter((p) => p.et <= "11:41:57");
+    expect(frozen.every((p) => p.last_stop_id === 128)).toBe(true);
+    expect(idxOf("Whitney / Audubon")).toBe(9);
+    expect(idxOf("Canal / Munson")).toBe(13);
+    expect(idxOf("344 Winchester")).toBe(14);
+  });
+
+  it("11:38:26 — the nearer leg wins, not the earlier one", () => {
+    // 130 Prospect (N) -> Winchester / Sachem is 32 m away at forward 2;
+    // Trumbull / Hillhouse -> 130 Prospect (N) is 145 m away at forward 1.
+    const d = legDists("11:38:26");
+    const near = idxOf("130 Prospect Street (N)");
+    const far = idxOf("Trumbull / Hillhouse");
+    expect(d[near]!).toBeLessThan(40);
+    expect(d[far]!).toBeGreaterThan(140);
+    expect(findRouteAnchor(busAt("11:38:26"), stops, incCoords)).toBe(near);
+  });
+
+  it("11:41:27 — the bus has left Canal / Munson and the anchor follows", () => {
+    // `stop_visits` has #316 standing at Canal / Munson 11:40:02–11:41:17, so
+    // by 11:41:27 it is on the leg OUT of it: 46 m from Canal / Munson ->
+    // 344 Winchester (forward 4), 136 m from the leg into it (forward 3).
+    const d = legDists("11:41:27");
+    const near = idxOf("Canal / Munson");
+    const far = idxOf("Winchester / Sachem");
+    expect(d[near]!).toBeLessThan(60);
+    expect(d[far]!).toBeGreaterThan(130);
+    expect(findRouteAnchor(busAt("11:41:27"), stops, incCoords)).toBe(near);
+  });
+
+  it("the window still refuses the fold at 130 Prospect", () => {
+    // 11:36:46: the bus is 128 m from SCL -> 130 Prospect (S) — nearer than
+    // anything else in range — but that leg is ten stops ahead of the frozen
+    // `last_stop_id`, on the far side of Red's fold. Choosing it would skip
+    // the whole Winchester loop, layover included. Forward distance is what
+    // rules it out, and it must keep doing so.
+    const d = legDists("11:36:46");
+    const scl = idxOf("SCL");
+    expect(d[scl]!).toBeLessThan(ANCHOR_GPS_THRESHOLD_M);
+    const chosen = findRouteAnchor(busAt("11:36:46"), stops, incCoords);
+    expect(d[scl]!).toBeLessThan(d[chosen]!);      // it really was the nearest
+    expect(chosen).not.toBe(scl);
+    expect((scl - 9 + stops.length) % stops.length).toBeGreaterThan(ANCHOR_FEED_LEAD_HOPS);
+  });
+
+  it("a candidate behind last_stop_id is still excluded", () => {
+    // Forward distance is measured on the ring, so "one stop back" reads as
+    // N-1 hops forward and never survives the window.
+    const N = stops.length;
+    expect((-1 + N) % N).toBeGreaterThan(ANCHOR_FEED_LEAD_HOPS);
+  });
+
+  it("the reporter's own moment: Blue Day #38 at 11:20:59", () => {
+    // "Seems a stop behind? Not critical better than being past it" — and it
+    // was. `predictions_log` for 11:21:00 has #38 anchored at Whitney /
+    // Cottage (S), while the bus had passed Whitney / Edwards (S) 132 m back
+    // and was 79 m short of Whitney / Humphrey (S). The feed's `last_stop_id`
+    // still said Cottage, so the sort took forward 0 and the rider was
+    // promised 297 s to College / Wall (S) for a bus that took 224 s.
+    const bd = INC.routes["1"]!.stops;
+    const nameOf = (i: number) => INC.stopNames[String(bd[i]!)];
+    const p = pollAt("blueDay38", "11:20:59");
+    const idx = findRouteAnchor(
+      { lat: p.lat, lon: p.lon, last_stop_id: p.last_stop_id, route_id: 1 }, bd, incCoords,
+    );
+    expect(nameOf(bd.indexOf(p.last_stop_id))).toBe("Whitney / Cottage (S)");
+    expect(nameOf(idx)).toBe("Whitney / Edwards (S)");
+  });
+
+  it("the gated anchor walks the incident forward, one leg at a time", () => {
+    // Poll by poll on the real geometry, through the production sequence —
+    // `noteFix` -> `findRouteAnchor` -> `gateAnchor` — which is the only
+    // sequence a rider ever sees. Over seven minutes of a frozen feed the
+    // anchor advances and never retreats, and never skips a stop.
+    registerRoutePaths(incPaths);
+    const store: AnchorStore = new Map();
+    const N = stops.length;
+    let prev = -1;
+    const visited: string[] = [];
+    for (const p of INC.incidents["red316"]!.polls) {
+      const idx = resolveAnchorIndex(
+        { lat: p.lat, lon: p.lon, last_stop_id: p.last_stop_id, route_id: 3 },
+        stops, incCoords, "Red|#316", p.collected_at, store,
+      );
+      if (prev >= 0) {
+        const forward = (idx - prev + N) % N;
+        expect(
+          forward,
+          `${p.et}: ${INC.stopNames[String(stops[prev]!)]} -> ${INC.stopNames[String(stops[idx]!)]}`,
+        ).toBeLessThanOrEqual(1);
+      }
+      if (idx !== prev) visited.push(INC.stopNames[String(stops[idx]!)]!);
+      prev = idx;
+    }
+    // and it walked the whole Winchester loop rather than stalling behind it.
+    expect(visited).toContain("Canal / Munson");
+    expect(visited).toContain("344 Winchester");
+    expect(visited).toContain("Winchester / Division");
+    expect(INC.stopNames[String(stops[prev]!)]).toBe("Division / Sheffield");
   });
 });

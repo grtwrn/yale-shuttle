@@ -34,7 +34,6 @@ export function registerRoutePaths(
   paths: Record<string, readonly (readonly [number, number])[]> | null | undefined,
 ): void {
   routePathsById = paths ?? {};
-  legGeomCache.clear();
 }
 
 function distanceToPathM(bus: LatLon, path: readonly (readonly [number, number])[]): number {
@@ -79,13 +78,13 @@ export function isBusOnRoute(
 //   1. Find all legs stops[i] → stops[i+1] within GPS_THRESHOLD_M of
 //      the bus's actual GPS — these are plausible candidates. A leg is
 //      the ROAD between the two stops (the published polyline), not the
-//      chord; see "what a leg IS" below for why.
-//   2. If the feed provides last_stop_id and it's on the route, among
-//      the candidates prefer the one with the shortest FORWARD
-//      distance from last_stop_id. This disambiguates routes that
-//      revisit the same vicinity twice (e.g., Red passes 130 Prospect
-//      on both inbound and outbound legs) without letting the
-//      feed override fresh GPS.
+//      chord; see ANCHOR_FEED_LEAD_HOPS' neighbour below for why.
+//   2. If the feed provides last_stop_id and it's on the route, DROP any
+//      candidate more than ANCHOR_FEED_LEAD_HOPS ahead of it — that is
+//      what keeps a route which revisits a vicinity (Red passes 130
+//      Prospect on both the inbound and outbound legs) off the wrong
+//      side of its own fold. Among the survivors the bus's own GPS
+//      decides, with forward order breaking a tie the GPS cannot call.
 //   3. If no leg is within threshold (bus is genuinely off-route or on
 //      a part of the route the stop list doesn't model), fall back to
 //      the globally-nearest leg.
@@ -95,6 +94,93 @@ export function isBusOnRoute(
 // the correct mental model for both dwelling-at-stop and mid-segment
 // cases.
 export const ANCHOR_GPS_THRESHOLD_M = 150;
+
+/**
+ * How far AHEAD of the feed's `last_stop_id` a candidate leg may be and still
+ * be believed. Beyond it the candidate is DROPPED; among the survivors the
+ * bus's own GPS decides.
+ *
+ * WHY IT IS AN EXCLUSION AND NOT A PREFERENCE (report #95). The old rule sorted
+ * every in-range candidate by forward distance from `last_stop_id` and used GPS
+ * only to break ties, so among adjacent candidates it always took the EARLIEST
+ * — however far away the bus actually was from it. That is fine while the feed
+ * is fresh and catastrophic when it is not, and it is often not: on Red #316,
+ * 2026-09-04, upstream froze `last_stop_id` at Whitney / Audubon for **seven
+ * minutes, 2.6 km and five stops**. With `lastIdx` stuck that far back the sort
+ * degenerates to "take the earliest leg in range", which is the one furthest
+ * behind:
+ *
+ *   11:38:26  130 Prospect (N) -> Winchester / Sachem   32 m (fwd 2)  LOST to
+ *             Trumbull / Hillhouse -> 130 Prospect (N) 145 m (fwd 1)
+ *   11:41:27  Canal / Munson -> 344 Winchester          46 m (fwd 4)  LOST to
+ *             Winchester / Sachem -> Canal / Munson    136 m (fwd 3)
+ *             — though `stop_visits` has the bus standing AT Canal / Munson
+ *               11:40:02-11:41:17 and already gone.
+ *
+ * `at_stop_id` was silently doing the job the sort should have done (it fires
+ * within ~75 m of a stop and may advance the anchor by one), so between stops
+ * the anchor simply sat a stop back for the whole hop. When the flag finally
+ * caught up at 11:42:01 the anchor jumped Canal / Munson -> 344 Winchester and
+ * the rider's countdown went **10 min to 5 min in one poll**. The bus reached
+ * Division / Prospect 322 s later: the 5 was right, and the hop that vanished
+ * was 344 Winchester's layover (median stand 4:31). One stop of lag on Red is
+ * worth five minutes.
+ *
+ * WHY IT STAYS. Withholding `last_stop_id` entirely was measured and is worse
+ * (jumps over five minutes 16,128 -> 24,986, see `anchorGate.ts`), and the
+ * exclusion is why: at 11:36:46 the nearest leg to #316 was SCL -> 130 Prospect
+ * (S) at 128 m, TEN stops ahead on the far side of Red's fold. Choosing it
+ * would have skipped the whole Winchester loop. Forward distance is the only
+ * thing that rules that out, so it must keep ruling it out.
+ *
+ * FIVE, from the sweep (`scripts/.eta-replay/anchor-sweep.ts`, 54,920 scored
+ * positions over 2026-09-03's 6.5 h of `raw_positions`, scored against the
+ * detector's own anchor). Anchor-behind-the-detector, all routes / Red:
+ *
+ *   master (sort)   17.71% / 9.10%
+ *   window 3        10.06% / 0.58%      window 6   9.32% / 0.75%
+ *   window 4         9.68% / 0.63%      window 8   9.25% / 0.96%
+ *   window 5        10.21% / 0.42%      window 10  9.87% / 0.72%
+ *
+ * The curve is flat from 3 to 8 and every value beats the sort by 8 points, so
+ * this is not a tuned optimum and should not be re-tuned as one. 5 is chosen
+ * because it is the smallest window that covers the freeze that was actually
+ * observed — five stops — while staying well under Red's fold separation of
+ * ten. Below 3 a longer freeze starts excluding the truth; above 8 the fold
+ * comes back.
+ */
+export const ANCHOR_FEED_LEAD_HOPS = 5;
+
+/**
+ * How much nearer one candidate leg must be than another before GPS is allowed
+ * to overrule forward order. Inside this band the legs are indistinguishable
+ * and `last_stop_id` breaks the tie, exactly as it always did.
+ *
+ * THIS IS NOT A SOFTENING OF THE RULE ABOVE, it is the resolution of the
+ * instrument. The feed publishes a new coordinate only once a bus has moved
+ * ~30 m (2 of 33,118 distinct fixes moved less, and the floor is 30.0 m whether
+ * 5 s or 20 s elapsed), so a 20 m difference between two legs is not a
+ * measurement, it is noise.
+ *
+ * And it matters most exactly where a rider is watching. The two legs that meet
+ * AT a stop are both ~0 m from a bus standing at it, so with no band the choice
+ * between "has reached this stop" and "is still approaching it" is decided by
+ * float noise. Displacing a bus perpendicular to the road by up to 30 m at
+ * every stop on the network (`scripts/.eta-replay/jitter-probe.ts`, 274 stops):
+ *
+ *   band  0 m — the anchor changes at 96.7% of stops
+ *   band 15 m — 10.6%
+ *   band 30 m — 0.7%
+ *
+ * A flip there adds or removes that stop's whole dwell from the countdown, which
+ * is the "6 min then 16 min" of report #32. `anchor.test.ts`'s "unmoved by GPS
+ * jitter perpendicular to the segment" is the unit-sized version and fails
+ * without this.
+ *
+ * It costs nothing on the incidents this file exists for — #316's disputes are
+ * 32 m against 145 m and 46 m against 136 m, four times the band.
+ */
+export const ANCHOR_NEARER_M = 30;
 
 // --- what a leg IS: the road, not the chord ---------------------------------
 //
@@ -133,14 +219,34 @@ export const ANCHOR_GPS_THRESHOLD_M = 150;
 // a leg costs its own vertex count instead of one segment. A bounding box per
 // leg, computed once with the geometry, skips every leg the bus cannot be near
 // — which is all but two or three of them — and holds a whole-route anchor to
-// 7.5 us against the chord's 2.5 (2,000 laps of all 15 routes on this Pi,
+// 6.8 us against the chord's 2.3 (2,000 laps of all 15 routes on this Pi,
 // `scripts/.eta-replay/anchor-bench.ts`). Without the box the same call is
 // 13 us, and the browser makes several hundred of them every five seconds.
 interface LegGeom {
   line: readonly (readonly [number, number])[];
   minLat: number; maxLat: number; minLon: number; maxLon: number;
 }
-const legGeomCache = new Map<string, LegGeom[] | null>();
+//
+// CACHED ACROSS POLLS, and that is the point. `registerRoutePaths` is called
+// with a freshly parsed object on every `/api/buses` response, so invalidating
+// on identity would rebuild all fifteen routes every five seconds: 9.9 ms of
+// main-thread work on this Pi against 0.15 ms warm, and a phone is slower
+// still. The published geometry does not change between polls, so an entry is
+// kept until the polyline's CONTENT differs.
+interface CacheEntry { builtFrom: readonly (readonly [number, number])[]; legs: LegGeom[] | null }
+const legGeomCache = new Map<string, CacheEntry>();
+
+function samePolyline(
+  a: readonly (readonly [number, number])[],
+  b: readonly (readonly [number, number])[],
+): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]![0] !== b[i]![0] || a[i]![1] !== b[i]![1]) return false;
+  }
+  return true;
+}
 
 function legGeometry(
   routeId: string | number | undefined,
@@ -152,7 +258,10 @@ function legGeometry(
   if (!path || path.length < 2) return null;
   const key = `${routeId}|${stops.join(",")}`;
   const hit = legGeomCache.get(key);
-  if (hit !== undefined) return hit;
+  if (hit && samePolyline(hit.builtFrom, path)) {
+    hit.builtFrom = path; // skip the element-wise compare next poll
+    return hit.legs;
+  }
   let out: LegGeom[] | null = null;
   const ring: LatLon[] = [];
   for (const sid of stops) {
@@ -166,7 +275,7 @@ function legGeometry(
     const legs = traceStopLegs(path as [number, number][], ring);
     if (legs.length === stops.length) out = legs.map((l) => boxOf(l.slice));
   }
-  legGeomCache.set(key, out);
+  legGeomCache.set(key, { builtFrom: path, legs: out });
   return out;
 }
 
@@ -290,6 +399,15 @@ export type TravelHint = LatLon | null | undefined;
  * the step is too short to be a step, the leg is broadside to it, or one of
  * the two has no length.
  *
+ * NOT YET MEASURED AGAINST THE ROAD. The heading compared here is still the
+ * CHORD's, stop to stop, while the candidate window above now measures to the
+ * published line. On a straight leg they are the same bearing; on a bowed one
+ * they are not, and the fold pairs this exists for (Green and Purple's West
+ * Campus spurs, Blue West's Prospect return) are long and straight, which is
+ * why it was left alone rather than changed on a guess. If someone takes it
+ * up: the leg's own polyline is one call away (`legGeometry`), and the
+ * instrument is the rider simulator, not a branch-lock index count.
+ *
  * Exported for `scripts/eta-replay/branch-lock.ts`, which counts how often the
  * anchor lands a lap out of position; nothing in the app calls it directly.
  */
@@ -401,17 +519,30 @@ export function findRouteAnchor(
   }
 
   if (candidates.length > 0) {
+    // `last_stop_id` EXCLUDES; it does not rank. See ANCHOR_FEED_LEAD_HOPS.
     if (lastIdx >= 0) {
-      candidates.sort((a, b) => {
+      const kept = candidates.filter(
+        (i) => ((i - lastIdx + N) % N) <= ANCHOR_FEED_LEAD_HOPS,
+      );
+      if (kept.length > 0) candidates = kept;
+    }
+    // Then the bus's own GPS decides — but only where it decides materially.
+    // See ANCHOR_NEARER_M: inside the feed's own resolution the legs are
+    // indistinguishable and forward order is the tiebreak, as it always was.
+    let nearest = Infinity;
+    for (const i of candidates) if (dists[i] < nearest) nearest = dists[i];
+    const tied = candidates.filter((i) => dists[i] <= nearest + ANCHOR_NEARER_M);
+    if (lastIdx >= 0) {
+      tied.sort((a, b) => {
         const fa = (a - lastIdx + N) % N;
         const fb = (b - lastIdx + N) % N;
         if (fa !== fb) return fa - fb;
         return dists[a] - dists[b];
       });
     } else {
-      candidates.sort((a, b) => dists[a] - dists[b]);
+      tied.sort((a, b) => dists[a] - dists[b]);
     }
-    return refineWithAtStop(candidates[0]);
+    return refineWithAtStop(tied[0]!);
   }
 
   // Nothing within threshold — bus is off-route-ish. Just pick
