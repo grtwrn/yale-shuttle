@@ -122,6 +122,103 @@ export const segments = sqliteTable(
   }),
 );
 
+/**
+ * One row per pass of a stop by a bus: the DEPARTURE instant the detector never
+ * had, with the evidence it rests on. Derived by `src/collector/departure.ts`
+ * from the same positions and the detector's own stop-pinned clock; the
+ * `arrivals`/`segments` rows are untouched and still measure what they always
+ * did (arrival to arrival, twice).
+ *
+ * `stand_sec = departed_at − arrived_at` is the time the bus stood at the
+ * stop — the quantity `arrivals.dwell_sec` is often mistaken for and is not
+ * (`docs/eta-error-budget.md`). `outcome` keeps a skipped stop apart from a
+ * stop: a 0 s stand folded into a stop's distribution biases every quantile
+ * down, and the low tail is what a conditional-rest table reads first.
+ * `pinned_at` is production's `at_stop_since`, so a consumer that conditions
+ * on `r = now − at_stop_since` can measure on that clock instead.
+ *
+ * `(anchor_bus_id, stop_id, anchored_at)` joins the `arrivals` row the pass
+ * belongs to. `stop_index` is the position in the route sequence — the
+ * identity on the West Campus out-and-backs, where a stop id occurs twice.
+ *
+ * Retained with `arrivals` (90 d): a few hundred rows a day.
+ */
+export const stopVisits = sqliteTable(
+  "stop_visits",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    busId: integer("bus_id").notNull(),
+    busName: text("bus_name").notNull(),
+    anchorBusId: integer("anchor_bus_id").notNull(),
+    routeId: integer("route_id").notNull(),
+    stopId: integer("stop_id").notNull(),
+    stopIndex: integer("stop_index").notNull(),
+    anchoredAt: integer("anchored_at", { mode: "timestamp_ms" }).notNull(),
+    pinnedAt: integer("pinned_at", { mode: "timestamp_ms" }),
+    arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }),
+    departedAt: integer("departed_at", { mode: "timestamp_ms" }),
+    standSec: real("stand_sec"),
+    insideSec: real("inside_sec"),
+    outcome: text("outcome", { enum: ["stopped", "passed", "unresolved"] }).notNull(),
+    how: text("how", { enum: ["far", "next", "clock", "gap"] }),
+    confidence: real("confidence"),
+    // Evidence — the observation, not only the decision.
+    firstStepM: real("first_step_m"),
+    steps: integer("steps").notNull(),
+    farM: real("far_m"),
+    confirmSec: real("confirm_sec"),
+    restPolls: integer("rest_polls").notNull(),
+    shuffles: integer("shuffles").notNull(),
+    firstMovedAt: integer("first_moved_at", { mode: "timestamp_ms" }),
+    lastAtRestAt: integer("last_at_rest_at", { mode: "timestamp_ms" }),
+    closestM: real("closest_m").notNull(),
+    dow: integer("dow").notNull(),
+    hour: integer("hour").notNull(),
+  },
+  (t) => ({
+    routeStopTimeIdx: index("stop_visits_route_stop_time_idx").on(t.routeId, t.stopId, t.anchoredAt),
+    // Time-leading, for the retention sweep.
+    timeIdx: index("stop_visits_time_idx").on(t.anchoredAt),
+  }),
+);
+
+/**
+ * One row per hop, kerb to kerb: from the departure at `from_stop_id` to the
+ * first rest at `to_stop_id`, with the seconds spent stopped MID-leg split out.
+ * `drive_sec + hold_sec = leg_sec`. A hop's proration may scale `drive_sec`;
+ * it must never scale the stand at the origin, which is what `segments.
+ * travel_sec` bundles in. `to_pinned_at` is `at_stop_since` at the far end,
+ * for a consumer on that clock. Retained with `segments` (90 d).
+ */
+export const legs = sqliteTable(
+  "legs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    busId: integer("bus_id").notNull(),
+    busName: text("bus_name").notNull(),
+    routeId: integer("route_id").notNull(),
+    fromStopId: integer("from_stop_id").notNull(),
+    fromIndex: integer("from_index").notNull(),
+    toStopId: integer("to_stop_id").notNull(),
+    toIndex: integer("to_index").notNull(),
+    hops: integer("hops").notNull(),
+    departedAt: integer("departed_at", { mode: "timestamp_ms" }).notNull(),
+    arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }).notNull(),
+    toPinnedAt: integer("to_pinned_at", { mode: "timestamp_ms" }),
+    legSec: real("leg_sec").notNull(),
+    holdSec: real("hold_sec").notNull(),
+    driveSec: real("drive_sec").notNull(),
+    holds: integer("holds").notNull(),
+    reached: integer("reached", { mode: "boolean" }).notNull(),
+    dow: integer("dow").notNull(),
+    hour: integer("hour").notNull(),
+  },
+  (t) => ({
+    routeHopTimeIdx: index("legs_route_hop_time_idx").on(t.routeId, t.fromStopId, t.toStopId, t.departedAt),
+    timeIdx: index("legs_time_idx").on(t.departedAt),
+  }),
+);
+
 // Every prediction we serve, for after-the-fact accuracy scoring.
 export const predictionsLog = sqliteTable(
   "predictions_log",

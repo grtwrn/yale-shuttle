@@ -3,8 +3,10 @@
 **Status: derived and validated offline over the archived corpus, 2026-09-03.
 Nothing rider-visible changes.** The reducer (`services/shuttle-v2/src/collector/departure.ts`)
 is the collector's code, run over `~/shuttle-captures/positions-*.jsonl` by
-`scripts/eta-replay/departure-replay.ts`; wiring it into the live collector and
-persisting its events is the second step and is not in this document.
+`scripts/eta-replay/departure-replay.ts`. The collector now runs the same
+reducer live and persists its events to `stop_visits` and `legs` (migration
+`0010`), retained with `arrivals`/`segments`; every figure below is from the
+offline run, made before that wiring touched anything.
 
 Corpus: 119,736 unique `raw_positions` (the two capture files re-dump the
 retention window, de-duplicated on `(bus_id, collected_at)`), 8,635 polls,
@@ -463,11 +465,16 @@ separate, rider-facing fix and is flagged here rather than made.
   p5/10/20/30/40/50/60/70/80/90/95; per hop: `drivePinned` / `driveClear` /
   `driveRest`, `holdMean`, `pHold`, `overlapLegs`.
 
-Next: persist the two event kinds from the live collector (`stop_visits` and
-`legs`, retained with `arrivals`/`segments`), so the split accumulates daily
-without a replay. The reducer is already the collector's shape — one
-`stepManyWithVisits` call in place of `stepMany`, one insert per event, a
-`pruneVisits` beside `pruneStale` — and it costs no write per request.
+- `stop_visits` and `legs` (`src/db/schema.ts`, migration `0010`): the same
+  events, written live by the collector — one `stepManyWithVisits` call in
+  place of `stepMany` (the detector's events are returned unchanged and
+  persisted exactly as before), one insert per event, a `pruneVisits` beside
+  `pruneStale`. No write on the request path; a few hundred rows a day; 90-day
+  retention beside `arrivals`/`segments`.
+
+Next: once the live tables hold a week, re-measure `DEPARTURE_PRIOR_BY_STEPS`
+and the per-stop tables from them instead of a replay, and give the
+calibrator a `stand`/`drive` pair per hop to serve.
 
 ## Limits
 

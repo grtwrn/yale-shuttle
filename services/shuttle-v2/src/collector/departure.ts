@@ -144,7 +144,7 @@ export const STILL_MIN_MS = HOLD_MIN_SEC * 1000 - POLL_JITTER_MS;
  * Probability that a candidate which reached `steps` fresh outbound polls and
  * was then cut off by a feed break was a real departure — the `confidence`
  * written on a `how: "gap"` visit. MEASURED, not chosen: the share of every
- * decided candidate in the 2026-09-03 archive (11.7 h, 22 buses, 13 routes)
+ * decided candidate in the 2026-09-03 archive (12 h, 22 buses, 13 routes)
  * that reached at least that many steps and was confirmed rather than refrozen
  * as a shuffle (`scripts/eta-replay/departure-replay.ts`, "Candidate
  * departures"). Index 0 is a break with no movement seen at all — the row
