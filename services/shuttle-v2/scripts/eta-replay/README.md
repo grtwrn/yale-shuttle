@@ -157,3 +157,32 @@ per-rider `AnchorStore`, `pickLiveArrival` against the plan-time pin,
 from `CLIENT_ROOT`, whose HEAD and dirty flag go into the output. Scoring is
 `canary-metrics.mjs`'s own (display buckets, smallest movement two readings
 permit), so a simulated wait and a browser-watched wait are judged by one rule.
+
+## card-vs-trip.ts / card-cost.ts — the app's OTHER ETA estimator
+
+The route cards on the Map tab do not call `computeUpcomingArrivals`.
+`StopList` in `TransitMap.tsx` has its own inline arithmetic — no gated
+anchor, no stall credit, no proration, no stand/drive split, a de-duplicated
+stop list, and it prints the LOW end of its interval. `card-vs-trip.ts`
+transcribes that arithmetic verbatim, runs both estimators over every poll of
+a capture, and reports how far apart they are, which one the buses agreed
+with, and what each does to the SEQUENCE a rider watches. `card-cost.ts` times
+the merge against a frame budget, because "the card is simpler because it
+renders many stops" is a hypothesis and not a finding. Both are written up in
+`docs/card-vs-trip.md`.
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/snap3-split.db \
+  PAYLOAD_PATCH=./scripts/.eta-replay/split-patch-0903.json \
+  CAPTURE=$HOME/shuttle-captures/positions-20260903.jsonl \
+  npx tsx scripts/eta-replay/card-vs-trip.ts
+#   ROUTES=Red TRACE_STOP=48 FROM=... TO=...   one stop, poll by poll, both arms
+#   EVERY=N  pair on every Nth poll (the detector and the store still step on all)
+TZ=America/New_York REPLAY_DB=./store/snap3-split.db npx tsx scripts/eta-replay/card-cost.ts
+```
+
+Without `PAYLOAD_PATCH` the trip arm is the pre-#85 client and the script says
+so. The transcription is **self-checked against `TransitMap.tsx` on every
+run** — the script refuses to produce numbers once `StopList` gains the
+machinery it is being measured against, which is how it retires itself when
+the two are merged.
