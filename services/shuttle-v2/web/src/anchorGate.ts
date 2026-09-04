@@ -35,7 +35,9 @@
  * disambiguation work where a route revisits a vicinity. It is required to be
  * corroborated, not ignored.
  */
+import type { RingPrior } from "./anchor";
 import { haversineMeters } from "./geo";
+import { travelBudgetM } from "./ring";
 
 /**
  * Net displacement from where the anchor was set that justifies relocating the
@@ -120,6 +122,21 @@ export interface GatedAnchor {
    */
   fix?: { lat: number; lon: number } | undefined;
   prevFix?: { lat: number; lon: number } | undefined;
+  /**
+   * When {@link index} was accepted, and the road the bus has covered since —
+   * the ring window's budget (`ring.ts`).
+   *
+   * PATH, not net displacement, and the two are chosen for opposite reasons.
+   * The corroboration rules below want net displacement, because a parked bus
+   * twitching back and forth accumulates unlimited path and would open a gate
+   * that exists to reject exactly that. The WINDOW wants path, because it is an
+   * upper bound on how far forward the bus can be, and a bus that drove a
+   * curve is further along the ring than the straight line between its ends.
+   * A parked bus barely accumulates either: the feed repeats its coordinate
+   * rather than interpolating.
+   */
+  acceptedAt?: number | undefined;
+  pathM?: number | undefined;
 }
 
 export type AnchorStore = Map<string, GatedAnchor>;
@@ -192,6 +209,8 @@ export function noteFix(
       seenAt: now,
       fix: { lat, lon },
       prevFix: undefined,
+      acceptedAt: now,
+      pathM: 0,
     });
     return null;
   }
@@ -200,7 +219,11 @@ export function noteFix(
     return null;
   }
   if (prev.fix.lat === lat && prev.fix.lon === lon) return prev.prevFix ?? null;
-  store.set(key, { ...prev, prevFix: prev.fix, fix: { lat, lon } });
+  // A distinct fix is a step the bus really took: it is the road the ring
+  // window is allowed to spend. A repeated fix adds nothing, which is the
+  // whole reason a standing bus stays put in this model.
+  const stepM = haversineMeters({ lat, lon }, prev.fix);
+  store.set(key, { ...prev, prevFix: prev.fix, fix: { lat, lon }, pathM: (prev.pathM ?? 0) + stepM });
   return prev.fix;
 }
 
@@ -246,6 +269,10 @@ export function gateAnchor(
       lastStopId,
       disagreeSince: null,
       seenAt: now,
+      // The window is measured from where the anchor was accepted, so the
+      // budget restarts here along with `lat`/`lon`.
+      acceptedAt: now,
+      pathM: 0,
     });
     return { index: rawIndex, released };
   };
@@ -411,6 +438,26 @@ export function gateAnchor(
 
   store.set(key, { ...prev, disagreeSince: since, seenAt: now });
   return { index: prev.index, released: null };
+}
+
+/**
+ * What the chooser needs to stop proposing the impossible: where this bus was
+ * accepted, and the road it can have covered since.
+ *
+ * Call it AFTER {@link noteFix}, so this poll's step is already in the budget —
+ * a departure has to be admissible in the poll it happens in, not the one
+ * after. Returns a prior with `index < 0` when there is no usable history,
+ * which `findRouteAnchor` treats as no prior at all.
+ */
+export function ringPrior(store: AnchorStore, key: string, now: number): RingPrior {
+  const prev = store.get(key);
+  if (!prev || prev.index < 0) return { index: -1, at: null, budgetM: 0 };
+  const elapsed = now - (prev.acceptedAt ?? prev.seenAt);
+  return {
+    index: prev.index,
+    at: prev.lat && prev.lon ? { lat: prev.lat, lon: prev.lon } : null,
+    budgetM: travelBudgetM(prev.pathM ?? 0, elapsed, ANCHOR_FEED_MOVE_M),
+  };
 }
 
 /** Drop entries for buses that have not been seen for a while. */
