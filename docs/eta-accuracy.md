@@ -397,6 +397,16 @@ measurements that need no oracle: **the leg the detector puts the bus on falls
 outside the 150 m window on 19.64% of polls measured to the chord and 3.63%
 measured to the road**, and the rider simulator below.
 
+**Decided 2026-09-04, so nobody re-imposes it:** the anchor/detector
+disagreement rate is **not a gate on a change to the candidate window**. It rose
+on Pink, Purple, Green and Blue Night when the window moved from the chord to
+the road, while those routes' rider error was flat or better, and the paragraph
+above is why — a window fix cannot be judged by the thing it replaces. The gate
+for such a change is `rider-sim/` paired against master (strands, reversals and
+drops reported as a FIXED/INTRODUCED split, never as a total: the
+selection-only arm proved a total can hide a swap), `branch-lock.ts` for the
+out-and-backs, and the departure trace.
+
 **And one thing to watch.** Green's mean bias flips −110.7 → +109.1: the median
 improves 19 s and the sign moves to the safer side (a rider told later than the
 bus comes does not miss it), but the character of Green's error changes and that

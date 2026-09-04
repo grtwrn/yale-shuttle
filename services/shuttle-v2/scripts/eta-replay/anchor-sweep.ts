@@ -27,6 +27,16 @@
  * candidate set, so both columns move together — and CANNOT JUDGE THE WINDOW.
  * The window's evidence has to be oracle-free: `cand-size.ts` (how often the
  * true leg is not a candidate at all) and `rider-sim/`.
+ *
+ * DECIDED, 2026-09-04, and recorded here so it is not re-imposed: the
+ * anchor/detector disagreement rate is **not a gate** on a change to the
+ * candidate window. It rose on Pink, Purple, Green and Blue Night when the
+ * window moved from the chord to the road while those routes' rider error was
+ * flat or better, and the reason is the paragraph above — a window fix cannot
+ * be judged by the thing it replaces. The gate for such a change is
+ * `rider-sim/` paired against master (strands, reversals and drops by
+ * fixed/introduced split, not by total — the selection-only arm showed a total
+ * can hide a swap), `branch-lock.ts` for the folds, and the departure trace.
  */
 import { loadNet, fmtEt } from "./common.js";
 import { planTracks, stepMany, type BusObservation, type BusState } from "../../src/collector/detector.js";
