@@ -184,5 +184,24 @@ TZ=America/New_York REPLAY_DB=./store/snap3-split.db npx tsx scripts/eta-replay/
 Without `PAYLOAD_PATCH` the trip arm is the pre-#85 client and the script says
 so. The transcription is **self-checked against `TransitMap.tsx` on every
 run** — the script refuses to produce numbers once `StopList` gains the
-machinery it is being measured against, which is how it retires itself when
-the two are merged.
+machinery it is being measured against, which is how it retired itself when the
+two were merged on 2026-09-04.
+
+**Since the merge, use `BEFORE_SRC`.** It points the self-check at a checkout
+of the pre-merge file, so the transcription is verified against the code it
+CLAIMS to represent rather than against whatever is checked out; the `card` arm
+is then master's route cards and the `trip` arm is this tree's shared
+estimator — the paired before and after.
+
+```bash
+mkdir -p /tmp/before
+git archive <pre-merge-ref> services/shuttle-v2/web/src/TransitMap.tsx | tar -x -C /tmp/before
+BEFORE_SRC=/tmp/before/services/shuttle-v2/web/src/TransitMap.tsx \
+  TZ=America/New_York REPLAY_DB=./store/snap3-split.db ... npx tsx scripts/eta-replay/card-vs-trip.ts
+```
+
+The sequence table splits **frozen** by whether the feed sent a NEW coordinate
+for that vehicle. A number that does not move while the bus does not move is
+honest; the defect is a frozen countdown for a bus that is provably driving,
+and 53.6% of consecutive samples repeat a position rather than interpolating
+(`docs/bus-speed.md`), so the unsplit share cannot tell the two apart.

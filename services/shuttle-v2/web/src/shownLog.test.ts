@@ -32,6 +32,7 @@ const arrival = (over: Partial<UpcomingArrival> = {}): UpcomingArrival => ({
   busName: "40",
   stopId: 48,
   stopsAhead: 3,
+  estimated: false,
   ...over,
 });
 
@@ -61,13 +62,13 @@ afterEach(() => {
 describe("what leaves the browser", () => {
   it("sends the reading and nothing about the reader", async () => {
     alwaysSampled();
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await flushShown(T);
 
     expect(posts).toHaveLength(1);
     expect(posts[0]!.url).toBe("/api/shown");
     const body = JSON.parse(String(posts[0]!.init.body)) as { b: string; p: ShownTuple[] };
-    expect(body.p).toEqual([["40", 48, 300, 240, 360, 3, 0]]);
+    expect(body.p).toEqual([["40", 48, 300, 240, 360, 3, 0, "trip"]]);
 
     // The whole payload, stringified. Nothing that could name a browser, a
     // person or a place may appear in it — this is the client half of the
@@ -81,9 +82,24 @@ describe("what leaves the browser", () => {
     expect(JSON.stringify(posts[0]!.init.headers)).not.toContain("anon");
   });
 
+  it("keeps the surfaces apart — one reading per (bus, stop, bucket, SCREEN)", async () => {
+    alwaysSampled();
+    // The same vehicle, the same stop, the same 15 s bucket, on two screens.
+    // Before the route cards shared this estimator that could not happen; now
+    // it happens constantly, and collapsing the two would silently make the
+    // trip card's population the union of both.
+    noteShown([arrival()], "trip", T);
+    noteShown([arrival()], "card", T);
+    noteShown([arrival()], "card", T); // idempotent within its own surface
+    expect(pendingCount()).toBe(2);
+    await flushShown(T);
+    const body = JSON.parse(String(posts[0]!.init.body)) as { p: ShownTuple[] };
+    expect(body.p.map((r) => r[7]).sort()).toEqual(["card", "trip"]);
+  });
+
   it("sends an AGE, never a timestamp — the server owns the clock", async () => {
     alwaysSampled();
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await flushShown(T + 20_000);
     const body = JSON.parse(String(posts[0]!.init.body)) as { p: ShownTuple[] };
     expect(body.p[0]![6]).toBe(20_000);
@@ -93,7 +109,7 @@ describe("what leaves the browser", () => {
 
   it("names the bundle that produced the reading", async () => {
     alwaysSampled();
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await flushShown(T);
     const body = JSON.parse(String(posts[0]!.init.body)) as { b: string };
     // Under vitest the module is loaded from source, so there is no hash to
@@ -106,16 +122,16 @@ describe("what leaves the browser", () => {
 describe("dedup and batching", () => {
   it("collapses repeats within one 15 s bucket", () => {
     alwaysSampled();
-    for (let i = 0; i < 20; i++) noteShown([arrival({ eta: 300 + i })], T + i * 100);
+    for (let i = 0; i < 20; i++) noteShown([arrival({ eta: 300 + i })], "trip", T + i * 100);
     expect(pendingCount()).toBe(1);
     expect(drainBatch(T)[0]![2]).toBe(300);
   });
 
   it("keeps one reading per bucket, so the sequence survives", () => {
     alwaysSampled();
-    noteShown([arrival({ eta: 300 })], T);
-    noteShown([arrival({ eta: 280 })], T + SHOWN_BUCKET_MS);
-    noteShown([arrival({ eta: 260 })], T + 2 * SHOWN_BUCKET_MS);
+    noteShown([arrival({ eta: 300 })], "trip", T);
+    noteShown([arrival({ eta: 280 })], "trip", T + SHOWN_BUCKET_MS);
+    noteShown([arrival({ eta: 260 })], "trip", T + 2 * SHOWN_BUCKET_MS);
     const batch = drainBatch(T + 2 * SHOWN_BUCKET_MS);
     expect(batch.map((r) => r[2])).toEqual([300, 280, 260]);
   });
@@ -123,14 +139,14 @@ describe("dedup and batching", () => {
   it("is idempotent under a double-invoked render", () => {
     alwaysSampled();
     const a = [arrival()];
-    noteShown(a, T);
-    noteShown(a, T); // React StrictMode renders twice in development.
+    noteShown(a, "trip", T);
+    noteShown(a, "trip", T); // React StrictMode renders twice in development.
     expect(pendingCount()).toBe(1);
   });
 
   it("drops a reading that has gone stale rather than posting a lie", () => {
     alwaysSampled();
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     // A tab backgrounded for five minutes must not wake up and claim this was
     // on screen a moment ago.
     expect(drainBatch(T + SHOWN_MAX_AGE_MS + 1)).toHaveLength(0);
@@ -141,7 +157,7 @@ describe("dedup and batching", () => {
     const many = Array.from({ length: SHOWN_MAX_BATCH + 50 }, (_, i) =>
       arrival({ stopId: i, busName: `b${i}` }),
     );
-    noteShown(many, T);
+    noteShown(many, "trip", T);
     expect(pendingCount()).toBeLessThanOrEqual(SHOWN_MAX_BATCH);
   });
 });
@@ -149,9 +165,9 @@ describe("dedup and batching", () => {
 describe("sampling and the control channel", () => {
   it("decides once per page load, not per reading", () => {
     const rnd = vi.spyOn(Math, "random").mockReturnValue(0.99);
-    noteShown([arrival()], T);
-    noteShown([arrival({ stopId: 49 })], T);
-    noteShown([arrival({ stopId: 50 })], T);
+    noteShown([arrival()], "trip", T);
+    noteShown([arrival({ stopId: 49 })], "trip", T);
+    noteShown([arrival({ stopId: 50 })], "trip", T);
     expect(pendingCount()).toBe(0);
     // One coin toss for the whole visit: half a countdown is not a countdown.
     expect(rnd).toHaveBeenCalledTimes(1);
@@ -164,11 +180,11 @@ describe("sampling and the control channel", () => {
   it("takes the server's rate from the reply it already gets", async () => {
     alwaysSampled();
     vi.stubGlobal("fetch", async () => ({ ok: true, json: async () => ({ sample: 0 }) }) as unknown as Response);
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await flushShown(T);
     expect(shownSampleRate()).toBe(0);
     // ...and stops immediately, without another deploy or another request.
-    noteShown([arrival({ stopId: 49 })], T);
+    noteShown([arrival({ stopId: 49 })], "trip", T);
     expect(pendingCount()).toBe(0);
   });
 });
@@ -177,21 +193,21 @@ describe("it must never be visible to a rider", () => {
   it("survives a browser with no fetch", async () => {
     alwaysSampled();
     vi.stubGlobal("fetch", undefined);
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await expect(flushShown(T)).resolves.toBeUndefined();
   });
 
   it("survives a rejected or blocked request", async () => {
     alwaysSampled();
     vi.stubGlobal("fetch", async () => { throw new Error("blocked"); });
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await expect(flushShown(T)).resolves.toBeUndefined();
   });
 
   it("survives a 429 and a nonsense reply", async () => {
     alwaysSampled();
     vi.stubGlobal("fetch", async () => ({ ok: false, json: async () => { throw new Error("nope"); } }) as unknown as Response);
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await expect(flushShown(T)).resolves.toBeUndefined();
     expect(shownSampleRate()).toBe(DEFAULT_SHOWN_SAMPLE);
   });
@@ -199,7 +215,7 @@ describe("it must never be visible to a rider", () => {
   it("ignores a garbage sample rate", async () => {
     alwaysSampled();
     vi.stubGlobal("fetch", async () => ({ ok: true, json: async () => ({ sample: "lots" }) }) as unknown as Response);
-    noteShown([arrival()], T);
+    noteShown([arrival()], "trip", T);
     await flushShown(T);
     expect(shownSampleRate()).toBe(DEFAULT_SHOWN_SAMPLE);
   });
@@ -213,7 +229,7 @@ describe("it must never be visible to a rider", () => {
   it("skips a nonsense arrival rather than throwing in the render path", () => {
     alwaysSampled();
     expect(() =>
-      noteShown([arrival({ eta: Number.NaN }), arrival({ eta: -1 })], T),
+      noteShown([arrival({ eta: Number.NaN }), arrival({ eta: -1 })], "trip", T),
     ).not.toThrow();
     expect(pendingCount()).toBe(0);
   });

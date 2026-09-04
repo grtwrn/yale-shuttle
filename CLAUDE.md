@@ -748,6 +748,27 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   is the stationary half of the ambiguity, which no geometry can settle —
   42.8% of Purple's ambiguous polls, 23.2% of Green's; it is the estimator
   rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
+- **There is ONE estimator now, and there were two until 2026-09-04.** The
+  route cards on the Map tab (`StopList`) carried their own inline arithmetic —
+  nearest stop by squared lat/lon DEGREE delta as the anchor, a bare sum of
+  segment averages as the number, a de-duplicated stop list. Every fix in this
+  section had gone to `computeUpcomingArrivals` only, because rider reports
+  arrive tagged `view=trip`. Measured over a day (`docs/card-vs-trip.md`,
+  948,072 paired rows) the two surfaces printed the same minute on 14.4% of
+  rows and were five or more minutes apart on 36.8%. The number that decided
+  the merge was not accuracy but the SEQUENCE: the card's ETA was not a
+  function of `now` at all, so it was **frozen on 89.3% of polls where the bus
+  had demonstrably moved** and then fell by a whole hop at once — the
+  operator's founding complaint, on the surface nothing had touched. After:
+  10.4% when this was first measured, and **16.7% re-measured on top of #119**
+  — the rise is that PR's non-increasing standing ceiling doing its job, which
+  deliberately HOLDS a number flat rather than letting it climb while a bus
+  sits, so some of what this metric calls "frozen" is now the intended
+  plateau. Read the two together, not as a regression.
+  `StopList` now makes ONE shared `computeUpcomingArrivals` call over
+  every stop (0.93 ms; fifteen per-line calls would be 6.2 ms) and anchors
+  through `anchorIndexOnList`. **Do not add a second estimator back** — if a
+  new surface needs an ETA, it calls that function.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
 - `predictions_log` now HAS a writer (see "What riders were told" below). Until
