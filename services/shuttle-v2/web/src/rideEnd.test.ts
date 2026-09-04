@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -178,6 +181,70 @@ describe("the ride still ends when it should", () => {
 
   it("ignores a junk distance rather than reading it as far away", () => {
     const d = rideEndDecision(onBus({ distanceM: Number.NaN, streak: OFF_BUS_STRIKES - 1 }));
+    expect(d.end).toBe(false);
+    expect(d.streak).toBe(0);
+  });
+});
+
+/**
+ * A GHOST MUST NOT REACH THIS DECISION (2026-09-04).
+ *
+ * `/api/buses` now carries buses that have stopped reporting for up to ten
+ * minutes, flagged with `offline_since` and otherwise their last fix verbatim
+ * (web/src/ghost.ts). Fed to `rideEndDecision` that is not a harmless extra
+ * row — it is report #96 rebuilt from new parts:
+ *
+ *  - the frozen coordinate keeps `busLastSeenMs` fresh, so `BUS_ABSENT_MS`
+ *    never starts counting and a ride outlives the service that ended under
+ *    it; and, much worse,
+ *  - `distanceM` is measured from the rider to where the bus WAS. A rider
+ *    still perfectly happily aboard rides away from that point, clears
+ *    `OFF_BUS_M` on three consecutive checks, and the app retires their live
+ *    ride — the exact complaint #96 filed ("I was riding a bus … and then lost
+ *    my live ride").
+ *
+ * The decision itself is pure and cannot see the flag, so the guard is at the
+ * call site: `TransitMap` derives `reportingBuses` and the ride effect reads
+ * that. This asserts the wiring, because no unit test of this module can.
+ */
+describe("the ride effect never sees a bus that stopped reporting", () => {
+  const src = readFileSync(
+    fileURLToPath(new URL("./TransitMap.tsx", import.meta.url)), "utf8",
+  );
+
+  it("derives reportingBuses by dropping the ghosts", () => {
+    expect(src).toContain(
+      "const reportingBuses = useMemo(() => buses.filter((b) => b.offline_since == null), [buses]);",
+    );
+  });
+
+  it("looks the ride's bus up in reportingBuses, not in buses", () => {
+    // The line that feeds `rideEndDecision({ bus, busLastSeenMs })`.
+    expect(src).toContain(
+      "? reportingBuses.find((b) => norm(b.bus_name) === norm(boardedRide.busName)",
+    );
+  });
+
+  // The same reasoning, one layer out: a rider ABOARD is exactly the case
+  // where a frozen coordinate is most convincing and most wrong.
+  it("does not offer a ride on a bus that stopped reporting", () => {
+    expect(src).toContain("b.offline_since == null\n      );");
+  });
+
+  // Sanity on the pure function itself: with the bus absent (which is what the
+  // guard produces for a ghost) a rider's own movement earns no strike.
+  it("charges no strike on a poll its bus is missing from", () => {
+    const d = rideEndDecision({
+      now: 1_000_000,
+      startedAt: 1_000_000 - 60_000,
+      bus: null,
+      busLastSeenMs: 1_000_000 - 60_000,
+      user: { lat: 41.31, lon: -72.93 },
+      fixAgeMs: 1_000,
+      hidden: false,
+      streak: OFF_BUS_STRIKES - 1,
+      distanceM: null,
+    });
     expect(d.end).toBe(false);
     expect(d.streak).toBe(0);
   });

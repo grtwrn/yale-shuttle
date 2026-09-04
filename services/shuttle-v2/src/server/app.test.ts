@@ -293,21 +293,54 @@ describe("GET /api/buses", () => {
   });
 
   // The version key alone isn't enough: during an upstream outage no poll
-  // lands, so the version never moves — but getLiveBuses() still ages buses
-  // out against the clock, and a version-only cache would serve ghosts.
-  it("drops buses that age out with no further polls", async () => {
-    observe(7, Date.now());
+  // lands, so the version never moves — but the payload still ages buses out
+  // against the clock, and a version-only cache would serve stale positions
+  // as live ones.
+  //
+  // A bus past LIVE_BUS_TTL_MS is no longer LIVE, and until 2026-09-04 that
+  // also meant it stopped existing — which is what jumped a rider's countdown
+  // from 8 min to 42 with no explanation when Red #304 went quiet. It is now
+  // carried as a GHOST, flagged with `offline_since` and nothing else changed,
+  // until GHOST_BUS_TTL_MS. This test pins both ends of that window because
+  // the second one is what stops a ghost becoming a permanent phantom.
+  it("keeps a bus that stops reporting as a flagged ghost, then drops it", async () => {
+    const t0 = Date.now();
+    observe(7, t0);
     const before = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
     expect(before.buses).toHaveLength(1);
 
     vi.useFakeTimers();
     try {
-      vi.setSystemTime(Date.now() + 5 * 60_000); // past LIVE_BUS_TTL_MS
-      const after = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
-      expect(after.buses).toEqual([]);
+      // Past LIVE_BUS_TTL_MS (120 s) and inside GHOST_BUS_TTL_MS (10 min).
+      vi.setSystemTime(t0 + 5 * 60_000);
+      const ghosted = (await (await app.request("/api/buses")).json()) as {
+        buses: Array<{ bus_id: number; offline_since?: number; lat: number }>;
+      };
+      expect(ghosted.buses.map((b) => b.bus_id)).toEqual([7]);
+      // `offline_since` IS the last fix's instant — the answer to "when did
+      // the signal go" — and the position is that fix verbatim, unmoved.
+      expect(ghosted.buses[0]!.offline_since).toBe(t0);
+      expect(ghosted.buses[0]!.lat).toBe(before.buses[0] && (before.buses[0] as { lat: number }).lat);
+
+      // Past GHOST_BUS_TTL_MS: the memory expires and the bus is gone, which
+      // is the state the app showed all along before ghosts existed.
+      vi.setSystemTime(t0 + 11 * 60_000);
+      const gone = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
+      expect(gone.buses).toEqual([]);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // A live bus carries NO `offline_since`, so `offline_since == null` is the
+  // whole test a client needs for "this bus is reporting" — a flag that was
+  // sometimes absent and sometimes false would invite `!b.offline_since`.
+  it("never puts offline_since on a bus that is reporting", async () => {
+    observe(7, Date.now());
+    const body = (await (await app.request("/api/buses")).json()) as {
+      buses: Array<Record<string, unknown>>;
+    };
+    expect(body.buses[0]).not.toHaveProperty("offline_since");
   });
 });
 

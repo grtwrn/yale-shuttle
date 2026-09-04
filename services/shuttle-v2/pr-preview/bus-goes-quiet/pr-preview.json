@@ -1,0 +1,70 @@
+{
+  "caption": "Red #304 stops reporting while approaching the rider's stop. The row keeps its place, says in the past tense what it promised and when the signal went, and names the next confirmed bus — instead of silently handing the countdown to a bus a loop away.",
+  "views": [
+    "trip"
+  ],
+  "trip": {
+    "board": 48,
+    "dest": 72
+  },
+  "mock": {
+    "/api/buses": [
+      {
+        "untilMs": 22000,
+        "$patch": {
+          "buses": [
+            {
+              "bus_id": 65960,
+              "bus_name": "#304",
+              "route_id": 3,
+              "heading": 20,
+              "lat": 41.31532,
+              "lon": -72.92455,
+              "last_stop_id": 120
+            },
+            {
+              "bus_id": 65956,
+              "bus_name": "#310",
+              "route_id": 3,
+              "heading": 30,
+              "lat": 41.305963,
+              "lon": -72.925461,
+              "last_stop_id": 30
+            }
+          ]
+        }
+      },
+      {
+        "$patch": {
+          "buses": [
+            {
+              "bus_id": 65960,
+              "bus_name": "#304",
+              "route_id": 3,
+              "heading": 20,
+              "lat": 41.31532,
+              "lon": -72.92455,
+              "last_stop_id": 120,
+              "offline_since": "${now-150000}"
+            },
+            {
+              "bus_id": 65956,
+              "bus_name": "#310",
+              "route_id": 3,
+              "heading": 30,
+              "lat": 41.305963,
+              "lon": -72.925461,
+              "last_stop_id": 30
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "wait": 32000
+    }
+  ],
+  "focus": "signal lost"
+}

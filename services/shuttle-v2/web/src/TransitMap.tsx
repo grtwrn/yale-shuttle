@@ -17,7 +17,7 @@ import {
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import {
-  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec, splitServedForRoute,
+  computeUpcomingArrivals, nextArrivalAfterPinned, reportingOnly, shownStandSec, splitServedForRoute,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
@@ -25,7 +25,7 @@ import {
 // no effect and no dependency array to this component.
 import { noteShown } from "./shownLog";
 import {
-  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  fmtBusPair, fmtClock, fmtMin, fmtSignalLost, fmtWait, fmtWalk, fmtWasDue, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -1344,13 +1344,19 @@ const AllRoutesMap: FC<{
   // with the bus number inside, a direction arrow orbiting the disc by
   // heading (the disc itself stays upright), and a pulse ring when the bus is
   // dwelling at a stop so standing buses read differently from moving ones.
-  const busIcon = (color: string, headingDeg: number, label: string, dwelling: boolean) => {
+  // `offline`: a bus that has stopped reporting is drawn where it was LAST
+  // SEEN, which is not where it is. Greyed and half-transparent, with the
+  // dwell pulse suppressed — an animation on a frozen marker says "live" as
+  // loudly as any colour does. Same visual vocabulary as the "just passed"
+  // marker (grey + 0.55 opacity) that already means "this is not current".
+  const busIcon = (color: string, headingDeg: number, label: string, dwelling: boolean, offline = false) => {
     const fontSize = label.length >= 3 ? 9 : 11;
+    if (offline) color = "#9e9e9e";
     return L.divIcon({
       className: "bus-marker",
       html: `
-        <div style="width:44px;height:44px;position:relative;">
-          ${dwelling ? `<div style="position:absolute;inset:4px;border:2px solid ${color};border-radius:50%;opacity:0.35;animation:shuttlePulse 1.8s ease-out infinite;"></div>` : ""}
+        <div style="width:44px;height:44px;position:relative;opacity:${offline ? "0.55" : "1"};">
+          ${dwelling && !offline ? `<div style="position:absolute;inset:4px;border:2px solid ${color};border-radius:50%;opacity:0.35;animation:shuttlePulse 1.8s ease-out infinite;"></div>` : ""}
           <div style="position:absolute;inset:0;transform:rotate(${Math.round(headingDeg)}deg);">
             <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${color};filter:drop-shadow(0 -1px 1px rgba(0,0,0,0.4));"></div>
           </div>
@@ -1461,13 +1467,21 @@ const AllRoutesMap: FC<{
       const color = routeColorFor(b.route_id);
       const label = b.bus_name.replace(/^#/, "");
       const dwelling = b.at_stop_id != null;
+      const offline = b.offline_since != null;
       const cfg = ROUTE_LISTS.find((c) => c.busRouteIds.includes(b.route_id));
       L.marker([b.lat, b.lon], {
-        icon: busIcon(color, b.heading ?? 0, label, dwelling),
-        keyboard: false, zIndexOffset: 1000,
+        icon: busIcon(color, b.heading ?? 0, label, dwelling, offline),
+        // Below every live bus. A marker that is only a memory must never
+        // cover one that is a measurement.
+        keyboard: false, zIndexOffset: offline ? 900 : 1000,
       })
         .bindTooltip(() => {
           let tip = `${b.bus_name} · ${cfg?.label ?? `Route ${b.route_id}`}`;
+          if (b.offline_since != null) {
+            // The one thing worth saying about a marker that is not where the
+            // bus is: when we last heard from it.
+            return `${tip} · ${fmtSignalLost(Math.max(0, (Date.now() - b.offline_since) / 1000))}`;
+          }
           if (b.at_stop_id != null && b.at_stop_since) {
             const minAt = Math.round(Math.max(0, (Date.now() - new Date(b.at_stop_since + "Z").getTime()) / 60000));
             if (minAt > 0) tip += ` · at stop ${minAt} min`;
@@ -2064,8 +2078,15 @@ const TripPlanner: FC<{
       // next bus even though you could board the one right in front of you.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
+      // `offline_since == null`: what follows tells the rider a bus is parked
+      // at their stop right now and prices the wait at zero. A bus that has
+      // stopped reporting carries its last fix verbatim, `at_stop_id` and all,
+      // so it looks identical here — and may have left minutes ago. A ghost is
+      // allowed to remember a promise (ghost.ts); it is never allowed to make
+      // this one.
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId)
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id)
+            && b.at_stop_id === o.boardStopId && b.offline_since == null)
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2076,7 +2097,11 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, computedAtMs: nowMs,
+          // `busOfflineSince: undefined` is not tidiness. `...o` carries the
+          // previous poll's fields, and this branch has just PROVED the bus is
+          // reporting and standing at the stop — a ghost flag surviving here
+          // would badge "signal lost" on a bus in front of the rider.
+          busEtaSec: 0, computedAtMs: nowMs, busOfflineSince: undefined,
         };
       }
 
@@ -2109,6 +2134,10 @@ const TripPlanner: FC<{
       return {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
         busEtaSec: match.eta, computedAtMs: nowMs,
+        // Follows `match`, the bus the row counts down to — never `boardable`,
+        // which is by construction a bus that IS reporting. Undefined on every
+        // ordinary poll, so `...o` cannot leave a stale flag behind.
+        busOfflineSince: match.offlineSince,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2240,8 +2269,12 @@ const TripPlanner: FC<{
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
+      // `offline_since == null`: this offers the rider a bus to BOARD. A
+      // ghost's `at_stop_id` is its last fix's, and it may have pulled away
+      // minutes ago (web/src/ghost.ts).
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
+        && b.offline_since == null
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
@@ -2262,8 +2295,12 @@ const TripPlanner: FC<{
       if (o.mode !== "shuttle") continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
+      // A ghost is where a bus WAS. A rider standing near that coordinate is
+      // not evidence they are aboard anything, and pinning a live ride to a
+      // bus that stopped reporting is the worst version of this offer.
       const busNear = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) &&
+        b.offline_since == null &&
         b.lat && b.lon &&
         haversineMeters(userLatLon, { lat: b.lat, lon: b.lon }) < 100
       );
@@ -3412,14 +3449,29 @@ const TripPlanner: FC<{
                 segCoords,
                 road,
                 approach,
-                bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
-                passedBus: passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
+                // A bus that has stopped reporting is drawn through the DIM
+                // slot, which `CombinedTripMap` already greys and drops behind
+                // the live markers — the same vocabulary the "just passed"
+                // marker uses, and for the same reason: this is where the bus
+                // WAS, not where it is.
+                bus: busMatch && o.busOfflineSince == null
+                  ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
+                passedBus: busMatch && o.busOfflineSince != null
+                  ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) }
+                  : passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
                 // The bus's own arrival at the board stop, counted down from
                 // when it was computed. (walk + wait) is NOT that number:
                 // waitSec clamps at 0 when the bus beats the rider there, so
                 // the sum froze at the walk time — report #48. Rider steps
                 // off at total minus the trailing walk.
-                boardEta: o.departed ? null : fmtMin(
+                // A GHOST GETS NO CHIP. A map chip has room for one number and
+                // no room to say it is a memory, so "(R) 2 min" over the board
+                // stop would read as a live board time for a bus that stopped
+                // reporting — the frozen value ticking down to "now" as the
+                // clock runs. The card below carries the whole story ("was due
+                // in 2 min · signal lost 3 min ago · next bus in 9 min"), and
+                // that is where it belongs.
+                boardEta: o.departed || o.busOfflineSince != null ? null : fmtMin(
                   remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
@@ -3597,8 +3649,11 @@ const TripPlanner: FC<{
               // How many buses are really on this line — the same on-route
               // test the pin uses, so a depot ghost cannot make "2 buses out"
               // of one. The last-bus warning below reads this.
+              // LIVE count, so a ghost cannot make a line look staffed: this
+              // feeds `lastBusVerdict`, i.e. "is this the last one tonight".
               const liveCount = buses.filter((b) =>
-                cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
+                cfg.busRouteIds.includes(b.route_id) && b.offline_since == null
+                && isBusOnRoute(b, allStops, stopCoords),
               ).length;
               return { busMatch, stopsAway, normBus, cfg, liveCount };
             })();
@@ -3612,9 +3667,24 @@ const TripPlanner: FC<{
             // beat the rider to the stop, which froze the readout at the
             // constant walk time ("in 1:49" for a full minute) while the bus
             // visibly closed in — report #48.
+            // A GHOST'S NUMBER DOES NOT TICK. `remainingSec` exists to keep a
+            // live countdown moving between polls (report #48); applied to a
+            // bus that has stopped reporting it would walk a frozen memory
+            // down towards zero and arrive at "now" for a bus nobody can see.
+            // So the elapsed-time subtraction is skipped exactly when there is
+            // no longer any evidence that time is passing FOR THE BUS.
+            const busOffline = o.mode === "shuttle" ? o.busOfflineSince ?? null : null;
             const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
-              ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
+              ? (busOffline !== null
+                  ? (o.busEtaSec ?? o.walkToSec + o.waitSec)
+                  : remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs))
               : null;
+            // `Date.now()` at render, not a memoized stamp: this row re-renders
+            // on every poll, and "3 min ago" only has to be right to the
+            // minute. It is the ONE quantity on a ghost row that legitimately
+            // advances with the clock — time since we last heard from the bus
+            // is a fact about us, not a prediction about it.
+            const signalLostSec = busOffline !== null ? Math.max(0, (Date.now() - busOffline) / 1000) : null;
             // Is this the last one, and will there be another? Judged
             // against the PUBLISHED close (the same `route_hours` the
             // "Runs …" caption shows), one headway, and the live count —
@@ -3632,21 +3702,45 @@ const TripPlanner: FC<{
                 })
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
-            // riders judge "can I skip this one?" at a glance. Strictly later
-            // than the pinned arrival so an earlier, uncatchable bus never
-            // masquerades as "next"; the same vehicle a loop later counts.
-            const nextArrLive = busEtaLive !== null && !o.departed
-              ? nextArrivalAfterPinned(
-                  computeUpcomingArrivals(
+            // riders judge "can I skip this one?" at a glance.
+            //
+            // `reportingOnly` is load-bearing rather than defensive: this
+            // figure is what a rider falls back on, and when the pinned bus
+            // has gone quiet it is the WHOLE remaining answer — "#304 was due
+            // in 8 min, signal lost 3 min ago · next bus in 42 min". It has to
+            // name a bus somebody can still see.
+            //
+            // WHICH bus is "next" then depends on whether the pin is still a
+            // bus at all, and the two questions have different answers:
+            //
+            //  - A LIVE pin: the one strictly LATER than it, so an earlier,
+            //    uncatchable bus never masquerades as "next" and the same
+            //    vehicle a loop later still counts. That is
+            //    `nextArrivalAfterPinned`, and the pinned entry is excluded by
+            //    identity rather than by a margin (see arrivals.ts).
+            //  - A GHOST: the soonest confirmed bus, full stop. The "strictly
+            //    later" rule inverts into a lie here, because the ghost is not
+            //    in this list at all and its eta is a frozen memory rather
+            //    than a bus's position — so "later than the memory" can skip a
+            //    real bus that is genuinely sooner. A ghost promising 12 min
+            //    beside a confirmed bus 9 min out printed "next bus in 40 min",
+            //    naming that same bus's NEXT LAP while it was nine minutes
+            //    away. (Beyond `PIN_SWITCH_MARGIN_SEC` the row switches to it
+            //    outright and there is no ghost; this is the window below.)
+            const nextArrLive = busEtaLive === null || o.departed
+              ? null
+              : (() => {
+                  const confirmed = reportingOnly(computeUpcomingArrivals(
                     // dwellTimes matters here: #32 made a dwell able to cancel
                     // the waiting inside a segment, and hoisting this call must
                     // not quietly drop that argument.
                     [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-                  ).filter((a) => a.routeLabel === o.routeLabel),
-                  o.busName,
-                  busEtaLive,
-                )
-              : null;
+                  )).filter((a) => a.routeLabel === o.routeLabel);
+                  if (busOffline !== null) {
+                    return [...confirmed].sort((a, b) => a.eta - b.eta)[0] ?? null;
+                  }
+                  return nextArrivalAfterPinned(confirmed, o.busName, busEtaLive);
+                })();
             // Whether line 2's left column draws the trip's legs. EVERY
             // collapsed shuttle row has one: the ride. This used to also
             // require a walk at one end or the other, so a rider already at
@@ -3745,7 +3839,7 @@ const TripPlanner: FC<{
                             minWidth: 0, overflow: "hidden",
                             textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>
-                            {fmtBusPair(busEtaLive, nextArrLive?.eta)}
+                            {busOffline !== null ? fmtWasDue(busEtaLive) : fmtBusPair(busEtaLive, nextArrLive?.eta)}
                           </span>
                         )}
                       </span>
@@ -3908,6 +4002,27 @@ const TripPlanner: FC<{
                   // feeds the ETAs themselves.
                   return (
                     <>
+                      {/* THE BUS WENT QUIET — and the next confirmed one, in
+                          the same breath. This sentence is the other half of
+                          the frozen "was due in 15 min" above it: on its own
+                          that number is a memory with no advice attached, and
+                          a rider needs to know both that #304 has gone off the
+                          air AND that #310 is 42 min out before they can
+                          choose to wait or walk. Deleting the ghost gave them
+                          only the 42 and no idea why (Red, 2026-09-04).
+                          `nextArrLive` is `reportingOnly`, so the bus named
+                          here is always one somebody can still see. */}
+                      {signalLostSec !== null && !o.departed && (
+                        <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4, marginBottom: 2 }}>
+                          📡 #{normBus(o.busName)} — {fmtSignalLost(signalLostSec)}
+                          {/* The sentence may wrap — it is prose, not one of the
+                              right-hand clock figures — but a number must never
+                              be split from its unit across the break. */}
+                          {nextArrLive ? (
+                            <> · <span style={{ whiteSpace: "nowrap" }}>next bus in {fmtMin(nextArrLive.eta)}</span></>
+                          ) : null}
+                        </div>
+                      )}
                       {o.missedBus && !o.departed && (
                         <div style={{ fontSize: 13, color: "#C62828", fontWeight: 600, lineHeight: 1.4, marginBottom: 2 }}>
                           {/* Covers both "already passed" and "will reach the
@@ -4531,16 +4646,19 @@ const TripPlanner: FC<{
           chips are training wheels — once the rider has their own saved
           or recent destinations, those take the space instead. */}
       {!options && (() => {
-        const activeRoutes = ROUTE_LISTS.filter((c) => buses.some((b) => c.busRouteIds.includes(b.route_id)));
+        // "running now" means REPORTING now — a bus that has gone quiet is
+        // exactly the one a rider must not be told is running.
+        const running = buses.filter((b) => b.offline_since == null);
+        const activeRoutes = ROUTE_LISTS.filter((c) => running.some((b) => c.busRouteIds.includes(b.route_id)));
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, color: buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
-              {buses.length > 0
-                ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
+            <div style={{ fontSize: 13, color: running.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
+              {running.length > 0
+                ? `🚌 ${running.length} shuttle${running.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
                 : "😴 No shuttles running right now"}
             </div>
-            {firstTimer && buses.length > 0 && (
+            {firstTimer && running.length > 0 && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
                 Pick a destination — we compare walking against every shuttle.
               </div>
@@ -5127,9 +5245,13 @@ const StopList: FC<{
       for (const sid of stops) targets.push(sid);
     });
 
-    const live = computeUpcomingArrivals(
+    // `reportingOnly`: a route card answers "which bus is confirmed to come
+    // next", with no pin and no promise behind it, so a bus that has stopped
+    // reporting has nothing to say here — and its frozen number would be
+    // indistinguishable from a live one on this row (arrivals.ts).
+    const live = reportingOnly(computeUpcomingArrivals(
       targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
-    );
+    ));
     // Sorted by eta ascending, so the first entry for a (line, stop) is this
     // lap and any later one is the same vehicle coming round again. A card row
     // wants the former.
@@ -5623,13 +5745,19 @@ const RideRouteMap: FC<{
 
   // Same bus disc as AllRoutesMap (route-colored, number inside, heading arrow,
   // pulse when dwelling).
-  const busIcon = (color: string, headingDeg: number, label: string, dwelling: boolean) => {
+  // `offline`: a bus that has stopped reporting is drawn where it was LAST
+  // SEEN, which is not where it is. Greyed and half-transparent, with the
+  // dwell pulse suppressed — an animation on a frozen marker says "live" as
+  // loudly as any colour does. Same visual vocabulary as the "just passed"
+  // marker (grey + 0.55 opacity) that already means "this is not current".
+  const busIcon = (color: string, headingDeg: number, label: string, dwelling: boolean, offline = false) => {
     const fontSize = label.length >= 3 ? 9 : 11;
+    if (offline) color = "#9e9e9e";
     return L.divIcon({
       className: "bus-marker",
       html: `
-        <div style="width:44px;height:44px;position:relative;">
-          ${dwelling ? `<div style="position:absolute;inset:4px;border:2px solid ${color};border-radius:50%;opacity:0.35;animation:shuttlePulse 1.8s ease-out infinite;"></div>` : ""}
+        <div style="width:44px;height:44px;position:relative;opacity:${offline ? "0.55" : "1"};">
+          ${dwelling && !offline ? `<div style="position:absolute;inset:4px;border:2px solid ${color};border-radius:50%;opacity:0.35;animation:shuttlePulse 1.8s ease-out infinite;"></div>` : ""}
           <div style="position:absolute;inset:0;transform:rotate(${Math.round(headingDeg)}deg);">
             <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid ${color};filter:drop-shadow(0 -1px 1px rgba(0,0,0,0.4));"></div>
           </div>
@@ -5734,7 +5862,7 @@ const RideRouteMap: FC<{
       if (!cfg.busRouteIds.includes(b.route_id)) continue;
       const isMine = normBus(b.bus_name) === normBus(ride.busName);
       L.marker([b.lat, b.lon], {
-        icon: busIcon(ride.color, b.heading ?? 0, b.bus_name.replace(/^#/, ""), b.at_stop_id != null),
+        icon: busIcon(ride.color, b.heading ?? 0, b.bus_name.replace(/^#/, ""), b.at_stop_id != null, b.offline_since != null),
         keyboard: false, zIndexOffset: isMine ? 1100 : 1000, opacity: isMine ? 1 : 0.5,
       }).bindTooltip(isMine ? `${b.bus_name} · your bus` : b.bus_name, { direction: "top", offset: [0, -16] }).addTo(grp);
     }
@@ -5811,9 +5939,11 @@ const RideStopList: FC<{
 
   let etaSec: number | null = null;
   if (bus) {
-    const arr = computeUpcomingArrivals(
+    // The rider is already aboard; a ghost of some other bus is not an answer
+    // to "when do I get off" (arrivals.ts, `reportingOnly`).
+    const arr = reportingOnly(computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-    );
+    ));
     // The ride page's countdown to the alight stop. Same estimator, different
     // population — one stop the rider is already travelling to — so it says so.
     noteShown(arr, "ride");
@@ -5962,9 +6092,11 @@ const OnBusBanner: FC<{
 
   let etaSec: number | null = null;
   if (bus) {
-    const arr = computeUpcomingArrivals(
+    // The rider is already aboard; a ghost of some other bus is not an answer
+    // to "when do I get off" (arrivals.ts, `reportingOnly`).
+    const arr = reportingOnly(computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-    );
+    ));
     noteShown(arr, "ride");
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
@@ -6088,6 +6220,28 @@ const OnBusBanner: FC<{
 
 const TransitMap: FC = () => {
   const [buses, setBuses] = useState<BusData[]>([]);
+  /**
+   * THE BUSES THAT ARE ACTUALLY REPORTING — the default for everything below.
+   *
+   * `buses` now also carries GHOSTS: vehicles that stopped reporting, held for
+   * up to ten minutes with `offline_since` set and their last fix otherwise
+   * verbatim (web/src/ghost.ts). That is what makes one dangerous to a
+   * consumer that does not expect it — a ghost is indistinguishable from a
+   * live bus standing perfectly still at a coordinate it left minutes ago.
+   *
+   * So the ghost-carrying list goes to exactly three places, each of which
+   * knows what it is holding: `TripPlanner`, whose pinned row is the whole
+   * point, and the two Leaflet maps, which grey the marker. Everything else —
+   * "is this route running", the shuttle count, the schematic markers, the
+   * route cards, the on-bus views and `rideEndDecision` — reads this list.
+   *
+   * `rideEndDecision` is the one that would have broken loudest. It retires a
+   * ride when the rider is over 300 m from their own bus three checks running;
+   * measured against a FROZEN position, a rider still happily aboard drifts
+   * past 300 m and the ride ends under them. That is report #96's failure mode
+   * and this list is what keeps it fixed.
+   */
+  const reportingBuses = useMemo(() => buses.filter((b) => b.offline_since == null), [buses]);
   const [routeStops, setRouteStops] = useState<Record<string, number[]>>({});
   const [stopNames, setStopNames] = useState<Record<number, string>>({});
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
@@ -6175,7 +6329,7 @@ const TransitMap: FC = () => {
   // running the filter is moot, so fall back to showing everything
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
-  const activeFilter = activeOnly && buses.length > 0;
+  const activeFilter = activeOnly && reportingBuses.length > 0;
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
   // /api/report endpoint as the per-route report button, tagged
@@ -6554,7 +6708,7 @@ const TransitMap: FC = () => {
     const cfg = ROUTE_LISTS.find((c) => c.label === boardedRide.routeLabel);
     const norm = (s: string) => s.replace(/^#/, "");
     const bus = cfg
-      ? buses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
+      ? reportingBuses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
       : undefined;
     const positioned = bus && bus.lat && bus.lon ? { lat: bus.lat, lon: bus.lon } : null;
     const decision = rideEndDecision({
@@ -6581,7 +6735,7 @@ const TransitMap: FC = () => {
       } catch { /* blocked */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
+  }, [reportingBuses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
   const [stopGroups, setStopGroups] = useState<StopGroup[]>(() => {
     try {
       const saved = localStorage.getItem("shuttle-stop-groups");
@@ -6694,7 +6848,7 @@ const TransitMap: FC = () => {
     }
     const next = new Set<string>();
     for (const cfg of ROUTE_LISTS) {
-      const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+      const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
       const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
       if (hasBuses && isFav) continue; // keep visible
@@ -6702,7 +6856,7 @@ const TransitMap: FC = () => {
       if (toggle) next.add(toggle);
     }
     setHiddenRoutes(next);
-  }, [listView, buses, favorites]);
+  }, [listView, reportingBuses, favorites]);
 
   const toggleRoute = (label: string) => {
     setHiddenRoutes((prev) => {
@@ -6863,7 +7017,7 @@ const TransitMap: FC = () => {
       {boardedRide && (
         <OnBusBanner
           ride={boardedRide}
-          buses={buses}
+          buses={reportingBuses}
           stopNames={stopNames}
           stopCoords={stopCoords}
           routeStops={routeStops}
@@ -7002,7 +7156,7 @@ const TransitMap: FC = () => {
           />
           <RideStopList
             ride={boardedRide}
-            buses={buses}
+            buses={reportingBuses}
             stopNames={stopNames}
             stopCoords={stopCoords}
             routeStops={routeStops}
@@ -7109,8 +7263,8 @@ const TransitMap: FC = () => {
               {activeOnly ? "Running now" : "Every route"}
             </button>
             {ROUTE_LISTS.map((cfg) => {
-              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-              if (activeOnly && buses.length > 0 && !hasBuses) return null;
+              const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
+              if (activeOnly && reportingBuses.length > 0 && !hasBuses) return null;
               const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
               if (toggle && mapHidden.has(toggle)) return null;
               return (
@@ -7133,11 +7287,11 @@ const TransitMap: FC = () => {
           </div>
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
-              buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+              buses={reportingBuses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
               routeHours={routeHours} tick={tick}
-              listView="all" activeOnly={activeOnly && buses.length > 0}
+              listView="all" activeOnly={activeOnly && reportingBuses.length > 0}
               // One filter for the page: the chips above already say which
               // lines the rider cares about, and they persist between visits.
               hiddenRoutes={mapHidden}
@@ -7188,7 +7342,7 @@ const TransitMap: FC = () => {
           // TS's flow analysis gives up in a function body this large, so the
           // guard above doesn't narrow; assert what it just proved.
           const ml = matchingList as NonNullable<typeof matchingList>;
-          const hasBuses = buses.some((b) => ml.busRouteIds.includes(b.route_id));
+          const hasBuses = reportingBuses.some((b) => ml.busRouteIds.includes(b.route_id));
           const mlRid = ml.routeIds[0];
           const isFav = mlRid !== undefined && favorites.has(mlRid);
           if (listView === "all" && activeOnly && !hasBuses) continue;
@@ -7199,7 +7353,7 @@ const TransitMap: FC = () => {
         for (const cfg of ROUTE_LISTS) {
           const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
           if (toggle !== undefined && hiddenRoutes.has(toggle!)) continue;
-          const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+          const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
           const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
           let show = listView === "all";
@@ -7237,7 +7391,7 @@ const TransitMap: FC = () => {
                     setHiddenRoutes((prev) => {
                       const next = new Set(prev);
                       for (const cfg of ROUTE_LISTS) {
-                        const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+                        const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
                         if (!hasBuses) continue;
                         const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
                         if (toggle) next.delete(toggle);
@@ -7282,7 +7436,7 @@ const TransitMap: FC = () => {
                 for (const cfg of ROUTE_LISTS) {
                   const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
                   if (toggle && hiddenRoutes.has(toggle)) continue;
-                  const hasBus = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+                  const hasBus = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
                   const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
                   let show = listView === "all";
@@ -7297,7 +7451,7 @@ const TransitMap: FC = () => {
                 }
                 return <StationDot key={s.id} station={s} saved={isSaved} routeColors={colors} />;
               })}
-              {buses.filter(isBusVisible).map((bus) => {
+              {reportingBuses.filter(isBusVisible).map((bus) => {
                 const stnKey = stopToStation[bus.last_stop_id];
                 const stn = stnKey ? stationMap.get(stnKey) : undefined;
                 if (!stn) return null;
@@ -7350,7 +7504,7 @@ const TransitMap: FC = () => {
           }}>
             Active
           </button>
-          {activeOnly && buses.length === 0 && (
+          {activeOnly && reportingBuses.length === 0 && (
             <span style={{ fontSize: 11, color: "#78909c", width: "100%" }}>
               No shuttles running right now — showing all routes
             </span>
@@ -7366,7 +7520,7 @@ const TransitMap: FC = () => {
           justifyContent: "center",
         }}>
           {ROUTE_LISTS.map((cfg) => {
-            const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+            const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
             if (activeFilter && !hasBuses) return null;
             const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
             if (toggle && hiddenRoutes.has(toggle)) return null;
@@ -7396,7 +7550,7 @@ const TransitMap: FC = () => {
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
-            buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+            buses={reportingBuses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
             listView={listView} activeOnly={activeFilter}

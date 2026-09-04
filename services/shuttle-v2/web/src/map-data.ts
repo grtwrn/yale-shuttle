@@ -51,6 +51,13 @@ export interface BusData {
    * older than 2026-09-04. See `APPROACH_ZONE_M` in hopPricing.ts.
    */
   stationary_since?: string;
+  /**
+   * Epoch ms of this bus's LAST fix, present only while it has stopped
+   * reporting — so `offline_since == null` is the whole test for "this bus is
+   * live". Everything else on the row is that last fix verbatim and is
+   * therefore stale by however long ago this was. See web/src/ghost.ts.
+   */
+  offline_since?: number;
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────

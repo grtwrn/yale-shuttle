@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
-  departureBetween, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
-  pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
+  departureBetween, feedVanishBetween, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  pairBuses, parseBusEtaText, parseGhostText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 
@@ -1296,5 +1296,190 @@ describe("the destination the canary serves to the app", () => {
       expect(typeof dest.lat).toBe("number");
       expect(typeof dest.lon).toBe("number");
     }
+  });
+});
+
+/**
+ * A BUS THAT LEAVES THE FEED (Red #304, 2026-09-04).
+ *
+ * #304 made its last report at 13:47:51 while closing on Division/Prospect,
+ * and the card moved to #310 a loop away. `departureBetween` cannot see that
+ * — an absent bus is "unknown" to it whether it went quiet at the kerb or
+ * three kilometres out — so the jump was scored as jitter and failed the run.
+ * It was not the app's fault: the bus had gone.
+ */
+describe("feedVanishBetween", () => {
+  it("names the bus that left the feed, nearest first", () => {
+    const before = [{ name: "#304", distM: 609 }, { name: "#310", distM: 2100 }];
+    const after = [{ name: "#310", distM: 1950 }];
+    expect(feedVanishBetween(before, after)).toEqual([{ name: "#304", distM: 609 }]);
+  });
+
+  it("says nothing when every bus is still there", () => {
+    const before = [{ name: "#304", distM: 609 }];
+    expect(feedVanishBetween(before, [{ name: "#304", distM: 420 }])).toEqual([]);
+  });
+
+  // The `#` is cosmetic and `bus_id` is reissued per service block, so the
+  // comparison is on the stripped NAME — the same identity every other
+  // comparison in this file uses.
+  it("matches on the name with the # stripped", () => {
+    expect(feedVanishBetween([{ name: "#304", distM: 10 }], [{ name: "304", distM: 12 }])).toEqual([]);
+  });
+
+  // An empty later reading is what a FAILED POLL looks like, and `feed-error`
+  // deliberately fails nothing. Reading it as "the whole fleet vanished" would
+  // mark every such transition eventful and quietly excuse real jumps.
+  it("does not read an empty reading as the fleet vanishing", () => {
+    expect(feedVanishBetween([{ name: "#304", distM: 10 }], [])).toEqual([]);
+    expect(feedVanishBetween([{ name: "#304", distM: 10 }], undefined)).toEqual([]);
+  });
+
+  it("survives a reading with no resolved board stop", () => {
+    expect(feedVanishBetween([{ name: "#304", distM: null }], [{ name: "#310", distM: null }]))
+      .toEqual([{ name: "#304", distM: null }]);
+  });
+});
+
+describe("a jump with a feed vanishing behind it", () => {
+  const at = (sec) => 1_700_000_000_000 + sec * 1000;
+  const s = (t, raw, buses) => ({
+    atMs: at(t), present: true, eta: parseBusEtaText(`🚌 ${raw}`), missedBus: null, buses,
+  });
+
+  // The archive holds no close-in feed vanish — 26 across 72 runs, the nearest
+  // at 961 m — so this fixture is synthetic and says so, the way `unreachable`
+  // does. The numbers are #304's own: 609 m out, "in <1, 9 min", gone.
+  it("is eventful, so it does not fail a run as jitter", () => {
+    const r = scoreSequence([
+      s(0, "in <1, 9 min", [{ name: "#304", distM: 609, atStop: 27 }, { name: "#310", distM: 2100 }]),
+      s(16, "in 42 min", [{ name: "#310", distM: 1950 }]),
+    ]);
+    const flagged = [...r.transitions, ...r.drops];
+    expect(flagged.length).toBeGreaterThan(0);
+    expect(flagged.every((e) => e.eventful)).toBe(true);
+    expect(r.catastrophicEventless).toBe(0);
+    expect(r.droppedSevereEventless).toBe(0);
+    expect(r.feedVanished).toBeGreaterThan(0);
+  });
+
+  // The same jump with every bus still reporting is still a defect. This is
+  // the guard that the new event does not become a blanket excuse.
+  it("still fails when the bus is right there and the number jumps", () => {
+    const r = scoreSequence([
+      s(0, "in <1, 9 min", [{ name: "#304", distM: 609 }, { name: "#310", distM: 2100 }]),
+      s(16, "in 42 min", [{ name: "#304", distM: 560 }, { name: "#310", distM: 1950 }]),
+    ]);
+    expect(r.droppedSevereEventless + r.catastrophicEventless).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * THE GHOST ROW, READ AS TEXT.
+ *
+ * Every layout change lands a captured-innerText fixture rather than an
+ * argument that the parser is fine — #111 "needed no change" too and blinded
+ * the canary for twelve minutes. This is `document.body.innerText`, CAPTURED
+ * off the built page on 2026-09-04 with `/api/buses` mocked to take Red #304
+ * off the air mid-approach — not typed out from the JSX. The Walk card and the
+ * map overview are in it precisely because they are what the parser has to
+ * walk past.
+ */
+const LIVE_GHOST_ROW = `YALE SHUTTLE
+2:46 PM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☀️
+79°F · Clear · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 1 ROUTE
+▴
+🚌
+🏁 (R) 3:03p
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Red
+was due in 4 min
+17 min
+🚌 7 min
+3:03p
+›
+📡 #304 — signal lost 3 min ago · next bus in 9 min
+🚶 Walk
+37 min
+3:23p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+describe("the countdown slot when the bus has gone quiet", () => {
+  it("reads 'was due in N min' as a promise, not a countdown", () => {
+    expect(parseGhostText("was due in 15 min")).toEqual({
+      wasDue: bucketOf("15"), raw: "was due in 15 min",
+    });
+    expect(parseGhostText("was due now")).toEqual({ wasDue: bucketOf("now"), raw: "was due now" });
+    expect(parseGhostText("was due in <1 min").wasDue).toEqual(bucketOf("<1"));
+  });
+
+  // THE LOAD-BEARING HALF. Feeding a frozen number to `conservativeDrift`
+  // would score the passage of time as the app failing to tick, and a ghosted
+  // stretch would fill a run with reversals for a card behaving as designed.
+  it("is not a countdown", () => {
+    expect(parseBusEtaText("was due in 15 min")).toBeNull();
+    expect(parseGhostText("in 15 min")).toBeNull();
+    expect(parseGhostText("now, then 42 min")).toBeNull();
+  });
+
+  it("finds the ghost row on a real card, with its line and its total", () => {
+    const cards = parseOptions(LIVE_GHOST_ROW);
+    // Two cards and no more: the ghosted Red and the Walk. The map overview's
+    // own "🏁 (R) 3:03p" above them is not a card and must not become one.
+    expect(cards.map((c) => c.routeLabel)).toEqual(["Red", "Walk"]);
+    const red = cards[0];
+    expect(red.eta).toBeNull();               // no live countdown on this card
+    expect(red.ghost.raw).toBe("was due in 4 min");
+    expect(red.signalLost).toBe("📡 #304 — signal lost 3 min ago · next bus in 9 min");
+    // The rest of the card still reads: the total and the arrival clock are
+    // priced on the CONFIRMED bus, so they are ordinary live figures.
+    expect(red.totalMin).toBe(17);
+    expect(red.arriveText).toBe("3:03p");
+  });
+
+  // A run spent watching a ghosted card is the app working, not a blind
+  // scraper. `readings` stays honest (these are not countdowns) and `ghosted`
+  // is what stops `no-countdown` firing on it.
+  it("counts as read without being drift-scored", () => {
+    const at = (sec) => 1_700_000_000_000 + sec * 1000;
+    const ghosted = (t) => ({
+      atMs: at(t), present: true, eta: null,
+      ghost: parseGhostText("was due in 8 min"), missedBus: null, buses: [],
+    });
+    const r = scoreSequence([ghosted(0), ghosted(15), ghosted(30)]);
+    expect(r.readings).toBe(0);
+    expect(r.ghosted).toBe(3);
+    expect(r.transitions).toEqual([]);
+    expect(r.drops).toEqual([]);
   });
 });
