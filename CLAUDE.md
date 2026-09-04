@@ -222,12 +222,12 @@ no rain expected".
 right, and a chevron centred across both:
 
     [Blue Day]  in 3, 21 min                            23 min
-    🚶 5 min › 🚌 12 min › 🚶 3 min · most direct   arrive 10:33a   ›
+    🚶 5 min › 🚌 12 min › 🚶 3 min · most direct         10:33a   ›
 
 The total used to hold the top-left slot with the pill a row below it, so
 picking "the Blue one" off five cards meant reading five durations first.
 The arrival clock then led line 2, which put the two numbers a rider compares
-ACROSS cards — "23 min" and "arrive 10:33a" — on opposite sides of the card,
+ACROSS cards — "23 min" and "10:33a" — on opposite sides of the card,
 never lining up; the operator asked for the swap ("i want the arrive at time
 under the trip length and put the route info under the line name on the
 left"). Both right-hand figures are `flexShrink: 0` and never wrap: **future
@@ -235,6 +235,18 @@ mode prints a RANGE there** ("1:22p – 1:48p"), and if anything has to give it
 is the leg list on the left, which merely runs onto a second line. Measured at
 390 px it does not have to — the widest real card, a Brown with both walks
 and a ride, fits the range on one line.
+
+**The arrival clock carries no word** (operator, 2026-09-04: "remove 'arrive'
+from arrival time and just show the time"). Sitting directly under the
+duration in a right-aligned column, the number says what it is, and live mode
+now agrees with future mode, which always printed a bare range. **That word
+was how the canary recognised a card at all** — `parseOptions` skipped any
+duration line with no `^arrive HH:MMx` beside it — so `IS_ARRIVAL_CLOCK`
+accepts both spellings, and the bare one is anchored at BOTH ends. That
+anchoring is the whole safety: the map overview quotes the very same clock
+values ("(B) 12:31p" is Blue Day's own arrival) and the header prints
+"12:13 PM". Five lines on a captured page match, and they are the five cards
+— asserted from a capture in `canary-metrics.test.mjs`, not argued.
 
 **The chevron is the third column, not the end of line 2** — that slot is the
 arrival clock now. It is decoration: the whole card carries the `onClick`, so
