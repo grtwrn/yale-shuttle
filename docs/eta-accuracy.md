@@ -336,13 +336,11 @@ master wait for wait. Share of riders who saw each thing:
 | **road window only** | **17.4%** | **31.0%** | **5.6%** | **15.2% (4,025)** | **370 s** |
 | selection change only | 24.1% | 40.4% | 7.0% | 20.2% (5,540) | 530 s |
 | both, 30 m band | 17.8% | 31.6% | 5.6% | 15.9% (4,232) | 370 s |
-| both, 80 m band (shipped) | see below | | | | |
+| both, 80 m band | 17.8% | 31.4% | 5.4% | 15.6% (4,148) | 370 s |
 
-The 80 m arm's own rider-sim run was still in flight when this was written; what
-decided the band is `branch-lock` (the lap count, above) and `gps-replay`, where
-80 m and 30 m are the same overall (median 100.4 s both, mean bias −61.0 against
-−58.2) and 80 m is the better of the two on Green (196.8 s / +85.4 against
-198.5 s / +109.1). **Finish that run before treating the band as settled.**
+On the headline shares the 80 m arm is the best of them. **It is also the one
+that fails the per-route split**, which is the whole reason the split is the
+gate — see below.
 
 **The selection change on its own is a LOSS.** That is the finding to keep: with
 the chord window the candidate set frequently does not contain the leg the bus
@@ -396,6 +394,57 @@ points. The window change is not judged here at all. Its evidence is the two
 measurements that need no oracle: **the leg the detector puts the bus on falls
 outside the 150 m window on 19.64% of polls measured to the chord and 3.63%
 measured to the road**, and the rider simulator below.
+
+## THE GATE: it passes on totals and on Green, and FAILS on Purple
+
+`rider-sim`, 28,951 waits paired master → this branch (80 m band), riders with
+each defect FIXED / INTRODUCED. Totals first, then the routes the brief named:
+
+| route | n | strand | jump ≥180 s | reversal | dropped |
+|---|---|---|---|---|---|
+| **ALL** | 28,951 | **466 / 204** | **1568 / 278** | **1715 / 130** | **885 / 152** |
+| Red | 7,216 | 221 / 13 | 938 / 12 | 1197 / 3 | 392 / 1 |
+| Green | 1,528 | 98 / 45 | 103 / 70 | 230 / 31 | 148 / 5 |
+| **Purple** | 2,048 | **65 / 75** | **113 / 125** | 82 / 65 | 123 / 94 |
+| Pink | 2,790 | 55 / 67 | 273 / 64 | 156 / 21 | 148 / 45 |
+| Blue West | 188 | 14 / 0 | 19 / 0 | 22 / 0 | 23 / 0 |
+| Blue Day | 6,554 | 0 / 0 | 77 / 0 | 5 / 0 | 11 / 0 |
+
+Totals pass comfortably and Green passes on all four. **Purple does not**: net
++10 strands and +12 jumps ≥180 s. That is the swap the split exists to expose —
+its headline strand share barely moves (12.0% → 12.3%) and its drops and
+reversals improve, so a totals-only reading would have called this clean.
+
+### And the same split says which half causes it
+
+master → **road window only**, same population:
+
+| route | strand | jump ≥180 s | reversal | dropped |
+|---|---|---|---|---|
+| ALL | 428 / 207 | 1483 / 223 | 1749 / 81 | 953 / 90 |
+| Red | 213 / 48 | 884 / 34 | 1195 / 1 | 371 / 0 |
+| Green | 58 / 27 | 103 / 47 | 234 / 26 | 143 / 9 |
+| **Purple** | **82 / 28** | **157 / 87** | 92 / 53 | 136 / 67 |
+| Pink | 50 / 102 | 288 / 54 | 184 / 1 | 230 / 14 |
+
+**The window alone is strongly positive on Purple** (strand net −54, jumps net
+−70). Adding the selection rule turns those into +10 and +12. The selection
+rule buys Red (strand introduced 48 → 13, jumps introduced 34 → 12) and Pink
+(strand 50/102 → 55/67) and pays for it on Purple.
+
+So the two mechanisms are not merely coupled — they trade against each other by
+route, and `ANCHOR_NEARER_M` at 80 m already spends the fold budget: it puts
+`branch-lock`'s lap count back at master exactly (Purple 22.2%, Green 11.1%),
+so Purple's remaining cost is not the fold and cannot be bought back with a
+wider band.
+
+**Not merged**, per the brief's own instruction: the run is worse on Purple, so
+the table is reported and the change stops here. The decision that needs making
+is whether Red's transformation (938 riders' jumps fixed against 12 introduced,
+221 strands against 13) is worth Purple's +10 strands, or whether the window
+should ship alone — it is the larger effect, it is Purple-positive, and it is
+what fixes the dropped-approaching-bus defect that owns 98.6% of arrival
+withdrawals. `git revert` of the second commit is the whole difference.
 
 **Decided 2026-09-04, so nobody re-imposes it:** the anchor/detector
 disagreement rate is **not a gate on a change to the candidate window**. It rose

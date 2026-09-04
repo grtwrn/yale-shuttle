@@ -754,13 +754,21 @@ and run both scripts; a few minutes each). Findings that constrain changes:
     had them. It is bounded above by #316's own disputes, 113 m and 90 m apart.
     And without any band a bus jittering at a kerb flips the anchor at 96.7% of
     the network's stops.
-  - Together on `gps-replay`: mean bias −88.7 -> −58.2 s, moving-bus next-stop
-    median 47.6 -> 45.2 s, and where the anchor disagrees with the detector
-    −431.8 -> −137.1 s. **Do not read the disagreement RATE as the arbiter on a
-    fold** — it rises on Pink and Purple while their rider error does not. It
-    scores against `nearestStopOnRoute`, which by its own documentation has no
-    direction and no occurrence disambiguation, so on a folding route it cannot
-    tell the two passes apart.
+  - Together on `gps-replay`: mean bias −88.7 -> −61.0 s, moving-bus next-stop
+    median 47.6 -> 45.4 s, and where the anchor disagrees with the detector
+    −431.8 -> −162.5 s. **Do not read the disagreement RATE as the arbiter on a
+    fold** — it rises on Pink and Purple while their rider error does not, it
+    scores against an oracle that is itself a distance to the CHORD, and the
+    operator waived it as a gate on 2026-09-04 (`anchor-sweep.ts`'s header).
+  - **The gate is `rider-sim` paired per route as FIXED/INTRODUCED, never as a
+    total** — and read that way the two halves TRADE BY ROUTE. The window alone
+    is Purple-positive (strand 82 fixed / 28 introduced); adding the selection
+    rule makes it 65/75, while buying Red (strand introduced 48 -> 13) and Pink
+    (50/102 -> 55/67). Purple's headline strand share moves only 12.0 -> 12.3%,
+    so a totals reading calls that clean and it is not. **PR #128 is open and
+    unmerged on exactly this**: the window is the larger, cleaner half, and
+    whether the selection rule is worth Purple is a judgement nobody has made
+    yet.
 - **On an out-and-back, direction of travel picks the branch — and only for a
   bus that is moving.** Green and Purple run out to West Campus and back along
   the same road, so the same coordinates belong to two legs at once; neither
