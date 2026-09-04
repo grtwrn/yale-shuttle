@@ -10,7 +10,7 @@ import type { RawBus, UpstreamClient } from "../collector/upstream.js";
 import { openDb, type DbBundle } from "../db/client.js";
 import type { Route, Stop } from "../schema/api.js";
 
-import { buildApp } from "./app.js";
+import { buildApp, parseShownBatch } from "./app.js";
 import { resetRateLimits } from "./reports.js";
 import {
   createPredictionRecorder,
@@ -91,6 +91,7 @@ const reading = (over: Partial<ShownReading> = {}): ShownReading => ({
   highSec: 360,
   stopsAhead: 1,
   ageMs: 0,
+  surface: "trip",
   ...over,
 });
 
@@ -115,6 +116,16 @@ describe("what gets stored", () => {
     const cols = Object.keys(rows()[0]!);
     // A future column has to argue with this test. Nothing here can identify a
     // browser, a person or a place a rider was standing.
+    //
+    // `surface` argued with it on 2026-09-04 and won. It names the SCREEN
+    // ("trip" / "ride" / "card"), which is a property of the app, not of a
+    // reader: it is deduplicated across every browser exactly as the rest of
+    // the row is, so it still says "at least one client somewhere had this on
+    // that screen". It earns its place because the route cards stopped running
+    // their own estimator that day, and without it their much larger, mostly
+    // far-horizon population would pool with the trip card's and move the
+    // median for reasons that have nothing to do with the estimator
+    // (docs/card-vs-trip.md).
     expect(cols.sort()).toEqual(
       [
         "bus_id",
@@ -128,6 +139,7 @@ describe("what gets stored", () => {
         "predicted_sec",
         "route_id",
         "stops_ahead",
+        "surface",
         "to_stop_id",
       ].sort(),
     );
@@ -179,7 +191,37 @@ describe("what gets stored", () => {
   });
 });
 
-describe("deduplication — one row per (bus, stop, bucket), whoever reports it", () => {
+describe("deduplication — one row per (bus, stop, bucket, screen), whoever reports it", () => {
+  it("keeps the trip card and a route card apart", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    // One vehicle, one stop, one bucket, two screens. Since 2026-09-04 both run
+    // `computeUpcomingArrivals`, so the NUMBER is the same; what differs is the
+    // population each screen samples, and pooling them would move a median for
+    // a reason that has nothing to do with the estimator.
+    rec.record([reading({ surface: "trip" }), reading({ surface: "card" })], ctx());
+    rec.flush();
+    expect(rows()).toHaveLength(2);
+    expect(rows().map((r) => r.surface).sort()).toEqual(["card", "trip"]);
+  });
+
+  it("still collapses two browsers on the SAME screen", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    rec.record([reading({ surface: "card", etaSec: 300 })], ctx());
+    rec.record([reading({ surface: "card", etaSec: 311 })], ctx());
+    rec.flush();
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]!.predicted_sec).toBe(300);
+  });
+
+  it("drops a reading claiming a screen that does not exist", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    // The surface is part of the dedup key, so an unrecognised value would
+    // quietly open a parallel population rather than fail loudly.
+    expect(rec.record([reading({ surface: "everywhere" as never })], ctx())).toBe(0);
+    rec.flush();
+    expect(rows()).toHaveLength(0);
+  });
+
   it("collapses many browsers watching one stop into one row", () => {
     const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
     // Thirty riders, same bucket, slightly different numbers.
@@ -383,6 +425,29 @@ describe("POST /api/shown", () => {
       body: JSON.stringify({ b: "abc123", p: [["40", 2, 300, 240, 360, 1, 0]] }),
     });
     expect(await res.json()).toEqual({ sample: 0 });
+  });
+
+  it("a seven-element reading is a pre-2026-09-04 bundle, and it is a trip-card one", async () => {
+    // Old bundles keep posting for as long as browsers keep them loaded, and
+    // every reading they ever sent came from the trip card. Requiring the
+    // eighth element would have thrown those away for a field whose value is
+    // already known.
+    const res = await post({ b: "abc123", p: [["40", 2, 300, 240, 360, 1, 0]] });
+    expect(res.status).toBe(200);
+    expect(parseShownBatch({ p: [["40", 2, 300, 240, 360, 1, 0]] })[0]!.surface).toBe("trip");
+  });
+
+  it("takes the screen when the bundle names one", () => {
+    expect(parseShownBatch({ p: [["40", 2, 300, 240, 360, 1, 0, "card"]] })[0]!.surface)
+      .toBe("card");
+  });
+
+  it("drops a reading naming a screen that does not exist", () => {
+    // Not "falls back to trip": a client asserting an unknown population would
+    // otherwise land in the trip card's, which is the one every accuracy number
+    // published so far is about.
+    expect(parseShownBatch({ p: [["40", 2, 300, 240, 360, 1, 0, "billboard"]] })).toEqual([]);
+    expect(parseShownBatch({ p: [["40", 2, 300, 240, 360, 1, 0, 7]] })).toEqual([]);
   });
 
   it("shrugs off a malformed body rather than erroring at a rider", async () => {

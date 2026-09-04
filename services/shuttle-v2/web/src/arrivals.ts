@@ -318,6 +318,18 @@ export type UpcomingArrival = {
    * fine and our 8-stop ones are not" and one undifferentiated median.
    */
   stopsAhead: number;
+  /**
+   * TRUE when no hop between the bus and this stop had a calibrated segment —
+   * every one was priced from the route average or from straight-line distance
+   * at `BUS_SPEED_M_S`. The route cards render it as a `~` prefix and a dimmed
+   * number, which is the app telling the rider "this line has not been
+   * measured yet" rather than quietly presenting a guess as a measurement.
+   *
+   * It is a property of the whole chain, not of the first hop: one unmeasured
+   * hop among nine calibrated ones is not what the `~` is for, and a route the
+   * collector has never seen is.
+   */
+  estimated: boolean;
 };
 
 export function computeUpcomingArrivals(
@@ -458,6 +470,8 @@ export function computeUpcomingArrivals(
 
       let cumulative = 0;
       let cumulativeVar = 0;
+      /** Has ANY hop so far come from a calibrated segment? See `estimated`. */
+      let anyMeasured = false;
       const totalStops = stops.length;
       // Walk the loop TWICE so each stop can get two arrivals per bus: the
       // upcoming one and the same vehicle a full lap later. On single-bus
@@ -478,6 +492,7 @@ export function computeUpcomingArrivals(
         if (seg && seg.n >= 1) {
           segAvg = seg.avg;
           segVar = (seg.sd ?? 0) ** 2;
+          anyMeasured = true;
           // A hop is priced at the segment average and nothing else. See
           // WHAT A DWELL STATISTIC ACTUALLY MEASURES above for why the hop is
           // NOT split into a rest plus a drive, and what happened when it was.
@@ -606,6 +621,7 @@ export function computeUpcomingArrivals(
             busName: bus.bus_name.replace("#", ""),
             stopId: sid,
             stopsAhead: step,
+            estimated: !anyMeasured,
           });
         }
       }

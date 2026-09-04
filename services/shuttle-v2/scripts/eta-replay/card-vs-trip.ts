@@ -215,8 +215,26 @@ function cardArrivals(
  * These are the load-bearing lines of StopList; if TransitMap.tsx stops
  * containing them the copy above has drifted and the run is invalid.
  */
+/**
+ * BEFORE_SRC: once `StopList` is merged, the working tree no longer contains
+ * the arithmetic transcribed above and the check below fires — which is the
+ * acceptance signal and the point. To still SCORE the merge, point this at a
+ * checkout of the pre-merge file:
+ *
+ *   mkdir -p /tmp/before && git archive origin/master services/shuttle-v2/web/src/TransitMap.tsx | tar -x -C /tmp/before
+ *   BEFORE_SRC=/tmp/before/services/shuttle-v2/web/src/TransitMap.tsx ...
+ *
+ * The transcription is then verified against the code it CLAIMS to represent
+ * rather than against whatever is checked out, the `card` arm is master's route
+ * cards, and the `trip` arm is this tree's shared estimator — i.e. the merged
+ * route cards, since after the merge the card renders exactly the earliest
+ * `computeUpcomingArrivals` entry per (line, stop). So the two arms are the
+ * paired before and after.
+ */
+const BEFORE_SRC = process.env.BEFORE_SRC ?? null;
+
 function selfcheck(): void {
-  const src = fs.readFileSync(path.join(HERE, "../../web/src/TransitMap.tsx"), "utf8");
+  const src = fs.readFileSync(BEFORE_SRC ?? path.join(HERE, "../../web/src/TransitMap.tsx"), "utf8");
   const must = [
     "const d = dLat * dLat + dLon * dLon;",
     "const gpsStop = nearestRouteStop(bus, cfg.routeIds);",
@@ -231,7 +249,12 @@ function selfcheck(): void {
   const missing = must.filter((m) => !src.includes(m));
   if (missing.length) {
     throw new Error(
-      `card-vs-trip: the StopList transcription has drifted — TransitMap.tsx no longer contains:\n  ${missing.join("\n  ")}`,
+      `card-vs-trip: the StopList transcription has drifted — ${BEFORE_SRC ?? "TransitMap.tsx"} no longer contains:\n  ${missing.join("\n  ")}\n\n`
+      + (BEFORE_SRC
+        ? "BEFORE_SRC must be a checkout of the file the transcription was taken from."
+        : "If StopList has just been MERGED onto computeUpcomingArrivals, this is the\n"
+          + "acceptance signal, not a fault. To score that merge, set BEFORE_SRC to a\n"
+          + "checkout of the pre-merge TransitMap.tsx (see the note above selfcheck)."),
     );
   }
   // and the card must still have no anchor/credit/proration machinery
@@ -272,7 +295,8 @@ const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(1)}%` : "�
 // ---------------------------------------------------------------------------
 
 selfcheck();
-log("selfcheck ok: the StopList transcription still matches TransitMap.tsx");
+log(`selfcheck ok: the StopList transcription matches ${BEFORE_SRC ?? "the working tree's TransitMap.tsx"}`);
+if (BEFORE_SRC) log("BEFORE_SRC set: `card` is master's route cards, `trip` is THIS tree's shared estimator — the paired before/after of the merge");
 
 const captureFiles = (process.env.CAPTURE
   ? process.env.CAPTURE.split(",")
@@ -405,6 +429,9 @@ const states = new Map<string, det.BusState>();
 const livePositions = new Map<string, LivePos>();
 /** buses whose at_stop_id cleared on THIS poll, by bus name */
 let departedThisPoll = new Set<string>();
+/** buses the feed sent a NEW coordinate for on THIS poll, by bus name */
+let movedThisPoll = new Set<string>();
+const lastFix = new Map<string, string>();
 
 function step(poll: PosRow[]): BusData[] {
   const obs = poll.map((p) => ({ busId: p.i, busName: p.b, routeId: p.r, lat: p.lat, lon: p.lon, heading: p.h, lastStopId: p.l, collectedAt: p.t }));
@@ -412,6 +439,15 @@ function step(poll: PosRow[]): BusData[] {
   const plan = det.planTracks(obs);
   det.stepMany(network, states as any, obs, plan);
   departedThisPoll = new Set();
+  movedThisPoll = new Set();
+  for (const o of obs) {
+    // Keyed WITHOUT the `#`: `computeUpcomingArrivals` strips it from
+    // `busName` and the pairing below compares against that.
+    const name = o.busName.replace(/^#/, "");
+    const fix = `${o.lat},${o.lon}`;
+    if (lastFix.get(name) !== undefined && lastFix.get(name) !== fix) movedThisPoll.add(name);
+    lastFix.set(name, fix);
+  }
   for (const o of obs) {
     const key = plan.keys.get(o.busId) ?? o.busName;
     const st = states.get(key);
@@ -454,6 +490,9 @@ interface Bucket {
   seqN: number;
   cardFrozen: number;
   tripFrozen: number;
+  seqMoving: number;
+  cardFrozenMoving: number;
+  tripFrozenMoving: number;
   cardCollapse: number;
   tripCollapse: number;
   cardJump: number;
@@ -465,7 +504,8 @@ const mkBucket = (): Bucket => ({
   screenDelta: [], sameBusDelta: [], minuteDelta: [],
   errCard: [], errCardShown: [], errTrip: [], errAbsPairDelta: [],
   rows: 0, agreeStop: 0, anchorSame: 0, anchorN: 0,
-  seqN: 0, cardFrozen: 0, tripFrozen: 0, cardCollapse: 0, tripCollapse: 0, cardJump: 0, tripJump: 0,
+  seqN: 0, cardFrozen: 0, tripFrozen: 0, seqMoving: 0, cardFrozenMoving: 0, tripFrozenMoving: 0,
+  cardCollapse: 0, tripCollapse: 0, cardJump: 0, tripJump: 0,
 });
 const buckets = new Map<string, Bucket>();
 const B = (k: string): Bucket => {
@@ -625,6 +665,18 @@ for (let pi = 0; pi < polls.length; pi++) {
           b.seqN++;
           if (c.eta === prev.card) b.cardFrozen++;
           if (tr.eta === prev.trip) b.tripFrozen++;
+          // A number that does not move while the BUS does not move is honest.
+          // The defect is a frozen countdown for a bus that is demonstrably
+          // driving, which is what a sum of segment averages from a stop index
+          // must do between anchor changes. Restrict to polls where the feed
+          // sent a NEW coordinate for this vehicle (the feed repeats a position
+          // rather than interpolating — 53.6% of consecutive samples, see
+          // docs/bus-speed.md — so a repeat is not evidence of standing still).
+          if (movedThisPoll.has(cardBus)) {
+            b.seqMoving++;
+            if (c.eta === prev.card) b.cardFrozenMoving++;
+            if (tr.eta === prev.trip) b.tripFrozenMoving++;
+          }
           if (prev.cardMin - cardMin >= 2) b.cardCollapse++;
           if (prev.tripMin - tripMin >= 2) b.tripCollapse++;
           if (Math.abs(c.eta - prev.card) >= 180) b.cardJump++;
@@ -688,7 +740,8 @@ for (const [k, b] of buckets) {
     errCardShown: dist(b.errCardShown),
     errTrip: dist(b.errTrip),
     errAbsPairDelta: dist(b.errAbsPairDelta),
-    seq: { pairs: b.seqN, cardFrozen: b.cardFrozen, tripFrozen: b.tripFrozen, cardCollapse: b.cardCollapse, tripCollapse: b.tripCollapse, cardJump: b.cardJump, tripJump: b.tripJump },
+    seq: { pairs: b.seqN, cardFrozen: b.cardFrozen, tripFrozen: b.tripFrozen,
+      movingPairs: b.seqMoving, cardFrozenMoving: b.cardFrozenMoving, tripFrozenMoving: b.tripFrozenMoving, cardCollapse: b.cardCollapse, tripCollapse: b.tripCollapse, cardJump: b.cardJump, tripJump: b.tripJump },
   };
 }
 for (const [k, v] of anchorHops) out.anchorHops[k] = dist(v);
@@ -749,12 +802,12 @@ for (const k of order) {
 L.push("");
 L.push(`## the SEQUENCE a rider watches — consecutive readings at one stop, same vehicle`);
 L.push("");
-L.push(`| bucket | poll pairs | card frozen | trip frozen | card drops ≥2 min in one poll | trip drops ≥2 min | card jump ≥180 s | trip jump ≥180 s |`);
-L.push(`|---|---|---|---|---|---|---|---|`);
+L.push(`| bucket | poll pairs | card frozen | trip frozen | **pairs with a NEW fix** | card frozen while moving | trip frozen while moving | card drops ≥2 min in one poll | trip drops ≥2 min | card jump ≥180 s | trip jump ≥180 s |`);
+L.push(`|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const k of order) {
   const b = buckets.get(k);
   if (!b || b.seqN === 0) continue;
-  L.push(`| ${k} | ${b.seqN} | ${pct(b.cardFrozen, b.seqN)} | ${pct(b.tripFrozen, b.seqN)} | ${pct(b.cardCollapse, b.seqN)} | ${pct(b.tripCollapse, b.seqN)} | ${pct(b.cardJump, b.seqN)} | ${pct(b.tripJump, b.seqN)} |`);
+  L.push(`| ${k} | ${b.seqN} | ${pct(b.cardFrozen, b.seqN)} | ${pct(b.tripFrozen, b.seqN)} | ${b.seqMoving} | ${pct(b.cardFrozenMoving, b.seqMoving)} | ${pct(b.tripFrozenMoving, b.seqMoving)} | ${pct(b.cardCollapse, b.seqN)} | ${pct(b.tripCollapse, b.seqN)} | ${pct(b.cardJump, b.seqN)} | ${pct(b.tripJump, b.seqN)} |`);
 }
 L.push("");
 L.push(`## where each arm thinks the bus is (card's nearest-stop-by-degrees vs the gated anchor)`);

@@ -240,9 +240,9 @@ export const legs = sqliteTable(
  *    arrivals layer means a row cannot encode where anyone was standing, only
  *    which stop was on some screen.
  * 2. **The server DEDUPLICATES before writing.** `(bus_id, to_stop_id,
- *    predicted_at)` is UNIQUE and `predicted_at` is quantised to
- *    `PREDICTION_BUCKET_MS`, so thirty riders watching one stop in one bucket
- *    produce ONE row. A row therefore means "at least one client somewhere had
+ *    predicted_at, surface)` is UNIQUE and `predicted_at` is quantised to
+ *    `PREDICTION_BUCKET_MS`, so thirty riders watching one stop on one screen
+ *    in one bucket produce ONE row. A row therefore means "at least one client somewhere had
  *    this on screen", never "a rider was here" — and the write volume is
  *    bounded by buses x stops x time rather than by traffic.
  * 3. **First writer wins.** `INSERT OR IGNORE`, so a late poster cannot
@@ -276,6 +276,31 @@ export const predictionsLog = sqliteTable(
     predictedAt: integer("predicted_at", { mode: "timestamp_ms" }).notNull(),
     /** Bundle hash the reading came from; null for rows written before it existed. */
     clientBuild: text("client_build"),
+    /**
+     * WHICH SCREEN showed it: `trip` (the trip card), `ride` (the on-bus
+     * countdown to the alight stop), `card` (a route card on the Map tab).
+     *
+     * It exists because of a change, not a curiosity. Until 2026-09-04 the
+     * route cards ran a SEPARATE ETA estimator, and this table deliberately
+     * logged only the trip card — pooling two estimators in one column is the
+     * inference error the table was built to stop. Merging them onto
+     * `computeUpcomingArrivals` removes that error and creates a subtler one:
+     * the route cards report a much larger and differently shaped population
+     * (every line, every stop, mostly far-horizon) than the trip card (one
+     * board stop a rider chose). Pooled silently, the median would move
+     * because the MIX changed, and it would read as the estimator changing.
+     *
+     * So the surface is part of the dedup key, not a decoration: one row per
+     * (vehicle, stop, bucket, surface), and every accuracy query says which
+     * population it means. Rows written before this column existed are `trip`,
+     * which is what they were.
+     *
+     * It does not weaken the privacy shape above. A row still says "at least
+     * one client somewhere had this on screen", now with which screen; it is a
+     * property of the APP, deduplicated across every browser, and there is
+     * still nothing two rows can be joined on to make one browser's trail.
+     */
+    surface: text("surface").notNull().default("trip"),
   },
   (t) => ({
     busToTimeIdx: index("predictions_bus_to_time_idx").on(
@@ -293,6 +318,7 @@ export const predictionsLog = sqliteTable(
       t.busId,
       t.toStopId,
       t.predictedAt,
+      t.surface,
     ),
   }),
 );

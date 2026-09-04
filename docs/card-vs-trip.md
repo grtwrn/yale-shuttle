@@ -1,7 +1,8 @@
 # The app has two ETA estimators, and the route cards are running the old one
 
-**Status: measurement, 2026-09-04. No production code changed by this
-document.** Instrument:
+**Status: MERGED 2026-09-04. `StopList` now calls `computeUpcomingArrivals`;
+what follows is the measurement that decided it, and "What the merge did" at
+the foot is the paired before/after.** Instrument:
 `services/shuttle-v2/scripts/eta-replay/card-vs-trip.ts` (disagreement,
 truth-scoring, sequence stability) and `card-cost.ts` (the performance
 hypothesis). Corpus `~/shuttle-captures/positions-20260903.jsonl`, 7,233 polls,
@@ -220,6 +221,118 @@ asserts the load-bearing lines are still there and that `StopList` still
 contains none of `resolveAnchorIndex` / `anchorIndexOnList` / `stallCredit` /
 `firstSegProgressFactor` / `priceFirstHop`. When the merge lands, that check
 fires and the script is telling the truth: the divergence it measures is gone.
+
+---
+
+# What the merge did
+
+`StopList` now runs one shared `computeUpcomingArrivals` over every stop of
+every line, anchors through `anchorIndexOnList` on `liveAnchorStore`, and
+prints `fmtMin(eta)` — the trip card's own transform — instead of
+`round(low / 60)`. The instrument scored it by pinning its transcription to an
+archived copy of the pre-merge file (`BEFORE_SRC`), so `card` is master's route
+cards and `trip` is the merged ones, paired on the same 948,072 rows.
+
+## The sequence — what this was actually for
+
+Consecutive readings at one stop, same vehicle, **split by whether the feed
+sent a NEW coordinate for that bus**. A number that does not move while the bus
+does not move is honest; a frozen countdown for a bus that is demonstrably
+driving is the defect. (53.6% of consecutive samples repeat a position rather
+than interpolating — `docs/bus-speed.md` — so the split matters.)
+
+| | pairs | frozen **while moving**, before | after |
+|---|---|---|---|
+| all | 339,581 | **89.3%** | **10.4%** |
+| trip ETA <= 5 min | 71,582 | 88.5% | 10.5% |
+| a bus standing at a layover | 71,888 | 90.0% | 8.7% |
+| **the departure poll** | 43,286 | **77.8%** | **4.0%** |
+| the 344 Winchester chain | 10,590 | 88.8% | **2.2%** |
+| chain, at the departure poll | 1,956 | 82.5% | 2.4% |
+| Purple | 21,613 | 94.9% | 29.8% |
+| Green | 56,610 | 92.4% | 11.7% |
+| Blue Day | 53,608 | 86.8% | 3.3% |
+
+And the collapse that follows a freeze:
+
+| | before | after |
+|---|---|---|
+| drops >= 2 display minutes in one poll (all) | 1.3% | **0.6%** |
+| ... at the departure poll | 2.3% | **1.0%** |
+| ... chain, at the departure poll | 2.1% | **0.2%** |
+| jump >= 180 s (all) | 1.2% | **0.5%** |
+
+Purple's 29.8% is the branch lock, not this change: where the anchor genuinely
+cannot be resolved the gate holds it, and a held anchor is a held number. It is
+`docs/eta-estimator-design.md`'s open work, and it is still three times better
+than what the card did before.
+
+## Accuracy, which follows
+
+Against observed arrivals, |err| p50 **174 s -> 126 s**; at a layover
+**210 -> 120** with the bias going **+76 s -> -1 s**; on the 344 Winchester
+chain with a bus standing, **212 -> 113** and **+185 s -> +14 s**. The old
+arithmetic is better on 37.2% of rows and worse on 53.1%. Full table above.
+
+## The trip card is untouched
+
+rider-sim, 8,344 waits, master vs this tree, same capture and snapshot:
+**every flag identical, worst-drift delta p50/p90 = 0 s, 0 improved, 0
+worsened, 7,711 same.** The only change to `arrivals.ts` is an additive
+`estimated` field; nothing that produces a number moved.
+
+## What a rider sees change
+
+- **The countdown counts down.** It was a sum of segment averages from a stop
+  index and no function of `now`.
+- **A number instead of "0 min".** `fmtMin` says "now" and "<1 min"; the old
+  `Math.round(low / 60)` reached 0 for a bus at the kerb (PR #98 settled that
+  on the other surface).
+- **The bus badge moves back one stop.** The anchor is "the segment the bus is
+  on", not "the nearest stop", so a bus 200 m before a stop no longer badges
+  AT it — which also means that stop now shows its (small) ETA instead of
+  suppressing it.
+- **7,566 rows a day stop appearing** (0.8%) — promises off a bus
+  `isBusOnRoute` rejects, Pink 4,499, Blue Night 1,767, Green 1,300. Blue
+  Night's is the documented 2.1 km relief leg past no stops. The empty state
+  says so rather than going quiet: a card whose line has vehicles but none on
+  route reads `23 stops · 2 buses off route ›`, where otherwise it would have
+  read `23 stops ›` under a header saying "2/3 buses".
+- **`~` survives.** `UpcomingArrival.estimated` is true when no hop in the
+  chain had a calibrated segment, which is what the card's own flag meant. The
+  candour was worth a field.
+
+## The prediction log had to change with it
+
+`predictions_log` deliberately covered only the trip card, because pooling two
+ESTIMATORS in one column is the inference error it exists to stop. The merge
+removes that error and creates a quieter one: the route cards report a far
+larger, mostly far-horizon population (every line, every stop) than the trip
+card (the one stop a rider chose). Pooled silently, the median would move
+because the MIX changed and it would read as the estimator changing.
+
+So a reading now carries **which screen showed it** — `trip` / `ride` /
+`card` — as the eighth positional element on the wire and as part of the dedup
+key, one row per (vehicle, stop, bucket, surface). It is optional on the wire:
+a bundle from before today posts seven elements and every reading it ever sent
+was a trip-card one, which is what the default says. An unrecognised value is
+DROPPED rather than defaulted, because a client asserting an unknown population
+would otherwise land in the one every published accuracy number is about.
+
+The privacy shape is unchanged and the column-set test was updated to say so
+explicitly: the surface is a property of the APP, deduplicated across every
+browser exactly as the rest of the row is, so a row still means "at least one
+client somewhere had this on that screen" and there is still nothing two rows
+can be joined on to make one browser's trail.
+
+## The instrument retires itself
+
+`card-vs-trip.ts` self-checks its transcription against `TransitMap.tsx` and
+refuses to run once `StopList` contains `anchorIndexOnList` / `stallCredit` /
+`priceFirstHop`. It fired on the first run after the merge, which is the
+acceptance signal. `BEFORE_SRC` is how it still scores: it verifies the
+transcription against a checkout of the file it was taken from, so it cannot
+quietly grade a copy that has drifted.
 
 ## Caveats
 
