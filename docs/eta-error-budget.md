@@ -497,8 +497,11 @@ Design notes for whoever builds it:
 - Ground truth for the accuracy guard rail is the detector's own arrival event,
   which fires roughly at the midpoint before the stop — about 25 s early
   relative to a rider's kerbside view.
-- `predictions_log` is still empty. Nothing in production records what riders
-  were actually told, so all of this is reconstruction. The single highest-value
-  piece of instrumentation this project could add is to start logging served
-  ETAs, at which point stability becomes directly observable rather than
-  replayed.
+- `predictions_log` was still empty when this was written, so all of the above
+  is reconstruction. This paragraph used to say that the single highest-value
+  piece of instrumentation this project could add was to start logging served
+  ETAs; `docs/prediction-log.md` is that instrument. A sampled share of clients
+  posts what they displayed, deduplicated to one row per (bus, stop, 15 s) with
+  no viewer stored, each row naming the bundle that produced it — so stability
+  becomes directly observable, and a harness that has drifted from the shipped
+  client is finally detectable rather than silently believed.

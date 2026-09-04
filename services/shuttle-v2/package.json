@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "riders": "node scripts/riders.mjs",
+    "predictions": "node scripts/predictions-dump.mjs",
     "deploy": "node scripts/deploy.mjs",
     "approve": "node scripts/approve.mjs",
     "test:accuracy": "vitest run web/src/accuracy-layover.test.ts web/src/arrivals.test.ts web/src/anchor.test.ts web/src/planner.test.ts",

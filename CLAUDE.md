@@ -680,11 +680,66 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
-- `predictions_log` is empty — nothing records what riders were told. The
-  replay is the substitute; the live browser harness
-  (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
+- `predictions_log` now HAS a writer (see "What riders were told" below). Until
+  it does in production, the replay is still the substitute; the live browser
+  harness (`scripts/eta-accuracy.mjs`, parametrised by `BOARD_ID`/`DEST_ID`/
   `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
   see, so it is a sanity check, not a measurement.
+
+### What riders were told (`predictions_log`, `docs/prediction-log.md`)
+
+Every accuracy and stability figure here used to be a RECONSTRUCTION — replay
+the arithmetic over stored positions and assert that is what the screen said.
+That has been wrong expensively: a family of stability numbers turned out to
+have been measured against a client that had not shipped since March, and a
+hotfix's before/after was credited to the wrong PR. The ETA is computed in the
+BROWSER, so only the browser can say what it displayed; a server-side recompute
+would reproduce that failure by construction.
+
+So a sampled share of page loads posts what they showed
+(`web/src/shownLog.ts` → `POST /api/shown`), and **every row names the bundle
+that produced it** (the content hash out of `/assets/index-<hash>.js`).
+
+**The privacy shape is why this table is allowed to exist, and it is different
+from `daily_actives`':** a row is a statement about a BUS — `(bus_name,
+route_id, to_stop_id, stops_ahead, predicted_sec, predicted_at, client_build)`
+— with **no identity accepted at all**, not even the `x-anon-id` the poll
+already carries. Three things hold that:
+
+- **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+  prices (bus → stop); the rider's position enters one layer up, in the walk
+  legs and `pickLiveArrival`. A row cannot encode a location even indirectly.
+- **The server deduplicates before writing.** `(bus_id, to_stop_id,
+  predicted_at)` is UNIQUE with `predicted_at` floored to 15 s, so thirty
+  riders at one stop in one bucket produce ONE row: a row means "at least one
+  client had this on screen", never "a rider was here". Same move bounds the
+  write volume by (buses x stops x buckets), not by traffic.
+- **The client sends an AGE, not a timestamp.** The server subtracts it from
+  its own clock and floors, so a wrong or hostile client clock cannot write a
+  row at an instant that never happened — which is what makes the instants
+  pairable with an arrival at all.
+
+15 s is the canary's and rider-sim's own cadence, so a logged sequence and a
+replayed one line up without resampling. Retention is **30 days**, deliberately
+shorter than the 90 of its neighbours (`arrivals` outlives it, so a row is
+pairable for as long as it exists), swept by the collector's hourly batched
+delete. Cost follows `actives.ts`: nothing writes on a request, a 60 s flush,
+`INSERT OR IGNORE`, every path non-throwing.
+
+`POST /api/shown` is a public write and is validated as hostile: the bus must
+be live now, the stop must be on that bus's route, ranges checked, per-IP rate
+limit, first-writer-wins so a late poster cannot overwrite a bucket.
+`SHUTTLE_PREDICTION_SAMPLE=0` is a kill switch that reaches the fleet — the
+server's reply carries the live rate, so clients stop within a minute with no
+deploy and no extra request.
+
+**The pairing** is the thing nobody could do before: `GET /api/predictions`
+(`npm run predictions`) returns each reading beside the arrival that followed
+it and the signed error, summarised **by client build**. Admin HEADER only, and
+deliberately outside `/api/stats` so the stats cookie's `Path=/api/stats` scope
+is untouched. It pairs on `bus_name` (the identity invariant), not `bus_id`.
+Use it to check `rider-sim` against reality — the procedure is at the end of
+`docs/prediction-log.md`; when the two disagree, the logged row wins.
 
 ### The accuracy gate: a recorded pass, before/during/after a dwell
 

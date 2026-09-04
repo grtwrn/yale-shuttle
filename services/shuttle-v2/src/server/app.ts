@@ -28,6 +28,12 @@ import {
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
 import { canaryReport, recordCanaryRuns } from "./canary.js";
+import {
+  createPredictionRecorder,
+  MAX_READING_AGE_MS,
+  type PredictionRecorder,
+  type ShownReading,
+} from "./predictions.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { createSearchTermsTracker } from "./searchTerms.js";
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -67,6 +73,12 @@ const STATS_SESSION_BODY_LIMIT = 2 * 1024;
 const CANARY_BODY_LIMIT = 256 * 1024;
 /** Default window for the /stats canary panel: a day of riding. */
 const CANARY_DEFAULT_HOURS = 24;
+// A batch of displayed ETAs. 200 compact tuples is ~8 KB; the cap is generous
+// against that and still small enough that the endpoint cannot be used to push
+// bulk into the process.
+const SHOWN_BODY_LIMIT = 32 * 1024;
+/** Readings accepted per post. A rider's screen shows a handful at a time. */
+const SHOWN_MAX_READINGS = 200;
 
 // -- Operator stats session ---------------------------------------------------
 // The dashboard at /stats needs to re-authenticate on every load without the
@@ -154,6 +166,12 @@ export interface AppOptions {
    * tests never reach the network; the default is created in v1compat.ts.
    */
   geocoder?: ExternalGeocoder;
+  /**
+   * Share of page loads that report what they displayed (see predictions.ts).
+   * Defaults to SHUTTLE_PREDICTION_SAMPLE, then 0.25. Zero turns the whole
+   * feature off, server and fleet both — the response tells clients to stop.
+   */
+  predictionSampleRate?: number;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -171,6 +189,13 @@ export function buildApp(opts: AppOptions): Hono {
   // What riders type, so lookup is fixed with evidence rather than one rider
   // report at a time. Words only — see searchTerms.ts for why there is no id.
   const searchTerms = createSearchTermsTracker(opts.bundle);
+  // What the CLIENT displayed, deduplicated to one row per (bus, stop, 15 s)
+  // and carrying no viewer at all — see predictions.ts for why the browser has
+  // to be the source and how the row stays a statement about a bus.
+  const predictions: PredictionRecorder = createPredictionRecorder(
+    opts.bundle,
+    opts.predictionSampleRate === undefined ? {} : { sampleRate: opts.predictionSampleRate },
+  );
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -219,6 +244,67 @@ export function buildApp(opts: AppOptions): Hono {
     c.header("Content-Type", "application/json");
     c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
     return c.body(busesJson());
+  });
+
+  // -- What the client actually displayed ------------------------------------
+  //
+  // The one thing no reconstruction can supply. The ETA is computed in the
+  // BROWSER, so replaying it server-side measures the code deployed now, not
+  // the bundle the rider is running — which is exactly how a family of
+  // stability numbers came to be measured against a client that had not
+  // shipped in months.
+  //
+  // Public and unauthenticated, like every rider endpoint, and therefore
+  // treated as untrusted: the bus must be one that is live right now, the stop
+  // must be one that bus's route serves, the numbers must be in range, and the
+  // INSTANT comes from this server's clock (the client sends an AGE, never a
+  // timestamp — a wrong or lying clock would otherwise write rows at instants
+  // that never happened, and the table's whole value is that its instants can
+  // be paired with an arrival). Deduplication on (bus, stop, 15 s bucket) with
+  // first-writer-wins bounds what a flood can do to one bucket it would have
+  // shared with real riders anyway.
+  //
+  // NO IDENTITY IS ACCEPTED HERE — not even the `x-anon-id` the poll carries.
+  // There is nothing to filter test traffic by, and nothing to filter it FOR:
+  // a harness runs the same client code and its reading of bus #310 to stop 48
+  // is the same reading a rider's browser makes, and dedup merges the two.
+  // See predictions.ts.
+  app.post("/api/shown", bodyLimit({
+    maxSize: SHOWN_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const rate = predictions.sampleRate();
+    // Turned off: answer the control value so the fleet stops posting within a
+    // minute, without a deploy. The body is not even read.
+    if (rate <= 0) return c.json({ sample: 0 });
+    const ip = clientIp(c) ?? "anon";
+    // A sampled client posts about once a minute, so this looks enormous for
+    // one browser — and it has to be. Campus Wi-Fi puts a whole building behind
+    // one NAT address (the same thing that made a 10/min cap on /api/report a
+    // per-building cap on the first school morning). A tight limit here would
+    // not merely shed load, it would systematically drop the measurements of
+    // riders on campus, which is precisely the population this data is about:
+    // a biased sample is worse than a small one. There is no anon id to budget
+    // per browser instead, by design, so the IP budget is set to a number a
+    // building cannot reach and a flood still can.
+    if (!rateLimitAllow(`shown:${ip}`, now(), { perMinute: 600, perDay: 200_000 })) {
+      return c.json({ sample: rate }, 429);
+    }
+    const body = await c.req.json().catch(() => null);
+    const readings = parseShownBatch(body);
+    if (readings.length > 0) {
+      predictions.record(readings, {
+        buses: opts.collector.getLiveBuses(),
+        network: opts.collector.ref.get(),
+        clientBuild: typeof (body as { b?: unknown } | null)?.b === "string"
+          ? (body as { b: string }).b
+          : null,
+        now: now(),
+      });
+    }
+    // The sample rate rides back on the response the client already makes, so
+    // the control channel costs no request of its own.
+    return c.json({ sample: rate });
   });
 
   // -- Server-Sent Events: push live snapshots ------------------------------
@@ -835,6 +921,43 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ ok: true, excluded: n.n, riders: actives.stats(now()) });
   });
 
+  /**
+   * THE PAIRING. What we told riders, beside what the bus then did — the
+   * question nobody could answer without a replay.
+   *
+   *   /api/predictions?hours=6&route=3&stop=48
+   *
+   * returns each logged reading with the arrival that followed it and the
+   * signed error, plus a summary broken down by CLIENT BUILD. The build column
+   * is the point: it makes "which bundle was this measured against" a fact in
+   * the data rather than an assumption in the harness.
+   *
+   * Operator-only, and deliberately NOT under /api/stats: the stats-session
+   * cookie is scoped `Path=/api/stats` and must stay that way, so this route
+   * takes the admin HEADER and nothing else. The rows carry no personal data
+   * (see predictions.ts), but they are operational detail about the fleet and
+   * belong with triage, not with the public API.
+   */
+  app.get("/api/predictions", requireAdmin, (c) => {
+    const numeric = (name: string): number | undefined => {
+      const raw = c.req.query(name);
+      if (raw === undefined) return undefined;
+      const v = Number(raw);
+      return Number.isFinite(v) ? v : undefined;
+    };
+    const result = predictions.paired({
+      hours: numeric("hours"),
+      routeId: numeric("route"),
+      stopId: numeric("stop"),
+      limit: numeric("limit"),
+      busName: c.req.query("bus"),
+      build: c.req.query("build"),
+      now: now(),
+    });
+    c.header("Cache-Control", "no-store");
+    return c.json(result);
+  });
+
   app.get("/api/reports", requireAdmin, (c) => {
     const status = c.req.query("status") as ReportListParams["status"] | undefined;
     const limitStr = c.req.query("limit");
@@ -1048,6 +1171,37 @@ export function buildApp(opts: AppOptions): Hono {
  * Best-effort client IP extraction. Fly.io adds Fly-Client-IP; behind a
  * generic proxy we fall back to X-Forwarded-For (first hop).
  */
+/**
+ * Parse the compact batch `POST /api/shown` accepts.
+ *
+ * The wire shape is positional on purpose — `{b, p:[[bus, stop, eta, low,
+ * high, stopsAhead, ageMs], ...]}` — because this rides on a phone's radio
+ * beside a 5 s poll, and named keys would roughly triple it for no reader's
+ * benefit. Anything malformed is DROPPED, never rejected: a client one deploy
+ * behind must degrade to fewer readings, not to an error the rider could
+ * somehow notice.
+ *
+ * Nothing here trusts a value. Ranges, types and the fleet lookup are all
+ * re-checked in `predictions.record`; this only gets the shape right.
+ */
+export function parseShownBatch(body: unknown): ShownReading[] {
+  if (!body || typeof body !== "object") return [];
+  const raw = (body as { p?: unknown }).p;
+  if (!Array.isArray(raw)) return [];
+  const out: ShownReading[] = [];
+  for (const entry of raw.slice(0, SHOWN_MAX_READINGS)) {
+    if (!Array.isArray(entry) || entry.length < 7) continue;
+    const [busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs] = entry as unknown[];
+    if (typeof busName !== "string" || busName.length === 0 || busName.length > 16) continue;
+    if (typeof stopId !== "number" || typeof etaSec !== "number") continue;
+    if (typeof lowSec !== "number" || typeof highSec !== "number") continue;
+    if (typeof stopsAhead !== "number" || typeof ageMs !== "number") continue;
+    if (ageMs > MAX_READING_AGE_MS) continue;
+    out.push({ busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs });
+  }
+  return out;
+}
+
 function clientIp(c: Context): string | null {
   const fly = c.req.header("fly-client-ip");
   if (fly) return fly;

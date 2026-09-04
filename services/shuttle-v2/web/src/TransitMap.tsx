@@ -21,6 +21,10 @@ import {
   computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec, splitServedForRoute,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
+// Records what the screen actually said, sampled, deduplicated and posted from
+// module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
+// no effect and no dependency array to this component.
+import { noteShown } from "./shownLog";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -2010,6 +2014,10 @@ const TripPlanner: FC<{
       const live = computeUpcomingArrivals(
         [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
       ).filter((a) => a.routeLabel === o.routeLabel);
+      // THE countdown — the number every accuracy and stability finding is
+      // about, and until now the one nothing recorded. Sampled and dedup'd
+      // inside noteShown; this call allocates nothing on an unsampled load.
+      noteShown(live, nowMs);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
       // This has two distinct causes:
@@ -5995,6 +6003,9 @@ const RideStopList: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    // The ride page's countdown to the alight stop. Same estimator as the trip
+    // card, so it lands in the same table with no discriminator needed.
+    noteShown(arr);
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
   }
@@ -6143,6 +6154,7 @@ const OnBusBanner: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    noteShown(arr);
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
