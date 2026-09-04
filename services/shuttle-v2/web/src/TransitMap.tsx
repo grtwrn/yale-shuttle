@@ -3766,15 +3766,18 @@ const TripPlanner: FC<{
                             <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
                           </>
                         )}
-                        {/* The ride, in the line's colour — the pill it replaces
-                            is now on line 1. */}
-                        <span
-                          title="ride"
-                          style={{
-                            display: "inline-block", width: 14, height: 4, borderRadius: 2,
-                            background: o.color, flexShrink: 0,
-                          }}
-                        />
+                        {/* The ride leg, named and timed like the walks
+                            either side of it. It was a bare coloured bar whose
+                            only label was a `title` nobody on a phone can
+                            reach — the operator: "the horizonal bar should say
+                            ride X min or bus icon instead of 'ride'". The
+                            expanded card already spells it this way. Colour
+                            stays on the pill on line 1, so this reads in the
+                            same ink as the walks and cannot land on a light
+                            route colour. */}
+                        <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
+                          🚌 {fmtMin(o.rideSec)}
+                        </span>
                         {o.walkFromSec > 0 && (
                           <>
                             <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
