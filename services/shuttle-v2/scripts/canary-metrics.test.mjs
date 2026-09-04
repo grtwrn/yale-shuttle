@@ -1298,3 +1298,65 @@ describe("the destination the canary serves to the app", () => {
     }
   });
 });
+
+describe("an expanded card whose bus is holding short of a stop", () => {
+  // Report #102 added one word to the expanded card: `nearby`, beside the
+  // pause chip, for a bus taking its layover just short of the marker.
+  //
+  // It is lower-case and letters-only, so `isLabelish` reads it as a route
+  // pill — and `label` prefers a match found BELOW the duration, which is
+  // exactly where the expanded stop list lives. Un-guarded, this card reports
+  // its line as "nearby" instead of "Red": the same failure as "Contribute"
+  // before IS_PAGE_CHROME, and the same failure as #111, where a layout change
+  // that "needed no parser change" blinded the canary for twelve minutes.
+  //
+  // So the word is in NOT_A_ROUTE, and this is the capture that proves it —
+  // an argument that the parser is fine is not what this suite accepts.
+  const LIVE_HOLDING_NEARBY = `YALE SHUTTLE
+1:31 PM
+Trip
+Map
+Issues
+↻
+Red
+in 9, 24 min
+14 min
+🚶 2 min
+›
+🚌 9 min
+1:45p
+›
+344 Winchester
+🚌 344 Winchester
+⏸ 6:12 / ~4:29
+nearby
+Winchester / Division
+Division / Sheffield
+Division / Prospect
+Blue Day
+in 4, 19 min
+17 min
+1:48p
+›
+🚶 Walk
+41 min
+2:12p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+Not affiliated with or endorsed by Yale University.`;
+
+  it("still reads the line as Red, not as the holding marker", () => {
+    const opts = parseOptions(LIVE_HOLDING_NEARBY);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day", "Walk"]);
+    expect(opts[0]).toMatchObject({ totalMin: 14, arriveText: "1:45p", walkToMin: 2 });
+    expect(opts[0].eta.raw).toBe("in 9, 24 min");
+    // The countdown is still found above the duration, not confused with the
+    // ride bar ("🚌 9 min") or with the stop line that carries the bus glyph.
+    expect(opts[1]).toMatchObject({ totalMin: 17, arriveText: "1:48p" });
+    expect(opts[1].eta.raw).toBe("in 4, 19 min");
+    expect(opts[2]).toMatchObject({ mode: "walk", totalMin: 41 });
+  });
+});

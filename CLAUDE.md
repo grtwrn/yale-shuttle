@@ -1087,7 +1087,18 @@ chip beside it showed nothing and the row read as still rolling. That is report
 #102 — "a bus sitting in a garage lot was counted down as if on its way" — and
 it is the same "two answers, one screen" this module exists to end. The
 standing decision now lives in `liveAnchor.ts` once; `computeUpcomingArrivals`
-and the chip both call it, and the chip marks an approach hold with a `~`.
+and the chip both call it.
+
+An approach hold is marked `nearby` beside the chip, and **it is a word rather
+than a `~` prefix on purpose**: this UI already spends `~` on approximate
+DURATIONS (`/ ~5:00` sits right beside it), so the same mark for an approximate
+PLACE reads as fuzziness about the number. It is also in the canary's
+`NOT_A_ROUTE`, because `isLabelish` matches any lower-case word and `label`
+prefers a match found BELOW the duration — where the expanded stop list lives.
+Un-guarded, an expanded card reported its line as "nearby" instead of "Red";
+`LIVE_HOLDING_NEARBY` in `canary-metrics.test.mjs` is the capture that proves
+the guard, and it fails without it. Same failure as "Contribute", same failure
+as #111, caught before shipping this time.
 
 ### Two things measured and NOT built (2026-09-04)
 
@@ -1122,6 +1133,12 @@ long, inside the zone — and the CALIBRATOR deciding whether to count it, gated
 on a layover median computed from never-extended samples so the gate cannot feed
 on its own output. That is a schema addition for +36 s on one stop's p50; it is
 designed here and deliberately not built.
+
+**And #132 has since taken most of that ground from a different direction.**
+Merging restart-split arrivals moved 344 Winchester's median 273 → 310 s — the
+same magnitude, from a cause that was corrupting far more rows (1,486 split
+stands in 7 days against 5 approach rests in one). Measure what is left AFTER
+that merge before spending a migration on this.
 
 **Crediting a long hold at the PREVIOUS stop against the layover ahead.** This
 is the `[triage]`-worthy one because it has already been tried: `arrivals.ts`

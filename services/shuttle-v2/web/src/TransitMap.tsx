@@ -4406,10 +4406,32 @@ const TripPlanner: FC<{
                                             : stand.remaining
                                               ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
                                               : `Typically holds ~${fmtShort(stand.sec)}`)}>
-                                      ⏸ {standing?.approach ? "~" : ""}{fmtMmss(liveElapsedSec!)}
+                                      ⏸ {fmtMmss(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
                                         ? ` / ~${fmtMmss(stand.typicalSec ?? stand.sec)}`
                                         : ` / ~${fmtMmss(stand.sec)}`}
+                                    </span>
+                                  )}
+                                  {showLive && standing?.approach && (
+                                    // WHERE it is waiting, in one word.
+                                    //
+                                    // Report #102: a bus holding in the Science
+                                    // Park Garage lot showed as "here" at
+                                    // 344 Winchester, 144 m away. The countdown
+                                    // is right — it IS taking that layover — but
+                                    // a rider standing at the marker looks up
+                                    // and sees no bus.
+                                    //
+                                    // Deliberately NOT a "~" prefix on the
+                                    // clock, which was the first draft: this UI
+                                    // already spends "~" on approximate
+                                    // DURATIONS ("/ ~5:00" right beside it), so
+                                    // the same mark for approximate PLACE reads
+                                    // as fuzziness about the number instead.
+                                    // A word cannot be misread that way.
+                                    <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
+                                          title="Holding just short of the stop, not at the kerb">
+                                      nearby
                                     </span>
                                   )}
                                   {!showLive && stand != null && stand.sec >= 180 && (
