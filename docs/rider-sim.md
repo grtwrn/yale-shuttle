@@ -388,6 +388,40 @@ to a half of riders.
 The instrument runs every line in 13 min on the Pi; the Red default in about
 five.
 
+### The number to beat, on master after #80 (`3e56f03`)
+
+The same run on the rebased master (PR #80, the departure-retreat rule in
+`anchorGate.ts`) — paired wait for wait against `972c5ba`, 8,327 waits, no
+population change:
+
+| | `972c5ba` | `3e56f03` (#80) |
+|---|---|---|
+| chain: raw rise beyond the clock at the departure poll, p50 / mean | +291 s / +225 s | **+220 s / +196 s** |
+| chain: riders seeing ≥180 s on the departure poll | 366 of 657 | **330 of 657** |
+| chain: ≥300 s on the departure poll | 232 | 192 |
+| chain: stranded at 146 / 49 / 48 | 51% / 56% / 50% | 54% / 58% / 44% |
+| Red: jump ≥180 s / strand / reversal ≥60 s | 39.0% / 12.8% / 52.8% | 39.1% / 12.4% / 49.4% |
+| Red: worst drift p90 | 545 s | 498 s |
+| paired: worst drift improved / worsened / same | | 1,137 / 222 / 6,329 |
+| Green / Purple ≥180 s | 64.4% / 62.0% | 64.1% / — |
+
+#80 takes 260 s off the reversal population (266 waits lose a ≥60 s
+reversal, 6 gain one) and trims the departure flash without removing it. So
+for a candidate on the 344 Winchester cohort the number to beat is **+220 s
+median beyond the clock at the departure poll, 330 of 657 riders seeing
+≥180 s on that poll, and half the riders on the first three stops stranded.**
+`scripts/.eta-replay/red0903-master.{json,waits.jsonl}` is that baseline.
+
+**PR #81 (`eta/stand-drive-pricing`, 0923c0a) without the split data is
+byte-identical to master on every one of the 8,327 sequences** — as its
+description claims. Scoring it for real needs `dwells[route][stop].q` and
+`segments[route]["A-B"].drive` from the derivation lane, injected with
+`PAYLOAD_PATCH=file.json` (shape in `run.ts`'s header); the run is then
+`CLIENT_ROOT=/home/gwarren/yale-shuttle-kalman/services/shuttle-v2
+PAYLOAD_PATCH=… OUT_NAME=red0903-pr81` followed by `--compare` against the
+master file above, chain section first, then the three Red acceptance riders,
+then the hold-out rows.
+
 ## What the simulation cannot see
 
 It replays the *arithmetic*, not the rendering. It cannot see a card reorder
