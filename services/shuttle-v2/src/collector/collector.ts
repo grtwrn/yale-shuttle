@@ -24,8 +24,20 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import { visitRowsOf } from "./visitRows.js";
-import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
-import { planTracks, reconcileTracks } from "./detector.js";
+import type {
+  BusObservation,
+  BusState,
+  DetectorEvent,
+  PositionSample,
+  StationaryState,
+  TrackPlan,
+} from "./detector.js";
+import {
+  AT_STOP_PIN_M,
+  planTracks,
+  reconcileTracks,
+  seedStationaryFromHistory,
+} from "./detector.js";
 import {
   PathStore,
   shouldReplacePath,
@@ -149,6 +161,20 @@ const LIVE_BUS_TTL_MS = 120_000;
  * across very long uptimes / fleet-roster churn.
  */
 const STATE_TTL_MS = 30 * 60_000;
+
+/**
+ * How far back {@link Collector.seedStationary} will look for the moment a
+ * standing bus actually arrived.
+ *
+ * The same 30 minutes as {@link STATE_TTL_MS}, and for the same reason: a bus
+ * the detector would have aged out is a bus whose wait it would have restarted
+ * anyway, so the seed must not reach past that and claim a longer one. It also
+ * caps the scan at ~360 rows on a 5 s poll.
+ */
+const STATIONARY_SEED_WINDOW_MS = STATE_TTL_MS;
+
+/** Hard row cap on the seed scan, so a dense window can never make it unbounded. */
+const STATIONARY_SEED_MAX_ROWS = 600;
 
 // Retention windows -----------------------------------------------------------
 
@@ -308,6 +334,7 @@ export class Collector {
   private readonly trimStmts = new Map<string, Database.Statement>();
   private readonly countRouteSamplesStmt: Database.Statement;
   private readonly selectRouteSamplesStmt: Database.Statement;
+  private readonly recentBusSamplesStmt: Database.Statement;
 
   /**
    * Route geometry derived from observed GPS, best-so-far per route.
@@ -450,6 +477,17 @@ export class Collector {
     this.selectRouteSamplesStmt = this.sqlite.prepare(
       "SELECT bus_id AS busId, lat, lon, collected_at AS collectedAt " +
         "FROM raw_positions WHERE route_id = ? AND collected_at >= ? " +
+        "ORDER BY collected_at DESC LIMIT ?",
+    );
+    // Hits raw_positions_bus_time_idx. Keyed on `bus_id` rather than the
+    // stable `bus_name` because that is the index we have — and because the
+    // degradation is the right one: history written under a retired id is
+    // invisible here, and an id reissue is precisely the case where the clock
+    // is SUPPOSED to restart (see MAX_HANDOFF_GAP_MS). DESC because the scan
+    // walks backwards from the present until the stand ends.
+    this.recentBusSamplesStmt = this.sqlite.prepare(
+      "SELECT lat, lon, collected_at AS collectedAt FROM raw_positions " +
+        "WHERE bus_id = ? AND collected_at >= ? AND collected_at < ? " +
         "ORDER BY collected_at DESC LIMIT ?",
     );
     this.pathStore = new PathStore(this.sqlite);
@@ -605,7 +643,14 @@ export class Collector {
         // The same `step`, in the same order, as `stepMany` — `events` is
         // byte-for-byte what it returned before. The visit reducer rides
         // alongside and adds the departure observation the detector lacks.
-        const stepped = stepManyWithVisits(this.ref.get(), this.states, this.visitStates, observations, plan);
+        const stepped = stepManyWithVisits(
+          this.ref.get(),
+          this.states,
+          this.visitStates,
+          observations,
+          plan,
+          (obs, anchorStop) => this.seedStationary(obs, anchorStop),
+        );
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
         if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
         this.updateLivePositions(observations, plan);
@@ -742,6 +787,49 @@ export class Collector {
       if (b.collectedAt >= cutoff) out.push(b);
     }
     return out;
+  }
+
+  /**
+   * Recover a standing bus's wait from `raw_positions` when this process has
+   * never seen it before — the {@link StationarySeed} the detector consults on
+   * a first sighting, and nowhere else.
+   *
+   * `states` lives in memory only, so every restart turns every bus into a
+   * first sighting and restarted the wait of any bus that was standing at a
+   * stop. Report #100 (2026-09-04, the first from an outside rider) caught it:
+   * six deploys landed between 15:48 and 15:58 UTC, and #44 — motionless at
+   * 333 Cedar from 15:53:39 to 16:03:34 — was re-arrived at 15:53:39, 15:55:11,
+   * 15:56:53 and 15:59:14, one per restart. The rider's payload carried
+   * `at_stop_since` 15:56:53, so the chip read about a minute beside a bus four
+   * and a half minutes into its layover, and the stall credit was zeroed with
+   * it. The positions the reconstruction needs were on disk the whole time.
+   *
+   * The rule lives in {@link seedStationaryFromHistory}; this supplies the
+   * history and the window. Reads only, and it reaches `stationarySince` and
+   * nothing else — not `enteredAt` — so no dwell, segment, arrival or visit
+   * changes and no statistic can move.
+   */
+  private seedStationary(obs: BusObservation, anchorStop: Stop | null): StationaryState | null {
+    // Cheap gate first: a bus that is not at a stop needs no query at all, and
+    // that includes every bus on a route the network does not know.
+    if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
+    try {
+      const history = this.recentBusSamplesStmt.all(
+        obs.busId,
+        obs.collectedAt - STATIONARY_SEED_WINDOW_MS,
+        obs.collectedAt,
+        STATIONARY_SEED_MAX_ROWS,
+      ) as PositionSample[];
+      return seedStationaryFromHistory(history, obs, anchorStop);
+    } catch (err) {
+      // A seed is an improvement, never a requirement: a failed read leaves the
+      // clock exactly where it would have been without this method.
+      this.logger.warn("collector.stationary_seed_failed", {
+        busName: obs.busName,
+        error: (err as Error).message,
+      });
+      return null;
+    }
   }
 
   private updateLivePositions(

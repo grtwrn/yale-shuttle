@@ -17,6 +17,7 @@ import {
   type BusObservation,
   type BusState,
   type DetectorEvent,
+  type StationarySeed,
   type TrackedIdentity,
   type TrackPlan,
 } from "./detector.js";
@@ -825,6 +826,9 @@ export function stepManyWithVisits(
   visits: Map<string, VisitState>,
   observations: readonly BusObservation[],
   plan: TrackPlan = planTracks(observations),
+  // Consulted only where `step` would otherwise start a bus's wait from zero
+  // because this process has never seen it — see {@link StationarySeed}.
+  seed: StationarySeed | null = null,
 ): { events: DetectorEvent[]; visits: VisitEvent[]; resolved: CandidateOutcome[] } {
   reconcileTracks(states, plan);
   reconcileTracks(visits, plan);
@@ -834,7 +838,7 @@ export function stepManyWithVisits(
   for (const obs of observations) {
     const key = plan.keys.get(obs.busId) ?? obs.busName;
     const before = states.get(key) ?? null;
-    const { state: after, events: ev } = step(network, before, obs);
+    const { state: after, events: ev } = step(network, before, obs, seed);
     if (after) states.set(key, after);
     else states.delete(key);
     for (const e of ev) events.push(e);
