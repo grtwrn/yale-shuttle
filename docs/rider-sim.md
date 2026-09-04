@@ -549,8 +549,46 @@ Named riders, e02f442 (canary origin), 5 s cadence:
 #309  21:25:17 in 6 · 21:25:52 in 5 · 21:27:07 in 4 · 21:27:17 in 5 · 21:28:12 in <1 · 21:28:22 in 1 · 21:28:27 in <1 · 21:28:37 in 1 · 21:28:57 in <1 · 21:29:17 now             (arrival 21:29:22; strand, −235 s)
 ```
 
-Files: `scripts/.eta-replay/red0903-{master,pr81,pr81b}.{json,waits.jsonl}`,
-`acc-{master,pr81,pr81b}-red.json`, `patch-pr81-pinned.json`.
+### Third cut, `094a9d4` — thin cells withheld
+
+The split now engages per cell only when both halves are adequately sampled
+(`standAdequate`: ≥3 quantiles, `qn` ≥ 20; `driveAdequate`: `driveN` ≥ 10),
+else that cell prices as master; a route with no adequate cell also loses the
+standing memory. The patch serves `qn` and `driveN` explicitly from the
+derivation's own counts (checked before the run — the calibrator's windowed
+`n` would otherwise have gated, and could have withheld 344 Winchester
+itself; that cell is `qn 24 / driveN 25`). What the gate withholds, from the
+patch: Red 16 of 29 stops (Winchester / Division `qn` 8, Division / Sheffield
+`qn` 4; Division / Prospect 22 passes), 0 of 29 hops; **Green 19 of 19
+stops** (memory off); Purple 7 of 10 stops, 1 of 14 hops; Orange Day 33 of
+33 stops, Blue Day 9 of 31.
+
+| | master | #81 @e02f442 | **#81 @094a9d4** |
+|---|---|---|---|
+| chain: rise at the departure poll, p50 | +220 s | +3 s | **+3 s** |
+| chain: riders ≥180 s on the poll / in [T−5 s, T+30 s] | 330 / 352 | 4 / 39 | **4 / 48** |
+| chain: stranded at 146 / 49 / 48 | 54 / 58 / 44% | 0 / 23 / 33% | **0 / 23 / 37%** |
+| chain: jump ≥180 s at 146 / 49 / 48 | 61 / 66 / 67% | 0 / 25 / 31% | 0 / 25 / 37% |
+| chain: reversal ≥60 s at 146 / 49 / 48 | 74 / 73 / 74% | 1 / 11 / 16% | **1 / 11 / 16%** |
+| chain strands paired (both / only master / only #81) | | 41 / 154 / 39 | 41 / 154 / 43 |
+| Red: jump ≥180 s / ≥300 s / reversal ≥60 s / strand | 39.1 / 26.3 / 49.4 / 12.4% | 25.0 / 18.7 / 24.1 / 10.0% | **25.7 / 18.6 / 24.3 / 10.2%** |
+| Red: first promise \|miss\| median, >60 s early | 70 s, 33% | 54 s, 28% | 55 s, 28% |
+| Red paired strand: fixed / introduced | | 486 / 281 | 473 / 231 |
+| Red paired jump ≥180 s: fixed / introduced | | 1,660 / 569 | 1,655 / 563 |
+| **Green**: jump ≥180 s / strand | 64.1 / 28.1% | 66.7 / 34.8% | **64.1 / 28.1% — 562 of 562 sequences byte-identical to master** |
+| **Purple**: jump ≥180 s / strand | 62.0 / 35.4% | 73.0 / 40.5% | **61.9 / 36.8%** (paired: jumps 9 fixed / 7 introduced; strands 1 fixed / 9 introduced; 98 of 375 sequences identical) |
+
+Red holds within a point of `e02f442` on every share (the gate changed 5,992
+of 6,739 Red sequences at the withheld stops, and moved the aggregates by
+≤1.3 points; Division / Prospect is the one chain stop that reads worse,
+33 → 37% stranded, 31 → 37% ≥180 s). Green is master to the byte. Purple is
+back to master on jumps (61.9 vs 62.0%) and 1.4 points above it on strands,
+carried by 9 new strands against 1 fixed at its three adequate stops. Named
+riders are unchanged from `e02f442` (#316 clean; #304 −230 s; #309 −235 s,
+reversals 6 → 4).
+
+Files: `scripts/.eta-replay/red0903-{master,pr81,pr81b,pr81c}.{json,waits.jsonl}`,
+`acc-{master,pr81,pr81b,pr81c}-red.json`, `patch-pr81-pinned.json`.
 
 ## What the simulation cannot see
 
