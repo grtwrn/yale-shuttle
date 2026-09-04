@@ -785,10 +785,10 @@ export function step(
   const resumed = seeded && seeded.enteredAt != null ? seeded : null;
 
   // Re-anchor on first sight, after a long gap, on a route change, or when
-  // the bus left the modelled path (above). We always emit an arrival event
-  // so downstream consumers (the live UI, the dwell updater) have an anchor
-  // row, but we never emit a dwell or segment because we don't trust the
-  // missing time window.
+  // the bus left the modelled path (above). We emit an arrival event so
+  // downstream consumers (the live UI, the dwell updater) have an anchor row —
+  // unless we RESUMED one, which already exists — but we never emit a dwell or
+  // segment, because we don't trust the missing time window.
   const reanchor =
     !prev ||
     gap > MAX_OBSERVATION_GAP_MS ||
