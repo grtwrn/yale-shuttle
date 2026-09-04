@@ -7,8 +7,9 @@ import {
 } from "./map-data";
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
+import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
+import { anchorIndexOnList } from "./liveAnchor";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -16,7 +17,14 @@ import {
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, nextArrivalAfterPinned, type UpcomingArrival } from "./arrivals";
+import {
+  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec, splitServedForRoute,
+  type DwellStat, type SegmentStat, type UpcomingArrival,
+} from "./arrivals";
+// Records what the screen actually said, sampled, deduplicated and posted from
+// module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
+// no effect and no dependency array to this component.
+import { noteShown } from "./shownLog";
 import {
   fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -34,7 +42,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
+  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -1563,8 +1571,13 @@ const TripPlanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   routePaths: Record<string, [number, number][]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+  // The CANONICAL statistic types, not a local narrowing of them: the pause
+  // chip below has to read the same `q`/`drive` fields the estimator prices
+  // from, and a prop type that quietly drops them is how the chip ended up
+  // quoting a superseded number beside a countdown derived from a different
+  // one. Every other component here still takes the narrow shape it uses.
+  segmentTimes: Record<string, Record<string, SegmentStat>>;
+  dwellTimes: Record<string, Record<string, DwellStat>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   // Operator-published timetable per route id (`/api/buses` `route_hours`);
   // what the "Shuttles that go there" panel prints and judges "running" by.
@@ -2001,6 +2014,10 @@ const TripPlanner: FC<{
       const live = computeUpcomingArrivals(
         [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
       ).filter((a) => a.routeLabel === o.routeLabel);
+      // THE countdown — the number every accuracy and stability finding is
+      // about, and until now the one nothing recorded. Sampled and dedup'd
+      // inside noteShown; this call allocates nothing on an unsampled load.
+      noteShown(live, nowMs);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
       // This has two distinct causes:
@@ -2139,16 +2156,9 @@ const TripPlanner: FC<{
     return () => clearInterval(id);
   }, [reminder]);
 
-  // A shuttle is "slower than walking" only when the time spent actually
-  // COMMUTING (walk to stop + ride + walk from stop) exceeds the direct
-  // walk — not when the arrival time does. Waiting isn't commuting: the
-  // rider can spend the wait at their desk and leave at the leave-by
-  // time. Only judged when walking is a real alternative (direct walk
-  // ≤ 60 min — the walk card itself is suppressed beyond that).
-  const slowerThanWalk = (o: TripOption) =>
-    o.mode === "shuttle" && !o.departed &&
-    o.directWalkSec <= 3600 &&
-    o.walkToSec + o.rideSec + o.walkFromSec > o.directWalkSec;
+  // `slowerThanWalk` — the commute-vs-direct-walk test — now lives in
+  // planner.ts, where `mostDirectOption` needs the same verdict about which
+  // options are worth offering at all.
   // Shared row/map order: competitive / slower-than-walk / departed,
   // fastest first within each tier by live total.
   const optionTier = (o: TripOption) => (o.departed ? 2 : slowerThanWalk(o) ? 1 : 0);
@@ -3386,7 +3396,12 @@ const TripPlanner: FC<{
               // current anchor to the pickup stop.
               let approach: [number, number][] | undefined;
               if (expandedKey === o.routeLabel && busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                // The gated anchor, off the app's one live store — the dashed
+                // approach must start where the cards and the countdown say
+                // the bus is (liveAnchor.ts).
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
                     ? allStops.slice(busIdx, bi + 1)
@@ -3507,6 +3522,12 @@ const TripPlanner: FC<{
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
             const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
+            // The route that goes straight there, when it isn't already at the
+            // top of the list (report #93). topVisibleOptions keeps its row
+            // out from behind "Show N more routes"; this caption says why a
+            // slower row is on screen. Computed from _sorted, not from the
+            // visible slice, so expanding the list doesn't drop the caption.
+            const _direct = directPromotion(_sorted);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested
@@ -3576,7 +3597,9 @@ const TripPlanner: FC<{
               ) ?? null;
               let stopsAway: number | null = null;
               if (busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0) {
                   stopsAway = (bi - busIdx + allStops.length) % allStops.length;
                 }
@@ -3727,6 +3750,17 @@ const TripPlanner: FC<{
                           <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
                           <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                         </>
+                      )}
+                      {/* Why a slower row is on screen: this is the route that
+                          runs straight there — least walking + riding of any
+                          option, whatever the wait happens to be right now.
+                          Plain grey text, not a badge: FASTEST was removed
+                          from these rows deliberately and this is an
+                          explanation, not a ranking. */}
+                      {_direct && o.routeLabel === _direct.routeLabel && (
+                        <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368" }}>
+                          · most direct
+                        </span>
                       )}
                     </>
                   )}
@@ -4076,7 +4110,15 @@ const TripPlanner: FC<{
                     cfg.busRouteIds.includes(b.route_id) &&
                     isBusOnRoute(b, allStops, stopCoords),
                   );
-                  const busAnchorIdx = busMatch ? findRouteAnchor(busMatch, allStops, stopCoords) : -1;
+                  // THE number the rider reads on the "🚌 #316 · N stops away"
+                  // line below. Ungated it oscillated 3/4/4/2/4 across polls
+                  // beside a countdown that was not moving; it now comes from
+                  // the same gated anchor the countdown does.
+                  const busAnchorIdx = busMatch
+                    ? anchorIndexOnList(
+                        busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                      )
+                    : -1;
                   const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
                   // Approach: bus's current stop → the stop before the
                   // pickup, only while the bus is genuinely upstream.
@@ -4089,33 +4131,51 @@ const TripPlanner: FC<{
                   // Dwell readouts: the typical hold at a stop, plus the live
                   // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  // The hold SHOWN must be the hold BILLED — see billedDwellSec
+                  const routeSegs = segmentTimes?.[cfg.routeIds[0]] ?? {};
+                  // The hold SHOWN must be the hold BILLED — see shownStandSec
                   // (report #73: "it says arrive in 8 but expected dwell is
                   // 10", which was the median on screen and a low quantile in
                   // the arithmetic).
                   //
-                  // So this reads the same record computeUpcomingArrivals bills
-                  // and nothing else. It used to prefer a per-bus dwell
-                  // (dwellsByBus, n >= 5) while the arithmetic only ever read
-                  // the ROUTE dwell, which is the same class of bug wearing a
-                  // different hat: the screen would have said "held 5 min of
-                  // ~5" while the countdown charged a different ~5. It could
-                  // not fire only because the server hardcodes dwells_by_bus to
-                  // {} (src/server/v1compat.ts) — a latent trap, not a working
-                  // feature. Report #80 is a rider doing exactly this
-                  // arithmetic out loud, so the two must not be able to drift.
+                  // So this reads the same records computeUpcomingArrivals
+                  // prices from, through the same predicates, and nothing else.
+                  // Two ways it has drifted before:
+                  //
+                  //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
+                  //    while the arithmetic only ever read the ROUTE dwell:
+                  //    "held 5 min of ~5" beside a countdown charging a
+                  //    different ~5. It could not fire only because the server
+                  //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
+                  //    — a latent trap, not a working feature.
+                  //  - Once the stand/drive split went live (Red, Blue Day)
+                  //    the chip kept quoting `dwell.med`, the arrival-to-
+                  //    arrival median that CONTAINS DRIVE TIME, while the
+                  //    countdown priced the conditional standing quantiles:
+                  //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
                   //
                   // If per-bus dwells are ever really served, thread them into
                   // computeUpcomingArrivals FIRST; display follows billing.
-                  const typDwell = (sid: number, started = false): number | null => {
-                    const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return billedDwellSec(r, started);
-                    return null;
-                  };
+                  const splitServed = splitServedForRoute(routeSegs, routeDwells);
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
                   const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
                     ? Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000)
                     : null;
+                  /**
+                   * The hold to show at `sid`. `elapsed` is passed only for the
+                   * stop the bus is actually standing at — everywhere else
+                   * there is no remainder to state, so the typical hold is
+                   * still the honest answer and the legacy path is what runs.
+                   * The drive is looked up for the hop the pricing bills:
+                   * `sid` -> the next stop on the loop.
+                   */
+                  const standAt = (sid: number, elapsed: number | null) => {
+                    const stat = routeDwells[String(sid)];
+                    if (!stat || stat.n < 3) return null;
+                    const i = allStops.indexOf(sid);
+                    const next = i >= 0 ? allStops[(i + 1) % allStops.length] : undefined;
+                    const seg = next === undefined ? undefined : routeSegs[`${sid}-${next}`];
+                    return shownStandSec(stat, seg, elapsed, splitServed);
+                  };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                       {approachStops.length > 0 && busMatch && (
@@ -4137,8 +4197,8 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid, isBusHere);
                             const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
+                            const stand = standAt(sid, showLive ? liveElapsedSec : null);
                             return (
                               <div key={sid} style={{
                                 position: "relative", display: "flex", alignItems: "center",
@@ -4160,12 +4220,50 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
+                                    // "2 min / ~3 min" — elapsed over EXPECTED
+                                    // TOTAL, the operator's shape: "X is current
+                                    // dwell and Y is expected dwell".
+                                    //
+                                    // The bug this fixes was never the shape; it
+                                    // was that Y came from `dwell.med`, an
+                                    // arrival-to-arrival figure containing drive
+                                    // time that the estimator stopped billing
+                                    // when the stand/drive split shipped. A
+                                    // rider read "3 of 10", subtracted, expected
+                                    // seven more minutes, and the app said four.
+                                    //
+                                    // So Y is now the stop's TYPICAL hold, taken
+                                    // from the same quantile table the ETA
+                                    // prices from — not from `dwell.med`.
+                                    //
+                                    // Unconditional, so it does not move while
+                                    // the bus sits. The conditional total does
+                                    // move, and correctly (inspection paradox:
+                                    // a bus still standing at five minutes is
+                                    // drawn from the longer-hold population).
+                                    // Both were put in front of the operator;
+                                    // their call was "well actually, stable
+                                    // makes more sense" — the figure reads as a
+                                    // fact about the STOP, and a number creeping
+                                    // upward while nothing happens invites the
+                                    // reader to hunt a cause that is not there.
+                                    //
+                                    // The cost: Y - X is NOT what is left. The
+                                    // countdown beside it is. Elsewhere the old
+                                    // figure stands, since there it IS billed.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                          title={typ != null ? `Typically holds ~${fmtShort(typ)}` : "Time the bus has been sitting here"}>
-                                      ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
+                                          title={stand == null
+                                            ? "Time the bus has been sitting here"
+                                            : stand.remaining
+                                              ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
+                                              : `Typically holds ~${fmtShort(stand.sec)}`}>
+                                      ⏸ {fmtShort(liveElapsedSec!)}
+                                      {stand == null ? "" : stand.remaining
+                                        ? ` / ~${fmtShort(stand.typicalSec ?? stand.sec)}`
+                                        : ` / ~${fmtShort(stand.sec)}`}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (
+                                  {!showLive && stand != null && stand.sec >= 180 && (
                                     // One figure, before the bus arrives and
                                     // after. This was briefly a "5-9 min"
                                     // range, because the ETA billed a low
@@ -4178,7 +4276,7 @@ const TripPlanner: FC<{
                                     // for.
                                     <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
                                           title="Typical hold at this stop">
-                                      ⏸ ~{fmtShort(typ)}
+                                      ⏸ ~{fmtShort(stand.sec)}
                                     </span>
                                   )}
                                 </span>
@@ -5908,7 +6006,9 @@ const RideStopList: FC<{
       )
     : undefined;
 
-  const busIdx = bus ? findRouteAnchor(bus, allStops, stopCoords) : -1;
+  const busIdx = bus && cfg
+    ? anchorIndexOnList(bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore)
+    : -1;
   const boardIdx = allStops.indexOf(ride.boardStopId);
   const alightIdx = allStops.indexOf(ride.alightStopId);
   const n = allStops.length;
@@ -5918,6 +6018,9 @@ const RideStopList: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    // The ride page's countdown to the alight stop. Same estimator as the trip
+    // card, so it lands in the same table with no discriminator needed.
+    noteShown(arr);
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
   }
@@ -6051,8 +6154,10 @@ const OnBusBanner: FC<{
     : undefined;
 
   let stopsRemaining: number | null = null;
-  if (bus && allStops.length > 0) {
-    const anchor = findRouteAnchor(bus, allStops, stopCoords);
+  if (bus && cfg && allStops.length > 0) {
+    const anchor = anchorIndexOnList(
+      bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+    );
     const alightIdx = allStops.indexOf(ride.alightStopId);
     if (anchor >= 0 && alightIdx >= 0) {
       stopsRemaining = (alightIdx - anchor + allStops.length) % allStops.length;
@@ -6064,6 +6169,7 @@ const OnBusBanner: FC<{
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    noteShown(arr);
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
@@ -7031,13 +7137,6 @@ const TransitMap: FC = () => {
         </div>
       </div>
 
-      {/* Beta notice — persistent, and the tap opens the feedback composer at
-          the foot of the page. Near the top because the operator's aim is to
-          RECEIVE reports and the footer button is a full scroll away. Hidden
-          only on the ride page, which hides the tabs above it for the same
-          reason: that view is about the bus you are on. */}
-      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
-
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
@@ -7682,6 +7781,16 @@ const TransitMap: FC = () => {
           </div>
         )}
       </div>
+
+      {/* Beta notice — persistent, and the tap opens the feedback composer
+          just above it. It sat under the tabs until the operator asked for it
+          moved: "please put the beta banner at the bottom. it clutters the
+          top". The original argument for the top was that the footer composer
+          was a full scroll away — but down here the banner IS at the composer,
+          so the tap has less distance to travel, not more. Hidden on the ride
+          page, which hides the tabs for the same reason: that view is about
+          the bus you are on. */}
+      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
 
       {/* Last line on every page, and not dismissible: the app is named for
           Yale, serves its shuttle feed and draws its route colours, so this

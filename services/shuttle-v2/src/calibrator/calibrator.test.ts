@@ -12,22 +12,21 @@ import type {
 import { TransitNetwork } from "../network/TransitNetwork.js";
 
 import {
-  attachStandDrive,
+  attachDrives,
+  attachStandTables,
   calibrate,
   computeDwellStats,
   computeSegmentStats,
+  foldRoutes,
   hourWindow,
-  MIN_DRIVE_SAMPLES,
-  MIN_STAND_SAMPLES,
+  SPLIT_SERVED_ROUTE_IDS,
+  splitWithheldRoutes,
   parseValueList,
-  STAND_QUANTILE_LEVELS,
+  STAND_Q_COUNT,
+  standQuantiles,
   type ValueGroup,
 } from "./calibrator.js";
 import { median, percentile, shrink } from "./shrinkage.js";
-import {
-  MIN_DRIVE_SAMPLES as CLIENT_MIN_DRIVE,
-  MIN_STAND_SAMPLES as CLIENT_MIN_STAND,
-} from "../../web/src/hopPricing.js";
 
 describe("hourWindow", () => {
   it("returns a centered window inside the day", () => {
@@ -173,72 +172,6 @@ describe("computeDwellStats", () => {
   });
 });
 
-describe("attachStandDrive", () => {
-  it("pins the adequacy thresholds to hopPricing.ts", () => {
-    expect(MIN_STAND_SAMPLES).toBe(CLIENT_MIN_STAND);
-    expect(MIN_DRIVE_SAMPLES).toBe(CLIENT_MIN_DRIVE);
-    expect(STAND_QUANTILE_LEVELS).toHaveLength(11);
-    expect(STAND_QUANTILE_LEVELS[5]).toBe(0.5);
-  });
-
-  it("withholds a thin cell and attaches an adequate one", () => {
-    const dwells = new Map<string, DwellStats>();
-    const segments = new Map<string, SegmentStats>([
-      ["1:11:146", { mean: 400, stddev: 50, n: 30, source: "specific" }],
-      ["1:12:13", { mean: 80, stddev: 10, n: 8, source: "route-segment" }],
-    ]);
-    const thinStand: ValueGroup = {
-      key: "1:99",
-      n: 5,
-      all: [10, 20, 30, 40, 50],
-      windowed: [],
-    };
-    const fatStand: ValueGroup = {
-      key: "1:11",
-      n: 20,
-      all: Array.from({ length: 20 }, (_, i) => 100 + i * 20),
-      windowed: [],
-    };
-    const thinDrive: ValueGroup = {
-      key: "1:12:13",
-      n: 9,
-      all: Array.from({ length: 9 }, () => 25),
-      windowed: [],
-    };
-    const fatDrive: ValueGroup = {
-      key: "1:11:146",
-      n: 10,
-      all: Array.from({ length: 10 }, () => 4),
-      windowed: [],
-    };
-    attachStandDrive(dwells, segments, [thinStand, fatStand], [thinDrive, fatDrive]);
-
-    expect(dwells.has("1:99")).toBe(false);
-    const stand = dwells.get("1:11")!;
-    expect(stand.qn).toBe(20);
-    expect(stand.q).toHaveLength(11);
-    expect(stand.q![0]).toBe(percentile(fatStand.all, 0.05));
-    expect(stand.q![5]).toBe(percentile(fatStand.all, 0.5));
-    expect(stand.mean).toBe(15); // no arrivals row — fallback, q still served
-
-    expect(segments.get("1:12:13")!.drive).toBeUndefined();
-    expect(segments.get("1:11:146")!.drive).toBe(4);
-    expect(segments.get("1:11:146")!.driveN).toBe(10);
-  });
-
-  it("does not invent a segment that calibration omitted", () => {
-    const dwells = new Map<string, DwellStats>();
-    const segments = new Map<string, SegmentStats>();
-    attachStandDrive(
-      dwells,
-      segments,
-      [],
-      [{ key: "1:1:2", n: 20, all: Array.from({ length: 20 }, () => 30), windowed: [] }],
-    );
-    expect(segments.size).toBe(0);
-  });
-});
-
 /**
  * End-to-end guard on the SQL half: the aggregation, the (dow, hour) window
  * predicate, the null-dwell filter and the lossless sample encoding all live in
@@ -292,6 +225,47 @@ describe("calibrate over a real database", () => {
            departed_at, dwell_sec, dow, hour) VALUES (1, 'Bus 1', ?, ?, ?, NULL, ?, ?, ?)`,
       )
       .run(routeId, stopId, slot.ts, dwellSec, slot.dow, slot.hour);
+  }
+
+  /** A stopped visit whose pinned stand is `standSec` (departed_at − pinned_at). */
+  function addVisit(
+    routeId: number,
+    stopId: number,
+    standSec: number | null,
+    opts: { outcome?: "stopped" | "passed"; anchoredAt?: number; pinned?: boolean } = {},
+  ) {
+    const anchoredAt = opts.anchoredAt ?? now.getTime() - 3_600_000;
+    const pinnedAt = opts.pinned === false ? null : anchoredAt + 10_000;
+    const departedAt = standSec === null || pinnedAt === null ? null : pinnedAt + standSec * 1000;
+    bundle.sqlite
+      .prepare(
+        `INSERT INTO stop_visits (bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
+           anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec, outcome, how,
+           confidence, first_step_m, steps, far_m, confirm_sec, rest_polls, shuffles, first_moved_at,
+           last_at_rest_at, closest_m, dow, hour)
+         VALUES (1, 'Bus 1', 1, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, 'far', 1, 31, 3, 160, 15, 4, 0, NULL, NULL, 5, ?, ?)`,
+      )
+      .run(routeId, stopId, anchoredAt, pinnedAt, pinnedAt, departedAt, standSec, standSec, opts.outcome ?? "stopped", dow, hour);
+  }
+
+  /** A one-hop leg whose pinned drive is `driveSec` (to_pinned_at − departed_at). */
+  function addLeg(
+    routeId: number,
+    from: number,
+    to: number,
+    driveSec: number,
+    opts: { hops?: number; departedAt?: number; toPinned?: boolean } = {},
+  ) {
+    const departedAt = opts.departedAt ?? now.getTime() - 3_600_000;
+    const arrivedAt = departedAt + driveSec * 1000;
+    const toPinnedAt = opts.toPinned === false ? null : arrivedAt;
+    bundle.sqlite
+      .prepare(
+        `INSERT INTO legs (bus_id, bus_name, route_id, from_stop_id, from_index, to_stop_id, to_index,
+           hops, departed_at, arrived_at, to_pinned_at, leg_sec, hold_sec, drive_sec, holds, reached, dow, hour)
+         VALUES (1, 'Bus 1', ?, ?, 0, ?, 1, ?, ?, ?, ?, ?, 0, ?, 0, 1, ?, ?)`,
+      )
+      .run(routeId, from, to, opts.hops ?? 1, departedAt, arrivedAt, toPinnedAt, driveSec, driveSec, dow, hour);
   }
 
   beforeEach(() => {
@@ -371,7 +345,6 @@ describe("calibrate over a real database", () => {
     const dwellB = captured.dwells.get("1:11")!;
     expect(dwellB.mean).toBe(2);
     expect(dwellB.n).toBe(0);
-    expect(dwellB.q).toBeUndefined();
     expect(captured.dwells.has("1:12")).toBe(false);
   });
 
@@ -397,77 +370,72 @@ describe("calibrate over a real database", () => {
       segmentCount: 0,
       dwellCount: 0,
       sampleCount: 0,
+      standCount: 0,
+      driveCount: 0,
+      splitSampleCount: 0,
     });
     expect(captured.segments.size).toBe(0);
     expect(captured.dwells.size).toBe(0);
   });
 
-  it("serves stand quantiles and clear-clock drive from stop_visits/legs", () => {
-    addSegment(1, 11, 146, 400, inWindow);
-    const stands = Array.from({ length: 20 }, (_, i) => 120 + i * 15);
-    for (let i = 0; i < stands.length; i++) {
-      const ts = inWindow.ts + i * 60_000;
-      const inside = stands[i]!;
-      bundle.sqlite
-        .prepare(
-          `INSERT INTO stop_visits (
-             bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
-             anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec,
-             outcome, how, steps, rest_polls, shuffles, closest_m, dow, hour
-           ) VALUES (1, ?, 1, 1, 11, 0, ?, ?, ?, ?, ?, ?, 'stopped', 'far', 3, 4, 0, 8, ?, ?)`,
-        )
-        .run(
-          `Bus ${i}`,
-          ts,
-          ts,
-          ts,
-          ts + inside * 1000,
-          inside,
-          inside,
-          inWindow.dow,
-          inWindow.hour,
-        );
-      bundle.sqlite
-        .prepare(
-          `INSERT INTO legs (
-             bus_id, bus_name, route_id, from_stop_id, from_index, to_stop_id, to_index,
-             hops, departed_at, arrived_at, to_pinned_at, leg_sec, hold_sec, drive_sec,
-             holds, reached, dow, hour
-           ) VALUES (1, ?, 1, 11, 0, 146, 1, 1, ?, ?, ?, 30, 0, 30, 0, 1, ?, ?)`,
-        )
-        .run(
-          `Bus ${i}`,
-          ts + inside * 1000,
-          ts + inside * 1000 + 25_000,
-          ts + inside * 1000 + 25_000,
-          inWindow.dow,
-          inWindow.hour,
-        );
-    }
-    // Thin stop: 5 stands, must not grow a q.
-    for (let i = 0; i < 5; i++) {
-      const ts = inWindow.ts + i * 1_000;
-      bundle.sqlite
-        .prepare(
-          `INSERT INTO stop_visits (
-             bus_id, bus_name, anchor_bus_id, route_id, stop_id, stop_index,
-             anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec,
-             outcome, how, steps, rest_polls, shuffles, closest_m, dow, hour
-           ) VALUES (1, 'Thin', 1, 1, 99, 0, ?, ?, ?, ?, 40, 40, 'stopped', 'far', 3, 4, 0, 8, ?, ?)`,
-        )
-        .run(ts, ts, ts, ts + 40_000, inWindow.dow, inWindow.hour);
-    }
+  // The stand/drive split (PR #81's contract): `q`/`qn` on the stop, `drive`/
+  // `driveN` on the hop, both on the at_stop_since clock, pooled over the
+  // window and served with their TRUE counts — the client gates on the count,
+  // so nothing here may pre-filter.
+  it("serves the pinned-clock stand quantiles and drive from stop_visits / legs", () => {
+    // The hop 1→2 has arrival-to-arrival samples (what `avg` is made of)...
+    for (const v of [300, 320, 340]) addSegment(1, 1, 2, v, inWindow);
+    addArrival(1, 1, 310, inWindow);
+    // ...and, from the derivation, three stopped visits at stop 1, one PINNED
+    // pass-through (at_stop was set while the bus rolled by: a 0 s stand on
+    // the client's clock, so P(stop) enters the table), and three one-hop legs
+    // 1→2. A visit never pinned has no at_stop_since to measure from and is
+    // not a sample; a two-hop leg is a different hop; a leg pinned at B before
+    // it left A (0 s) is not a drive.
+    addVisit(1, 1, 100);
+    addVisit(1, 1, 200);
+    addVisit(1, 1, 400);
+    addVisit(1, 1, null, { outcome: "passed" });
+    addVisit(1, 1, null, { outcome: "passed", pinned: false });
+    addVisit(1, 1, 50, { pinned: false });
+    addLeg(1, 1, 2, 20);
+    addLeg(1, 1, 2, 25);
+    addLeg(1, 1, 2, 90); // one long red light
+    addLeg(1, 1, 3, 40, { hops: 2 });
+    addLeg(1, 1, 2, 0);
+    // A stop with visits but no arrivals-based dwell entry still gets its table.
+    addVisit(1, 7, 60);
+    // A hop with legs but no arrival-to-arrival segment is answered from the
+    // distance prior, which carries no drive.
+    addLeg(1, 7, 8, 30);
+    // Outside the 30-day window: not a sample.
+    addVisit(1, 1, 9_999, { anchoredAt: now.getTime() - 40 * 86_400_000 });
+    addLeg(1, 1, 2, 9_999, { departedAt: now.getTime() - 40 * 86_400_000 });
 
-    calibrate(bundle.db, sink, now);
+    const stats = calibrate(bundle.db, sink, now);
 
-    const dwell = captured.dwells.get("1:11")!;
-    expect(dwell.qn).toBe(20);
-    expect(dwell.q).toEqual(STAND_QUANTILE_LEVELS.map((p) => percentile(stands, p)));
-    expect(captured.dwells.get("1:99")?.q).toBeUndefined();
+    const dwell = captured.dwells.get("1:1")!;
+    expect(dwell.q).toEqual(standQuantiles([0, 100, 200, 400]));
+    expect(dwell.q).toHaveLength(STAND_Q_COUNT);
+    expect(dwell.qn).toBe(4);
+    // ...and the arrival-based numbers beside it are untouched.
+    expect(dwell.mean).toBe(310);
 
-    const hop = captured.segments.get("1:11:146")!;
-    expect(hop.drive).toBe(25);
-    expect(hop.driveN).toBe(20);
+    const seg = captured.segments.get("1:1:2")!;
+    expect(seg.drive).toBe(25); // the median, not the mean (45): one red light is not the hop
+    expect(seg.driveN).toBe(3);
+    expect(seg.mean).toBe(shrink({ samples: [300, 320, 340], priorMean: 320, k: 8 }).mean);
+
+    const orphanStop = captured.dwells.get("1:7")!;
+    expect(orphanStop.q).toEqual(standQuantiles([60]));
+    expect(orphanStop.qn).toBe(1);
+    expect(orphanStop.n).toBe(0); // the warm-up defaults, not a fabricated dwell
+
+    expect(captured.segments.has("1:7:8")).toBe(false);
+
+    expect(stats.standCount).toBe(2);
+    expect(stats.driveCount).toBe(1);
+    expect(stats.splitSampleCount).toBe(5 + 4); // stand samples (incl. the pinned pass) + one-hop legs with a positive drive (7→8 counts as a sample even though it is not attached)
   });
 });
 
@@ -529,5 +497,90 @@ describe("computeSegmentStats: physical plausibility", () => {
       computeSegmentStats([{ key, n: samples.length, all: samples, windowed: samples }]).get(key)!.mean,
       9,
     );
+  });
+});
+
+// The stand/drive split: the quantile levels are the client's reading of `q`
+// ((i + 0.5) / n), and both halves are attached with their true counts.
+describe("stand tables and drives", () => {
+  it("places the quantiles at (i + 0.5) / STAND_Q_COUNT, ascending", () => {
+    const samples = [118, 136, 145, 176, 242, 303, 386, 452, 480, 566, 598]; // 344 Winchester, reference table
+    const q = standQuantiles(samples);
+    expect(q).toHaveLength(STAND_Q_COUNT);
+    for (let i = 1; i < q.length; i++) expect(q[i]!).toBeGreaterThanOrEqual(q[i - 1]!);
+    expect(q[0]).toBe(percentile(samples, 0.05));
+    expect(q[STAND_Q_COUNT - 1]).toBe(percentile(samples, 0.95));
+    // The median sits between the two middle knots.
+    expect(median(samples)).toBeGreaterThanOrEqual(q[4]!);
+    expect(median(samples)).toBeLessThanOrEqual(q[5]!);
+    // A single sample is a flat table — served as such, with qn = 1 for the gate.
+    expect(standQuantiles([60])).toEqual(new Array(STAND_Q_COUNT).fill(60));
+  });
+
+  it("attaches q/qn to the dwell entry and leaves the rest of it alone", () => {
+    const dwells = new Map<string, DwellStats>([["1:1", { mean: 310, stddev: 20, n: 4, low: 200 }]]);
+    const n = attachStandTables(dwells, [
+      { key: "1:1", n: 2, all: [100, 300], windowed: [] },
+      { key: "1:9", n: 1, all: [60], windowed: [] },
+      { key: "1:5", n: 0, all: [], windowed: [] },
+    ]);
+    expect(n).toBe(2);
+    expect(dwells.get("1:1")).toEqual({ mean: 310, stddev: 20, n: 4, low: 200, q: standQuantiles([100, 300]), qn: 2 });
+    expect(dwells.get("1:9")).toEqual({ mean: 15, stddev: 10, n: 0, q: standQuantiles([60]), qn: 1 });
+    expect(dwells.has("1:5")).toBe(false);
+  });
+
+  // The out-and-backs list a stop twice, so one stop id would carry one table
+  // pooled over two different passes; the rider simulator measured Purple
+  // 163 -> 188 strands with the split served there. Withheld by structure,
+  // not by name: a route that stops repeating a stop starts being served.
+  it("withholds both halves on a route that visits a stop more than once", () => {
+    const stops = [
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.311, lon: -72.931 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.932 },
+    ];
+    const network = TransitNetwork.build(stops, [
+      { id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] },
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] },
+      { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] },
+    ]);
+    expect([...foldRoutes(network)]).toEqual([10]);
+    // ...and a line that is not on the measured allowlist is withheld too:
+    // Pink cleared the client's gate on 11 hops and went 280 -> 431 strands.
+    expect(SPLIT_SERVED_ROUTE_IDS.has(3)).toBe(true);
+    expect(SPLIT_SERVED_ROUTE_IDS.has(8)).toBe(false);
+    expect([...splitWithheldRoutes(network)].sort()).toEqual([10, 8]);
+
+    const withheld = splitWithheldRoutes(network);
+    const dwells = new Map<string, DwellStats>();
+    expect(attachStandTables(dwells, [
+      { key: "10:2", n: 30, all: [20, 300], windowed: [] },
+      { key: "3:2", n: 2, all: [20, 40], windowed: [] },
+    ], withheld)).toBe(1);
+    expect(dwells.has("10:2")).toBe(false);
+    expect(dwells.get("3:2")!.qn).toBe(2);
+
+    const segments = new Map<string, SegmentStats>([
+      ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+      ["3:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+    ]);
+    expect(attachDrives(segments, [
+      { key: "10:2:3", n: 12, all: [30, 31], windowed: [] },
+      { key: "3:2:3", n: 12, all: [30, 31], windowed: [] },
+    ], withheld)).toBe(1);
+    expect(segments.get("10:2:3")!.drive).toBeUndefined();
+    expect(segments.get("3:2:3")!.drive).toBe(30.5);
+  });
+
+  it("attaches the median drive only where a calibrated segment exists", () => {
+    const segments = new Map<string, SegmentStats>([["1:1:2", { mean: 495, stddev: 5, n: 0, source: "route-segment" }]]);
+    const n = attachDrives(segments, [
+      { key: "1:1:2", n: 3, all: [15, 20, 90], windowed: [] },
+      { key: "1:2:3", n: 5, all: [30, 30, 30, 30, 30], windowed: [] },
+    ]);
+    expect(n).toBe(1);
+    expect(segments.get("1:1:2")).toEqual({ mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3 });
+    expect(segments.has("1:2:3")).toBe(false);
   });
 });

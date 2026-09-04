@@ -661,13 +661,85 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
   the median error is 367 s vs 99 s. A perfect anchor would take the median to
   103 s and the mean bias to +2 s.
+- **On an out-and-back, direction of travel picks the branch — and only for a
+  bus that is moving.** Green and Purple run out to West Campus and back along
+  the same road, so the same coordinates belong to two legs at once; neither
+  distance nor `last_stop_id` can separate them (a Green bus on I-95 sat 135 m
+  from the outbound chord and 139 m from the inbound one with `last_stop_id`
+  frozen for a 5 km run). `findRouteAnchor` now takes the previous DISTINCT fix
+  (`noteFix` in `anchorGate.ts` remembers it on the same store the gate uses)
+  and drops any candidate leg more than 127° against the step. Strand share on
+  the rider simulator: Green 32.3 → 27.4%, Purple 29.5 → 27.1%, Red unchanged
+  at 18.0 → 18.2%. **Do not loosen the 127°** — at 90° it helps a branch-lock
+  index count on every route and makes riders worse on Purple and Red, because
+  most of their ambiguity sits within 100 m of a stop where a "step" is a bus
+  shuffling at a kerb. And **do not let direction release the anchor gate**:
+  measured, Green improves and Purple ends up worse than master. What is left
+  is the stationary half of the ambiguity, which no geometry can settle —
+  42.8% of Purple's ambiguous polls, 23.2% of Green's; it is the estimator
+  rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
-- `predictions_log` is empty — nothing records what riders were told. The
-  replay is the substitute; the live browser harness
-  (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
+- `predictions_log` now HAS a writer (see "What riders were told" below). Until
+  it does in production, the replay is still the substitute; the live browser
+  harness (`scripts/eta-accuracy.mjs`, parametrised by `BOARD_ID`/`DEST_ID`/
   `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
   see, so it is a sanity check, not a measurement.
+
+### What riders were told (`predictions_log`, `docs/prediction-log.md`)
+
+Every accuracy and stability figure here used to be a RECONSTRUCTION — replay
+the arithmetic over stored positions and assert that is what the screen said.
+That has been wrong expensively: a family of stability numbers turned out to
+have been measured against a client that had not shipped since March, and a
+hotfix's before/after was credited to the wrong PR. The ETA is computed in the
+BROWSER, so only the browser can say what it displayed; a server-side recompute
+would reproduce that failure by construction.
+
+So a sampled share of page loads posts what they showed
+(`web/src/shownLog.ts` → `POST /api/shown`), and **every row names the bundle
+that produced it** (the content hash out of `/assets/index-<hash>.js`).
+
+**The privacy shape is why this table is allowed to exist, and it is different
+from `daily_actives`':** a row is a statement about a BUS — `(bus_name,
+route_id, to_stop_id, stops_ahead, predicted_sec, predicted_at, client_build)`
+— with **no identity accepted at all**, not even the `x-anon-id` the poll
+already carries. Three things hold that:
+
+- **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+  prices (bus → stop); the rider's position enters one layer up, in the walk
+  legs and `pickLiveArrival`. A row cannot encode a location even indirectly.
+- **The server deduplicates before writing.** `(bus_id, to_stop_id,
+  predicted_at)` is UNIQUE with `predicted_at` floored to 15 s, so thirty
+  riders at one stop in one bucket produce ONE row: a row means "at least one
+  client had this on screen", never "a rider was here". Same move bounds the
+  write volume by (buses x stops x buckets), not by traffic.
+- **The client sends an AGE, not a timestamp.** The server subtracts it from
+  its own clock and floors, so a wrong or hostile client clock cannot write a
+  row at an instant that never happened — which is what makes the instants
+  pairable with an arrival at all.
+
+15 s is the canary's and rider-sim's own cadence, so a logged sequence and a
+replayed one line up without resampling. Retention is **30 days**, deliberately
+shorter than the 90 of its neighbours (`arrivals` outlives it, so a row is
+pairable for as long as it exists), swept by the collector's hourly batched
+delete. Cost follows `actives.ts`: nothing writes on a request, a 60 s flush,
+`INSERT OR IGNORE`, every path non-throwing.
+
+`POST /api/shown` is a public write and is validated as hostile: the bus must
+be live now, the stop must be on that bus's route, ranges checked, per-IP rate
+limit, first-writer-wins so a late poster cannot overwrite a bucket.
+`SHUTTLE_PREDICTION_SAMPLE=0` is a kill switch that reaches the fleet — the
+server's reply carries the live rate, so clients stop within a minute with no
+deploy and no extra request.
+
+**The pairing** is the thing nobody could do before: `GET /api/predictions`
+(`npm run predictions`) returns each reading beside the arrival that followed
+it and the signed error, summarised **by client build**. Admin HEADER only, and
+deliberately outside `/api/stats` so the stats cookie's `Path=/api/stats` scope
+is untouched. It pairs on `bus_name` (the identity invariant), not `bus_id`.
+Use it to check `rider-sim` against reality — the procedure is at the end of
+`docs/prediction-log.md`; when the two disagree, the logged row wins.
 
 ### The accuracy gate: a recorded pass, before/during/after a dwell
 
@@ -693,6 +765,91 @@ the moment and both numbers.
 **Do not loosen a bound or re-record the fixture to make a change pass.**
 Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
 changes shape, and say in the PR what moved.
+
+### The stand/drive split is served (2026-09-04)
+
+PR #81's first-hop pricing — `median(stand − r | stand > r) + drive` at the
+stop, drive alone prorated en route (`web/src/hopPricing.ts`) — was live and
+INERT for a night: `/api/buses` carried neither `dwells[route][stop].q` nor
+`segments[route]["A-B"].drive`, so every request took the fallback path. The
+calibrator now reads `stop_visits` / `legs` (PR #83's derivation) on its
+5-minute cadence and attaches, on the **`at_stop_since` clock** (the client's
+`r`), pooled over 30 days — a (stop, hour) cell has a median of two samples:
+
+- `q` / `qn` — ten ascending stand quantiles at levels `(i + 0.5) / 10`
+  (`STAND_Q_COUNT` is part of the wire contract) over PINNED visits:
+  `departed_at − pinned_at` for a stopped one, **0 s for a pass-through the
+  detector pinned**. That zero is deliberate and measured: over stopped visits
+  only, the client billed the median stopped stand from the instant `at_stop`
+  appeared to riders whose bus was rolling through — Pink 280 → 431 strands,
+  Blue Day's Prospect / Huntington +28 in the simulator. `qn` counts both.
+- `drive` / `driveN` — the **median** one-hop leg, `at_stop_since(B) −
+  departure(A)`; a drive includes any hold at a light, and one red should
+  not move the number the way it moves a mean.
+
+Three rules to preserve:
+
+- **Serve what is measured with the true counts; never pre-filter.** The
+  client gates (`MIN_STAND_SAMPLES` 20 / `MIN_DRIVE_SAMPLES` 10) and prices a
+  thin hop exactly as before. A server-side floor would drift from the
+  client's and silently hide cells the client would take.
+- **Served only on routes the rider simulator has cleared**
+  (`SPLIT_SERVED_ROUTE_IDS`: Red, Blue Day), and never on a route that repeats
+  a stop (`foldRoutes`: Green 9, Purple 10 — one stop id cannot carry two
+  passes' tables, and the derivation inherits the detector's anchor on the
+  folds). The client's sample gate is NOT sufficient: Pink cleared it on 11
+  hops and went **280 → 431 strands** (LEPH / 60 College +122). The reason is
+  in the arithmetic, not the data — master is *pessimistic* at a layover-ish
+  stop (the stall credit is bounded by the dwell, so a rider at LEPH is
+  promised ~400 s while the bus stands at York / Cedar) and the conditional
+  *median* replaces that with an unbiased number, stranding the half of
+  riders whose bus leaves before its median. Red nets a win (1,041 → 769
+  strands, jumps ≥180 s 39% → 23%, the Winchester departure-poll rise
+  +220 s → +2 s) only because the cliff there was worse; Blue Day's jumps
+  fall 25.6% → 8.6% for +9 strands in 6,470. Served everywhere, Purple went
+  163 → 188 and Green 165 → 173. **Adding a route means running the pair**
+  (`scripts/eta-replay/rider-sim/run.ts`, master vs `PAYLOAD_PATCH`, then
+  `--compare`) and pasting its numbers beside the id. The fold exclusion is
+  interim, not a finding that the folds cannot be helped: a moving bus
+  reveals its branch over two fresh fixes; only a bus stationary on a shared
+  segment with no history is undecidable (`docs/eta-estimator-design.md`). A
+  lower conditional quantile than the median on the client is the obvious
+  next experiment for Pink — measure it there before serving it anywhere.
+- **Whole seconds on the wire, and the payload is not compressed in
+  production** (`content-encoding` is absent), so the cost is the raw one:
+  +3.9 KB per poll (+4.4%) for Red + Blue Day; +12.4 KB (+13.9%) if every
+  line were served. Compressing the cached payload string once per version
+  would be the real fix; not done.
+
+Validated against `docs/data/departure-tables-2026-09-03.json`: Red 344
+Winchester `q` p5/≈p50/p95 = 118/302/598 s over n=24 (reference
+118.1/302.8/598.1), drive 15 s over n=25 (reference median 15.1).
+
+**Backfill from the archive.** `scripts/backfill-departures.ts` runs the
+collector's own reducer over `~/shuttle-captures/positions-*.jsonl` and writes
+rows through the collector's own mapping (`src/collector/visitRows.ts`, shared
+with `persistVisits`), with a cutoff at the earliest live row and exact-key
+dedup (idempotent). `--out rows.json` + `scripts/backfill-departures-apply.cjs`
+(plain CJS, runs on the machine with `/app/node_modules/better-sqlite3`) is the
+production path. Without it the live tables start at 22:21 ET 2026-09-03 and
+Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 60
+hops clear them at once (Red 29, Blue Day 31).
+
+**The cutoff belongs to the TARGET, and an empty backfill is a failure.** The
+first production run of this script emitted `{"visits":[],"legs":[]}` and exited
+0, under a per-route coverage table that looked exactly right — the table counts
+"the target after this backfill", so it reads the same whether the rows came
+from the run or were already there. The `--db` it was given had itself been
+backfilled from this archive, so its earliest `stop_visits` row WAS the
+archive's first sample, and every derived event landed at or after the cutoff
+and was correctly skipped. Two things now make that impossible to miss: `--target
+<path>` names the database the rows are FOR (the cutoff and dedup keys come from
+it; `--db` still supplies the network), and `checkBackfill`
+(`scripts/backfill-guards.ts`, unit-tested) refuses **any** run that keeps zero
+rows, and refuses a cutoff at or before the corpus's first sample even when
+`--allow-empty` is passed — since that one can only ever keep nothing. A failed
+run prints a `=== BACKFILL SUMMARY ===` block with the cutoff and its
+provenance, writes nothing, and exits 1.
 
 ### The rider canary (`scripts/rider-canary.mjs`)
 

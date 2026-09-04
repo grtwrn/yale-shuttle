@@ -23,6 +23,7 @@ import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
+import { visitRowsOf } from "./visitRows.js";
 import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
 import { planTracks, reconcileTracks } from "./detector.js";
 import {
@@ -158,9 +159,41 @@ const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 
 // with arrivals/segments, not with the 6 h raw_positions window they came from.
 const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
 const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
+/**
+ * What riders were told (`predictions_log`, written by /api/shown). Shorter
+ * than its neighbours on purpose — see the retention note in
+ * server/predictions.ts: this is the one table whose volume scales with USAGE
+ * rather than with the fleet, `arrivals` outlives it so a row is pairable for
+ * as long as it exists, and shorter is the safe direction for a record of what
+ * was on somebody's screen.
+ */
+const PREDICTION_RETAIN_DAYS_DEFAULT = 30;
+function resolvePredictionRetainDays(): number {
+  // Resolved here rather than imported: nothing in src/collector depends on
+  // src/server and this sweep is not the place to start. `predictions.test.ts`
+  // parses this file and fails if the two defaults ever disagree, the same way
+  // `walk.test.ts` pins the client's walk speed to the server's.
+  const raw = Number(process.env.SHUTTLE_PREDICTION_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return PREDICTION_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const PREDICTION_RETAIN_MS = resolvePredictionRetainDays() * 24 * 60 * 60_000;
 
-type RetainedTable = "raw_positions" | "arrivals" | "segments" | "stop_visits" | "legs";
-const RETAINED_TABLES: readonly RetainedTable[] = ["raw_positions", "arrivals", "segments", "stop_visits", "legs"];
+type RetainedTable =
+  | "raw_positions"
+  | "arrivals"
+  | "segments"
+  | "stop_visits"
+  | "legs"
+  | "predictions_log";
+const RETAINED_TABLES: readonly RetainedTable[] = [
+  "raw_positions",
+  "arrivals",
+  "segments",
+  "stop_visits",
+  "legs",
+  "predictions_log",
+];
 
 // Batched-delete tuning carried forward from the v1 retention fix:
 // large transactions starved the poll loop and tripped /healthz.
@@ -884,6 +917,7 @@ export class Collector {
         ["segments", now - SEGMENT_RETAIN_MS],
         ["stop_visits", now - VISIT_RETAIN_MS],
         ["legs", now - LEG_RETAIN_MS],
+        ["predictions_log", now - PREDICTION_RETAIN_MS],
       ];
       for (const [table, cutoffMs] of trims) {
         const stmt = this.trimStmts.get(table);
@@ -1202,64 +1236,7 @@ export class Collector {
    * consumer groups by: the arrival for a visit, the departure for a leg.
    */
   private persistVisits(events: readonly VisitEvent[]): void {
-    const visitRows: Array<typeof stopVisits.$inferInsert> = [];
-    const legRows: Array<typeof legs.$inferInsert> = [];
-    const ts = (ms: number | null): Date | null => (ms === null ? null : new Date(ms));
-    for (const e of events) {
-      if (e.kind === "visit") {
-        const d = new Date(e.arrivedAt ?? e.anchoredAt);
-        visitRows.push({
-          busId: e.busId,
-          busName: e.busName,
-          anchorBusId: e.anchorBusId,
-          routeId: e.routeId,
-          stopId: e.stopId,
-          stopIndex: e.stopIndex,
-          anchoredAt: new Date(e.anchoredAt),
-          pinnedAt: ts(e.pinnedAt),
-          arrivedAt: ts(e.arrivedAt),
-          departedAt: ts(e.departedAt),
-          standSec: e.standSec,
-          insideSec: e.insideSec,
-          outcome: e.outcome,
-          how: e.how,
-          confidence: e.confidence,
-          firstStepM: e.firstStepM,
-          steps: e.steps,
-          farM: e.farM,
-          confirmSec: e.confirmSec,
-          restPolls: e.restPolls,
-          shuffles: e.shuffles,
-          firstMovedAt: ts(e.firstMovedAt),
-          lastAtRestAt: ts(e.lastAtRestAt),
-          closestM: e.closestM,
-          dow: d.getDay(),
-          hour: d.getHours(),
-        });
-      } else {
-        const d = new Date(e.departedAt);
-        legRows.push({
-          busId: e.busId,
-          busName: e.busName,
-          routeId: e.routeId,
-          fromStopId: e.fromStopId,
-          fromIndex: e.fromIndex,
-          toStopId: e.toStopId,
-          toIndex: e.toIndex,
-          hops: e.hops,
-          departedAt: d,
-          arrivedAt: new Date(e.arrivedAt),
-          toPinnedAt: ts(e.toPinnedAt),
-          legSec: e.legSec,
-          holdSec: e.holdSec,
-          driveSec: e.driveSec,
-          holds: e.holds,
-          reached: e.reached,
-          dow: d.getDay(),
-          hour: d.getHours(),
-        });
-      }
-    }
+    const { visitRows, legRows } = visitRowsOf(events);
     if (visitRows.length > 0) this.db.insert(stopVisits).values(visitRows).run();
     if (legRows.length > 0) this.db.insert(legs).values(legRows).run();
   }
@@ -1398,5 +1375,7 @@ function retentionColumn(table: RetainedTable): string {
       return "anchored_at";
     case "legs":
       return "departed_at";
+    case "predictions_log":
+      return "predicted_at";
   }
 }

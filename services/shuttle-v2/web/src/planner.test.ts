@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { DIRECT_COMMUTE_MARGIN_SEC, directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, mostDirectOption, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -592,8 +592,20 @@ describe("routeHoursCaption (report #57: hours atop the route details page)", ()
 });
 
 describe("topVisibleOptions", () => {
-  const opt = (mode: "shuttle" | "walk", label: string, totalSec: number) =>
-    ({ mode, routeLabel: label, totalSec } as unknown as import("./planner").TripOption);
+  // Legs default to "the whole total is riding", so every option's commute
+  // orders the same way as its total and the direct-route promotion below
+  // never fires unless a test asks for it. `directWalkSec` is deliberately
+  // over an hour: walking is not a real alternative in these fixtures.
+  const opt = (
+    mode: "shuttle" | "walk", label: string, totalSec: number,
+    legs?: { walkToSec?: number; rideSec?: number; walkFromSec?: number },
+  ) => ({
+    mode, routeLabel: label, totalSec,
+    walkToSec: legs?.walkToSec ?? 0,
+    rideSec: legs?.rideSec ?? totalSec,
+    walkFromSec: legs?.walkFromSec ?? 0,
+    directWalkSec: 99_999,
+  } as unknown as import("./planner").TripOption);
 
   it("keeps a third shuttle that is nearly as good as the second (report #46)", () => {
     // The live case: Red 17 min, walk 31, Orange 34, Blue 35 — Blue is one
@@ -634,5 +646,122 @@ describe("topVisibleOptions", () => {
   it("handles fewer than three shuttles", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
+  });
+
+  // ── The direct route always shows (report #93) ───────────────────────────
+  //
+  // The live trip from the report, measured against production 2026-09-04:
+  // Division/Prospect → LEPH. Red's total is a huge WAIT wrapped around the
+  // shortest commute on offer; Blue wins on total only because its bus is
+  // two minutes out rather than twenty-eight.
+  const report93 = () => [
+    opt("shuttle", "Blue Day", 22 * 60, { walkToSec: 78, rideSec: 1254, walkFromSec: 48 }),
+    opt("shuttle", "Orange Day", 34 * 60, { walkToSec: 972, rideSec: 786, walkFromSec: 48 }),
+    opt("walk", "Walk", 37 * 60),
+    opt("shuttle", "Red", 39 * 60, { walkToSec: 0, rideSec: 732, walkFromSec: 48 }),
+    opt("shuttle", "Brown", 66 * 60, { walkToSec: 126, rideSec: 1338, walkFromSec: 564 }),
+  ];
+
+  it("promotes the direct route out from behind 'Show more' (report #93)", () => {
+    const sorted = report93();
+    // Red is 4th on total and the third-shuttle slack does not reach it, yet
+    // it is the one that runs straight there — 13 min of walking + riding
+    // against Blue's 23 and Orange's 30.
+    expect(mostDirectOption(sorted)?.routeLabel).toBe("Red");
+    expect(directPromotion(sorted)?.routeLabel).toBe("Red");
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel))
+      .toEqual(["Blue Day", "Orange Day", "Walk", "Red"]);
+  });
+
+  it("keeps the fastest option on top — promotion adds a row, never reorders", () => {
+    const sorted = report93();
+    const visible = topVisibleOptions(sorted);
+    expect(visible[0].routeLabel).toBe("Blue Day");
+    // Every visible row keeps its rank from the sorted list.
+    const rank = (l: string) => sorted.findIndex((o) => o.routeLabel === l);
+    const ranks = visible.map((o) => rank(o.routeLabel));
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    // ...and Brown, which is neither fast nor direct, stays hidden.
+    expect(visible.map((o) => o.routeLabel)).not.toContain("Brown");
+  });
+
+  it("does not flicker as the wait moves: the promotion ignores live totals", () => {
+    // Replay the same plan with Red's wait sweeping the whole range that made
+    // it cross the slack boundary in the first place. Only totalSec changes —
+    // exactly what the per-poll live recompute rewrites.
+    for (let waitMin = 0; waitMin <= 40; waitMin++) {
+      const sorted = report93()
+        .map((o) => (o.routeLabel === "Red"
+          ? { ...o, totalSec: 13 * 60 + waitMin * 60 }
+          : o))
+        .sort((a, b) => a.totalSec - b.totalSec);
+      expect(mostDirectOption(sorted)?.routeLabel).toBe("Red");
+      expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toContain("Red");
+    }
+  });
+
+  it("stays quiet when the top of the list is already the direct route", () => {
+    // Blue is both fastest and most direct — no fourth row.
+    const sorted = [
+      opt("shuttle", "Blue Day", 12 * 60, { walkToSec: 60, rideSec: 600, walkFromSec: 60 }),
+      opt("shuttle", "Orange Day", 20 * 60, { walkToSec: 600, rideSec: 600, walkFromSec: 0 }),
+      opt("shuttle", "Red", 30 * 60, { walkToSec: 120, rideSec: 660, walkFromSec: 60 }),
+    ];
+    expect(directPromotion(sorted)).toBeUndefined();
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day"]);
+  });
+
+  it("needs a real margin — a hair more direct does not earn a row", () => {
+    const near = (extra: number) => [
+      opt("shuttle", "A", 10 * 60, { rideSec: 600 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+      opt("shuttle", "C", 40 * 60, { rideSec: 600 - extra }),
+    ];
+    // One second short of the margin: A is already the direct answer.
+    expect(directPromotion(near(DIRECT_COMMUTE_MARGIN_SEC - 1))).toBeUndefined();
+    expect(directPromotion(near(DIRECT_COMMUTE_MARGIN_SEC))?.routeLabel).toBe("C");
+  });
+
+  it("never promotes a bus the rider cannot catch, or one slower than walking", () => {
+    const base = [
+      opt("shuttle", "A", 10 * 60, { rideSec: 600 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+    ];
+    const departed = {
+      ...opt("shuttle", "C", 40 * 60, { rideSec: 60 }), departed: true,
+    } as import("./planner").TripOption;
+    expect(directPromotion([...base, departed])).toBeUndefined();
+    // Same option, catchable but with both walks longer than walking direct.
+    const slower = {
+      ...opt("shuttle", "C", 40 * 60, { walkToSec: 900, rideSec: 60, walkFromSec: 900 }),
+      directWalkSec: 1200,
+    } as import("./planner").TripOption;
+    expect(directPromotion([...base, slower])).toBeUndefined();
+  });
+
+  it("a short hop that leaves the rider far from the door is not 'direct'", () => {
+    // The operator's own caveat: "a short route that doesn't get you far
+    // wouldn't be good". C rides two minutes and drops them a 12-minute walk
+    // short; A carries them to the door in ten.
+    const sorted = [
+      opt("shuttle", "A", 10 * 60, { walkToSec: 60, rideSec: 480, walkFromSec: 60 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+      opt("shuttle", "C", 40 * 60, { walkToSec: 60, rideSec: 120, walkFromSec: 720 }),
+    ];
+    expect(mostDirectOption(sorted)?.routeLabel).toBe("A");
+    expect(directPromotion(sorted)).toBeUndefined();
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B"]);
+  });
+
+  it("adds at most one row", () => {
+    const sorted = [
+      opt("shuttle", "A", 10 * 60, { rideSec: 3000 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 2400 }),
+      opt("shuttle", "C", 40 * 60, { rideSec: 600 }),
+      opt("shuttle", "D", 50 * 60, { rideSec: 300 }),
+      opt("shuttle", "E", 60 * 60, { rideSec: 120 }),
+    ];
+    // E is the most direct; C and D do not each get a row of their own.
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "E"]);
   });
 });

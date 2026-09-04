@@ -279,6 +279,33 @@ describe("GET /api/buses", () => {
     });
   });
 
+  // The stand/drive split the client's hopPricing.ts consumes: `q`/`qn` on the
+  // stop, `drive`/`driveN` on the hop, whole seconds, present only where the
+  // calibrator attached them and always with the true count (the client gates
+  // on it; the server never pre-filters).
+  it("carries the stand quantiles and drive beside v1's numbers, and omits them where absent", async () => {
+    const net = collector.ref.get();
+    net.setCalibration(
+      new Map([
+        ["10:1:2", { mean: 495.06, stddev: 5, n: 0, source: "route-segment" as const, drive: 15.1, driveN: 25 }],
+        ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" as const }],
+      ]),
+      new Map([
+        ["10:1", { mean: 415.3, stddev: 279.8, n: 0, q: [118.1, 136.5, 302.8, 598.1], qn: 24 }],
+        ["10:2", { mean: 20, stddev: 5, n: 2 }],
+      ]),
+    );
+    (collector as unknown as { version: number }).version++;
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+    };
+    expect(body.segments["10"]!["1-2"]).toEqual({ avg: 495.1, sd: 5, n: 0, drive: 15, driveN: 25 });
+    expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
+    expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24 });
+    expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+  });
+
   it("rebuilds when the collector observes a new position", async () => {
     const first = (await (await app.request("/api/buses")).json()) as { buses: unknown[] };
     expect(first.buses).toEqual([]);
@@ -1352,6 +1379,33 @@ describe("GET /api/stats/reports — the dashboard's \"someone wrote in\" alert"
     expect(body.reports[0]!.excerpt).toBe("the bus never came");
   });
 
+  it("counts from the same epoch as the rest of /stats, not from all of history", async () => {
+    expect((await submit("filed while the app was still being built", STRANGER)).status).toBe(200);
+    // Same bundle, same reports — only the configured epoch differs, and it
+    // is later than anything filed. The panel must be empty rather than
+    // contradicting the "counting from …" line printed above it.
+    const laterEpoch = buildApp({
+      collector,
+      bundle,
+      now: () => 1_700_000_000_000,
+      adminToken: TEST_ADMIN_TOKEN,
+      statsSinceDay: "2099-01-01",
+      geocoder: { lookup: async () => [] },
+    });
+    const res = await laterEpoch.request("/api/stats/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { reports: unknown[]; total: number; newestId: number | null };
+    expect(body.reports).toHaveLength(0);
+    expect(body.total).toBe(0);
+    expect(body.newestId).toBeNull();
+    // The report itself is untouched: triage still sees everything.
+    const triage = await app.request("/api/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(await triage.text()).toContain("filed while the app was still being built");
+  });
+
   it("is reachable with the stats cookie, and leaks nothing that identifies a reporter", async () => {
     await submit("something is wrong", STRANGER);
     const cookie = await login();
@@ -1477,5 +1531,100 @@ describe("GET /api/stats/searches — what riders looked for", () => {
     });
     const body = (await res.json()) as { missing: Array<{ q: string }> };
     expect(body.missing.map((m) => m.q)).toContain("zzz storageless plaza");
+  });
+});
+
+describe("canary ingest and panel", () => {
+  const ADMIN = { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" };
+
+  /** The 07:37 Red finding, in the shape scripts/canary-ship.mjs sends. */
+  const RED = {
+    runKey: "1788522000000-Red",
+    startedAt: 1788522000000,
+    line: "Red",
+    tripFrom: "Prospect / Canner",
+    tripTo: "School of Public Health (YSPH)",
+    ok: false,
+    arrived: true,
+    watchedMin: 11.2,
+    readings: 40,
+    reversals: 2,
+    catastrophic: 2,
+    worstDriftSec: 426,
+    failures: [{ kind: "eta-jump", detail: '"now, then 66 min" -> "in 7, 25 min" in 15 s' }],
+    jumps: [{
+      atMs: 1788522100000, fromSec: 0, driftSec: 426,
+      from: "now, then 66 min", to: "in 7, 25 min", announced: false,
+    }],
+  };
+
+  const ship = (runs: unknown[]) =>
+    app.request("/api/canary/runs", { method: "POST", headers: ADMIN, body: JSON.stringify({ runs }) });
+
+  it("stores a shipped run and reports it back on the panel", async () => {
+    const post = await ship([RED]);
+    expect(post.status).toBe(200);
+    expect(((await post.json()) as { stored: number }).stored).toBe(1);
+
+    const res = await app.request("/api/stats/canary?hours=99999", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const body = (await res.json()) as {
+      runs: number; lines: Array<{ line: string }>;
+      findings: Array<{ failures: Array<{ detail: string }> }>;
+    };
+    expect(body.runs).toBe(1);
+    expect(body.lines[0]!.line).toBe("Red");
+    // The sequence is the useful part, not the count.
+    expect(body.findings[0]!.failures[0]!.detail).toContain("now, then 66 min");
+  });
+
+  // The write must never be reachable with the cookie the browser carries:
+  // the dashboard renders this panel, and a cookie that could write to it
+  // would let any page the operator visits put words on their own dashboard.
+  it("refuses the ingest route without the admin HEADER", async () => {
+    const login = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const cookie = `stats_session=${value}`;
+
+    const withCookie = await app.request("/api/canary/runs", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ runs: [RED] }),
+    });
+    expect(withCookie.status).toBe(401);
+
+    const anon = await app.request("/api/canary/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runs: [RED] }),
+    });
+    expect(anon.status).toBe(401);
+
+    // But the READ is cookie-reachable, like the rest of /api/stats: the
+    // payload is harness output and names no rider.
+    expect((await app.request("/api/stats/canary", { headers: { cookie } })).status).toBe(200);
+  });
+
+  it("rejects a body that is not a run list", async () => {
+    for (const body of ['{"runs":"nope"}', "{}", "[]"]) {
+      const res = await app.request("/api/canary/runs", { method: "POST", headers: ADMIN, body });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("answers an empty panel before anything is shipped", async () => {
+    const res = await app.request("/api/stats/canary", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { runs: number; lines: unknown[]; openAlerts: number };
+    expect(body).toMatchObject({ runs: 0, openAlerts: 0 });
+    expect(body.lines).toEqual([]);
   });
 });

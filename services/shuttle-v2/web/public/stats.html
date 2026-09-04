@@ -226,6 +226,43 @@
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px;
   }
 
+  /* The rider canary. Same visual language as the mail above — a quiet card
+     list that goes loud only when something is wrong — because it answers the
+     same shape of question ("is there something here I have not seen?").
+     Every colour is an EXISTING token: the attention role is the one the mail
+     badge already uses, and --danger appears only as text, never as a fill,
+     because in dark mode it is a pale pink that white would vanish into. */
+  .canary { display: grid; gap: 10px; }
+  .canary-lines {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .canary-line {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-size: 13px; padding: 5px 9px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 999px;
+  }
+  .canary-line.bad { border-color: var(--series-returning); }
+  .canary-line b { font-weight: 600; font-size: 14px; }
+  .canary-line span { color: var(--ink-2); }
+  /* The failing sequence is the useful part of a finding, so it is set as
+     code — but it WRAPS. Left to scroll sideways it read as truncated in the
+     one place it matters ('"now, then 66 min" -> "in 7, 25 min" in 15 s' fits;
+     the drift that follows it did not), and because the card is a grid item
+     its default min-width:auto let the long line widen the whole page, which
+     clipped the escalated tag off the right edge. Hence min-width: 0 below. */
+  .canary-seq {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.5;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .canary > .note { min-width: 0; }
+  .canary-kind {
+    font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px;
+  }
+  .note.alerted { border-color: var(--series-returning); border-width: 2px; }
+  .canary-escalated { color: var(--danger); font-weight: 700; }
+
   /* -- Login / error states --------------------------------------------- */
   .panel {
     background: var(--raised);
@@ -349,6 +386,25 @@
         Nobody but you has written in yet.
       </div>
     </section>
+
+    <!-- The rider canary. It rides a line and watches the countdown a rider
+         sees; before this panel existed its findings only ever reached a
+         JSONL file on the Pi, and the one that caught the 2026-09-04 ETA bug
+         sat there unread. See src/server/canary.ts. -->
+    <section>
+      <div class="chart-head">
+        <h2>Rider canary<span id="canary-alert" class="mail-new" hidden></span></h2>
+        <div class="legend"><span id="canary-note"></span></div>
+      </div>
+      <div id="canary-lines" class="canary-lines"></div>
+      <div id="canary" class="canary"></div>
+      <div id="canary-empty" class="empty" hidden>
+        No canary runs shipped yet.
+      </div>
+      <div id="canary-clean" class="empty" hidden>
+        Every run passed. Nothing to look at.
+      </div>
+    </section>
   </div>
 </main>
 
@@ -362,6 +418,9 @@
   // Seven lines is the most this chart stays readable with — past that the
   // older days are a smudge and the legend outgrows the phone.
   var HOURLY_DAYS = 7;
+  // A day of riding. The canary gets through ~11 lines in that time, which is
+  // the span over which "which lines were watched" has a true answer.
+  var CANARY_HOURS = 24;
 
   var el = {
     loading: document.getElementById("loading"),
@@ -394,7 +453,13 @@
     mail: document.getElementById("mail"),
     mailNew: document.getElementById("mail-new"),
     mailTotal: document.getElementById("mail-total"),
-    mailEmpty: document.getElementById("mail-empty")
+    mailEmpty: document.getElementById("mail-empty"),
+    canary: document.getElementById("canary"),
+    canaryLines: document.getElementById("canary-lines"),
+    canaryNote: document.getElementById("canary-note"),
+    canaryAlert: document.getElementById("canary-alert"),
+    canaryEmpty: document.getElementById("canary-empty"),
+    canaryClean: document.getElementById("canary-clean")
   };
 
   // Which reports this browser has already been shown. Highest id seen, in
@@ -488,13 +553,15 @@
       // count is the page's job, the mail is the addition.
       getJson("/api/stats/reports?limit=15").catch(function () { return null; }),
       getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; }),
-      getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; })
+      getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; }),
+      getJson("/api/stats/canary?hours=" + CANARY_HOURS).catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
       renderMail(both[2]);
       renderHours(both[3] && both[3].hourly);
       renderTerms(both[4]);
+      renderCanary(both[5]);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -729,6 +796,90 @@
     // Reading the page IS the acknowledgement: the badge clears on the next
     // load, not on a button nobody would press.
     markSeen(data.newestId);
+  }
+
+  /**
+   * What the rider canary saw. The panel has to answer four things at a
+   * glance — which lines were watched, how recently, how many runs passed,
+   * and WHAT THE FAILURES WERE — and the fourth is the one that matters: a
+   * count of failures is what the JSONL file already had, and nobody read it.
+   * So each finding prints its sequence verbatim.
+   *
+   * textContent and createElement throughout, exactly as the mail above: this
+   * is machine output, but it quotes strings scraped off a live page.
+   */
+  function renderCanary(payload) {
+    var d = payload || {};
+    var lines = d.lines || [];
+    var findings = d.findings || [];
+
+    el.canaryLines.textContent = "";
+    for (var i = 0; i < lines.length; i++) {
+      var L = lines[i];
+      var chip = document.createElement("div");
+      chip.className = L.lastOk ? "canary-line" : "canary-line bad";
+      var name = document.createElement("b");
+      name.textContent = L.line;
+      chip.appendChild(name);
+      var meta = document.createElement("span");
+      // "2/3 · 14 min ago" — passed of watched, and how fresh the answer is.
+      meta.textContent = L.passed + "/" + L.runs + " · " + ago(L.lastRunAt);
+      chip.appendChild(meta);
+      el.canaryLines.appendChild(chip);
+    }
+
+    el.canary.textContent = "";
+    for (var j = 0; j < findings.length; j++) {
+      var f = findings[j];
+      var card = document.createElement("div");
+      card.className = f.alertedAt && !f.resolvedAt ? "note alerted" : "note";
+
+      var meta2 = document.createElement("div");
+      meta2.className = "note-meta";
+      var who = document.createElement("span");
+      who.textContent = f.line + " · " + ago(f.startedAt);
+      meta2.appendChild(who);
+      var kinds = {}, order = [];
+      for (var k = 0; k < (f.failures || []).length; k++) {
+        var kind = f.failures[k].kind || "unknown";
+        if (!kinds[kind]) { kinds[kind] = true; order.push(kind); }
+      }
+      for (var o = 0; o < order.length; o++) {
+        var tag = document.createElement("span");
+        tag.className = "canary-kind";
+        tag.textContent = order[o];
+        meta2.appendChild(tag);
+      }
+      if (f.alertedAt) {
+        var esc = document.createElement("span");
+        esc.className = "canary-kind canary-escalated";
+        esc.textContent = f.resolvedAt ? "escalated · closed" : "escalated";
+        meta2.appendChild(esc);
+      }
+      card.appendChild(meta2);
+
+      // The sequence, one line per failure, verbatim.
+      var seq = document.createElement("div");
+      seq.className = "canary-seq";
+      var texts = [];
+      for (var m = 0; m < (f.failures || []).length; m++) {
+        texts.push(f.failures[m].detail || f.failures[m].kind);
+      }
+      seq.textContent = texts.join("\n");
+      card.appendChild(seq);
+      el.canary.appendChild(card);
+    }
+
+    var ran = typeof d.runs === "number" ? d.runs : 0;
+    el.canaryEmpty.hidden = ran > 0;
+    el.canaryClean.hidden = !(ran > 0 && findings.length === 0);
+    el.canaryNote.textContent = ran
+      ? (d.passed || 0) + " of " + ran + " runs passed in " + d.windowHours + " h"
+      : "";
+    // Loud only while an escalated finding is still open. When the lines are
+    // healthy this whole section is one grey sentence.
+    el.canaryAlert.hidden = !d.openAlerts;
+    el.canaryAlert.textContent = d.openAlerts + " escalated";
   }
 
   function render(r, history, since) {

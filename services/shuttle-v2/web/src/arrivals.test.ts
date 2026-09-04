@@ -5,9 +5,10 @@ import { fileURLToPath } from "node:url";
 
 import {
   billedDwellSec, computeUpcomingArrivals, MAX_PLAUSIBLE_M_S, MIN_HOP_SEC,
-  nextArrivalAfterPinned, STALL_CREDIT_MAX_FRACTION,
+  nextArrivalAfterPinned, shownStandSec, splitServedForRoute, STALL_CREDIT_MAX_FRACTION,
 } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
+import { priceFirstHop, remainingStandSec } from "./hopPricing";
 import { findRouteAnchor, registerRoutePaths } from "./anchor";
 import { beliefStoreFor } from "./belief";
 import {
@@ -26,7 +27,7 @@ const etaFor = (arrivals: { stopId: number; eta: number }[], stopId: number) =>
   arrivals.find((a) => a.stopId === stopId)?.eta;
 
 describe("computeUpcomingArrivals", () => {
-  it("keeps a simple loop on the established anchor path", () => {
+  it("keeps simple loops on the established anchor path", () => {
     const path = blueWeekend.map((stop) => [
       stopCoords[stop]!.lat,
       stopCoords[stop]!.lon,
@@ -39,21 +40,14 @@ describe("computeUpcomingArrivals", () => {
       last_stop_id: STOP.phelpsGate,
     });
     const arrivals = computeUpcomingArrivals(
-      [STOP.cedar333],
-      [bus],
-      routeStops,
-      stopCoords,
-      segmentTimes,
-      NOW,
-      {},
-      store,
+      [STOP.cedar333], [bus], routeStops, stopCoords, segmentTimes, NOW, {}, store,
     );
     expect(arrivals.length).toBeGreaterThan(0);
     expect(beliefStoreFor(store).size).toBe(0);
     registerRoutePaths(null);
   });
 
-  it("uses caller-owned directed-loop memory on a repeated-stop out-and-back", () => {
+  it("uses caller-owned posterior memory on a repeated-stop out-and-back", () => {
     const coords = {
       201: { lat: 41.31, lon: -72.93 },
       202: { lat: 41.31, lon: -72.928 },
@@ -84,14 +78,7 @@ describe("computeUpcomingArrivals", () => {
       },
     };
     computeUpcomingArrivals(
-      [203],
-      [bus],
-      stops,
-      coords,
-      segments,
-      NOW + 5_000,
-      {},
-      store,
+      [203], [bus], stops, coords, segments, NOW, {}, store,
     );
     expect(beliefStoreFor(store).size).toBe(1);
     registerRoutePaths(null);
@@ -598,5 +585,98 @@ describe("nextArrivalAfterPinned", () => {
   it("matches vehicle names with or without the leading hash", () => {
     const list = [a("40", 450), a("#41", 510)];
     expect(nextArrivalAfterPinned(list, "#40", 450)?.busName).toBe("#41");
+  });
+});
+
+describe("shownStandSec — the chip quotes the number the countdown bills", () => {
+  // The operator's own case, 2026-09-04: a Red bus standing at 344 Winchester.
+  // Live payload for route 3, stop 11.
+  const WINCHESTER = {
+    med: 574.9, sd: 279.8, n: 28,
+    q: [112, 140, 145, 216, 294, 339, 440, 478, 538, 663],
+    qn: 28,
+  };
+  const DRIVE = { avg: 100, n: 30, drive: 18, driveN: 25 };
+  const STOOD = 180;
+
+  it("says what is LEFT, not a total the rider has to subtract from", () => {
+    const shown = shownStandSec(WINCHESTER, DRIVE, STOOD, true)!;
+    expect(shown.remaining).toBe(true);
+    // The chip used to print ~10 min (dwell.med, 574.9 s) beside a countdown
+    // of 5 min. The quantiles above the 180 s already stood have a median of
+    // 440 s, so ~4 min is what is actually left — and that IS the 5 min the
+    // rider was being told, less the drive.
+    expect(shown.sec).toBeGreaterThan(180);
+    expect(shown.sec).toBeLessThan(360);
+    expect(shown.sec).toBeLessThan(WINCHESTER.med);
+  });
+
+  it("is EXACTLY the stand term priceFirstHop adds — not a second estimate", () => {
+    const shown = shownStandSec(WINCHESTER, DRIVE, STOOD, true)!;
+    const billed = priceFirstHop({ q: WINCHESTER.q }, DRIVE.drive, STOOD, 0);
+    expect(shown.sec).toBeCloseTo(billed - DRIVE.drive, 6);
+    expect(shown.sec).toBeCloseTo(remainingStandSec(WINCHESTER.q, STOOD), 6);
+  });
+
+  it("shrinks as the bus keeps standing, the way the countdown does", () => {
+    const early = shownStandSec(WINCHESTER, DRIVE, 60, true)!.sec;
+    const late = shownStandSec(WINCHESTER, DRIVE, 400, true)!.sec;
+    expect(late).toBeLessThan(early);
+  });
+
+  // Everything below is the "keep the old behaviour exactly" half: where the
+  // split does not price the hop, the legacy stall credit still bills
+  // dwell.med, so dwell.med is still the honest thing to show.
+  it("keeps the arrival-to-arrival median on a route the split is not served for", () => {
+    expect(shownStandSec(WINCHESTER, DRIVE, STOOD, false))
+      .toEqual({ sec: WINCHESTER.med, remaining: false });
+  });
+
+  it("keeps it when this hop's drive is too thin to price", () => {
+    const thinDrive = { avg: 100, n: 30, drive: 18, driveN: 1 };
+    expect(shownStandSec(WINCHESTER, thinDrive, STOOD, true))
+      .toEqual({ sec: WINCHESTER.med, remaining: false });
+    expect(shownStandSec(WINCHESTER, undefined, STOOD, true))
+      .toEqual({ sec: WINCHESTER.med, remaining: false });
+  });
+
+  it("keeps it when this stop's stand table is too thin", () => {
+    const thin = { med: 300, sd: 10, n: 4, q: [10, 20, 30], qn: 4 };
+    expect(shownStandSec(thin, DRIVE, STOOD, true)).toEqual({ sec: 300, remaining: false });
+  });
+
+  it("keeps it when the bus is not standing there at all", () => {
+    // A stop still ahead has no remainder to state, so the typical hold is
+    // the only answer — and it is the figure shown before the bus arrives and
+    // after it does (report #77).
+    expect(shownStandSec(WINCHESTER, DRIVE, null, true))
+      .toEqual({ sec: WINCHESTER.med, remaining: false });
+  });
+
+  it("says nothing when there is no statistic at all", () => {
+    expect(shownStandSec(undefined, DRIVE, STOOD, true)).toBeNull();
+    expect(shownStandSec({ med: NaN, sd: 0, n: 0 }, DRIVE, null, false)).toBeNull();
+  });
+});
+
+describe("splitServedForRoute — one predicate for the screen and the arithmetic", () => {
+  const goodSeg = { avg: 100, n: 30, drive: 18, driveN: 25 };
+  const goodDwell = { med: 500, sd: 100, n: 28, q: [100, 200, 300], qn: 28 };
+
+  it("needs both halves somewhere on the route", () => {
+    expect(splitServedForRoute({ a: goodSeg }, { "1": goodDwell })).toBe(true);
+    expect(splitServedForRoute({ a: { avg: 100, n: 30 } }, { "1": goodDwell })).toBe(false);
+    expect(splitServedForRoute({ a: goodSeg }, { "1": { med: 500, sd: 1, n: 3 } })).toBe(false);
+    expect(splitServedForRoute({}, {})).toBe(false);
+  });
+
+  it("is what the estimator itself asks", () => {
+    // Guard against the two definitions being forked again: this is the whole
+    // reason the chip and the countdown disagreed. If computeUpcomingArrivals
+    // stops calling this, the string below stops matching.
+    const src = readFileSync(
+      fileURLToPath(new URL("./arrivals.ts", import.meta.url)), "utf8",
+    );
+    expect(src).toContain("const splitServed = splitServedForRoute(routeSegs, routeDwells)");
   });
 });

@@ -57,13 +57,15 @@ export interface SegmentStats {
    */
   source: "specific" | "route-segment" | "route" | "prior";
   /**
-   * Seconds from the last poll at the from-stop to arrival at the to-stop
-   * (the hop without the standing time at A). Served from `legs` on the
-   * clear clock; omitted when the cell is thinner than MIN_DRIVE_SAMPLES.
-   * The client prices the first hop from this plus `DwellStats.q`.
+   * Seconds from the bus's departure at the from-stop to `at_stop_since` at
+   * the to-stop — the DRIVE half of the hop, on the pinned clock, from `legs`
+   * (the departure derivation). `mean` above is arrival-to-arrival and holds
+   * every second the bus stood at A; this does not. The client prices the
+   * first hop as `stand(A) + drive` and prorates ONLY this en route
+   * (`web/src/hopPricing.ts`). Absent until a leg has been recorded.
    */
   drive?: number;
-  /** Sample count behind `drive`. */
+  /** Legs behind `drive`. The client gates on it (`MIN_DRIVE_SAMPLES`). */
   driveN?: number;
 }
 
@@ -102,15 +104,17 @@ export interface DwellStats {
    */
   low?: number;
   /**
-   * Ascending quantiles of standing time at this stop (clear clock:
-   * last poll within 75 m minus `at_stop_since`), from `stop_visits`.
-   * The client conditions remaining stand on elapsed r; omitted when
-   * thinner than MIN_STAND_SAMPLES. Independent of `mean`/`low`, which
-   * still come from the arrival-to-arrival `dwell_sec` and are unused
-   * by the first-hop price.
+   * Ascending quantiles of the STANDING time at this stop, in seconds on the
+   * `at_stop_since` clock (departure instant − `pinned_at`, over stopped
+   * visits in `stop_visits`), at levels (i + 0.5) / q.length. Unlike `mean`
+   * above this really is standing time — it comes from the departure
+   * derivation, not from anchor residence. The client reads it as the knots of
+   * a piecewise-linear CDF and prices the first hop as the conditional median
+   * of (stand − r | stand > r) plus the drive (`web/src/hopPricing.ts`).
+   * Absent until the stop has a stopped visit.
    */
   q?: number[];
-  /** Sample count behind `q`. */
+  /** Stopped visits behind `q`. The client gates on it (`MIN_STAND_SAMPLES`). */
   qn?: number;
 }
 

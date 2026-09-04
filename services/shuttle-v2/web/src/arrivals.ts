@@ -1,16 +1,16 @@
 // Bus → stop ETA computation. Extracted from TransitMap.tsx unchanged.
 
-import { findRouteAnchor, isBusOnRoute, routePathFor } from "./anchor";
-import { gateAnchor, type AnchorStore } from "./anchorGate";
+import { isBusOnRoute, routePathFor } from "./anchor";
+import { type AnchorStore } from "./anchorGate";
 import {
-  buildGeometry,
   beliefStoreFor,
+  buildGeometry,
   componentPosition,
   stepStore,
-  type BeliefStore,
   type RouteGeometry,
 } from "./belief";
-import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
+import { driveAdequate, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -36,20 +36,6 @@ export type DwellsByBus = Record<string, DwellTimes>;
 
 const geometryCache = new WeakMap<object, Map<string, RouteGeometry>>();
 
-function weightedMedian(
-  values: readonly { eta: number; variance: number; weight: number }[],
-): number {
-  const total = values.reduce((sum, value) => sum + value.weight, 0);
-  if (!(total > 0)) return 0;
-  const ordered = [...values].sort((a, b) => a.eta - b.eta);
-  let cumulative = 0;
-  for (const value of ordered) {
-    cumulative += value.weight;
-    if (cumulative >= total / 2) return value.eta;
-  }
-  return ordered[ordered.length - 1]!.eta;
-}
-
 function routeGeometry(
   path: readonly (readonly [number, number])[],
   stops: readonly number[],
@@ -72,6 +58,20 @@ function routeGeometry(
   if (!(geometry.loopLength > 0) || geometry.legs.length !== stops.length) return null;
   bySequence.set(key, geometry);
   return geometry;
+}
+
+function weightedMedian<T extends { eta: number; weight: number }>(
+  values: readonly T[],
+): number {
+  const total = values.reduce((sum, value) => sum + value.weight, 0);
+  if (!(total > 0)) return 0;
+  const ordered = [...values].sort((a, b) => a.eta - b.eta);
+  let cumulative = 0;
+  for (const value of ordered) {
+    cumulative += value.weight;
+    if (cumulative >= total / 2) return value.eta;
+  }
+  return ordered[ordered.length - 1]!.eta;
 }
 
 /**
@@ -216,6 +216,99 @@ export function billedDwellSec(
 }
 
 /**
+ * Whether a route's payload carries BOTH halves of the stand/drive split, so
+ * `hopPricing` engages on it at all.
+ *
+ * Extracted from the estimator so the screen can ask the same question the
+ * arithmetic asks. If these two ever get separate definitions, the chip and
+ * the countdown go back to disagreeing — which is the bug below.
+ */
+export function splitServedForRoute(
+  routeSegs: Record<string, SegmentStat>,
+  routeDwells: Record<string, DwellStat>,
+): boolean {
+  return Object.values(routeSegs).some(driveAdequate)
+    && Object.values(routeDwells).some(standAdequate);
+}
+
+/** What the pause chip should say, and whether it is a remainder or a total. */
+export interface ShownStand {
+  sec: number;
+  /**
+   * true  — seconds STILL TO STAND, the very term `priceFirstHop` adds.
+   * false — the legacy arrival-to-arrival median, which is what the legacy
+   *         stall credit is bounded by. Same number, shown and billed.
+   */
+  remaining: boolean;
+  /**
+   * The stop's TYPICAL hold — what the same table says a bus that has only
+   * just arrived still has to stand. Present only when `remaining` is true.
+   *
+   * Deliberately unconditional, so it does not move while a bus sits. The
+   * conditional total does move, and correctly: a bus five minutes into a
+   * hold is drawn from the longer-hold population, so its expected total is
+   * genuinely larger than a bus two minutes in (339 s vs 478 s at stop 11).
+   * That is the inspection paradox and it is real — but the operator's call,
+   * having seen both: "well actually, stable makes more sense", because the
+   * figure reads as a fact about the STOP rather than a prediction about the
+   * bus, and a number that creeps upward while nothing happens invites the
+   * reader to look for a cause that is not there.
+   *
+   * The cost, stated so nobody rediscovers it: `typicalSec - elapsed` is NOT
+   * what is left. `sec` is. A rider five minutes into a typical six-minute
+   * hold may still have three minutes to go.
+   */
+  typicalSec?: number;
+}
+
+/**
+ * The hold to PUT ON SCREEN beside a bus that is standing at a stop.
+ *
+ * `billedDwellSec` made the shown number equal the billed number back when
+ * there was only one price. Since the stand/drive split went live (Red and
+ * Blue Day, 2026-09-04) there are two, and the chip kept quoting the old one:
+ * a bus standing at 344 Winchester showed `⏸ 3 min / ~10 min` — read by a
+ * rider as "seven more minutes" — while the countdown beside it said 5 min,
+ * and the countdown was right. `dwell.med` is the arrival-to-arrival median,
+ * which CONTAINS DRIVE TIME and was never a measurement of standing (see WHAT
+ * A DWELL STATISTIC ACTUALLY MEASURES); the pricing conditions the standing
+ * quantiles on how long the bus has already stood and takes what is left.
+ *
+ * So where the split prices the hop, this returns the remainder — the same
+ * `remainingStandSec(q, r)` the ETA adds — and the chip says "~4 min left".
+ * That answers the rider's question outright instead of handing them "3 of
+ * 10" to subtract, which is arithmetic they would do against the wrong total.
+ *
+ * The gate is deliberately the WHOLE of the estimator's first-hop condition,
+ * not just `standAdequate`: route-level split service, an adequately sampled
+ * drive for this hop, and an adequately sampled stand for this stop. Where any
+ * of that is missing — Green, Purple, any thin cell — it falls through to
+ * `billedDwellSec`, because there the legacy arithmetic is still what runs and
+ * the old number is still the one being billed.
+ */
+export function shownStandSec(
+  stat: DwellStat | undefined,
+  seg: SegmentStat | undefined,
+  elapsedSec: number | null,
+  splitServed: boolean,
+  started = false,
+): ShownStand | null {
+  if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
+    return {
+      sec: remainingStandSec(stat.q, elapsedSec),
+      remaining: true,
+      // Asked of the same function at elapsed = 0, so the typical hold and the
+      // remainder can never come from two different statistics — which is the
+      // whole defect this chip has had twice (a per-bus dwell beside a route
+      // dwell, then `dwell.med` beside the conditional quantiles).
+      typicalSec: remainingStandSec(stat.q, 0),
+    };
+  }
+  const med = billedDwellSec(stat, started);
+  return med === null ? null : { sec: med, remaining: false };
+}
+
+/**
  * The credit is spent on the FIRST hop only, and never beyond the dwell that
  * hop actually contains.
  *
@@ -242,6 +335,27 @@ export function billedDwellSec(
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
   routeLabel: string; color: string; busName: string; stopId: number;
+  /**
+   * Hops from the bus's anchor to this stop, 1-based — the loop walks twice,
+   * so the same vehicle a lap later is `stopsAhead > totalStops`.
+   *
+   * ⚠️ **It counts hops on the CANONICAL sequence**, `mergedRouteStops`, which
+   * keeps the primary route's stops VERBATIM — repeats and all, because Green
+   * and Purple pass West Campus twice. It is emphatically NOT an index into
+   * the de-duplicated lists TransitMap's render sites build (Green 23 → 20,
+   * Purple 15 → 11), which is the distinction `anchorIndexOnList` exists to
+   * keep straight (liveAnchor.ts). The right reading is "how many stops of the
+   * real ride are between the bus and this stop", which is the quantity a
+   * distance bucket wants; translating it to a render list would silently mean
+   * something else on exactly the two routes where the estimator is worst.
+   *
+   * Purely descriptive: nothing in the estimator reads it. It exists so a
+   * logged reading can say how far away the bus was when the number was shown
+   * (`predictions_log.stops_ahead`, and the by-distance buckets both accuracy
+   * readers roll up), which is the difference between "our 1-stop numbers are
+   * fine and our 8-stop ones are not" and one undifferentiated median.
+   */
+  stopsAhead: number;
 };
 
 export function computeUpcomingArrivals(
@@ -260,18 +374,10 @@ export function computeUpcomingArrivals(
    * assert.
    */
   anchorStore?: AnchorStore,
-  /**
-   * Directed-loop posterior memory. When supplied with a published route
-   * path, this replaces the point anchor for ETA pricing. Omitted calls retain
-   * the established anchor path (tests, future-mode plans, old replays).
-   */
-  beliefStore?: BeliefStore,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
-  const activeBeliefStore = beliefStore ?? (
-    anchorStore ? beliefStoreFor(anchorStore) : undefined
-  );
+  const beliefStore = anchorStore ? beliefStoreFor(anchorStore) : undefined;
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     const hitsTarget = stops.some((s) => targetSet.has(s));
@@ -292,13 +398,9 @@ export function computeUpcomingArrivals(
     // The stand/drive pricing (hopPricing.ts) and its standing memory engage
     // only on a route the calibrator serves the split for; otherwise nothing
     // below this line behaves differently from before it existed.
-    const splitServed = Object.values(routeSegs).some(driveAdequate)
-      && Object.values(routeDwells).some(standAdequate);
-    // Stage the posterior where a point anchor is structurally incapable of
-    // representing the route: one stop sequence visits the same spur twice.
-    // On simple loops the matched replay found no branch problem to solve and
-    // the handoff added reversals; retaining the established gate there makes
-    // this a measured rollout rather than a global algorithm switch.
+    // Shared with the pause chip on screen (see shownStandSec) so the number
+    // shown and the number billed cannot come from two different rules.
+    const splitServed = splitServedForRoute(routeSegs, routeDwells);
     const seenStops = new Set<number>();
     const hasRepeatedStop = stops.some((stop) => {
       if (seenStops.has(stop)) return true;
@@ -314,16 +416,26 @@ export function computeUpcomingArrivals(
       // advance one stop at a time" pattern which stalled when
       // last_stop_id was multi-stops-stale and the bus had drifted
       // off-axis from subsequent segment lines.
-      const rawAnchorIdx = findRouteAnchor(bus, stops, stopCoords);
-      if (rawAnchorIdx < 0) continue;
+      const anchorKey = anchorKeyFor(cfg.label, bus.bus_name);
+      // Which way is it going? Two distinct fixes settle the branch of an
+      // out-and-back that no amount of distance can (see anchor.ts). The
+      // memory lives on the caller's store, so a hypothetical or replayed
+      // computation that passes none still gets the stateless anchor.
+      //
       // A 35 m GPS wobble must not relocate the bus a third of a lap. The gate
       // holds the previous anchor until an arrival/departure, real movement, or
       // a corroborated last_stop_id change says the bus actually went
       // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
       // early still collapses the countdown immediately.
-      let gpsAnchorIdx = anchorStore
-        ? gateAnchor(anchorStore, `${cfg.label}|${bus.bus_name}`, rawAnchorIdx, bus, now, stops.length).index
-        : rawAnchorIdx;
+      //
+      // The whole sequence lives in liveAnchor.ts because the render sites in
+      // TransitMap.tsx must run the SAME one against the SAME store — an
+      // ungated "N stops away" beside a gated countdown is two answers on one
+      // screen.
+      let gpsAnchorIdx = resolveAnchorIndex(
+        bus, stops, stopCoords, anchorKey, now, anchorStore,
+      );
+      if (gpsAnchorIdx < 0) continue;
 
       // at_stop_id is GPS-computed every poll cycle (~5 s) and is more
       // current than last_stop_id (the feed lags by one stop on arrival).
@@ -370,12 +482,7 @@ export function computeUpcomingArrivals(
       let standingMemo: { stopId: number; standingSec: number } | null = null;
       if (anchorStore && splitServed) {
         standingMemo = standingAt(
-          anchorStore,
-          `${cfg.label}|${bus.bus_name}`,
-          bus,
-          now,
-          stopCoords,
-          STANDING_HOLD_M,
+          anchorStore, anchorKey, bus, now, stopCoords, STANDING_HOLD_M,
         );
         if (standingMemo) {
           const N = stops.length;
@@ -418,32 +525,22 @@ export function computeUpcomingArrivals(
         weight: 1,
       }];
 
-      const path = activeBeliefStore && hasRepeatedStop
+      const path = beliefStore && hasRepeatedStop
         ? routePathFor(cfg.routeIds[0])
         : undefined;
       const geometry = path ? routeGeometry(path, stops, stopCoords) : null;
-      if (activeBeliefStore && geometry && bus.lat && bus.lon) {
+      if (beliefStore && geometry && bus.lat && bus.lon) {
         const coldStandingSec = bus.at_stop_since
           ? Math.max(0, (now - new Date(bus.at_stop_since + "Z").getTime()) / 1000)
           : null;
-        const posterior = stepStore(
-          activeBeliefStore,
-          `${cfg.label}|${bus.bus_name}`,
-          geometry,
-          {
-            lat: bus.lat,
-            lon: bus.lon,
-            t: now,
-            lastStopId: bus.last_stop_id,
-            stops,
-            standingSec: coldStandingSec,
-          },
-        );
-        // A 50/50 half-lap mixture has no honest scalar ETA: its mean is a
-        // route position the bus cannot occupy. Keep collecting evidence but
-        // retain the established gated anchor until one direction resolves.
-        // This is a fallback, not MAP—the losing branch remains in the store
-        // and can recover on a later fix.
+        const posterior = stepStore(beliefStore, anchorKey, geometry, {
+          lat: bus.lat,
+          lon: bus.lon,
+          t: now,
+          lastStopId: bus.last_stop_id,
+          stops,
+          standingSec: coldStandingSec,
+        });
         if (posterior.resolved) {
           hypotheses = posterior.branches.flatMap((branch) =>
             branch.components.map((component): Hypothesis => {
@@ -463,18 +560,29 @@ export function computeUpcomingArrivals(
         }
       }
 
-      const estimates = new Map<string, Array<{ eta: number; variance: number; weight: number; stopId: number; occurrence: number; branchId: number }>>();
+      const estimates = new Map<string, Array<{
+        eta: number;
+        variance: number;
+        weight: number;
+        stopId: number;
+        stopsAhead: number;
+        branchId: number;
+      }>>();
       const totalStops = stops.length;
+      // Walk the loop TWICE so each stop can get two arrivals per bus: the
+      // upcoming one and the same vehicle a full lap later. On single-bus
+      // routes (Blue Weekend most weekends) that second-lap entry is the only
+      // way to answer "and the one after that?" (report #29), and it turns
+      // "departed" into an honest wait-for-it-to-come-around when the rider
+      // can't catch the current pass (report #30). It also covers the bus's
+      // own anchor stop (reachable only at step ≥ totalStops), so a bus
+      // dwelling AT a stop still yields an ETA for that stop.
       const MAX_ETA_SEC = 90 * 60; // sanity cap — beyond this the lap-2 guess is noise
       for (const hypothesis of hypotheses) {
         let cumulative = 0;
         let cumulativeVar = 0;
         let hypothesisStallCredit = hypothesis.stallCredit;
         const recordedForStop = new Map<number, number>();
-        // Walk the loop TWICE so each stop can get the upcoming arrival and
-        // the same vehicle a full lap later. Each posterior component walks
-        // only forward; matching occurrences are mixed below, never exposed as
-        // duplicate buses.
         for (let step = 1; step <= totalStops * 2; step++) {
         const busIdx = hypothesis.busIdx;
         const prevI = (busIdx + step - 1) % totalStops;
@@ -558,10 +666,7 @@ export function computeUpcomingArrivals(
         if (split) {
           const t = 1 - hypothesis.firstSegProgressFactor;
           segAvg = priceFirstHop(
-            { q: split.stand },
-            split.drive,
-            hypothesis.standingSec,
-            t,
+            { q: split.stand }, split.drive, hypothesis.standingSec, t,
           );
           segVar = Math.min(segVar, segAvg * segAvg);
           hypothesisStallCredit = 0;
@@ -606,7 +711,7 @@ export function computeUpcomingArrivals(
             variance: cumulativeVar,
             weight: hypothesis.weight,
             stopId: sid,
-            occurrence: recorded,
+            stopsAhead: step,
             branchId: hypothesis.branchId,
           });
           estimates.set(key, values);
@@ -615,13 +720,8 @@ export function computeUpcomingArrivals(
       }
 
       for (const values of estimates.values()) {
-        const weight = values.reduce((sum, value) => sum + value.weight, 0);
-        if (!(weight > 0)) continue;
-        // Modes on one geometric branch differ only by stop/run dynamics and
-        // are averaged continuously. Taking a component median made the point
-        // ETA jump whenever P(standing) crossed 0.5. Across geometric branches
-        // use the posterior median so no impossible halfway-around-the-loop
-        // ETA is invented.
+        const totalWeight = values.reduce((sum, value) => sum + value.weight, 0);
+        if (!(totalWeight > 0)) continue;
         const byBranch = new Map<number, typeof values>();
         for (const value of values) {
           const group = byBranch.get(value.branchId) ?? [];
@@ -629,35 +729,37 @@ export function computeUpcomingArrivals(
           byBranch.set(value.branchId, group);
         }
         const branchValues = [...byBranch.values()].map((group) => {
-          const branchWeight = group.reduce((sum, value) => sum + value.weight, 0);
-          const branchEta = group.reduce(
-            (sum, value) => sum + value.weight * value.eta,
-            0,
-          ) / branchWeight;
-          const branchVariance = group.reduce(
+          const weight = group.reduce((sum, value) => sum + value.weight, 0);
+          const eta = group.reduce(
+            (sum, value) => sum + value.weight * value.eta, 0,
+          ) / weight;
+          const variance = group.reduce(
             (sum, value) => sum + value.weight * (
-              value.variance + (value.eta - branchEta) ** 2
+              value.variance + (value.eta - eta) ** 2
             ),
             0,
-          ) / branchWeight;
+          ) / weight;
           return {
-            eta: branchEta,
-            variance: branchVariance,
-            weight: branchWeight,
+            eta,
+            variance,
+            weight,
+            stopsAhead: group[0]!.stopsAhead,
           };
         });
         const eta = weightedMedian(branchValues);
-        const mean = values.reduce(
-          (sum, value) => sum + value.weight * value.eta,
-          0,
-        ) / weight;
-        const variance = values.reduce(
+        const mean = branchValues.reduce(
+          (sum, value) => sum + value.weight * value.eta, 0,
+        ) / totalWeight;
+        const variance = branchValues.reduce(
           (sum, value) => sum + value.weight * (
             value.variance + (value.eta - mean) ** 2
           ),
           0,
-        ) / weight;
+        ) / totalWeight;
         const sd = Math.sqrt(Math.max(0, variance));
+        const chosen = [...branchValues].sort(
+          (a, b) => Math.abs(a.eta - eta) - Math.abs(b.eta - eta),
+        )[0]!;
         result.push({
           eta,
           low: Math.max(0, mean - sd),
@@ -666,6 +768,7 @@ export function computeUpcomingArrivals(
           color: cfg.color,
           busName: bus.bus_name.replace("#", ""),
           stopId: values[0]!.stopId,
+          stopsAhead: chosen.stopsAhead,
         });
       }
     }

@@ -3,7 +3,7 @@
 // bug-prone piece of maths in the app (reports #27, #32, #37, #38 all landed
 // here) and it deserves to be tested directly.
 
-import { distanceToSegmentM } from "./geo";
+import { distanceToSegmentM, haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
 
 // Drop buses whose GPS sits far from the route.
@@ -100,6 +100,125 @@ export function isBusOnRoute(
 // cases.
 export const ANCHOR_GPS_THRESHOLD_M = 150;
 
+// --- which way is it going? -------------------------------------------------
+//
+// Steps 1–2 above are the whole algorithm on a plain loop, and they are not
+// enough on an out-and-back. Green and Purple run out to West Campus and back
+// along the same road, so the SAME coordinates belong to two legs at once —
+// the outbound chord and the inbound chord, anti-parallel, both well inside
+// GPS_THRESHOLD_M. A point-valued anchor must choose, and choosing wrong is
+// not a small error: it puts the bus a full lap out of position. Measured on
+// 2026-09-03's capture, the anchor is shown a lap wrong at 118 of 380 Purple
+// departures and 104 of 383 Green ones. `last_stop_id` cannot break the tie —
+// it lags at every arrival and was observed frozen at Orange / Willow for an
+// entire 5 km I-95 run — and neither can distance: on that run the bus was
+// 135 m from the outbound chord and 139 m from the inbound one.
+//
+// But a MOVING bus says which branch it is on, with no filter, no belief and
+// no state beyond the last fix it actually moved to: across two distinct
+// fixes, progress along the outbound chord rises and progress along the
+// inbound chord falls. So when two candidate legs point opposite ways, the
+// direction of travel decides between them and nothing else has to.
+//
+// A STATIONARY bus on a shared segment with no history is genuinely
+// undecidable — the information is not in the feed — so this deliberately
+// does nothing there rather than guess. `anchorGate.ts` holds the previous
+// branch, which is the right answer in the absence of evidence.
+//
+// HOW MUCH OF THE PROBLEM THIS IS. Over the 2026-09-03 capture, counting the
+// polls where two candidate legs within GPS_THRESHOLD_M run anti-parallel:
+//
+//   route   ambiguous polls   bus moving   within 100 m of a stop   direction decides
+//   Green      55.2%             57.8%            58.8%                  76.8%
+//   Purple     44.9%             42.0%            68.2%                  57.2%
+//   Red        27.5%             42.9%            82.6%                  70.5%
+//
+// So the two folds are not one problem. Green's ambiguity is largely open
+// road — the I-95 run, where the bus is moving and direction settles it three
+// times in four. Purple's sits at station loops (333 Cedar, Buildings
+// 400/600/800/900), where the bus is frozen on 58% of the ambiguous polls and
+// direction can settle barely half. **Purple's remainder is the half this
+// cannot fix**, and it is the half `docs/eta-estimator-design.md` says needs a
+// distribution rather than a point. That is why the rider numbers below move
+// Green further than Purple, and it is not a tuning failure.
+
+/**
+ * The feed publishes a new coordinate only once a bus has moved ~30 m (2 of
+ * 33,118 distinct fixes moved less, whether 5 s or 20 s elapsed). So 30 m is
+ * the smallest displacement that proves any movement at all — below it there
+ * is no direction to read, only noise.
+ */
+export const ANCHOR_DIRECTION_MIN_M = 30;
+
+/**
+ * How much of a heading disagreement counts. cos ≥ +0.6 is "the bus is
+ * travelling this leg's way" (within ~53°); cos ≤ −0.6 is "this leg runs
+ * against the bus", more than 127° from the step. Everything between is
+ * uninformative — a leg at right angles to the step says nothing, a leg
+ * mid-turn even less — and is left alone.
+ *
+ * **0.6 is measured, and looser is worse.** Swept on the rider simulator
+ * (8,327 paired waits, 2026-09-03 capture), strand share Green / Purple /
+ * Red-holdout: master 32.3 / 29.5 / 18.0%, **0.6 → 27.4 / 27.1 / 18.2**,
+ * 0.15 → 27.2 / 27.7 / 20.3, 0.0 → 24.3 / 30.2 / 20.7. Loosening keeps
+ * helping Green and starts hurting Purple and Red, and it is clear why: on
+ * Red 82.6% of the polls with two anti-parallel candidate legs are within
+ * 100 m of a stop, where the "step" between two fixes is a bus shuffling at a
+ * kerb rather than a bus travelling. At 127° only a genuine reversal passes,
+ * which is the fold and nothing else.
+ *
+ * (A branch-lock count against the detector's own anchor prefers 0.0 on every
+ * route — `scripts/eta-replay/branch-lock.ts`. It is the wrong instrument to
+ * decide this on: it scores an index, and the rider reads a countdown.)
+ */
+export const ANCHOR_DIRECTION_COS = 0.6;
+
+/**
+ * The previous DISTINCT fix this bus reported — the other end of the step
+ * whose direction is read. `anchorGate.ts` remembers it (`noteFix`); a caller
+ * with no memory passes nothing and gets exactly the old behaviour.
+ */
+export type TravelHint = LatLon | null | undefined;
+
+/**
+ * Is the bus driving this leg's way? +1 with it, -1 against it, 0 no opinion —
+ * the step is too short to be a step, the leg is broadside to it, or one of
+ * the two has no length.
+ *
+ * Exported for `scripts/eta-replay/branch-lock.ts`, which counts how often the
+ * anchor lands a lap out of position; nothing in the app calls it directly.
+ */
+export function legAgreement(
+  legIdx: number,
+  bus: LatLon,
+  stops: number[],
+  stopCoords: Record<number, LatLon>,
+  travelFrom: TravelHint,
+): 1 | 0 | -1 {
+  const N = stops.length;
+  if (!travelFrom || legIdx < 0 || legIdx >= N) return 0;
+  if (haversineMeters(bus, travelFrom) < ANCHOR_DIRECTION_MIN_M) return 0;
+  const a = stopCoords[stops[legIdx]!];
+  const b = stopCoords[stops[(legIdx + 1) % N]!];
+  if (!a || !b) return 0;
+  const c = headingCos(travelFrom, bus, a, b);
+  if (c === null) return 0;
+  return c >= ANCHOR_DIRECTION_COS ? 1 : c <= -ANCHOR_DIRECTION_COS ? -1 : 0;
+}
+
+/** cos of the angle between a→b and prev→now, or null if either has no length. */
+function headingCos(prev: LatLon, now: LatLon, a: LatLon, b: LatLon): number | null {
+  // Local flat-earth frame: longitude degrees shrink by cos(lat), latitude
+  // degrees do not, so both components are proportional to metres and the
+  // ratio below is a true cosine.
+  const scale = Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
+  const lx = (b.lon - a.lon) * scale, ly = b.lat - a.lat;
+  const dx = (now.lon - prev.lon) * scale, dy = now.lat - prev.lat;
+  const ln = Math.hypot(lx, ly), dn = Math.hypot(dx, dy);
+  if (ln < 1e-12 || dn < 1e-12) return null;
+  return (lx * dx + ly * dy) / (ln * dn);
+}
+
 export type AnchorBus = {
   lat: number;
   lon: number;
@@ -111,6 +230,8 @@ export function findRouteAnchor(
   bus: AnchorBus,
   stops: number[],
   stopCoords: Record<number, LatLon>,
+  /** Where the bus was at its previous distinct fix, if the caller remembers. */
+  travelFrom?: TravelHint,
 ): number {
   const N = stops.length;
   if (N === 0) return -1;
@@ -135,10 +256,25 @@ export function findRouteAnchor(
   // Candidates within threshold, sorted by forward distance from
   // last_stop_id (if available) so a route that revisits a vicinity
   // twice picks the right leg. Distance tiebreaker for ties.
-  const candidates: number[] = [];
+  let candidates: number[] = [];
   for (let i = 0; i < N; i++) {
     if (dists[i] < ANCHOR_GPS_THRESHOLD_M) candidates.push(i);
   }
+
+  // Two candidates that run opposite ways are the fold. Drop the ones the bus
+  // is demonstrably NOT travelling, but only when the step is long enough to
+  // be a step at all and only when some other candidate agrees with it — a
+  // move that contradicts every candidate is evidence about the candidates,
+  // not a reason to have none.
+  if (candidates.length > 1 && travelFrom) {
+    const here = { lat: bus.lat, lon: bus.lon };
+    const agree = candidates.map((i) => legAgreement(i, here, stops, stopCoords, travelFrom));
+    if (agree.some((a) => a > 0)) {
+      const kept = candidates.filter((_, k) => agree[k]! >= 0);
+      if (kept.length > 0) candidates = kept;
+    }
+  }
+
   if (candidates.length > 0) {
     if (lastIdx >= 0) {
       candidates.sort((a, b) => {

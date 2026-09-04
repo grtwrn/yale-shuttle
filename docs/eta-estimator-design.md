@@ -24,6 +24,9 @@ for the reasons in "What the earlier harnesses measured".
    of departures** (Purple 31%, Green 27% of theirs). The mechanism is branch
    lock on out-and-back routes, and it means **a point-valued anchor of any
    kind is the wrong object**. The anchor has to be a distribution.
+   *(Update 2026-09-04: the MOVING half of that lock needs no distribution and
+   is shipped — see "Half of the branch lock is now shipped". What remains is
+   the stationary half: 42.8% of Purple's ambiguous polls, 23.2% of Green's.)*
 2. **The departure cliff is a production defect, not an arm's.** Over 569 clean
    layover departures the promise for the next stop is +16 s at the departure
    instant, **+115 s at +30 s, +151 s at +45–60 s**. Cause: the hop is priced
@@ -114,6 +117,60 @@ observation — it manufactures motion. And a displacement-only corroboration
 gate (`corroborated`, my reading of the error-budget recommendation) bought 7%
 because a moving bus reopens it every three polls; PR #72's forward-consistency
 rule is the version that works.
+
+#### Half of the branch lock is now shipped, and it needed no belief (2026-09-04)
+
+The ambiguity splits in two and only one half is hard. **A moving bus reveals
+its branch**: across two DISTINCT fixes, progress rises along the outbound
+chord and falls along the inbound one, so where two candidate legs run
+anti-parallel the direction of travel chooses between them — no filter, no
+state beyond the previous distinct fix. That is now in `findRouteAnchor`
+(`web/src/anchor.ts`, `noteFix` in `anchorGate.ts` holds the fix pair).
+**A stationary bus on a shared segment with no history stays undecidable** and
+is deliberately not guessed; the gate keeps the branch it had.
+
+Paired on the rider simulator, 8,327 waits, 2026-09-03 capture, against
+`85444a6`:
+
+| | master | direction |
+|---|---|---|
+| Green strand / jump ≥180 s / worst-drift p90 | 32.3% / 57.1% / 2,740 s | **27.4% / 53.9% / 2,470 s** |
+| Purple strand / jump ≥180 s | 29.5% / 51.2% | **27.1% / 50.6%** |
+| Red (hold-out) strand / jump ≥180 s | 18.0% / 49.7% | 18.2% / 49.8% |
+| paired: waits gaining / losing a strand | | 95 gain, 203 lose |
+| branch lock at a departure (vs the detector's anchor) | Green 38/389, Purple 46/368 | **Green 25/389, Purple 42/368** |
+
+**Green moves further than Purple, and the reason is geometric, not a tuning
+failure.** Counting the polls where two candidate legs within
+`ANCHOR_GPS_THRESHOLD_M` are anti-parallel:
+
+| route | ambiguous polls | bus moving | within 100 m of a stop | direction can decide |
+|---|---|---|---|---|
+| Green | 55.2% | 57.8% | 58.8% | **76.8%** |
+| Purple | 44.9% | 42.0% | 68.2% | **57.2%** |
+| Red | 27.5% | 42.9% | 82.6% | 70.5% |
+
+Green's ambiguity is open road — the I-95 run, where the bus is moving and the
+step settles it three times in four. Purple's is station loops (333 Cedar,
+Buildings 400/600/800/900), where the bus is frozen on 58% of ambiguous polls.
+**Purple's remaining half is the half that needs the distribution**, and this
+is the sharpest statement of it the data has produced: 42.8% of Purple's
+ambiguous polls carry no direction to read.
+
+Two negative results from the same session, both measured and both rejected:
+
+- **Letting direction release the gate** — the gate holding a leg the bus is
+  provably driving away from, released on that evidence — is a LOSS: Green's
+  strand falls to 24.9% but Purple's rises to 32.6%, worse than master, with
+  jumps ≥300 s up on both. Recorded in `anchorGate.ts`. So the direction
+  filter's gain is partly bottlenecked by the gate (Green's hold share rises
+  28.0 → 31.6% on moving fixes) and the obvious way to unlock it costs more
+  than it returns. The next lever here is the distribution, not another gate rule.
+- **Loosening the cosine** improves a branch-lock count against the detector's
+  own anchor on every route and makes RIDERS worse: at 0.0, Purple's strand
+  goes 27.1 → 30.2% and Red's 18.0 → 20.7%, because on Red 82.6% of ambiguous
+  polls are within 100 m of a stop, where a "step" is a bus shuffling at a
+  kerb. The index metric and the countdown disagree; the countdown wins.
 
 ### The departure cliff (production)
 
@@ -292,3 +349,8 @@ filter arms above are not candidates.
   belief, widen the perp budget, never jump to progress 0).
 - `scripts/eta-replay/priors.ts` — the `last_stop_id` table, P(stops | pass),
   speed distributions, hold share.
+- `scripts/eta-replay/branch-lock.ts` — how often the shipped client puts a bus
+  a quarter of the loop away from the detector's own (sequence-walking) anchor,
+  every poll and at the departure instant, plus the gate's hold share split by
+  whether the raw fix moved. Import-swappable via `CLIENT_ROOT`. It scores an
+  INDEX; where it and the rider simulator disagree, the simulator decides.

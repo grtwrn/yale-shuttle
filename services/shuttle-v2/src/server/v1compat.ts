@@ -23,6 +23,15 @@ import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
 
+/**
+ * One hop / one stop in the v1 payload. `avg`/`sd`/`n` and `med`/`sd`/`n` are
+ * v1's arrival-to-arrival numbers; `drive`/`driveN` and `q`/`qn` are the
+ * stand/drive split the client's `hopPricing.ts` consumes — mirror its
+ * `SegmentStat` / `DwellStat` types in `web/src/arrivals.ts`.
+ */
+type SegmentEntry = { avg: number; sd: number; n: number; drive?: number; driveN?: number };
+type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number };
+
 // -- /api/buses ---------------------------------------------------------------
 
 export function buildBusesPayload(collector: Collector): Record<string, unknown> {
@@ -65,8 +74,8 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
 
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
-  const segments: Record<string, Record<string, { avg: number; sd: number; n: number; drive?: number; driveN?: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number }>> = {};
+  const segments: Record<string, Record<string, SegmentEntry>> = {};
+  const dwells: Record<string, Record<string, DwellEntry>> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -93,19 +102,23 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
     const n = r.stops.length;
-    const segMap: Record<string, { avg: number; sd: number; n: number; drive?: number; driveN?: number }> = {};
+    const segMap: Record<string, SegmentEntry> = {};
     for (let i = 0; i < n; i++) {
       const from = r.stops[i]!;
       const to = r.stops[(i + 1) % n]!;
       const s = net.getSegmentStats(r.id, from, to);
       segMap[`${from}-${to}`] = {
         avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
-        ...(s.drive !== undefined ? { drive: round1(s.drive), driveN: s.driveN ?? s.n } : {}),
+        // The DRIVE half of the hop, on the at_stop_since clock, with the legs
+        // behind it — the client prorates this en route instead of `avg`
+        // (web/src/hopPricing.ts) once `driveN` clears its gate. Whole
+        // seconds: the feed's poll quantum is 5 s.
+        ...(s.drive !== undefined && s.driveN !== undefined ? { drive: Math.round(s.drive), driveN: s.driveN } : {}),
       };
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number }> = {};
+    const dwMap: Record<string, DwellEntry> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
       dwMap[String(sid)] = {
@@ -113,8 +126,10 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         // `low` is what the client bills for a dwell the bus has not started
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
-        // Stand quantiles + sample count; hopPricing withholds a thin table.
-        ...(d.q ? { q: d.q.map(round1), qn: d.qn ?? d.n } : {}),
+        // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
+        // whole seconds, with the stopped visits behind them. This is the
+        // `stand` half the client conditions on r with; `qn` is its gate.
+        ...(d.q !== undefined && d.qn !== undefined ? { q: d.q.map((x) => Math.round(x)), qn: d.qn } : {}),
       };
     }
     dwells[rid] = dwMap;
@@ -756,28 +771,39 @@ const EMPTY_ACCURACY_PROBE_INTERVAL_MS = 60_000;
 // Latch per database, so the test suite's throwaway bundles don't inherit each
 // other's answer.
 const predictionProbes = new WeakMap<object, { seen: boolean; lastProbeAt: number }>();
+// Memoized rollup, per database for the same reason the latch is. Now that
+// predictions_log has a writer, the query below is real work on the request
+// path; 60 s of staleness on a 7-day window is invisible.
+const ACCURACY_MEMO_MS = 60_000;
+const accuracyMemo = new WeakMap<object, { at: number; value: Record<string, unknown> }>();
+function memoAccuracy(bundle: DbBundle, value: Record<string, unknown>): Record<string, unknown> {
+  accuracyMemo.set(bundle.sqlite, { at: Date.now(), value });
+  return value;
+}
 
 function emptyAccuracy(): Record<string, unknown> {
   return { overall: null, buckets: [], stops: [] };
 }
 
 /**
- * ⚠️ Prediction logging is NOT implemented. Nothing anywhere in `src/` inserts
- * into `predictions_log` — the schema definition plus two readers (this
- * function and server/accuracy.ts) are the table's only references — so in
- * production it holds zero rows and this endpoint's only honest answer is the
- * empty rollup. It still has to be *served*: the frontend polls /api/accuracy
- * every 2 min per rider (~1.7 req/s at 200 riders), so producing that constant
- * must cost nothing. Hence the probe below — one `LIMIT 1` at most once a
- * minute, then we bail before the real query runs.
+ * ⚠️ Prediction logging WAS not implemented, and this function was written for
+ * a permanently-empty table. `POST /api/shown` now fills it (see
+ * server/predictions.ts), so the two guards below are load-bearing rather than
+ * theoretical:
  *
- * If prediction logging is ever wired up, this function needs work before it
- * faces rider poll rates: the SELECT further down is a table SCAN — no index
- * leads with `predicted_at` — over a 7-day window, run synchronously by
- * better-sqlite3 on the one event loop that also serves every other request
- * and the 5 s collector poll. It wants an index on
- * `predictions_log(predicted_at)` and a memoized result (the window is 7 days;
- * a minute of staleness is free) before it can be let out.
+ *  - the probe, one `LIMIT 1` at most once a minute, which still short-circuits
+ *    a database that has no rows yet (a fresh deploy, a staging DB, every test
+ *    that does not write one);
+ *  - and the MEMO, because the query underneath is a 7-day scan run
+ *    synchronously by better-sqlite3 on the one event loop that also serves
+ *    every other request and the 5 s collector poll. `predictions_time_idx`
+ *    leads with `predicted_at` so it is an index range rather than a table
+ *    scan, but a 7-day range is still thousands of rows to fold, and this route
+ *    is public. The window is seven days; a minute of staleness is free.
+ *
+ * Nothing in the current frontend calls /api/accuracy — the comment that said
+ * riders poll it every 2 min predates the v2 client, which does not — but it is
+ * public and cached-for-60s, so it is sized as though they did.
  */
 export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Record<string, unknown> {
   let probe = predictionProbes.get(bundle.sqlite);
@@ -794,6 +820,9 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     }
     probe.seen = true;
   }
+
+  const cached = accuracyMemo.get(bundle.sqlite);
+  if (cached && Date.now() - cached.at < ACCURACY_MEMO_MS) return cached.value;
 
   const cutoff = Date.now() - ACC_WINDOW_DAYS * 86_400_000;
 
@@ -813,7 +842,10 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     .all(cutoff) as Pred[];
 
   if (preds.length === 0) {
-    return emptyAccuracy();
+    // Memoized like any other answer: once the table HAS rows the probe latch
+    // above stops short-circuiting, and "rows exist but none in the window"
+    // would otherwise re-run this scan on every public request.
+    return memoAccuracy(bundle, emptyAccuracy());
   }
 
   const earliest = preds[0]!.predicted_at;
@@ -850,7 +882,9 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     });
   }
 
-  if (errs.length === 0) return emptyAccuracy();
+  // Same reason as the empty-window return above: rows without a matching
+  // arrival yet is the NORMAL state for a few minutes after a deploy.
+  if (errs.length === 0) return memoAccuracy(bundle, emptyAccuracy());
 
   const overall = cell(errs.map((e) => e.error));
 
@@ -904,7 +938,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
   }
   stops.sort((a, b) => (b.n as number) - (a.n as number));
 
-  return {
+  const value = {
     overall: {
       ...overall,
       weighted: "pooled (v2 backend; v1-compatible rollup)",
@@ -912,6 +946,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     buckets: [],
     stops,
   };
+  return memoAccuracy(bundle, value);
 }
 
 function cell(signed: number[]): AccCell {

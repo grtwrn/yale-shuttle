@@ -5,7 +5,9 @@ import {
   ANCHOR_FEED_MOVE_M,
   ANCHOR_MAX_HOLD_MS,
   ANCHOR_M_PER_HOP,
+  ANCHOR_STALE_MS,
   gateAnchor,
+  noteFix,
   pruneAnchors,
   type AnchorStore,
 } from "./anchorGate";
@@ -108,13 +110,23 @@ describe("gateAnchor", () => {
     expect(r).toEqual({ index: 8, released: "at-stop" });
   });
 
-  it("still lets a departure through when the scan relocates elsewhere", () => {
+  it("still lets a departure through when the scan relocates FORWARD elsewhere", () => {
     // A fold-back flip on the departure poll is the flag change's to vouch
-    // for, exactly as it was — this is not a new hold, only a declined -1.
+    // for, exactly as it was — what is declined is only the backwards half.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    const r = gateAnchor(s, "k", 11, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
+    expect(r).toEqual({ index: 11, released: "at-stop" });
+  });
+
+  it("declines a backwards flip on the departure poll however far back", () => {
+    // The ring: reading slot 3 from slot 7 is a forward move of 26 of 30
+    // slots, which no five-second poll can cover. The old guard only checked
+    // for exactly -1 and would have let this through.
     const s = store();
     gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
     const r = gateAnchor(s, "k", 3, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
-    expect(r).toEqual({ index: 3, released: "at-stop" });
+    expect(r).toEqual({ index: 7, released: null });
   });
 
   it("records the departure, so a later flip cannot ride the stale flag", () => {
@@ -129,13 +141,80 @@ describe("gateAnchor", () => {
     expect(r.released).toBeNull();
   });
 
-  it("does not confuse an arrival with a departure", () => {
-    // Flag SET while the scan reads one back (the shared-endpoint lag report
-    // #27 fixed): the arrival releases as before.
+  // THE 2026-09-04 INCIDENT, in miniature. Red #316 left 344 Winchester and
+  // reached Winchester / Division; `at_stop_id` went null -> 146 while
+  // `last_stop_id` was still frozen ten stops back, so the stateless scan was
+  // still answering with the chord INTO 344 Winchester. The at-stop branch
+  // used to accept that unconditionally, because it only ever checked for a
+  // -1 on the CLEARING transition. One slot backwards put the whole layover
+  // in front of the bus again and a rider three stops away read "in 2" as
+  // "in 11".
+  it("declines a backwards relocation when the bus ARRIVES at a stop", () => {
     const s = store();
     gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
     const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    expect(r).toEqual({ index: 7, released: null });
+    // And it stays declined while the flag sits there, because nothing has
+    // changed and rules 2-4 are all forward-only.
+    const r2 = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 11_000, N);
+    expect(r2).toEqual({ index: 7, released: null });
+  });
+
+  it("records the arrival, so a later flip cannot ride the stale flag", () => {
+    // The declined poll must still bank the new at_stop_id, or the NEXT
+    // disagreement re-opens the at-stop branch against a value that has
+    // already been seen and walks a fold-back flip straight through.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
+    gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    expect(s.get("k")!.atStopId).toBe(44);
+    const r = gateAnchor(s, "k", 16, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 60_000, N);
+    expect(r.index).toBe(7);
+    expect(r.released).toBeNull();
+  });
+
+  // THE ESCAPE HATCH. Without it the gate has no way back at all — every other
+  // rule is forward-only — so an anchor planted a lap early on a fold stays
+  // there, which is the OPTIMISTIC direction and the one that strands people.
+  // Measured on the rider simulator: Purple's strand share 28.1% -> 30.7%
+  // without this clause, held with it.
+  it("lets the at-stop flag itself pull a backwards anchor home", () => {
+    // stops[6] IS the stop the flag names, so the collector and the scan agree
+    // about a fact — the bus has been within 75 m of it for 15 s.
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: seq[6], last_stop_id: 1 }, 6000, N, seq);
     expect(r).toEqual({ index: 6, released: "at-stop" });
+  });
+
+  it("still declines a backwards anchor the flag does NOT name", () => {
+    // The 2026-09-04 incident exactly: the flag named the stop two slots
+    // FORWARD (Winchester / Division) while the scan answered one slot back.
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: seq[8], last_stop_id: 1 }, 6000, N, seq);
+    expect(r).toEqual({ index: 7, released: null });
+  });
+
+  it("a CLEARED flag can never corroborate a backwards move", () => {
+    const seq = Array.from({ length: N }, (_, i) => 100 + i);
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: seq[7], last_stop_id: 1 }, 1000, N, seq);
+    const r = gateAnchor(s, "k", 6, { ...at(80), at_stop_id: null, last_stop_id: 1 }, 6000, N, seq);
+    expect(r).toEqual({ index: 7, released: null });
+  });
+
+  // The recovery must NOT be damped: the whole point of the at-stop branch is
+  // that a real event lands in the poll it happens in. #316's countdown was
+  // right again the instant the scan itself read forward.
+  it("releases forward in the same poll once the scan catches up", () => {
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
+    gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    const r = gateAnchor(s, "k", 8, { ...at(300), at_stop_id: null, last_stop_id: 44 }, 11_000, N);
+    expect(r).toEqual({ index: 8, released: "at-stop" });
   });
 
   it("releases in the same poll when the bus arrives at a stop", () => {
@@ -210,5 +289,119 @@ describe("gateAnchor", () => {
     expect(s.size).toBe(1);
     pruneAnchors(s, 1000 + 200_000);
     expect(s.size).toBe(0);
+  });
+});
+
+describe("noteFix: the last two DISTINCT fixes", () => {
+  it("has no direction to offer on first sight", () => {
+    const s = store();
+    expect(noteFix(s, "k", at(0), 1000)).toBeNull();
+  });
+
+  it("hands back the previous fix once the bus has moved", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+  });
+
+  it("is idempotent within a poll — the map, the cards and the trip card share one store", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    // Three more calls at the same coordinate must not walk the memory forward.
+    for (let i = 0; i < 3; i++) {
+      expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    }
+  });
+
+  it("keeps the last real step while the fix repeats", () => {
+    // 53.6% of consecutive samples are byte-identical. A standing bus must
+    // keep the heading that brought it in, not lose it to its own stillness.
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    for (let t = 11_000; t < 60_000; t += 5000) {
+      expect(noteFix(s, "k", at(40), t)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    }
+  });
+
+  it("forgets a bus that has been away — where it used to be says nothing", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    noteFix(s, "k", at(40), 6000);
+    expect(noteFix(s, "k", at(80), 6000 + ANCHOR_STALE_MS + 1)).toBeNull();
+  });
+
+  it("says nothing about a bus with no GPS", () => {
+    const s = store();
+    expect(noteFix(s, "k", { lat: undefined, lon: undefined }, 1000)).toBeNull();
+    expect(s.size).toBe(0);
+  });
+
+  it("leaves the gate to accept a bus it has only opened the memory for", () => {
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    expect(gateAnchor(s, "k", 7, { ...at(0), last_stop_id: 1 }, 1000, N))
+      .toEqual({ index: 7, released: "first" });
+  });
+
+  it("survives every write the gate makes", () => {
+    // The gate rewrites its entry on accept, on agreement and on a hold; the
+    // fix memory rides on the same entry and must not be reset by any of them,
+    // or the bus loses its heading every time the anchor moves.
+    const s = store();
+    noteFix(s, "k", at(0), 1000);
+    gateAnchor(s, "k", 7, { ...at(0), last_stop_id: 1 }, 1000, N);        // accept
+    expect(noteFix(s, "k", at(40), 6000)).toEqual({ lat: at(0).lat, lon: at(0).lon });
+    gateAnchor(s, "k", 7, { ...at(40), last_stop_id: 1 }, 6000, N);       // agrees
+    expect(noteFix(s, "k", at(80), 11_000)).toEqual({ lat: at(40).lat, lon: at(40).lon });
+    gateAnchor(s, "k", 20, { ...at(80), last_stop_id: 1 }, 11_000, N);    // held
+    // Same poll, second caller: the heading is still there after the hold.
+    expect(noteFix(s, "k", at(80), 11_000)).toEqual({ lat: at(40).lat, lon: at(40).lon });
+  });
+});
+
+describe("the timeout never releases a backwards jump", () => {
+  // The route is a ring served in order, so position only advances. A raw
+  // anchor proposing more than half the loop forward is proposing a backwards
+  // move, and waiting does not make it true. Operator's case, 2026-09-04:
+  // Red #316 stood eleven minutes at 344 Winchester while the stateless scan
+  // wanted the chord INTO the stop; after five minutes the timeout accepted it
+  // and the board went 3 min -> 11 min.
+  const N = 31;
+  const AT = { lat: 41.324661, lon: -72.928677 }; // 344 Winchester
+
+  function parked(atStopId: number | null) {
+    return { lat: AT.lat, lon: AT.lon, at_stop_id: atStopId, last_stop_id: 75 };
+  }
+
+  it("holds a one-stop retreat however long the bus stands there", () => {
+    const store: AnchorStore = new Map();
+    const t0 = 1_700_000_000_000;
+    // Anchor accepted at index 10 (344 Winchester).
+    expect(gateAnchor(store, "k", 10, parked(11), t0, N).index).toBe(10);
+    // The scan now wants index 9 — the chord INTO the stop — and keeps wanting
+    // it. Twenty minutes of a motionless bus must not talk the gate into it.
+    for (let m = 1; m <= 20; m++) {
+      const r = gateAnchor(store, "k", 9, parked(11), t0 + m * 60_000, N);
+      expect(r.index, `minute ${m}`).toBe(10);
+      expect(r.released, `minute ${m}`).not.toBe("timeout");
+    }
+  });
+
+  it("still times out a disputed FORWARD move, which is what the valve is for", () => {
+    const store: AnchorStore = new Map();
+    const t0 = 1_700_000_000_000;
+    expect(gateAnchor(store, "k", 10, parked(11), t0, N).index).toBe(10);
+    // Wants to advance several stops with no distance to justify it; held at
+    // first, then released once the hold has run its course.
+    // Poll steadily: a gap over ANCHOR_STALE_MS would reset the bus instead.
+    let out = gateAnchor(store, "k", 14, parked(11), t0 + 60_000, N);
+    expect(out.index).toBe(10);
+    for (let t = 120_000; t <= ANCHOR_MAX_HOLD_MS + 60_000; t += 60_000) {
+      out = gateAnchor(store, "k", 14, parked(11), t0 + t, N);
+    }
+    expect(out.index).toBe(14);
+    expect(out.released).toBe("timeout");
   });
 });

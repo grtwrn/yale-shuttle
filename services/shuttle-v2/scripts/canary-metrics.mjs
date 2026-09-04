@@ -80,11 +80,17 @@ export function parseWaitFallback(line) {
  * that range the observation explains itself and the drift is zero.
  */
 export function conservativeDrift(prev, next, dtSec) {
-  const cLo = next[0] - prev[1];
-  const cHi = next[1] - prev[0];
-  const expected = -dtSec;
-  if (expected < cLo) return cLo + dtSec;
-  if (expected > cHi) return cHi + dtSec;
+  // A countdown cannot go below zero, so the value it SHOULD show after dtSec
+  // is max(0, prev - dtSec), not prev - dtSec. Without the clamp, a card
+  // sitting on "arriving now" — the [0, 10) bucket — reads as a small reversal
+  // on every tick, because the display is at its floor and cannot fall by the
+  // fifteen seconds that passed. That produced +5 to +8 s "reversals" on a
+  // Red bus standing at the stop on 2026-09-04, which are the floor, not a
+  // defect, and they were inflating every reversal count reported so far.
+  const lo = Math.max(0, prev[0] - dtSec);
+  const hi = Math.max(0, prev[1] - dtSec);
+  if (next[1] <= lo) return next[1] - lo;   // provably fell further than possible
+  if (next[0] >= hi) return next[0] - hi;   // provably rose
   return 0;
 }
 

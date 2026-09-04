@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -219,7 +219,47 @@ export const legs = sqliteTable(
   }),
 );
 
-// Every prediction we serve, for after-the-fact accuracy scoring.
+/**
+ * What the CLIENT actually displayed — a prediction about a bus, with no
+ * viewer attached.
+ *
+ * ── The privacy shape (read this before adding a column) ──────────────────
+ *
+ * A row is a statement about a VEHICLE: "bus #310's ETA to stop 48 was being
+ * shown as 5 min at 08:12:30, by the bundle `a1b2c3`". It carries no anonymous
+ * id, no IP, no user agent, no coordinates, no origin, no destination and no
+ * session key — there is nothing here two rows could be joined on to make one
+ * browser's trail, which is the property `daily_actives` buys by storing one
+ * row per (day, id) and nothing else.
+ *
+ * Three things keep it that way, and each is load-bearing:
+ *
+ * 1. **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+ *    prices (bus → stop); the rider's location enters the app one layer up, in
+ *    `pickLiveArrival`'s catchability rule and the walk legs. Logging at the
+ *    arrivals layer means a row cannot encode where anyone was standing, only
+ *    which stop was on some screen.
+ * 2. **The server DEDUPLICATES before writing.** `(bus_id, to_stop_id,
+ *    predicted_at)` is UNIQUE and `predicted_at` is quantised to
+ *    `PREDICTION_BUCKET_MS`, so thirty riders watching one stop in one bucket
+ *    produce ONE row. A row therefore means "at least one client somewhere had
+ *    this on screen", never "a rider was here" — and the write volume is
+ *    bounded by buses x stops x time rather than by traffic.
+ * 3. **First writer wins.** `INSERT OR IGNORE`, so a late poster cannot
+ *    overwrite a value another client already established for a bucket.
+ *
+ * `client_build` is the hash out of the bundle filename the browser is running
+ * (`assets/index-<hash>.js`). It is the same for everybody on a deploy, so it
+ * identifies the CODE, not the reader — and it is the column that stops the
+ * failure this table exists to end: stability numbers measured against a
+ * client that had not shipped in months, and a hotfix's before/after credited
+ * to the wrong PR. Every row says which bundle produced it.
+ *
+ * Pair with `arrivals` on (bus_name, route_id, stop_id) — `bus_name` is the
+ * identity, `bus_id` is reissued per service block (see the data-quality
+ * invariants). The `bus_id` columns are kept because the two pre-existing
+ * accuracy readers join on them.
+ */
 export const predictionsLog = sqliteTable(
   "predictions_log",
   {
@@ -234,6 +274,8 @@ export const predictionsLog = sqliteTable(
     predictedLowSec: real("predicted_low_sec").notNull(),
     predictedHighSec: real("predicted_high_sec").notNull(),
     predictedAt: integer("predicted_at", { mode: "timestamp_ms" }).notNull(),
+    /** Bundle hash the reading came from; null for rows written before it existed. */
+    clientBuild: text("client_build"),
   },
   (t) => ({
     busToTimeIdx: index("predictions_bus_to_time_idx").on(
@@ -245,6 +287,13 @@ export const predictionsLog = sqliteTable(
     // variant) scan `WHERE predicted_at >= ?` with no bus_id — a request-path
     // query, so it must not be a full scan.
     timeIdx: index("predictions_time_idx").on(t.predictedAt),
+    // THE dedup key, and therefore half the privacy argument above: one row per
+    // (vehicle, stop, quantised instant) no matter how many browsers report it.
+    shownUniq: uniqueIndex("predictions_shown_uniq").on(
+      t.busId,
+      t.toStopId,
+      t.predictedAt,
+    ),
   }),
 );
 
@@ -463,3 +512,73 @@ export type DbDailyActive = typeof dailyActives.$inferSelect;
 export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;
 export type DbOperatorAnonId = typeof operatorAnonIds.$inferSelect;
 export type DbDerivedPath = typeof derivedPaths.$inferSelect;
+
+/**
+ * Findings from the rider canary (`scripts/rider-canary.mjs`), shipped here so
+ * the operator can see them.
+ *
+ * The canary runs on the Pi and wrote only to a local JSONL file. On
+ * 2026-09-04 it caught the ETA defect the operator had been chasing —
+ * `Red  eta-jump: "now, then 66 min" -> "in 7, 25 min" in 15 s` at 07:37 ET —
+ * and the finding sat in that file until he hit the same bug himself and asked
+ * whether the canary was even watching. The detection worked; nothing read it.
+ * This table is the missing half: `scripts/canary-ship.mjs` POSTs each run's
+ * SUMMARY (never its samples or page text) to /api/canary/runs, /stats renders
+ * it, and the server decides which findings are worth waking someone for.
+ *
+ * One row per run, and small by construction: a run is ~40 KB in the local log
+ * and ~1 KB here, because everything that made it big — 100 samples, two 3 KB
+ * page dumps per jump — is diagnostic detail that belongs on the machine that
+ * captured it. What travels is what the operator reads.
+ */
+export const canaryRuns = sqliteTable(
+  "canary_runs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /**
+     * `<startedAt>-<line>`, unique. The shipper is a cursor over an
+     * append-only log and a re-ship after a failed POST must not double a
+     * finding, so re-sending a run is a no-op rather than a duplicate row.
+     */
+    runKey: text("run_key").notNull().unique(),
+    startedAt: integer("started_at").notNull(),
+    endedAt: integer("ended_at"),
+    /** Route label as the rider sees it — "Blue Day", not a route id. */
+    line: text("line").notNull(),
+    tripFrom: text("trip_from"),
+    tripTo: text("trip_to"),
+    /** 1 when the run raised no finding at all. */
+    ok: integer("ok").notNull(),
+    /** 1 when a bus actually reached the board stop while the canary watched. */
+    arrived: integer("arrived").notNull(),
+    watchedMin: real("watched_min"),
+    /** Countdown readings parsed. Under 2 the run proves nothing. */
+    readings: integer("readings").notNull().default(0),
+    reversals: integer("reversals").notNull().default(0),
+    catastrophic: integer("catastrophic").notNull().default(0),
+    worstDriftSec: real("worst_drift_sec"),
+    firstSightMissSec: integer("first_sight_miss_sec"),
+    /** `[{kind, detail}]` — the sentences the operator reads, capped. */
+    failuresJson: text("failures_json").notNull().default("[]"),
+    /**
+     * `[{atMs, fromSec, driftSec, from, to, announced}]` — the catastrophic
+     * countdown transitions, kept STRUCTURED rather than as prose because the
+     * escalation rule turns on `fromSec` (how imminent the bus was said to be)
+     * and a regex over a sentence is not a rule anyone can test.
+     */
+    jumpsJson: text("jumps_json").notNull().default("[]"),
+    /** When this run was pushed out of band, if it was. Null = never. */
+    alertedAt: integer("alerted_at"),
+    /** When the same line was later seen healthy, so the alert could close. */
+    resolvedAt: integer("resolved_at"),
+    receivedAt: integer("received_at").notNull(),
+  },
+  (t) => ({
+    // The dashboard reads "the last N hours, newest first" and the escalation
+    // rule reads "this line's recent runs" — both lead with time.
+    timeIdx: index("canary_runs_time_idx").on(t.startedAt),
+    lineTimeIdx: index("canary_runs_line_time_idx").on(t.line, t.startedAt),
+  }),
+);
+
+export type DbCanaryRun = typeof canaryRuns.$inferSelect;

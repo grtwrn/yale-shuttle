@@ -17,7 +17,10 @@
 //     "mock":  { "/api/weather": { "available": true, "hourly": [{ "timeMs": "${now}", "probability": 80 }] } },
 //     "trip":  { "board": 118, "dest": 38,            // stop ids; default = two stops of a live route
 //                "from": { "lat": 41.32, "lon": -72.92 } },  // optional: stand here instead of at the board stop
-//     "views": ["trip", "map"],                       // any of trip | map | favorites | issues | search
+//     "views": ["trip", "map"],                       // any of trip | map | favorites | issues | search | stats
+//                                                     // "stats" is the OPERATOR dashboard at /stats: it navigates
+//                                                     // there and signs in with $SHUTTLE_ADMIN_TOKEN (env only —
+//                                                     // a recipe is committed to the PR branch)
 //     "focus": "Rain likely",                         // text to scroll into view before the shot
 //     "search": "elenas",                              // type this into the destination box and shoot the
 //                                                     // suggestion list instead of planning a trip (view "search")
@@ -188,6 +191,23 @@ for (const view of views) {
         const anyOption = await page.getByRole("option").first().isVisible().catch(() => false);
         if (!anyOption) throw new Error("no suggestions appeared for " + JSON.stringify(recipe.search));
       }
+    } else if (view === "stats") {
+      // The OPERATOR dashboard, not a rider view: it is a standalone page at
+      // /stats behind the admin token, so it is navigated to rather than
+      // tabbed to, and signed into. The token comes from the environment and
+      // never from the recipe — recipes are committed to the PR branch.
+      const token = process.env.SHUTTLE_ADMIN_TOKEN ?? "";
+      if (!token) throw new Error("stats view needs $SHUTTLE_ADMIN_TOKEN");
+      await page.goto(`${BASE}/stats`, { waitUntil: "domcontentloaded" });
+      await sleep(1500);
+      const field = page.locator("#token");
+      if (await field.isVisible().catch(() => false)) {
+        await field.fill(token);
+        await page.getByRole("button", { name: /sign in/i }).click({ timeout: 10_000 });
+      }
+      // The dashboard renders only once every panel has answered.
+      await page.locator("#dash:not([hidden])").waitFor({ timeout: 20_000 });
+      await sleep(1500);
     } else {
       await openTab(view[0].toUpperCase() + view.slice(1));
       await sleep(view === "map" ? 3000 : 500);
