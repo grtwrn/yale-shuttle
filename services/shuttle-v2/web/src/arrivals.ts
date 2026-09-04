@@ -420,3 +420,50 @@ export function computeUpcomingArrivals(
   result.sort((a, b) => a.eta - b.eta);
   return result;
 }
+
+/**
+ * The bus AFTER the one a trip option is already showing — the "next in …"
+ * half of the countdown.
+ *
+ * WHY THIS IS NOT A `.filter(a => a.eta > shown + 30)`.
+ *
+ * That is what it used to be, and the margin was doing two jobs at once:
+ * skipping the pinned vehicle's own arrival (which sits at ~`shown`), and
+ * requiring the answer to be genuinely later. The trouble is that 30 seconds
+ * past the pinned bus is exactly where a REAL trailing bus lives — a line
+ * running a two-minute gap puts one there — so ordinary recompute noise moved
+ * candidates across the boundary, and the fallback when one dropped out was
+ * the pinned vehicle's own NEXT LAP. The rider watched "next in 8 min" become
+ * "next in 37 min" and back, seven times in six and a half minutes, while the
+ * first figure never moved at all (measured live on Blue Day, 2026-09-03).
+ *
+ * So the two jobs are separated. The arrival already on screen is excluded by
+ * IDENTITY — it is the pinned vehicle's earliest entry — and the "genuinely
+ * later" test then compares against that entry's own eta. Both sides now come
+ * from one `computeUpcomingArrivals` call, so the comparison cannot drift with
+ * how long ago the pin was priced, and no threshold sits where real vehicles
+ * are.
+ *
+ * This is deliberately NOT smoothing. Nothing about the world was changing
+ * when the number flapped — the same buses were the same distance away, and
+ * the first figure was steady. Only a boundary was being crossed. A bus that
+ * genuinely leaves early must still be free to move the number.
+ *
+ * `arrivals` may hold two entries per vehicle (this lap and the next), which
+ * is what makes a single-bus line answer "next in 54 min" correctly.
+ */
+export function nextArrivalAfterPinned<A extends { eta: number; busName: string }>(
+  arrivals: readonly A[],
+  pinnedBusName: string,
+  /** Used only when the pinned vehicle is not in `arrivals` at all. */
+  fallbackShownEta: number,
+): A | null {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const sorted = [...arrivals].sort((a, b) => a.eta - b.eta);
+  const shownIdx = pinnedBusName
+    ? sorted.findIndex((a) => norm(a.busName) === norm(pinnedBusName))
+    : -1;
+  const shown = sorted[shownIdx];
+  const shownEta = shown ? shown.eta : fallbackShownEta;
+  return sorted.find((a, i) => i !== shownIdx && a.eta > shownEta) ?? null;
+}

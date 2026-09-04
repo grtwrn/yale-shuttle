@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   billedDwellSec, computeUpcomingArrivals, MAX_PLAUSIBLE_M_S, MIN_HOP_SEC,
-  STALL_CREDIT_MAX_FRACTION,
+  nextArrivalAfterPinned, STALL_CREDIT_MAX_FRACTION,
 } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { findRouteAnchor } from "./anchor";
@@ -454,5 +454,77 @@ describe("billedDwellSec — one number, shown and billed (reports #73, #77)", (
   it("says nothing when there is no statistic at all", () => {
     expect(billedDwellSec(undefined, false)).toBeNull();
     expect(billedDwellSec({ med: NaN }, false)).toBeNull();
+  });
+});
+
+describe("nextArrivalAfterPinned", () => {
+  const a = (busName: string, eta: number) => ({ busName, eta });
+  /** What the code used to do, kept here so the bug can be demonstrated. */
+  const oldRule = (list: { busName: string; eta: number }[], shownEta: number) =>
+    list.filter((x) => x.eta > shownEta + 30).sort((x, y) => x.eta - y.eta)[0] ?? null;
+
+  it("skips the pinned vehicle's own arrival and answers with the bus behind it", () => {
+    const list = [a("#40", 450), a("#41", 510), a("#40", 3300)];
+    expect(nextArrivalAfterPinned(list, "#40", 450)?.busName).toBe("#41");
+  });
+
+  it("is stable while a trailing bus jitters across the OLD boundary", () => {
+    // The measured failure, Blue Day 2026-09-03 17:45–17:48: a bus about a
+    // minute behind the pinned one, whose recomputed eta wandered either side
+    // of `shown + 30`. Each time it fell inside, the old rule had nothing left
+    // to answer with except the pinned bus's next lap, and the rider's "next
+    // in 8 min" became "next in 37 min" — seven times, while the first figure
+    // never moved.
+    const shown = 450;
+    const jitter = [470, 485, 475, 490, 478, 505, 468];
+    const answers = new Set<string>();
+    const oldAnswers = new Set<string>();
+    for (const trailing of jitter) {
+      const list = [a("#40", shown), a("#41", trailing), a("#40", 2670)];
+      answers.add(String(nextArrivalAfterPinned(list, "#40", shown)?.eta));
+      oldAnswers.add(String(oldRule(list, shown)?.eta));
+    }
+    // The new rule always answers with the trailing bus, whatever it reads.
+    expect([...answers].every((v) => Number(v) < 600)).toBe(true);
+    // The old rule swung between the trailing bus and a lap away — 37 minutes.
+    expect(oldAnswers.has("2670")).toBe(true);
+    expect(oldAnswers.size).toBeGreaterThan(1);
+  });
+
+  it("still answers with the same vehicle a lap later on a one-bus line", () => {
+    // Brown runs a single bus; "next in 54 min" is the correct answer there.
+    const list = [a("#301", 60), a("#301", 3300)];
+    expect(nextArrivalAfterPinned(list, "#301", 60)?.eta).toBe(3300);
+  });
+
+  it("never answers with a bus that arrives BEFORE the one on screen", () => {
+    // The documented reason the old margin existed: an earlier bus the rider
+    // cannot catch must not masquerade as "next". That intent is preserved.
+    const list = [a("#39", 200), a("#40", 450), a("#40", 3300)];
+    expect(nextArrivalAfterPinned(list, "#40", 450)?.eta).toBe(3300);
+  });
+
+  it("compares against the pinned vehicle's OWN fresh eta, not the decayed one", () => {
+    // `busEtaLive` decays between polls while the candidates are recomputed
+    // fresh, so comparing the two was apples to pears. Here the pin is priced
+    // at 450 but recomputes to 520; the trailing bus at 500 is earlier than
+    // the pin really is, so it must not be offered as the NEXT one.
+    const list = [a("#40", 520), a("#41", 500), a("#40", 3300)];
+    expect(nextArrivalAfterPinned(list, "#40", 450)?.eta).toBe(3300);
+  });
+
+  it("falls back to the shown eta when the pinned vehicle has left the feed", () => {
+    const list = [a("#41", 500), a("#42", 900)];
+    expect(nextArrivalAfterPinned(list, "#40", 450)?.eta).toBe(500);
+  });
+
+  it("answers null when there is nothing later", () => {
+    expect(nextArrivalAfterPinned([a("#40", 450)], "#40", 450)).toBeNull();
+    expect(nextArrivalAfterPinned([], "#40", 450)).toBeNull();
+  });
+
+  it("matches vehicle names with or without the leading hash", () => {
+    const list = [a("40", 450), a("#41", 510)];
+    expect(nextArrivalAfterPinned(list, "#40", 450)?.busName).toBe("#41");
   });
 });
