@@ -6,6 +6,7 @@ import {
 } from "./anchor";
 import { distanceToSegmentM, haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
+import incidents from "./__fixtures__/anchor-incidents.json";
 
 const blueWeekend = routeStops["4"]!;
 const blueDay = routeStops["1"]!;
@@ -297,5 +298,89 @@ describe("findRouteAnchor: direction changes nothing on a plain loop", () => {
           .toBe(findRouteAnchor({ ...bus }, stops, stopCoords));
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The two recorded incidents. Everything below runs on production feed rows
+// and the operator's own published geometry — `__fixtures__/anchor-incidents.json`,
+// written by `scripts/.eta-replay/make-incident-fixture.ts` — so a regression
+// fails here with the real coordinates rather than a contrived pair of stops.
+// ---------------------------------------------------------------------------
+
+const INC = incidents as unknown as {
+  routes: Record<string, { label: string; stops: number[]; path: [number, number][] }>;
+  stopCoords: Record<string, { lat: number; lon: number }>;
+  stopNames: Record<string, string>;
+  incidents: Record<string, {
+    route_id: number; bus_name: string;
+    polls: Array<{ et: string; collected_at: number; lat: number; lon: number; last_stop_id: number }>;
+  }>;
+};
+const incCoords: Record<number, { lat: number; lon: number }> = {};
+for (const [k, v] of Object.entries(INC.stopCoords)) incCoords[Number(k)] = v;
+const incPaths: Record<string, [number, number][]> = {};
+for (const [k, v] of Object.entries(INC.routes)) incPaths[k] = v.path;
+const pollAt = (id: string, et: string) => {
+  const p = INC.incidents[id]!.polls.find((x) => x.et === et);
+  if (!p) throw new Error(`no poll ${et} in ${id}`);
+  return p;
+};
+
+describe("a leg is the road between two stops, not the chord (Blue West #126)", () => {
+  // Blue West bus #126, 2026-09-03 21:37 ET (PR #122's handover trace names
+  // these polls in UTC). Canal / Munson -> Mansfield / Division
+  // (leg 7) is a 573 m hop whose road bows more than 200 m off its own chord;
+  // leg 8 is the return down the same road. Measuring to the chord loses the
+  // leg the bus is driving for three consecutive polls, leaving the return as
+  // the ONLY candidate — so the fold's direction filter had nothing to compare
+  // and the gate took the hop. The bus was at the kerb 33 s later.
+  const bw = INC.routes["16"]!;
+  const stops = bw.stops;
+  const LEG_OUT = 7;   // Canal / Munson -> Mansfield / Division
+  const LEG_BACK = 8;  // Mansfield / Division -> Pauli Murray
+  const seq = ["21:37:40", "21:37:45", "21:37:50", "21:37:55", "21:38:00", "21:38:05", "21:38:10"];
+  const busAt = (et: string) => {
+    const p = pollAt("blueWest126", et);
+    return { lat: p.lat, lon: p.lon, last_stop_id: p.last_stop_id, route_id: 16 };
+  };
+  const chordTo = (et: string, leg: number) => {
+    const p = pollAt("blueWest126", et);
+    return distanceToSegmentM(p, incCoords[stops[leg]!]!, incCoords[stops[(leg + 1) % stops.length]!]!);
+  };
+
+  afterEach(() => registerRoutePaths(null));
+
+  it("names the legs the incident is about", () => {
+    expect(INC.stopNames[String(stops[LEG_OUT])]).toBe("Canal / Munson");
+    expect(INC.stopNames[String(stops[LEG_BACK])]).toBe("Mansfield / Division");
+  });
+
+  it("the chord puts the bus off its own leg — the defect, pinned", () => {
+    // The three polls PR #122 names: leg 7's chord runs 121 / 186 / 211 m
+    // while leg 8's closes to 230 / 143 / 109 m.
+    expect(chordTo("21:37:40", LEG_OUT)).toBeGreaterThan(100);
+    for (const et of ["21:37:45", "21:37:50"]) {
+      expect(chordTo(et, LEG_OUT)).toBeGreaterThan(ANCHOR_GPS_THRESHOLD_M);
+      expect(chordTo(et, LEG_BACK)).toBeLessThan(ANCHOR_GPS_THRESHOLD_M);
+    }
+    // With no path registered — the pre-fix behaviour — the anchor crosses to
+    // the return leg while the bus is driving the outbound one.
+    const crossed = seq.map((et) => findRouteAnchor(busAt(et), stops, incCoords));
+    expect(crossed).toContain(LEG_BACK);
+  });
+
+  it("the published line keeps the bus on the leg it is driving", () => {
+    registerRoutePaths(incPaths);
+    for (const et of seq) {
+      expect(findRouteAnchor(busAt(et), stops, incCoords), et).toBe(LEG_OUT);
+    }
+  });
+
+  it("degrades to the chord for a route with no registered path", () => {
+    registerRoutePaths({ "3": incPaths["3"]! });
+    const withOtherPath = findRouteAnchor(busAt("21:37:45"), stops, incCoords);
+    registerRoutePaths(null);
+    expect(withOtherPath).toBe(findRouteAnchor(busAt("21:37:45"), stops, incCoords));
   });
 });
