@@ -5,10 +5,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
-import { arrivals, rawPositions, segments } from "../db/schema.js";
+import { arrivals, legs, rawPositions, segments, stopVisits } from "../db/schema.js";
 import type { Route, Stop } from "../schema/api.js";
 
 import { Collector, type Logger } from "./collector.js";
+import type { VisitState } from "./departure.js";
 import type { BusState } from "./detector.js";
 import { UpstreamClient, type RawBus } from "./upstream.js";
 
@@ -480,5 +481,83 @@ describe("vehicle identity across an id reissue", () => {
     expect(patched.busId).toBe(65531);
     expect(patched.dwellSec).toBeGreaterThan(0);
     expect(patched.departedAt).not.toBeNull();
+  });
+});
+
+describe("stop visits and legs", () => {
+  async function poll(buses: RawBus[]): Promise<void> {
+    const p = inner().runPoll();
+    await Promise.resolve();
+    upstream.deliver(buses);
+    await p;
+  }
+  /** Degrees of longitude per metre at this latitude. */
+  const M = 1 / (111_320 * Math.cos((41.31 * Math.PI) / 180));
+  const visitStates = () => (collector as unknown as { visitStates: Map<string, VisitState> }).visitStates;
+
+  it("records the stand at a stop and the leg to the next one, beside the untouched arrivals row", async () => {
+    // Pinned at A on the first poll, at rest from the second.
+    await poll([bus()]);
+    await poll([bus()]);
+    await poll([bus()]);
+    // Polls are milliseconds apart in a test; backdate the ARRIVAL side of the
+    // rest by a minute (the detector's clock and the reducer's alike, and the
+    // arrivals row the visit joins to) so the stand clears the still threshold.
+    const st = inner().states.get("#7")!;
+    st.enteredAt -= 60_000;
+    st.stationarySince -= 60_000;
+    const pass = visitStates().get("#7")!.pass!;
+    pass.anchoredAt -= 60_000;
+    pass.pinnedAt! -= 60_000;
+    pass.arrivedAt! -= 60_000;
+    pass.restSince -= 60_000;
+    bundle.sqlite.prepare("UPDATE arrivals SET arrived_at = arrived_at - 60000").run();
+
+    // Pull out: 40, 80, 160 m east — confirmed at 150 m.
+    for (const m of [40, 80, 160]) await poll([bus({ lon: -72.93 + m * M })]);
+    const visits = bundle.db.select().from(stopVisits).all();
+    expect(visits).toHaveLength(1);
+    expect(visits[0]).toMatchObject({ stopId: 1, stopIndex: 0, outcome: "stopped", how: "far", confidence: 1, anchorBusId: 7 });
+    expect(visits[0]!.standSec).toBeGreaterThanOrEqual(59);
+    expect(visits[0]!.standSec).toBeLessThan(61);
+    // The departure is the last at-rest poll, before the 40 m fix.
+    expect(visits[0]!.departedAt!.getTime()).toBeLessThan(visits[0]!.firstMovedAt!.getTime());
+    // It joins the arrivals row, which still says what it always said.
+    const arrival = bundle.db.select().from(arrivals).all();
+    expect(arrival).toHaveLength(1);
+    expect(visits[0]!.anchoredAt.getTime()).toBe(arrival[0]!.arrivedAt.getTime());
+    expect(arrival[0]!.departedAt).toBeNull();
+
+    // On to B (840 m east) and rest there: one leg, A → B, no hold.
+    for (const m of [300, 500, 700, 800]) await poll([bus({ lon: -72.93 + m * M })]);
+    await poll([bus({ lon: -72.92 })]);
+    await poll([bus({ lon: -72.92 })]);
+    const legRows = bundle.db.select().from(legs).all();
+    expect(legRows).toHaveLength(1);
+    expect(legRows[0]).toMatchObject({ fromStopId: 1, fromIndex: 0, toStopId: 2, toIndex: 1, hops: 1, reached: true, holds: 0, holdSec: 0 });
+    expect(legRows[0]!.driveSec).toBe(legRows[0]!.legSec);
+    expect(legRows[0]!.departedAt.getTime()).toBe(visits[0]!.departedAt!.getTime());
+    expect(legRows[0]!.toPinnedAt).not.toBeNull();
+    // The detector's own segment row is untouched and still spans anchor to anchor.
+    const seg = bundle.db.select().from(segments).all();
+    expect(seg).toHaveLength(1);
+    expect(seg[0]!.startedAt.getTime()).toBe(arrival[0]!.arrivedAt.getTime());
+  });
+
+  it("closes a visit whose bus went dark as unresolved, with the stand's lower bound", async () => {
+    await poll([bus()]);
+    await poll([bus()]);
+    await poll([bus()]);
+    // Age the track past the state TTL and run a tick that carries nothing.
+    inner().states.get("#7")!.lastObservedAt -= 31 * 60_000;
+    await poll([]);
+    expect(inner().states.size).toBe(0);
+    expect(visitStates().size).toBe(0);
+    const visits = bundle.db.select().from(stopVisits).all();
+    expect(visits).toHaveLength(1);
+    expect(visits[0]).toMatchObject({ stopId: 1, outcome: "unresolved", how: null, confidence: null });
+    expect(visits[0]!.departedAt).toBeNull();
+    expect(visits[0]!.standSec).toBeNull();
+    expect(visits[0]!.lastAtRestAt).not.toBeNull();
   });
 });

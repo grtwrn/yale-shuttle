@@ -4,9 +4,11 @@ import { calibrate } from "../calibrator/calibrator.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
   arrivals,
+  legs,
   rawPositions,
   routes as routesTable,
   segments,
+  stopVisits,
   stops as stopsTable,
 } from "../db/schema.js";
 import {
@@ -20,8 +22,9 @@ import { NetworkRef } from "../network/NetworkRef.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
+import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
-import { planTracks, reconcileTracks, stepMany } from "./detector.js";
+import { planTracks, reconcileTracks } from "./detector.js";
 import {
   PathStore,
   shouldReplacePath,
@@ -151,6 +154,13 @@ const STATE_TTL_MS = 30 * 60_000;
 const RAW_POSITION_RETAIN_MS = 6 * 60 * 60_000; // 6 h
 const ARRIVAL_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d
 const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 30 d)
+// Derived stop visits and legs are small (a few hundred rows a day) and belong
+// with arrivals/segments, not with the 6 h raw_positions window they came from.
+const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
+const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
+
+type RetainedTable = "raw_positions" | "arrivals" | "segments" | "stop_visits" | "legs";
+const RETAINED_TABLES: readonly RetainedTable[] = ["raw_positions", "arrivals", "segments", "stop_visits", "legs"];
 
 // Batched-delete tuning carried forward from the v1 retention fix:
 // large transactions starved the poll loop and tripped /healthz.
@@ -250,6 +260,12 @@ export class Collector {
    */
   private readonly states = new Map<string, BusState>();
   private readonly livePositions = new Map<string, BusPosition>();
+  /**
+   * The visit reducer's state, keyed and reconciled exactly like `states`, so
+   * a departure derived here joins the arrival the detector wrote under the
+   * same track. See `departure.ts`.
+   */
+  private readonly visitStates = new Map<string, VisitState>();
   /** Names seen carried by two live ids at once, cumulative. */
   private contendedNameEvents = 0;
 
@@ -406,7 +422,7 @@ export class Collector {
     this.pathStore = new PathStore(this.sqlite);
     this.derivedPathsByRoute = this.pathStore.loadAll();
 
-    for (const table of ["raw_positions", "arrivals", "segments"] as const) {
+    for (const table of RETAINED_TABLES) {
       const col = retentionColumn(table);
       this.trimStmts.set(
         table,
@@ -553,8 +569,12 @@ export class Collector {
           });
         }
         reconcileTracks(this.livePositions, plan);
-        const events = stepMany(this.ref.get(), this.states, observations, plan);
-        if (events.length > 0) this.persistEvents(events);
+        // The same `step`, in the same order, as `stepMany` — `events` is
+        // byte-for-byte what it returned before. The visit reducer rides
+        // alongside and adds the departure observation the detector lacks.
+        const stepped = stepManyWithVisits(this.ref.get(), this.states, this.visitStates, observations, plan);
+        if (stepped.events.length > 0) this.persistEvents(stepped.events);
+        if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
         this.updateLivePositions(observations, plan);
       } catch (err) {
         this.logger.error("collector.poll_process_failed", {
@@ -641,6 +661,9 @@ export class Collector {
     for (const [key, s] of this.states) {
       if (s.lastObservedAt < stateCutoff) this.states.delete(key);
     }
+    // A visit whose bus went dark is closed as unresolved rather than lost.
+    const closed = pruneVisits(this.visitStates, this.states);
+    if (closed.length > 0) this.persistVisits(closed);
   }
 
   /**
@@ -855,10 +878,12 @@ export class Collector {
     // and crash the process. Contain it; a failed sweep just retries next hour.
     try {
       const now = Date.now();
-      const trims: Array<[string, number]> = [
+      const trims: Array<[RetainedTable, number]> = [
         ["raw_positions", now - RAW_POSITION_RETAIN_MS],
         ["arrivals", now - ARRIVAL_RETAIN_MS],
         ["segments", now - SEGMENT_RETAIN_MS],
+        ["stop_visits", now - VISIT_RETAIN_MS],
+        ["legs", now - LEG_RETAIN_MS],
       ];
       for (const [table, cutoffMs] of trims) {
         const stmt = this.trimStmts.get(table);
@@ -1170,6 +1195,75 @@ export class Collector {
     }
   }
 
+  /**
+   * One insert per visit or leg, batched per poll — a few hundred rows a day,
+   * never a write on the request path. `dow`/`hour` follow the same ET
+   * convention as `arrivals`/`segments` (process TZ), keyed on the instant a
+   * consumer groups by: the arrival for a visit, the departure for a leg.
+   */
+  private persistVisits(events: readonly VisitEvent[]): void {
+    const visitRows: Array<typeof stopVisits.$inferInsert> = [];
+    const legRows: Array<typeof legs.$inferInsert> = [];
+    const ts = (ms: number | null): Date | null => (ms === null ? null : new Date(ms));
+    for (const e of events) {
+      if (e.kind === "visit") {
+        const d = new Date(e.arrivedAt ?? e.anchoredAt);
+        visitRows.push({
+          busId: e.busId,
+          busName: e.busName,
+          anchorBusId: e.anchorBusId,
+          routeId: e.routeId,
+          stopId: e.stopId,
+          stopIndex: e.stopIndex,
+          anchoredAt: new Date(e.anchoredAt),
+          pinnedAt: ts(e.pinnedAt),
+          arrivedAt: ts(e.arrivedAt),
+          departedAt: ts(e.departedAt),
+          standSec: e.standSec,
+          insideSec: e.insideSec,
+          outcome: e.outcome,
+          how: e.how,
+          confidence: e.confidence,
+          firstStepM: e.firstStepM,
+          steps: e.steps,
+          farM: e.farM,
+          confirmSec: e.confirmSec,
+          restPolls: e.restPolls,
+          shuffles: e.shuffles,
+          firstMovedAt: ts(e.firstMovedAt),
+          lastAtRestAt: ts(e.lastAtRestAt),
+          closestM: e.closestM,
+          dow: d.getDay(),
+          hour: d.getHours(),
+        });
+      } else {
+        const d = new Date(e.departedAt);
+        legRows.push({
+          busId: e.busId,
+          busName: e.busName,
+          routeId: e.routeId,
+          fromStopId: e.fromStopId,
+          fromIndex: e.fromIndex,
+          toStopId: e.toStopId,
+          toIndex: e.toIndex,
+          hops: e.hops,
+          departedAt: d,
+          arrivedAt: new Date(e.arrivedAt),
+          toPinnedAt: ts(e.toPinnedAt),
+          legSec: e.legSec,
+          holdSec: e.holdSec,
+          driveSec: e.driveSec,
+          holds: e.holds,
+          reached: e.reached,
+          dow: d.getDay(),
+          hour: d.getHours(),
+        });
+      }
+    }
+    if (visitRows.length > 0) this.db.insert(stopVisits).values(visitRows).run();
+    if (legRows.length > 0) this.db.insert(legs).values(legRows).run();
+  }
+
   private persistStatic(stops: readonly Stop[], routes: readonly Route[]): void {
     const now = Date.now();
     const tx = this.sqlite.transaction(() => {
@@ -1292,7 +1386,7 @@ function routeStopSequence(net: TransitNetwork, route: Route): LatLon[] {
   return out;
 }
 
-function retentionColumn(table: "raw_positions" | "arrivals" | "segments"): string {
+function retentionColumn(table: RetainedTable): string {
   switch (table) {
     case "raw_positions":
       return "collected_at";
@@ -1300,5 +1394,9 @@ function retentionColumn(table: "raw_positions" | "arrivals" | "segments"): stri
       return "arrived_at";
     case "segments":
       return "started_at";
+    case "stop_visits":
+      return "anchored_at";
+    case "legs":
+      return "departed_at";
   }
 }
