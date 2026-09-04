@@ -79,6 +79,65 @@ describe("gateAnchor", () => {
     expect(r).toEqual({ index: 12, released: "at-stop" });
   });
 
+  // The largest defect class left after the gate shipped (9 h replay,
+  // production layover clock: 1,500 one-stop-backward flips, 1,091 on this
+  // signal). The feed's last_stop_id lags a stop, so the instant the at-stop
+  // flag clears the stateless scan answers with the chord INTO the stop the
+  // bus has just left, and that stop flips from a lap away to "now".
+  it("does not retreat to the chord into the stop the bus has just left", () => {
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    // Departure poll: 80 m out, flag cleared, raw scan says 6 (the leg into 40).
+    const r = gateAnchor(s, "k", 6, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
+    expect(r.index).toBe(7);
+    expect(r.released).toBeNull();
+    // Still says 6 a poll later (the feed has not caught up): still 7.
+    const r2 = gateAnchor(s, "k", 6, { ...at(120), at_stop_id: null, last_stop_id: 39 }, 11000, N);
+    expect(r2.index).toBe(7);
+    // The feed catches up and the scan agrees: no jump at all along the way.
+    const r3 = gateAnchor(s, "k", 7, { ...at(160), at_stop_id: null, last_stop_id: 40 }, 16000, N);
+    expect(r3).toEqual({ index: 7, released: "agrees" });
+  });
+
+  it("still lets a departure through when the scan reads forward", () => {
+    // "it can go 5->1 if it leaves early": only the one backward answer is
+    // declined. Forward (or unchanged) on the departure poll passes as before.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    const r = gateAnchor(s, "k", 8, { ...at(80), at_stop_id: null, last_stop_id: 40 }, 6000, N);
+    expect(r).toEqual({ index: 8, released: "at-stop" });
+  });
+
+  it("still lets a departure through when the scan relocates elsewhere", () => {
+    // A fold-back flip on the departure poll is the flag change's to vouch
+    // for, exactly as it was — this is not a new hold, only a declined -1.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    const r = gateAnchor(s, "k", 3, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
+    expect(r).toEqual({ index: 3, released: "at-stop" });
+  });
+
+  it("records the departure, so a later flip cannot ride the stale flag", () => {
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: 40, last_stop_id: 39 }, 1000, N);
+    gateAnchor(s, "k", 6, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 6000, N);
+    expect(s.get("k")!.atStopId).toBeNull();
+    // Minutes later, a 9-stop relocation under a frozen fix: corroboration
+    // is still required, because the flag has NOT changed since the departure.
+    const r = gateAnchor(s, "k", 16, { ...at(80), at_stop_id: null, last_stop_id: 39 }, 60_000, N);
+    expect(r.index).toBe(7);
+    expect(r.released).toBeNull();
+  });
+
+  it("does not confuse an arrival with a departure", () => {
+    // Flag SET while the scan reads one back (the shared-endpoint lag report
+    // #27 fixed): the arrival releases as before.
+    const s = store();
+    gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);
+    const r = gateAnchor(s, "k", 6, { ...at(5), at_stop_id: 44, last_stop_id: 1 }, 6000, N);
+    expect(r).toEqual({ index: 6, released: "at-stop" });
+  });
+
   it("releases in the same poll when the bus arrives at a stop", () => {
     const s = store();
     gateAnchor(s, "k", 7, { ...at(0), at_stop_id: null, last_stop_id: 1 }, 1000, N);

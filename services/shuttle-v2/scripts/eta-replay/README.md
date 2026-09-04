@@ -69,7 +69,26 @@ TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/jitter-
 
 `ARM=gate` needs a tree where `computeUpcomingArrivals` takes an `AnchorStore`
 (PR #72); `ARM=guard` one where it takes an `EtaGuard` (PR #75); `ARM=belief`
-scores the kalman worktree's filter via `_arrivals-anchored-kalman.ts`. Every
+scores the kalman worktree's filter via `_arrivals-anchored-kalman.ts`.
+`ARM=anchor` pairs two CLIENT TREES — a change to `findRouteAnchor` or
+`gateAnchor` cannot be switched on by an argument — importing master's
+`web/src` from a git archive (`SHIPPED_SRC`, required) as the shipped series
+and this tree (or `ARM_SRC`) as the arm, each with its own `AnchorStore`
+(`STORE=1`, production's shape since PR #72; `STORE=0` scores the stateless
+anchor). Point both at the same commit and `armMismatches` must be 0, which is
+the replica proof (0 over 2,119,003 ETAs on 2026-09-03):
+
+```bash
+mkdir -p /tmp/shipped && git archive origin/master services/shuttle-v2/web/src | tar -x -C /tmp/shipped
+ARM=anchor SHIPPED_SRC=/tmp/shipped/services/shuttle-v2/web/src TZ=America/New_York REPLAY_DB=./store/snap.db \
+  npx tsx scripts/eta-replay/jitter-audit.ts
+```
+
+The departure trace is split by whether the watched stop is the one the bus
+was standing at (`armMinusShippedAtAStopAhead`): shipped's soonest stop at t0
+is the stood-at stop itself whenever the second-visit refinement was refused on
+Purple/Green, and an arm that correctly answers "a lap" there reads as
++5,000 s "later". Every
 arm is paired against shipped on the same transitions, with a departure trace
 (arm − shipped for the six polls after every production `at_stop_id` → null)
 and the freeze share split by whether the raw fix moved. It also replays the

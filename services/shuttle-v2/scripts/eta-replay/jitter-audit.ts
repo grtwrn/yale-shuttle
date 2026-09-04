@@ -50,7 +50,10 @@
  *               Production serves `stationarySince` (collector.ts). The
  *               earlier harnesses used `enteredAt`.
  *   DETECTOR    new | pre57            which detector replays the feed
- *   ARM         none | gate | belief
+ *   ARM         none | gate | belief | guard | anchor
+ *   SHIPPED_SRC ARM=anchor: master's web/src (git archive) as the shipped series
+ *   ARM_SRC     ARM=anchor: the arm's web/src (default: this tree)
+ *   STORE       ARM=anchor: 1 = each series keeps an AnchorStore (production), 0 = stateless
  *   OUT_NAME    output file stem (default jitter-audit)
  *
  *   TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/jitter-audit.ts
@@ -84,7 +87,7 @@ const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).to
 
 const SINCE = (process.env.SINCE ?? "stationary") as "stationary" | "entered";
 const DETECTOR = (process.env.DETECTOR ?? "new") as "new" | "pre57";
-const ARM = (process.env.ARM ?? "none") as "none" | "gate" | "belief" | "guard";
+const ARM = (process.env.ARM ?? "none") as "none" | "gate" | "belief" | "guard" | "anchor";
 const OUT_NAME = process.env.OUT_NAME ?? "jitter-audit";
 const det = DETECTOR === "pre57" ? detOld : detNew;
 
@@ -102,6 +105,47 @@ if (ARM === "belief") {
   anchoredMod = await import("./_arrivals-anchored-kalman.js");
 }
 
+/**
+ * ARM=anchor: pair two CLIENT TREES against each other — a change to
+ * `findRouteAnchor` / `gateAnchor` cannot be switched on by an argument, so
+ * the "shipped" series is imported from a git-archived copy of master's
+ * `web/src` (SHIPPED_SRC, required) and the "arm" series from this tree, or
+ * from a second archive (ARM_SRC). Both series run through their own
+ * `computeUpcomingArrivals` with their own `AnchorStore` (STORE=1, the default
+ * since PR #72 — production always passes `liveAnchorStore`; STORE=0 scores
+ * the stateless anchor, which the map's route position still uses directly).
+ *
+ * Replica check: point SHIPPED_SRC and ARM_SRC at the SAME commit and
+ * `armMismatches` must be 0 — the dynamic import is then provably the real
+ * function, not a replica of it.
+ *
+ *   mkdir -p /tmp/shipped && git archive <commit> services/shuttle-v2/web/src | tar -x -C /tmp/shipped
+ *   ARM=anchor SHIPPED_SRC=/tmp/shipped/services/shuttle-v2/web/src TZ=America/New_York npx tsx scripts/eta-replay/jitter-audit.ts
+ */
+interface ClientTree { compute: any; findRouteAnchor: any; isBusOnRoute: any; pruneAnchors: any; registerRoutePaths: any }
+async function loadTree(dir: string | undefined): Promise<ClientTree> {
+  if (!dir) {
+    const g = await import("../../web/src/anchorGate");
+    return { compute: computeUpcomingArrivals, findRouteAnchor, isBusOnRoute, pruneAnchors: g.pruneAnchors, registerRoutePaths };
+  }
+  const a = await import(`${dir}/arrivals.ts`);
+  const an = await import(`${dir}/anchor.ts`);
+  const g = await import(`${dir}/anchorGate.ts`);
+  return { compute: a.computeUpcomingArrivals, findRouteAnchor: an.findRouteAnchor, isBusOnRoute: an.isBusOnRoute, pruneAnchors: g.pruneAnchors, registerRoutePaths: an.registerRoutePaths };
+}
+const USE_STORE = (process.env.STORE ?? "1") === "1";
+let treeS: ClientTree | null = null;
+let treeA: ClientTree | null = null;
+if (ARM === "anchor") {
+  if (!process.env.SHIPPED_SRC) throw new Error("ARM=anchor needs SHIPPED_SRC=<dir of master's web/src>");
+  treeS = await loadTree(process.env.SHIPPED_SRC);
+  treeA = await loadTree(process.env.ARM_SRC);
+}
+const storeS: Map<string, any> | undefined = ARM === "anchor" && USE_STORE ? new Map() : undefined;
+const storeA: Map<string, any> | undefined = ARM === "anchor" && USE_STORE ? new Map() : undefined;
+let armMismatches = 0;
+let armCompared = 0;
+
 const AT_STOP_MAX_M = 75;
 const MAX_POLL_GAP_MS = 20_000;
 const LEVELS = [120, 180, 300, 600] as const;
@@ -116,6 +160,9 @@ const DWELL_LOW_MIN_SAMPLES = 5;
 const net = loadNet();
 const { db, network } = net;
 registerRoutePaths(net.routePaths);
+// Each imported tree keeps its own module-level polyline table for isBusOnRoute.
+treeS?.registerRoutePaths(net.routePaths);
+treeA?.registerRoutePaths(net.routePaths);
 
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
 const pos = db
@@ -317,7 +364,7 @@ interface Snap { t: number; etaS: Map<string, number>; etaA: Map<string, number>
 let prev: Snap | null = null;
 
 // departure trace
-interface Depart { bus: string; stop: number; label: string; t: number; e0S: number; e0A: number; k: number; s: number[]; a: number[] }
+interface Depart { bus: string; stop: number; atStop: number | null; label: string; t: number; e0S: number; e0A: number; k: number; s: number[]; a: number[] }
 const pendingDep: Depart[] = [];
 const departures: Depart[] = [];
 
@@ -437,12 +484,15 @@ for (let pi = 0; pi < polls.length; pi++) {
     const cfg = ROUTE_LISTS.find((c) => c.busRouteIds.includes(o.routeId));
     let anchor = -1;
     let stops: number[] = [];
+    let anchorA = -1;
     if (cfg) {
       stops = mergedRouteStops(cfg, net.routeStops);
-      if (isBusOnRoute(bus, stops, net.stopCoords)) anchor = findRouteAnchor(bus, stops, net.stopCoords);
+      if (isBusOnRoute(bus, stops, net.stopCoords)) {
+        anchor = (treeS ? treeS.findRouteAnchor : findRouteAnchor)(bus, stops, net.stopCoords);
+        anchorA = (treeA ? treeA.findRouteAnchor : findRouteAnchor)(bus, stops, net.stopCoords);
+      }
     }
     const name = o.busName.replace("#", "");
-    let anchorA = anchor;
     if (beliefMod && cfg) {
       const geo = geoByLabel.get(cfg.label);
       if (geo) {
@@ -473,8 +523,25 @@ for (let pi = 0; pi < polls.length; pi++) {
     for (const s2 of mergedRouteStops(cfg, net.routeStops)) targets.add(s2);
   }
   const targetList = [...targets];
-  const arrS = computeUpcomingArrivals(targetList, buses, net.routeStops, net.stopCoords, segs, t, dw);
+  let arrS: UpcomingArrival[];
   let arrA: UpcomingArrival[] = [];
+  if (ARM === "anchor") {
+    if (storeS) treeS!.pruneAnchors(storeS, t);
+    if (storeA) treeA!.pruneAnchors(storeA, t);
+    arrS = treeS!.compute(targetList, buses, net.routeStops, net.stopCoords, segs, t, dw, storeS);
+    arrA = treeA!.compute(targetList, buses, net.routeStops, net.stopCoords, segs, t, dw, storeA);
+    // The anchor the ETA actually used is the gated one, not the raw one.
+    for (const b of buses) {
+      const c = ctx.get(b.bus_name.replace("#", ""));
+      if (!c) continue;
+      const gs = storeS?.get(`${c.label}|${b.bus_name}`);
+      if (gs) c.anchorS = gs.index;
+      const ga = storeA?.get(`${c.label}|${b.bus_name}`);
+      if (ga) c.anchorA = ga.index;
+    }
+  } else {
+    arrS = computeUpcomingArrivals(targetList, buses, net.routeStops, net.stopCoords, segs, t, dw);
+  }
   if (ARM === "gate") {
     arrA = (computeUpcomingArrivals as any)(targetList, buses, net.routeStops, net.stopCoords, segs, t, dw, gateStore);
     for (const b of buses) {
@@ -500,6 +567,14 @@ for (let pi = 0; pi < polls.length; pi++) {
   };
   const etaS = etaOf(arrS);
   const etaA = ARM === "none" ? etaS : etaOf(arrA);
+  if (ARM === "anchor") {
+    for (const [k, e] of etaS) {
+      const ea = etaA.get(k);
+      if (ea === undefined) continue;
+      armCompared++;
+      if (Math.abs(ea - e) > 1e-6) armMismatches++;
+    }
+  }
   const snap: Snap = { t, etaS, etaA, ctx, bucket, arrS };
 
   if (pi % ACC_STRIDE === 0) {
@@ -536,7 +611,7 @@ for (let pi = 0; pi < polls.length; pi++) {
       if (stop < 0) continue;
       const e0A = prev.etaA.get(`${name}|${stop}`);
       if (e0A === undefined) continue;
-      const dep: Depart = { bus: name, stop, label: c1.label, t, e0S: best, e0A, k: 0, s: [], a: [] };
+      const dep: Depart = { bus: name, stop, atStop: c0.atStopId, label: c1.label, t, e0S: best, e0A, k: 0, s: [], a: [] };
       pendingDep.push(dep);
     }
     for (let i = pendingDep.length - 1; i >= 0; i--) {
@@ -737,6 +812,7 @@ const out: any = {
 if (ARM !== "none") {
   out.arm = summarise("arm");
   if (guardObj) out.guardStats = guardObj.stats;
+  if (ARM === "anchor") out.armReplica = { shippedSrc: process.env.SHIPPED_SRC, armSrc: process.env.ARM_SRC ?? "(this tree)", store: USE_STORE, compared: armCompared, mismatches: armMismatches };
   out.paired300 = paired;
   // departure trace
   const d0 = departures.map((d) => d.a[0]! - d.s[0]!).filter(Number.isFinite);
@@ -745,11 +821,35 @@ if (ARM !== "none") {
   const dropA = departures.map((d) => d.a[0]! - d.e0A);
   const landed = departures.filter((d, i) => dropS[i]! <= -60);
   const armLandedSame = landed.filter((d, i) => (d.a[0]! - d.e0A) <= -60).length;
+  // The watched stop is shipped's soonest at t0. When shipped had the bus
+  // "approaching" the very stop it was standing at (ETA ~0 — the
+  // repeated-stop refinement refused on Purple/Green's second visit), that
+  // stop is the one it watches, and an arm that correctly says "a lap" reads
+  // as +5,000 s "later". Split those out: a rider waits for a bus that is
+  // coming, not one already at the kerb.
+  const waited = departures.filter((d) => d.stop !== d.atStop);
+  const worstOf = (xs: Depart[]) => xs.map((d) => ({ d0: d.a[0]! - d.s[0]!, d })).filter((x) => Number.isFinite(x.d0)).sort((a, b) => b.d0 - a.d0).slice(0, 8).map((x) => ({
+    at: fmtEt(x.d.t), bus: x.d.bus, route: x.d.label, stop: net.stopById.get(x.d.stop)?.name ?? x.d.stop, atStop: x.d.atStop === null ? null : (net.stopById.get(x.d.atStop)?.name ?? x.d.atStop),
+    shipped: [Math.round(x.d.e0S), ...x.d.s.map(Math.round)].join(" "), arm: [Math.round(x.d.e0A), ...x.d.a.map(Math.round)].join(" "),
+  }));
+  const d0w = waited.map((d) => d.a[0]! - d.s[0]!).filter(Number.isFinite);
+  const d6w = waited.map((d) => d.a[DEPART_POLLS]! - d.s[DEPART_POLLS]!).filter(Number.isFinite);
   out.departures = {
     n: departures.length,
     armMinusShipped: {
       atDeparturePoll: { p50: q(d0, 0.5), p90: q(d0, 0.9), p99: q(d0, 0.99), over60s: d0.filter((x) => x > 60).length, over300s: d0.filter((x) => x > 300).length, under_minus60s: d0.filter((x) => x < -60).length },
       sixPollsLater: { p50: q(d6, 0.5), p90: q(d6, 0.9), p99: q(d6, 0.99), over60s: d6.filter((x) => x > 60).length, over300s: d6.filter((x) => x > 300).length },
+    },
+    watchedStopWasTheStopStoodAt: departures.length - waited.length,
+    armMinusShippedAtAStopAhead: {
+      n: waited.length,
+      atDeparturePoll: { p50: q(d0w, 0.5), p90: q(d0w, 0.9), p99: q(d0w, 0.99), over60s: d0w.filter((x) => x > 60).length, over300s: d0w.filter((x) => x > 300).length, under_minus60s: d0w.filter((x) => x < -60).length },
+      sixPollsLater: { p50: q(d6w, 0.5), p90: q(d6w, 0.9), p99: q(d6w, 0.99), over60s: d6w.filter((x) => x > 60).length, over300s: d6w.filter((x) => x > 300).length },
+      worst: worstOf(waited),
+      worstSixPollsLater: waited.map((d) => ({ d6: d.a[DEPART_POLLS]! - d.s[DEPART_POLLS]!, d })).filter((x) => Number.isFinite(x.d6)).sort((a, b) => b.d6 - a.d6).slice(0, 8).map((x) => ({
+        at: fmtEt(x.d.t), bus: x.d.bus, route: x.d.label, stop: net.stopById.get(x.d.stop)?.name ?? x.d.stop, atStop: x.d.atStop === null ? null : (net.stopById.get(x.d.atStop)?.name ?? x.d.atStop),
+        shipped: [Math.round(x.d.e0S), ...x.d.s.map(Math.round)].join(" "), arm: [Math.round(x.d.e0A), ...x.d.a.map(Math.round)].join(" "),
+      })),
     },
     shippedDroppedGe60AtDeparture: landed.length,
     armAlsoDroppedGe60SamePoll: armLandedSame,
@@ -803,9 +903,12 @@ console.log(`\n${OUT_NAME}: ${out.window.start} .. ${out.window.end} ET, ${polls
 printSeries("shipped", out.shipped);
 if (ARM !== "none") {
   printSeries("arm", out.arm);
+  if (out.armReplica) console.log(`\n== replica: ${JSON.stringify(out.armReplica)}`);
   console.log(`\n== paired at 300 s: ${JSON.stringify(out.paired300)}`);
   console.log(`== departures (${out.departures.n}): arm - shipped at the departure poll ${JSON.stringify(out.departures.armMinusShipped.atDeparturePoll)}; six polls later ${JSON.stringify(out.departures.armMinusShipped.sixPollsLater)}`);
   console.log(`   shipped dropped >=60 s at departure on ${out.departures.shippedDroppedGe60AtDeparture}; arm did too in the same poll on ${out.departures.armAlsoDroppedGe60SamePoll} (${out.departures.samePollLandingPct}%)`);
+  console.log(`   at a stop AHEAD of the one stood at (${out.departures.armMinusShippedAtAStopAhead.n}): ${JSON.stringify(out.departures.armMinusShippedAtAStopAhead.atDeparturePoll)}; six polls later ${JSON.stringify(out.departures.armMinusShippedAtAStopAhead.sixPollsLater)}`);
+  for (const w of out.departures.armMinusShippedAtAStopAhead.worst) console.log(`   worst ahead: ${JSON.stringify(w)}`);
   console.log(`   drop at departure: shipped ${JSON.stringify(out.departures.shippedDropAtDeparture)} arm ${JSON.stringify(out.departures.armDropAtDeparture)}`);
   for (const w of out.departures.worst) console.log(`   worst: ${JSON.stringify(w)}`);
 }
