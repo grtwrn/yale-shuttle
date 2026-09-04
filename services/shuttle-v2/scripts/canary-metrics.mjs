@@ -666,6 +666,30 @@ export const DEPARTURE_M = 30;
  *   "unknown"    the feed dropped it, or the reading carries no bus list
  */
 /**
+ * The verdict for one finished run — the single place that decides whether a
+ * watch counts against the app.
+ *
+ *   "ok"           nothing found
+ *   "finding"      at least one failure, and they are all about the APP
+ *   "unreachable"  the canary's ground-truth feed refused EVERY poll, so
+ *                  there is no truth to judge against. Neither `ok` nor a
+ *                  finding — the `--loop` already knows this status and
+ *                  sleeps on it.
+ *
+ * `feed-error` is deliberately NOT among the failures any more (operator,
+ * 2026-09-04). It is `/api/buses` timing out on the canary's own network —
+ * the same class of thing as a blind parser, and no rider saw it. It appeared
+ * on 24 of 60 archived runs, 31 times in all, and was the sole reason two of
+ * them were not `ok`. It is counted and reported; it fails nothing. Total
+ * loss is the one exception, and it changes the verdict to a third value
+ * rather than to a finding.
+ */
+export function runVerdict({ failures = [], feedPolls = 0, feedErrorCount = 0 } = {}) {
+  if (feedPolls > 0 && feedErrorCount >= feedPolls) return "unreachable";
+  return failures.length === 0 ? "ok" : "finding";
+}
+
+/**
  * Is this bus at the stop the app told the rider to walk to?
  *
  * Two ways, and the feed's own word outranks our metres: `at_stop_id` naming

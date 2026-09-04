@@ -1072,9 +1072,23 @@ finding. None did → the 25-minute ceiling stopped us before the bus was ever
 due → `unfinished`, which is counted in `--summary` and fails nothing.
 Together with the fix above, `no-arrival` goes **23 → 4** across the archive.
 **But the `ok` rate barely moves — 17% → 20%** — because `no-arrival` was the
-sole failure on only 2 runs. What actually fails runs is `eta-jump` (86
-occurrences, the sole reason on 12 runs) and then `feed-error` (31). Do not
-expect `no-arrival` work to move the health number.
+sole failure on only 2 runs. What actually fails runs is `eta-jump` (88
+occurrences, the sole reason on 12 runs). Do not expect `no-arrival` work to
+move the health number.
+
+**`feed-error` fails nothing** (operator, 2026-09-04). It is `/api/buses`
+timing out on the canary's OWN network — the same class of thing as a blind
+parser, and no rider saw it. It appeared 31 times across 24 of 60 archived
+runs and was the sole reason two of them were not `ok` (both Red, both "the
+operation was aborted due to timeout"); dropping it takes the `ok` rate
+20% → 23%. It is still counted, on the record (`feedErrorCount` / `feedPolls`)
+and in a `--summary` column. **The one exception is total loss**: with every
+poll refused there is no ground truth at all, so `runVerdict` returns
+`unreachable` — neither `ok` nor a finding, the status the `--loop` already
+sleeps on — and the arrival verdict is skipped entirely, because "no bus
+reached the stop" would then be a statement about our network. No archived run
+has ever lost every poll (the worst lost 3 of ~100), so that branch is
+fixtured synthetically and says so.
 
 **A run that parsed zero countdowns is the instrument, not the app.** Eight
 runs in the log were recorded between #111 (which removed the glyph

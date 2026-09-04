@@ -40,7 +40,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as METRICS from "./canary-metrics.mjs";
 import {
   brokenPromise, CANARY_LINES, deadlineForPromise, haversineM, isAtBoardStop,
-  parseOptions, scoreSequence, THRESHOLDS, tripForLine,
+  parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { seedTestId } from "./testId.mjs";
 
@@ -313,14 +313,30 @@ async function runOnce(line) {
     let prevText = null;
     let lastPinSample = 0;
     let boardStopId;
+    // Every ground-truth poll, and how many of them the feed refused.
+    let feedPolls = 0;
+    let feedFails = 0;
     const nearFlags = new Map();
 
     while (Date.now() < deadline) {
       const now = Date.now();
       // ── ground truth: nothing here reads the app's own numbers ──
       let payload = null;
+      feedPolls++;
       try { payload = await fetchBuses(); }
-      catch (e) { record.failures.push({ kind: "feed-error", detail: String(e.message), atMs: now }); }
+      catch (e) {
+        // NOT A FINDING (operator, 2026-09-04). This is the canary's OWN
+        // ground-truth fetch timing out — the same class of thing as a blind
+        // parser — and no rider saw it. It used to push a failure and so
+        // fail the run: `feed-error` appeared on 31 of 59 archived runs and
+        // was the sole reason two of them were not `ok`, all of them about
+        // this Pi's network rather than about the app. Counted, reported,
+        // and harmless. The one case that is NOT harmless is total loss,
+        // handled at the end: with no feed at all there is no ground truth,
+        // so the run is `unreachable` rather than either verdict.
+        feedFails++;
+        (record.feedErrors ??= []).push({ detail: String(e.message), atMs: now });
+      }
       const routeBuses = (payload?.buses ?? []).filter((b) => line.busRouteIds.includes(b.route_id));
       // The board stop's ID, resolved once from the payload's own coordinates.
       // `readPin` gives a lat/lon (out of the Directions link) and nothing
@@ -470,6 +486,13 @@ async function runOnce(line) {
     record.endedAt = Date.now();
     record.watchedMin = +((record.endedAt - startedAt) / 60_000).toFixed(1);
     record.arrived = arrived;
+    record.feedPolls = feedPolls;
+    record.feedErrorCount = feedFails;
+    // Every poll refused: there is no ground truth for this watch at all, so
+    // neither "the bus came" nor "it did not" can be said. That is the one
+    // feed failure that changes the verdict, and it changes it to a THIRD
+    // one — `unreachable`, which the --loop already knows how to sleep on.
+    record.feedUnreachable = runVerdict(record) === "unreachable";
     record.sequence = scoreSequence(record.samples, THRESH);
 
     // ── did the first thing the rider was told survive contact with reality?
@@ -506,7 +529,10 @@ async function runOnce(line) {
       if (!d.severe || d.eventful) continue;
       fail("bus-vanished", `"${d.from}" → "${d.to}" in ${d.dtSec} s — the bus shown ${d.lastShownEtaSec < 60 ? "as arriving" : `${Math.round(d.lastShownEtaSec / 60)} min out`} left the list without arriving${d.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
     }
-    if (!arrived && record.samples.some((s) => s.present)) {
+    // With no feed at all, "no bus reached the stop" is a statement about our
+    // own network, not about the app — the arrival detector never got a
+    // single position to judge.
+    if (!arrived && !record.feedUnreachable && record.samples.some((s) => s.present)) {
       const lastSeen = [...record.samples].reverse().find((s) => s.present);
       // "No bus came" is two different things wearing one face, and calling
       // them both a failure made the canary cry wolf through every long Red
@@ -534,7 +560,9 @@ async function runOnce(line) {
       fail("no-countdown", `${line.label} was on the plan but only ${record.sequence.readings} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
     }
     if (record.pageErrors.length) fail("page-error", record.pageErrors.slice(0, 3).join(" | "));
-    record.ok = record.failures.length === 0;
+    // One decision point, shared with the loop's status. An unreachable run is
+    // NOT ok — there was nothing to judge — but it is not a finding either.
+    record.ok = runVerdict(record) === "ok";
     return record;
   } catch (e) {
     record.endedAt = Date.now();
@@ -569,6 +597,7 @@ function describeFailure(record) {
   const s = record.sequence;
   if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
   if (s?.dropped) out.push(`   vehicles: ${s.dropped} dropped out of the list (${s.droppedSevere} within ${THRESH.droppedSevereSec / 60} min, ${s.droppedSevereEventful ?? 0} of those explained by the bus pulling away), ${s.appeared} took over the head of it`);
+  if (record.feedErrorCount) out.push(`   the canary's own feed refused ${record.feedErrorCount} of ${record.feedPolls} polls (not counted against the app)`);
   if (s?.catastrophicEventful) out.push(`   not counted against the app: ${s.catastrophicEventful} catastrophic jump(s) had the bus visibly leaving the stop`);
   if (record.pins?.length > 1) {
     const names = [...new Set(record.pins.map((p) => p.busName))];
@@ -587,7 +616,7 @@ function summary(days = 7) {
   if (!runs.length) { console.log(`no canary runs in the last ${days} d`); return; }
   const byLine = new Map();
   for (const r of runs) {
-    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, unfin: 0, drifts: [], miss: [] };
+    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, unfin: 0, feed: 0, drifts: [], miss: [] };
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
@@ -610,17 +639,21 @@ function summary(days = 7) {
     // Not a finding, but invisible otherwise, and the operator needs to know
     // how much of the rotation is spending its browser on nothing.
     if (r.unfinished) e.unfin++;
+    // Counted from BOTH places: runs before 2026-09-04 carry feed errors
+    // inside `failures`, where they also failed the run; later ones carry
+    // them in `feedErrors`, where they fail nothing.
+    e.feed += (r.feedErrorCount ?? (r.failures ?? []).filter((f) => f.kind === "feed-error").length);
     if (r.firstSightMissSec != null) e.miss.push(r.firstSightMissSec);
     byLine.set(r.line, e);
   }
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
   console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; a drop is severe within ${THRESH.droppedSevereSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
-  console.log("line           runs    ok  arrived  unfin  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
+  console.log("line           runs    ok  arrived  unfin  feed  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
       `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
-      `${String(e.unfin).padStart(6)} ${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(e.unfin).padStart(6)} ${String(e.feed).padStart(5)} ${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
       `${String(e.drop).padStart(8)} ${String(e.sev).padStart(7)} ` +
       `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
       `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);
@@ -661,6 +694,13 @@ async function oneRider() {
   say(`riding ${line.label} (${line.liveBuses} live buses) — ${line.trip.origin.label} → ${line.trip.destination.display_name} [${line.trip.kind}]`);
   const record = await runOnce(line);
   append(record);
+  if (runVerdict(record) === "unreachable") {
+    // Neither `ok` nor a finding: the watch happened, the app may have been
+    // perfect, and we cannot say. Said out loud so a network outage is not
+    // mistaken for a quiet healthy night.
+    process.stderr.write(`🐤 rider-canary: ${line.label} watched ${record.watchedMin} min but ${BASE}/api/buses refused all ${record.feedPolls} polls — no ground truth, nothing judged\n`);
+    return { status: "unreachable", record };
+  }
   if (!record.ok) process.stderr.write(`${describeFailure(record)}\n`);
   return { status: record.ok ? "ok" : "finding", record };
 }
