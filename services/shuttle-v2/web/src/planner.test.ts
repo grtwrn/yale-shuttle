@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_HOLD_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -634,5 +634,57 @@ describe("topVisibleOptions", () => {
   it("handles fewer than three shuttles", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
+  });
+
+  // Report #93: "red flashed off screen". The reported plan — Division/Prospect
+  // → LEPH, Blue Day 22 min / Orange Day 34 / Walk 37 / Red 39 — sat Red at
+  // EXACTLY Orange + THIRD_SHUTTLE_SLACK_SEC, so a second of wait noise on a
+  // 5-second poll removed the row and the next poll put it back.
+  describe("holds a third shuttle it is already showing (report #93)", () => {
+    const reported = (redSec: number) => [
+      opt("shuttle", "Blue Day", 22 * 60), opt("shuttle", "Orange Day", 34 * 60),
+      opt("walk", "Walk", 37 * 60), opt("shuttle", "Red", redSec),
+    ];
+    const labels = (sorted: ReturnType<typeof reported>, shown?: string[]) =>
+      topVisibleOptions(sorted, shown).map((o) => o.routeLabel);
+
+    it("shows Red on the first poll at the boundary", () => {
+      expect(labels(reported(39 * 60)))
+        .toEqual(["Blue Day", "Orange Day", "Walk", "Red"]);
+    });
+
+    it("keeps Red when one second of noise pushes it past the boundary", () => {
+      const shown = ["Blue Day", "Orange Day", "Walk", "Red"];
+      // Without the hold this is the flicker the rider reported.
+      expect(labels(reported(39 * 60 + 1))).toEqual(["Blue Day", "Orange Day", "Walk"]);
+      expect(labels(reported(39 * 60 + 1), shown))
+        .toEqual(["Blue Day", "Orange Day", "Walk", "Red"]);
+      // ...and it survives the whole hold, so the row does not blink at some
+      // slightly larger wobble either.
+      expect(labels(reported(39 * 60 + THIRD_SHUTTLE_HOLD_SEC), shown))
+        .toEqual(["Blue Day", "Orange Day", "Walk", "Red"]);
+    });
+
+    it("still drops a third shuttle that genuinely falls behind", () => {
+      const shown = ["Blue Day", "Orange Day", "Walk", "Red"];
+      expect(labels(reported(39 * 60 + THIRD_SHUTTLE_HOLD_SEC + 1), shown))
+        .toEqual(["Blue Day", "Orange Day", "Walk"]);
+    });
+
+    it("gives no hold to a route that was not on screen", () => {
+      // A row only holds the slot it already occupies — the hold cannot
+      // promote a route into view on slack it never earned.
+      expect(labels(reported(39 * 60 + 1), ["Blue Day", "Orange Day", "Walk", "Green"]))
+        .toEqual(["Blue Day", "Orange Day", "Walk"]);
+    });
+
+    it("never shows a fourth shuttle, however long it has been held", () => {
+      const sorted = [
+        opt("shuttle", "A", 1000), opt("shuttle", "B", 2000),
+        opt("shuttle", "C", 2000), opt("shuttle", "D", 2000),
+      ];
+      expect(topVisibleOptions(sorted, ["A", "B", "C", "D"]).map((o) => o.routeLabel))
+        .toEqual(["A", "B", "C"]);
+    });
   });
 });
