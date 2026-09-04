@@ -183,6 +183,297 @@ Also measured and settled: proration of the first hop by straight-line
 progress is as good as proration along the road polyline (115 vs 117 s) and far
 better than none (157 s). Keep the chord.
 
+### What the lever was (2026-09-04): the road, and the feed's place in the sort
+
+Two independent defects in `findRouteAnchor`, both in **which legs it believes
+the bus could be on**. They were found separately (rider report 95 and PR #122's
+handover trace) and each is measured on its own below.
+
+**A leg was a chord, and a bus does not drive on a chord.** The candidate test
+measured `distanceToSegmentM(bus, stops[i], stops[i+1])`: the straight line
+between two stops. Blue West's Canal / Munson → Mansfield / Division is a 573 m
+hop whose road bows more than 200 m off its own chord, so a bus honestly on that
+leg reads 121–211 m from it and drops out of the 150 m candidate set — leaving
+the RETURN down the same road as the only candidate, which gives the fold's
+direction filter nothing to compare and lets `gateAnchor` take the hop on one
+30 m deadband step. A bus 33 s from the kerb was re-priced a lap away.
+Reproduced to the metre on the production feed rows, Blue West #126,
+2026-09-03 21:37 ET (PR #122 names the same polls in UTC):
+
+| poll (ET) | chord d[7] | chord d[8] | **road** d[7] | candidates | anchor |
+|---|---|---|---|---|---|
+| 21:37:40 | 121 m | 230 m | 2 m | [7] | 7 |
+| 21:37:45 | 186 m | 143 m | 3 m | [8] | **8** |
+| 21:37:50 | 211 m | 109 m | 3 m | [8] | **8** |
+| 21:38:00 | 149 m | 96 m | 1 m | [7,8] | **8** |
+
+This is the straight-diagonals bug in a second consumer (CLAUDE.md, "Route
+lines"), and it takes the same fix: `traceStopLegs` projects the stops onto the
+published polyline, so a leg is the piece of road between them. **Over 54,920
+scored positions the leg the detector puts the bus on falls outside the 150 m
+window on 19.64% of polls measured to the chord and 3.63% measured to the road.**
+The published line supplies 271 of the network's 274 legs; the three it cannot
+(all Green) fall back to the chord, as does any route with no registered path.
+
+The cost is that a leg which follows the road is a long thin region and can hug
+another leg on the same street, so there are more candidates to tell apart:
+
+| route | mean candidates, chord to road | truth outside the window, chord to road |
+|---|---|---|
+| Blue West | 1.03 to 1.40 | **38.29% to 0.00%** |
+| Purple | 1.76 to 2.55 | 41.47% to 2.21% |
+| Green | 2.12 to 3.15 | 40.69% to 20.94% |
+| Blue Night | 1.96 to 2.13 | 20.36% to 6.21% |
+| Orange Night | 2.22 to 2.37 | 13.22% to 0.00% |
+| Red | 2.66 to 2.69 | 1.27% to 0.08% |
+| ALL | 2.04 to 2.37 | 19.64% to 3.63% |
+
+Green keeps a fifth of its misses because three of its legs are the ones the
+published line cannot supply at all, and the extra candidates are the reason
+the selection rule below has to be right.
+
+**`last_stop_id` ranked when it should only have excluded.** Step 2 sorted every
+in-range candidate by forward distance from the feed's `last_stop_id` and used
+the bus's own GPS purely as a tiebreak, so among adjacent candidates it always
+took the EARLIEST — however far away. That is fine while the feed is fresh, and
+it is often not: on Red #316, 2026-09-04, upstream froze `last_stop_id` at
+Whitney / Audubon for **seven minutes, 2.6 km and five stops**, and the sort then
+degenerates to "take the leg furthest behind":
+
+    11:38:26  130 Prospect (N) -> Winchester / Sachem   32 m (fwd 2)  LOST to
+              Trumbull / Hillhouse -> 130 Prospect (N) 145 m (fwd 1)
+    11:41:27  Canal / Munson -> 344 Winchester          46 m (fwd 4)  LOST to
+              Winchester / Sachem -> Canal / Munson    136 m (fwd 3)
+
+`at_stop_id` was quietly doing the sort's job within 75 m of a stop, so between
+stops the anchor simply sat a stop back for the whole hop and then caught up in
+one poll: at 11:42:01 the countdown went 10 min to 5 min, and the bus reached
+Division / Prospect 322 s later. The 5 was right; the hop that vanished carried
+344 Winchester's layover. The same mechanism is report 95's own moment — Blue
+Day #38 at 11:20:59, anchored at Whitney / Cottage (S) with the bus 132 m past
+Whitney / Edwards (S), promised 297 s for a ride that took 224 s.
+
+So forward distance now **excludes** (`ANCHOR_FEED_LEAD_HOPS`, 5) and the GPS
+decides among the survivors, with forward order still breaking a tie inside
+`ANCHOR_NEARER_M` (80 m). Both constants are measured, neither is tuned:
+
+| rule | anchor behind the detector, all routes | Red |
+|---|---|---|
+| master's sort | 17.71% | 9.10% |
+| window 3 | 10.06% | 0.58% |
+| window 5 | 10.21% | 0.42% |
+| window 8 | 9.25% | 0.96% |
+
+The curve is flat from 3 to 8, so 5 is not an optimum: it is the smallest window
+covering the freeze that was actually observed, and it stays well inside Red's
+fold separation of ten. **Removing `last_stop_id` outright is still worse** —
+at 11:36:46 the leg nearest #316 was SCL → 130 Prospect (S), 128 m away and ten
+stops ahead on the far side of the fold; only forward distance rules that out.
+
+**The band is not a softening of the rule, it is the whole safety of it**, and
+it has two measured bounds that leave one narrow range.
+
+From below, the folds. Two anti-parallel legs of an out-and-back sit within tens
+of metres of each other, and choosing between them by distance does not cost a
+stop, it costs a LAP. `scripts/eta-replay/branch-lock.ts` counts exactly that —
+the anchor a quarter of the loop out of position:
+
+| arm | Green | Purple | Blue Day | Orange Day |
+|---|---|---|---|---|
+| master | 11.1% | 22.2% | 0.3% | 0.5% |
+| road window only | 11.1% | 22.2% | 0.3% | 0.5% |
+| selection only, 30 m band | 13.1% | 26.5% | 0.9% | 0.0% |
+| both, 30 m band | 13.7% | 27.8% | 1.2% | 0.0% |
+| both, 60 m band | 12.7% | 26.0% | 0.3% | 0.0% |
+| **both, 80 m band** | **11.1%** | **22.2%** | **0.3%** | **0.0%** |
+
+The road window is byte-identical to master on this instrument; it is the
+SELECTION rule that costs the out-and-backs, and the band is the dial. At 80 m
+Green, Purple and Blue Day are back exactly where master had them and Orange
+Day's gain is kept.
+
+From above, the incidents: #316's two disputes are 113 m and 90 m apart, so the
+band must stay under 90 m or the second one goes back to the feed's stale
+answer. 80 is the largest round value that clears it.
+
+It also settles a jitter that has its own shipped test. The two legs meeting AT
+a stop are both ~0 m from a bus standing there, so with no band the choice
+between "has reached this stop" and "is still approaching it" is float noise:
+displacing a bus perpendicular to the road by up to 30 m at every stop on the
+network changes the anchor at **96.7% of the 274 stops** with no band, 10.6% at
+15 m, 0.7% at 30 m and 0.0% from 60 m up. Each flip adds or removes that stop's
+whole dwell — report 32's "6 min then 16 min".
+
+#### What it bought
+
+`gps-replay.ts`, both changes, proximity truth (the primary one — it is what a
+rider at the stop experiences), 2026-09-03's 6.5 h of raw positions:
+
+| slice | master | branch |
+|---|---|---|
+| overall, median \| mean bias | 101.2 s \| −88.7 s | **100.4 s \| −58.2 s** |
+| moving bus, next stop | 47.6 s \| −108.5 s | **45.2 s \| −60.3 s** |
+| where the anchor disagrees with the detector | 338.4 s \| −431.8 s | **319.9 s \| −137.1 s** |
+| Green + Purple | 199.2 s \| −216.3 s | **180.0 s \| −81.1 s** |
+| every other route | 87.3 s \| −53.9 s | 85.8 s \| −51.4 s |
+| perfect-anchor bound | 95.1 s \| −25.4 s | 95.1 s \| −25.4 s |
+
+The bound is unmoved, so this is the same population measured against the same
+ceiling. Per route the median moves 69.5 → 66.9 (Blue Day), 64.2 → 61.1 (Red),
+217.5 → 198.5 (Green), 189.2 → 171.9 (Purple), 93.2 → 90.5 (Orange East), 68.8
+→ 65.2 (Orange Night), and the other way on Brown (132.9 → 138.6), Gold (115.9
+→ 117.7), Blue West (121.3 → 122.6) and Pink (207.8 → 208.5).
+
+#### The two changes are coupled, and the rider simulator is what showed it
+
+`rider-sim/run.ts`, 33,696 synthetic riders over the 2026-09-03 capture, all
+fifteen lines, `PAYLOAD_PATCH=split-patch-0903.json`, every arm paired against
+master wait for wait. Share of riders who saw each thing:
+
+| arm | jump ≥300 s | reversal ≥60 s | STRAND | dropped while approaching | worst drift p90 |
+|---|---|---|---|---|---|
+| master | 23.2% | 37.0% | 6.4% | 18.0% (4,853) | 475 s |
+| **road window only** | **17.4%** | **31.0%** | **5.6%** | **15.2% (4,025)** | **370 s** |
+| selection change only | 24.1% | 40.4% | 7.0% | 20.2% (5,540) | 530 s |
+| both, 30 m band | 17.8% | 31.6% | 5.6% | 15.9% (4,232) | 370 s |
+| both, 80 m band | 17.8% | 31.4% | 5.4% | 15.6% (4,148) | 370 s |
+
+On the headline shares the 80 m arm is the best of them. **It is also the one
+that fails the per-route split**, which is the whole reason the split is the
+gate — see below.
+
+**The selection change on its own is a LOSS.** That is the finding to keep: with
+the chord window the candidate set frequently does not contain the leg the bus
+is on, and letting GPS choose freely among a wrong set is worse than the
+conservative forward sort that master used to paper over it. The window has to
+be fixed first; only then is "believe the GPS" safe.
+
+Paired, road window against master: jumps ≥180 s fixed on 1,378 riders and
+introduced on 214; reversals fixed on 1,585 and introduced on 73; strands fixed
+on 377 and introduced on 195; drops 4,788 → 4,011. Worst drift improved for
+2,842 riders and worsened for 717.
+
+`jitter-audit.ts` pairs the two trees transition by transition over 1,068,197
+ETAs with production's own `AnchorStore`:
+
+| | master | branch |
+|---|---|---|
+| jumps ≥120 s | 8,183 (0.77%) | 7,536 (0.71%) |
+| of which EVENTLESS (nothing happened in the world) | 134 | **67** |
+| eventless by mechanism | wrap 50, flip 40, calib 26, advance 18 | wrap 46, calib 21 |
+| eventless triggered by `last_stop_id` | 108 | **46** |
+| "twitch" (bus moved <100 m) | 2,102 | 1,530 |
+| freeze share, fix moved / fix repeated | 15.93% / 56.08% | 15.49% / 55.19% |
+
+**The anchor-flip class of eventless jump is gone** — 40 and 18 to zero. And the
+gate the operator cares about is untouched: over 1,649 departures the arm minus
+shipped countdown is p50 0 s and p90 0 s both at the departure poll and six
+polls later, and every one of the 38 departures where master dropped the number
+by ≥60 s, the branch drops it in the same poll (38 of 38).
+
+#### The index metric cannot arbitrate the window change, and here is the proof
+
+`gps-replay`'s "anchor disagrees with the detector" and the sweep's disagreement
+column both score the client anchor against an oracle built as *the GPS-nearer
+of {detIdx, detIdx − 1}* — and "nearer" there is measured to the CHORD. So the
+target moves with the arm unless it is pinned, and pinning it to the chord makes
+the chord arm right by construction. Both readings are in
+`scripts/eta-replay/anchor-sweep.ts` (54,920 scored positions), and they
+disagree exactly as that predicts:
+
+| arm | oracle measured the same way as the arm | oracle pinned to the chord |
+|---|---|---|
+| master (chord window, forward sort) | 41.04% | 41.04% |
+| chord window + the exclusion rule | 35.61% | 35.61% |
+| **road** window + the exclusion rule | 35.61% | 38.21% |
+| **road** window + master's sort | 42.16% | 42.66% |
+
+The selection change is judged cleanly either way — it does not touch the
+candidate set, so both columns move together and both say it is better by five
+points. The window change is not judged here at all. Its evidence is the two
+measurements that need no oracle: **the leg the detector puts the bus on falls
+outside the 150 m window on 19.64% of polls measured to the chord and 3.63%
+measured to the road**, and the rider simulator below.
+
+## THE GATE: it passes on totals and on Green, and FAILS on Purple
+
+`rider-sim`, 28,951 waits paired master → this branch (80 m band), riders with
+each defect FIXED / INTRODUCED. Totals first, then the routes the brief named:
+
+| route | n | strand | jump ≥180 s | reversal | dropped |
+|---|---|---|---|---|---|
+| **ALL** | 28,951 | **466 / 204** | **1568 / 278** | **1715 / 130** | **885 / 152** |
+| Red | 7,216 | 221 / 13 | 938 / 12 | 1197 / 3 | 392 / 1 |
+| Green | 1,528 | 98 / 45 | 103 / 70 | 230 / 31 | 148 / 5 |
+| **Purple** | 2,048 | **65 / 75** | **113 / 125** | 82 / 65 | 123 / 94 |
+| Pink | 2,790 | 55 / 67 | 273 / 64 | 156 / 21 | 148 / 45 |
+| Blue West | 188 | 14 / 0 | 19 / 0 | 22 / 0 | 23 / 0 |
+| Blue Day | 6,554 | 0 / 0 | 77 / 0 | 5 / 0 | 11 / 0 |
+
+Totals pass comfortably and Green passes on all four. **Purple does not**: net
++10 strands and +12 jumps ≥180 s. That is the swap the split exists to expose —
+its headline strand share barely moves (12.0% → 12.3%) and its drops and
+reversals improve, so a totals-only reading would have called this clean.
+
+### And the same split says which half causes it
+
+master → **road window only**, same population:
+
+| route | strand | jump ≥180 s | reversal | dropped |
+|---|---|---|---|---|
+| ALL | 428 / 207 | 1483 / 223 | 1749 / 81 | 953 / 90 |
+| Red | 213 / 48 | 884 / 34 | 1195 / 1 | 371 / 0 |
+| Green | 58 / 27 | 103 / 47 | 234 / 26 | 143 / 9 |
+| **Purple** | **82 / 28** | **157 / 87** | 92 / 53 | 136 / 67 |
+| Pink | 50 / 102 | 288 / 54 | 184 / 1 | 230 / 14 |
+
+**The window alone is strongly positive on Purple** (strand net −54, jumps net
+−70). Adding the selection rule turns those into +10 and +12. The selection
+rule buys Red (strand introduced 48 → 13, jumps introduced 34 → 12) and Pink
+(strand 50/102 → 55/67) and pays for it on Purple.
+
+So the two mechanisms are not merely coupled — they trade against each other by
+route, and `ANCHOR_NEARER_M` at 80 m already spends the fold budget: it puts
+`branch-lock`'s lap count back at master exactly (Purple 22.2%, Green 11.1%),
+so Purple's remaining cost is not the fold and cannot be bought back with a
+wider band.
+
+### Decision: ship both (operator, 2026-09-04)
+
+Red and Blue Day are what riders actually use, and Red is the operator's
+founding complaint. Both halves give Red **938 jumps fixed against 12 and 221
+strands against 13**; Purple pays **+10 strands and +12 jumps on 2,048 waits**
+— half a percent, on the West Campus route — while the totals, Green, the
+departure trace and the fold count all pass.
+
+The per-route FIXED/INTRODUCED split is what makes that a decision rather than
+a guess, and it stays as the gate for anything that touches this function.
+`scripts/eta-replay/rider-sim/pair-by-route.mjs` is the instrument.
+
+**The follow-up is a separate PR, not a per-route switch.** The halves trade by
+route for a reason that is geometric, not statistical: Purple's out-and-back
+puts two candidates on the SAME physical road running opposite ways, where
+GPS-nearest is genuinely ambiguous and forward distance is the right tiebreaker
+— whereas on Red the disputed candidates sit on distinct geometry, where the
+GPS should win. Making the selection rule fold-aware on that basis is the fix;
+special-casing a route id is not.
+
+**Decided 2026-09-04, so nobody re-imposes it:** the anchor/detector
+disagreement rate is **not a gate on a change to the candidate window**. It rose
+on Pink, Purple, Green and Blue Night when the window moved from the chord to
+the road, while those routes' rider error was flat or better, and the paragraph
+above is why — a window fix cannot be judged by the thing it replaces. The gate
+for such a change is `rider-sim/` paired against master (strands, reversals and
+drops reported as a FIXED/INTRODUCED split, never as a total: the
+selection-only arm proved a total can hide a swap), `branch-lock.ts` for the
+out-and-backs, and the departure trace.
+
+**And one thing to watch.** Green's mean bias flips −110.7 → +109.1: the median
+improves 19 s and the sign moves to the safer side (a rider told later than the
+bus comes does not miss it), but the character of Green's error changes and that
+is the route to watch on the canary.
+
+
 ## The unstarted-rest re-pricing: shipped and reverted the same day (2026-09-03)
 
 `computeUpcomingArrivals` briefly re-priced every hop after the first as

@@ -205,3 +205,43 @@ for that vehicle. A number that does not move while the bus does not move is
 honest; the defect is a frozen countdown for a bus that is provably driving,
 and 53.6% of consecutive samples repeat a position rather than interpolating
 (`docs/bus-speed.md`), so the unsplit share cannot tell the two apart.
+
+## anchor-sweep / cand-size / jitter-probe / leg-coverage / anchor-bench — the anchor's own dials
+
+The five instruments behind `docs/eta-accuracy.md`'s "What the lever was". All
+read a DB snapshot only (no capture, no browser) and take seconds to minutes.
+
+```bash
+cd services/shuttle-v2
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/cand-size.ts
+#   how many candidate legs each window admits, and how often the leg the
+#   detector puts the bus on is not among them (chord 19.64%, road 3.63%)
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/anchor-sweep.ts
+#   window (chord|road) x selection rule x ANCHOR_FEED_LEAD_HOPS x tie band,
+#   scored against the detector. FIXED_ORACLE=1 pins the oracle to the chord;
+#   ONLY_RULES=a,b restricts the table. READ ITS HEADER FIRST — the oracle is
+#   itself chord-based, so this instrument can judge the SELECTION rule and
+#   cannot judge the WINDOW.
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/jitter-probe.ts
+#   displace a bus perpendicular to the road at every stop; how often does the
+#   anchor change? (the tie band's lower bound)
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/leg-coverage.ts
+#   how many legs the published line can supply, and how far each road bows off
+#   its own chord
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/anchor-bench.ts
+#   microseconds per whole-route findRouteAnchor, chord vs road
+```
+
+`make-incident-fixture.ts` regenerates `web/src/__fixtures__/anchor-incidents.json`
+— the production feed rows the anchor tests replay — from the durable capture:
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/snap.db \
+  CAPTURE=$HOME/shuttle-captures/positions-20260904.jsonl,$HOME/shuttle-captures/positions-20260903.jsonl \
+  OUT=web/src/__fixtures__/anchor-incidents.json \
+  npx tsx scripts/eta-replay/make-incident-fixture.ts
+```
+
+The fold question is `branch-lock.ts`'s, not these — it counts the anchor
+landing a LAP out of position, which is the only thing that decides
+`ANCHOR_NEARER_M`.
