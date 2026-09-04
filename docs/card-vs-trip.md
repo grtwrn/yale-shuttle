@@ -241,17 +241,28 @@ does not move is honest; a frozen countdown for a bus that is demonstrably
 driving is the defect. (53.6% of consecutive samples repeat a position rather
 than interpolating — `docs/bus-speed.md` — so the split matters.)
 
-| | pairs | frozen **while moving**, before | after |
-|---|---|---|---|
-| all | 339,581 | **89.3%** | **10.4%** |
-| trip ETA <= 5 min | 71,582 | 88.5% | 10.5% |
-| a bus standing at a layover | 71,888 | 90.0% | 8.7% |
-| **the departure poll** | 43,286 | **77.8%** | **4.0%** |
-| the 344 Winchester chain | 10,590 | 88.8% | **2.2%** |
-| chain, at the departure poll | 1,956 | 82.5% | 2.4% |
-| Purple | 21,613 | 94.9% | 29.8% |
-| Green | 56,610 | 92.4% | 11.7% |
-| Blue Day | 53,608 | 86.8% | 3.3% |
+| | pairs | frozen **while moving**, before | after | after, re-measured on #119..#122 |
+|---|---|---|---|---|
+| all | 339,581 | **89.3%** | **10.4%** | **16.7%** |
+| trip ETA <= 5 min | 71,582 | 88.5% | 10.5% | 20.5% |
+| a bus standing at a layover | 71,888 | 90.0% | 8.7% | 22.3% |
+| **the departure poll** | 43,286 | **77.8%** | **4.0%** | **20.9%** |
+| the 344 Winchester chain | 10,590 | 88.8% | **2.2%** | 18.5% |
+| chain, at the departure poll | 1,956 | 82.5% | 2.4% | 33.2% |
+| Purple | 21,613 | 94.9% | 29.8% | 29.8% |
+| Green | 56,610 | 92.4% | 11.7% | 11.7% |
+| Blue Day | 53,608 | 86.8% | 3.3% | 28.1% |
+
+**The last column is not a regression, and reading it as one would be the
+mistake this table exists to prevent.** It was taken when #112 was re-landed
+(the original squash never reached master — see the re-land PR), against a
+master that by then carried #119's non-increasing standing ceiling. That
+ceiling deliberately HOLDS the shown number flat where the raw conditional
+median would climb while a bus sits, precisely so the app stops sliding an
+arrival later on no news at all. A held number is counted as "frozen" by this
+metric, so the two changes push the same statistic in opposite directions for
+opposite reasons. The columns that matter for the defect #112 was about — the
+collapse that FOLLOWS a freeze — are unchanged, and they are below.
 
 And the collapse that follows a freeze:
 
