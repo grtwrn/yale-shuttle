@@ -2269,8 +2269,12 @@ const TripPlanner: FC<{
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
+      // `offline_since == null`: this offers the rider a bus to BOARD. A
+      // ghost's `at_stop_id` is its last fix's, and it may have pulled away
+      // minutes ago (web/src/ghost.ts).
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
+        && b.offline_since == null
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
@@ -2291,8 +2295,12 @@ const TripPlanner: FC<{
       if (o.mode !== "shuttle") continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
+      // A ghost is where a bus WAS. A rider standing near that coordinate is
+      // not evidence they are aboard anything, and pinning a live ride to a
+      // bus that stopped reporting is the worst version of this offer.
       const busNear = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) &&
+        b.offline_since == null &&
         b.lat && b.lon &&
         haversineMeters(userLatLon, { lat: b.lat, lon: b.lon }) < 100
       );
@@ -3641,8 +3649,11 @@ const TripPlanner: FC<{
               // How many buses are really on this line — the same on-route
               // test the pin uses, so a depot ghost cannot make "2 buses out"
               // of one. The last-bus warning below reads this.
+              // LIVE count, so a ghost cannot make a line look staffed: this
+              // feeds `lastBusVerdict`, i.e. "is this the last one tonight".
               const liveCount = buses.filter((b) =>
-                cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
+                cfg.busRouteIds.includes(b.route_id) && b.offline_since == null
+                && isBusOnRoute(b, allStops, stopCoords),
               ).length;
               return { busMatch, stopsAway, normBus, cfg, liveCount };
             })();
@@ -3990,7 +4001,12 @@ const TripPlanner: FC<{
                       {signalLostSec !== null && !o.departed && (
                         <div style={{ fontSize: 13, color: "#5f6368", fontWeight: 500, lineHeight: 1.4, marginBottom: 2 }}>
                           📡 #{normBus(o.busName)} — {fmtSignalLost(signalLostSec)}
-                          {nextArrLive ? ` · next bus in ${fmtMin(nextArrLive.eta)}` : ""}
+                          {/* The sentence may wrap — it is prose, not one of the
+                              right-hand clock figures — but a number must never
+                              be split from its unit across the break. */}
+                          {nextArrLive ? (
+                            <> · <span style={{ whiteSpace: "nowrap" }}>next bus in {fmtMin(nextArrLive.eta)}</span></>
+                          ) : null}
                         </div>
                       )}
                       {o.missedBus && !o.departed && (
@@ -4616,16 +4632,19 @@ const TripPlanner: FC<{
           chips are training wheels — once the rider has their own saved
           or recent destinations, those take the space instead. */}
       {!options && (() => {
-        const activeRoutes = ROUTE_LISTS.filter((c) => buses.some((b) => c.busRouteIds.includes(b.route_id)));
+        // "running now" means REPORTING now — a bus that has gone quiet is
+        // exactly the one a rider must not be told is running.
+        const running = buses.filter((b) => b.offline_since == null);
+        const activeRoutes = ROUTE_LISTS.filter((c) => running.some((b) => c.busRouteIds.includes(b.route_id)));
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, color: buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
-              {buses.length > 0
-                ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
+            <div style={{ fontSize: 13, color: running.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
+              {running.length > 0
+                ? `🚌 ${running.length} shuttle${running.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
                 : "😴 No shuttles running right now"}
             </div>
-            {firstTimer && buses.length > 0 && (
+            {firstTimer && running.length > 0 && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
                 Pick a destination — we compare walking against every shuttle.
               </div>
@@ -6187,6 +6206,28 @@ const OnBusBanner: FC<{
 
 const TransitMap: FC = () => {
   const [buses, setBuses] = useState<BusData[]>([]);
+  /**
+   * THE BUSES THAT ARE ACTUALLY REPORTING — the default for everything below.
+   *
+   * `buses` now also carries GHOSTS: vehicles that stopped reporting, held for
+   * up to ten minutes with `offline_since` set and their last fix otherwise
+   * verbatim (web/src/ghost.ts). That is what makes one dangerous to a
+   * consumer that does not expect it — a ghost is indistinguishable from a
+   * live bus standing perfectly still at a coordinate it left minutes ago.
+   *
+   * So the ghost-carrying list goes to exactly three places, each of which
+   * knows what it is holding: `TripPlanner`, whose pinned row is the whole
+   * point, and the two Leaflet maps, which grey the marker. Everything else —
+   * "is this route running", the shuttle count, the schematic markers, the
+   * route cards, the on-bus views and `rideEndDecision` — reads this list.
+   *
+   * `rideEndDecision` is the one that would have broken loudest. It retires a
+   * ride when the rider is over 300 m from their own bus three checks running;
+   * measured against a FROZEN position, a rider still happily aboard drifts
+   * past 300 m and the ride ends under them. That is report #96's failure mode
+   * and this list is what keeps it fixed.
+   */
+  const reportingBuses = useMemo(() => buses.filter((b) => b.offline_since == null), [buses]);
   const [routeStops, setRouteStops] = useState<Record<string, number[]>>({});
   const [stopNames, setStopNames] = useState<Record<number, string>>({});
   const [segmentTimes, setSegmentTimes] = useState<Record<string, Record<string, { avg: number; sd?: number; n: number }>>>({});
@@ -6274,7 +6315,7 @@ const TransitMap: FC = () => {
   // running the filter is moot, so fall back to showing everything
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
-  const activeFilter = activeOnly && buses.length > 0;
+  const activeFilter = activeOnly && reportingBuses.length > 0;
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
   // /api/report endpoint as the per-route report button, tagged
@@ -6653,7 +6694,7 @@ const TransitMap: FC = () => {
     const cfg = ROUTE_LISTS.find((c) => c.label === boardedRide.routeLabel);
     const norm = (s: string) => s.replace(/^#/, "");
     const bus = cfg
-      ? buses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
+      ? reportingBuses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
       : undefined;
     const positioned = bus && bus.lat && bus.lon ? { lat: bus.lat, lon: bus.lon } : null;
     const decision = rideEndDecision({
@@ -6680,7 +6721,7 @@ const TransitMap: FC = () => {
       } catch { /* blocked */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
+  }, [reportingBuses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
   const [stopGroups, setStopGroups] = useState<StopGroup[]>(() => {
     try {
       const saved = localStorage.getItem("shuttle-stop-groups");
@@ -6793,7 +6834,7 @@ const TransitMap: FC = () => {
     }
     const next = new Set<string>();
     for (const cfg of ROUTE_LISTS) {
-      const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+      const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
       const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
       if (hasBuses && isFav) continue; // keep visible
@@ -6801,7 +6842,7 @@ const TransitMap: FC = () => {
       if (toggle) next.add(toggle);
     }
     setHiddenRoutes(next);
-  }, [listView, buses, favorites]);
+  }, [listView, reportingBuses, favorites]);
 
   const toggleRoute = (label: string) => {
     setHiddenRoutes((prev) => {
@@ -6962,7 +7003,7 @@ const TransitMap: FC = () => {
       {boardedRide && (
         <OnBusBanner
           ride={boardedRide}
-          buses={buses}
+          buses={reportingBuses}
           stopNames={stopNames}
           stopCoords={stopCoords}
           routeStops={routeStops}
@@ -7101,7 +7142,7 @@ const TransitMap: FC = () => {
           />
           <RideStopList
             ride={boardedRide}
-            buses={buses}
+            buses={reportingBuses}
             stopNames={stopNames}
             stopCoords={stopCoords}
             routeStops={routeStops}
@@ -7208,8 +7249,8 @@ const TransitMap: FC = () => {
               {activeOnly ? "Running now" : "Every route"}
             </button>
             {ROUTE_LISTS.map((cfg) => {
-              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-              if (activeOnly && buses.length > 0 && !hasBuses) return null;
+              const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
+              if (activeOnly && reportingBuses.length > 0 && !hasBuses) return null;
               const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
               if (toggle && mapHidden.has(toggle)) return null;
               return (
@@ -7232,11 +7273,11 @@ const TransitMap: FC = () => {
           </div>
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
-              buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+              buses={reportingBuses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
               routeHours={routeHours} tick={tick}
-              listView="all" activeOnly={activeOnly && buses.length > 0}
+              listView="all" activeOnly={activeOnly && reportingBuses.length > 0}
               // One filter for the page: the chips above already say which
               // lines the rider cares about, and they persist between visits.
               hiddenRoutes={mapHidden}
@@ -7287,7 +7328,7 @@ const TransitMap: FC = () => {
           // TS's flow analysis gives up in a function body this large, so the
           // guard above doesn't narrow; assert what it just proved.
           const ml = matchingList as NonNullable<typeof matchingList>;
-          const hasBuses = buses.some((b) => ml.busRouteIds.includes(b.route_id));
+          const hasBuses = reportingBuses.some((b) => ml.busRouteIds.includes(b.route_id));
           const mlRid = ml.routeIds[0];
           const isFav = mlRid !== undefined && favorites.has(mlRid);
           if (listView === "all" && activeOnly && !hasBuses) continue;
@@ -7298,7 +7339,7 @@ const TransitMap: FC = () => {
         for (const cfg of ROUTE_LISTS) {
           const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
           if (toggle !== undefined && hiddenRoutes.has(toggle!)) continue;
-          const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+          const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
           const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
           let show = listView === "all";
@@ -7336,7 +7377,7 @@ const TransitMap: FC = () => {
                     setHiddenRoutes((prev) => {
                       const next = new Set(prev);
                       for (const cfg of ROUTE_LISTS) {
-                        const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+                        const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
                         if (!hasBuses) continue;
                         const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
                         if (toggle) next.delete(toggle);
@@ -7381,7 +7422,7 @@ const TransitMap: FC = () => {
                 for (const cfg of ROUTE_LISTS) {
                   const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
                   if (toggle && hiddenRoutes.has(toggle)) continue;
-                  const hasBus = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+                  const hasBus = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
                   const rid0 = cfg.routeIds[0];
           const isFav = rid0 !== undefined && favorites.has(rid0);
                   let show = listView === "all";
@@ -7396,7 +7437,7 @@ const TransitMap: FC = () => {
                 }
                 return <StationDot key={s.id} station={s} saved={isSaved} routeColors={colors} />;
               })}
-              {buses.filter(isBusVisible).map((bus) => {
+              {reportingBuses.filter(isBusVisible).map((bus) => {
                 const stnKey = stopToStation[bus.last_stop_id];
                 const stn = stnKey ? stationMap.get(stnKey) : undefined;
                 if (!stn) return null;
@@ -7449,7 +7490,7 @@ const TransitMap: FC = () => {
           }}>
             Active
           </button>
-          {activeOnly && buses.length === 0 && (
+          {activeOnly && reportingBuses.length === 0 && (
             <span style={{ fontSize: 11, color: "#78909c", width: "100%" }}>
               No shuttles running right now — showing all routes
             </span>
@@ -7465,7 +7506,7 @@ const TransitMap: FC = () => {
           justifyContent: "center",
         }}>
           {ROUTE_LISTS.map((cfg) => {
-            const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
+            const hasBuses = reportingBuses.some((b) => cfg.busRouteIds.includes(b.route_id));
             if (activeFilter && !hasBuses) return null;
             const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
             if (toggle && hiddenRoutes.has(toggle)) return null;
@@ -7495,7 +7536,7 @@ const TransitMap: FC = () => {
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
-            buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
+            buses={reportingBuses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
             listView={listView} activeOnly={activeFilter}
