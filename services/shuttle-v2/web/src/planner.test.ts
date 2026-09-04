@@ -900,6 +900,34 @@ describe("pickLiveArrival when the pinned bus goes quiet", () => {
     expect(pick.missedBus).toBeUndefined();
   });
 
+  /**
+   * The window below the dominance margin, which is where the "next bus"
+   * figure had to change shape too.
+   *
+   * A ghost promising 12 min beside a confirmed bus 9 min out is only a 3 min
+   * gap — under `PIN_SWITCH_MARGIN_SEC`, so the row stays on the ghost, which
+   * is right: the rider was watching #304 and is owed an explanation. But the
+   * sentence beneath it must then name #310 at 9 min, and
+   * `nextArrivalAfterPinned` would have skipped it for being SOONER than the
+   * frozen memory and named its next lap instead. TransitMap asks the simpler
+   * question on a ghost row; this pins the premise that makes it necessary.
+   */
+  it("keeps the row on a ghost that a confirmed bus does not dominate", () => {
+    const ghost12 = { eta: 12 * 60, busName: "304", offlineSince: 1_700_000_000_000 };
+    const live9 = { eta: 9 * 60, busName: "310" };
+    const pick = pickLiveArrival([live9, ghost12], "304", 0)!;
+    expect(pick.match.busName).toBe("304");
+    // ...and the trip is still priced on the bus that is really there.
+    expect(pick.boardable.busName).toBe("310");
+  });
+
+  it("hands the row over once a confirmed bus does dominate", () => {
+    const ghost15 = { eta: 15 * 60, busName: "304", offlineSince: 1_700_000_000_000 };
+    const live9 = { eta: 9 * 60, busName: "310" };
+    const pick = pickLiveArrival([live9, ghost15], "304", 0)!;
+    expect(pick.match.busName).toBe("310");
+  });
+
   // Nothing above may change what happens on a poll with no ghosts in it.
   it("is master's pick when every bus is reporting", () => {
     const pick = pickLiveArrival([{ eta: 8 * 60, busName: "304" }, live310], "304", 0)!;

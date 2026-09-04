@@ -3702,31 +3702,45 @@ const TripPlanner: FC<{
                 })
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
-            // riders judge "can I skip this one?" at a glance. Strictly later
-            // than the pinned arrival so an earlier, uncatchable bus never
-            // masquerades as "next"; the same vehicle a loop later counts.
-            const nextArrLive = busEtaLive !== null && !o.departed
-              ? nextArrivalAfterPinned(
-                  // `reportingOnly` is load-bearing rather than defensive here.
-                  // This figure is what a rider falls back on, and when the
-                  // pinned bus has gone quiet it is the WHOLE remaining answer:
-                  // "#304 was due in 15 min, signal lost 3 min ago · next in
-                  // 42 min". It has to be a bus somebody can still see.
-                  //
-                  // A ghost is also absent from this list by name, so the
-                  // pinned-entry exclusion falls through to `fallbackShownEta`
-                  // — `busEtaLive`, the frozen promise — and the answer is the
-                  // soonest confirmed bus later than it, which is right.
-                  reportingOnly(computeUpcomingArrivals(
+            // riders judge "can I skip this one?" at a glance.
+            //
+            // `reportingOnly` is load-bearing rather than defensive: this
+            // figure is what a rider falls back on, and when the pinned bus
+            // has gone quiet it is the WHOLE remaining answer — "#304 was due
+            // in 8 min, signal lost 3 min ago · next bus in 42 min". It has to
+            // name a bus somebody can still see.
+            //
+            // WHICH bus is "next" then depends on whether the pin is still a
+            // bus at all, and the two questions have different answers:
+            //
+            //  - A LIVE pin: the one strictly LATER than it, so an earlier,
+            //    uncatchable bus never masquerades as "next" and the same
+            //    vehicle a loop later still counts. That is
+            //    `nextArrivalAfterPinned`, and the pinned entry is excluded by
+            //    identity rather than by a margin (see arrivals.ts).
+            //  - A GHOST: the soonest confirmed bus, full stop. The "strictly
+            //    later" rule inverts into a lie here, because the ghost is not
+            //    in this list at all and its eta is a frozen memory rather
+            //    than a bus's position — so "later than the memory" can skip a
+            //    real bus that is genuinely sooner. A ghost promising 12 min
+            //    beside a confirmed bus 9 min out printed "next bus in 40 min",
+            //    naming that same bus's NEXT LAP while it was nine minutes
+            //    away. (Beyond `PIN_SWITCH_MARGIN_SEC` the row switches to it
+            //    outright and there is no ghost; this is the window below.)
+            const nextArrLive = busEtaLive === null || o.departed
+              ? null
+              : (() => {
+                  const confirmed = reportingOnly(computeUpcomingArrivals(
                     // dwellTimes matters here: #32 made a dwell able to cancel
                     // the waiting inside a segment, and hoisting this call must
                     // not quietly drop that argument.
                     [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
-                  )).filter((a) => a.routeLabel === o.routeLabel),
-                  o.busName,
-                  busEtaLive,
-                )
-              : null;
+                  )).filter((a) => a.routeLabel === o.routeLabel);
+                  if (busOffline !== null) {
+                    return [...confirmed].sort((a, b) => a.eta - b.eta)[0] ?? null;
+                  }
+                  return nextArrivalAfterPinned(confirmed, o.busName, busEtaLive);
+                })();
             // Whether line 2's left column draws the trip's legs. EVERY
             // collapsed shuttle row has one: the ride. This used to also
             // require a walk at one end or the other, so a rider already at
