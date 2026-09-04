@@ -35,6 +35,9 @@ const APP = path.join(HERE, "..");
 const ROUTE_ID = Number(process.env.ROUTE_ID ?? 3);
 const LAYOVER_STOP = Number(process.env.LAYOVER_STOP ?? 11);
 const MIN_REST_SEC = Number(process.env.MIN_REST_SEC ?? 240);
+// Narrow to one vehicle when a specific incident is wanted rather than the
+// longest rest in the window (the operator names a bus in the report).
+const ONLY_BUS = process.env.BUS ?? null;
 const WINDOW_H = Number(process.env.WINDOW_H ?? 6);
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
 const FLYCTL = process.env.FLYCTL ?? `${process.env.HOME}/.fly/bin/flyctl`;
@@ -125,6 +128,7 @@ for (const rows of byTrack.values()) {
     o._stopId = anchorStop && o.collected_at - nearestSince >= 15_000 ? anchorStop.id : null;
     const restSec = (o.collected_at - st.since) / 1000;
     const dMarker = hav(o, marker);
+    if (ONLY_BUS && o.bus_name !== ONLY_BUS) continue;
     if (st.stopId === null && restSec >= MIN_REST_SEC && dMarker <= ZONE_M && dMarker > AT_STOP_PIN_M) {
       if (!best || restSec > best.restSec) {
         best = { busName: o.bus_name, busId: o.bus_id, restStart: st.since, restSec, dMarker, at: o.collected_at };

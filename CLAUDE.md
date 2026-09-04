@@ -1061,6 +1061,28 @@ of waiting — so the memo keeps the EARLIER start across the roll-in. Without i
 the rider is handed the whole layover a second time and the countdown jumps UP
 at the moment the bus arrives.
 
+**The north end has four observed shapes, and one rule covers three of them.**
+On the marker (11 of 13 rests), short of it on the road (#310, 147 m), at the
+PREVIOUS stop's marker (#310 earlier that day, 7 min 45 s at Canal / Munson),
+and **off-route in the Science Park Garage lot** (#304, report #102). The lot
+is 32 m from a stop of that name which is *not on Red's sequence* and 144 m from
+344 Winchester — inside the zone — so the same rule prices it, and the second
+fixture pins it. Two details make that work and are worth keeping:
+
+- **The candidate comes from the GPS anchor, never from `last_stop_id`.** #304
+  came back from an 18-minute feed absence under a NEW `bus_id` reporting
+  Union Station (N), seventeen hops behind where it actually was. A rule keyed
+  on `last_stop_id + 1` would have aimed at State St Station. A test asserts
+  the published ids through that rest are all far from 344, so nobody
+  "simplifies" the candidate later.
+- **The detector's clock carries across the shuffling.** #304's rest reads as
+  283 s, not the three short ones a naive same-coordinate run would see, which
+  is what carries it past the 150 s gate.
+
+The **previous-stop** shape is the one still open: `at_stop_id` reports Canal /
+Munson correctly, so the elapsed is attributed correctly — but 344's full stand
+is then still charged ahead, and the bus takes only a token pause there.
+
 Two things this is NOT. It is not a slew limiter: the standing term is dropped
 the instant the bus rolls, so a genuine early departure still collapses at full
 speed (a test pins both arms turning on the same poll). And it is not the
