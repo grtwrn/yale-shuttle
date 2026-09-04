@@ -2,7 +2,7 @@
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
 import { gateAnchor, noteFix, type AnchorStore } from "./anchorGate";
-import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
+import { driveAdequate, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -168,6 +168,72 @@ export function billedDwellSec(
 }
 
 /**
+ * Whether a route's payload carries BOTH halves of the stand/drive split, so
+ * `hopPricing` engages on it at all.
+ *
+ * Extracted from the estimator so the screen can ask the same question the
+ * arithmetic asks. If these two ever get separate definitions, the chip and
+ * the countdown go back to disagreeing — which is the bug below.
+ */
+export function splitServedForRoute(
+  routeSegs: Record<string, SegmentStat>,
+  routeDwells: Record<string, DwellStat>,
+): boolean {
+  return Object.values(routeSegs).some(driveAdequate)
+    && Object.values(routeDwells).some(standAdequate);
+}
+
+/** What the pause chip should say, and whether it is a remainder or a total. */
+export interface ShownStand {
+  sec: number;
+  /**
+   * true  — seconds STILL TO STAND, the very term `priceFirstHop` adds.
+   * false — the legacy arrival-to-arrival median, which is what the legacy
+   *         stall credit is bounded by. Same number, shown and billed.
+   */
+  remaining: boolean;
+}
+
+/**
+ * The hold to PUT ON SCREEN beside a bus that is standing at a stop.
+ *
+ * `billedDwellSec` made the shown number equal the billed number back when
+ * there was only one price. Since the stand/drive split went live (Red and
+ * Blue Day, 2026-09-04) there are two, and the chip kept quoting the old one:
+ * a bus standing at 344 Winchester showed `⏸ 3 min / ~10 min` — read by a
+ * rider as "seven more minutes" — while the countdown beside it said 5 min,
+ * and the countdown was right. `dwell.med` is the arrival-to-arrival median,
+ * which CONTAINS DRIVE TIME and was never a measurement of standing (see WHAT
+ * A DWELL STATISTIC ACTUALLY MEASURES); the pricing conditions the standing
+ * quantiles on how long the bus has already stood and takes what is left.
+ *
+ * So where the split prices the hop, this returns the remainder — the same
+ * `remainingStandSec(q, r)` the ETA adds — and the chip says "~4 min left".
+ * That answers the rider's question outright instead of handing them "3 of
+ * 10" to subtract, which is arithmetic they would do against the wrong total.
+ *
+ * The gate is deliberately the WHOLE of the estimator's first-hop condition,
+ * not just `standAdequate`: route-level split service, an adequately sampled
+ * drive for this hop, and an adequately sampled stand for this stop. Where any
+ * of that is missing — Green, Purple, any thin cell — it falls through to
+ * `billedDwellSec`, because there the legacy arithmetic is still what runs and
+ * the old number is still the one being billed.
+ */
+export function shownStandSec(
+  stat: DwellStat | undefined,
+  seg: SegmentStat | undefined,
+  elapsedSec: number | null,
+  splitServed: boolean,
+  started = false,
+): ShownStand | null {
+  if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
+    return { sec: remainingStandSec(stat.q, elapsedSec), remaining: true };
+  }
+  const med = billedDwellSec(stat, started);
+  return med === null ? null : { sec: med, remaining: false };
+}
+
+/**
  * The credit is spent on the FIRST hop only, and never beyond the dwell that
  * hop actually contains.
  *
@@ -235,8 +301,9 @@ export function computeUpcomingArrivals(
     // The stand/drive pricing (hopPricing.ts) and its standing memory engage
     // only on a route the calibrator serves the split for; otherwise nothing
     // below this line behaves differently from before it existed.
-    const splitServed = Object.values(routeSegs).some(driveAdequate)
-      && Object.values(routeDwells).some(standAdequate);
+    // Shared with the pause chip on screen (see shownStandSec) so the number
+    // shown and the number billed cannot come from two different rules.
+    const splitServed = splitServedForRoute(routeSegs, routeDwells);
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;
