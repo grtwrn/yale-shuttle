@@ -57,7 +57,13 @@
  *      not silently regress), CHAIN=Red:11:6 (the 344 Winchester chain: riders
  *      at the six stops downstream while a Red bus is parked there or leaving;
  *      reported as its own section with the departure moment scored),
- *      CALIB_LAG_MIN, TRACE=1.
+ *      CALIB_LAG_MIN, TRACE=1,
+ *      PAYLOAD_PATCH=file.json — extra calibration fields a candidate tree
+ *      reads that the snapshot's calibrator does not serve yet, merged into
+ *      the time-travelled tables after they are built: e.g. PR #81's
+ *      `segments[route]["A-B"].drive` and `dwells[route][stop].q`. Shape:
+ *      {"segments": {"3": {"11-146": {"drive": 82}}}, "dwells": {"3": {"11": {"q": [120, 240, 420, 600]}}}}.
+ *      A tree that ignores the fields is byte-identical with or without it.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -268,12 +274,29 @@ function segmentsAt(t: number) {
     const bc = calibCache.get(bs);
     const st: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
     for (const r of net.routes) st[String(r.id)] = segmentTimesFor(adjByRoute.get(r.id)!, serveRoute(adjByRoute.get(r.id)!, bc.byName.base));
-    segCache.set(bs, (p = st));
+    segCache.set(bs, (p = applyPatch(st, patch?.segments)));
   }
   return p;
 }
 const dwellCache = makeDwellCache(net, dataStart, dataEnd);
-const dwellsAt = (t: number) => dwellCache.at(calibCache.bucketStart(t));
+const dwellsAt0 = (t: number) => dwellCache.at(calibCache.bucketStart(t));
+/** PAYLOAD_PATCH: fields the candidate reads that the snapshot cannot serve (see header). */
+interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>> }
+const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
+const patched = new WeakSet<object>();
+type PatchTable = Record<string, Record<string, Record<string, unknown>>>;
+function applyPatch<T extends PatchTable>(table: T, extra: PayloadPatch["segments"] | undefined): T {
+  if (!extra || patched.has(table)) return table;
+  const t = table as PatchTable;
+  for (const [rid, byKey] of Object.entries(extra)) {
+    const r = (t[rid] ??= {});
+    for (const [k, fields] of Object.entries(byKey)) Object.assign((r[k] ??= {}), fields);
+  }
+  patched.add(table);
+  return table;
+}
+const dwellsAt = (t: number) => applyPatch(dwellsAt0(t), patch?.dwells);
+if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys`);
 {
   const segMax = (net.db.prepare("SELECT max(started_at) m FROM segments").get() as { m: number }).m;
   if (segMax < dataEnd - 3_600_000) log(`WARNING: snapshot segments end ${new Date(segMax).toISOString()}, ${((dataEnd - segMax) / 3_600_000).toFixed(1)} h before the capture ends — calibration for the tail is missing its newest samples; take a fresher snapshot`);
@@ -635,7 +658,7 @@ for (const s of skipped) { const k = s.reason.split(":")[0]!; skippedReasons[k] 
 
 const out = {
   generatedAt: new Date().toISOString(),
-  config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
+  config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
   tree,
   data: { positions: rows.length, polls: polls.length, start: new Date(dataStart).toISOString(), end: new Date(dataEnd).toISOString() },
   population: { focus: [...FOCUS], holdout: [...HOLDOUT], chain: CHAIN ? { ...CHAIN, stops: chainStops } : null, riders: specs.length, bySource: { uniform: specs.filter((s) => s.source === "uniform").length, targeted: specs.filter((s) => s.source === "targeted").length, chain: specs.filter((s) => s.source === "chain").length, named: specs.filter((s) => s.source === "named").length }, skipped: skippedReasons },

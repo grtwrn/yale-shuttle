@@ -212,6 +212,59 @@ restarted at boot. `DETECTOR_FROM=2026-09-03T21:58:30Z` reproduces `now, then
 55 min` then `in 54 min`. **The warm-up suspect was right, in the other
 direction: the simulator was warm and production was not.**
 
+## Two findings nobody asked for
+
+Both came out of the acceptance step, both are live on master, and both are
+recorded here so they are not re-hunted in the wrong place.
+
+### 1. The layover-clock fix (#67) removed the sustained reset, not the one-poll flash
+
+Red #316 at 344 Winchester, rider at Division / Prospect, tree **`972c5ba`
+(master after #67)**, every poll:
+
+```
+20:44:33 in 3, 19 min · 20:44:48 in 2, 19 min
+20:45:23 in 8, 18 min      <- one poll: the bus's shuffle crossed the 75 m radius
+20:45:38 in 2, 18 min      <- and was back inside it 15 s later
+20:46:38 in 1, 18 min · 20:46:53 in <1 · 20:47:13 now
+```
+
+Before #67 the same poll started a 75 s reset ("3 → 8 → 7 → 8 → 1"); after
+it the clock survives — `stationarySince` is pinned to the stop — but
+`at_stop_id` is only *published* while the bus is within `AT_STOP_MAX_M`
+(75 m) of the stop, so the poll the bus sits at 85 m carries no `at_stop` at
+all, the stall credit is zero, and the whole 557 s hop is billed once. The
+clock was never the only way to lose the credit; the publication radius is
+the other, and the fix left it. The chain section above shows the same flash
+at every departure, which is the same arithmetic with a different trigger.
+
+### 2. Brown's "1 min → 56 min" is `pickLiveArrival`, not the estimator
+
+The Brown #301 incident (rider at Divinity / 409 Prospect, 21:48:16 UTC, "in 1
+min" then "in 56 min" at 77 m out, card to the bottom of the list) was
+investigated as an ETA jump. **It is not one.** Trace, tree 61f32ce, the
+canary's origin at Prospect / Canner (~200 m from stop 47):
+
+```
+21:48:04  d=147 m  live=[301:46 s, 301:3461 s]   "in <1, 57 min"
+21:48:09  d=107 m  live=[301:33 s, 301:3449 s]   "in <1, 57 min"
+21:48:14  d=77 m   live=[301:24 s, 301:3439 s]   "in 57 min"        <- the flip
+```
+
+The live list never changed shape: the pinned bus was 24 s away and, a lap
+later, 57 min away. What changed is that the rider's billed walk is 182 s
+(`walkSecFromMeters` of 200 m), and `pickLiveArrival`'s rule is
+`canCatch = walk <= eta + STOP_DWELL_SEC (60)`, with a 90 s buffer for GPS —
+at eta 46 and 33 the buffer held the pin; at eta 24, 24 + 60 + 90 = 174 < 182,
+so the 24 s entry became uncatchable, the first catchable entry was the same
+vehicle a lap later, and because the missed bus and the new match are the
+same vehicle `missedBus` is undefined and no "You can't catch #301" line is
+rendered. The card's total grows by a lap, so it sinks. **Still present on
+master (`21:48:14 in 57, 57 min`).** Whether a rider three minutes away should
+be told the bus they can see is 57 min away is a product question about the
+catchability rule and its explanation line; nothing in `computeUpcomingArrivals`,
+the anchor or the calibration is involved, and no estimator change will move it.
+
 ### What the acceptance step changed in the instrument
 
 Two things it did not have before: a rider's **origin** (the walk is part of
