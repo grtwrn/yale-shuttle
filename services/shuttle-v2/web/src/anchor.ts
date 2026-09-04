@@ -454,6 +454,38 @@ function headingCos(prev: LatLon, now: LatLon, a: LatLon, b: LatLon): number | n
 }
 
 /**
+ * ⚠️ MEASURED AND REJECTED, 2026-09-04. Everything below works and is not
+ * shipped. Read this before writing it again.
+ *
+ * The hypothesis was that #128's two halves trade by route because Purple's
+ * out-and-back puts two candidates on one road facing opposite ways, where
+ * distance is a coin flip and forward order is right, while Red's disputes sit
+ * on distinct geometry where the GPS should win. The test below identifies
+ * folds correctly — it fires on Green 32.3% and Purple 31.4% of polls and on
+ * Orange Day 0.00% and Blue Day 0.32% (`opposed-share.ts`) — so the premise is
+ * true about WHERE THE FOLDS ARE.
+ *
+ * It is false about where Purple's cost is. Paired against the shipped state
+ * over 29,013 waits (`rider-sim/pair-by-route.mjs`), riders FIXED/INTRODUCED:
+ *
+ *   route     strand    jump>=180   dropped
+ *   Purple      9/9        9/14       9/7      <- unmoved, which is the point
+ *   Pink       0/33       28/12      86/0      <- 33 newly stranded
+ *   Green       0/3        7/12       1/8
+ *   Red         0/2        1/7        0/0
+ *   ALL        9/47       45/45      97/15     <- net +38 strands
+ *
+ * Forward-ranking exactly the opposed polls moves Purple by nothing, so its
+ * regression is NOT concentrated on same-road-opposite-direction polls; the
+ * window-only arm recovers Purple by ranking forward EVERYWHERE (82/28 strand
+ * against this rule's 60/69). And Pink fires the same test at 18.1%, where
+ * forward order is the wrong answer and costs 33 strands.
+ *
+ * So the next attempt must not be another way of asking "is this a fold". What
+ * is still unexplained is which polls carry Purple's cost; find those first.
+ *
+ * ---
+ *
  * Do these two candidate legs run along the SAME PIECE OF ROAD in opposite
  * directions?
  *
