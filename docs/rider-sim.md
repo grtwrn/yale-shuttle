@@ -422,6 +422,136 @@ PAYLOAD_PATCH=… OUT_NAME=red0903-pr81` followed by `--compare` against the
 master file above, chain section first, then the three Red acceptance riders,
 then the hold-out rows.
 
+## Scoring PR #81 (stand/drive pricing) on the 344 Winchester cohort
+
+Tables: `docs/data/departure-tables-2026-09-03.json` (PR #83), the **pinned**
+clock (`standPinned`, `drivePinned` — `at_stop_since` → plateau end, the clock
+#81 conditions on), injected as `dwells[route][stop].q ← standPinned.q` and
+`segments[route]["A-B"].drive ← drivePinned.mean` via `PAYLOAD_PATCH`
+(`scripts/.eta-replay/patch-pr81-pinned.json`: 218 stops, 224 hops; 46 stops
+have n < 5, 2 hops do). The headline hop, 344 Winchester → Winchester /
+Division, 112 m served as one 557 s number: stand 327 ± 177 s (n 24), drive
+17.1 ± 4.8 s (n 25). Every run below is paired wait for wait against master
+`3e56f03` on the same 9,470 riders; the cohort-shared `AnchorStore` is passed
+as the 8th argument (the run log states it).
+
+### First cut, `0923c0a` — the flash changed sign
+
+| chain, departure poll (657 watching riders) | master | #81 @0923c0a |
+|---|---|---|
+| raw rise beyond the clock, p50 / mean | +220 s / +196 s | **−123 s / −146 s** |
+| riders ≥ +120 s on that poll / ≤ −120 s | 365 / 25 | **2 / 217** |
+| displayed drift p50 / p90 | 185 s / 370 s | 55 s / 175 s |
+| riders seeing ≥180 s on that poll | 330 | **40** |
+| stranded at 146 / 49 / 48 | 54% / 58% / 44% | 34% / 38% / 38% |
+| jump ≥180 s at 146 / 49 / 48 | 61% / 66% / 67% | 34% / 47% / 32% |
+| chain strands, paired | | both 54, only master 141, **only #81 88** |
+| Red focus: jump ≥180 s / strand / reversal ≥60 s | 39.1% / 12.4% / 49.4% | 32.5% / **13.8%** / 41.1% |
+| Red focus: first promise \|miss\| median, early >60 s | 70 s, 33% | 54 s, 28% |
+| Green / Purple hold-out: jump ≥180 s | 64.1% / 62.0% | 66.5% / 67.4% |
+| Green / Purple hold-out: strand | 28.1% / 35.4% | 34.0% / 37.2% |
+
+The rising cliff is gone: 2 riders instead of 365 see the number rise ≥2 min
+as the bus leaves. But the flash on the 75 m publication radius is still
+there with the sign reversed — the poll `at_stop` drops, `standingForSec` is
+null, the hop prices at drive-only 17 s: `in 8, 24 min → in 1, 24 min → in 6,
+24 min` (#316, 20:39:38), `1 → 5 → 1 → 4 → 5` (#309) — and the departure
+itself is now a **drop** of 123 s beyond the clock (the conditional remaining
+stand is by construction ~2 min until the instant the bus leaves), so the
+strand share on Red went *up* (12.4 → 13.8%; chain: 141 fixed, 88 new). The
+hold-out regressed on both jumps and strands, on thin tables. Named riders:
+
+```
+#316  master  20:44:33 in 3 · 20:44:53 in 2 · 20:45:33 in 8 · 20:45:48 in 2 · 20:46:43 in 1 · <1
+      #81     20:39:28 in 8 · 20:39:38 in 1 · 20:39:48 in 6 · 20:40:18 in 5 … 20:43:23 in 5 · 20:43:53 in 4 · 20:45:03 in 3 · 20:45:23 in 1 · 20:45:38 in 3 · 20:46:38 in <1
+#309  master  21:26:47 in 7 · 21:27:07 in 5 · 21:27:23 in 4 · 21:27:57 in 1 · 21:28:17 in <1
+      #81     21:25:52 in 5 · 21:26:47 in 1 · 21:26:57 in 5 · 21:27:07 in 4 · 21:27:17 in 5 · 21:27:52 in 1 · 21:28:02 in <1 · 21:28:22 in 1 · <1
+```
+
+### Second cut, `e02f442` — standing is the clock, not the flag
+
+The client now remembers the last published `(stop, at_stop_since)` per bus
+on the `AnchorStore` it is passed and keeps pricing `median(stand − r | stand
+> r) + drive` while the bus is within 125 m of that stop; the run log states
+`anchorStore passed to computeUpcomingArrivals = yes (one Map per rider
+cohort, 8th argument)`, so the memory engaged. Paired against master
+`3e56f03`, same 9,470 riders, same patch:
+
+| chain (657 watching riders) | master | #81 @0923c0a | **#81 @e02f442** |
+|---|---|---|---|
+| raw rise beyond the clock at the departure poll, p50 / mean | +220 / +196 s | −123 / −146 s | **+3 / +3 s** |
+| riders ≥180 s on the departure poll | 330 | 40 | **4** |
+| largest drift in [T−5 s, T+30 s] (release lands a poll later): p10 / p50 / p90 | −170 / +70 / +430 s | −170 / +10 / +190 s | **−110 / 0 / 0 s** |
+| … riders with \|drift\| ≥180 s in that window | 352 | 180 | **39** |
+| … ≤ −120 s / ≥ +120 s in that window | 93 / 313 | 82 / 183 | **55 / 12** |
+| stranded at 146 / 49 / 48 | 54% / 58% / 44% | 34% / 38% / 38% | **0% / 23% / 33%** |
+| jump ≥180 s at 146 / 49 / 48 | 61% / 66% / 67% | 34% / 47% / 32% | **0% / 25% / 31%** |
+| reversal ≥60 s at 146 / 49 / 48 | 74% / 73% / 74% | 64% / 58% / 56% | **1% / 11% / 16%** |
+| chain strands, paired (both / only master / only #81) | | 54 / 141 / 88 | **41 / 154 / 39** |
+| chain jump ≥180 s, paired | | 136 / 298 / 91 | **92 / 342 / 50** |
+| promise error 60 s before departure, p50 / p90 pessimistic | +5 / +215 s | | **+10 / +140 s** |
+| longest run of one first figure in the 4 min before departure, p50 / p90 | 40 / 125 s | | 40 / 114 s |
+| first-promise miss, chain, p10 / p50 / p90 | −270 / −50 / +80 s | −190 / −25 / +111 s | −190 / −25 / +111 s |
+
+| Red focus (6,097 scored) | master | #81 @e02f442 |
+|---|---|---|
+| jump ≥180 s / ≥300 s | 39.1% / 26.3% | **25.0% / 18.7%** |
+| reversal ≥60 s | 49.4% | **24.1%** |
+| strand | 12.4% | **10.0%** |
+| first promise \|miss\| median, bus >60 s earlier than promised | 70 s, 33.3% | 54 s, 28.1% |
+| paired jump ≥180 s: fixed / introduced | | 1,660 / 569 |
+| paired strand: fixed / introduced | | 486 / 281 |
+| paired reversal ≥60 s: fixed / introduced | | 2,225 / 266 |
+| worst drift per wait: improved / worsened / same | | 3,412 / 2,319 / 1,927 |
+
+| hold-out (uniform) | master | #81 @e02f442 |
+|---|---|---|
+| Green jump ≥180 s / strand | 64.1% / 28.1% | **66.7% / 34.8%** |
+| Purple jump ≥180 s / strand | 62.0% / 35.4% | **73.0% / 40.5%** |
+| Purple jumps ≥180 s, paired: introduced / fixed | | 51 / 10 |
+
+Read plainly:
+
+- **The departure cliff on the 344 Winchester chain is gone.** +220 s → +3 s
+  at the median, 330 → 4 riders seeing ≥180 s on the poll itself, 352 → 39 in
+  the 35 s window that also catches the one-poll-later release. Winchester /
+  Division, one hop out, goes from 54% stranded / 74% reversals to 0% / 1%.
+- **Strands fall, they do not vanish.** Chain: 154 fixed, 39 introduced.
+  Red as a whole 12.4 → 10.0%, but 281 riders are newly stranded, 183 of them
+  at Division / Sheffield and Division / Prospect (stops 2 and 3 of the
+  chain), and 157 of the 207 Red-only new strands have the same shape: a
+  first figure of 4 min or more collapsing to ≤1 min. That is the conditional
+  median doing what it says — the remaining stand is ~2 min until the instant
+  the bus leaves — and then the drive-only price landing 5–10 s after the flag
+  clears. The plateau itself does not cost: 60 s before departure the shown
+  number is +10 s pessimistic at the median against +5 s on master, and its
+  p90 pessimism is *lower* (140 vs 215 s); the longest run of an unchanged
+  figure before departure is the same 40 s median. The remaining strands are
+  the release, not the plateau.
+- **The bus still beats the first promise for 46% of chain riders by more than
+  a minute** — the same share as master (the p10 miss improves −270 → −190 s,
+  the median −50 → −25 s). Part of the 344 Winchester layover is `hold` on
+  the inbound leg for buses parking beyond 75 m (the derivation's own
+  caution), and the split only prices what lands inside the radius.
+- **The hold-out regressed**, on thin tables: Green 19 of 23 stops carry a
+  `q` with n as low as 1 (p10 n = 2); Purple 10 stops, and the introduced
+  jumps (51 against 10 fixed) sit at the West Campus fold — Building 750 (24),
+  which has no `q` at all, West Haven Train Station (127), Building 600 (23),
+  Building 900 (26). Whether that is the pricing or the tables cannot be told
+  from one day of Green/Purple departures; it is the section a Red-tuned
+  merge must not ignore.
+
+Named riders, e02f442 (canary origin), 5 s cadence:
+
+```
+#316  20:39:28 in 8 · 20:39:38 in 6 · 20:40:18 in 5 · 20:41:33 in 4 · 20:41:43 in 5 · 20:42:23 in 5 · 20:43:53 in 4 · 20:45:03 in 3 · 20:45:23 in 3 · 20:46:53 in <1 · 20:47:13 now       (arrival 20:47:18; no flash, no strand)
+#304  20:58:03 in 6 · 20:58:38 in 5 · 20:59:48 in 4 · 21:00:03 in 5 · 21:01:03 in 5 · 21:01:28 in <1 · 21:02:03 now                                                                  (arrival 21:02:08; strand, −230 s)
+#309  21:25:17 in 6 · 21:25:52 in 5 · 21:27:07 in 4 · 21:27:17 in 5 · 21:28:12 in <1 · 21:28:22 in 1 · 21:28:27 in <1 · 21:28:37 in 1 · 21:28:57 in <1 · 21:29:17 now             (arrival 21:29:22; strand, −235 s)
+```
+
+Files: `scripts/.eta-replay/red0903-{master,pr81,pr81b}.{json,waits.jsonl}`,
+`acc-{master,pr81,pr81b}-red.json`, `patch-pr81-pinned.json`.
+
 ## What the simulation cannot see
 
 It replays the *arithmetic*, not the rendering. It cannot see a card reorder

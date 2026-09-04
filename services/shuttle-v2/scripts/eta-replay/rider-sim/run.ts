@@ -202,10 +202,12 @@ function treeInfo() {
   const git = (cmd: string) => { try { return execSync(`git -C "${CLIENT_ROOT}" ${cmd}`, { encoding: "utf8" }).trim(); } catch { return "?"; } };
   const head = git("rev-parse --short HEAD");
   const dirty = git("status --porcelain -- web/src src/collector") !== "";
-  return { root: CLIENT_ROOT, head, dirty, branch: git("rev-parse --abbrev-ref HEAD"), anchorGate: !!gateMod, nextRule: hasNextRule ? "identity (#74)" : "eta > shown + 30" };
+  // `anchorStorePassed` is stated, not assumed: a candidate that keys memory
+  // on the store (the gate, #81's standing memory) cannot engage without it.
+  return { root: CLIENT_ROOT, head, dirty, branch: git("rev-parse --abbrev-ref HEAD"), anchorGate: !!gateMod, anchorStorePassed: !!gateMod, nextRule: hasNextRule ? "identity (#74)" : "eta > shown + 30" };
 }
 const tree = treeInfo();
-log(`client tree ${tree.root} @ ${tree.head}${tree.dirty ? " (DIRTY)" : ""} [${tree.branch}]  anchorGate=${tree.anchorGate}  nextIn=${tree.nextRule}`);
+log(`client tree ${tree.root} @ ${tree.head}${tree.dirty ? " (DIRTY)" : ""} [${tree.branch}]  anchorGate=${tree.anchorGate}  anchorStore passed to computeUpcomingArrivals=${tree.anchorStorePassed ? "yes (one Map per rider cohort, 8th argument)" : "NO (tree has no anchorGate.ts)"}  nextIn=${tree.nextRule}`);
 
 // -- data ------------------------------------------------------------------------
 
