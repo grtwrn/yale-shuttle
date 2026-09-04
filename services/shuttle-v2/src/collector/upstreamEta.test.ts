@@ -19,7 +19,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 import { PREDICTION_BUCKET_MS, UPSTREAM_SURFACE } from "../server/predictions.js";
 
 import { UpstreamClient } from "./upstream.js";
-import { FOCUS_STOP_NAMES, UpstreamEtaPoller } from "./upstreamEta.js";
+import { FOCUS_STOP_NAMES, MAX_UPSTREAM_ETA_SEC, UpstreamEtaPoller } from "./upstreamEta.js";
 
 // Two of the real focus stops plus a third the fixture also answers for.
 const stops: Stop[] = [
@@ -209,6 +209,19 @@ describe("UpstreamEtaPoller", () => {
     await poller.runCycle();
     const r = rows().find((x) => x["bus_id"] === 65986);
     expect(r?.["predicted_sec"]).toBe(0);
+  });
+
+  it("drops a promise beyond the horizon anyone plans off", async () => {
+    // Upstream answers with every bus on every route serving the stop, out to
+    // 49 min. Those rows are the bulk of the volume and the least of the
+    // value — see MAX_UPSTREAM_ETA_SEC.
+    const poller = makePoller(stubClient((k) => CAPTURE[k]), [], { stopsPerCycle: 3 });
+    await poller.runCycle();
+    const secs = rows().map((r) => Number(r["predicted_sec"]));
+    expect(secs.length).toBeGreaterThan(0);
+    for (const s of secs) expect(s).toBeLessThanOrEqual(MAX_UPSTREAM_ETA_SEC);
+    // #38's 38-minute row at stop 100 is exactly the kind that goes.
+    expect(rows().some((r) => r["to_stop_id"] === 100 && r["bus_id"] === 65954)).toBe(false);
   });
 
   it("quantises predicted_at to the shared 15 s bucket", async () => {

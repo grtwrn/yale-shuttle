@@ -908,6 +908,15 @@ the same vehicle at the same stop off the same feed, so
   write into the arm we score ourselves against.
 - `from_stop_id` / `stops_ahead` come from OUR live fleet (upstream does not
   say) and are `-1` / `0` when we cannot see the bus. Never invented.
+- **It is 40x the volume of the rider rows, and that governs two constants.**
+  A row needs no rider, so the poller writes ~120k/day against the surfaces'
+  ~3k. At the table's 30-day window that is ~440 MB on a volume with 427 MB
+  free (measured 2026-09-04), so `upstream` rows get their OWN 7-day sweep
+  (`UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT` in `collector.ts`, a second
+  cutoff over the same table), and anything promised further out than 30 min
+  is not recorded at all (`MAX_UPSTREAM_ETA_SEC`) — upstream answers with every
+  bus on every route out to 49 min, which is a third of the rows and none of
+  the value. Raise either and the disk arithmetic moves with it.
 - Failures are invisible: own timer, own in-flight guard, every path
   non-throwing, a failed cycle costs 30 s of measurement. Off by default
   whenever a caller injects an `UpstreamClient`, so no test reaches the

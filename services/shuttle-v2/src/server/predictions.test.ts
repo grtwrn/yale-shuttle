@@ -381,6 +381,20 @@ describe("retention", () => {
     expect(src).toContain('case "predictions_log":');
     expect(src).toContain('return "predicted_at";');
   });
+
+  it("the operator's arm ages out far sooner than the riders'", () => {
+    // Not a policy difference, a capacity one: the upstream poller writes
+    // ~40x the rows (one per vehicle per sampled stop every 30 s, awake or
+    // not) and 30 days of it would fill the volume. `arrivals` still outlives
+    // the shorter window many times over, so every row stays pairable.
+    const src = fs.readFileSync("src/collector/collector.ts", "utf8");
+    const m = /const UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT = (\d+);/.exec(src);
+    expect(m).not.toBeNull();
+    expect(Number(m![1])).toBeLessThan(DEFAULT_PREDICTION_RETAIN_DAYS);
+    // And the sweep must actually narrow to that arm, or it would take the
+    // rider rows with it.
+    expect(src).toContain("WHERE surface = 'upstream' ");
+  });
 });
 
 // ---------------------------------------------------------------------------

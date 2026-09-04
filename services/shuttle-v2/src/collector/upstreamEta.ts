@@ -111,8 +111,22 @@ export const FOCUS_STOP_NAMES: readonly string[] = [
 const RIDER_STOP_WINDOW_MS = 3 * 60 * 60_000;
 /** How long the rider-stop candidate list is reused before requerying. */
 const RIDER_STOP_REFRESH_MS = 5 * 60_000;
-/** Nothing sane is further out than this; matches predictions.ts's own cap. */
-const MAX_ETA_SEC = 2 * 60 * 60;
+/**
+ * Longest upstream promise worth recording, in seconds.
+ *
+ * Upstream answers with EVERY bus on every route serving the stop, so a busy
+ * hub returns ten rows reaching 49 minutes out. Those are the bulk of the
+ * volume and the least of the value: nobody plans a shuttle trip off a 40-min
+ * countdown, our own client caps at 90 min and the trip card rarely shows past
+ * 20, and a far-horizon row is the least likely to pair — the bus may not even
+ * complete the lap inside the match window.
+ *
+ * 30 min keeps every bucket the comparison reports (<=3, 3-10, >10) with room
+ * to spare and drops roughly a third of the rows. It is a storage decision;
+ * raise it and the disk note on UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT in
+ * `collector.ts` moves with it.
+ */
+export const MAX_UPSTREAM_ETA_SEC = 30 * 60;
 
 export interface UpstreamEtaPollerOptions {
   sqlite: Database.Database;
@@ -343,7 +357,7 @@ export class UpstreamEtaPoller {
     if (!Number.isInteger(eta.stopId) || !Number.isInteger(eta.busId)) return null;
     if (!Number.isFinite(eta.avgMin) || eta.avgMin < 0) return null;
     const predictedSec = eta.avgMin * 60;
-    if (predictedSec > MAX_ETA_SEC) return null;
+    if (predictedSec > MAX_UPSTREAM_ETA_SEC) return null;
     // Their prediction must be for a stop their route actually serves. Same
     // check the rider path makes, for the same reason.
     const positions = network.routeStopPositions.get(eta.routeId)?.get(eta.stopId);
