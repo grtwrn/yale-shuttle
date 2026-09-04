@@ -306,7 +306,7 @@ describe("findRouteAnchor: direction changes nothing on a plain loop", () => {
 // ---------------------------------------------------------------------------
 // The two recorded incidents. Everything below runs on production feed rows
 // and the operator's own published geometry — `__fixtures__/anchor-incidents.json`,
-// written by `scripts/.eta-replay/make-incident-fixture.ts` — so a regression
+// written by `scripts/eta-replay/make-incident-fixture.ts` — so a regression
 // fails here with the real coordinates rather than a contrived pair of stops.
 // ---------------------------------------------------------------------------
 

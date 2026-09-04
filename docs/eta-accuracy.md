@@ -380,7 +380,7 @@ column both score the client anchor against an oracle built as *the GPS-nearer
 of {detIdx, detIdx − 1}* — and "nearer" there is measured to the CHORD. So the
 target moves with the arm unless it is pinned, and pinning it to the chord makes
 the chord arm right by construction. Both readings are in
-`scripts/.eta-replay/anchor-sweep.ts` (54,920 scored positions), and they
+`scripts/eta-replay/anchor-sweep.ts` (54,920 scored positions), and they
 disagree exactly as that predicts:
 
 | arm | oracle measured the same way as the arm | oracle pinned to the chord |

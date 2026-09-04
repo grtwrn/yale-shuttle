@@ -133,7 +133,7 @@ export const ANCHOR_GPS_THRESHOLD_M = 150;
  * would have skipped the whole Winchester loop. Forward distance is the only
  * thing that rules that out, so it must keep ruling it out.
  *
- * FIVE, from the sweep (`scripts/.eta-replay/anchor-sweep.ts`, 54,920 scored
+ * FIVE, from the sweep (`scripts/eta-replay/anchor-sweep.ts`, 54,920 scored
  * positions over 2026-09-03's 6.5 h of `raw_positions`, scored against the
  * detector's own anchor). Anchor-behind-the-detector, all routes / Red:
  *
@@ -186,7 +186,7 @@ export const ANCHOR_FEED_LEAD_HOPS = 5;
  * meeting AT a stop are both ~0 m from a bus standing there, so with no band
  * the choice between "has reached this stop" and "is still approaching it" is
  * float noise: displacing a bus perpendicular to the road by up to 30 m at
- * every stop on the network (`scripts/.eta-replay/jitter-probe.ts`, 274 stops)
+ * every stop on the network (`scripts/eta-replay/jitter-probe.ts`, 274 stops)
  * changes the anchor at 96.7% of them with no band, 10.6% at 15 m, 0.7% at
  * 30 m and 0.0% from 60 m up. Each flip adds or removes that stop's whole
  * dwell, which is report #32's "6 min then 16 min".
@@ -231,7 +231,7 @@ export const ANCHOR_NEARER_M = 80;
 // leg, computed once with the geometry, skips every leg the bus cannot be near
 // — which is all but two or three of them — and holds a whole-route anchor to
 // 6.8 us against the chord's 2.3 (2,000 laps of all 15 routes on this Pi,
-// `scripts/.eta-replay/anchor-bench.ts`). Without the box the same call is
+// `scripts/eta-replay/anchor-bench.ts`). Without the box the same call is
 // 13 us, and the browser makes several hundred of them every five seconds.
 interface LegGeom {
   line: readonly (readonly [number, number])[];
