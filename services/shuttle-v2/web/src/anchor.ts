@@ -453,6 +453,78 @@ function headingCos(prev: LatLon, now: LatLon, a: LatLon, b: LatLon): number | n
   return (lx * dx + ly * dy) / (ln * dn);
 }
 
+/**
+ * Do these two candidate legs run along the SAME PIECE OF ROAD in opposite
+ * directions?
+ *
+ * This is the question that decides whether GPS or the feed gets to rank them,
+ * and it is a geometric one. On an out-and-back the two candidates are the same
+ * tarmac facing opposite ways: a bus on it is genuinely equidistant from both,
+ * the metres between them are noise, and choosing by distance is a coin flip
+ * that costs a LAP. Everywhere else the disputed candidates lie on different
+ * geometry — different streets, or the two sides of a corner — and there the
+ * bus's own position is the better evidence and `last_stop_id` may be minutes
+ * stale.
+ *
+ * Measured at the bus, not over the whole leg: a long leg turns, so its overall
+ * bearing says nothing about the metre the bus is standing on. `legBearingAt`
+ * takes the direction of the polyline segment nearest the bus (the chord's,
+ * where no line is registered), and two legs count as one road when those point
+ * more than 127 deg apart — {@link ANCHOR_DIRECTION_COS}, the same threshold
+ * the fold's direction filter uses and for the same reason.
+ */
+function legBearingAt(
+  p: LatLon,
+  legIdx: number,
+  stops: number[],
+  stopCoords: Record<number, LatLon>,
+  legs: LegGeom[] | null,
+): { x: number; y: number } | null {
+  const scale = Math.cos((p.lat * Math.PI) / 180);
+  const leg = legs?.[legIdx];
+  let a: LatLon | undefined;
+  let b: LatLon | undefined;
+  if (leg && leg.line.length >= 2) {
+    // the vertex pair whose segment the bus is nearest
+    let best = Infinity;
+    for (let i = 0; i + 1 < leg.line.length; i++) {
+      const u = { lat: leg.line[i]![0], lon: leg.line[i]![1] };
+      const v = { lat: leg.line[i + 1]![0], lon: leg.line[i + 1]![1] };
+      const d = distanceToSegmentM(p, u, v);
+      if (d < best) { best = d; a = u; b = v; }
+    }
+  } else {
+    const N = stops.length;
+    a = stopCoords[stops[legIdx]!];
+    b = stopCoords[stops[(legIdx + 1) % N]!];
+  }
+  if (!a || !b) return null;
+  const x = (b.lon - a.lon) * scale, y = b.lat - a.lat;
+  const n = Math.hypot(x, y);
+  return n < 1e-12 ? null : { x: x / n, y: y / n };
+}
+
+/** True when any two of these legs are the same road running opposite ways. */
+function anyOpposed(
+  p: LatLon,
+  idxs: readonly number[],
+  stops: number[],
+  stopCoords: Record<number, LatLon>,
+  legs: LegGeom[] | null,
+): boolean {
+  const dirs = idxs.map((i) => legBearingAt(p, i, stops, stopCoords, legs));
+  for (let i = 0; i < dirs.length; i++) {
+    const u = dirs[i];
+    if (!u) continue;
+    for (let j = i + 1; j < dirs.length; j++) {
+      const v = dirs[j];
+      if (!v) continue;
+      if (u.x * v.x + u.y * v.y <= -ANCHOR_DIRECTION_COS) return true;
+    }
+  }
+  return false;
+}
+
 export type AnchorBus = {
   lat: number;
   lon: number;
@@ -537,22 +609,42 @@ export function findRouteAnchor(
       );
       if (kept.length > 0) candidates = kept;
     }
-    // Then the bus's own GPS decides — but only where it decides materially.
-    // See ANCHOR_NEARER_M: inside the feed's own resolution the legs are
-    // indistinguishable and forward order is the tiebreak, as it always was.
+    // Then the bus's own GPS decides — but not everywhere, and the exception is
+    // geometric.
+    //
+    // ON A FOLD the survivors are the same tarmac facing opposite ways. A bus
+    // on it is equidistant from both by construction, the metres between them
+    // are noise, and picking the nearer is a coin flip that costs a LAP rather
+    // than a stop. There the feed's forward order is the better evidence even
+    // when the GPS looks decisive, so it ranks the whole candidate set — which
+    // is what master did everywhere, and what Purple wants.
+    //
+    // EVERYWHERE ELSE the disputed candidates lie on different geometry, the
+    // GPS is the better evidence, and `last_stop_id` may be minutes stale —
+    // Red's #316 disputes are consecutive legs of Prospect Street at 32 m
+    // against 145 m, and the bus is plainly on one of them. There the band
+    // decides: GPS wins when it separates them by more than ANCHOR_NEARER_M,
+    // and inside that the legs are indistinguishable and forward order breaks
+    // the tie, as it always did.
+    const here = { lat: bus.lat, lon: bus.lon };
+    const byForward = (a: number, b: number) => {
+      const fa = (a - lastIdx + N) % N;
+      const fb = (b - lastIdx + N) % N;
+      if (fa !== fb) return fa - fb;
+      return dists[a] - dists[b];
+    };
+    if (
+      lastIdx >= 0 && candidates.length > 1 &&
+      anyOpposed(here, candidates, stops, stopCoords, legs)
+    ) {
+      candidates.sort(byForward);
+      return refineWithAtStop(candidates[0]!);
+    }
     let nearest = Infinity;
     for (const i of candidates) if (dists[i] < nearest) nearest = dists[i];
     const tied = candidates.filter((i) => dists[i] <= nearest + ANCHOR_NEARER_M);
-    if (lastIdx >= 0) {
-      tied.sort((a, b) => {
-        const fa = (a - lastIdx + N) % N;
-        const fb = (b - lastIdx + N) % N;
-        if (fa !== fb) return fa - fb;
-        return dists[a] - dists[b];
-      });
-    } else {
-      tied.sort((a, b) => dists[a] - dists[b]);
-    }
+    if (lastIdx >= 0) tied.sort(byForward);
+    else tied.sort((a, b) => dists[a] - dists[b]);
     return refineWithAtStop(tied[0]!);
   }
 
