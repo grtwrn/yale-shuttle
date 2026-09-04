@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceFirstHop, remainingStandSec } from "./hopPricing";
+import { priceFirstHop, remainingStandSec, standingAt, STANDING_HOLD_M } from "./hopPricing";
 
 // Ten quantiles (p5..p95) of a layover shaped like 344 Winchester's: median ~475 s, long right tail.
 const Q = [60, 150, 260, 360, 440, 510, 580, 660, 780, 960];
@@ -60,4 +60,34 @@ describe.todo("anchor as a distribution — fixtures from verified traces", () =
   it.todo("a stationary bus on a shared out-and-back segment with no history reports ~50/50 and says so");
   it.todo("a departure in each direction on the shared segment resolves within two fresh fixes");
   it.todo("a stale last_stop_id held across a 5 km run (Green, I-95) carries no evidence while unchanged");
+});
+
+describe("standingAt — the flag is a publication signal, the clock is the standing test", () => {
+  const stopCoords = { 11: { lat: 41.3170, lon: -72.9280 } };
+  const at = (dm: number) => ({ lat: 41.3170 + dm / 111_000, lon: -72.9280 });
+  const since = "2026-09-03T20:40:00.000";
+  const t0 = Date.parse(since + "Z");
+  it("keeps the standing clock across a one-poll loss of the flag inside the hold radius", () => {
+    const store = {};
+    const a = standingAt(store, "Red|#316", { ...at(10), at_stop_id: 11, at_stop_since: since }, t0 + 300_000, stopCoords, STANDING_HOLD_M);
+    expect(a).toEqual({ stopId: 11, standingSec: 300 });
+    // shuffle to 85 m: publication radius (75 m) lost, hold radius (125 m) not
+    const b = standingAt(store, "Red|#316", { ...at(85) }, t0 + 305_000, stopCoords, STANDING_HOLD_M);
+    expect(b).toEqual({ stopId: 11, standingSec: 305 });
+    const c = standingAt(store, "Red|#316", { ...at(10), at_stop_id: 11, at_stop_since: since }, t0 + 310_000, stopCoords, STANDING_HOLD_M);
+    expect(c?.standingSec).toBe(310);
+  });
+  it("releases once the bus is demonstrably gone, and forgets", () => {
+    const store = {};
+    standingAt(store, "Red|#316", { ...at(10), at_stop_id: 11, at_stop_since: since }, t0 + 300_000, stopCoords, STANDING_HOLD_M);
+    expect(standingAt(store, "Red|#316", { ...at(160) }, t0 + 305_000, stopCoords, STANDING_HOLD_M)).toBeNull();
+    // back inside the radius later: no memory, no standing
+    expect(standingAt(store, "Red|#316", { ...at(60) }, t0 + 310_000, stopCoords, STANDING_HOLD_M)).toBeNull();
+  });
+  it("is per store, and stale memory expires", () => {
+    const s1 = {}, s2 = {};
+    standingAt(s1, "k", { ...at(10), at_stop_id: 11, at_stop_since: since }, t0, stopCoords, STANDING_HOLD_M);
+    expect(standingAt(s2, "k", { ...at(10) }, t0 + 5_000, stopCoords, STANDING_HOLD_M)).toBeNull();
+    expect(standingAt(s1, "k", { ...at(10) }, t0 + 200_000, stopCoords, STANDING_HOLD_M)).toBeNull();
+  });
 });

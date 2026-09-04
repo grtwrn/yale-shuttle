@@ -2,7 +2,7 @@
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
 import { gateAnchor, type AnchorStore } from "./anchorGate";
-import { priceFirstHop } from "./hopPricing";
+import { priceFirstHop, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -232,6 +232,11 @@ export function computeUpcomingArrivals(
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
       : 0;
     const fallbackSd = avgSeg * 0.5;
+    // The stand/drive pricing (hopPricing.ts) and its standing memory engage
+    // only on a route the calibrator serves the split for; otherwise nothing
+    // below this line behaves differently from before it existed.
+    const splitServed = Object.values(routeSegs).some((s) => s.drive !== undefined)
+      && Object.values(routeDwells).some((d) => d.q !== undefined && d.q.length > 0);
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;
@@ -248,7 +253,7 @@ export function computeUpcomingArrivals(
       // a corroborated last_stop_id change says the bus actually went
       // somewhere. Releases in the SAME poll on at_stop_id, so a bus leaving
       // early still collapses the countdown immediately.
-      const gpsAnchorIdx = anchorStore
+      let gpsAnchorIdx = anchorStore
         ? gateAnchor(anchorStore, `${cfg.label}|${bus.bus_name}`, rawAnchorIdx, bus, now, stops.length).index
         : rawAnchorIdx;
 
@@ -265,7 +270,6 @@ export function computeUpcomingArrivals(
       // are 35 m apart but 9 stops apart in the loop, so a 35 m GPS wobble
       // relocated the bus a third of a lap and swung the displayed ETA by
       // ~10 minutes — exactly the "6 min then it said 16" in report #32.
-      const busIdx = gpsAnchorIdx;
       let stallCredit = 0;
       if (bus.at_stop_id && bus.at_stop_since) {
         const atIdx = stops.indexOf(bus.at_stop_id);
@@ -288,6 +292,25 @@ export function computeUpcomingArrivals(
       // fraction = (1 - t), clamped [0, 1]: if anchor-advance didn't
       // fire but t happens to exceed 1 due to sub-step drift, treat it
       // as 0 remaining rather than negative.
+      // "Standing" for the split pricing is NOT "at_stop_id is set this poll".
+      // The flag is a PUBLICATION signal with a 75 m radius; a parked bus that
+      // shuffles to 85 m loses it for one poll while plainly still standing,
+      // and pricing that poll as en route collapses the countdown to the
+      // drive and brings it back ("in 8 -> in 1 -> in 6"). The stop-pinned
+      // clock survives that shuffle (PR #67); so does this memory of it.
+      let standingSec: number | null = stallCredit > 0 ? stallCredit : null;
+      if (anchorStore && splitServed) {
+        const st = standingAt(anchorStore, `${cfg.label}|${bus.bus_name}`, bus, now, stopCoords, STANDING_HOLD_M);
+        if (st) {
+          const N = stops.length;
+          for (let i = 0; i < N; i++) {
+            if (stops[i] !== st.stopId) continue;
+            const d = ((i - gpsAnchorIdx) % N + N) % N;
+            if (d <= 1 || d === N - 1) { gpsAnchorIdx = i; standingSec = st.standingSec; break; }
+          }
+        }
+      }
+      const busIdx = gpsAnchorIdx;
       let firstSegProgressFactor = 1;
       if (stallCredit === 0 && bus.lat && bus.lon) {
         const a = stopCoords[stops[busIdx]];
@@ -392,7 +415,7 @@ export function computeUpcomingArrivals(
           const t = bus.lat && bus.lon
             ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
             : 0;
-          segAvg = priceFirstHop({ q: split.stand }, split.drive, stallCredit > 0 ? stallCredit : null, t);
+          segAvg = priceFirstHop({ q: split.stand }, split.drive, standingSec, t);
           segVar = Math.min(segVar, segAvg * segAvg);
           stallCredit = 0;
           firstSegProgressFactor = 1;

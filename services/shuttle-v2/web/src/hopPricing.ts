@@ -103,3 +103,53 @@ export function priceFirstHop(
   const t = Math.max(0, Math.min(1, progress));
   return drive * (1 - t);
 }
+
+/**
+ * Standing memory. `at_stop_id` is a PUBLICATION signal — the collector emits
+ * it within 75 m of the stop — not the answer to "is this bus standing". A
+ * parked bus that shuffles to 85 m loses the flag for a poll and gets it back;
+ * the stop-pinned clock (`stationarySince`, PR #67) survives that shuffle, and
+ * so must the pricing, or the countdown flashes to the drive and back.
+ *
+ * Kept per caller-owned `AnchorStore` so hypothetical and replayed calls have
+ * their own memory and pure calls (no store) have none — the same rule the
+ * anchor gate follows.
+ */
+export const STANDING_HOLD_M = 125; // mirrors STATIONARY_RADIUS_M (detector.ts, PR #67)
+const STANDING_MEMO_STALE_MS = 120_000;
+
+interface StandingMemo { stopId: number; since: number; seenAt: number }
+const memos = new WeakMap<object, Map<string, StandingMemo>>();
+
+export function standingAt(
+  store: object,
+  key: string,
+  bus: { lat?: number | undefined; lon?: number | undefined; at_stop_id?: number | null | undefined; at_stop_since?: string | null | undefined },
+  now: number,
+  stopCoords: Record<number, { lat: number; lon: number }>,
+  holdM: number,
+): { stopId: number; standingSec: number } | null {
+  let m = memos.get(store);
+  if (!m) memos.set(store, (m = new Map()));
+  if (bus.at_stop_id && bus.at_stop_since) {
+    const since = new Date(bus.at_stop_since + "Z").getTime();
+    if (Number.isFinite(since)) {
+      m.set(key, { stopId: bus.at_stop_id, since, seenAt: now });
+      return { stopId: bus.at_stop_id, standingSec: Math.max(0, (now - since) / 1000) };
+    }
+  }
+  const memo = m.get(key);
+  if (!memo) return null;
+  const sc = stopCoords[memo.stopId];
+  const near = sc && bus.lat && bus.lon ? haversineM(bus.lat, bus.lon, sc.lat, sc.lon) <= holdM : false;
+  if (now - memo.seenAt > STANDING_MEMO_STALE_MS || !near) { m.delete(key); return null; }
+  memo.seenAt = now;
+  return { stopId: memo.stopId, standingSec: Math.max(0, (now - memo.since) / 1000) };
+}
+
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000, toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad, dLon = (lon2 - lon1) * toRad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
