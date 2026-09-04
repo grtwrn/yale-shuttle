@@ -2,19 +2,27 @@
 
 import { findRouteAnchor, isBusOnRoute } from "./anchor";
 import { gateAnchor, type AnchorStore } from "./anchorGate";
+import { priceFirstHop } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 
-export type SegmentStat = { avg: number; sd?: number; n: number };
+/**
+ * `drive`, when served, is the seconds from the last poll at the from-stop to
+ * arrival at the to-stop — the hop WITHOUT the standing time at its start.
+ * With it and the from-stop's `q` present, the first hop is priced by
+ * `hopPricing.ts` instead of the credit below; absent, nothing changes.
+ */
+export type SegmentStat = { avg: number; sd?: number; n: number; drive?: number };
 export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
 /**
  * `low` is the p35 the calibrator still serves. NOTHING in the estimator reads
  * it — see WHAT A DWELL STATISTIC ACTUALLY MEASURES below for why the change
  * that did was reverted. Kept so a correctly-derived rest model can use it.
  */
-export type DwellStat = { med: number; sd: number; n: number; low?: number };
+/** `q`: ascending quantiles of the standing time at this stop (see hopPricing.ts). */
+export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[] };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
@@ -370,6 +378,25 @@ export function computeUpcomingArrivals(
         // reason originally written here.
         // First hop only — see the note above STALL_CREDIT_MAX_FRACTION for
         // why carrying it to the adjacent stop was tried and measured wrong.
+        // A served stand/drive split prices the first hop directly — the
+        // standing time conditioned on how long the bus has stood, plus the
+        // drive; en route, the DRIVE alone prorated. Neither the credit nor
+        // the chord proration below then runs, because both act on the whole
+        // arrival-to-arrival segment and re-bill the layover as the bus leaves
+        // (docs/eta-estimator-design.md, "the departure cliff").
+        const split = step === 1 && seg && seg.n >= 1 && seg.drive !== undefined && seg.drive >= 0
+          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])),
+              stand: routeDwells[String(stops[busIdx])]?.q }
+          : null;
+        if (split && split.stand && split.stand.length > 0) {
+          const t = bus.lat && bus.lon
+            ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
+            : 0;
+          segAvg = priceFirstHop({ q: split.stand }, split.drive, stallCredit > 0 ? stallCredit : null, t);
+          segVar = Math.min(segVar, segAvg * segAvg);
+          stallCredit = 0;
+          firstSegProgressFactor = 1;
+        }
         if (step === 1 && stallCredit > 0) {
           const dwell = routeDwells[String(stops[busIdx])];
           const cancellable = dwell && dwell.med > 0

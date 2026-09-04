@@ -21,6 +21,7 @@
  */
 import { findRouteAnchor, isBusOnRoute } from "../../web/src/anchor";
 import { gateAnchor, type AnchorStore } from "../../web/src/anchorGate";
+import { priceFirstHop } from "../../web/src/hopPricing";
 import { haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { LatLon } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
@@ -173,6 +174,19 @@ export function computeUpcomingArrivalsAnchored(
           }
         }
         if (step === 1) firstSegAvg = segAvg;
+        const split = step === 1 && seg && seg.n >= 1 && seg.drive !== undefined && seg.drive >= 0
+          ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])),
+              stand: routeDwells[String(stops[busIdx])]?.q }
+          : null;
+        if (split && split.stand && split.stand.length > 0) {
+          const t = bus.lat && bus.lon
+            ? (() => { const a = stopCoords[stops[busIdx]], b = stopCoords[stops[curI]]; return a && b ? progressAlongSegment({ lat: bus.lat, lon: bus.lon }, a, b) : 0; })()
+            : 0;
+          segAvg = priceFirstHop({ q: split.stand }, split.drive, stallCredit > 0 ? stallCredit : null, t);
+          segVar = Math.min(segVar, segAvg * segAvg);
+          stallCredit = 0;
+          firstSegProgressFactor = 1;
+        }
         if (step === 1 && stallCredit > 0) {
           const dwell = routeDwells[String(stops[busIdx])];
           const cancellable = dwell && dwell.med > 0
