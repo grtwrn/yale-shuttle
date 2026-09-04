@@ -416,7 +416,16 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
         // The app's own announcement that it swapped vehicles. A jump with
         // this set is explained; one without it is not.
         const announced = !!s.missedBus && s.missedBus !== prev.missedBus;
-        const ctx = { atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw };
+        // Did the bus at the stop leave between these two readings? A flag
+        // with a departure behind it is the app being honest, and 92.4 % of
+        // catastrophic drops have one — so every event carries the verdict
+        // and the counters below split on it. Readings with no `buses` list
+        // (the rider simulator's) answer "unknown" and nothing changes.
+        const event = departureBetween(prev.buses, s.buses);
+        const ctx = {
+          atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw,
+          event, eventful: event === "departure",
+        };
         // `busName` is the PINNED vehicle, i.e. the one in slot 0. Callers that
         // know it (the rider simulator) get identity pairing there; the live
         // canary passes nothing and gets the nearest-ETA fallback.
@@ -486,6 +495,14 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
     // real, visible to riders, and simply never measured until now.
     leaderCatastrophic: transitions.filter((t) => t.catastrophic && t.leader).length,
     secondaryCatastrophic: transitions.filter((t) => t.catastrophic && !t.leader).length,
+    // The third axis, and the one that decides whether a run passes: a jump
+    // or a vanishing with a DEPARTURE behind it is the app telling the truth
+    // about a bus that left. Both totals are reported, because "we flagged 62
+    // and 6 of them were real" is the honest sentence.
+    catastrophicEventful: transitions.filter((t) => t.catastrophic && t.eventful).length,
+    catastrophicEventless: transitions.filter((t) => t.catastrophic && !t.eventful).length,
+    droppedSevereEventful: drops.filter((d) => d.severe && d.eventful).length,
+    droppedSevereEventless: drops.filter((d) => d.severe && !d.eventful).length,
   };
 }
 
@@ -552,6 +569,99 @@ export const CANONICAL_TRIP = {
     lat: 41.303735, lon: -72.932155, type: "college", class: "yale",
   },
 };
+
+/**
+ * How close a bus must come to the board stop to count as having reached it.
+ *
+ * RAISED FROM 45 m ON 2026-09-04, from the log rather than from taste. The
+ * 11:03 ET run filed `no-arrival` — "watched 8.3 min; no Red bus reached the
+ * board stop" — while #304 sat **49 m away with the feed's own `at_stop_id`
+ * naming that very stop**. Four metres, on a feed whose fixes carry a ~30 m
+ * deadband (see CLAUDE.md) and which repeats a position rather than
+ * interpolating half the time.
+ *
+ * The 45 m bound was truncating its own distribution: across 52 archived runs
+ * the 32 detected arrivals land at 12..44 m, with four of them in [40, 45) and
+ * nothing above — the shape of a bound cutting a tail, not of a tail ending.
+ *
+ * 60 m is where the feed's OWN reckoning stops agreeing. Counting every
+ * sighting by distance band, at_stop against not-at-stop: [0,30) 42:1,
+ * [30,45) 24:2, [45,60) 5:2, [60,80) 6:7, [80,100) 0:10. So up to 60 m a bus
+ * near this stop is usually one the operator calls stopped, and past 80 m it
+ * never is. 60 m takes the last band that still agrees better than 2:1 and
+ * leaves the coin-flip band out.
+ *
+ * DELIBERATELY NOT SHARED with `eta-accuracy.mjs`, which keeps its own 45 m:
+ * its published measurements were taken at that bound and moving it would
+ * silently re-base them. This is the canary's number, and the canary is the
+ * one that cries wolf.
+ */
+export const ARRIVAL_M = 60;
+/**
+ * Past this a bus is no longer at the stop — the radius `rider-canary.mjs`
+ * already used to re-arm its arrival flag, reused so a bus cannot "leave" a
+ * stop it was never at.
+ */
+export const NEAR_STOP_M = 120;
+/**
+ * How far a bus must recede to have provably pulled away. The feed only sends
+ * a new coordinate once the bus has moved ~30 m, so anything smaller is inside
+ * the deadband and says nothing.
+ */
+export const DEPARTURE_M = 30;
+
+/**
+ * Did the bus at the stop LEAVE between these two readings?
+ *
+ * WHY THIS EXISTS. `docs/eta-lurch-classification.md` (#71) measured that
+ * **92.4 % of catastrophic drops have a real-world event behind them**: the
+ * bus reached the stop, pulled away, and the card honestly moved to the next
+ * one. Reporting that as jitter is what made every canary finding need
+ * triaging by hand. Checked against the log, three of six flagged jumps were
+ * the app behaving perfectly — #301 23 m -> 147 m, #316 86 m -> 284 m, #304
+ * 49 m -> 234 m — and the three that were real defects had the leading bus
+ * still CLOSING: 225 -> 77, 416 -> 301, 440 -> 375.
+ *
+ * The discriminator is that simple, and it needs no identity we do not have:
+ * take the nearest bus in the earlier reading — the proxy for the one the
+ * card is counting down — find it BY NAME in the later one (the feed does
+ * carry names; `bus_name` is the identity invariant, `bus_id` is not) and ask
+ * which way it moved.
+ *
+ * THE `NEAR_STOP_M` PRECONDITION IS LOAD-BEARING, and it is the one place
+ * this departs from "distM is increasing". A bus receding from 800 m to 900 m
+ * is driving the far side of its loop, not leaving our stop, and it must not
+ * excuse a jump. Measured over the archive: with no precondition **23 of 64**
+ * catastrophic drifts read as "eventful", against 1 at 120 m — the rule would
+ * have talked itself out of most of the log. The severe-drop verdict, which
+ * is what actually fails a run, is stable from 120 m outward (8 eventful at
+ * 120, 250, 500 m and unbounded) and loses 3 genuine departures at 60 m. So
+ * 120 m it is, which is also the radius `rider-canary.mjs` already used to
+ * decide a bus had left.
+ *
+ * WHAT THIS DOES NOT CLAIM. #71's 92.4 % covers real-world events of every
+ * kind anywhere on the route; this sees one narrow event — a departure from
+ * the BOARD stop — and explains 1 of 64 catastrophic drifts and 8 of 15
+ * severe drops with it. The severe drops are the ones that fail a run, so
+ * that is where it pays; do not read the two numbers as the same measurement.
+ *
+ *   "departure"  it was at the stop and has pulled away — not a defect
+ *   "closing"    it is still coming, so the countdown had no excuse
+ *   "none"       nothing was near the stop; there was no arrival to have
+ *   "unknown"    the feed dropped it, or the reading carries no bus list
+ */
+export function departureBetween(prevBuses, nextBuses) {
+  const nearest = (list) => (list ?? [])
+    .filter((b) => b && Number.isFinite(b.distM))
+    .reduce((best, b) => (!best || b.distM < best.distM ? b : best), null);
+  const was = nearest(prevBuses);
+  if (!was) return "unknown";
+  if (was.distM > NEAR_STOP_M) return "none";
+  const norm = (s) => String(s ?? "").replace(/^#/, "");
+  const now = (nextBuses ?? []).find((b) => b && norm(b.name) === norm(was.name));
+  if (!now || !Number.isFinite(now.distM)) return "unknown";
+  return now.distM - was.distM >= DEPARTURE_M ? "departure" : "closing";
+}
 
 /** Mirrors MAX_WALK_M in web/src/walk.ts — past it the planner offers no ride. */
 export const MAX_WALK_M = 1500;

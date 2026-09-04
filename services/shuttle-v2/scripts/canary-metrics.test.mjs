@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M, CANONICAL_TRIP, conservativeDrift,
-  MAX_WALK_M, MIN_RIDE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
+  ARRIVAL_M, DEPARTURE_M, departureBetween, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 
@@ -436,6 +437,83 @@ describe("scoreSequence", () => {
     // `transitions` still holds drift and nothing else, because the thresholds
     // and every reader of the log are written in terms of `driftSec`.
     expect(r.transitions.every((t) => t.kind === "drift" && typeof t.driftSec === "number")).toBe(true);
+  });
+});
+
+describe("was there an EVENT behind the flag?", () => {
+  // Every one of these is a real transition from scripts/.canary/runs.jsonl
+  // with the bus positions the feed recorded alongside it. #71 measured that
+  // 92.4 % of catastrophic drops have a real-world event behind them, and the
+  // canary was reporting that as jitter.
+  const at = (s) => 1_700_000_000_000 + s * 1000;
+  const s = (t, raw, buses) => ({
+    atMs: at(t), present: true, eta: parseBusEtaText(`🚌 ${raw}`), missedBus: null, buses,
+  });
+  const pairAt = (a, b, dt, from, to) => scoreSequence([s(0, a, from), s(dt, b, to)]);
+
+  it("does not blame the app for a bus that reached the stop and pulled away", () => {
+    // Brown #301: 23 m and at_stop, then 147 m. The card honestly moved to
+    // the next bus. Still counted, but it must not fail a run.
+    const r = pairAt("now, then 54 min", "in 54 min", 16,
+      [{ name: "#301", distM: 23, atStop: 145 }], [{ name: "#301", distM: 147, atStop: null }]);
+    expect(r.drops[0]).toMatchObject({ severe: true, event: "departure", eventful: true });
+    expect(r.droppedSevereEventful).toBe(1);
+    expect(r.droppedSevereEventless).toBe(0);
+  });
+
+  it("still blames it for a bus that vanished while it was closing", () => {
+    // Brown #301 again, 225 m -> 77 m: coming straight at the stop, and the
+    // card dropped it anyway. This is the defect. The verdict is "none"
+    // rather than "closing" only because 225 m is outside NEAR_STOP_M —
+    // either way nothing left, which is the question being asked.
+    const r = pairAt("in 1, 57 min", "in 56 min", 15,
+      [{ name: "#301", distM: 225, atStop: null }], [{ name: "#301", distM: 77, atStop: null }]);
+    expect(r.drops[0]).toMatchObject({ severe: true, eventful: false });
+    expect(r.droppedSevereEventless).toBe(1);
+    // And a bus dropped while closing from INSIDE the stop's radius is the
+    // same defect, named exactly.
+    const near = pairAt("in 1, 57 min", "in 56 min", 15,
+      [{ name: "#301", distM: 110, atStop: null }], [{ name: "#301", distM: 60, atStop: null }]);
+    expect(near.drops[0]).toMatchObject({ severe: true, event: "closing", eventful: false });
+  });
+
+  it("does not let a bus on the far side of the loop excuse anything", () => {
+    // Blue West #126, 416 m -> 301 m: nothing was at the stop to leave it.
+    // Without the near-stop precondition a bus merely driving AWAY out there
+    // would read as a departure — 23 of the archive's 64 catastrophic drifts,
+    // which would talk the metric out of most of its own log.
+    const r = pairAt("in 1, 40 min", "in 38, 77 min", 15,
+      [{ name: "#126", distM: 416, atStop: null }], [{ name: "#126", distM: 301, atStop: null }]);
+    expect(r.drops.find((d) => d.severe)).toMatchObject({ event: "none", eventful: false });
+    expect(departureBetween(
+      [{ name: "#126", distM: 900, atStop: null }],
+      [{ name: "#126", distM: 1400, atStop: null }])).toBe("none");
+  });
+
+  it("says so plainly when it cannot tell", () => {
+    // No bus list at all (the rider simulator's samples), and a bus the feed
+    // stopped reporting. Neither is a departure, so neither excuses a flag.
+    expect(departureBetween(undefined, undefined)).toBe("unknown");
+    expect(departureBetween([{ name: "#1", distM: 20 }], [{ name: "#2", distM: 20 }])).toBe("unknown");
+    // Inside the feed's ~30 m deadband nothing has been shown to move.
+    expect(departureBetween([{ name: "#1", distM: 20 }], [{ name: "#1", distM: 45 }])).toBe("closing");
+    expect(departureBetween([{ name: "#1", distM: 20 }], [{ name: "#1", distM: 55 }])).toBe("departure");
+  });
+});
+
+describe("how close counts as arrived", () => {
+  it("is above the distance the log kept truncating at", () => {
+    // 32 detected arrivals across the archive land at 12..44 m against a 45 m
+    // bound, four of them in [40,45) and none above — a bound cutting a tail.
+    // The 11:03 run filed no-arrival with the bus 49 m out and the feed's own
+    // at_stop_id naming that stop.
+    expect(ARRIVAL_M).toBeGreaterThan(49);
+    // And below the band where the feed never calls a bus stopped at all
+    // ([80,100) m is 0 at_stop against 10 not).
+    expect(ARRIVAL_M).toBeLessThan(80);
+    // A departure has to clear the feed's own position deadband.
+    expect(DEPARTURE_M).toBeLessThan(ARRIVAL_M);
+    expect(NEAR_STOP_M).toBeGreaterThan(ARRIVAL_M);
   });
 });
 
