@@ -1114,6 +1114,15 @@ declined class is only scorable with `ORIGIN_OFFSET_M` set.
   `findRouteAnchor` placed an approaching #126 on the return leg 400 m before
   the turning stop, `gateAnchor` accepted it on one 30 m deadband step and
   latched it. The card said 37 min and the bus was at the kerb 33 s later.
+  **Measured, the candidate WINDOW is at fault and the sort is innocent:**
+  `distanceToSegmentM` measures to the straight CHORD between two stops, and
+  Canal / Munson -> Mansfield / Division is a 573 m diagonal whose road bows
+  >200 m off it — so for three polls the leg the bus was actually driving was
+  farther than `ANCHOR_GPS_THRESHOLD_M` (150 m) and never became a candidate,
+  leaving only the return leg that shares the road. Whenever it WAS a
+  candidate it won on forward distance. Same root as the route-drawing bug
+  below — chords and vertices instead of the published polyline — which
+  `traceStopLegs` fixed for drawing and `findRouteAnchor` never got.
 
 ## Investigations that did not become code
 

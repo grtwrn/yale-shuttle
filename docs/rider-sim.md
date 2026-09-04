@@ -529,7 +529,40 @@ back to `<1 min` on the very next poll. The correction is not the app
 recovering — it is a one-to-three-poll excursion in the last 400 m of an
 approach.
 
-Mechanism: **Blue West (route 16) folds back and is not in the fold list.** Its
+**Mechanism, measured — the right leg is not in the candidate set at all.**
+`findRouteAnchor` (`web/src/anchor.ts`, step 2) collects every segment within
+`ANCHOR_GPS_THRESHOLD_M` (150 m) and, with a `last_stop_id`, sorts them by
+forward distance from it. `distanceToSegmentM` measures to the STRAIGHT CHORD
+between two stops, not to the published polyline between them. Blue West's
+Canal / Munson -> Mansfield / Division leg is a 573 m diagonal whose road bows
+more than 200 m off its own chord — so for three polls the leg the bus was
+actually driving fell OUT of the 150 m window, and the only candidate left was
+the return leg down Prospect that shares the road:
+
+```
+poll      d[7] 27->163   d[8] 163->164   candidates <150 m   anchor   shown
+01:37:40    121 m           230 m            [7]               7      in 1, 40 min
+01:37:45    186 m           143 m            [8]               8      in 38, 77 min
+01:37:50    211 m           109 m            [8]               8
+01:37:55    174 m            98 m            [8]               8
+01:38:00    149 m            96 m            [7, 8]            7
+01:38:25      0 m            16 m            [7, 8]            7      at the kerb
+```
+
+**The sort is innocent here** — whenever segment 7 was a candidate it won
+(forward distance 0 from `last_stop_id` 27), which is exactly the behaviour
+report #95 describes from the other side. The defect is the candidate WINDOW.
+With one candidate the fold's direction filter has nothing to compare, and
+`gateAnchor` then accepted the +1 hop under rule 2 because the bus had moved
+31 m, one `ANCHOR_FEED_MOVE_M` deadband step.
+
+This is the same root as the route-drawing bug in `CLAUDE.md`: the consumer
+measured stops against chords and vertices instead of against the published
+line, and `traceStopLegs` fixed it for drawing by projecting onto the
+polyline. `findRouteAnchor` has not had that correction.
+
+Its geometry, for the record: **Blue West (route 16) folds back and is not in
+the fold list.** Its
 eleven stops run north to Mansfield / Division at index 8 and then back south
 to Pauli Murray College at index 9 (41.32486 -> 41.31540 at essentially the
 same longitude, -72.9247 vs -72.92466) — the outbound approach and the return
