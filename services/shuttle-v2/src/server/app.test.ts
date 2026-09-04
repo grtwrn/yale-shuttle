@@ -1355,6 +1355,33 @@ describe("GET /api/stats/reports — the dashboard's \"someone wrote in\" alert"
     expect(body.reports[0]!.excerpt).toBe("the bus never came");
   });
 
+  it("counts from the same epoch as the rest of /stats, not from all of history", async () => {
+    expect((await submit("filed while the app was still being built", STRANGER)).status).toBe(200);
+    // Same bundle, same reports — only the configured epoch differs, and it
+    // is later than anything filed. The panel must be empty rather than
+    // contradicting the "counting from …" line printed above it.
+    const laterEpoch = buildApp({
+      collector,
+      bundle,
+      now: () => 1_700_000_000_000,
+      adminToken: TEST_ADMIN_TOKEN,
+      statsSinceDay: "2099-01-01",
+      geocoder: { lookup: async () => [] },
+    });
+    const res = await laterEpoch.request("/api/stats/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { reports: unknown[]; total: number; newestId: number | null };
+    expect(body.reports).toHaveLength(0);
+    expect(body.total).toBe(0);
+    expect(body.newestId).toBeNull();
+    // The report itself is untouched: triage still sees everything.
+    const triage = await app.request("/api/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(await triage.text()).toContain("filed while the app was still being built");
+  });
+
   it("is reachable with the stats cookie, and leaks nothing that identifies a reporter", async () => {
     await submit("something is wrong", STRANGER);
     const cookie = await login();
