@@ -36,22 +36,24 @@
  * the loop is read. AND IT IS AN INDEX METRIC: where it and the rider simulator
  * disagree, the simulator decides. That is not hypothetical here — see below.
  *
- * WHAT IT MEASURED, 2026-09-04 capture, Red + Green + Purple, 69,873 polls:
+ * WHAT IT MEASURED, 2026-09-04 capture, Red + Green + Purple, 74,976 polls:
  *
- *   tree                     held        held/moved   backwards   lap-wrong   longest hold
- *   926af30 (before #90/#93) 22.2%         29.9%        93.0%        5.2%         300 s
- *   4a59795 (after)          45.0%         48.9%        98.4%       10.9%       3,567 s
+ *   tree                     held    held/moved   backwards   lap-wrong   longest hold
+ *   926af30 (before #90/#93) 22.2%     29.8%        93.0%        5.1%         300 s
+ *   4a59795 (after)          44.8%     48.9%        98.3%       11.0%       3,567 s
+ *   91e4467 (after #97)      25.4%     32.2%        96.3%        4.3%       2,348 s
  *
- * So PR #90 and PR #93 doubled the freeze share and doubled the index-level
- * lap-wrongness, and by closing the backwards half of the 300 s timeout valve
- * they removed the bound on how long a wrong hold can last — Purple #332 was
- * held for 59 minutes where the old cap was 300 s by construction.
+ * PRs #90 and #93 doubled the freeze and doubled the index-level lap-wrongness,
+ * and by closing the backwards half of the 300 s timeout valve they removed the
+ * bound on how long a wrong hold can last. PR #97 then gave most of it back, by
+ * letting `at_stop_id` pull a backwards anchor home when the flag names the very
+ * slot the scan proposes.
  *
- * AND THE RIDERS ARE BETTER OFF ANYWAY. Paired on the rider simulator (8,327
- * waits, 2026-09-03 capture, `rider-sim/run.ts --compare`), 926af30 -> 4a59795:
- * 248 waits lose a jump >=180 s against 8 that gain one, 173 lose a strand
- * against 75, 445 lose a >=60 s reversal against 4, worst drift improved on 765
- * and worsened on 79. The holds those PRs added are overwhelmingly right.
+ * AND THE RIDERS WERE BETTER OFF THROUGHOUT. Paired on the rider simulator
+ * (8,327 waits, 2026-09-03 capture, `rider-sim/run.ts --compare`), 926af30 ->
+ * 4a59795: 248 waits lose a jump >=180 s against 8 that gain one, 173 lose a
+ * strand against 75, 445 lose a >=60 s reversal against 4, worst drift improved
+ * on 765 and worsened on 79. The holds those PRs added are overwhelmingly right.
  *
  * That is the whole reason this script prints an index metric and then tells
  * you not to decide on it. The freeze is a cost to WATCH, not a defect on its
@@ -217,7 +219,13 @@ for (const poll of polls) {
     const stepM = seen ? geo.haversineMeters({ lat: o.lat, lon: o.lon }, seen) : 0;
     lastCoord.set(gkey, { lat: o.lat, lon: o.lon });
 
-    const gr = gateMod.gateAnchor(store, gkey, rawIdx, bus, t, N);
+    // `stops` is PR #97's seventh argument: the gate asks whether `at_stop_id`
+    // names the very slot the scan proposes, which is the one backwards move it
+    // still allows. Omitting it silently scores a pre-#97 gate — an extra
+    // argument is harmless on a tree that predates it.
+    const gr = (gateMod.gateAnchor as (
+      s: AnchorStore, k: string, r: number, b: unknown, n: number, c: number, seq?: readonly number[],
+    ) => { index: number; released: string | null })(store, gkey, rawIdx, bus, t, N, stops);
     const idx = gr.index;
     const held = gr.released === null;
 
