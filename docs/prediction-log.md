@@ -247,14 +247,13 @@ estimator and needs no discriminator column.
 ### Two findings from wiring it up
 
 **1. Three arrival boards in `TransitMap.tsx` are dead code.** `NextShuttles`,
-`FavoriteStopsPage` and `StopGroupsSummary` each declare a component, each call
-`computeUpcomingArrivals`, and each is referenced **exactly once in the file —
-its own declaration**. They render nowhere. The first draft of this change
-instrumented all three; a live browser run against the built bundle posted
-nothing, which is how they were found. They are left alone here (deleting ~250
-lines of component is not this PR's job) but they should not be mistaken for
-rider-visible surfaces, and instrumenting them would have made this table quietly
-under-report while looking thoroughly wired up.
+`FavoriteStopsPage` and `StopGroupsSummary` each declared a component, each
+called `computeUpcomingArrivals`, and each was referenced **exactly once in the
+file — its own declaration**. They rendered nowhere. The first draft of this
+change instrumented all three; a live browser run against the built bundle
+posted nothing, which is how they were found. Instrumenting them would have made
+this table quietly under-report while looking thoroughly wired up.
+**Deleted 2026-09-04** (358 lines), so the trap is gone rather than documented.
 
 **2. The route cards on the Map tab do NOT use `computeUpcomingArrivals`.**
 `StopList` (~5359) walks the route sequence itself with a simpler arithmetic:
