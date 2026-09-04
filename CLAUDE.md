@@ -1485,6 +1485,26 @@ moving population unchanged (44.7 → 44.8). Every route's bias moves the same
 way, away from optimism, which is the mechanism showing itself: truncated rows
 under-price standing time.
 
+**What it still does NOT cover, measured on the deploy that shipped it.** Of the
+eleven buses live at 18:44:41Z on 2026-09-04, nine were re-anchored to the stop
+they already had and so still wrote a second `arrivals` row — and every one of
+them was correctly refused: two were inside the pin radius but ROLLING (34 m and
+39 m, a fresh fix, no stand to resume), two were at rest 174 m and 250 m out
+(standing somewhere that is not a stop, so `stationaryStopId` is null), and the
+rest were mid-leg. Zero buses were standing at a stop, so the resume had nothing
+to do on that particular restart.
+
+So the duplicate ROW survives for a bus that is merely anchored to a stop, and
+with it a dwell and a segment short by however long the process was down. That
+is the smaller half by the number that matters: over the window where
+`stop_visits` exists, 248 of 301 split stands had the bus already at the kerb
+and they carry **89% of the recoverable seconds** (39,832 against 4,826). A
+layover truncated by six minutes moves a quantile; a bus 34 m out truncated by
+42 s does not. Extending the resume to an anchored-but-not-pinned bus means
+trusting the anchor a restart re-derives — the global nearest, not the lookahead
+window's — and getting it wrong bills a segment the bus never drove. Measure
+that before building it.
+
 **The historical rows are still short.** `scripts/merge-restart-split-arrivals.ts`
 merges them — dry run by default, idempotent, `--target <db> --apply`. It fixes
 `arrivals` and `segments` and deliberately does NOT invent a
