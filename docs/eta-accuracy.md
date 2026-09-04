@@ -574,6 +574,81 @@ routes, expected = the calibrator's own served median at that instant.
 
 Not built. Do not rebuild it without a signal that beats that 4.2 s ceiling.
 
+## A deploy was writing short dwells and short segments (2026-09-04)
+
+`Collector.states` is in memory, so until PR #129 and its follow-up every
+restart made each bus a first sighting — a second `arrivals` row for one stand,
+and, because `dwell_sec`, `segments.travel_sec` and `stop_visits.pinned_at` are
+all measured from `BusState.enteredAt`, a dwell, a segment and a stand that
+began at the RESTART instead of at the arrival. Report #100 caught the
+rider-visible half. This is the calibration half, and it was on disk.
+
+### The damage, from a production snapshot (2026-09-04, 30 days / 7 days)
+
+A restart re-anchors the whole fleet on one poll, so its stamp carries an
+arrival for every live bus. That is the fingerprint: 96.8% of the duplicate
+rows sit on a stamp shared by six or more buses, and gating on six rather than
+three changes the population by 4%.
+
+| | | |
+|---|---|---|
+| 1,486 split stands in 7 days | 1,719 duplicate arrival rows | 4.3% of every arrival |
+| 1,143 segments | short by a median 98 s | 0.93% of the table |
+| 1,094 dwells | short by a median 101 s | 0.66% of the closed rows |
+
+The served stand tables took it worst, because `STAND_VALUE` is
+`departed_at − pinned_at` and a restart moves `pinned_at` into the middle of
+the stand. Medians on the two routes whose tables riders are served, recorded
+against merged:
+
+| stop | recorded | merged |
+|---|---|---|
+| 344 Winchester (3:11) | 273 s | 310 s |
+| Winchester / Mansfield (3:121) | 383 s | 479 s |
+| 333 Cedar (1:10) | 405 s | 475 s |
+
+### It moves the estimator the right way, and most where it should
+
+`gps-replay.ts` against the snapshot, and against a copy with the split stands
+merged (`scripts/merge-restart-split-arrivals.ts`) — the estimator identical,
+only the calibration data differing. Proximity truth, 433k pairs, the shipped
+client:
+
+- Overall median |error| **97.4 → 96.8 s**; median bias **−5.3 → −1.7 s**.
+- Six of nine routes improve their median: Pink 144.9 → 140.2, Gold 115.7 →
+  113.2, Brown 116.6 → 114.6, Red 67.5 → 66.0, Blue Day 44.7 → 44.4. Green
+  (266.5 → 267.2) and Orange Day (43.5 → 44.5) move the other way by under a
+  second.
+- **Every route's bias moves the same direction — away from optimism.** That is
+  the mechanism showing itself: the truncated rows under-priced standing time,
+  so the app promised buses that came later than it said.
+
+The first hop, split by how long the bus has ALREADY been standing, is the
+measurement that matters, because the deeper into a stand a bus is the more of
+it a restart could hide (negative = optimistic):
+
+| standing for | n | median \|error\| | mean bias | median bias |
+|---|---|---|---|---|
+| moving | 44,980 | 44.7 → 44.8 | −39.0 → −37.8 | 9.1 → 9.5 |
+| 0–30 s | 5,570 | 21.3 → 21.2 | −32.7 → −31.7 | −13.6 → −13.0 |
+| 30–60 s | 9,280 | 26.1 → 26.3 | −48.2 → −46.4 | −15.5 → −15.1 |
+| 60–120 s | 9,155 | 51.9 → 53.5 | −88.3 → −84.1 | −32.9 → −30.2 |
+| 120–300 s | 8,635 | 115.7 → 114.9 | −116.2 → −107.5 | −72.0 → −65.4 |
+| **300 s+** | **9,257** | **128.0 → 122.1** | **−159.5 → −150.4** | **−111.6 → −103.6** |
+
+The moving population is unchanged and the layover population gains 5.9 s of
+median accuracy and 9.1 s of bias, monotonically in the elapsed stand. Nothing
+was tuned to produce that — the correction is a measurement error being
+removed, not a knob.
+
+Two honest caveats. The overall trade is one point of `optimistic120` for one
+point of `pessimistic120` (22.7 → 21.7 and 21.6 → 22.6): shifting predictions
+later fixes the optimism where it is worst and overshoots elsewhere, and the
+optimism/pessimism balance is the estimator's lever, not this one's. And
+`gps-replay` does not serve the stand tables (`dwells[route][stop].q`), so the
+worst-damaged of the three columns is not in these numbers at all — the table
+above is a floor.
+
 ## Limits of the measurement
 
 - **Read the `client` row, not `chord`.** `gps-replay.ts` scores the real

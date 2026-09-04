@@ -1474,6 +1474,17 @@ The visit reducer is seeded from the same run (`openPass`'s `resume`), so
 `pinned_at` and `arrivedAt` are the stand's own instants rather than the
 restart's.
 
+**It moves calibration, and it moves it the right way** — `gps-replay` against
+the snapshot and against a copy with the split stands merged, the estimator
+identical and only the data differing (`docs/eta-accuracy.md`, "A deploy was
+writing short dwells"). Overall median |error| 97.4 → 96.8 s on 433k pairs; six
+of nine routes improve; **and for a bus already standing 300 s+ — the
+population a restart could hide the most of — median error 128.0 → 122.1 s and
+mean bias −159.5 → −150.4 s**, monotonically in the elapsed stand, with the
+moving population unchanged (44.7 → 44.8). Every route's bias moves the same
+way, away from optimism, which is the mechanism showing itself: truncated rows
+under-price standing time.
+
 **The historical rows are still short.** `scripts/merge-restart-split-arrivals.ts`
 merges them — dry run by default, idempotent, `--target <db> --apply`. It fixes
 `arrivals` and `segments` and deliberately does NOT invent a
