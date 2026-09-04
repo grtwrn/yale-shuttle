@@ -27,9 +27,15 @@ import {
  * in-memory `states`, so every standing bus became a first sighting again and
  * had its wait restarted. The rider's own payload carried
  * `at_stop_since: 15:56:53.903` — the third restart — while the bus was four and
- * a half minutes into its layover. Two other buses in the same payload carried
- * that identical millisecond at two different stops, which is the fingerprint:
- * nothing about the buses changed, only the process watching them.
+ * a half minutes into its layover.
+ *
+ * The fingerprint is the duplicate arrival on a bus that did not move: each
+ * extra row sits on a 13–17 s hole in `raw_positions` (the poll the restarting
+ * machine missed) with #44's coordinate byte-identical either side of it. NOT
+ * the fact that another bus in the same payload carried the same millisecond —
+ * #45 did, at Temple / Grove, but it was driving and genuinely entered the pin
+ * radius on that poll. A shared stamp is what a missed poll looks like from any
+ * cause.
  *
  * Every coordinate below is an unedited `raw_positions` row for #44 (`bus_id`
  * 65959 throughout — no id reissue), and the stops are the real ones from the

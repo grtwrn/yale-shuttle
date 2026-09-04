@@ -1291,10 +1291,20 @@ The first report from an outside rider caught it: *"Possible that the timer for
 stop at 333 cedar restarted"*. Blue Day #44 stood at 333 Cedar from 15:53:39Z
 to 16:03:34Z on 2026-09-04 without moving a metre; `arrivals` holds four rows
 for that one stand (15:53:39, 15:55:11, 15:56:53, 15:59:14) and six deploys
-landed between 15:48 and 15:58 UTC. Their fingerprint is in the report's own
-payload — **two different buses at two different stops carrying the identical
-`at_stop_since` to the millisecond**. Nothing about the buses changed; only the
-process watching them did.
+landed between 15:48 and 15:58 UTC. Each extra row sits on a 13–17 s hole in
+`raw_positions` — the poll the restarting machine missed — while #44's
+coordinate is byte-identical either side of it. **The duplicate arrival on a
+motionless bus is the fingerprint**: one stand, several arrivals, each at a
+hole.
+
+~~"Two buses at two different stops carried the identical `at_stop_since` to
+the millisecond"~~ — **that was in the first draft of this note and it is not
+evidence.** They did (`15:56:53.903`, #44 at 333 Cedar and #45 at Temple /
+Grove), and it reads like a global reset, but #45 was *driving*: it closed
+196 m → 65 m on that poll and legitimately entered the pin radius there. The
+restart shifted its clock by about five seconds, from the poll that was missed.
+Two buses sharing a stamp is what a missed poll looks like from any cause;
+only #44's own rows carry the finding.
 
 `seedStationaryFromHistory` (`detector.ts`) rebuilds the wait from
 `raw_positions`, which held it the whole time: the earliest sample of an
