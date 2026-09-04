@@ -5,6 +5,7 @@
 
 import { distanceToSegmentM, haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
+import { occurrenceForward, reachableHops, ringForward } from "./ring";
 
 // Drop buses whose GPS sits far from the route.
 // TransLoc keeps reporting a bus when it's parked at a depot or
@@ -212,6 +213,46 @@ function headingCos(prev: LatLon, now: LatLon, a: LatLon, b: LatLon): number | n
   return (lx * dx + ly * dy) / (ln * dn);
 }
 
+/**
+ * Where the bus already was, and how much road it can have covered since — the
+ * ring prior. Supplied by `anchorGate.ts`, which is the only thing that
+ * remembers; a caller with no memory passes nothing and gets exactly the
+ * stateless answer this function has always given.
+ *
+ * WHY THE CHOOSER NEEDS IT. `gateAnchor` reads a proposal on the ring and
+ * refuses the impossible ones, which is right and is not enough: a veto can
+ * only FREEZE. On the operator's Red #316 trace the bus departed 344
+ * Winchester, the stateless chooser kept proposing the chord it had arrived on
+ * (`last_stop_id` was ten stops stale, and forward distance from a stale value
+ * is what the ranking used), and the gate correctly refused it — for 46
+ * seconds, straddling the departure, while the rider's anchor stood still and
+ * the bus drove away. The proposal was never plausible; the fix is not to
+ * refuse it harder but to stop making it.
+ */
+export interface RingPrior {
+  /** The slot the bus was last accepted at, or < 0 for no history. */
+  index: number;
+  /** Where it was when that slot was accepted. */
+  at: LatLon | null;
+  /** Road it can have covered since — `travelBudgetM` in `ring.ts`. */
+  budgetM: number;
+}
+
+/**
+ * Does this route serve some stop twice in one lap? That is the intrinsic test
+ * for an out-and-back — routes 9 and 10 today — and it is preferred to a list
+ * of route ids so a route that grows a fold upstream is handled on the day it
+ * does, rather than on the day someone notices.
+ */
+function hasRepeatedStop(stops: readonly number[]): boolean {
+  const seen = new Set<number>();
+  for (const s of stops) {
+    if (seen.has(s)) return true;
+    seen.add(s);
+  }
+  return false;
+}
+
 export type AnchorBus = {
   lat: number;
   lon: number;
@@ -225,6 +266,8 @@ export function findRouteAnchor(
   stopCoords: Record<number, LatLon>,
   /** Where the bus was at its previous distinct fix, if the caller remembers. */
   travelFrom?: TravelHint,
+  /** Where the bus already was on the ring, if the caller remembers. */
+  prior?: RingPrior | null,
 ): number {
   const N = stops.length;
   if (N === 0) return -1;
@@ -244,7 +287,34 @@ export function findRouteAnchor(
     dists[i] = distanceToSegmentM(bus, a, b);
   }
 
-  const lastIdx = bus.last_stop_id != null ? stops.indexOf(bus.last_stop_id) : -1;
+  // THE PRIOR IS FOR PLAIN LOOPS ONLY, and this is measured.
+  //
+  // A route that visits a stop twice runs the same road in both directions, so
+  // its two chords are anti-parallel and a prior that picks one of them
+  // REINFORCES itself: every later poll is narrowed to the branch it already
+  // believes. On a plain loop that cannot happen — no two legs are anti-parallel
+  // — so a wrong commitment is bounded by the window (~110 m per poll) and
+  // washes out at the next arrival. On a fold it is bounded by nothing.
+  //
+  // Paired on the rider simulator (8,327 waits, 2026-09-03 capture) with the
+  // window served everywhere, against master `4a59795`:
+  //
+  //   Red     strand 13.3 -> 11.6%, reversal 48.6 -> 46.8%     (the win)
+  //   Green   jump >=180 s 56.8 -> 60.5%, pin change 40.9 -> 44.5%
+  //   Purple  strand 40.2 -> 42.0%, lap re-priced 10.1 -> 14.6% (the lock)
+  //
+  // Purple's lap-re-price column is the mechanism showing itself: the anchor
+  // commits to a branch, the pinned entry becomes a lap later, and the card
+  // follows another bus. So the folds keep master's behaviour byte for byte,
+  // and their half of the problem stays where `docs/eta-estimator-design.md`
+  // puts it — a stationary bus on a shared segment needs a distribution, not a
+  // better point. This is the same exclusion the stand/drive split makes for
+  // the same two routes and, at bottom, for the same reason.
+  const folds = hasRepeatedStop(stops);
+  const priorIdx = !folds && prior && prior.index >= 0 && prior.index < N ? prior.index : -1;
+  const lastIdx = bus.last_stop_id != null
+    ? occurrenceForward(stops, bus.last_stop_id, priorIdx)
+    : -1;
 
   // Candidates within threshold, sorted by forward distance from
   // last_stop_id (if available) so a route that revisits a vicinity
@@ -265,6 +335,33 @@ export function findRouteAnchor(
     if (agree.some((a) => a > 0)) {
       const kept = candidates.filter((_, k) => agree[k]! >= 0);
       if (kept.length > 0) candidates = kept;
+    }
+  }
+
+  // THE RING WINDOW. A bus's place on a closed loop only advances, and a
+  // five-second poll buys it ~110 m — under 2% of a 9 km circumference. So a
+  // proposal is admissible only as far forward as the ground the bus has
+  // actually covered can reach, measured along this route's own stop spacing
+  // and from where on its leg the bus was (see `ring.ts`).
+  //
+  // Narrowing ONLY. If nothing inside the window is plausible the bus is
+  // somewhere the prior cannot explain, and the honest answer is the one this
+  // function has always given — `anchorGate.ts` then holds it, and its timeout
+  // is still the release valve for a prior that has gone wrong. The window
+  // never invents a candidate the GPS did not already offer.
+  if (priorIdx >= 0 && candidates.length > 0) {
+    const maxHops = reachableHops(stops, stopCoords, priorIdx, prior!.at, prior!.budgetM);
+    const admissible = candidates.filter((i) => ringForward(priorIdx, i, N) <= maxHops);
+    if (admissible.length > 0) {
+      // Rank by the GPS and nothing else. `last_stop_id` is what put the
+      // stale chord first on the #316 trace; inside a window that has already
+      // excluded the impossible, the nearest leg is simply the best reading,
+      // and a tie goes to the one that has advanced least.
+      admissible.sort((a, b) => {
+        if (dists[a] !== dists[b]) return dists[a]! - dists[b]!;
+        return ringForward(priorIdx, a, N) - ringForward(priorIdx, b, N);
+      });
+      return refineWithAtStop(admissible[0]!);
     }
   }
 
@@ -305,7 +402,15 @@ export function findRouteAnchor(
   // segment scan lags one stop behind at a shared segment endpoint.
   function refineWithAtStop(gpsIdx: number): number {
     if (bus.at_stop_id == null) return gpsIdx;
-    const ai = stops.indexOf(bus.at_stop_id);
+    // Ring-aware occurrence, anchored on the GPS answer: a stop the route
+    // visits twice must refine to the visit the bus is actually on.
+    //
+    // Only where the prior is served, so a folded route and a caller with no
+    // memory both keep `indexOf` and behave exactly as they did. Choosing the
+    // second visit is the more correct answer in the abstract and it is NOT
+    // free on a fold — served there it moved Purple's hold share 67.7 -> 73.7%
+    // of polls — so it rides with the prior rather than ahead of it.
+    const ai = occurrenceForward(stops, bus.at_stop_id, priorIdx >= 0 ? gpsIdx : -1);
     if (ai < 0) return gpsIdx;
     const sc = stopCoords[stops[ai]];
     if (!sc) return gpsIdx;

@@ -701,6 +701,22 @@ and run both scripts; a few minutes each). Findings that constrain changes:
   is the stationary half of the ambiguity, which no geometry can settle —
   42.8% of Purple's ambiguous polls, 23.2% of Green's; it is the estimator
   rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
+- **The route is a ring, and the CHOOSER now knows it too** (`web/src/ring.ts`,
+  `docs/ring-anchor.md`). `gateAnchor` has read a proposal as a smallest-forward
+  delta since PR #93 and refuses every backwards one — but a veto can only
+  FREEZE, and freezing is what the operator ruled out as a way to buy stability.
+  `findRouteAnchor` now takes an optional ring prior (where the bus was accepted
+  plus the road it has covered since, `ringPrior` on the same store) and
+  narrows its candidates to the slots that ground can reach — **measured along
+  the route's own stop spacing, and from where the bus was ON its leg, not from
+  the stop behind it**. Red's held share falls 8.1 → 4.4% of polls (10.4 → 4.0%
+  of moving polls), strand 13.3 → 11.6%, reversal 48.6 → 46.8%. **Not served on
+  a route that repeats a stop**: on an out-and-back the two chords are
+  anti-parallel and a prior reinforces itself (Purple's lap-re-priced share went
+  10.1 → 14.6%), so `hasRepeatedStop` keeps Green and Purple byte-identical to
+  master — the same exclusion the stand/drive split makes, for the same reason.
+  It **retires no existing guard**; read the doc's table before deleting one.
+  `scripts/eta-replay/hold-anatomy.ts` is the freeze instrument.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
 - `predictions_log` now HAS a writer (see "What riders were told" below). Until

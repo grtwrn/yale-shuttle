@@ -73,7 +73,7 @@ const DWELL_LOW_MIN_SAMPLES = 5;
  * server must NOT pre-filter, or the two gates drift apart and a cell the
  * client would accept silently never arrives.
  */
-const SPLIT_WINDOW_DAYS = 30;
+export const SPLIT_WINDOW_DAYS = 30;
 
 /**
  * Quantiles served in `DwellStats.q`. The client reads entry i as the
@@ -305,6 +305,11 @@ function loadDwellGroups(
  *
  * `windowed` is unused for the split (see SPLIT_WINDOW_DAYS); it is left empty
  * so the group shape matches the other loaders.
+ *
+ * Exported, with `loadDriveGroups` and `SPLIT_WINDOW_DAYS`, so the rider
+ * simulator's `PAYLOAD_PATCH` generator (`scripts/eta-replay/split-patch.ts`)
+ * reads the split through these queries rather than keeping a second copy of
+ * them that can drift.
  */
 const STAND_VALUE = sql.raw(losslessText("CASE WHEN outcome = 'passed' THEN 0 ELSE (departed_at - pinned_at) / 1000.0 END"));
 const DRIVE_VALUE = sql.raw(losslessText("(COALESCE(to_pinned_at, arrived_at) - departed_at) / 1000.0"));
@@ -312,7 +317,7 @@ const DRIVE_VALUE = sql.raw(losslessText("(COALESCE(to_pinned_at, arrived_at) - 
 interface StandGroupRow { routeId: number; stopId: number; n: number; allValues: string | null }
 interface DriveGroupRow { routeId: number; fromStopId: number; toStopId: number; n: number; allValues: string | null }
 
-function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+export function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
   const cutoff = nowMs - windowDays * 86_400_000;
   const rows = db.all<StandGroupRow>(sql`
     SELECT
@@ -346,7 +351,7 @@ function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
  * 112 m hop, so the bus can be pinned at B before its plateau at A ends) is
  * not a sample, matching the reference table.
  */
-function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+export function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
   const cutoff = nowMs - windowDays * 86_400_000;
   const rows = db.all<DriveGroupRow>(sql`
     SELECT

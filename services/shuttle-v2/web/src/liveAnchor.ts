@@ -34,7 +34,7 @@
  */
 import { findRouteAnchor } from "./anchor";
 import type { AnchorBus } from "./anchor";
-import { gateAnchor, noteFix, type AnchorStore, type GateBus } from "./anchorGate";
+import { gateAnchor, noteFix, ringPrior, type AnchorStore, type GateBus } from "./anchorGate";
 import type { LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
 
@@ -69,7 +69,14 @@ export function resolveAnchorIndex(
   // not a new fix. Calling it once per render site is therefore safe — it does
   // not consume the fix memory `findRouteAnchor` reads direction from.
   const travelFrom = store ? noteFix(store, key, bus, now) : null;
-  const raw = findRouteAnchor(bus, stops, stopCoords, travelFrom);
+  // Where the bus already was on the ring, so the chooser stops proposing moves
+  // the gate would only have to refuse (ring.ts, docs/ring-anchor.md). Read
+  // AFTER `noteFix`, so this poll's step is already in the budget — a bus that
+  // pulls out has to be able to reach the next slot in the poll it pulls out,
+  // not the one after. With no store there is no prior and this is exactly
+  // `findRouteAnchor`, which is what the replay harnesses depend on.
+  const prior = store ? ringPrior(store, key, now) : null;
+  const raw = findRouteAnchor(bus, stops, stopCoords, travelFrom, prior);
   if (raw < 0) return raw;
   // The gate needs the route's stop count for its ring arithmetic, and the
   // sequence itself to ask whether `at_stop_id` names the very slot proposed —
