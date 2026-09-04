@@ -271,6 +271,118 @@ Not affiliated with or endorsed by Yale University.`;
     expect(red.eta.raw).toBe("in 25, 31 min");
   });
 
+  // The SAME page after the 2026-09-04 swap: the arrival clock left the head
+  // of line 2 and became the RIGHT column of it, under the duration, so in the
+  // innerText stream it now trails the walk/ride legs instead of leading them
+  // (and the "·" that used to separate it from them is gone with it). The
+  // parser reads a card as a SET of lines around its duration anchor, not as
+  // an ordered one, so this needed no change to `parseOptions` — but #111 also
+  // "needed no change" right up until it blinded the canary for twelve
+  // minutes, so the claim is a fixture rather than an argument. Captured from
+  // a phone-sized browser on a live /api/buses, Prospect/Canner -> LEPH/60
+  // College.
+  const LIVE_ARRIVAL_RIGHT = `YALE SHUTTLE
+11:22 AM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☀️
+77°F · no rain · cooling to 69° by 8pm
+▾
+°F
+|
+°C
+OVERVIEW — ALL 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌
+🏁 (B) 11:40a
+ (R) 11:41a
+ (O) 11:43a
+🚌 (B) 3 min
+ (R) 12 min
+ (O) 8 min
+ (B) 8 min
+🏁 (B) 11:36a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue Day
+Red
+Orange Day
+Brown
+Blue Day
+in 3, 11 min
+18 min
+arrive 11:40a
+›
+Red
+in 12, 18 min
+19 min
+🚶 1 min
+›
+🚌 7 min
+arrive 11:41a
+›
+Orange Day
+in 8, 32 min
+21 min
+🚶 9 min
+›
+🚌 12 min
+arrive 11:43a
+›
+Brown
+in 8, 26 min
+24 min
+🚶 3 min
+›
+🚌 6 min
+›
+🚶 10 min
+arrive 11:46a
+›
+🚶 Walk
+38 min
+arrive 12:00p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the card after the arrival clock moved under the duration", () => {
+    const opts = parseOptions(LIVE_ARRIVAL_RIGHT);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue Day", "Red", "Orange Day", "Brown", "Walk"]);
+    // Every field the canary scores, off a card whose lines are in the new order.
+    expect(opts[0]).toMatchObject({ totalMin: 18, arriveText: "11:40a", walkToMin: 0, walkFromMin: 0 });
+    expect(opts[0].eta.raw).toBe("in 3, 11 min");
+    expect(opts[1]).toMatchObject({ totalMin: 19, arriveText: "11:41a", walkToMin: 1 });
+    expect(opts[1].eta.raw).toBe("in 12, 18 min");
+    expect(opts[2]).toMatchObject({ totalMin: 21, arriveText: "11:43a", walkToMin: 9 });
+    // Both walks, on the card that has them, still land in the right order —
+    // the ride bar ("bus 6 min") sits between them and must not be counted.
+    expect(opts[3]).toMatchObject({ totalMin: 24, arriveText: "11:46a", walkToMin: 3, walkFromMin: 10 });
+    expect(opts[3].eta.raw).toBe("in 8, 26 min");
+    expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38, arriveText: "12:00p" });
+  });
+
   it("does not take the map overview's legend for the first card's line", () => {
     // The legend lists every drawn route immediately above the first card, so
     // the walk-back that finds the pill must stop after one label.

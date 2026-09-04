@@ -1,0 +1,18 @@
+{
+  "caption": "Collapsed trip cards: duration over arrival clock on the right, line over legs on the left",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 100,
+    "dest": 72
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/70fd443b-870f-4c0f-aea2-856c8edea1ec/scratchpad/shots-normal/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
