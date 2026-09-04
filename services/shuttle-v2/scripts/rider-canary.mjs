@@ -415,7 +415,21 @@ async function runOnce(line) {
     }
     // ── the failures the operator named ──
     for (const t of record.sequence.transitions.filter((x) => x.catastrophic)) {
-      fail("eta-jump", `"${t.from}" → "${t.to}" in ${t.dtSec} s — ${t.driftSec > 0 ? "+" : ""}${(t.driftSec / 60).toFixed(1)} min beyond what the clock explains${t.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
+      // Which bus moved is now knowable — pairing tells drift apart from a
+      // change of cast — so the finding says it. A lurch in the bus-after-the
+      // -pinned-one is a real thing riders see, but it is not the countdown
+      // they are acting on, and reading one as the other is what this
+      // sentence exists to prevent.
+      const who = t.leader ? "the bus it is counting down" : "the bus after the pinned one";
+      fail("eta-jump", `${who}: "${t.from}" → "${t.to}" in ${t.dtSec} s — ${t.driftSec > 0 ? "+" : ""}${(t.driftSec / 60).toFixed(1)} min beyond what the clock explains${t.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
+    }
+    // A bus the rider was about to board leaving the list is its OWN defect,
+    // not a drift, and the positional metric used to bill it as one. Only the
+    // severe case fails a run: a trailing bus dropping out of the second slot
+    // is `nextArrivalAfterPinned` finding nothing later, which is routine.
+    for (const d of record.sequence.drops ?? []) {
+      if (!d.severe) continue;
+      fail("bus-vanished", `"${d.from}" → "${d.to}" in ${d.dtSec} s — the bus shown ${d.lastShownEtaSec < 60 ? "as arriving" : `${Math.round(d.lastShownEtaSec / 60)} min out`} left the list without arriving${d.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
     }
     if (!arrived && record.samples.some((s) => s.present)) {
       const lastSeen = [...record.samples].reverse().find((s) => s.present);
@@ -466,7 +480,8 @@ function describeFailure(record) {
   const out = [`🐤 rider-canary: ${record.line}, ${record.trip.from} → ${record.trip.to} (${record.startedAtEt} ET)`];
   for (const f of record.failures) out.push(`   ✗ ${f.kind}: ${f.detail}`);
   const s = record.sequence;
-  if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic, worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
+  if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
+  if (s?.dropped) out.push(`   vehicles: ${s.dropped} dropped out of the list (${s.droppedSevere} within ${THRESH.droppedSevereSec / 60} min), ${s.appeared} took over the head of it`);
   if (record.pins?.length > 1) {
     const names = [...new Set(record.pins.map((p) => p.busName))];
     out.push(`   pinned bus: ${names.join(" → ")}`);
@@ -484,7 +499,7 @@ function summary(days = 7) {
   if (!runs.length) { console.log(`no canary runs in the last ${days} d`); return; }
   const byLine = new Map();
   for (const r of runs) {
-    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drifts: [], miss: [] };
+    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, drifts: [], miss: [] };
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
@@ -495,17 +510,26 @@ function summary(days = 7) {
       e.drifts.push(Math.abs(t.driftSec));
       if (Math.abs(t.driftSec) >= THRESH.catastrophicSec) e.cat++;
     }
+    // Runs recorded before 2026-09-04 have no `drops` — they were scored
+    // positionally, so a vanishing bus is inside their drift column instead.
+    // Absent is counted as zero rather than back-filled, because the samples
+    // are on the record and a re-score is the honest way to restate them.
+    for (const d of r.sequence?.drops ?? []) {
+      e.drop++;
+      if (d.lastShownEtaSec <= THRESH.droppedSevereSec) e.sev++;
+    }
     if (r.firstSightMissSec != null) e.miss.push(r.firstSightMissSec);
     byLine.set(r.line, e);
   }
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
-  console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
-  console.log("line           runs    ok  arrived  readings  reversals  catastr  p90 drift  worst  1st-sight med");
+  console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; a drop is severe within ${THRESH.droppedSevereSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
+  console.log("line           runs    ok  arrived  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
       `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
       `${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(e.drop).padStart(8)} ${String(e.sev).padStart(7)} ` +
       `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
       `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);
   }

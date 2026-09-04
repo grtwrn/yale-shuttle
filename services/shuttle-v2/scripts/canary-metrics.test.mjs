@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M, CANONICAL_TRIP, conservativeDrift,
-  MAX_WALK_M, MIN_RIDE_M, parseBusEtaText, parseOptions, parseWaitFallback,
+  MAX_WALK_M, MIN_RIDE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 
@@ -328,7 +328,14 @@ describe("scoreSequence", () => {
       sample(0, "🚌 in 1 min"),
       sample(15, "🚌 in 12 min", { missedBus: "40" }),
     ]);
-    expect(r.transitions[0]).toMatchObject({ reversal: true, pinAnnouncedChange: true });
+    // This IS a change of cast — "you can't catch #40, showing the next bus"
+    // — so pairing reads it as one: the 1-min bus leaves, a 12-min bus takes
+    // the head of the list. It used to be a single +615 s reversal, which
+    // said the same thing less precisely. The app's own announcement is
+    // carried on every kind, so a finding can still say it was explained.
+    expect(r.events.map((e) => e.kind).sort()).toEqual(["appeared", "dropped"]);
+    expect(r.events.every((e) => e.pinAnnouncedChange)).toBe(true);
+    expect(r.drops[0]).toMatchObject({ severe: true, leader: true, lastShownEtaSec: 60 });
   });
 
   it("does not compare across a gap where the option vanished", () => {
@@ -343,6 +350,154 @@ describe("scoreSequence", () => {
   it("does not compare readings further apart than the gap ceiling", () => {
     const r = scoreSequence([sample(0, "🚌 in 10 min"), sample(600, "🚌 in 20 min")]);
     expect(r.transitions).toHaveLength(0);
+  });
+
+  // ── the three transitions the metric used to get wrong ──────────────────
+  //
+  // All three are verbatim from the archived runs
+  // (scripts/.canary/runs.jsonl, 57 runs to 2026-09-04). Under the old
+  // positional comparison every one of them scored past 3200 s and was filed
+  // as the same "catastrophic" defect. Two of them ARE a defect; the first is
+  // not, and lumping them together is what hid the difference.
+  const pair = (a, b, dt) => scoreSequence([sample(0, `🚌 ${a}`), sample(dt, `🚌 ${b}`)]);
+
+  it("scores a re-sorted list as the near-nothing it is", () => {
+    // Orange Night. The app can print the two buses out of ETA order — the
+    // pinned countdown and the bus-after-it come from different computations
+    // — so the 45-min bus led the line and then trailed it. Positionally that
+    // was -2265 s in 15 s; by vehicle both buses moved about a second.
+    const r = pair("in 45, 5 min", "in 6, 44 min", 15);
+    expect(r.dropped).toBe(0);
+    expect(r.appeared).toBe(0);
+    expect(r.catastrophic).toBe(0);
+    expect(r.worstDriftSec).toBeLessThan(THRESHOLDS.notableReversalSec);
+  });
+
+  it("names the imminent bus leaving the list as a severe drop, not a drift", () => {
+    // Brown, +3255 s positionally. The 57-min bus is untouched; the one the
+    // rider had stood up for is simply gone.
+    const r = pair("in 1, 57 min", "in 56 min", 15);
+    expect(r.catastrophic).toBe(0);
+    expect(r.dropped).toBe(1);
+    expect(r.droppedSevere).toBe(1);
+    expect(r.drops[0]).toMatchObject({
+      kind: "dropped", leader: true, severe: true, lastShownEtaSec: 60,
+      from: "in 1, 57 min", to: "in 56 min",
+    });
+    // The surviving bus is scored on its own terms, and it was ticking down.
+    expect(r.worstDriftSec).toBe(0);
+  });
+
+  it("does the same for a bus that vanishes while it is arriving", () => {
+    // Brown again, +3240 s positionally, 16 s apart. "now" is the display
+    // floor, so this is a bus at the stop that never appeared again.
+    const r = pair("now, then 54 min", "in 54 min", 16);
+    expect(r.catastrophic).toBe(0);
+    expect(r.dropped).toBe(1);
+    expect(r.droppedSevere).toBe(1);
+    expect(r.drops[0]).toMatchObject({ leader: true, severe: true, lastShownEtaSec: 0 });
+  });
+
+  it("keeps a genuine lurch a lurch — the drop kind must not swallow it", () => {
+    // The window is set above the two jumps this project already attributes
+    // to one vehicle, so neither is renamed as a change of cast.
+    expect(pair("in 10 min", "arriving now", 15).catastrophic).toBe(1);   // the operator's
+    expect(pair("in 6 min", "in 16 min", 15).catastrophic).toBe(1);       // report #32's
+  });
+
+  it("counts a newcomer at the head of the list, but not one behind it", () => {
+    // A bus taking over the lead is an event the rider sees as the countdown
+    // resetting. A bus joining the SECOND slot is `nextArrivalAfterPinned`
+    // finding a later vehicle it did not know about a tick ago — routine.
+    const ahead = pair("in 20 min", "in 3, 20 min", 15);
+    expect(ahead.appeared).toBe(1);
+    expect(ahead.appearances[0]).toMatchObject({ kind: "appeared", etaSec: 180 });
+    expect(ahead.dropped).toBe(0);
+    const behind = pair("in 8 min", "in 8, 20 min", 15);
+    expect(behind.appeared).toBe(0);
+    expect(behind.transitions).toHaveLength(0);
+  });
+
+  it("does not call a trailing bus's departure severe", () => {
+    // The second slot emptying is routine; only a bus the rider could still
+    // have caught is the severe case.
+    const r = pair("in 8, 20 min", "in 8 min", 15);
+    expect(r.dropped).toBe(1);
+    expect(r.droppedSevere).toBe(0);
+    expect(r.drops[0]).toMatchObject({ leader: false, lastShownEtaSec: 1200 });
+  });
+
+  it("keeps the old record shape, so the archived runs still read", () => {
+    const r = pair("in 10 min", "arriving now", 15);
+    for (const k of ["readings", "transitions", "reversals", "notableReversals",
+      "catastrophic", "worstDriftSec", "p90AbsDriftSec"]) {
+      expect(r, `${k} went missing`).toHaveProperty(k);
+    }
+    // `transitions` still holds drift and nothing else, because the thresholds
+    // and every reader of the log are written in terms of `driftSec`.
+    expect(r.transitions.every((t) => t.kind === "drift" && typeof t.driftSec === "number")).toBe(true);
+  });
+});
+
+describe("pairBuses", () => {
+  const min = (n) => [n * 60, n * 60 + 60];
+
+  it("matches by nearest ETA rather than by slot", () => {
+    const p = pairBuses({ first: min(45), second: min(5) }, { first: min(6), second: min(44) }, 15);
+    expect(p.matched).toHaveLength(2);
+    expect(p.dropped).toHaveLength(0);
+    // The 45-min bus was printed first and is now printed second.
+    const crossed = p.matched.find((m) => m.fromSlot === 0);
+    expect(crossed.toSlot).toBe(1);
+    expect(Math.abs(crossed.driftSec)).toBeLessThan(60);
+  });
+
+  it("lets a bus leave rather than forcing it to become the one that replaced it", () => {
+    // "in 2, 38 min" -> "in 17, 38 min" is the archive's most common shape of
+    // false catastrophe (22 of the 77): the 38-min bus never moved.
+    const p = pairBuses({ first: min(2), second: min(38) }, { first: min(17), second: min(38) }, 15);
+    expect(p.matched).toHaveLength(1);
+    expect(p.matched[0].driftSec).toBe(0);
+    expect(p.dropped).toHaveLength(1);
+    expect(p.dropped[0].bucket).toEqual(min(2));
+    expect(p.appeared).toHaveLength(1);
+    expect(p.appeared[0].bucket).toEqual(min(17));
+  });
+
+  it("refuses no pairing it is not forced to refuse", () => {
+    // One bus in, one bus out, and a jump inside the window: there is nothing
+    // else it could be, so it stays a drift.
+    const p = pairBuses({ first: min(10) }, { first: [0, 10] }, 15);
+    expect(p.matched).toHaveLength(1);
+    expect(p.dropped).toHaveLength(0);
+  });
+
+  it("reads the leader by ETA, not by print order", () => {
+    // The app prints these out of order, so slot 0 is not the leader.
+    const p = pairBuses({ first: min(45), second: min(5) }, { first: min(44) }, 15);
+    expect(p.dropped).toHaveLength(1);
+    expect(p.dropped[0].bucket).toEqual(min(5));
+    expect(p.dropped[0].leader).toBe(true);
+  });
+});
+
+describe("the pairing window", () => {
+  it("sits above every jump this project attributes to one vehicle", () => {
+    // Below these it would rename the headline defect as a vehicle swap and
+    // stop counting it, which is the opposite of the point.
+    const operators = conservativeDrift([600, 660], [10, 60], 15);   // "10 min" -> "<1 min"
+    const report32 = conservativeDrift([360, 420], [960, 1020], 15); // "6 min" -> "16 min"
+    expect(THRESHOLDS.pairWindowSec).toBeGreaterThanOrEqual(Math.abs(operators));
+    expect(THRESHOLDS.pairWindowSec).toBeGreaterThanOrEqual(Math.abs(report32));
+  });
+
+  it("sits below the smallest pairing the archive shows to be absurd", () => {
+    // Blue West, "in 1, 40 min" -> "in 38, 77 min": the 40-min bus plainly
+    // became the 38-min one and the 1-min bus vanished. Pairing 1 -> 38 is
+    // 2175 s, and a window that allowed it would report that vanishing as
+    // drift — which is exactly what the old metric did.
+    expect(THRESHOLDS.pairWindowSec).toBeLessThan(
+      Math.abs(conservativeDrift([60, 120], [2280, 2340], 15)));
   });
 });
 

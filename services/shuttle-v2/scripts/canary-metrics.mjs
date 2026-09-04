@@ -19,6 +19,13 @@
  * midpoints would manufacture jumps that never happened. Everything here works
  * on INTERVALS and reports the SMALLEST change consistent with the two
  * readings, so a reported jump is a jump the app provably made.
+ *
+ * THE SECOND SUBTLETY, found 2026-09-04: a reading holds up to TWO buses, and
+ * comparing them BY POSITION charges a change of cast to the leader. That is
+ * the same correction `nextArrLive` took in the app (PR #74), and it is worth
+ * 44 of the archive's 77 "catastrophic" jumps. `pairBuses` matches vehicles
+ * across a transition as far as the text allows; `scoreSequence` then reports
+ * three kinds — drift, dropped, appeared — because they are three defects.
  */
 
 /** Seconds; the display bucket a rendered token stands for, as [lo, hi). */
@@ -142,7 +149,147 @@ export const THRESHOLDS = {
   pinSampleSec: 120,
   /** A UI reading older than this is not comparable to the next one. */
   maxGapSec: 120,
+  /**
+   * The widest |drift| still read as ONE vehicle's countdown moving, rather
+   * than as one bus leaving the list while another joins it. See
+   * `pairBuses` for why a window is needed at all; this is where it is set.
+   *
+   * Bounded from BELOW by the two jumps this project already calls a single
+   * bus lurching — report #32's "6 min then it said 16" (555 s at a 15 s
+   * sample) and the operator's "10 min then a few seconds later 1 second"
+   * (525 s). A window under those would rename the headline defect as a
+   * vehicle swap and stop counting it.
+   *
+   * 600 s is the smallest round value above both, and that is the ONLY claim
+   * made for it. THERE IS NO VALLEY IN THE DATA TO SNAP TO: across the 57
+   * archived runs 95.5 % of buses pair inside 60 s and the rest trail off
+   * smoothly, and the split moves steadily with the window rather than sitting
+   * on a plateau — 300 s / 600 s / 1200 s / 2400 s give 22 / 62 / 93 / 124
+   * catastrophic drifts against 113 / 73 / 44 / 22 drops. So the number is a
+   * judgement, and the direction it errs in is deliberate: raising it buys
+   * drift back by calling vanishings lurches, which is the misreading this
+   * whole change exists to stop. Re-derive it from the archive rather than
+   * from taste if it ever needs to move.
+   */
+  pairWindowSec: 600,
+  /**
+   * A bus that disappears while this close is the one the rider had got up
+   * for. Two minutes is the point past which the app's own copy stops
+   * counting single minutes worth acting on, and it is the bar the operator
+   * named for the severe case.
+   */
+  droppedSevereSec: 120,
 };
+
+/**
+ * Pair the buses in two consecutive readings BY VEHICLE, as far as the text
+ * allows — which is not very far, and saying so is the point.
+ *
+ * WHAT IDENTITY IS ACTUALLY AVAILABLE, which is not much and differs by
+ * caller. Slot 0 is always the PINNED vehicle — `fmtBusPair(busEtaLive,
+ * nextArrLive?.eta)` — and slot 1 is whatever `nextArrivalAfterPinned` found
+ * behind it. So naming the pinned bus settles slot 0 completely:
+ *
+ *   - The rider simulator (`scripts/eta-replay/rider-sim/`) knows it on every
+ *     tick and passes it as `busName`. Slot 0 is then paired by IDENTITY —
+ *     the same vehicle re-priced a whole lap later is a drift of a lap, not a
+ *     bus that left, and no window may override that.
+ *   - The live canary does NOT. The countdown line is two ETAs and no names;
+ *     the card names a bus only in the details view, which costs a tap in and
+ *     out and is sampled a few times a run (`pins`), and in the "You can't
+ *     catch #40" warning. The raw feed in each sample (`buses`) knows the
+ *     vehicles but not which of them the card chose.
+ *
+ * With no name, this falls back to NEAREST ETA under a bounded window, and
+ * everything downstream is written to be true of that weaker claim rather than
+ * of an identity we do not have.
+ *
+ * WHY IT MATTERS, and what the archive actually says. The old metric compared
+ * the two readings POSITIONALLY — slot 0 against slot 0 — so any change in
+ * WHICH buses the list holds was billed to the leader as drift. Re-scoring the
+ * 57 archived runs, 44 of the 77 "catastrophic" jumps are not one bus moving
+ * at all.
+ *
+ * The mechanism is NOT the obvious one, and the obvious one was the first
+ * guess. Two buses swapping order in a sorted list is vanishingly rare: 2 of
+ * 2104 two-bus readings are printed out of ETA order, and only 1 of the 77
+ * flags is that case ("in 45, 5 min" -> "in 6, 44 min", -2265 s, where both
+ * buses had in fact moved about a second). What actually happens is
+ * SUBSTITUTION: the leader disappears and everything behind it shifts up a
+ * slot, so slot 0 is compared against a different vehicle. 22 of the 77 are
+ * exactly that ("in 2, 38 min" -> "in 17, 38 min" — the 38-min bus is
+ * untouched, the 2-min bus is gone, a 17-min bus is new), and another 14 are
+ * variations on it. Positional comparison was the bug; reordering was not
+ * the reason.
+ *
+ * Both readings hold at most two buses, so every injective partial matching is
+ * enumerated (seven of them) rather than reaching for an assignment algorithm.
+ * The winner has the most pairs, and among those the least total |drift|; a
+ * pairing whose implied drift exceeds `pairWindowSec` is not offered at all,
+ * which is what lets a bus genuinely leave the list instead of being forced to
+ * "become" the one that replaced it.
+ *
+ * Returns `{ matched, dropped, appeared }` in terms of the buckets passed in.
+ */
+export function pairBuses(prev, next, dtSec, thresholds = THRESHOLDS, pin = null) {
+  const P = [prev.first, prev.second].filter(Boolean);
+  const N = [next.first, next.second].filter(Boolean);
+  // What the pinned vehicle's name settles, when a caller knows it. Slot 0 is
+  // the pinned bus in both readings, so the same name FORCES that pair (the
+  // window does not get a vote — identity is stronger evidence than an ETA
+  // being nearby) and a different name FORBIDS it.
+  const norm = (s) => (s == null ? null : String(s).replace(/^#/, ""));
+  const from = norm(pin?.from), to = norm(pin?.to);
+  const known = from !== null && to !== null;
+  const forced = known && from === to;
+  const forbidden = known && from !== to;
+  const cand = [];
+  for (let i = 0; i < P.length; i++) {
+    for (let j = 0; j < N.length; j++) {
+      const slot0 = i === 0 && j === 0;
+      if (forbidden && slot0) continue;
+      // A forced pin also rules out slot 0 pairing with anything ELSE: that
+      // vehicle is where the pin says it is.
+      if (forced && (i === 0) !== (j === 0)) continue;
+      const drift = conservativeDrift(P[i], N[j], dtSec);
+      if (Math.abs(drift) > thresholds.pairWindowSec && !(forced && slot0)) continue;
+      cand.push({ i, j, drift });
+    }
+  }
+  let best = { pairs: [], cost: 0 };
+  const consider = (pairs) => {
+    const cost = pairs.reduce((a, p) => a + Math.abs(p.drift), 0);
+    if (pairs.length > best.pairs.length ||
+        (pairs.length === best.pairs.length && cost < best.cost)) best = { pairs, cost };
+  };
+  for (const a of cand) {
+    consider([a]);
+    for (const b of cand) if (b.i > a.i && b.j !== a.j) consider([a, b]);
+  }
+  const tookP = new Set(best.pairs.map((p) => p.i));
+  const tookN = new Set(best.pairs.map((p) => p.j));
+  // "The leader" is the EARLIEST bus, not the first one printed: the app can
+  // print them out of order ("in 45, 5 min" is a real reading), because the
+  // pinned bus's countdown and the bus-after-it come from two different
+  // computations.
+  const leaderOf = (list) => list.reduce((b, x, i) => (x[0] < list[b][0] ? i : b), 0);
+  return {
+    matched: best.pairs.map((p) => ({
+      fromBucket: P[p.i], toBucket: N[p.j], fromSlot: p.i, toSlot: p.j, driftSec: p.drift,
+      leader: N.length ? p.j === leaderOf(N) : false,
+    })),
+    dropped: P.map((b, i) => ({ bucket: b, slot: i }))
+      .filter((x) => !tookP.has(x.slot))
+      .map((x) => ({ ...x, leader: x.slot === leaderOf(P) })),
+    // A bus joining BEHIND the survivors is the routine second-slot fill —
+    // `nextArrivalAfterPinned` finding a later bus it did not know about a
+    // tick ago — so only a newcomer that takes over the head of the list is
+    // an event. That is the operator's "a bus enters the list ahead of the
+    // leader".
+    appeared: N.map((b, j) => ({ bucket: b, slot: j }))
+      .filter((x) => !tookN.has(x.slot) && x.slot === leaderOf(N)),
+  };
+}
 
 /**
  * Split the page's innerText into option cards.
@@ -239,34 +386,81 @@ export function parseOptions(bodyText) {
 /**
  * Score one route's whole observed sequence. `samples` are
  * `{ atMs, eta, missedBus, departed, present }` in order.
+ *
+ * THREE KINDS, because they are three different defects and counting them as
+ * one hid that:
+ *
+ *   drift     the SAME bus's countdown moved further than the clock explains.
+ *             The only kind `driftSec` / `reversal` / `notable` /
+ *             `catastrophic` apply to, and the only one in `transitions` —
+ *             which keeps its old shape so the 57 archived runs, the
+ *             `--summary` reader and the eta-jump failure all still read.
+ *   dropped   a bus that was in the list is not in the next reading. Carries
+ *             the ETA it was last shown at; `severe` when that was inside
+ *             `droppedSevereSec`, i.e. the bus the rider had got up for.
+ *   appeared  a bus takes over the head of the list without having been in the
+ *             reading before.
+ *
+ * `events` is all three in time order; `transitions`, `drops` and `appearances`
+ * are the same events split by kind.
  */
 export function scoreSequence(samples, thresholds = THRESHOLDS) {
-  const transitions = [];
+  const transitions = [], drops = [], appearances = [], events = [];
   let prev = null;
   for (const s of samples) {
     if (!s.present || !s.eta) { prev = null; continue; }
     if (prev) {
       const dt = (s.atMs - prev.atMs) / 1000;
       if (dt > 0 && dt <= thresholds.maxGapSec) {
-        const drift = conservativeDrift(prev.eta.first, s.eta.first, dt);
-        if (drift !== 0) {
-          transitions.push({
-            atMs: s.atMs, dtSec: Math.round(dt), driftSec: Math.round(drift),
-            from: prev.eta.raw, to: s.eta.raw,
+        const dtSec = Math.round(dt);
+        // The app's own announcement that it swapped vehicles. A jump with
+        // this set is explained; one without it is not.
+        const announced = !!s.missedBus && s.missedBus !== prev.missedBus;
+        const ctx = { atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw };
+        // `busName` is the PINNED vehicle, i.e. the one in slot 0. Callers that
+        // know it (the rider simulator) get identity pairing there; the live
+        // canary passes nothing and gets the nearest-ETA fallback.
+        const paired = pairBuses(prev.eta, s.eta, dt, thresholds,
+          { from: prev.busName ?? null, to: s.busName ?? null });
+        for (const m of paired.matched) {
+          if (m.driftSec === 0) continue;
+          const drift = Math.round(m.driftSec);
+          const t = {
+            kind: "drift", ...ctx, driftSec: drift,
             reversal: drift > 0,
             notable: drift >= thresholds.notableReversalSec,
             catastrophic: Math.abs(drift) >= thresholds.catastrophicSec,
-            // The app's own announcement that it swapped vehicles. A jump with
-            // this set is explained; one without it is not.
-            pinAnnouncedChange: !!s.missedBus && s.missedBus !== prev.missedBus,
-          });
+            pinAnnouncedChange: announced,
+            // Which bus inside the reading moved, now that a reading can hold
+            // two and report a drift for each. `fromSlot === 0` is the pinned
+            // vehicle, which is what lets a caller with names attribute it.
+            leader: m.leader, fromSlot: m.fromSlot, toSlot: m.toSlot,
+            fromEtaSec: m.fromBucket[0], toEtaSec: m.toBucket[0],
+          };
+          transitions.push(t); events.push(t);
+        }
+        for (const d of paired.dropped) {
+          const e = {
+            kind: "dropped", ...ctx,
+            lastShownEtaSec: d.bucket[0], leader: d.leader,
+            severe: d.bucket[0] <= thresholds.droppedSevereSec,
+            pinAnnouncedChange: announced,
+          };
+          drops.push(e); events.push(e);
+        }
+        for (const a of paired.appeared) {
+          const e = {
+            kind: "appeared", ...ctx,
+            etaSec: a.bucket[0], aheadOfLeader: true, pinAnnouncedChange: announced,
+          };
+          appearances.push(e); events.push(e);
         }
       }
     }
     prev = s;
   }
-  const drifts = transitions.map((t) => t.driftSec);
-  const abs = drifts.map(Math.abs).sort((a, b) => a - b);
+  events.sort((a, b) => a.atMs - b.atMs);
+  const abs = transitions.map((t) => Math.abs(t.driftSec)).sort((a, b) => a - b);
   return {
     readings: samples.filter((s) => s.present && s.eta).length,
     transitions,
@@ -275,6 +469,23 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
     catastrophic: transitions.filter((t) => t.catastrophic).length,
     worstDriftSec: abs.length ? abs[abs.length - 1] : 0,
     p90AbsDriftSec: abs.length ? abs[Math.min(abs.length - 1, Math.floor(0.9 * abs.length))] : 0,
+    // Added 2026-09-04 alongside identity pairing. Older records simply lack
+    // these; every reader treats a missing count as zero rather than assuming
+    // the field is there.
+    events,
+    drops,
+    appearances,
+    dropped: drops.length,
+    droppedSevere: drops.filter((d) => d.severe).length,
+    appeared: appearances.length,
+    // Pairing scores BOTH buses a reading shows, where the positional metric
+    // only ever scored slot 0, so the drift population is not the same one as
+    // before. These two make the comparison honest: `leaderCatastrophic` is
+    // the like-for-like number (77 -> 33 across the archive), while
+    // `secondaryCatastrophic` counts the bus-after-the-pinned-one lurching —
+    // real, visible to riders, and simply never measured until now.
+    leaderCatastrophic: transitions.filter((t) => t.catastrophic && t.leader).length,
+    secondaryCatastrophic: transitions.filter((t) => t.catastrophic && !t.leader).length,
   };
 }
 
