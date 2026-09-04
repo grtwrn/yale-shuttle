@@ -887,6 +887,14 @@ actually arrived. `npm run test:accuracy`, and `.github/workflows/accuracy.yml`
 runs it on every PR touching the estimator (it is in `npm test` too, so the
 deploy gate catches it either way).
 
+A second recording joined it on 2026-09-04:
+`web/src/accuracy-approach-rest.test.ts` replays Red #310 taking that same
+344 Winchester layover 147 m SHORT of the marker (see "The layover taken SHORT
+of the marker"). Its two arms are the same client over the same recording,
+differing in one payload field — so "master" there is not a reconstruction of
+the old client, it is this client with `stationary_since` withheld, which is
+exactly what a browser talking to an un-deployed server sees.
+
 It exists because unit tests did not catch the 2026-09-03 defect: each of them
 pinned one contrived moment, and the failure only appears in a bus MOVING
 THROUGH a dwell. The invariants are loose about accuracy and strict about the
@@ -993,6 +1001,79 @@ time with the split served (`__fixtures__/red-split-tables.json`, route 3's
 own tables from 2026-09-03) and a store open — the first block is storeless
 and had no way to see any of this. It pins the defect as a fixture (unclamped,
 the board climbs 55 s while the bus stands) as well as the fix.
+
+### The layover taken SHORT of the marker (2026-09-04)
+
+`at_stop_id` is published only within 75 m of a stop, so a bus that takes its
+rest just short of the layover marker publishes **nothing**, and the client
+prices it as DRIVING with the whole layover still ahead. The operator caught it
+live — Red #310, 13:28 ET — and called what would happen next before it did:
+"It is not driving; it is doing the stand now, in the wrong place. When it
+finally rolls the 140 m to the marker it will stop briefly or not at all, the
+promised 6-minute stand evaporates, and the rider sees the number drop several
+minutes at once."
+
+The recording says he was right on every count. Replayed
+(`web/src/accuracy-approach-rest.test.ts`), the board **froze at 481 s for the
+whole 7-minute rest** while the bus's real remaining time fell 550 → 150 s,
+ending **331 s LATE** — the direction that has a rider stroll down and find the
+bus gone. The detector then logged a stand of **115 s** at a stop whose served
+table says the typical hold is 269 s, so the short sample poisons the table too.
+
+**A bus at rest in the approach zone of a layover stop IS standing at that
+stop.** Elapsed runs from when it stopped, the remainder is conditional on it,
+#119's ceiling applies — the same arithmetic as a bus resting on the marker,
+because it is the same wait. Fixed, the same replay tracks 262 → 117 s, never
+climbing.
+
+`stationary_since` on `/api/buses` is the server half (+0.72% payload): the
+detector already had the clock (`BusState.stationarySince`) and simply never
+published it off a stop. `stationaryStopId` is null exactly when the bus is
+resting somewhere that is not a stop, which is the case in question.
+
+**The gates are a scalpel, and every one is measured** (90,170 production polls,
+all 15 routes, 04:40–13:40 ET). Long rests ≥ 3 min: 203; off-marker at all: 19.
+Adding the three gates, the rule fires on **one episode in nine hours — this one
+— and nothing else**:
+
+- **the NEXT stop in sequence, never the nearest.** This single constraint takes
+  the rule from six episodes to one. Stops 30 m apart can be nine apart in the
+  loop (Orange / Pearl), and a bus resting near a stop it has already served is
+  not waiting for it.
+- **a real rest.** The threshold is where the population separates, and it
+  separates sharply: 45 s → 23 episodes, 60 s → 16, 90 s → 4, **120 s → 1**,
+  150 s → 1, 180 s → 1. Below 120 s it catches Purple and Gold pausing 45–105 s
+  on approach and then taking the layover normally — crediting those cancels a
+  rest still to come, the direction that makes a rider miss the bus.
+  `APPROACH_REST_MIN_SEC` is 150, mid-plateau rather than at its edge.
+- **a layover stop**, judged by the very table the price comes from
+  (`remainingStandSec(q, 0) >= 120` plus `standAdequate`). On the recorded pass
+  344 Winchester scores 269 s and Canal / Munson 64 s, so the rule cannot fire
+  on the approach to the stop the bus just left.
+
+`APPROACH_ZONE_M` is 200 m and **the result is insensitive to it from 150 m to
+300 m** — the episode count is 1 at every radius in that range, because the
+other gates are what bind. Do not treat it as a tuning knob.
+
+**One visit, one stand.** When the bus rolls in, the detector re-pins the clock
+and `at_stop_since` starts fresh — #310's would have restarted after 7 minutes
+of waiting — so the memo keeps the EARLIER start across the roll-in. Without it
+the rider is handed the whole layover a second time and the countdown jumps UP
+at the moment the bus arrives.
+
+Two things this is NOT. It is not a slew limiter: the standing term is dropped
+the instant the bus rolls, so a genuine early departure still collapses at full
+speed (a test pins both arms turning on the same poll). And it is not the
+previous-stop case — #310's *earlier* rest that day was 7 min 45 s at Canal /
+Munson's own marker, which `at_stop_id` reports correctly and which still leaves
+344's stand charged ahead in full. That one, and the detector-side attribution
+so 344 stops collecting 115 s samples, are open.
+
+**Regenerate the fixture** with `node scripts/record-approach-rest.mjs` (the
+sibling of `record-layover-pass.mjs`; it finds an off-marker rest rather than a
+long dwell, and carries `stationary_since` per position so the test feeds the
+client exactly what the wire carries). Do not re-record it to make a change
+pass.
 
 **Backfill from the archive.** `scripts/backfill-departures.ts` runs the
 collector's own reducer over `~/shuttle-captures/positions-*.jsonl` and writes
@@ -1345,6 +1426,8 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 | `lookup-sweep.mjs` | every named Yale/campus place in OSM is findable by the pipeline a rider hits (no browser) |
 | `rider-canary.mjs` | a continuous synthetic rider: watches ONE countdown tick by tick until the bus arrives, and scores the SEQUENCE (jumps, reversals) rather than the aggregate |
+| `record-layover-pass.mjs` | records a real pass through a layover ON the marker as the accuracy fixture |
+| `record-approach-rest.mjs` | records a real layover taken SHORT of the marker (the 2026-09-04 case), with the published `stationary_since` per position |
 
 `eta-accuracy.mjs` reads what the app tells a rider while independently
 watching raw positions for the actual arrival. Last daytime measurement

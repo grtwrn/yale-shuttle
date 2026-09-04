@@ -53,7 +53,7 @@ export const BusPositionSchema = z.object({
    * `atStopSince` only exists inside `AT_STOP_MAX_M` (75 m) of a stop, so a
    * bus taking its layover SHORT of the marker publishes nothing at all and
    * the client can only read it as driving. Red #310 did exactly that on
-   * 2026-09-04: 6 min 40 s at rest 140 m short of 344 Winchester, then ~1 min
+   * 2026-09-04: 7 min at rest 147 m short of 344 Winchester, then ~2 min
    * at the marker itself. See `APPROACH_ZONE_M` in web/src/hopPricing.ts.
    *
    * This is the same clock, unfiltered. Off a stop it measures time since the

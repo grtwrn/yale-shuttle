@@ -152,12 +152,14 @@ const STANDING_MEMO_STALE_MS = 120_000;
  * whole layover still ahead of it. The operator watched this happen, live, on
  * 2026-09-04 — Red #310, 13:28 ET:
  *
- *   13:28:03  comes to rest 140 m short of 344 Winchester, last_stop_id 27
- *             (Canal / Munson, 246 m back), heading 299
- *   13:28-13:34  79 identical fixes — 6 min 40 s at rest, going nowhere
- *   13:34:48  rolls the 140 m in
- *   13:35:53  reaches the marker (4 m)
- *   13:37:08  leaves — about 1 min 15 s actually AT the stop
+ *   13:27:38  comes to rest short of 344 Winchester, last_stop_id 27
+ *             (Canal / Munson), heading 299. The operator read 140 m off the
+ *             map; the detector's own clock settles a poll earlier, at 147 m,
+ *             and 147 is the number the fixture and the tests use.
+ *   13:27-13:34  79 identical fixes — 7 min 5 s at rest, going nowhere
+ *   13:34:48  rolls the 147 m in
+ *   13:34:58  reaches the marker
+ *   13:36:53  leaves — the detector logged a stand of 115 s
  *
  * The card read `#310 · 11 min` with 344's chip at `⏸ ~6 min`: driving toward
  * 344, and then a six-minute stand once it gets there. It was not driving. It
@@ -189,8 +191,22 @@ const STANDING_MEMO_STALE_MS = 120_000;
  *    This single constraint is what takes the rule from six episodes to one.
  *  - **a real rest**, not a red light. `stationary_since` off a stop measures
  *    time since the bus last moved more than 125 m from where it settled, so a
- *    bus in motion resets it every few polls; {@link APPROACH_REST_MIN_SEC} of
- *    2.5 min is far past any signal, and #310's rest was 6 min 40 s.
+ *    bus in motion resets it every few polls. The threshold is where the
+ *    population separates, and it separates sharply — episodes in the same
+ *    nine hours, at every zone radius:
+ *
+ *        rest >=  45 s   23 episodes   Purple and Gold pausing on approach
+ *        rest >=  60 s   16 episodes
+ *        rest >=  90 s    4 episodes
+ *        rest >= 120 s    1 episode    <- #310, and nothing else
+ *        rest >= 150 s    1 episode
+ *        rest >= 180 s    1 episode
+ *
+ *    Below 120 s the rule starts catching buses that pause 45–105 s a hundred
+ *    metres short of a layover stop and then take the layover normally —
+ *    crediting those would cancel a rest still to come, which is the direction
+ *    that makes a rider miss the bus. {@link APPROACH_REST_MIN_SEC} sits in
+ *    the middle of the flat region, not at its edge. #310's rest was 7 min 5 s.
  *  - **a layover stop**, judged by the same table the price comes from: its
  *    typical hold must reach {@link APPROACH_LAYOVER_MIN_SEC}, and the table
  *    must clear `standAdequate`. Crediting a rest to a stop with no real
@@ -200,8 +216,8 @@ const STANDING_MEMO_STALE_MS = 120_000;
  * ## One visit, one stand
  *
  * When the bus finally rolls in, the detector re-pins its clock to the stop
- * and `at_stop_since` starts fresh — #310's would have restarted at 13:35:53
- * after 6 min 40 s of waiting. Left alone that would hand the rider the whole
+ * and `at_stop_since` starts fresh — #310's restarted at 13:34:58, after
+ * 7 minutes of waiting. Left alone that would hand the rider the whole
  * layover a second time, the countdown JUMPING UP at the exact moment the bus
  * arrives. So the memo keeps the EARLIER start across the roll-in: an approach
  * rest and the marker touch that follows it are one wait, and the clock runs
