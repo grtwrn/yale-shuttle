@@ -1505,12 +1505,51 @@ trusting the anchor a restart re-derives — the global nearest, not the lookahe
 window's — and getting it wrong bills a segment the bus never drove. Measure
 that before building it.
 
-**The historical rows are still short.** `scripts/merge-restart-split-arrivals.ts`
-merges them — dry run by default, idempotent, `--target <db> --apply`. It fixes
-`arrivals` and `segments` and deliberately does NOT invent a
-`stop_visits.pinned_at`: `raw_positions` is swept at six hours, so for a stand a
-month old there is nothing left to recompute it from, and the arrival instant is
-not a substitute. `stop_visits` is a 30-day window and heals itself.
+**The historical rows were merged in production on 2026-09-04**, by the operator's
+decision — 4.3% of arrivals feeding every stand table was not worth thirty days
+of self-healing. `scripts/merge-restart-split-arrivals.ts` is the script: dry run
+by default, idempotent, `--target <db> [--apply]`. It fixes `arrivals` and
+`segments` and deliberately does NOT invent a `stop_visits.pinned_at` —
+`raw_positions` is swept at six hours, so for a stand a month old there is
+nothing left to recompute it from, and the arrival instant is not a substitute.
+
+The run, and the shape any repeat of it should have:
+
+- **The undo is a snapshot**, taken first with the `eta-replay/README` backup
+  recipe and kept beside the others:
+  `services/shuttle-v2/store/snap-2026-09-04-pre-merge.db` (114 MB,
+  `PRAGMA integrity_check` ok, counts matching production but for the ~40 s the
+  collector kept working during the copy).
+- **Dry run on the snapshot, then dry run on production, then apply** — and the
+  apply only because its counts matched the production dry run *to the row*:
+  1,843 split stands, 1,843 arrivals rewound, 2,152 superseded rows deleted,
+  1,459 dwells lengthened (2 dropped past `MAX_DWELL_SEC`), 1,432 segments
+  lengthened (1 dropped past `MAX_SEGMENT_SEC`). The table counts moved by
+  exactly those numbers: arrivals 565,082 → 562,930, segments −1, closed
+  arrivals −2. `integrity_check` ok, **175 ms** in one transaction (single-writer
+  SQLite; reads happen before it opens, so the write lock is held for that alone,
+  and a `busy_timeout` waits rather than costing the collector a poll).
+- **`scripts/` does not ship in the image** (the Dockerfile copies `src/`,
+  `drizzle/`, `web/dist` and nothing else), so the run went in as a
+  self-contained CJS port piped to `node -`, the same path
+  `backfill-departures-apply.cjs` uses. Keep the two in step if you touch either.
+- A second dry run afterwards finds **0 chains**. Note the restart-instant count
+  falls with it (217 → 39): the fingerprint is the duplicate rows, so merging
+  them consumes it. That is idempotence, not a lost signal.
+
+**What it moved, and what it did not.** `dwells[route][stop].q` — the served
+stand table — is built from `stop_visits`, which the merge does not touch, so it
+did NOT move: across the calibrator cycle after the run, 344 Winchester and 333
+Cedar changed only where one new visit landed (`qn` 46 → 47 and 50 → 51), and
+Winchester / Mansfield, whose `qn` held at 48, was byte-identical. What moved is
+the arrivals-based half and the segments, which is what was rewritten: dwell
+medians 344 Winchester **380.2 → 397.6 s**, Winchester / Mansfield **535.1 →
+598.3**, 333 Cedar **455.1 → 470**, with the spread TIGHTENING at the first two
+(sd 159 → 138, 356 → 296) because the samples removed were the short outliers;
+the hop out of 333 Cedar 565.5 → 592.6 s. Fleet-wide, 88 of 267 served stops
+moved their dwell median and 103 of 274 served hops moved their average, both
+upward (means 131.9 → 134.3 s and 164.0 → 165.6 s). Five minutes of new data
+cannot move a third of the network; the direction and the breadth are the merge.
 
 ## Verification harnesses
 
