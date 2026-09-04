@@ -4157,6 +4157,29 @@ const TripPlanner: FC<{
                   // computeUpcomingArrivals FIRST; display follows billing.
                   const splitServed = splitServedForRoute(routeSegs, routeDwells);
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
+                  /**
+                   * M:SS for the live pause chip, so a hold keeps its seconds
+                   * past the first minute.
+                   *
+                   * `fmtShort` drops to whole minutes at 60 s, which is right
+                   * for a figure a rider glances at but wrong for one they are
+                   * watching tick: the operator, watching a bus stand at a
+                   * layover — "after it gets to 1 min we lose the seconds but I
+                   * like those". A hold is the one number on this screen that
+                   * moves every second and is worth watching move.
+                   *
+                   * NOT `min`-suffixed, and that is a deliberate exception to
+                   * the app's "spell minutes `min`" rule rather than an
+                   * oversight: the rule exists so a bare `m` is never read as
+                   * miles, and `2:15` cannot be. It reads as a stopwatch,
+                   * which is what it is. Minutes past the hour never appear —
+                   * a layover running over 59 minutes would print `62:10`,
+                   * which is still a duration and still unambiguous.
+                   */
+                  const fmtMmss = (s: number) => {
+                    const t = Math.max(0, Math.round(s));
+                    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+                  };
                   const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
                     ? Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000)
                     : null;
@@ -4257,10 +4280,10 @@ const TripPlanner: FC<{
                                             : stand.remaining
                                               ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
                                               : `Typically holds ~${fmtShort(stand.sec)}`}>
-                                      ⏸ {fmtShort(liveElapsedSec!)}
+                                      ⏸ {fmtMmss(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
-                                        ? ` / ~${fmtShort(stand.typicalSec ?? stand.sec)}`
-                                        : ` / ~${fmtShort(stand.sec)}`}
+                                        ? ` / ~${fmtMmss(stand.typicalSec ?? stand.sec)}`
+                                        : ` / ~${fmtMmss(stand.sec)}`}
                                     </span>
                                   )}
                                   {!showLive && stand != null && stand.sec >= 180 && (
@@ -4327,7 +4350,7 @@ const TripPlanner: FC<{
                               {isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null && (
                                 <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                       title="Time the bus has been sitting here">
-                                  ⏸ {fmtShort(liveElapsedSec)}
+                                  ⏸ {fmtMmss(liveElapsedSec)}
                                 </span>
                               )}
                             </span>
