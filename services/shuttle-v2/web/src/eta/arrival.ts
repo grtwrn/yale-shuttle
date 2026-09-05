@@ -312,8 +312,10 @@ export function priceRoute(
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
   const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
-  // The lead chain: the heaviest situation on the lead leg (chains are in mass order).
-  const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
+  // The lead chain: the lead leg's situation in the SHOWN mode (a decision
+  // with hysteresis, filter.ts `leadMode`), else the heaviest on the leg.
+  const lead = chains.find((c) => c.sit.leg === belief.lead && c.sit.standing === belief.leadStanding)
+    ?? chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
@@ -367,16 +369,14 @@ export function priceRoute(
       chainAt(c, pre, hc, bufs[i]!);
       bufs[i]!.sort();
       all.push({ s: bufs[i]!, w: c.sit.mass });
-      // The lead cluster is the lead LEG: its standing and moving variants
-      // (a bus standing at a stop vs just pulled out, mixed by their mass).
-      // A situation on another leg is an alternative — the other branch of
-      // a fold, a lap away, or a cold belief's guess two stops back — and
-      // alternatives are the lead hysteresis's business, not the mixture's:
-      // mixed in by nearness (12 min), a 0.65 guess that the bus stood two
-      // stops back turned "in 1" into "in 5" on a rider's second poll.
-      if (c.sit.leg !== lead.sit.leg) continue;
-      parts.push({ s: bufs[i]!, w: c.sit.mass });
-      mass += c.sit.mass;
+      // The number is the lead situation's alone: the lead leg in the shown
+      // mode, both decisions with hysteresis (filter.ts). Every other
+      // situation — the other mode on the same leg, the other branch of a
+      // fold, a lap away, a cold belief's guess two stops back — is an
+      // alternative that the RANGE carries. Mixing by raw mass let a 0.65
+      // guess two stops back turn "in 1" into "in 5", and let the standing
+      // and moving variants flip the number a bucket as their shares
+      // crossed 0.5.
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
