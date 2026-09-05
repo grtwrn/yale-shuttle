@@ -48,8 +48,11 @@ under the collector's 125 m rule).
 
 **The observation model is the deadband**: a repeated fix means the bus is in
 the same cell; a fresh fix means it changed cell and is near the new
-coordinate (σ = 20 m, plus an off-route mixture weight so a detour keeps its
-branch until the evidence accumulates). The per-poll emissions are the
+coordinate (σ = 20 m, plus an off-route mixture weight — derived as the
+off-route share × the Gaussian's peak over the band a stray fix can land in,
+~1e-5 on Red — so a detour keeps its branch until the evidence accumulates,
+while a fix on the road behind a stop out-scores "drove on" outright; a
+guessed 0.02 there let a yard reverse read as driving on). The per-poll emissions are the
 measured ones — P(repeat | standing) 0.919, P(repeat | moving) 0.159, 0.5
 inside a stop's zone where buses pull in and out — and they enter BOTH
 branches of the joint transition, so a standing hypothesis pays for a fresh
@@ -140,9 +143,13 @@ cluster still holds a fifth of the mass, the RANGE comes from the full
 mixture, so a 50/50 fold does not read as "17 s [13–23]". τ ships at 0.5.
 
 The #119 clamp stays, as a display rule keyed on the stand's identity: while
-the lead is still inside the rest radius — standing or shuffling — the shown
-remainder may pause and never climb; it releases the poll the bus leaves the
-radius. A lead driving on elsewhere is never clamped.
+the lead stands, the shown remainder may pause and never climb; while it
+moves the floor is neither applied nor updated but kept, so a depot bus that
+pulls out and reverses into the yard returns to the number it showed before,
+not to the drive-only figure of the moving spell; the floor ends with the
+rest (the clock changes). A bus moving inside its own layover's radius, on
+the leg into the stop, is priced as the rest continuing, not as an arrival
+with a whole new stand on top.
 
 ## What the existing rules became
 
