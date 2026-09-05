@@ -32,7 +32,7 @@
  * the moment the lead situation is no longer standing at that stop.
  */
 
-import { quantile, residual, scaled, type Dist } from "./dist";
+import { quantile, residual, type Dist } from "./dist";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
@@ -100,10 +100,33 @@ function permFor(term: number): Uint16Array {
   return a;
 }
 
-/** Add a draw of `d` to every sample, using the permutation for term `term`. */
-function addTerm(samples: Float64Array, d: Dist, term: number): void {
+/**
+ * The draws of `d` under term `term`'s permutation, cached: a table's draws
+ * for a fixed permutation never change, so the quantile function is evaluated
+ * once per (table, term) and the hot path is additions only.
+ */
+const distIds = new WeakMap<Dist, number>();
+let nextDistId = 1;
+const termCache = new Map<string, Float64Array>();
+function termDraws(d: Dist, term: number): Float64Array {
+  let id = distIds.get(d);
+  if (id === undefined) { id = nextDistId++; distIds.set(d, id); }
+  const key = `${id}|${term}`;
+  const hit = termCache.get(key);
+  if (hit) return hit;
+  if (termCache.size > 8192) termCache.clear();
   const perm = permFor(term);
-  for (let k = 0; k < K; k++) samples[k] = samples[k]! + quantile(d, STRATA[perm[k]!]!);
+  const out = new Float64Array(K);
+  for (let k = 0; k < K; k++) out[k] = quantile(d, STRATA[perm[k]!]!);
+  termCache.set(key, out);
+  return out;
+}
+
+/** Add a draw of `d` to every sample, using the permutation for term `term`; `scale` multiplies the draw. */
+function addTerm(samples: Float64Array, d: Dist, term: number, scale = 1): void {
+  const draws = termDraws(d, term);
+  if (scale === 1) for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
+  else for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]! * scale;
 }
 
 /**
@@ -111,8 +134,6 @@ function addTerm(samples: Float64Array, d: Dist, term: number): void {
  * because the simulator prices the same bus for many riders in one poll.
  */
 const residualCache = new Map<string, Float64Array>();
-const distIds = new WeakMap<Dist, number>();
-let nextDistId = 1;
 function residualDraws(d: Dist, r: number, term: number): Float64Array {
   let id = distIds.get(d);
   if (id === undefined) { id = nextDistId++; distIds.set(d, id); }
@@ -203,7 +224,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number): Chain {
     // them; billing a residual hold on top double-counted the 8% of polls on
     // which the filter, correctly, carries a "came to a hold" mode.
     const hop0 = tables.hops[leg]!;
-    addTerm(samples, scaled(hop0.drive, 1 - sit.frac), 2 * leg + 1);
+    addTerm(samples, hop0.drive, 2 * leg + 1, Math.max(0, 1 - sit.frac));
     measured = hop0.measured;
   }
   return { sit, start: samples, leg, measured, standingAt };
