@@ -16,14 +16,16 @@
  * of the belief and the tables — it cannot jitter between polls on its own —
  * and `arrival.test.ts` checks it against exact convolution.
  *
- * DISPLAY. Situations whose medians for a stop lie within NEAR_SEC of the lead
- * situation's form the LEAD CLUSTER (a bus standing vs just departed: near; the
- * two branches of a fold, a lap apart: far). The row shows the cluster's
- * mixture — quantile tau as the number, q10-q90 as the range — and the cluster
- * follows the belief's lead leg, which carries hysteresis. So on Red a
- * departure moves the number on the departure poll (0.76 of the mass has
- * left, the mixture median is the drive), while on a fold the number does not
- * race across the gap as a branch weight passes 0.5 (#88).
+ * DISPLAY. The lead LEG's situations — standing at its stop, moving along
+ * it — are one cluster, mixed by their mass; every other situation is an
+ * alternative (the other branch of a fold, a lap away, a cold belief's guess)
+ * whose fate is the lead hysteresis's (filter.ts), not the mixture's. The
+ * row shows the cluster's quantile tau as the number and q10-q90 as the
+ * range, and while alternatives still hold a fifth of the mass the range is
+ * the full mixture's. So on Red a departure moves the number on the
+ * departure poll (the moving variant outweighs the standing one), while on
+ * a fold the number does not race across the gap as a branch weight passes
+ * 0.5 (#88).
  *
  * THE CLAMP (#119). While a bus stands, the shown arrival instant is
  * non-increasing: the conditional median of a stand rises wherever the stand
@@ -39,8 +41,6 @@ import type { RouteTables } from "./tables";
 
 /** Samples per chain. */
 export const K = 256;
-/** Two situations whose medians differ by less than this share one cluster. */
-export const NEAR_SEC = 720;
 /** Beyond this the lap-2 guess is noise (arrivals.ts MAX_ETA_SEC). */
 export const MAX_ETA_SEC = 90 * 60;
 /** Entries per stop: this lap and the next. */
@@ -367,15 +367,21 @@ export function priceRoute(
       chainAt(c, pre, hc, bufs[i]!);
       bufs[i]!.sort();
       all.push({ s: bufs[i]!, w: c.sit.mass });
-      if (Math.abs(bufs[i]![K >> 1]! - leadMedian) > NEAR_SEC) continue;
+      // The lead cluster is the lead LEG: its standing and moving variants
+      // (a bus standing at a stop vs just pulled out, mixed by their mass).
+      // A situation on another leg is an alternative — the other branch of
+      // a fold, a lap away, or a cold belief's guess two stops back — and
+      // alternatives are the lead hysteresis's business, not the mixture's:
+      // mixed in by nearness (12 min), a 0.65 guess that the bus stood two
+      // stops back turned "in 1" into "in 5" on a rider's second poll.
+      if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
-    // the RANGE is honest about the rest: while another cluster — the other
-    // branch of a fold, a lap away — still holds a fifth of the mass, low
-    // and high come from the full mixture, so a 50/50 fold does not read as
-    // "17 s [13-23]" (the review's finding 7).
+    // the RANGE is honest about the rest: while alternatives still hold a
+    // fifth of the mass, low and high come from the full mixture, so a
+    // 50/50 fold does not read as "17 s [13-23]" (the review's finding 7).
     const [q10, qt, q90] = mixedQuantiles(parts, [0.1, tau, 0.9]) as [number, number, number];
     let eta = qt, low = q10, high = q90;
     if (mass < LEAD_SWITCH_MASS && all.length > parts.length) {

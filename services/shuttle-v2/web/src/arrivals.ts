@@ -631,7 +631,7 @@ export function computeUpcomingArrivals(
         // Both halves must be adequately sampled for THIS hop, independently
         // of every other hop; a thin cell prices exactly as master does.
         const standStat = routeDwells[String(stops[busIdx])];
-        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+        const split = splitServed && step === 1 && driveAdequate(seg) && standAdequate(standStat)
           ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
           : null;
         if (split) {
