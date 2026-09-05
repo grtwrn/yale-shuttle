@@ -73,6 +73,8 @@ export interface Ring {
   pStop: Float64Array;
   /** Per-stop stand distribution, for the departure hazard; null until the tables have been seen. */
   stand: (Dist | null)[];
+  /** Per-stop: the stop is a layover (its typical stand reaches the layover threshold), from the tables. */
+  layover: Uint8Array;
 }
 
 /** Driving speed before any table has been seen (measured p50 6.6-7.1 m/s downtown). */
@@ -81,8 +83,9 @@ export const DEFAULT_DRIVE_M_S = 7;
 export const DEFAULT_P_STOP = 0.877;
 
 /** Install the tables' speeds and stop probabilities on the (shared, cached) ring. */
-export function setRingProfile(ring: Ring, legSpeed: ArrayLike<number>, pStop: ArrayLike<number>, stand?: ArrayLike<Dist | null>): void {
+export function setRingProfile(ring: Ring, legSpeed: ArrayLike<number>, pStop: ArrayLike<number>, stand?: ArrayLike<Dist | null>, layover?: ArrayLike<boolean>): void {
   for (let i = 0; i < ring.N; i++) {
+    ring.layover[i] = layover && layover[i] ? 1 : 0;
     const v = legSpeed[i];
     ring.legSpeed[i] = v !== undefined && Number.isFinite(v) && v > 0.5 ? v : DEFAULT_DRIVE_M_S;
     const p = pStop[i];
@@ -214,6 +217,7 @@ export function buildRing(
     legSpeed: new Float64Array(N).fill(DEFAULT_DRIVE_M_S),
     pStop: new Float64Array(N).fill(DEFAULT_P_STOP),
     stand: new Array<Dist | null>(N).fill(null),
+    layover: new Uint8Array(N),
   };
 }
 

@@ -40,6 +40,14 @@ export type DwellsByBus = Record<string, DwellTimes>;
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
 
 /**
+ * Routes on which the legacy stand/drive split (hopPricing.ts) may run when
+ * the ring estimator declines the route: production's `SPLIT_SERVED_ROUTE_IDS`
+ * (calibrator.ts), moved to the client now that the server serves the split
+ * tables to every route for the estimator's sake.
+ */
+export const LEGACY_SPLIT_ROUTE_IDS: ReadonlySet<string> = new Set(["3", "1"]);
+
+/**
  * The shortest time any hop may be billed at. Shared by the unmeasured-hop
  * estimate and the stall-credit floor below, because it is the same claim in
  * both places: a bus still standing at A is not about to be at B — it has to
@@ -423,9 +431,12 @@ export function computeUpcomingArrivals(
     // Shared with the pause chip on screen (see shownStandSec) so the number
     // shown and the number billed cannot come from two different rules.
     // The legacy split runs here only when the model did NOT price the route
-    // (no traceable ring, or no measured drive in its tables), so it is gated
-    // on the tables alone — not on the allowlist, which is now every route.
-    const splitServed = splitServedForRoute(routeSegs, routeDwells);
+    // (no traceable ring, or no measured drive in its tables). The server now
+    // serves the split tables to every route, so the split keeps ITS OWN
+    // allowlist here — the routes it was measured on. On a fold it was
+    // measured to strand Purple (26 introduced / 1 fixed) and, once the
+    // tables reached Green, 77 riders on the 9/3 replay.
+    const splitServed = LEGACY_SPLIT_ROUTE_IDS.has(cfg.routeIds[0] ?? "") && splitServedForRoute(routeSegs, routeDwells);
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;

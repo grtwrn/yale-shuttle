@@ -87,23 +87,35 @@ export const HOLD_LEAVE_PER_S = 0.01457;
 /** Leak from a stop stand on a repeat poll, per second — a pooled 4 min stand. Pricing uses the real table. */
 export const STOP_LEAVE_PER_S = 1 / 240;
 /**
- * The mixture weight of the OFF-ROUTE component in the emission, relative to
- * a fix on the cell: a detour, a yard, a street the published line does not
- * draw (Red #316 on 2026-09-03 ran from College / Wall straight up to
- * Trumbull / Hillhouse, 100+ m off the line for three polls). Without it the
- * belief teleported to the nearest cells on the line — the inbound branch —
- * direction unread. With it, a bus off the line keeps the branch it had
- * until the evidence for another branch has accumulated over polls through
- * TELEPORT below. Estimate: ~3% of fixes are > 500 m off every route
- * (gps-replay `offRoute`), more are a street away.
+ * The emission is a mixture: a fix is on the cell (Gaussian, σ) or it is a
+ * stray — a detour, a yard, a street the published line does not draw
+ * (Red #316 on 2026-09-03 ran from College / Wall up to Trumbull / Hillhouse,
+ * 100+ m off the line for three polls). The stray component's weight
+ * RELATIVE TO A FIX ON THE CELL is derived, not chosen:
+ *
+ *     ε · 2πσ² / A      ε = share of fixes off the line (~3%, gps-replay
+ *                        `offRoute`), A = the area a stray fix can land in,
+ *                        a band ±300 m along the loop
+ *
+ * ~1e-5 on Red, ~3e-6 on Green. A guessed 0.02 here let "driving on past the
+ * next stop" survive a fix 85 m BEHIND the stop, on the road, at a
+ * fiftieth of its mass, and out-score the reposition that had actually
+ * happened (Red #304, 14:06Z 9/3); at the derived weight the fix on the road
+ * wins outright, while a held branch still out-lives TELEPORT (below) when a
+ * bus is genuinely off the line, because the two branches then pay the same
+ * weight and only the prior decides.
  */
-export const P_OFF_ROUTE = 0.02;
+export const OFF_ROUTE_SHARE = 0.03;
+export const OFF_ROUTE_BAND_M = 600;
+export function offRouteWeight(ring: Ring): number {
+  return (OFF_ROUTE_SHARE * 2 * Math.PI * SIGMA_M * SIGMA_M) / (ring.loopM * OFF_ROUTE_BAND_M);
+}
 /**
  * Mass moved to every cell each poll, uniformly: how a bus that really has
  * relocated (an id reissue, a feed gap, a genuine branch error) is found
- * again. 1e-4 spread over ~300 cells is 3e-7 per cell per poll; against a
- * held branch whose cells score P_OFF_ROUTE it takes several consistent
- * polls to win, and a single stray fix cannot.
+ * again. 1e-4 spread over ~300 cells is 3e-7 per cell per poll — two orders
+ * below the off-route weight above, so a held branch out-lives a single
+ * stray fix and loses to several consistent ones.
  */
 export const TELEPORT = 1e-4;
 /** Cells below this mass are not propagated through the kernel (they are re-seeded by TELEPORT). */
@@ -339,7 +351,10 @@ function cacheZones(b: Belief, ring: Ring): void {
   for (let c = 0; c < ring.C; c++) {
     const z = standZone(b, ring, c);
     b.zoneKey[c] = z.stop < 0 ? -1 : z.approach ? 1000 + z.stop : z.stop;
-    b.standLeg[c] = z.stop >= 0 && !z.approach ? z.stop : ring.leg[c]!;
+    // A stand in the approach zone of a LAYOVER stop is that layover
+    // (hopPricing.ts #130): its anchor leg is the stop's, so the lead and the
+    // pricing agree. A stand short of a kerb stop is a hold on the road.
+    b.standLeg[c] = z.stop >= 0 && (!z.approach || ring.layover[z.stop] === 1) ? z.stop : ring.leg[c]!;
   }
 }
 
@@ -512,8 +527,9 @@ export function stepBelief(
     const tp = TELEPORT / (2 * C);
     for (let i = 0; i < 2 * C; i++) q[i] = q[i]! * (1 - TELEPORT) + tp;
     const d = distancesTo(ring, bus);
+    const off = offRouteWeight(ring);
     for (let c = 0; c < C; c++) {
-      const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M)) + P_OFF_ROUTE;
+      const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M)) + off;
       q[c] = q[c]! * e;
       q[C + c] = q[C + c]! * e;
     }
@@ -615,25 +631,31 @@ export interface Situation {
   approach: boolean;
   /** Mass-weighted mean cell, for diagnostics. */
   cell: number;
+  /** Share of the situation's mass inside the rest radius of an established rest. */
+  inRest: number;
 }
 
 export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   const C = ring.C, N = ring.N;
   // Accumulators indexed by (anchor leg * 2 + mode); zone tallies per key.
-  const mass = new Float64Array(2 * N), frac = new Float64Array(2 * N), cell = new Float64Array(2 * N);
+  const mass = new Float64Array(2 * N), frac = new Float64Array(2 * N), cell = new Float64Array(2 * N), rest = new Float64Array(2 * N);
   const zoneMass = new Map<number, number>();
   const p = b.p;
+  const masked = b.rested && b.restStop >= 0;
   for (let c = 0; c < C; c++) {
     const ms = p[c]!, mm = p[C + c]!;
+    const inMask = masked && b.restMask[c] === 1;
     if (ms > 0) {
       const k = b.standLeg[c]! * 2;
       mass[k] = mass[k]! + ms; frac[k] = frac[k]! + ms * ring.frac[c]!; cell[k] = cell[k]! + ms * c;
+      if (inMask) rest[k] = rest[k]! + ms;
       const zk = k * 4096 + (b.zoneKey[c]! + 1);
       zoneMass.set(zk, (zoneMass.get(zk) ?? 0) + ms);
     }
     if (mm > 0) {
       const k = ring.leg[c]! * 2 + 1;
       mass[k] = mass[k]! + mm; frac[k] = frac[k]! + mm * ring.frac[c]!; cell[k] = cell[k]! + mm * c;
+      if (inMask) rest[k] = rest[k]! + mm;
     }
   }
   const out: Situation[] = [];
@@ -654,6 +676,7 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
       zoneStop: zoneKey >= 1000 ? zoneKey - 1000 : zoneKey,
       approach: zoneKey >= 1000,
       cell: cell[k]! / m,
+      inRest: rest[k]! / m,
     });
     total += m;
   }

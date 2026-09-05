@@ -202,14 +202,24 @@ interface Chain {
   standingAt: number;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
   let leg = sit.leg;
-  if (sit.standing && sit.zoneStop >= 0 && (!sit.approach || tables.stops[sit.zoneStop]!.layover)) {
+  // A bus MOVING inside the rest radius of its own layover, on the leg into
+  // the layover stop, is repositioning — it has not left (the collector's
+  // definition of the stand, STATIONARY_RADIUS_M) and it is not arriving
+  // afresh. Priced as the rest continuing: the residual given the time
+  // already stood, then the drive out. Priced as an arrival it was billed a
+  // whole new stand on top of the thirteen minutes already stood (Red #304,
+  // 14:06Z 9/3: 80 -> 262 s). Mass moving on the layover's OWN leg is the
+  // departure hypothesis and keeps the drive-only price.
+  const repositioning = !sit.standing && restStop >= 0 && sit.inRest >= 0.5
+    && tables.stops[restStop]!.layover && (sit.leg + 1) % N === restStop;
+  if ((sit.standing && sit.zoneStop >= 0 && (!sit.approach || tables.stops[sit.zoneStop]!.layover)) || repositioning) {
     // Standing at (or in the approach of) stop j: the rest of the stand, then the drive out of j.
-    const j = sit.zoneStop;
+    const j = repositioning ? restStop : sit.zoneStop;
     standingAt = j;
     leg = j;
     const hop = tables.hops[j]!;
@@ -300,20 +310,21 @@ export function priceRoute(
   const N = ring.N;
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
-  const chains = sits.map((s) => startChain(s, tables, r));
+  const restStop = belief.rested ? belief.restStop : -1;
+  const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
   // The lead chain: the heaviest situation on the lead leg (chains are in mass order).
   const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
-  // The clamp is keyed on the STAND's identity — the rest stop and its clock
-  // (filter.ts) — and holds while the lead is still inside the rest radius,
-  // standing or shuffling: a yard manoeuvre is the same stand, so the number
-  // must not restart from a higher raw value when the mode flips back. It
-  // releases the moment the bus leaves the radius (the rest resets). A lead
-  // driving on elsewhere is never clamped: a one-sided limiter on moving
-  // buses is the slew limiter the operator rejected.
-  const inRest = belief.rested && belief.restStop >= 0 && belief.restMask[Math.round(lead.sit.cell)] === 1;
-  const clampAt = lead.standingAt >= 0 ? lead.standingAt : inRest ? belief.restStop : -1;
+  // The clamp (#119): while the lead STANDS, the shown remainder may pause
+  // and never climb — min(previous shown, raw), keyed on the stand's stop and
+  // clock (the rest identity, filter.ts). While the lead is moving the floor
+  // is neither applied nor updated, but it is kept: a bus that pulls out of
+  // a depot and reverses into the yard returns to the SAME stand, and the
+  // number it showed before the pull-out is the ceiling again — not the
+  // drive-only figure the moving spell showed. The floor is dropped only
+  // when the rest itself ends (the clock changes).
+  const clampAt = lead.standingAt;
   const bufs = chains.map(() => new Float64Array(K));
   const leadBuf = new Float64Array(K);
   const anyMeasured = tables.hops.some((x) => x.measured);
@@ -372,18 +383,15 @@ export function priceRoute(
       low = Math.min(low, f10); high = Math.max(high, f90);
     }
     const key = chainKey(cur, o);
-    if (floors) {
+    if (floors && clampAt >= 0) {
       const prev = floors.map.get(key);
-      const standingAt = clampAt;
-      if (standingAt >= 0 && prev && prev.standingAt === standingAt && prev.since === clockSince) {
+      if (prev && prev.standingAt === clampAt && prev.since === clockSince) {
         const shown = Math.min(prev.eta, eta);
         const delta = shown - eta;
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
-        floors.map.set(key, { eta: shown, standingAt, since: clockSince });
-      } else if (standingAt >= 0) {
-        floors.map.set(key, { eta, standingAt, since: clockSince });
+        floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince });
       } else {
-        floors.map.delete(key);
+        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
       }
     }
     out.push({

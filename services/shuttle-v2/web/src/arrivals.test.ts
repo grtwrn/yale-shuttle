@@ -619,6 +619,6 @@ describe("splitServedForRoute — one predicate for the screen and the arithmeti
     const src = readFileSync(
       fileURLToPath(new URL("./arrivals.ts", import.meta.url)), "utf8",
     );
-    expect(src).toContain("const splitServed = splitServedForRoute(routeSegs, routeDwells)");
+    expect(src).toContain("const splitServed = LEGACY_SPLIT_ROUTE_IDS.has(cfg.routeIds[0] ?? \"\") && splitServedForRoute(routeSegs, routeDwells)");
   });
 });

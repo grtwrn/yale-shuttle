@@ -169,7 +169,7 @@ function tablesFor(
     bySegs.set(key, t);
     // The kernel's profile lives on the shared ring, so every call site —
     // including the table-free `resolveAnchorIndex` — steps with the same speeds.
-    setRingProfile(ring, t.hops.map((h) => h.speedMps), t.stops.map((st) => st.pStop), t.stops.map((st) => st.measured ? st.stand : null));
+    setRingProfile(ring, t.hops.map((h) => h.speedMps), t.stops.map((st) => st.pStop), t.stops.map((st) => st.measured ? st.stand : null), t.stops.map((st) => st.layover));
   }
   return t;
 }
