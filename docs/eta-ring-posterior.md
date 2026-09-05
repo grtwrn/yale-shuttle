@@ -132,15 +132,23 @@ gps-replay put the model at 415 s median against the legacy's 289 on Green,
 and every other line better). The dispatch is data-driven; the open item is
 Green's sequence, upstream.
 
-## 3. Display: a decision rule (`arrival.ts`)
+## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 
-Per (bus, stop): `eta` = quantile τ of the lead cluster, `low`/`high` = its
-10th and 90th percentiles. Situations whose medians lie within 12 minutes of
-the lead's are one cluster (a bus standing vs just departed); a lap apart they
-are not, and the number follows the lead leg's hysteresis instead of racing
-across the gap as a branch weight passes 0.5 — #88's failure. While another
-cluster still holds a fifth of the mass, the RANGE comes from the full
-mixture, so a 50/50 fold does not read as "17 s [13–23]". τ ships at 0.5.
+Per (bus, stop): `eta` = quantile τ of the LEAD SITUATION, `low`/`high` = its
+10th and 90th percentiles. The lead situation is a decision made in the
+filter, not a functional of the posterior: the lead LEG follows the mass
+forward once it has left the previous leg (0.8), jumps far only at 0.8, and
+holds against a leg behind it for five minutes (`leadLeg`); the lead MODE on
+that leg — standing or moving — switches only when the other mode holds 0.6
+of the leg's mass (`leadMode`, `LEAD_MODE_SWITCH`). Both replace the same
+failure: the standing and moving variants of a leg differ by the rest of a
+stand, and any number that mixes them by their raw masses flips a display
+bucket whenever the shares cross 0.5 — #88's racing median on a fold, and
+417 one-bucket reversals against master's 135 on the 9/3 Red replay when the
+lead cluster was still a weighted mixture. The range stays honest about the
+rest: while the lead holds less than 0.8 of the mass, `low`/`high` widen to
+the full mixture, so a 50/50 fold does not read as "17 s [13–23]". τ ships
+at 0.5.
 
 The #119 clamp stays, as a display rule keyed on the stand's identity: while
 the lead stands, the shown remainder may pause and never climb; while it

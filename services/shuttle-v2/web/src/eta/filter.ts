@@ -404,13 +404,31 @@ export function anchorLeg(b: Belief, ring: Ring, c: number, standing: boolean): 
   return standing ? b.standLeg[c]! : ring.leg[c]!;
 }
 
-/** The standing share of a leg's mass. */
+/**
+ * The standing share of a leg's mass, for the shown-mode decision.
+ *
+ * "Standing" here means AT THE STAND: the standing mass anchored on the leg
+ * plus the moving mass still inside the rest radius of the stand the bus is
+ * in. A first fresh fix off a stand moves most of the mass to MOVE by the
+ * departure prior (0.74 measured), and the next repeated fix — the bus
+ * re-froze 50 m on — moves it straight back: that is the filter being right
+ * about a bus that crept, and a mode decided on the raw share flipped with
+ * it, one poll out and one poll back, on every creep (2,393 reversals
+ * introduced against 56 fixed, 9/3 replay). Inside the radius the two
+ * hypotheses are not yet distinguishable by construction — a repeat there
+ * returns the bus to the SAME stand — so the decision waits until the mass
+ * is beyond it, which the drive covers in a poll or two.
+ */
 export function standingShare(b: Belief, ring: Ring, leg: number): number {
   const C = ring.C;
+  const masked = b.rested && b.restStop >= 0;
   let st = 0, mv = 0;
   for (let c = 0; c < C; c++) {
     if (b.standLeg[c] === leg) st += b.p[c]!;
-    if (ring.leg[c] === leg) mv += b.p[C + c]!;
+    if (ring.leg[c] === leg) {
+      if (masked && b.restMask[c] === 1) st += b.p[C + c]!;
+      else mv += b.p[C + c]!;
+    }
   }
   return st + mv > 0 ? st / (st + mv) : 0;
 }
@@ -588,7 +606,11 @@ export function stepBelief(
     lastFix: fresh ? { lat: bus.lat, lon: bus.lon } : prev.lastFix,
     fixAt: fresh ? now : prev.fixAt,
     restPoint: moved ? { lat: bus.lat, lon: bus.lon } : prev.restPoint,
-    restSince: moved ? now : prev.restSince,
+    // The rest's clock is its EARLIEST known origin: the server's clock
+    // when served (the collector's, which the stand tables were measured
+    // with), else the local one — and a creep inside the radius that costs
+    // the served clock must not restart the residual from zero.
+    restSince: moved ? (since ?? now) : Math.min(prev.restSince, since ?? Infinity),
     rested: moved ? false : prev.rested,
     restStop: moved ? -1 : prev.restStop,
     restApproach: moved ? false : prev.restApproach,

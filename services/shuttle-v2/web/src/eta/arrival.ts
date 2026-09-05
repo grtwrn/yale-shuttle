@@ -202,7 +202,7 @@ interface Chain {
   standingAt: number;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, asRest = false): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
@@ -215,8 +215,12 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
   // whole new stand on top of the thirteen minutes already stood (Red #304,
   // 14:06Z 9/3: 80 -> 262 s). Mass moving on the layover's OWN leg is the
   // departure hypothesis and keeps the drive-only price.
+  // `asRest`: the shown mode is "standing" (filter.ts `leadMode`) but no
+  // standing situation is left on the lead leg — the mass is moving inside
+  // the rest radius, on the stand's own leg. The number follows the
+  // decision: the rest continuing, then the drive out.
   const repositioning = !sit.standing && restStop >= 0 && sit.inRest >= 0.5
-    && tables.stops[restStop]!.layover && (sit.leg + 1) % N === restStop;
+    && ((tables.stops[restStop]!.layover && (sit.leg + 1) % N === restStop) || (asRest && sit.leg === restStop));
   if ((sit.standing && sit.zoneStop >= 0 && (!sit.approach || tables.stops[sit.zoneStop]!.layover)) || repositioning) {
     // Standing at (or in the approach of) stop j: the rest of the stand, then the drive out of j.
     const j = repositioning ? restStop : sit.zoneStop;
@@ -314,8 +318,14 @@ export function priceRoute(
   const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
   // The lead chain: the lead leg's situation in the SHOWN mode (a decision
   // with hysteresis, filter.ts `leadMode`), else the heaviest on the leg.
-  const lead = chains.find((c) => c.sit.leg === belief.lead && c.sit.standing === belief.leadStanding)
-    ?? chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
+  let lead = chains.find((c) => c.sit.leg === belief.lead && c.sit.standing === belief.leadStanding);
+  if (!lead && belief.leadStanding && restStop >= 0) {
+    // The decision says "at the stand" and only moving-inside-the-radius
+    // mass is left on the leg: price that situation as the rest continuing.
+    const i = chains.findIndex((c) => c.sit.leg === belief.lead && c.sit.inRest >= 0.5);
+    if (i >= 0) { lead = startChain(sits[i]!, tables, r, restStop, N, true); chains[i] = lead; }
+  }
+  lead ??= chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause

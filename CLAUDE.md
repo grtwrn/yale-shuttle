@@ -696,34 +696,53 @@ These are load-bearing; several rider-visible bugs traced to them:
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
 
-## The ring estimator (Red, 2026-09-05)
+## The ring estimator (every line, 2026-09-05)
 
-Red is priced by `web/src/eta/` — one probabilistic model instead of the
-anchor + gate + stall-credit + approach-zone stack — behind
-`MODEL_ROUTE_IDS` in `web/src/eta/index.ts`; every other route still runs the
-legacy arithmetic in `arrivals.ts`. `docs/eta-ring-posterior.md` is the
-design, the measured decisions and the paired numbers. The short form:
+Arrivals are priced by `web/src/eta/` — one probabilistic model instead of
+the anchor + gate + stall-credit + approach-zone stack. `MODEL_ROUTE_IDS` in
+`web/src/eta/index.ts` lists every route; the model DECLINES a route on its
+own evidence, never by name: a ring the published line cannot trace
+(`ring.bridged` — Green, whose served sequence is wrong) or a route with no
+measured drive at all (`tables.priced` false — the grocery lines) falls back
+to the legacy arithmetic in `arrivals.ts`. The legacy served split keeps its
+own list (`LEGACY_SPLIT_ROUTE_IDS`, Red and Blue Day), because serving
+tables to every route re-engaged it on Green and cost 77 strands.
+`docs/eta-ring-posterior.md` is the design, the measured decisions and the
+paired numbers. The short form:
 
 - **State** is a distribution over 30 m cells on the published polyline ×
   {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
   IS the feed's deadband: a repeated fix means "same cell", a fresh fix means
-  "new cell, near here". Table-free, so `resolveAnchorIndex` runs the same
-  step and the map, the cards and the countdown answer from one posterior.
-- **Price** is a distribution: every served quantile vector is a CDF
-  (`dist.ts`, `tables.ts`); the residual of a stand given the elapsed clock is
-  the survival form; chains are summed with common random numbers over ring
-  prefix sums (`arrival.ts`). The row shows quantile τ (0.5) and the 10–90
-  range. The #119 clamp stays as a display rule.
-- **Widen the allowlist route by route** on the rider simulator's
-  FIXED/INTRODUCED split, never by argument. The replays pair both arms in one
-  process: `MODEL_ROUTES=""|"3"` on `gps-replay.ts`, `CLIENT_ROOT` on the
-  rider-sim; `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`)
-  serves `q/drive/dq/pstop/pace` to a replay.
-- Constants in `filter.ts` are measured, not tuned, and each carries the
-  measurement it came from. Three were found on the 9/3 capture and are worth
-  knowing: the off-route floor + teleport (a detour must not teleport the bus
-  to the nearest branch), shuffles only in stop zones and bidirectional, and
-  the reposition-leaning departure prior after a layover-length stand.
+  "new cell, near here", with the measured repeat rates for each mode. Table
+  profile on the ring (`setRingProfile`): per-leg speed, per-stop P(stop),
+  stand table and layover flag. A move off a stand splits departure vs
+  reposition by the STOP'S OWN hazard against a measured shuffle rate; the
+  stand's identity (`restStop`, read off the belief) is what the clamp, the
+  chip and the layover approach all key on. `resolveAnchorIndex` runs the
+  same step, so the map, the cards and the countdown answer from one belief.
+- **Price** is a distribution: every served quantile vector is a CDF with a
+  log-linear survival between knots (`dist.ts`); stands shrink toward the
+  route's layover / ordinary pool, drives toward road metres × pace
+  (`tables.ts`, per-occurrence stands `id#index`); chains are summed with
+  common random numbers over ring prefix sums (`arrival.ts`).
+- **Display is a decision, never a mixture median.** The lead LEG and the
+  lead MODE (standing vs moving) each switch with hysteresis in the filter;
+  the row shows quantile τ (0.5) of that one situation and a 10–90 range that
+  widens to the full mixture while the lead holds under 0.8. The #119 clamp
+  stays as a display rule keyed on the rest identity, kept (not applied)
+  across a moving spell. Mixing the modes by mass tripled one-bucket
+  reversals; do not reintroduce it.
+- **Gate every change** with the rider simulator's FIXED/INTRODUCED split
+  per route (`pair-by-route.mjs`), the chain block first, then `gps-replay.ts`
+  both arms. The replays pair both arms in one process: `MODEL_ROUTES` on
+  `gps-replay.ts`, `CLIENT_ROOT` on the rider-sim;
+  `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`) serves
+  `q/drive/dq/pstop/pace` to a replay.
+- Constants in `filter.ts` are measured or derived, not tuned, and each
+  carries the measurement it came from (the off-route emission weight is
+  derived from the loop length, not a floor). A case the model gets wrong is
+  fixed by finding which of the kernel, the likelihood, the tables or the
+  display rule is wrong — not by a new rule.
 
 ## ETA accuracy: measure with the replay, not by eye
 

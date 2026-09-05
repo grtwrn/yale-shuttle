@@ -105,28 +105,41 @@ describe("arrival: the sum of the chain", () => {
     expect(row.stopsAhead).toBe(1);
   });
 
-  it("the departure poll moves the number to the drive, and the next poll finishes it", () => {
+  it("the departure moves the number to the drive once the bus is beyond the rest radius", () => {
     const { ring, tables } = setup();
     let now = 300_000;
     let b = stepBelief(undefined, ring, standAt1(0), now - 30_000, STOPS);
     for (let t = 1; t <= 6; t++) b = stepBelief(b, ring, standAt1(0), now - 30_000 + t * 5000, STOPS);
     const before = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
-    // Departure: a fresh fix 35 m on, no server clock any more.
+    // A first fresh fix 35 m on, no server clock any more: inside the rest
+    // radius the bus may be creeping — a repeat there would put it back on
+    // the SAME stand — so the shown mode stays "standing" (filter.ts
+    // `standingShare`) and the number is the rest continuing, then the
+    // drive: it does not climb, and it does not yet collapse.
     now += 5000;
     b = stepBelief(b, ring, { lat: at(35, 0).lat, lon: at(35, 0).lon }, now, STOPS);
     const dep = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
-    expect(dep.eta).toBeLessThan(before.eta - 60);
-    expect(dep.eta).toBeLessThan(quantile(tables.hops[0]!.drive, 0.9) + 5);
+    expect(dep.standingAt).toBe(0);
+    expect(dep.eta).toBeLessThanOrEqual(before.eta + 10);
+    // ...and the range already carries the departure hypothesis.
+    expect(dep.low).toBeLessThan(quantile(tables.hops[0]!.drive, 0.5));
     now += 5000;
     b = stepBelief(b, ring, { lat: at(70, 0).lat, lon: at(70, 0).lon }, now, STOPS);
-    const after = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
-    expect(after.eta).toBeLessThan(dep.eta);
-    // After the second fresh fix 0.87 has left (measured), so q90 still reads
-    // the standing branch; the third settles it (0.95) and the range collapses.
+    const second = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
+    expect(second.eta).toBeLessThanOrEqual(dep.eta + 10);
+    // Beyond REST_RADIUS_M the rest has ended and a repeat could no longer
+    // return the bus to it: the decision flips and the number is the drive.
     now += 5000;
-    b = stepBelief(b, ring, { lat: at(105, 0).lat, lon: at(105, 0).lon }, now, STOPS);
-    const third = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
-    expect(third.high - third.low).toBeLessThan(110); // the drive's own q10-q90 spread is ~90 s at this fraction
+    b = stepBelief(b, ring, { lat: at(140, 0).lat, lon: at(140, 0).lon }, now, STOPS);
+    const gone = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
+    expect(gone.standingAt).toBe(-1);
+    expect(gone.eta).toBeLessThan(before.eta - 60);
+    expect(gone.eta).toBeLessThan(quantile(tables.hops[0]!.drive, 0.9) + 5);
+    now += 5000;
+    b = stepBelief(b, ring, { lat: at(175, 0).lat, lon: at(175, 0).lon }, now, STOPS);
+    const fourth = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
+    expect(fourth.eta).toBeLessThan(gone.eta);
+    expect(fourth.high - fourth.low).toBeLessThan(110); // the drive's own q10-q90 spread is ~90 s at this fraction
   });
 
   it("the shown number never climbs while the bus stands (the clamp), and the clamp releases on departure", () => {
@@ -149,9 +162,15 @@ describe("arrival: the sum of the chain", () => {
       expect(row.eta).toBeGreaterThan(quantile(tables.hops[0]!.drive, 0.5) - 1);
     }
     expect(ticked).toBeGreaterThan(20);
-    // Departure releases it: the number drops to the drive.
-    const now = t0 + 705_000;
+    // Departure releases it: inside the rest radius the floor still holds
+    // (the bus may be creeping); beyond it the number drops to the drive.
+    let now = t0 + 705_000;
     b = stepBelief(b, ring, { lat: at(35, 0).lat, lon: at(35, 0).lon }, now, STOPS);
+    const creep = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0)!;
+    expect(creep.standingAt).toBe(0);
+    expect(creep.eta).toBeLessThanOrEqual(prevEta + 1e-9);
+    now += 5000;
+    b = stepBelief(b, ring, { lat: at(140, 0).lat, lon: at(140, 0).lon }, now, STOPS);
     const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0)!;
     expect(row.standingAt).toBe(-1);
     expect(row.eta).toBeLessThan(quantile(tables.hops[0]!.drive, 0.9) + 5);
