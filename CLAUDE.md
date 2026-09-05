@@ -696,6 +696,35 @@ These are load-bearing; several rider-visible bugs traced to them:
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
 
+## The ring estimator (Red, 2026-09-05)
+
+Red is priced by `web/src/eta/` — one probabilistic model instead of the
+anchor + gate + stall-credit + approach-zone stack — behind
+`MODEL_ROUTE_IDS` in `web/src/eta/index.ts`; every other route still runs the
+legacy arithmetic in `arrivals.ts`. `docs/eta-ring-posterior.md` is the
+design, the measured decisions and the paired numbers. The short form:
+
+- **State** is a distribution over 30 m cells on the published polyline ×
+  {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
+  IS the feed's deadband: a repeated fix means "same cell", a fresh fix means
+  "new cell, near here". Table-free, so `resolveAnchorIndex` runs the same
+  step and the map, the cards and the countdown answer from one posterior.
+- **Price** is a distribution: every served quantile vector is a CDF
+  (`dist.ts`, `tables.ts`); the residual of a stand given the elapsed clock is
+  the survival form; chains are summed with common random numbers over ring
+  prefix sums (`arrival.ts`). The row shows quantile τ (0.5) and the 10–90
+  range. The #119 clamp stays as a display rule.
+- **Widen the allowlist route by route** on the rider simulator's
+  FIXED/INTRODUCED split, never by argument. The replays pair both arms in one
+  process: `MODEL_ROUTES=""|"3"` on `gps-replay.ts`, `CLIENT_ROOT` on the
+  rider-sim; `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`)
+  serves `q/drive/dq/pstop/pace` to a replay.
+- Constants in `filter.ts` are measured, not tuned, and each carries the
+  measurement it came from. Three were found on the 9/3 capture and are worth
+  knowing: the off-route floor + teleport (a detour must not teleport the bus
+  to the nearest branch), shuffles only in stop zones and bidirectional, and
+  the reposition-leaning departure prior after a layover-length stand.
+
 ## ETA accuracy: measure with the replay, not by eye
 
 `docs/eta-accuracy.md` records the 2026-09-02 replay of the exact client

@@ -62,7 +62,12 @@
  *      reads that the snapshot's calibrator does not serve yet, merged into
  *      the time-travelled tables after they are built: e.g. PR #81's
  *      `segments[route]["A-B"].drive` and `dwells[route][stop].q`. Shape:
- *      {"segments": {"3": {"11-146": {"drive": 82}}}, "dwells": {"3": {"11": {"q": [120, 240, 420, 600]}}}}.
+ *      {"segments": {"3": {"11-146": {"drive": 82}}}, "dwells": {"3": {"11": {"q": [120, 240, 420, 600]}}},
+ *       "pace": {"3": {"spm": [0.08, ...], "n": 1275}}}.
+ *      `pace[route]` is folded into the reserved `segments[route]["__pace"]`
+ *      carrier row exactly as the live server does (PACE_KEY / paceCarrier
+ *      in src/server/v1compat.ts), so the client's signature is unchanged.
+ *      `scripts/eta-replay/model-patch.ts` writes the file from a snapshot.
  *      A tree that ignores the fields is byte-identical with or without it.
  */
 import fs from "node:fs";
@@ -84,6 +89,7 @@ import {
   type AdjEntry,
 } from "../common.js";
 import { distanceMeters } from "../../../src/network/geo.js";
+import { PACE_KEY, paceCarrier, type PaceEntry } from "../../../src/server/v1compat.js";
 import {
   aggregate,
   chainSummary,
@@ -275,13 +281,20 @@ function segmentsAt(t: number) {
     const st: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
     for (const r of net.routes) st[String(r.id)] = segmentTimesFor(adjByRoute.get(r.id)!, serveRoute(adjByRoute.get(r.id)!, bc.byName.base));
     segCache.set(bs, (p = applyPatch(st, patch?.segments)));
+    // The route pace travels INSIDE segmentTimes as the reserved carrier row,
+    // which is the only way it reaches computeUpcomingArrivals(..., segs, ...)
+    // without changing the contract every replay depends on. Same row the live
+    // payload carries (`segments[rid][PACE_KEY]`), built by the same function,
+    // so its `n` is 0 and the existing client's fallback spread — an average
+    // of `avg` over rows with n >= 2 — cannot see it.
+    if (patch?.pace) for (const [rid, entry] of Object.entries(patch.pace)) (p[rid] ??= {})[PACE_KEY] = paceCarrier(entry);
   }
   return p;
 }
 const dwellCache = makeDwellCache(net, dataStart, dataEnd);
 const dwellsAt0 = (t: number) => dwellCache.at(calibCache.bucketStart(t));
 /** PAYLOAD_PATCH: fields the candidate reads that the snapshot cannot serve (see header). */
-interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>> }
+interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
 const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
 const patched = new WeakSet<object>();
 type PatchTable = Record<string, Record<string, Record<string, unknown>>>;
@@ -296,7 +309,7 @@ function applyPatch<T extends PatchTable>(table: T, extra: PayloadPatch["segment
   return table;
 }
 const dwellsAt = (t: number) => applyPatch(dwellsAt0(t), patch?.dwells);
-if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys`);
+if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 {
   const segMax = (net.db.prepare("SELECT max(started_at) m FROM segments").get() as { m: number }).m;
   if (segMax < dataEnd - 3_600_000) log(`WARNING: snapshot segments end ${new Date(segMax).toISOString()}, ${((dataEnd - segMax) / 3_600_000).toFixed(1)} h before the capture ends — calibration for the tail is missing its newest samples; take a fresher snapshot`);
@@ -623,7 +636,12 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
     ? arrivalsMod.nextArrivalAfterPinned(live, u.busName, busEtaLive)
     : (live.filter((x) => x.eta > busEtaLive + 30).sort((x, y) => x.eta - y.eta)[0] ?? null);
   const token = formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
-  return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest };
+  // The estimator's own interval for the pinned arrival, for the coverage
+  // score: the entry the card is following, or 0-0 for a bus at the kerb.
+  const pinnedEntry = live.filter((x) => norm(x.busName) === norm(u.busName)).sort((x, y) => x.eta - y.eta)[0];
+  const lowSec = hereBus ? 0 : pinnedEntry ? pinnedEntry.low : null;
+  const highSec = hereBus ? 0 : pinnedEntry ? pinnedEntry.high : null;
+  return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest, lowSec, highSec };
 }
 
 {

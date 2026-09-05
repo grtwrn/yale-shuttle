@@ -3,11 +3,14 @@
 import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
 import { anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
+import { arrivalsForBus, modelPricesRoute, modelServesRoute, ringForBus } from "./eta";
+import { residualMedian } from "./eta/dist";
+import { classPools, stopModel } from "./eta/tables";
 import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
-import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
+import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from "./routes";
 
 /**
  * `drive`, when served, is the seconds from the last poll at the from-stop to
@@ -179,7 +182,14 @@ export function billedDwellSec(
 export function splitServedForRoute(
   routeSegs: Record<string, SegmentStat>,
   routeDwells: Record<string, DwellStat>,
+  /**
+   * The route, when the caller has it: a route the ring estimator prices
+   * never runs the legacy split, whatever its tables carry (the tables are
+   * now served for every route, and the split was measured to strand Purple).
+   */
+  cfg?: RouteListConfig,
 ): boolean {
+  if (cfg && modelServesRoute(cfg)) return false;
   return Object.values(routeSegs).some(driveAdequate)
     && Object.values(routeDwells).some(standAdequate);
 }
@@ -252,7 +262,20 @@ export function shownStandSec(
    * the tests call.
    */
   floor?: StandFloorCtx,
+  /**
+   * On a route the ring estimator prices, the chip reads the model's own
+   * stand table — the class-shrunk survival curve — at the same elapsed
+   * clock the countdown is billed under, so the two cannot disagree.
+   */
+  model?: { routeDwells: Record<string, DwellStat> },
 ): ShownStand | null {
+  if (model && stat && stat.q && stat.q.length >= 3) {
+    const m = stopModel(stat, classPools(model.routeDwells));
+    if (elapsedSec !== null) {
+      return { sec: residualMedian(m.stand, elapsedSec), remaining: true, typicalSec: residualMedian(m.stand, 0) };
+    }
+    return { sec: residualMedian(m.stand, 0), remaining: false };
+  }
   if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
     return {
       sec: floor
@@ -363,6 +386,32 @@ export function computeUpcomingArrivals(
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
     const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
+
+    // A route the ring estimator serves (web/src/eta/) is priced from a
+    // distribution on the ring: no point anchor, no credit, no proration.
+    // Falls through to the legacy arithmetic only when the route's geometry
+    // cannot be traced, the same condition under which `legGeometry` gives up.
+    const ring = modelServesRoute(cfg) && routeBuses[0] ? ringForBus(routeBuses[0], stops, stopCoords) : null;
+    if (ring && modelPricesRoute(ring, stops, stopCoords, routeSegs, routeDwells)) {
+      let priced = false;
+      for (const bus of routeBuses) {
+        const rows = arrivalsForBus(
+          anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
+          routeSegs, routeDwells, targetSet, now,
+        );
+        if (!rows) break;
+        priced = true;
+        for (const row of rows) {
+          result.push({
+            eta: row.eta, low: row.low, high: row.high,
+            routeLabel: cfg.label, color: cfg.color,
+            busName: bus.bus_name.replace("#", ""),
+            stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
+          });
+        }
+      }
+      if (priced) continue;
+    }
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
@@ -373,6 +422,9 @@ export function computeUpcomingArrivals(
     // below this line behaves differently from before it existed.
     // Shared with the pause chip on screen (see shownStandSec) so the number
     // shown and the number billed cannot come from two different rules.
+    // The legacy split runs here only when the model did NOT price the route
+    // (no traceable ring, or no measured drive in its tables), so it is gated
+    // on the tables alone — not on the allowlist, which is now every route.
     const splitServed = splitServedForRoute(routeSegs, routeDwells);
 
     for (const bus of routeBuses) {

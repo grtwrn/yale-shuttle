@@ -17,7 +17,7 @@
 import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
-import type { TransitNetwork } from "../network/TransitNetwork.js";
+import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode, normalizeName, relevanceOf } from "./geocode.js";
 import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
@@ -28,10 +28,101 @@ const round1 = (x: number): number => Math.round(x * 10) / 10;
  * One hop / one stop in the v1 payload. `avg`/`sd`/`n` and `med`/`sd`/`n` are
  * v1's arrival-to-arrival numbers; `drive`/`driveN` and `q`/`qn` are the
  * stand/drive split the client's `hopPricing.ts` consumes — mirror its
- * `SegmentStat` / `DwellStat` types in `web/src/arrivals.ts`.
+ * `SegmentStat` / `DwellStat` types in `web/src/arrivals.ts`. `dq`/`dqn`,
+ * `pstop` and the route `pace` are what the probabilistic estimator reads
+ * (docs: the ring plan); every one is additive, so a client that ignores
+ * them is byte-identical.
  */
-type SegmentEntry = { avg: number; sd: number; n: number; drive?: number; driveN?: number };
-type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number };
+export type SegmentEntry = {
+  avg: number; sd: number; n: number;
+  drive?: number; driveN?: number;
+  dq?: number[]; dqn?: number;
+  /**
+   * Road metres of the hop along the published line, whole metres — the
+   * length the route `pace` is per, and the length the client's ring cuts the
+   * leg into; absent where the line cannot supply the hop (see
+   * {@link TransitNetwork.getLegMeters}). Static geometry, not calibration.
+   */
+  legM?: number;
+  /** Only on the {@link PACE_KEY} carrier row — see {@link paceCarrier}. */
+  spm?: number[]; spmN?: number;
+};
+/**
+ * One stop of `dwells[route]`. Keyed by stop id for the pooled entry; a stop
+ * the route lists more than once ALSO carries one entry per pass under
+ * `"<stop>#<index>"` (`stop_index` in the route's raw sequence), where
+ * `med`/`sd`/`n` are that pass's stand summary (median, p90 − median, count)
+ * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
+ */
+export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
+/** `pace[route]`: seconds per ROAD metre (`legM`; chord where absent), quantiles at (i + 0.5) / spm.length, 4 decimals. */
+export type PaceEntry = { spm: number[]; n: number };
+
+const round3 = (x: number): number => Math.round(x * 1000) / 1000;
+const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
+
+/**
+ * The split fields of one hop, exactly as they go on the wire — whole seconds
+ * (the feed's poll quantum is 5 s) and the TRUE counts (the client gates on
+ * them; the server never pre-filters). Exported so the offline replay
+ * (`scripts/eta-replay/model-patch.ts`) emits the same bytes from a snapshot.
+ */
+export function segmentSplitFields(s: SegmentStats): Pick<SegmentEntry, "drive" | "driveN" | "dq" | "dqn"> {
+  return {
+    // The DRIVE half of the hop, on the at_stop_since clock, with the legs
+    // behind it — the client prorates this en route instead of `avg`
+    // (web/src/hopPricing.ts) once `driveN` clears its gate.
+    ...(s.drive !== undefined && s.driveN !== undefined ? { drive: Math.round(s.drive), driveN: s.driveN } : {}),
+    // The WHOLE hop's quantiles (leg_sec: drive + holds), what the estimator
+    // sums over; `dqn` is its gate.
+    ...(s.dq !== undefined && s.dqn !== undefined ? { dq: s.dq.map((x) => Math.round(x)), dqn: s.dqn } : {}),
+  };
+}
+
+/** `legM` for one hop, as it goes on the wire: whole metres, absent where the line cannot supply the hop. */
+export function legMetersField(net: TransitNetwork, routeId: number, fromStopId: number, toStopId: number): Pick<SegmentEntry, "legM"> {
+  const m = net.getLegMeters(routeId, fromStopId, toStopId);
+  return m !== undefined ? { legM: Math.round(m) } : {};
+}
+
+/** The split fields of one stop, as they go on the wire (see {@link segmentSplitFields}). */
+export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop"> {
+  return {
+    // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
+    // whole seconds, with the stopped visits behind them. This is the
+    // `stand` half the client conditions on r with; `qn` is its gate.
+    ...(d.q !== undefined && d.qn !== undefined ? { q: d.q.map((x) => Math.round(x)), qn: d.qn } : {}),
+    // P(stop) over every visit, pinned or not (DwellStats.pstop), 3 decimals.
+    ...(d.pstop !== undefined ? { pstop: round3(d.pstop) } : {}),
+  };
+}
+
+/** `pace[route]` as it goes on the wire: 4 decimals, the true count. */
+export function paceEntry(p: PaceStats): PaceEntry {
+  return { spm: p.spm.map(round4), n: p.n };
+}
+
+/**
+ * The reserved key under which a route's pace ALSO rides inside
+ * `segments[route]`, so it reaches `computeUpcomingArrivals(..., segmentTimes,
+ * ...)` through its unchanged signature (the rider-sim contract in
+ * docs/rider-sim.md). The top-level `pace` field is the documented shape; this
+ * is the transport.
+ */
+export const PACE_KEY = "__pace";
+
+/**
+ * The carrier row for {@link PACE_KEY}. It MUST be inert to the client that
+ * exists today: `computeUpcomingArrivals` averages `avg` over every row of
+ * `segments[route]` with `n >= 2` for its fallback spread, and
+ * `splitServedForRoute` scans every row for `driveN`. So `n` is 0 here — the
+ * pace's own count is `spmN` — and there is no `driveN`. A client that never
+ * reads `spm` is byte-identical with or without this row; the estimator reads
+ * `segmentTimes[route][PACE_KEY].spm` / `.spmN`.
+ */
+export function paceCarrier(p: PaceEntry): SegmentEntry {
+  return { avg: 0, sd: 0, n: 0, spm: p.spm, spmN: p.n };
+}
 
 // -- /api/buses ---------------------------------------------------------------
 
@@ -84,6 +175,7 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
   const route_paths: Record<string, [number, number][]> = {};
   const segments: Record<string, Record<string, SegmentEntry>> = {};
   const dwells: Record<string, Record<string, DwellEntry>> = {};
+  const pace: Record<string, PaceEntry> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -117,12 +209,19 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
       const s = net.getSegmentStats(r.id, from, to);
       segMap[`${from}-${to}`] = {
         avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
-        // The DRIVE half of the hop, on the at_stop_since clock, with the legs
-        // behind it — the client prorates this en route instead of `avg`
-        // (web/src/hopPricing.ts) once `driveN` clears its gate. Whole
-        // seconds: the feed's poll quantum is 5 s.
-        ...(s.drive !== undefined && s.driveN !== undefined ? { drive: Math.round(s.drive), driveN: s.driveN } : {}),
+        ...segmentSplitFields(s),
+        ...legMetersField(net, r.id, from, to),
       };
+    }
+    // The route's pooled pace, twice: as `pace[rid]` (the documented shape)
+    // and as the inert carrier row `segments[rid][PACE_KEY]`, which is how it
+    // reaches the client's arrivals math without a signature change. Absent
+    // on both sides wherever the calibrator has none (withheld, or no legs).
+    const p = net.getPace(r.id);
+    if (p) {
+      const entry = paceEntry(p);
+      pace[rid] = entry;
+      segMap[PACE_KEY] = paceCarrier(entry);
     }
     segments[rid] = segMap;
 
@@ -134,11 +233,18 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         // `low` is what the client bills for a dwell the bus has not started
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
-        // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
-        // whole seconds, with the stopped visits behind them. This is the
-        // `stand` half the client conditions on r with; `qn` is its gate.
-        ...(d.q !== undefined && d.qn !== undefined ? { q: d.q.map((x) => Math.round(x)), qn: d.qn } : {}),
+        ...dwellSplitFields(d),
       };
+    }
+    // A stop the route lists more than once (the West Campus out-and-backs)
+    // also carries one entry per PASS, `"<stop>#<index>"`, when the calibrator
+    // has a table for that pass. See DwellEntry.
+    for (let i = 0; i < n; i++) {
+      const sid = r.stops[i]!;
+      if (net.positionsOnRoute(r.id, sid).length < 2) continue;
+      const d = net.getOccurrenceDwellStats(r.id, sid, i);
+      if (!d) continue;
+      dwMap[`${sid}#${i}`] = { med: round1(d.mean), sd: round1(d.stddev), n: d.n, ...dwellSplitFields(d) };
     }
     dwells[rid] = dwMap;
   }
@@ -163,6 +269,9 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     stop_coords,
     segments,
     dwells,
+    // Per-route pooled pace for the probabilistic estimator's thin-cell
+    // prior; `{}` until a route has legs. See PaceEntry / PACE_KEY.
+    pace,
     dwells_by_bus: {},
     route_peaks,
     route_hours,

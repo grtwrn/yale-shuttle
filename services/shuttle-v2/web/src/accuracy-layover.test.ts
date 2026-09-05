@@ -24,7 +24,7 @@
 // Regenerate the fixture with `node scripts/record-layover-pass.mjs` (see its
 // header) after a route change; commit the new file, and say in the PR what
 // moved.
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
@@ -35,6 +35,7 @@ import type { AnchorStore } from "./anchorGate";
 
 import pass from "./__fixtures__/red-layover-pass.json";
 import splitTables from "./__fixtures__/red-split-tables.json";
+import incidents from "./__fixtures__/anchor-incidents.json";
 
 const routeStops: Record<string, number[]> = pass.routeStops;
 const stopCoords: Record<number, LatLon> = pass.stopCoords as unknown as Record<number, LatLon>;
@@ -309,6 +310,104 @@ describe(`Red through the ${names[pass.layoverStopId]} layover, with the stand/d
         `${names[stopId]}: at ${new Date(worst.at).toISOString().slice(11, 19)} the board said ` +
           `${Math.round(worst.shown)} s while the bus was ${Math.round(worst.truth)} s away`,
       ).toBeLessThan(120);
+    }
+  });
+});
+
+/**
+ * THE RING ESTIMATOR (web/src/eta/). The blocks above register no route
+ * polyline, which sends Red down the legacy arithmetic; a browser always has
+ * the published line (it arrives in the same payload as the buses), and with
+ * it Red is priced from a distribution on the ring. Same recording, same
+ * split tables, the same four promises: never much earlier than the bus,
+ * within two minutes on the median, never climbing while the bus stands, and
+ * 5 -> 1 on the poll it leaves.
+ */
+describe(`Red through the ${names[pass.layoverStopId]} layover, priced on the ring`, () => {
+  const redPath = (incidents as unknown as { routes: Record<string, { path: [number, number][] }> }).routes["3"]!.path;
+  beforeEach(() => registerRoutePaths({ "3": redPath }));
+  afterEach(() => registerRoutePaths(null));
+
+  const segmentsSplit: SegmentTimes = JSON.parse(JSON.stringify(pass.segments));
+  const dwellsSplit: DwellTimes = JSON.parse(JSON.stringify(pass.dwells));
+  for (const [r, tab] of Object.entries(splitTables.segments)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (segmentsSplit[r]?.[k]) Object.assign(segmentsSplit[r]![k]!, v);
+    }
+  }
+  for (const [r, tab] of Object.entries(splitTables.dwells)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (dwellsSplit[r]?.[k]) Object.assign(dwellsSplit[r]![k]!, v);
+    }
+  }
+  const boardFor = (store?: AnchorStore) => (stopId: number, t: number): number | null => {
+    const arrivals = computeUpcomingArrivals(
+      [stopId], [busAt(t)], routeStops, stopCoords, segmentsSplit, t, dwellsSplit, store,
+    ).filter((a) => a.routeLabel === pass.routeLabel);
+    return arrivals.length > 0 ? arrivals[0]!.eta : null;
+  };
+  const standingMoments = momentsBetween(layover.arrivedAt, LEFT_AT - 1);
+
+  it("the board never climbs while the bus stands still", () => {
+    const board = boardFor(new Map());
+    let prev = Infinity;
+    for (const t of standingMoments) {
+      const eta = board(48, t);
+      if (eta === null) continue;
+      expect(eta, `climbed at ${new Date(t).toISOString().slice(11, 19)}`).toBeLessThanOrEqual(prev + 0.5);
+      prev = eta;
+    }
+  });
+
+  it("the departure collapses the number on the poll it happens", () => {
+    const board = boardFor(new Map());
+    const lastStanding = standingMoments.at(-1)!;
+    const firstGone = pass.positions.map((p) => p.t).find((t) => t >= LEFT_AT)!;
+    const secondGone = pass.positions.map((p) => p.t).filter((t) => t > firstGone)[0]!;
+    const held = board(48, lastStanding)!;
+    const gone = board(48, firstGone)!;
+    const gone2 = board(48, secondGone)!;
+    // The number before departure is already the conditional residual of a
+    // stand that has run past its p75, so it is small; the departure still
+    // takes the standing term out of it in one or two polls.
+    expect(Math.min(gone, gone2)).toBeLessThan(Math.min(held - 30, held * 0.7));
+  });
+
+  it("never promises the bus much earlier than it comes, and after the departure is within a minute on the median", () => {
+    // This pass is a 9 min 45 s stand against a table whose median is ~5 min:
+    // the arrival distribution's median is honestly two minutes early for
+    // most of it, and a single pass cannot judge a median (the rider
+    // simulator does, over thousands). What one pass CAN judge: the promise
+    // is never much later than the bus, and once the bus has left, the drive
+    // is priced to within a minute.
+    const board = boardFor(new Map());
+    for (const stopId of [48, 104]) {
+      const truth = actualArrivalAt(stopId, LEFT_AT)!;
+      let worst = { at: 0, pessimisticBy: 0, shown: 0, truth: 0 };
+      const errs: number[] = [];
+      for (const t of momentsBetween(pass.positions[0]!.t, truth)) {
+        const eta = board(stopId, t);
+        if (eta === null) continue;
+        const err = eta - (truth - t) / 1000;
+        errs.push(Math.abs(err));
+        if (err > worst.pessimisticBy) Object.assign(worst, { at: t, pessimisticBy: err, shown: eta, truth: (truth - t) / 1000 });
+      }
+      expect(
+        worst.pessimisticBy,
+        `${names[stopId]}: at ${new Date(worst.at).toISOString().slice(11, 19)} the board said ` +
+          `${Math.round(worst.shown)} s while the bus was ${Math.round(worst.truth)} s away`,
+      ).toBeLessThan(120);
+      const after: number[] = [];
+      for (const t of momentsBetween(LEFT_AT, truth)) {
+        const eta = board(stopId, t);
+        if (eta === null) continue;
+        after.push(Math.abs(eta - (truth - t) / 1000));
+      }
+      after.sort((a, b) => a - b);
+      expect(after.length).toBeGreaterThan(3);
+      // Four hops of drives and kerb stands carry ~60 s of spread between them.
+      expect(after[after.length >> 1]!, `${names[stopId]} median |error| after departure`).toBeLessThan(90);
+      expect(errs.length).toBeGreaterThan(20);
     }
   });
 });

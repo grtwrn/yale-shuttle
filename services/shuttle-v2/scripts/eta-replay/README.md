@@ -160,6 +160,29 @@ window), `REPLAY_DB`, `CLIENT_ROOT`, `ROUTES=Red|all|…`, `HOLDOUT=Green,Purple
 restarts on every deploy), `CALIB_LAG_MIN`, `TRACE=1` (every poll of every
 named rider: bus, anchor, live list, text), `OUT_NAME`.
 
+**The time-travelled replicas serve v1's fields only** (`{avg, sd, n}` per
+hop, `{med, sd, n, low}` per stop). Everything production serves beyond that —
+the stand/drive split (`drive`/`driveN`, `q`/`qn`) and the probabilistic
+estimator's inputs (`dq`/`dqn`, `pstop`, the route `pace`) — reaches the
+replayed client only through `PAYLOAD_PATCH`, a single table merged once into
+every hour bucket (so it is calibrated at ONE instant, not time-travelled;
+`model-patch.ts` says what that costs). Without it every hop takes the
+pre-split fallback path, silently. `model-patch.ts` writes the file from the
+snapshot through the calibrator's own loaders and `v1compat.ts`'s own
+emitters, so the bytes match the live payload:
+
+```bash
+TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/model-patch.ts
+#   MODEL_OUT=path  MODEL_NOW=ISO  MODEL_ROUTES=all|served  (default: all = production; served = the pre-2026-09-05 allowlist)
+TZ=America/New_York REPLAY_DB=./store/snap.db PAYLOAD_PATCH=./scripts/.eta-replay/model-patch.json \
+  npx tsx scripts/eta-replay/rider-sim/run.ts ...
+```
+
+`pace[route]` is folded by `run.ts` into the reserved `segments[route]["__pace"]`
+carrier row (`PACE_KEY` / `paceCarrier` in `src/server/v1compat.ts`), exactly
+as the live payload carries it, so `computeUpcomingArrivals`'s signature — the
+contract every replay here depends on — is unchanged.
+
 It calls the real client — `planTrip`, `computeUpcomingArrivals` with a
 per-rider `AnchorStore`, `pickLiveArrival` against the plan-time pin,
 `nextArrivalAfterPinned`, `fmtBusPair` — and the real detector, all imported

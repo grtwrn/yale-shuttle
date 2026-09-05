@@ -510,6 +510,10 @@ describe("last_stop_id excludes, it does not rank (report #95)", () => {
     expect(visited).toContain("Canal / Munson");
     expect(visited).toContain("344 Winchester");
     expect(stops.indexOf(3 /* 130 Prospect (N) */)).toBeLessThan(prev);
-    expect(INC.stopNames[String(stops[prev]!)]).toBe("Winchester / Division");
+    // Master's gate ends this trace at Winchester / Division. The ring
+    // estimator (web/src/eta/, which answers for Red here) is a leg further on
+    // at 11:46:58 — the bus is 221 m past 344 Winchester and the hop to
+    // Winchester / Division is 112 m — so the bound is "at or past it".
+    expect(prev).toBeGreaterThanOrEqual(stops.indexOf(146 /* Winchester / Division */));
   });
 });
