@@ -77,7 +77,7 @@ export function resolveAnchorIndex(
   // untouched for every other route.
   if (bus.route_id !== undefined && modelRouteIds().has(String(bus.route_id))) {
     const ring = ringFor(bus.route_id, routePathFor(bus.route_id), stops, stopCoords);
-    if (ring) return beliefFor(store, key, bus as never, ring, stops, now).lead;
+    if (ring && !ring.bridged) return beliefFor(store, key, bus as never, ring, stops, now).lead;
   }
   const travelFrom = store ? noteFix(store, key, bus, now) : null;
   const raw = findRouteAnchor(bus, stops, stopCoords, travelFrom);

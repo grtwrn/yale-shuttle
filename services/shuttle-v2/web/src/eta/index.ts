@@ -110,6 +110,7 @@ export function arrivalsForBus(
   now: number,
   tau = DISPLAY_TAU,
 ): StopArrival[] | null {
+  if (ring.bridged) return null;
   const tables = tablesFor(ring, stops, stopCoords, routeSegs, routeDwells);
   if (!tables.priced) return null;
   const belief = beliefFor(store, key, bus, ring, stops, now);
@@ -124,6 +125,14 @@ export function arrivalsForBus(
 
 /** Whether the model prices this route's payload at all (its tables carry a measured drive). */
 export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>, routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>): boolean {
+  // A route whose published line cannot be traced through its stop sequence
+  // (a leg had to be bridged with a chord) is a route whose sequence does not
+  // describe how the buses drive: Green's West Campus spur, where buses call
+  // at West Haven station before Building 900 on the return and the served
+  // leg times carry the station stop inside an 11 km highway hop. No model
+  // on that ring can be right, and the legacy arithmetic is no worse. The
+  // condition is the geometry's, not a route list.
+  if (ring.bridged) return false;
   return tablesFor(ring, stops, stopCoords, routeSegs, routeDwells).priced;
 }
 
