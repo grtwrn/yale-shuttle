@@ -172,3 +172,28 @@ sat a minute, then left). The reposition prior after a long stand halved the
 count (580 → 510 introduced); what is left is the number honestly following a
 bus that really did turn round. The next lever is a per-stop reposition prior
 from `stop_visits.shuffles`, which the calibrator does not serve yet.
+
+### rider-sim, 9/4 capture (the re-dumped window: 9/3 09:51 – 9/4 22:15), paired against master
+
+18,460 paired waits (Red 15,530), `model-patch-0904.json`. Chain, Division /
+Prospect (261 waits): strand 19.5 → 3.4%, jump ≥180 s 13.8 → 0.4%, reversal
+3.8 → 2.3%, p90 drift 230 → 170 s; departure-poll ≥180 s riders 38 → 6. Red
+(12,809 waits): first-promise |miss| 50 → 45 s, strand 6.1 → 2.0%, jump ≥180 s
+13.8 → 6.7%, jump ≥300 s 2.9 → 1.5%, pin changed 7.9 → 5.1%, dropped 2.0%,
+reversal 5.1 → 7.1%, worst drift p90 230 → 170 s, interval coverage 78.7%.
+Paired FIXED / INTRODUCED: strand 890 / 196, jump ≥180 s 1,751 / 629, dropped
+442 / 226, reversal 674 / 1,107; worst drift improved 8,152 / worsened 2,453.
+
+### The three archived Red riders at Division / Prospect (docs/rider-sim.md acceptance cases)
+
+| rider | master (2a5568c) | ring estimator |
+|---|---|---|
+| #309, 21:21Z | miss −125 s, worst drift 115, no strand; `5 → 4 → 1 → <1 → now` | miss −125 s, drift −170: `5 → 1` at 21:25:52, then "in 1" for 3.5 min to the kerb |
+| #316, 20:36Z | miss 0, drift 55; "in 4" held 3 min, `3 → 2 → 1 → now` | miss +15, drift −55; "in 1" from 20:40 to the kerb at 20:47 |
+| #304, 20:58Z | **strand**: `4 → <1`, bus 66 s later | no strand: `5 → 1 → 1 → 4 → 1 → <1 → now` (one reversal) |
+
+The strand is gone; what replaces it is the honest residue of a stand that
+has out-sat its table (#316 stood 12 min against a p95 of 10) and of a depot
+bus that pulls out and pauses (#309, #304). Nothing in the feed says when a
+driver intends to go; the interval carries it, the point cannot.
+
