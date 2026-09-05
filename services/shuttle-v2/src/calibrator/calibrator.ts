@@ -5,6 +5,7 @@ import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type {
   DwellStats,
+  PaceStats,
   SegmentStats,
 } from "../network/TransitNetwork.js";
 
@@ -73,7 +74,7 @@ const DWELL_LOW_MIN_SAMPLES = 5;
  * server must NOT pre-filter, or the two gates drift apart and a cell the
  * client would accept silently never arrives.
  */
-const SPLIT_WINDOW_DAYS = 30;
+export const SPLIT_WINDOW_DAYS = 30;
 
 /**
  * Quantiles served in `DwellStats.q`. The client reads entry i as the
@@ -101,6 +102,9 @@ export interface CalibrationStats {
   /** Stops carrying a stand table (`q`) and hops carrying a `drive`. */
   standCount: number;
   driveCount: number;
+  /** Hops carrying leg quantiles (`dq`) and routes carrying a pooled `pace`. */
+  legQuantileCount: number;
+  paceRouteCount: number;
   /** Stopped visits + one-hop legs behind them. */
   splitSampleCount: number;
   durationMs: number;
@@ -129,11 +133,15 @@ export function calibrate(
 
   const standGroups = loadStandGroups(db, SPLIT_WINDOW_DAYS, nowMs);
   const driveGroups = loadDriveGroups(db, SPLIT_WINDOW_DAYS, nowMs);
+  const legGroups = loadLegGroups(db, SPLIT_WINDOW_DAYS, nowMs);
+  const stopShares = loadStopShares(db, SPLIT_WINDOW_DAYS, nowMs);
   const withheld = splitWithheldRoutes(network);
-  const standCount = attachStandTables(dwellStats, standGroups, withheld);
+  const standCount = attachStandTables(dwellStats, standGroups, withheld, stopShares);
   const driveCount = attachDrives(segmentStats, driveGroups, withheld);
+  const legQuantileCount = attachLegQuantiles(segmentStats, legGroups, withheld);
+  const pace = computePace(legGroups, network, withheld);
 
-  network.setCalibration(segmentStats, dwellStats);
+  network.setCalibration(segmentStats, dwellStats, pace);
 
   return {
     segmentCount: segmentStats.size,
@@ -141,6 +149,8 @@ export function calibrate(
     sampleCount: countSamples(segmentGroups) + countSamples(dwellGroups),
     standCount,
     driveCount,
+    legQuantileCount,
+    paceRouteCount: pace.size,
     splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
     durationMs: Date.now() - t0,
   };
@@ -308,11 +318,18 @@ function loadDwellGroups(
  */
 const STAND_VALUE = sql.raw(losslessText("CASE WHEN outcome = 'passed' THEN 0 ELSE (departed_at - pinned_at) / 1000.0 END"));
 const DRIVE_VALUE = sql.raw(losslessText("(COALESCE(to_pinned_at, arrived_at) - departed_at) / 1000.0"));
+const LEG_VALUE = sql.raw(losslessText("leg_sec"));
 
 interface StandGroupRow { routeId: number; stopId: number; n: number; allValues: string | null }
 interface DriveGroupRow { routeId: number; fromStopId: number; toStopId: number; n: number; allValues: string | null }
 
-function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+/**
+ * The four split loaders are bounded ABOVE at `nowMs` as well as below. In
+ * production that is the wall clock and changes nothing; in a time-travelled
+ * replay (scripts/eta-replay/model-patch.ts, MODEL_NOW) it is what keeps a
+ * table built "as of 9/3" from seeing 9/4's visits.
+ */
+export function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
   const cutoff = nowMs - windowDays * 86_400_000;
   const rows = db.all<StandGroupRow>(sql`
     SELECT
@@ -321,7 +338,7 @@ function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
       COUNT(*) AS n,
       group_concat(${STAND_VALUE}) AS allValues
     FROM stop_visits
-    WHERE anchored_at >= ${cutoff}
+    WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
       AND pinned_at IS NOT NULL
       AND (
         (outcome = 'stopped' AND departed_at IS NOT NULL AND departed_at >= pinned_at)
@@ -346,7 +363,7 @@ function loadStandGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
  * 112 m hop, so the bus can be pinned at B before its plateau at A ends) is
  * not a sample, matching the reference table.
  */
-function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+export function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
   const cutoff = nowMs - windowDays * 86_400_000;
   const rows = db.all<DriveGroupRow>(sql`
     SELECT
@@ -356,7 +373,7 @@ function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
       COUNT(*)     AS n,
       group_concat(${DRIVE_VALUE}) AS allValues
     FROM legs
-    WHERE departed_at >= ${cutoff}
+    WHERE departed_at >= ${cutoff} AND departed_at <= ${nowMs}
       AND hops = 1
       AND COALESCE(to_pinned_at, arrived_at) > departed_at
     GROUP BY route_id, from_stop_id, to_stop_id
@@ -367,6 +384,63 @@ function loadDriveGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[
     all: parseValueList(r.allValues),
     windowed: [],
   }));
+}
+
+/**
+ * The WHOLE hop per consecutive stop pair: `legs.leg_sec` (= drive_sec +
+ * hold_sec, departure at A to the first rest at B), the quantity the
+ * probabilistic estimator sums over and `pace` pools. Same window, same
+ * one-hop rule as {@link loadDriveGroups}; the two differ in the clock at B
+ * (first rest here, `at_stop_since` there) and in that the holds are in. A
+ * leg of 0 s or less is not a sample.
+ */
+export function loadLegGroups(db: DB, windowDays: number, nowMs: number): ValueGroup[] {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<DriveGroupRow>(sql`
+    SELECT
+      route_id     AS routeId,
+      from_stop_id AS fromStopId,
+      to_stop_id   AS toStopId,
+      COUNT(*)     AS n,
+      group_concat(${LEG_VALUE}) AS allValues
+    FROM legs
+    WHERE departed_at >= ${cutoff} AND departed_at <= ${nowMs}
+      AND hops = 1
+      AND leg_sec > 0
+    GROUP BY route_id, from_stop_id, to_stop_id
+  `);
+  return rows.map((r) => ({
+    key: TransitNetwork.segmentKey(r.routeId, r.fromStopId, r.toStopId),
+    n: r.n,
+    all: parseValueList(r.allValues),
+    windowed: [],
+  }));
+}
+
+interface StopShareRow { routeId: number; stopId: number; stopped: number; total: number }
+
+/**
+ * P(stop) per (route, stop): the share of visits that stopped, over visits
+ * with outcome `stopped` or `passed` in the window — EVERY pass, pinned or
+ * not, unlike the zero mass in `q` (see {@link loadStandGroups}). An
+ * unresolved visit is neither and is not counted. Keyed like the dwell table.
+ */
+export function loadStopShares(db: DB, windowDays: number, nowMs: number): Map<string, number> {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<StopShareRow>(sql`
+    SELECT
+      route_id AS routeId,
+      stop_id  AS stopId,
+      SUM(CASE WHEN outcome = 'stopped' THEN 1 ELSE 0 END) AS stopped,
+      COUNT(*) AS total
+    FROM stop_visits
+    WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND outcome IN ('stopped', 'passed')
+    GROUP BY route_id, stop_id
+  `);
+  const out = new Map<string, number>();
+  for (const r of rows) if (r.total > 0) out.set(TransitNetwork.dwellKey(r.routeId, r.stopId), r.stopped / r.total);
+  return out;
 }
 
 /** Ascending stand quantiles at levels (i + 0.5) / STAND_Q_COUNT — the client's reading of `q`. */
@@ -445,13 +519,16 @@ export function attachStandTables(
   dwells: Map<string, DwellStats>,
   groups: readonly ValueGroup[],
   withheld: ReadonlySet<number> = new Set(),
+  /** P(stop) per dwell key ({@link loadStopShares}); rides on the same rows as `q`. */
+  shares: ReadonlyMap<string, number> = new Map(),
 ): number {
   let count = 0;
   for (const g of groups) {
     if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
     const q = standQuantiles(g.all);
     const cur = dwells.get(g.key) ?? { mean: 15, stddev: 10, n: 0 };
-    dwells.set(g.key, { ...cur, q, qn: g.all.length });
+    const pstop = shares.get(g.key);
+    dwells.set(g.key, { ...cur, q, qn: g.all.length, ...(pstop !== undefined ? { pstop } : {}) });
     count++;
   }
   return count;
@@ -479,6 +556,62 @@ export function attachDrives(
     count++;
   }
   return count;
+}
+
+/**
+ * Put the whole-hop quantiles (`dq`/`dqn`) on every hop that has legs AND a
+ * calibrated segment — the same two conditions as {@link attachDrives}, so a
+ * hop carries `dq` exactly where it can carry a `drive` (the leg rows behind
+ * them differ only in the clock at B; see {@link loadLegGroups}). Returns
+ * the number of hops carrying one.
+ */
+export function attachLegQuantiles(
+  segments: Map<string, SegmentStats>,
+  groups: readonly ValueGroup[],
+  withheld: ReadonlySet<number> = new Set(),
+): number {
+  let count = 0;
+  for (const g of groups) {
+    if (g.all.length === 0 || withheld.has(routeOf(g.key))) continue;
+    const cur = segments.get(g.key);
+    if (!cur) continue;
+    segments.set(g.key, { ...cur, dq: standQuantiles(g.all), dqn: g.all.length });
+    count++;
+  }
+  return count;
+}
+
+/** A hop whose stops are closer than this is not a pace sample: 30 m / 5 s is noise, not a speed. */
+export const PACE_MIN_CHORD_M = 30;
+
+/**
+ * Route-level pooled pace ({@link PaceStats}): seconds per chord metre over
+ * every one-hop leg on the route, quantiles at the STAND_Q_COUNT levels.
+ * Needs the network's stop geometry for the chord — a network without stops
+ * (the test sink) yields no pace at all rather than a fabricated one. Same
+ * withholding as the split.
+ */
+export function computePace(
+  groups: readonly ValueGroup[],
+  network: TransitNetwork,
+  withheld: ReadonlySet<number> = new Set(),
+): Map<number, PaceStats> {
+  const samples = new Map<number, number[]>();
+  for (const g of groups) {
+    const rid = routeOf(g.key);
+    if (g.all.length === 0 || withheld.has(rid)) continue;
+    const meters = segmentMeters(network, g.key);
+    if (meters === null || meters < PACE_MIN_CHORD_M) continue;
+    let l = samples.get(rid);
+    if (!l) samples.set(rid, (l = []));
+    for (const sec of g.all) {
+      const spm = sec / meters;
+      if (Number.isFinite(spm) && spm > 0) l.push(spm);
+    }
+  }
+  const out = new Map<number, PaceStats>();
+  for (const [rid, l] of samples) if (l.length > 0) out.set(rid, { spm: standQuantiles(l), n: l.length });
+  return out;
 }
 
 /** `hour IN (…)` list, parameterised so the hours can't be interpolated raw. */

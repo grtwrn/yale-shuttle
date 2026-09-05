@@ -13,6 +13,7 @@ import os from "node:os";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { buildApp } from "./app.js";
+import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
 
 // A fake upstream that returns a fixed snapshot. The collector contract
@@ -229,6 +230,7 @@ describe("GET /api/buses", () => {
       "buses",
       "dwells",
       "dwells_by_bus",
+      "pace",
       "route_hours",
       "route_paths",
       "route_peaks",
@@ -280,6 +282,55 @@ describe("GET /api/buses", () => {
     expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
     expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24 });
     expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+  });
+
+  // The estimator's fields (the ring plan, step 1) — `dq`/`dqn` whole seconds
+  // beside the drive, `pstop` to 3 decimals beside `q`, and the route `pace`
+  // to 4 decimals, twice: top-level, and as the inert `__pace` carrier row
+  // inside `segments[route]` so it reaches computeUpcomingArrivals through its
+  // unchanged signature. All additive: absent where the calibrator has none.
+  it("carries the whole-hop quantiles, P(stop) and the route pace, and omits them where absent", async () => {
+    const net = collector.ref.get();
+    const spm = [0.0812345, 0.1, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19];
+    net.setCalibration(
+      new Map([
+        ["10:1:2", { mean: 495.06, stddev: 5, n: 0, source: "route-segment" as const, drive: 15.1, driveN: 25, dq: [20.4, 25.5, 90.1], dqn: 3 }],
+        ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" as const }],
+      ]),
+      new Map([
+        ["10:1", { mean: 415.3, stddev: 279.8, n: 0, q: [118.1, 136.5, 302.8, 598.1], qn: 24, pstop: 2 / 3 }],
+        ["10:2", { mean: 20, stddev: 5, n: 2 }],
+      ]),
+      new Map([[10, { spm, n: 41 }]]),
+    );
+    (collector as unknown as { version: number }).version++;
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+      pace: Record<string, { spm: number[]; n: number }>;
+    };
+    expect(body.segments["10"]!["1-2"]).toEqual({ avg: 495.1, sd: 5, n: 0, drive: 15, driveN: 25, dq: [20, 26, 90], dqn: 3 });
+    expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
+    expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24, pstop: 0.667 });
+    expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+    const rounded = [0.0812, 0.1, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19];
+    expect(body.pace).toEqual({ "10": { spm: rounded, n: 41 } });
+    // The carrier: n is 0 (the client averages `avg` over rows with n >= 2)
+    // and there is no driveN (splitServedForRoute scans every row for it).
+    expect(body.segments["10"]![PACE_KEY]).toEqual({ avg: 0, sd: 0, n: 0, spm: rounded, spmN: 41 });
+    expect(Object.keys(body.segments["10"]!).sort()).toEqual(["1-2", "2-3", "3-1", PACE_KEY].sort());
+    // Routes without a pace carry neither.
+    expect(body.segments["11"]![PACE_KEY]).toBeUndefined();
+    expect(body.pace["11"]).toBeUndefined();
+  });
+
+  it("serves an empty pace table, and no carrier rows, before any route has legs", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, unknown>>;
+      pace: Record<string, unknown>;
+    };
+    expect(body.pace).toEqual({});
+    for (const seg of Object.values(body.segments)) expect(seg[PACE_KEY]).toBeUndefined();
   });
 
   it("rebuilds when the collector observes a new position", async () => {

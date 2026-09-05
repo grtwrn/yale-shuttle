@@ -9,16 +9,20 @@ import type {
   DwellStats,
   SegmentStats,
 } from "../network/TransitNetwork.js";
+import { distanceMeters } from "../network/geo.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 
 import {
   attachDrives,
+  attachLegQuantiles,
   attachStandTables,
   calibrate,
   computeDwellStats,
+  computePace,
   computeSegmentStats,
   foldRoutes,
   hourWindow,
+  PACE_MIN_CHORD_M,
   SPLIT_SERVED_ROUTE_IDS,
   splitWithheldRoutes,
   parseValueList,
@@ -437,6 +441,71 @@ describe("calibrate over a real database", () => {
     expect(stats.driveCount).toBe(1);
     expect(stats.splitSampleCount).toBe(5 + 4); // stand samples (incl. the pinned pass) + one-hop legs with a positive drive (7→8 counts as a sample even though it is not attached)
   });
+
+  // The estimator's fields (the ring plan, step 1): `dq`/`dqn` are the whole
+  // hop's quantiles (leg_sec) on the same hops that carry a drive; `pstop`
+  // counts EVERY pass, pinned or not, on the rows that carry `q`; `pace` is
+  // per route and needs stop geometry, which this sink has none of.
+  it("serves the whole-hop quantiles and P(stop) beside the split, and no pace without geometry", () => {
+    for (const v of [300, 320, 340]) addSegment(1, 1, 2, v, inWindow);
+    addArrival(1, 1, 310, inWindow);
+    addVisit(1, 1, 100);
+    addVisit(1, 1, 200);
+    addVisit(1, 1, null, { outcome: "passed" });
+    addVisit(1, 1, null, { outcome: "passed", pinned: false }); // not in `q`, but in pstop
+    addVisit(1, 1, 50, { pinned: false }); // stopped, unpinned: not in `q`, but in pstop
+    addVisit(1, 1, 9_999, { anchoredAt: now.getTime() - 40 * 86_400_000 }); // outside the window
+    addLeg(1, 1, 2, 20);
+    addLeg(1, 1, 2, 25);
+    addLeg(1, 1, 2, 90);
+    addLeg(1, 1, 3, 40, { hops: 2 }); // a two-hop leg is a different quantity
+    addLeg(1, 1, 2, 0); // not a sample
+    addLeg(1, 1, 2, 9_999, { departedAt: now.getTime() - 40 * 86_400_000 }); // outside the window
+    addLeg(1, 7, 8, 30); // legs but no calibrated segment: nowhere to carry dq
+
+    const stats = calibrate(bundle.db, sink, now);
+
+    const seg = captured.segments.get("1:1:2")!;
+    expect(seg.dq).toEqual(standQuantiles([20, 25, 90]));
+    expect(seg.dq).toHaveLength(STAND_Q_COUNT);
+    expect(seg.dqn).toBe(3);
+    expect(seg.drive).toBe(25); // untouched beside it
+    expect(captured.segments.has("1:7:8")).toBe(false);
+
+    const dwell = captured.dwells.get("1:1")!;
+    expect(dwell.q).toEqual(standQuantiles([0, 100, 200]));
+    expect(dwell.qn).toBe(3);
+    expect(dwell.pstop).toBeCloseTo(3 / 5, 10); // 3 stopped of 5 resolved visits in the window
+
+    expect(stats.legQuantileCount).toBe(1);
+    expect(stats.paceRouteCount).toBe(0); // the sink carries no stops, so no chord
+  });
+
+  it("serves a pooled pace per route from the legs and the stop geometry", () => {
+    const network = TransitNetwork.build(
+      [
+        { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+        { id: 2, name: "B", lat: 41.31, lon: -72.92 }, // ~836 m east of A
+        { id: 3, name: "C", lat: 41.31, lon: -72.91 },
+      ],
+      [{ id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] }],
+    );
+    const chordAB = distanceMeters({ lat: 41.31, lon: -72.93 }, { lat: 41.31, lon: -72.92 });
+    addLeg(3, 1, 2, 100);
+    addLeg(3, 1, 2, 200);
+    addLeg(3, 2, 3, 150);
+    addLeg(3, 1, 2, 0); // not a sample
+    addLeg(3, 1, 3, 400, { hops: 2 }); // not a sample
+
+    const stats = calibrate(bundle.db, network, now);
+
+    const pace = network.getPace(3)!;
+    expect(pace.n).toBe(3);
+    // A→B and B→C have the same chord, so the pool is {100, 200, 150} / chord.
+    expect(pace.spm).toEqual(standQuantiles([100 / chordAB, 200 / chordAB, 150 / chordAB]));
+    expect(stats.paceRouteCount).toBe(1);
+    expect(network.getPace(1)).toBeUndefined();
+  });
 });
 
 describe("computeSegmentStats: physical plausibility", () => {
@@ -582,5 +651,71 @@ describe("stand tables and drives", () => {
     expect(n).toBe(1);
     expect(segments.get("1:1:2")).toEqual({ mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3 });
     expect(segments.has("1:2:3")).toBe(false);
+  });
+
+  it("attaches the whole-hop quantiles under the same rules as the drive", () => {
+    const segments = new Map<string, SegmentStats>([
+      ["1:1:2", { mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3 }],
+      ["9:1:2", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+    ]);
+    const n = attachLegQuantiles(segments, [
+      { key: "1:1:2", n: 3, all: [15, 20, 90], windowed: [] },
+      { key: "1:2:3", n: 5, all: [30, 30, 30, 30, 30], windowed: [] }, // no calibrated segment
+      { key: "9:1:2", n: 2, all: [30, 40], windowed: [] }, // withheld
+      { key: "1:3:4", n: 0, all: [], windowed: [] },
+    ], new Set([9]));
+    expect(n).toBe(1);
+    expect(segments.get("1:1:2")).toEqual({
+      mean: 495, stddev: 5, n: 0, source: "route-segment", drive: 20, driveN: 3,
+      dq: standQuantiles([15, 20, 90]), dqn: 3,
+    });
+    expect(segments.get("1:1:2")!.dq).toHaveLength(STAND_Q_COUNT);
+    expect(segments.has("1:2:3")).toBe(false);
+    expect(segments.get("9:1:2")!.dq).toBeUndefined();
+  });
+
+  it("rides P(stop) on the rows that carry q, and nowhere else", () => {
+    const dwells = new Map<string, DwellStats>();
+    const shares = new Map([["1:1", 0.75], ["1:5", 0.5], ["9:1", 0.9]]);
+    expect(attachStandTables(dwells, [
+      { key: "1:1", n: 2, all: [100, 300], windowed: [] },
+      { key: "1:9", n: 1, all: [60], windowed: [] }, // no share row
+      { key: "1:5", n: 0, all: [], windowed: [] }, // share but no table
+      { key: "9:1", n: 2, all: [10, 20], windowed: [] }, // withheld
+    ], new Set([9]), shares)).toBe(2);
+    expect(dwells.get("1:1")).toEqual({ mean: 15, stddev: 10, n: 0, q: standQuantiles([100, 300]), qn: 2, pstop: 0.75 });
+    expect(dwells.get("1:9")).toEqual({ mean: 15, stddev: 10, n: 0, q: standQuantiles([60]), qn: 1 });
+    expect(dwells.has("1:5")).toBe(false);
+    expect(dwells.has("9:1")).toBe(false);
+  });
+
+  it("pools the pace per route over chord metres, dropping short hops and withheld routes", () => {
+    const network = TransitNetwork.build(
+      [
+        { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+        { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+        { id: 3, name: "C", lat: 41.31, lon: -72.91 },
+        { id: 4, name: "C'", lat: 41.31001, lon: -72.91 }, // ~1 m from C
+      ],
+      [
+        { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3, 4] },
+        { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] },
+      ],
+    );
+    const chord = distanceMeters({ lat: 41.31, lon: -72.93 }, { lat: 41.31, lon: -72.92 });
+    expect(distanceMeters({ lat: 41.31, lon: -72.91 }, { lat: 41.31001, lon: -72.91 })).toBeLessThan(PACE_MIN_CHORD_M);
+    const pace = computePace([
+      { key: "3:1:2", n: 2, all: [100, 200], windowed: [] },
+      { key: "3:2:3", n: 1, all: [150], windowed: [] },
+      { key: "3:3:4", n: 3, all: [5, 5, 5], windowed: [] }, // chord < 30 m: not a sample
+      { key: "3:4:1", n: 1, all: [0], windowed: [] }, // non-positive: not a sample
+      { key: "3:1:99", n: 1, all: [50], windowed: [] }, // unknown stop: no chord
+      { key: "8:1:2", n: 4, all: [100, 100, 100, 100], windowed: [] }, // withheld
+    ], network, new Set([8]));
+    expect([...pace.keys()]).toEqual([3]);
+    expect(pace.get(3)).toEqual({ spm: standQuantiles([100 / chord, 200 / chord, 150 / chord]), n: 3 });
+    expect(pace.get(3)!.spm).toHaveLength(STAND_Q_COUNT);
+    // No legs at all: no pace at all — the payload's `pace` is then `{}`.
+    expect(computePace([], network).size).toBe(0);
   });
 });

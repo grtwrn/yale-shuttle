@@ -67,6 +67,30 @@ export interface SegmentStats {
   drive?: number;
   /** Legs behind `drive`. The client gates on it (`MIN_DRIVE_SAMPLES`). */
   driveN?: number;
+  /**
+   * Ascending quantiles of the WHOLE hop, `legs.leg_sec` (drive + every
+   * mid-leg hold, departure at A to the first rest at B), at levels
+   * (i + 0.5) / dq.length over one-hop legs in the split window. `drive` is
+   * one number; this is the distribution the probabilistic estimator sums
+   * over. Absent until a leg has been recorded.
+   */
+  dq?: number[];
+  /** Legs behind `dq`. */
+  dqn?: number;
+}
+
+/**
+ * Route-level pooled pace: quantiles of seconds per CHORD metre
+ * (`legs.leg_sec` / straight-line stop-to-stop distance) over every one-hop
+ * leg on the route in the split window, at levels (i + 0.5) / spm.length.
+ * The thin-cell prior — a hop with too few legs of its own is priced from
+ * the route's pace times its chord. Hops shorter than `PACE_MIN_CHORD_M`
+ * are not samples.
+ */
+export interface PaceStats {
+  spm: number[];
+  /** Legs behind `spm`. */
+  n: number;
 }
 
 export interface DwellStats {
@@ -116,6 +140,13 @@ export interface DwellStats {
   q?: number[];
   /** Stopped visits behind `q`. The client gates on it (`MIN_STAND_SAMPLES`). */
   qn?: number;
+  /**
+   * Share of visits that STOPPED here, over visits with outcome `stopped` or
+   * `passed` in the split window (unresolved visits are neither). `q` carries
+   * the same information as its zero mass, but only for PINNED passes; this
+   * counts every pass. Absent wherever `q` is.
+   */
+  pstop?: number;
 }
 
 export interface WalkTransfer {
@@ -195,6 +226,7 @@ export class TransitNetwork {
 
   private readonly segmentStats = new Map<string, SegmentStats>();
   private readonly dwellStats = new Map<string, DwellStats>();
+  private readonly paceStats = new Map<number, PaceStats>();
 
   private constructor(args: {
     stops: ReadonlyMap<number, Stop>;
@@ -260,15 +292,27 @@ export class TransitNetwork {
     );
   }
 
-  /** Bulk replacement of all calibrated stats. Atomic from the caller's POV. */
+  /** The route's pooled pace, if the calibrator has one (see PaceStats). */
+  getPace(routeId: number): PaceStats | undefined {
+    return this.paceStats.get(routeId);
+  }
+
+  /**
+   * Bulk replacement of all calibrated stats. Atomic from the caller's POV.
+   * `pace` is replaced too — omitting it clears it, so a calibration without
+   * pace never serves a stale one.
+   */
   setCalibration(
     segments: ReadonlyMap<string, SegmentStats>,
     dwells: ReadonlyMap<string, DwellStats>,
+    pace: ReadonlyMap<number, PaceStats> = new Map(),
   ): void {
     this.segmentStats.clear();
     for (const [k, v] of segments) this.segmentStats.set(k, v);
     this.dwellStats.clear();
     for (const [k, v] of dwells) this.dwellStats.set(k, v);
+    this.paceStats.clear();
+    for (const [k, v] of pace) this.paceStats.set(k, v);
   }
 
   // -- Queries ---------------------------------------------------------------

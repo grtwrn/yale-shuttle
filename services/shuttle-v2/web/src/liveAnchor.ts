@@ -32,8 +32,10 @@
  * exactly `findRouteAnchor` and nothing is remembered — which is what the
  * replay harnesses and the existing tests depend on.
  */
-import { findRouteAnchor } from "./anchor";
+import { findRouteAnchor, routePathFor } from "./anchor";
 import type { AnchorBus } from "./anchor";
+import { beliefFor, modelRouteIds } from "./eta";
+import { ringFor } from "./eta/ring";
 import { gateAnchor, noteFix, type AnchorStore, type GateBus } from "./anchorGate";
 import type { LatLon } from "./geo";
 import { remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
@@ -69,6 +71,14 @@ export function resolveAnchorIndex(
   // several times per poll off one shared store, and a repeated coordinate is
   // not a new fix. Calling it once per render site is therefore safe — it does
   // not consume the fix memory `findRouteAnchor` reads direction from.
+  // A route the ring estimator serves answers from its belief: the leg the
+  // countdown is priced on, with the same hysteresis, so "N stops away" and
+  // the number beside it come from one posterior. The legacy path below is
+  // untouched for every other route.
+  if (bus.route_id !== undefined && modelRouteIds().has(String(bus.route_id))) {
+    const ring = ringFor(bus.route_id, routePathFor(bus.route_id), stops, stopCoords);
+    if (ring) return beliefFor(store, key, bus as never, ring, stops, now).lead;
+  }
   const travelFrom = store ? noteFix(store, key, bus, now) : null;
   const raw = findRouteAnchor(bus, stops, stopCoords, travelFrom);
   if (raw < 0) return raw;

@@ -3,6 +3,7 @@
 import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
 import { anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
+import { arrivalsForBus, modelServesRoute, ringForBus } from "./eta";
 import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
@@ -363,6 +364,32 @@ export function computeUpcomingArrivals(
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
     const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
+
+    // A route the ring estimator serves (web/src/eta/) is priced from a
+    // distribution on the ring: no point anchor, no credit, no proration.
+    // Falls through to the legacy arithmetic only when the route's geometry
+    // cannot be traced, the same condition under which `legGeometry` gives up.
+    if (modelServesRoute(cfg)) {
+      let priced = false;
+      for (const bus of routeBuses) {
+        const ring = ringForBus(bus, stops, stopCoords);
+        if (!ring) break;
+        priced = true;
+        const rows = arrivalsForBus(
+          anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
+          routeSegs, routeDwells, targetSet, now,
+        );
+        for (const row of rows) {
+          result.push({
+            eta: row.eta, low: row.low, high: row.high,
+            routeLabel: cfg.label, color: cfg.color,
+            busName: bus.bus_name.replace("#", ""),
+            stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
+          });
+        }
+      }
+      if (priced) continue;
+    }
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
