@@ -231,6 +231,16 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j);
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
+  } else if (sit.standing && sit.zoneStop < 0 && tables.hops[leg]!.hidden) {
+    // Holding mid-leg on a hop that carries a rest of its own (tables.ts
+    // `hidden`: a yard, a relief run — off every stop's table): the rest
+    // continuing, given the time already stood, then the free-flow drive
+    // left. Priced as a fraction of the leg's "drive", a bus twelve minutes
+    // into a yard rest read as eight minutes of driving left.
+    const hop0 = tables.hops[leg]!;
+    addResidual(samples, hop0.hidden!, r, 7 * tables.hops.length + leg);
+    addTerm(samples, hop0.free!, 2 * leg + 1, Math.max(0, 1 - sit.frac));
+    measured = hop0.measured;
   } else {
     // Moving, or holding on the road (a light, a queue): the rest of the
     // leg. A hold is NOT priced separately — the served drive quantiles are

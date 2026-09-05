@@ -74,6 +74,22 @@ export interface HopModel {
   measured: boolean;
   /** Typical driving speed on the hop, m/s (road metres / median drive), for the kernel. */
   speedMps: number;
+  /**
+   * The rest hidden INSIDE the hop, when there is one: a bus that lays over
+   * off any stop (a yard by the terminus, a relief run) is not in any stand
+   * table — the stand tables are pinned within 75 m of a stop — but the leg
+   * it rests on carries it, as a drive whose median exceeds road metres x
+   * pace by a layover's length (LAYOVER_MIN_SEC). On the 9/4 tables: Blue
+   * West's last hop 960 s for 1,044 m (free 167 s), Blue Night 587 vs 204,
+   * Orange East 500 vs 274, Blue Weekend 476 vs 324. The excess, quantile
+   * by quantile, is the hidden stand; a bus HOLDING mid-leg on such a hop
+   * is priced as that rest continuing (given the time already stood) plus
+   * the free-flow drive left, not as a fraction of a 16-minute "drive".
+   * Null on an ordinary hop, whose drive is its free-flow time.
+   */
+  hidden: Dist | null;
+  /** The free-flow drive (road metres x pace) when a pace is served, for the hold pricing. */
+  free: Dist | null;
 }
 
 export interface RouteTables {
@@ -137,20 +153,39 @@ export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: read
     const emp = fromQuantiles(seg.dq);
     const n = seg.dqn ?? seg.driveN ?? seg.n;
     const drive = prior ? shrinkToward(emp, prior, Math.max(0, n), SHRINK_K) : emp;
-    return { drive, includesStand: false, measured: true, speedMps: speedOf(drive) };
+    return { drive, includesStand: false, measured: true, speedMps: speedOf(drive), hidden: prior ? hiddenRest(drive, prior) : null, free: prior };
   }
   if (seg && seg.drive !== undefined && Number.isFinite(seg.drive) && seg.drive >= 0) {
     const emp = lognormalMeanSd(Math.max(5, seg.drive), Math.max(5, seg.drive * 0.35));
     const n = seg.driveN ?? seg.n;
     const drive = prior ? shrinkToward(emp, prior, Math.max(0, n), SHRINK_K) : emp;
-    return { drive, includesStand: false, measured: true, speedMps: speedOf(drive) };
+    return { drive, includesStand: false, measured: true, speedMps: speedOf(drive), hidden: prior ? hiddenRest(drive, prior) : null, free: prior };
   }
-  if (prior) return { drive: prior, includesStand: false, measured: false, speedMps: speedOf(prior) };
+  if (prior) return { drive: prior, includesStand: false, measured: false, speedMps: speedOf(prior), hidden: null, free: prior };
   if (seg && seg.n >= 1 && Number.isFinite(seg.avg) && seg.avg > 0) {
-    return { drive: lognormalMeanSd(seg.avg, seg.sd ?? seg.avg * 0.5), includesStand: true, measured: true, speedMps: DEFAULT_DRIVE_M_S };
+    return { drive: lognormalMeanSd(seg.avg, seg.sd ?? seg.avg * 0.5), includesStand: true, measured: true, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
   }
   const guess = Math.max(30, roadM / BUS_SPEED_M_S);
-  return { drive: lognormalMeanSd(guess, guess * 0.5), includesStand: false, measured: false, speedMps: DEFAULT_DRIVE_M_S };
+  return { drive: lognormalMeanSd(guess, guess * 0.5), includesStand: false, measured: false, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
+}
+
+/** Quantile levels of the calibrator's ten-knot tables. */
+const KNOT_LEVELS = Array.from({ length: 10 }, (_, i) => (i + 0.5) / 10);
+
+/**
+ * The stand hidden in a hop: the measured drive minus the free-flow drive,
+ * quantile by quantile (comonotonic — the slow legs are the ones with the
+ * rest in them), when the medians differ by a layover's length; else null.
+ */
+export function hiddenRest(drive: Dist, free: Dist): Dist | null {
+  if (quantile(drive, 0.5) - quantile(free, 0.5) < LAYOVER_MIN_SEC) return null;
+  const q: number[] = [];
+  let prev = 0;
+  for (const p of KNOT_LEVELS) {
+    prev = Math.max(prev, quantile(drive, p) - quantile(free, p), 0);
+    q.push(prev);
+  }
+  return fromQuantiles(q);
 }
 
 export function buildTables(

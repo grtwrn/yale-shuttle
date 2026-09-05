@@ -122,6 +122,19 @@ and the tables. A hold on the road is not priced on top of the drive:
 `leg_sec` already contains the lights. A bus standing AT a stop has arrived
 there: that stop's next arrival is now, not a lap later.
 
+A rest that happens off every stop — a yard by the terminus, a relief run —
+is in no stand table (those are pinned within 75 m of a stop), but the leg
+it lies on carries it: a drive whose median exceeds road metres × pace by a
+layover's length. On the 9/4 tables that is Blue West's last hop (960 s for
+1,044 m against 167 s of driving), Blue Night (587 vs 204), Orange East
+(500 vs 274) and Blue Weekend (476 vs 324). The excess, quantile by
+quantile, is the hop's hidden stand (`tables.ts` `hiddenRest`), and a bus
+HOLDING mid-leg on such a hop is priced as that rest continuing given the
+time already stood, plus the free-flow drive left — not as a fraction of a
+sixteen-minute "drive", which read a bus twelve minutes into a yard rest as
+eight minutes of driving away (Blue West's optimistic ≥120 s tail, 6 → 27%
+on the gps-replay before this term).
+
 A route whose tables carry no measured drive (the grocery lines, until they
 have `legs`) is priced by the legacy arithmetic, and so is a route whose
 published line cannot be traced through its stop sequence (a leg bridged with

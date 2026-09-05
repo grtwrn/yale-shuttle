@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
-import { buildTables, type RouteTables } from "./tables";
+import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
 import { K, priceRoute, type Floors } from "./arrival";
 import type { LatLon } from "../geo";
 
@@ -195,5 +195,48 @@ describe("arrival: the sum of the chain", () => {
     const c = priceRoute(b, ring, tables, STOPS, new Set([2, 3, 4]), 5000, 0.5);
     expect(c).toEqual(a);
     expect(K).toBe(256);
+  });
+});
+
+describe("arrival: a rest hidden inside a hop", () => {
+  // Leg 3 -> 4 (900 m) measured at 128 s + 700 s: a yard rest off every
+  // stop, as Blue West's last hop (960 s for 1,044 m against 167 s of driving).
+  const spm = [0.11, 0.12, 0.13, 0.135, 0.142, 0.15, 0.16, 0.175, 0.2, 0.25];
+  const SEGS_YARD = {
+    ...SEGS,
+    "3-4": { avg: 840, sd: 200, n: 50, drive: 828, driveN: 50, dq: dq(128).map((x) => x + 700), dqn: 50 },
+    [PACE_KEY]: { avg: 0, sd: 0, n: 0, spm, spmN: 500 },
+  };
+  function setupYard(): { ring: Ring; tables: RouteTables } {
+    const ring = buildRing("y", PATH, STOPS, COORDS)!;
+    return { ring, tables: buildTables(STOPS, COORDS, SEGS_YARD, DWELLS, ring) };
+  }
+
+  it("is the excess of the measured drive over the free-flow drive, and only where it is a layover's length", () => {
+    const { tables } = setupYard();
+    expect(tables.hops[0]!.hidden).toBeNull();
+    expect(tables.hops[1]!.hidden).toBeNull();
+    const h = tables.hops[2]!.hidden!;
+    expect(h).not.toBeNull();
+    expect(Math.abs(quantile(h, 0.5) - 700)).toBeLessThan(60);
+    expect(hiddenRest(fromQuantiles(dq(200)), fromQuantiles(dq(128)))).toBeNull();
+  });
+
+  it("prices a bus holding mid-leg as that rest continuing plus the free-flow drive left", () => {
+    const { ring, tables } = setupYard();
+    const yard = at(450, 450); // mid-leg on 3 -> 4, 450 m from either stop
+    const t0 = 1_000_000;
+    const since = new Date(t0 - 600_000).toISOString().replace("Z", "");
+    let b: Belief | undefined;
+    for (let k = 0; k <= 12; k++) b = stepBelief(b, ring, { lat: yard.lat, lon: yard.lon, stationary_since: since }, t0 + k * 5000, STOPS);
+    const now = t0 + 60_000;
+    const row = priceRoute(b!, ring, tables, STOPS, new Set([4]), now, 0.5).find((r) => r.stopId === 4 && r.occurrence === 0)!;
+    expect(row.standingAt).toBe(-1);
+    const hop = tables.hops[2]!;
+    const expected = residual(hop.hidden!, 660)(0.5) + quantile(hop.free!, 0.5) * 0.5;
+    const asDriveFraction = quantile(hop.drive, 0.5) * 0.5;
+    expect(Math.abs(row.eta - expected)).toBeLessThan(25);
+    // ...and not as half of a fourteen-minute "drive".
+    expect(Math.abs(row.eta - asDriveFraction)).toBeGreaterThan(60);
   });
 });
