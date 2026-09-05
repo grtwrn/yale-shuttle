@@ -120,7 +120,14 @@ and the tables. A hold on the road is not priced on top of the drive:
 there: that stop's next arrival is now, not a lap later.
 
 A route whose tables carry no measured drive (the grocery lines, until they
-have `legs`) is priced by the legacy arithmetic; the dispatch is data-driven.
+have `legs`) is priced by the legacy arithmetic, and so is a route whose
+published line cannot be traced through its stop sequence (a leg bridged with
+a chord): that is Green, whose buses call at West Haven station before
+Building 900 on the return, so the served leg times carry a station stop
+inside an 11 km highway hop and no model on that ring can be right (the
+gps-replay put the model at 415 s median against the legacy's 289 on Green,
+and every other line better). The dispatch is data-driven; the open item is
+Green's sequence, upstream.
 
 ## 3. Display: a decision rule (`arrival.ts`)
 
