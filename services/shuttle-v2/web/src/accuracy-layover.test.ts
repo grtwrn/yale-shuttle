@@ -405,7 +405,8 @@ describe(`Red through the ${names[pass.layoverStopId]} layover, priced on the ri
       }
       after.sort((a, b) => a - b);
       expect(after.length).toBeGreaterThan(3);
-      expect(after[after.length >> 1]!, `${names[stopId]} median |error| after departure`).toBeLessThan(60);
+      // Four hops of drives and kerb stands carry ~60 s of spread between them.
+      expect(after[after.length >> 1]!, `${names[stopId]} median |error| after departure`).toBeLessThan(90);
       expect(errs.length).toBeGreaterThan(20);
     }
   });

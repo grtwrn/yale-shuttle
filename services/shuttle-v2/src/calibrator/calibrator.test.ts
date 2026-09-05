@@ -15,6 +15,7 @@ import { TransitNetwork } from "../network/TransitNetwork.js";
 import {
   attachDrives,
   attachLegQuantiles,
+  attachOccurrenceStandTables,
   attachStandTables,
   calibrate,
   computeDwellStats,
@@ -236,7 +237,7 @@ describe("calibrate over a real database", () => {
     routeId: number,
     stopId: number,
     standSec: number | null,
-    opts: { outcome?: "stopped" | "passed"; anchoredAt?: number; pinned?: boolean } = {},
+    opts: { outcome?: "stopped" | "passed"; anchoredAt?: number; pinned?: boolean; stopIndex?: number } = {},
   ) {
     const anchoredAt = opts.anchoredAt ?? now.getTime() - 3_600_000;
     const pinnedAt = opts.pinned === false ? null : anchoredAt + 10_000;
@@ -247,9 +248,9 @@ describe("calibrate over a real database", () => {
            anchored_at, pinned_at, arrived_at, departed_at, stand_sec, inside_sec, outcome, how,
            confidence, first_step_m, steps, far_m, confirm_sec, rest_polls, shuffles, first_moved_at,
            last_at_rest_at, closest_m, dow, hour)
-         VALUES (1, 'Bus 1', 1, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, 'far', 1, 31, 3, 160, 15, 4, 0, NULL, NULL, 5, ?, ?)`,
+         VALUES (1, 'Bus 1', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'far', 1, 31, 3, 160, 15, 4, 0, NULL, NULL, 5, ?, ?)`,
       )
-      .run(routeId, stopId, anchoredAt, pinnedAt, pinnedAt, departedAt, standSec, standSec, opts.outcome ?? "stopped", dow, hour);
+      .run(routeId, stopId, opts.stopIndex ?? 0, anchoredAt, pinnedAt, pinnedAt, departedAt, standSec, standSec, opts.outcome ?? "stopped", dow, hour);
   }
 
   /** A one-hop leg whose pinned drive is `driveSec` (to_pinned_at − departed_at). */
@@ -506,6 +507,88 @@ describe("calibrate over a real database", () => {
     expect(stats.paceRouteCount).toBe(1);
     expect(network.getPace(1)).toBeUndefined();
   });
+
+  // Pace is per ROAD metre when the published line supplies the hop: the same
+  // trace the client cuts its ring from (src/network/legs.ts), so a winding
+  // hop is not priced as if it were straight.
+  it("prices the pace per road metre of the published line, chord only where the line cannot supply the hop", () => {
+    // A rectangle: A and B on the bottom side, C on the top. A→B runs straight
+    // along the bottom (road = chord); B→C goes round the corner (road > chord).
+    const path: [number, number][] = [
+      [41.31, -72.93], [41.31, -72.91], [41.312, -72.91], [41.312, -72.93],
+    ];
+    const stops = [
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.92 },
+    ];
+    const network = TransitNetwork.build(stops, [
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3], path },
+      { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] }, // no path: chord
+    ]);
+    const roadAB = network.getLegMeters(3, 1, 2)!;
+    const roadBC = network.getLegMeters(3, 2, 3)!;
+    const chordBC = distanceMeters(stops[1]!, stops[2]!);
+    expect(roadBC).toBeGreaterThan(chordBC * 3); // ~840 + 222 + 840 m vs ~222 m
+    expect(network.getLegMeters(8, 2, 3)).toBeUndefined();
+    addLeg(3, 1, 2, 100);
+    addLeg(3, 2, 3, 300);
+    addLeg(8, 2, 3, 300);
+
+    calibrate(bundle.db, network, now);
+
+    expect(network.getPace(3)!.spm).toEqual(standQuantiles([100 / roadAB, 300 / roadBC]));
+    expect(network.getPace(8)!.spm).toEqual(standQuantiles([300 / chordBC]));
+  });
+
+  // Routes 9 and 10 visit a West Campus stop twice per lap and the two passes
+  // stand very differently (Purple stop 25: mean 107 s at index 6, 42 s at
+  // index 12). One table per pass goes out beside the pooled one.
+  it("serves a stand table per pass of a repeated stop, beside the pooled one", () => {
+    const network = TransitNetwork.build(
+      [
+        { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+        { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+        { id: 3, name: "C", lat: 41.31, lon: -72.91 },
+      ],
+      [{ id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] }],
+    );
+    // Outbound pass of B (index 1): a layover. Inbound (index 3): a pass-through and a short stop.
+    addVisit(10, 2, 100, { stopIndex: 1 });
+    addVisit(10, 2, 120, { stopIndex: 1 });
+    addVisit(10, 2, null, { stopIndex: 3, outcome: "passed" });
+    addVisit(10, 2, 20, { stopIndex: 3 });
+    addVisit(10, 2, 30, { stopIndex: 3, pinned: false }); // in pstop, not in q
+    // A stale index the current sequence no longer has: dropped, not served.
+    addVisit(10, 2, 999, { stopIndex: 7 });
+    // A stop the route lists once: the pooled table only, no "#" entry.
+    addVisit(10, 1, 60, { stopIndex: 0 });
+
+    const stats = calibrate(bundle.db, network, now);
+
+    const pooled = network.getDwellStats(10, 2);
+    expect(pooled.q).toEqual(standQuantiles([0, 20, 100, 120, 999]));
+    expect(pooled.qn).toBe(5);
+    expect(pooled.mean).toBe(15); // the warm-up default: the pooled entry is untouched
+
+    const out = network.getOccurrenceDwellStats(10, 2, 1)!;
+    expect(out.q).toEqual(standQuantiles([100, 120]));
+    expect(out.qn).toBe(2);
+    expect(out.pstop).toBe(1);
+    expect(out.mean).toBe(110); // the pass's median stand
+    expect(out.stddev).toBe(Math.max(percentile([100, 120], 0.9) - 110, 5));
+    expect(out.n).toBe(2);
+
+    const back = network.getOccurrenceDwellStats(10, 2, 3)!;
+    expect(back.q).toEqual(standQuantiles([0, 20]));
+    expect(back.qn).toBe(2);
+    expect(back.pstop).toBeCloseTo(2 / 3, 10); // stopped 2 of 3 resolved passes, pinned or not
+
+    expect(network.getOccurrenceDwellStats(10, 2, 7)).toBeUndefined();
+    expect(network.getOccurrenceDwellStats(10, 1, 0)).toBeUndefined();
+    expect(stats.occurrenceStandCount).toBe(2);
+    expect(stats.standCount).toBe(2);
+  });
 });
 
 describe("computeSegmentStats: physical plausibility", () => {
@@ -599,11 +682,12 @@ describe("stand tables and drives", () => {
     expect(dwells.has("1:5")).toBe(false);
   });
 
-  // The out-and-backs list a stop twice, so one stop id would carry one table
-  // pooled over two different passes; the rider simulator measured Purple
-  // 163 -> 188 strands with the split served there. Withheld by structure,
-  // not by name: a route that stops repeating a stop starts being served.
-  it("withholds both halves on a route that visits a stop more than once", () => {
+  // Every route gets its tables wherever data exists (2026-09-05): the
+  // estimator prices every line, and the legacy client's split gate lives on
+  // its side. The fold/allowlist sets are still computable — the replay
+  // rebuilds the old production payload from them — but `calibrate` no
+  // longer consults them, and the attachers withhold nothing unless asked.
+  it("serves both halves on a fold route and on a line off the legacy allowlist", () => {
     const stops = [
       { id: 1, name: "A", lat: 41.31, lon: -72.93 },
       { id: 2, name: "B", lat: 41.311, lon: -72.931 },
@@ -615,31 +699,64 @@ describe("stand tables and drives", () => {
       { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] },
     ]);
     expect([...foldRoutes(network)]).toEqual([10]);
-    // ...and a line that is not on the measured allowlist is withheld too:
-    // Pink cleared the client's gate on 11 hops and went 280 -> 431 strands.
     expect(SPLIT_SERVED_ROUTE_IDS.has(3)).toBe(true);
     expect(SPLIT_SERVED_ROUTE_IDS.has(8)).toBe(false);
     expect([...splitWithheldRoutes(network)].sort()).toEqual([10, 8]);
 
-    const withheld = splitWithheldRoutes(network);
     const dwells = new Map<string, DwellStats>();
     expect(attachStandTables(dwells, [
       { key: "10:2", n: 30, all: [20, 300], windowed: [] },
+      { key: "8:2", n: 2, all: [20, 40], windowed: [] },
       { key: "3:2", n: 2, all: [20, 40], windowed: [] },
-    ], withheld)).toBe(1);
-    expect(dwells.has("10:2")).toBe(false);
-    expect(dwells.get("3:2")!.qn).toBe(2);
+    ])).toBe(3);
+    expect(dwells.get("10:2")!.qn).toBe(2);
+    expect(dwells.get("8:2")!.qn).toBe(2);
 
     const segments = new Map<string, SegmentStats>([
       ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
-      ["3:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
+      ["8:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" }],
     ]);
     expect(attachDrives(segments, [
       { key: "10:2:3", n: 12, all: [30, 31], windowed: [] },
-      { key: "3:2:3", n: 12, all: [30, 31], windowed: [] },
+      { key: "8:2:3", n: 12, all: [30, 31], windowed: [] },
+    ])).toBe(2);
+    expect(segments.get("10:2:3")!.drive).toBe(30.5);
+    expect(segments.get("8:2:3")!.drive).toBe(30.5);
+
+    // Asked to, the attachers still withhold — the replay's "served" arm.
+    const withheld = splitWithheldRoutes(network);
+    const again = new Map<string, DwellStats>();
+    expect(attachStandTables(again, [
+      { key: "10:2", n: 30, all: [20, 300], windowed: [] },
+      { key: "3:2", n: 2, all: [20, 40], windowed: [] },
     ], withheld)).toBe(1);
-    expect(segments.get("10:2:3")!.drive).toBeUndefined();
-    expect(segments.get("3:2:3")!.drive).toBe(30.5);
+    expect(again.has("10:2")).toBe(false);
+  });
+
+  it("attaches per-pass tables only to stops the route repeats, at indices it still has", () => {
+    const network = TransitNetwork.build(
+      [
+        { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+        { id: 2, name: "B", lat: 41.311, lon: -72.931 },
+        { id: 3, name: "C", lat: 41.312, lon: -72.932 },
+      ],
+      [{ id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] }],
+    );
+    const dwells = new Map<string, DwellStats>([["10:2", { mean: 15, stddev: 10, n: 0, q: standQuantiles([5, 100]), qn: 2 }]]);
+    const shares = new Map([["10:2#1", 0.9], ["10:2#3", 0.4]]);
+    expect(attachOccurrenceStandTables(dwells, network, [
+      { key: "10:2#1", n: 1, all: [100], windowed: [] },
+      { key: "10:2#3", n: 1, all: [5], windowed: [] },
+      { key: "10:2#9", n: 1, all: [50], windowed: [] }, // not an index the sequence has
+      { key: "10:1#0", n: 1, all: [50], windowed: [] }, // not a repeated stop
+      { key: "11:2#1", n: 1, all: [50], windowed: [] }, // unknown route
+      { key: "10:2#5", n: 0, all: [], windowed: [] },
+      { key: "10:2", n: 1, all: [50], windowed: [] }, // a pooled key: not this attacher's
+    ], shares)).toBe(2);
+    expect(dwells.get("10:2#1")).toEqual({ mean: 100, stddev: 5, n: 1, q: standQuantiles([100]), qn: 1, pstop: 0.9 });
+    expect(dwells.get("10:2#3")).toEqual({ mean: 5, stddev: 5, n: 1, q: standQuantiles([5]), qn: 1, pstop: 0.4 });
+    expect([...dwells.keys()].sort()).toEqual(["10:2", "10:2#1", "10:2#3"]);
+    expect(dwells.get("10:2")!.qn).toBe(2); // the pooled entry is untouched
   });
 
   it("attaches the median drive only where a calibrated segment exists", () => {
@@ -689,7 +806,7 @@ describe("stand tables and drives", () => {
     expect(dwells.has("9:1")).toBe(false);
   });
 
-  it("pools the pace per route over chord metres, dropping short hops and withheld routes", () => {
+  it("pools the pace per route over the hop length, dropping short hops and (when asked) withheld routes", () => {
     const network = TransitNetwork.build(
       [
         { id: 1, name: "A", lat: 41.31, lon: -72.93 },

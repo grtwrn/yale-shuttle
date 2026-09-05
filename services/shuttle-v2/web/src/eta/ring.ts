@@ -16,6 +16,7 @@
  */
 
 import { haversineMeters, polylineMeters, traceStopLegs, type LatLon } from "../geo";
+import type { Dist } from "./dist";
 
 /** Cell pitch, metres. The sensor's deadband. */
 export const CELL_M = 30;
@@ -62,6 +63,32 @@ export interface Ring {
   approachOf: Int32Array;
   /** True when any leg had to be bridged with a chord (the published line could not supply it). */
   bridged: boolean;
+  /**
+   * Per-leg driving speed, m/s, for the transition kernel — set from the
+   * served drive tables (`setRingProfile`), DEFAULT_DRIVE_M_S until then. The
+   * ring is cached per route so every call site shares one profile.
+   */
+  legSpeed: Float64Array;
+  /** Per-stop P(the bus stops), for the kernel's capture at a stop cell — from the stand tables' mass at zero. */
+  pStop: Float64Array;
+  /** Per-stop stand distribution, for the departure hazard; null until the tables have been seen. */
+  stand: (Dist | null)[];
+}
+
+/** Driving speed before any table has been seen (measured p50 6.6-7.1 m/s downtown). */
+export const DEFAULT_DRIVE_M_S = 7;
+/** P(stops | pass) pooled over every stop, before any table has been seen. */
+export const DEFAULT_P_STOP = 0.877;
+
+/** Install the tables' speeds and stop probabilities on the (shared, cached) ring. */
+export function setRingProfile(ring: Ring, legSpeed: ArrayLike<number>, pStop: ArrayLike<number>, stand?: ArrayLike<Dist | null>): void {
+  for (let i = 0; i < ring.N; i++) {
+    const v = legSpeed[i];
+    ring.legSpeed[i] = v !== undefined && Number.isFinite(v) && v > 0.5 ? v : DEFAULT_DRIVE_M_S;
+    const p = pStop[i];
+    ring.pStop[i] = p !== undefined && Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : DEFAULT_P_STOP;
+    ring.stand[i] = stand ? (stand[i] ?? null) : null;
+  }
 }
 
 function walkLeg(slice: readonly (readonly [number, number])[], n: number): { lat: number[]; lon: number[]; m: number[] } {
@@ -184,6 +211,9 @@ export function buildRing(
     leg: Int32Array.from(leg), frac: Float32Array.from(frac),
     stopCell: Int32Array.from(stopCell), legM: Float64Array.from(legM),
     nearStop, approachOf, bridged,
+    legSpeed: new Float64Array(N).fill(DEFAULT_DRIVE_M_S),
+    pStop: new Float64Array(N).fill(DEFAULT_P_STOP),
+    stand: new Array<Dist | null>(N).fill(null),
   };
 }
 

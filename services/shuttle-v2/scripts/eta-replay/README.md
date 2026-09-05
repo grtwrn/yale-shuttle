@@ -173,7 +173,7 @@ emitters, so the bytes match the live payload:
 
 ```bash
 TZ=America/New_York REPLAY_DB=./store/snap.db npx tsx scripts/eta-replay/model-patch.ts
-#   MODEL_OUT=path  MODEL_NOW=ISO  MODEL_ROUTES=served|all  (default: production's allowlist)
+#   MODEL_OUT=path  MODEL_NOW=ISO  MODEL_ROUTES=all|served  (default: all = production; served = the pre-2026-09-05 allowlist)
 TZ=America/New_York REPLAY_DB=./store/snap.db PAYLOAD_PATCH=./scripts/.eta-replay/model-patch.json \
   npx tsx scripts/eta-replay/rider-sim/run.ts ...
 ```

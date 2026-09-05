@@ -37,11 +37,25 @@ export type SegmentEntry = {
   avg: number; sd: number; n: number;
   drive?: number; driveN?: number;
   dq?: number[]; dqn?: number;
+  /**
+   * Road metres of the hop along the published line, whole metres — the
+   * length the route `pace` is per, and the length the client's ring cuts the
+   * leg into; absent where the line cannot supply the hop (see
+   * {@link TransitNetwork.getLegMeters}). Static geometry, not calibration.
+   */
+  legM?: number;
   /** Only on the {@link PACE_KEY} carrier row — see {@link paceCarrier}. */
   spm?: number[]; spmN?: number;
 };
+/**
+ * One stop of `dwells[route]`. Keyed by stop id for the pooled entry; a stop
+ * the route lists more than once ALSO carries one entry per pass under
+ * `"<stop>#<index>"` (`stop_index` in the route's raw sequence), where
+ * `med`/`sd`/`n` are that pass's stand summary (median, p90 − median, count)
+ * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
+ */
 export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
-/** `pace[route]`: seconds per chord metre, quantiles at (i + 0.5) / spm.length, 4 decimals. */
+/** `pace[route]`: seconds per ROAD metre (`legM`; chord where absent), quantiles at (i + 0.5) / spm.length, 4 decimals. */
 export type PaceEntry = { spm: number[]; n: number };
 
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
@@ -63,6 +77,12 @@ export function segmentSplitFields(s: SegmentStats): Pick<SegmentEntry, "drive" 
     // sums over; `dqn` is its gate.
     ...(s.dq !== undefined && s.dqn !== undefined ? { dq: s.dq.map((x) => Math.round(x)), dqn: s.dqn } : {}),
   };
+}
+
+/** `legM` for one hop, as it goes on the wire: whole metres, absent where the line cannot supply the hop. */
+export function legMetersField(net: TransitNetwork, routeId: number, fromStopId: number, toStopId: number): Pick<SegmentEntry, "legM"> {
+  const m = net.getLegMeters(routeId, fromStopId, toStopId);
+  return m !== undefined ? { legM: Math.round(m) } : {};
 }
 
 /** The split fields of one stop, as they go on the wire (see {@link segmentSplitFields}). */
@@ -190,6 +210,7 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
       segMap[`${from}-${to}`] = {
         avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
         ...segmentSplitFields(s),
+        ...legMetersField(net, r.id, from, to),
       };
     }
     // The route's pooled pace, twice: as `pace[rid]` (the documented shape)
@@ -214,6 +235,16 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
         ...dwellSplitFields(d),
       };
+    }
+    // A stop the route lists more than once (the West Campus out-and-backs)
+    // also carries one entry per PASS, `"<stop>#<index>"`, when the calibrator
+    // has a table for that pass. See DwellEntry.
+    for (let i = 0; i < n; i++) {
+      const sid = r.stops[i]!;
+      if (net.positionsOnRoute(r.id, sid).length < 2) continue;
+      const d = net.getOccurrenceDwellStats(r.id, sid, i);
+      if (!d) continue;
+      dwMap[`${sid}#${i}`] = { med: round1(d.mean), sd: round1(d.stddev), n: d.n, ...dwellSplitFields(d) };
     }
     dwells[rid] = dwMap;
   }

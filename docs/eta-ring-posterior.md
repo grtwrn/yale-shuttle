@@ -44,42 +44,83 @@ The route's published polyline is cut into cells of 30 m — the sensor's own
 quantum — with a cell on every stop (`traceStopLegs`, the same projection that
 fixed the drawn route lines). The hidden state is (cell, STAND | MOVE); the
 elapsed clock is observed (`stationary_since`, or the client's own rest clock
-with the collector's 125 m rule).
+under the collector's 125 m rule).
 
 **The observation model is the deadband**: a repeated fix means the bus is in
 the same cell; a fresh fix means it changed cell and is near the new
-coordinate (σ = 20 m). That is exact on the grid. A standing bus that reports
-a fresh fix has departed or shuffled, split 0.76 : 0.24 — the collector's own
-measured departure prior — and the next poll settles it (a departure moves
-again, a shuffle re-freezes). Shuffles are bidirectional within a stop's zone
-(a yard reposition is not progress); progress is forward-only.
+coordinate (σ = 20 m, plus an off-route mixture weight so a detour keeps its
+branch until the evidence accumulates). The per-poll emissions are the
+measured ones — P(repeat | standing) 0.919, P(repeat | moving) 0.159, 0.5
+inside a stop's zone where buses pull in and out — and they enter BOTH
+branches of the joint transition, so a standing hypothesis pays for a fresh
+fix as a moving one pays for a repeat.
 
-The kernel is table-free: it reads geometry and the feed, so
-`resolveAnchorIndex` runs the same step with the arguments it already has and
-the map marker, the "N stops away" column and the countdown come from one
-posterior. Mass flows along every allowed transition every poll, so the
-filter cannot branch-lock (docs/eta-estimator-design.md, "The branch lock").
+**A move off a stand is a departure or a reposition**, and the split is the
+competition of two rates: the stop's own departure hazard at the time already
+stood, read off its stand table, against a per-poll reposition rate. One
+minute into a 344 Winchester layover a move is a shuffle (P ≈ 0.08); five
+minutes in it is a coin toss; at a kerb stop with a 30 s median it is the bus
+leaving (P ≈ 0.9), which is the collector's pooled 0.76 recovered from the
+tables rather than assumed. A first step that lands on a stop cell is
+captured there as an arrival, like any other.
+
+**The stand's identity is where the bus came to rest**: once a repeated fix
+(or the server clock) shows a rest, the stop whose zone holds the standing
+mass is the stand's stop, and every standing cell within the 125 m rest
+radius belongs to it — whichever side of the marker the yard put the bus —
+except a cell at another stop's own kerb. Shuffles reach four cells either
+way inside that radius and nowhere else. On a fold the stop is chosen from
+the belief, not from geometry, so a rest beside twin stops (130 Prospect
+(N)/(S), 28 m apart) lands on the branch the bus is on.
+
+**One observation per poll.** A step is taken only for a new payload object at
+least 2.5 s after the last; every other call — the map, the cards, the chip,
+each with its own clock — is a query of the stored belief. (Stepping on each
+render fed the filter "the bus did not move" observations that never
+happened, and a rendered clock behind the last step re-initialised it: the
+review's first finding, invisible to the simulator, which polls once.)
+
+The kernel's speed is the hop's own (road metres over the median drive) and
+its far tail scales with it, so West Campus legs at 12–20 m/s are tracked
+instead of dead-reckoned at 7 m/s; the stop capture uses each stop's P(stop).
+These live on the ring, shared by every call site, and are set when the
+tables are built.
 
 The screen's leg is the argmax with hysteresis only where it is needed: a leg
-ahead is followed one at a time; a leg far away (a fold, a lap) needs 0.8 of
-the mass; a leg behind is held (the ring rule) for five minutes.
+ahead is followed one at a time once 0.8 of the mass has passed the stop; a
+leg far away (a fold, a lap) needs 0.8; a leg behind is held for five
+minutes. A yard reverse never reads as "behind": standing mass in the rest
+radius belongs to the rest stop.
 
 ## 2. Price: distributions, summed once (`dist.ts`, `tables.ts`, `arrival.ts`)
 
-Every table is a piecewise-linear CDF over the served quantile knots — no
-parametric family. Stands shrink toward the ordinary-stop prior with
-k = 2 (k = 8 pulled 344 Winchester's median from ~300 s to 184 s on the
-recorded pass; the prior is a different *shape*, so only thin cells lean on
-it); drives shrink toward chord × route pace with k = 8.
+Every table is a survival curve over the served quantile knots, interpolated
+LOG-LINEARLY (a constant hazard on each segment) and continued past the last
+knot at the last segment's hazard — no parametric family, no forced closing
+knot, no saw-tooth. On 344 Winchester's table the residual median by elapsed
+time used to read 79 s at 420 s, 120 at 480, 33 at 800 and 87 at 840; it is
+now smooth in r and a bus that has out-sat every recorded stand is promised
+the mean excess its own tail shows.
+
+Stands are shrunk toward the ROUTE'S OWN pool of stops of the same class —
+layover (median ≥ 120 s) or kerb — with an effective prior size of three
+visits, so a thin layover cell leans on the other layovers' shape and never
+on a kerb stop's. A stop the route visits twice has a table per occurrence
+(`dwells[r]["<id>#<index>"]`, served for routes 9 and 10 where the two passes
+differ). Drives shrink toward road metres × the route's pace with k = 8.
 
 A chain from a situation (leg, mode, mass) to a stop is
 `start + Σ (S_s + D_s)`; the residual stand `(S_j − r | S_j > r)` is the
 survival form `hopPricing.ts` already bills at the median. Sums are taken by
-stratified common-random-number sampling (K = 256, fixed permutations per
-term) against precomputed prefix sums along the ring, so a chain is one vector
-subtraction and the number is a deterministic function of the belief and the
-tables. A hold on the road is **not** priced on top of the drive: `leg_sec`
-already contains the lights.
+stratified common-random-number sampling (K = 256, one fixed permutation per
+term) against precomputed prefix sums along the ring, so a chain is one
+vector subtraction and the number is a deterministic function of the belief
+and the tables. A hold on the road is not priced on top of the drive:
+`leg_sec` already contains the lights. A bus standing AT a stop has arrived
+there: that stop's next arrival is now, not a lap later.
+
+A route whose tables carry no measured drive (the grocery lines, until they
+have `legs`) is priced by the legacy arithmetic; the dispatch is data-driven.
 
 ## 3. Display: a decision rule (`arrival.ts`)
 
@@ -87,11 +128,14 @@ Per (bus, stop): `eta` = quantile τ of the lead cluster, `low`/`high` = its
 10th and 90th percentiles. Situations whose medians lie within 12 minutes of
 the lead's are one cluster (a bus standing vs just departed); a lap apart they
 are not, and the number follows the lead leg's hysteresis instead of racing
-across the gap as a branch weight passes 0.5 — #88's failure. τ ships at 0.5.
+across the gap as a branch weight passes 0.5 — #88's failure. While another
+cluster still holds a fifth of the mass, the RANGE comes from the full
+mixture, so a 50/50 fold does not read as "17 s [13–23]". τ ships at 0.5.
 
-The #119 clamp stays, as a display rule: while the lead is in a stop's zone,
-the shown remainder may pause and never climb, keyed on the clock so a yard
-shuffle does not reset it, released the poll the bus leaves the zone.
+The #119 clamp stays, as a display rule keyed on the stand's identity: while
+the lead is still inside the rest radius — standing or shuffling — the shown
+remainder may pause and never climb; it releases the poll the bus leaves the
+radius. A lead driving on elsewhere is never clamped.
 
 ## What the existing rules became
 

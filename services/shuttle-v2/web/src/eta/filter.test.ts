@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildRing, CELL_M, type Ring } from "./ring";
 import { legMass, P_DEPART_ON_FRESH, situations, standingSec, stepBelief, type Belief } from "./filter";
+import { fromQuantiles } from "./dist";
 import type { LatLon } from "../geo";
 
 // A synthetic rectangular loop: four stops at the corners of a ~900 x 450 m
@@ -91,13 +92,16 @@ describe("filter: the deadband is the observation model", () => {
     expect(1 - standMass(b, r)).toBeGreaterThan(0.85); // measured 0.87 after the 2nd fresh fix
   });
 
-  it("the first step off a layover-length stand is more likely a reposition; three steps make it a departure", () => {
+  it("the first step off a layover stand is more likely a reposition; three steps make it a departure", () => {
     const r = ring();
+    // Stop 1 carries 344 Winchester's stand table: at 300 s in, its hazard
+    // is small against the reposition rate.
+    r.stand[0] = fromQuantiles([83, 129, 145, 191, 288, 333, 437, 473, 543, 674]);
     const since = new Date(0).toISOString().replace("Z", "");
     let b = stepBelief(undefined, r, bus(onLeg0(0), { stationary_since: since }), 300_000, STOPS);
     for (let t = 1; t <= 6; t++) b = stepBelief(b, r, bus(onLeg0(0), { stationary_since: since }), 300_000 + t * 5000, STOPS);
     b = stepBelief(b, r, bus(onLeg0(35)), 335_000, STOPS);
-    expect(1 - standMass(b, r)).toBeLessThan(0.55);
+    expect(1 - standMass(b, r)).toBeLessThan(0.7); // below the pooled 0.76: the first step off a layover leans to a reposition
     b = stepBelief(b, r, bus(onLeg0(70)), 340_000, STOPS);
     b = stepBelief(b, r, bus(onLeg0(105)), 345_000, STOPS);
     expect(1 - standMass(b, r)).toBeGreaterThan(0.7);

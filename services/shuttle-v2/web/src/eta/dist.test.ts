@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cdf, fromQuantiles, lognormalMeanSd, median, point, quantile, residual, residualMedian, scaled, shrinkToward, TAIL_P } from "./dist";
+import { cdf, fromQuantiles, hazard, lognormalMeanSd, median, point, quantile, residual, residualMedian, scaled, shrinkToward } from "./dist";
 import { remainingStandSec } from "../hopPricing";
 
 // Red stop 11 (344 Winchester), the served stand table on 2026-09-04.
@@ -35,24 +35,40 @@ describe("dist: a quantile vector is a CDF", () => {
     expect(quantile(d, 0.26)).toBeGreaterThan(0);
   });
 
-  it("closes one gap past the last knot and then carries a tail", () => {
+  it("continues past the last knot at the last segment's hazard, with no forced closing knot", () => {
     const d = fromQuantiles(Q11);
-    // Knot at 674 + gap (131) = 805 carries TAIL_P.
-    expect(cdf(d, 805)).toBeCloseTo(TAIL_P, 6);
-    expect(quantile(d, 0.9999)).toBeGreaterThan(805);
+    // Last segment 543 -> 674 takes S from 0.15 to 0.05: hazard ln 3 / 131 s.
+    const h = Math.log(3) / 131;
+    expect(hazard(d, 600)).toBeCloseTo(h, 6);
+    expect(hazard(d, 900)).toBeCloseTo(h, 6);
+    expect(quantile(d, 0.95)).toBeCloseTo(674, 6);
+    // No saw-tooth: the residual median is smooth in r across the tail.
+    let prev = residualMedian(d, 600);
+    for (let r = 605; r <= 1200; r += 5) {
+      const m = residualMedian(d, r);
+      expect(Math.abs(m - prev)).toBeLessThan(3);
+      prev = m;
+    }
+    expect(residualMedian(d, 900)).toBeCloseTo(Math.log(2) / h, 3);
   });
 });
 
 describe("dist: the residual given elapsed time", () => {
-  it("matches hopPricing's conditional median at every elapsed r", () => {
+  it("agrees with hopPricing's conditional median to within the interpolation, and is smoother", () => {
+    // Same knots; hopPricing joins them linearly in F, this joins them
+    // log-linearly in S. They agree at the knots and differ inside segments.
     const d = fromQuantiles(Q11);
-    for (const r of [0, 30, 100, 168, 240, 300, 420, 600, 700]) {
+    for (const r of [0, 30, 100, 168, 240, 300, 420]) {
       const ours = residualMedian(d, r);
       const shipped = remainingStandSec(Q11, r);
-      // Same knots, same interpolation, same closing gap: identical until the
-      // tail, where hopPricing decays to zero and we keep an exponential tail.
-      if (r < 674) expect(ours).toBeCloseTo(shipped, 3);
-      else expect(ours).toBeGreaterThanOrEqual(shipped - 1e-9);
+      expect(Math.abs(ours - shipped)).toBeLessThan(45);
+    }
+    // The residual median never jumps between consecutive seconds of r.
+    let prev = residualMedian(d, 0);
+    for (let r = 1; r <= 800; r++) {
+      const m = residualMedian(d, r);
+      expect(Math.abs(m - prev), `at r=${r}`).toBeLessThan(6);
+      prev = m;
     }
   });
 
@@ -76,7 +92,7 @@ describe("dist: shrinkage, scaling, lognormal", () => {
     const prior = fromQuantiles([0, 15, 17, 20, 24, 29, 35, 44, 60, 95]);
     const half = shrinkToward(emp, prior, 8, 8);
     for (const x of [20, 100, 300, 500]) {
-      expect(cdf(half, x)).toBeCloseTo(0.5 * cdf(emp, x) + 0.5 * cdf(prior, x), 3);
+      expect(cdf(half, x)).toBeCloseTo(0.5 * cdf(emp, x) + 0.5 * cdf(prior, x), 2);
     }
     expect(shrinkToward(emp, prior, 10_000, 8)).toBe(emp);
     expect(shrinkToward(emp, prior, 0, 8)).toBe(prior);

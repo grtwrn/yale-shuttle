@@ -33,7 +33,7 @@
  */
 
 import { quantile, residual, scaled, type Dist } from "./dist";
-import { clockOrigin, situations, standingSec, type Belief, type Situation } from "./filter";
+import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
 
@@ -78,32 +78,36 @@ function rng(seed: number): () => number {
   };
 }
 
-const PERMS = 64;
 const STRATA = new Float64Array(K);
 for (let k = 0; k < K; k++) STRATA[k] = (k + 0.5) / K;
-const PERM: Uint16Array[] = (() => {
-  const out: Uint16Array[] = [];
-  const r = rng(0x5eed);
-  for (let p = 0; p < PERMS; p++) {
-    const a = new Uint16Array(K);
-    for (let k = 0; k < K; k++) a[k] = k;
-    for (let k = K - 1; k > 0; k--) {
-      const j = Math.floor(r() * (k + 1));
-      const t = a[k]!; a[k] = a[j]!; a[j] = t;
-    }
-    out.push(a);
+/**
+ * One fixed permutation per TERM index, made on demand from a seeded shuffle
+ * and cached, so no two terms of a chain ever share one (a fixed pool of 64
+ * aliased Orange's 33-stop lap onto itself and reused lap-1 draws for lap 2).
+ */
+const PERM = new Map<number, Uint16Array>();
+function permFor(term: number): Uint16Array {
+  let a = PERM.get(term);
+  if (a) return a;
+  a = new Uint16Array(K);
+  for (let k = 0; k < K; k++) a[k] = k;
+  const r = rng(0x5eed ^ Math.imul(term + 1, 0x9e3779b1));
+  for (let k = K - 1; k > 0; k--) {
+    const j = Math.floor(r() * (k + 1));
+    const t = a[k]!; a[k] = a[j]!; a[j] = t;
   }
-  return out;
-})();
+  PERM.set(term, a);
+  return a;
+}
 
 /** Add a draw of `d` to every sample, using the permutation for term `term`. */
 function addTerm(samples: Float64Array, d: Dist, term: number): void {
-  const perm = PERM[term % PERMS]!;
+  const perm = permFor(term);
   for (let k = 0; k < K; k++) samples[k] = samples[k]! + quantile(d, STRATA[perm[k]!]!);
 }
 
 function addResidual(samples: Float64Array, d: Dist, r: number, term: number): void {
-  const perm = PERM[term % PERMS]!;
+  const perm = permFor(term);
   const f = residual(d, r);
   for (let k = 0; k < K; k++) samples[k] = samples[k]! + f(STRATA[perm[k]!]!);
 }
@@ -168,7 +172,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number): Chain {
     leg = j;
     const hop = tables.hops[j]!;
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
-    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 2 * tables.hops.length + 2 * j);
+    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j);
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
   } else {
@@ -259,19 +263,32 @@ export function priceRoute(
   const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
-  // The clamp's stop: where the lead stands, or the stop whose zone a moving
-  // lead is in — so it is already armed when a bus rolls up to a marker and
-  // the mode flips to standing a poll later, instead of letting that flip
-  // read as a climb.
-  const clampAt = lead.standingAt >= 0
-    ? lead.standingAt
-    : ring.nearStop[Math.round(lead.sit.cell)]! >= 0 ? ring.nearStop[Math.round(lead.sit.cell)]! : -1;
+  // The clamp is keyed on the STAND's identity — the rest stop and its clock
+  // (filter.ts) — and holds while the lead is still inside the rest radius,
+  // standing or shuffling: a yard manoeuvre is the same stand, so the number
+  // must not restart from a higher raw value when the mode flips back. It
+  // releases the moment the bus leaves the radius (the rest resets). A lead
+  // driving on elsewhere is never clamped: a one-sided limiter on moving
+  // buses is the slew limiter the operator rejected.
+  const inRest = belief.rested && belief.restStop >= 0 && belief.restMask[Math.round(lead.sit.cell)] === 1;
+  const clampAt = lead.standingAt >= 0 ? lead.standingAt : inRest ? belief.restStop : -1;
   const bufs = chains.map(() => new Float64Array(K));
   const leadBuf = new Float64Array(K);
   const anyMeasured = tables.hops.some((x) => x.measured);
   // Walk the lead chain stop by stop; every other chain is read at the same
   // physical stop and occurrence, which may be a different number of hops on.
   const occ = new Map<number, number>();
+  // A bus standing AT a stop has arrived there: that stop's next arrival is
+  // now, not a lap later. The legacy path left this to the screen's
+  // `at_stop_id` check, which lags the belief by a 15 s dwell and a 75 m
+  // radius, so the row read "next lap" for the polls in between.
+  if (lead.standingAt >= 0) {
+    const sid = stops[lead.standingAt]!;
+    occ.set(lead.standingAt, 1);
+    if (targetStopIds.has(sid)) {
+      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+    }
+  }
   for (let h = 1; h <= 2 * N; h++) {
     const cur = (lead.leg + h) % N;
     const o = occ.get(cur) ?? 0;
@@ -284,6 +301,7 @@ export function priceRoute(
     const leadMedian = leadBuf[K >> 1]!;
     if (leadMedian > MAX_ETA_SEC) break;
     const parts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
+    const all: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     let mass = lead.sit.mass;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
@@ -295,12 +313,22 @@ export function priceRoute(
       if (hc > 2 * N) continue;
       chainAt(c, pre, hc, bufs[i]!);
       bufs[i]!.sort();
+      all.push({ s: bufs[i]!, w: c.sit.mass });
       if (Math.abs(bufs[i]![K >> 1]! - leadMedian) > NEAR_SEC) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
     }
+    // The number follows the lead cluster (hysteresis lives in the lead leg);
+    // the RANGE is honest about the rest: while another cluster — the other
+    // branch of a fold, a lap away — still holds a fifth of the mass, low
+    // and high come from the full mixture, so a 50/50 fold does not read as
+    // "17 s [13-23]" (the review's finding 7).
     const [q10, qt, q90] = mixedQuantiles(parts, [0.1, tau, 0.9]) as [number, number, number];
     let eta = qt, low = q10, high = q90;
+    if (mass < LEAD_SWITCH_MASS && all.length > parts.length) {
+      const [f10, f90] = mixedQuantiles(all, [0.1, 0.9]) as [number, number];
+      low = Math.min(low, f10); high = Math.max(high, f90);
+    }
     const key = chainKey(cur, o);
     if (floors) {
       const prev = floors.map.get(key);

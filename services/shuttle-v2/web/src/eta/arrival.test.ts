@@ -98,11 +98,6 @@ describe("arrival: the sum of the chain", () => {
     const rows = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5);
     const row = rows.find((r) => r.stopId === 2 && r.occurrence === 0)!;
     const rest = residual(tables.stops[0]!.stand, 300);
-    const exact = convolve([
-      { ...tables.stops[0]!.stand, tailMean: tables.stops[0]!.stand.tailMean } as Dist,
-      tables.hops[0]!.drive,
-    ]);
-    void exact;
     // Median of (rest + drive): close to rest median + drive median for a tight drive.
     const approx = rest(0.5) + quantile(tables.hops[0]!.drive, 0.5);
     expect(Math.abs(row.eta - approx)).toBeLessThan(15);
@@ -131,7 +126,7 @@ describe("arrival: the sum of the chain", () => {
     now += 5000;
     b = stepBelief(b, ring, { lat: at(105, 0).lat, lon: at(105, 0).lon }, now, STOPS);
     const third = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5).find((r) => r.stopId === 2 && r.occurrence === 0)!;
-    expect(third.high - third.low).toBeLessThan(90); // the drive's own q10-q90 spread is ~56 s here
+    expect(third.high - third.low).toBeLessThan(110); // the drive's own q10-q90 spread is ~90 s at this fraction
   });
 
   it("the shown number never climbs while the bus stands (the clamp), and the clamp releases on departure", () => {

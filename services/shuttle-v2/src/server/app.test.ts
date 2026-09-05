@@ -30,6 +30,7 @@ function fakeUpstream(buses: RawBus[], stops: Stop[], routes: Route[]): Upstream
         shortName: r.shortName,
         color: r.color,
         stops: r.stops,
+        ...(r.path !== undefined ? { path: r.path } : {}),
         ...(r.description !== undefined ? { description: r.description } : {}),
       })),
   } as UpstreamClient;
@@ -322,6 +323,61 @@ describe("GET /api/buses", () => {
     // Routes without a pace carry neither.
     expect(body.segments["11"]![PACE_KEY]).toBeUndefined();
     expect(body.pace["11"]).toBeUndefined();
+  });
+
+  // The estimator's geometry and its per-pass tables: `legM` (road metres of
+  // the hop along the published line, whole metres, absent where the line
+  // cannot supply it) on every hop, and `"<stop>#<index>"` dwell entries for
+  // a stop the route lists twice, beside the pooled one. Both additive.
+  it("carries road metres per hop and a stand table per pass of a repeated stop", async () => {
+    // A rectangle whose bottom side holds stops 1 (corner) and 2 (mid) and
+    // whose top holds 3 (mid); the route runs 1 → 2 → 3 → 2, visiting 2 on
+    // the way out (index 1) and on the way back (index 3). The last hop 2 → 1
+    // would cover 78% of the loop, so the tracer bridges it: no legM there.
+    const path: [number, number][] = [
+      [41.31, -72.93], [41.31, -72.91], [41.312, -72.91], [41.312, -72.93],
+    ];
+    const foldStops: Stop[] = [
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.92 },
+    ];
+    const fold: Route[] = [{ id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2], path }];
+    const c2 = await Collector.create(bundle, {
+      upstream: fakeUpstream([], foldStops, fold),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    });
+    await (c2 as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> }).refreshStaticIfNeeded(true);
+    const net = c2.ref.get();
+    net.setCalibration(
+      new Map(),
+      new Map([
+        ["10:2", { mean: 20, stddev: 5, n: 2, q: [0, 10, 100], qn: 3, pstop: 0.5 }],
+        ["10:2#1", { mean: 100.04, stddev: 5, n: 2, q: [90.4, 110.5], qn: 2, pstop: 1 }],
+        ["10:2#3", { mean: 0, stddev: 5, n: 1, q: [0, 0], qn: 1, pstop: 0.25 }],
+        ["10:1#0", { mean: 50, stddev: 5, n: 1, q: [50], qn: 1 }], // not a repeated stop: never served
+      ]),
+    );
+    const app2 = buildApp({ collector: c2, bundle, now: () => 1_700_000_000_000, adminToken: TEST_ADMIN_TOKEN, statsSinceDay: "2000-01-01", geocoder: { lookup: async () => [] } });
+    const body = (await (await app2.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+    };
+    const segs = body.segments["10"]!;
+    expect(Object.keys(segs).sort()).toEqual(["1-2", "2-3", "3-2", "2-1"].sort());
+    expect(segs["1-2"]!.legM).toBe(Math.round(net.getLegMeters(10, 1, 2)!));
+    expect(segs["1-2"]!.legM).toBeCloseTo(837, -1); // one straight block east
+    expect(segs["2-3"]!.legM).toBeGreaterThan(1800); // east to the corner, up, back west
+    expect(segs["3-2"]!.legM).toBeGreaterThan(1800); // the mirror image, round the other corner
+    expect(segs["2-1"]!.legM).toBeUndefined(); // bridged: not road
+    for (const k of ["1-2", "2-3", "3-2"]) expect(Number.isInteger(segs[k]!.legM)).toBe(true);
+    expect(segs["1-2"]).toEqual({ avg: segs["1-2"]!.avg, sd: segs["1-2"]!.sd, n: 0, legM: segs["1-2"]!.legM });
+
+    const dw = body.dwells["10"]!;
+    expect(Object.keys(dw).sort()).toEqual(["1", "2", "3", "2#1", "2#3"].sort());
+    expect(dw["2"]).toEqual({ med: 20, sd: 5, n: 2, q: [0, 10, 100], qn: 3, pstop: 0.5 });
+    expect(dw["2#1"]).toEqual({ med: 100, sd: 5, n: 2, q: [90, 111], qn: 2, pstop: 1 });
+    expect(dw["2#3"]).toEqual({ med: 0, sd: 5, n: 1, q: [0, 0], qn: 1, pstop: 0.25 });
   });
 
   it("serves an empty pace table, and no carrier rows, before any route has legs", async () => {
