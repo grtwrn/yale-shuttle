@@ -138,7 +138,7 @@ export function survival(d: Dist, x: number): number {
   const s0 = 1 - ps[lo]!, s1 = 1 - ps[hi]!;
   const w = xs[hi]! - xs[lo]!;
   if (w <= 0) return s0;
-  return s0 * Math.pow(s1 / s0, (x - xs[lo]!) / w);
+  return s0 * Math.exp(Math.log(s1 / s0) * ((x - xs[lo]!) / w));
 }
 
 /** F(x). */

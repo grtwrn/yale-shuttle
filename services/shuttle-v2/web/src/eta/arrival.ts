@@ -106,10 +106,31 @@ function addTerm(samples: Float64Array, d: Dist, term: number): void {
   for (let k = 0; k < K; k++) samples[k] = samples[k]! + quantile(d, STRATA[perm[k]!]!);
 }
 
-function addResidual(samples: Float64Array, d: Dist, r: number, term: number): void {
+/**
+ * The residual draws for (table, elapsed) — cached per 5 s of elapsed time,
+ * because the simulator prices the same bus for many riders in one poll.
+ */
+const residualCache = new Map<string, Float64Array>();
+const distIds = new WeakMap<Dist, number>();
+let nextDistId = 1;
+function residualDraws(d: Dist, r: number, term: number): Float64Array {
+  let id = distIds.get(d);
+  if (id === undefined) { id = nextDistId++; distIds.set(d, id); }
+  const key = `${id}|${Math.round(r / 5)}|${term}`;
+  const hit = residualCache.get(key);
+  if (hit) return hit;
+  if (residualCache.size > 4096) residualCache.clear();
   const perm = permFor(term);
-  const f = residual(d, r);
-  for (let k = 0; k < K; k++) samples[k] = samples[k]! + f(STRATA[perm[k]!]!);
+  const f = residual(d, Math.round(r / 5) * 5);
+  const out = new Float64Array(K);
+  for (let k = 0; k < K; k++) out[k] = f(STRATA[perm[k]!]!);
+  residualCache.set(key, out);
+  return out;
+}
+
+function addResidual(samples: Float64Array, d: Dist, r: number, term: number): void {
+  const draws = residualDraws(d, r, term);
+  for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
 }
 
 // -- the route's chain, precomputed -------------------------------------------

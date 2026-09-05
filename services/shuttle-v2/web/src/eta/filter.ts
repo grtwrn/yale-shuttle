@@ -169,6 +169,10 @@ export interface Belief {
   leadDisagreeSince: number | null;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
+  /** Per cell: the anchor leg of standing mass (`anchorLeg(.., true)`), cached once per step. */
+  standLeg: Int32Array;
+  /** Per cell: the standing zone key (stop, 1000 + stop for its approach, -1), cached once per step. */
+  zoneKey: Int32Array;
 }
 
 export interface FilterBus {
@@ -299,10 +303,12 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: now,
     rested: standing, restStop: -1, restApproach: false, restMask,
     serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, fresh: true,
+    standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
   applyLastStop(b, ring, bus, stops);
   normalise(b.p);
   if (standing) Object.assign(b, restStopFromBelief(ring, b.p, restMask));
+  cacheZones(b, ring);
   b.lead = leadLeg(b, ring, -1, now, b);
   return b;
 }
@@ -325,6 +331,15 @@ function applyLastStop(b: Belief, ring: Ring, bus: FilterBus, stops: readonly nu
     const f = w[ring.leg[c]!]!;
     b.p[c] = b.p[c]! * f;
     b.p[C + c] = b.p[C + c]! * f;
+  }
+}
+
+/** Fill the per-cell caches from the rest state; call after the rest fields are final. */
+function cacheZones(b: Belief, ring: Ring): void {
+  for (let c = 0; c < ring.C; c++) {
+    const z = standZone(b, ring, c);
+    b.zoneKey[c] = z.stop < 0 ? -1 : z.approach ? 1000 + z.stop : z.stop;
+    b.standLeg[c] = z.stop >= 0 && !z.approach ? z.stop : ring.leg[c]!;
   }
 }
 
@@ -358,21 +373,17 @@ export function standZone(b: Belief, ring: Ring, c: number): { stop: number; app
  * moving bus is on its cell's leg.
  */
 export function anchorLeg(b: Belief, ring: Ring, c: number, standing: boolean): number {
-  if (standing) {
-    const z = standZone(b, ring, c);
-    if (z.stop >= 0 && !z.approach) return z.stop;
-  }
-  return ring.leg[c]!;
+  return standing ? b.standLeg[c]! : ring.leg[c]!;
 }
 
 /** Mass per anchor leg, for the lead and for the fold hysteresis. */
 export function legMass(b: Belief, ring: Ring): Float64Array {
   const m = new Float64Array(ring.N);
   const C = ring.C;
+  const p = b.p, sl = b.standLeg, lg = ring.leg;
   for (let c = 0; c < C; c++) {
-    const ls = anchorLeg(b, ring, c, true);
-    m[ls] = m[ls]! + b.p[c]!;
-    m[ring.leg[c]!] = m[ring.leg[c]!]! + b.p[C + c]!;
+    m[sl[c]!] = m[sl[c]!]! + p[c]!;
+    m[lg[c]!] = m[lg[c]!]! + p[C + c]!;
   }
   return m;
 }
@@ -536,14 +547,21 @@ export function stepBelief(
     restMask: moved ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
     lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
+    standLeg: moved ? new Int32Array(C) : prev.standLeg, zoneKey: moved ? new Int32Array(C) : prev.zoneKey,
   };
   applyLastStop(b, ring, bus, stops);
   normalise(b.p);
   // The rest is established by a repeated fix (or a server clock already
   // running), and its stop is read off the belief at that moment.
+  let restChanged = moved;
   if (!b.rested && (!fresh || (since !== null && (now - since) / 1000 >= STANDING_MIN_S))) {
     b.rested = true;
     Object.assign(b, restStopFromBelief(ring, b.p, b.restMask));
+    restChanged = true;
+  }
+  if (restChanged) {
+    if (b.standLeg === prev.standLeg) { b.standLeg = new Int32Array(C); b.zoneKey = new Int32Array(C); }
+    cacheZones(b, ring);
   }
   b.lead = leadLeg(b, ring, prev.lead, now, b);
   return b;
@@ -600,41 +618,44 @@ export interface Situation {
 }
 
 export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
-  const C = ring.C;
-  type Acc = { mass: number; frac: number; cell: number; zone: Map<number, number> };
-  const acc = new Map<number, Acc>();
+  const C = ring.C, N = ring.N;
+  // Accumulators indexed by (anchor leg * 2 + mode); zone tallies per key.
+  const mass = new Float64Array(2 * N), frac = new Float64Array(2 * N), cell = new Float64Array(2 * N);
+  const zoneMass = new Map<number, number>();
+  const p = b.p;
   for (let c = 0; c < C; c++) {
-    for (let mode = 0; mode < 2; mode++) {
-      const m = b.p[mode * C + c]!;
-      if (m <= 0) continue;
-      const key = anchorLeg(b, ring, c, mode === 0) * 2 + mode;
-      let a = acc.get(key);
-      if (!a) { a = { mass: 0, frac: 0, cell: 0, zone: new Map() }; acc.set(key, a); }
-      a.mass += m;
-      a.frac += m * ring.frac[c]!;
-      a.cell += m * c;
-      if (mode === 0) {
-        const z = standZone(b, ring, c);
-        // Zone key: stop index for the stop's own zone, 1000 + stop index for its approach zone, -1 for none.
-        const zk = z.stop < 0 ? -1 : z.approach ? 1000 + z.stop : z.stop;
-        a.zone.set(zk, (a.zone.get(zk) ?? 0) + m);
-      }
+    const ms = p[c]!, mm = p[C + c]!;
+    if (ms > 0) {
+      const k = b.standLeg[c]! * 2;
+      mass[k] = mass[k]! + ms; frac[k] = frac[k]! + ms * ring.frac[c]!; cell[k] = cell[k]! + ms * c;
+      const zk = k * 4096 + (b.zoneKey[c]! + 1);
+      zoneMass.set(zk, (zoneMass.get(zk) ?? 0) + ms);
+    }
+    if (mm > 0) {
+      const k = ring.leg[c]! * 2 + 1;
+      mass[k] = mass[k]! + mm; frac[k] = frac[k]! + mm * ring.frac[c]!; cell[k] = cell[k]! + mm * c;
     }
   }
   const out: Situation[] = [];
   let total = 0;
-  for (const [key, a] of acc) {
-    if (a.mass < minMass) continue;
+  for (let k = 0; k < 2 * N; k++) {
+    const m = mass[k]!;
+    if (m < minMass) continue;
     let zoneKey = -1, best = 0;
-    for (const [z, m] of a.zone) if (m > best) { best = m; zoneKey = z; }
+    if (k % 2 === 0) {
+      for (const [zk, zm] of zoneMass) {
+        if (Math.floor(zk / 4096) !== k) continue;
+        if (zm > best) { best = zm; zoneKey = (zk % 4096) - 1; }
+      }
+    }
     out.push({
-      leg: Math.floor(key / 2), standing: key % 2 === 0, mass: a.mass,
-      frac: a.frac / a.mass,
+      leg: k >> 1, standing: k % 2 === 0, mass: m,
+      frac: frac[k]! / m,
       zoneStop: zoneKey >= 1000 ? zoneKey - 1000 : zoneKey,
       approach: zoneKey >= 1000,
-      cell: a.cell / a.mass,
+      cell: cell[k]! / m,
     });
-    total += a.mass;
+    total += m;
   }
   for (const s of out) s.mass /= total || 1;
   out.sort((x, y) => y.mass - x.mass);
