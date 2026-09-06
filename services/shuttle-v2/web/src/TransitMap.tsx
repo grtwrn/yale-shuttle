@@ -47,7 +47,7 @@ import { topVisibleOptions,
   directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
-import { drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -240,6 +240,10 @@ const ROUTE_ID_GROUP: Record<number, string> = {
 };
 
 // Map route_id → toggle label for filtering
+// The Map tab's chip labels, in chip order — the `known` list every
+// mapFilter.ts function takes.
+const LEGEND_TOGGLES: readonly string[] = LEGEND_ROUTES.map((r) => r.toggleLabel);
+
 const ROUTE_ID_TO_TOGGLE: Record<number, string> = {
   1: "Blue", 4: "Blue Weekend", 13: "Blue Night",
   3: "Red",
@@ -6230,7 +6234,7 @@ const TransitMap: FC = () => {
   // every view change to keep the favourites filter from leaking into the All
   // page, which would wipe this the moment the rider switched tabs.
   const [mapHidden, setMapHidden] = useState<Set<string>>(() =>
-    loadHiddenRoutes(LEGEND_ROUTES.map((r) => r.toggleLabel)));
+    loadHiddenRoutes(LEGEND_TOGGLES));
   const setMapHiddenPersisted = (next: Set<string>) => {
     setMapHidden(next);
     saveHiddenRoutes(next);
@@ -6300,12 +6304,13 @@ const TransitMap: FC = () => {
     }
     return out;
   }, [buses, routeStops, stopCoords]);
-  // The set the MAP draws by: the chips, plus every idle line while "Running
-  // now" is on. The chips alone still drive the cards' hiddenRoutes below —
-  // StopList applies activeOnly itself, and doubling it up would be harmless
-  // but pointless.
+  // THE filter for the Map tab: the chips, plus every idle line while
+  // "Running now" is on. The map draws by this set and the route cards under
+  // it are shown by this same set (operator, 2026-09-06: one filter setting,
+  // not two) — StopList is handed it as its hiddenRoutes and nothing else, so
+  // a line is on the map exactly when its card is on the page.
   const mapDrawnHidden = useMemo(
-    () => drawnHidden(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden, activeOnly, buses.length > 0, runningToggles),
+    () => drawnHidden(LEGEND_TOGGLES, mapHidden, activeOnly, buses.length > 0, runningToggles),
     [mapHidden, activeOnly, buses.length, runningToggles]);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
@@ -7155,8 +7160,7 @@ const TransitMap: FC = () => {
             alignItems: "center",
           }}>
             <button
-              onClick={() => setMapHiddenPersisted(
-                toggleAll(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden))}
+              onClick={() => setMapHiddenPersisted(toggleAll(LEGEND_TOGGLES, mapHidden))}
               style={{
                 padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 600,
@@ -7165,7 +7169,7 @@ const TransitMap: FC = () => {
                 flexShrink: 0, whiteSpace: "nowrap",
               }}
             >
-              {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? "Show all" : "Hide all"}
+              {allHidden(LEGEND_TOGGLES, mapHidden) ? "Show all" : "Hide all"}
             </button>
             {LEGEND_ROUTES.map((r) => {
               const off = mapHidden.has(r.toggleLabel);
@@ -7196,14 +7200,14 @@ const TransitMap: FC = () => {
               );
             })}
           </div>
-          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? (
+          {allHidden(LEGEND_TOGGLES, mapHidden) ? (
             <div style={{
               width: "100%", maxWidth: 800, margin: "0 auto",
               padding: "0 12px 8px", fontSize: 13, color: "#78909c",
             }}>
-              Every line is switched off — tap one above to put it back on the map.
+              Every line is switched off — tap one above to put it back on the map and in the cards below.
             </div>
-          ) : LEGEND_ROUTES.every((r) => mapDrawnHidden.has(r.toggleLabel)) ? (
+          ) : allHidden(LEGEND_TOGGLES, mapDrawnHidden) ? (
             // The chips leave something on, but none of it has a bus: say so,
             // or an empty map under lit chips reads as broken.
             <div style={{
@@ -7219,7 +7223,8 @@ const TransitMap: FC = () => {
             height="min(48vh, 430px)"
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-            // The chips, plus every idle line while "Running now" is on.
+            // The page's one filter: the chips, plus every idle line while
+            // "Running now" is on. The cards below take this same set.
             hiddenRoutes={mapDrawnHidden}
             userLatLon={userLatLon} onRequestLocate={startLocating}
           />
@@ -7228,21 +7233,17 @@ const TransitMap: FC = () => {
               a tab of their own; the map above answers "where is everything"
               and these answer "when does MY line reach MY stop", which is one
               page, not two. The line filter above governs both. */}
-          {/* One control row above the cards: the "running now" filter, then
-              the jump index. Two stacked rows pushed the first card entirely
-              off a phone screen. It scrolls sideways rather than wrapping, so
-              fifteen routes cost the same height as three.
-              The jump index earns its place because the page is thousands of
-              pixels tall and a swipe starting on the map pans the map instead
-              of scrolling the page — report #21 is the same complaint about a
-              list sitting too low. */}
+          {/* One control above the cards: the "Running now / Every route"
+              MODE. It is not a second per-route filter — the chip row above
+              the map is the only one (operator, 2026-09-06: "share one filter
+              setting instead of two"). The row of jump chips that used to sit
+              beside it is gone: it was a second row of route names that did
+              something different from the first, and with one filter a rider
+              who wants one card taps "Hide all" and that line, which puts the
+              card directly under the map. */}
           <div style={{
-            // Same shape as the line-filter row above the map: a sideways
-            // scroller must be width-constrained or it widens the PAGE, and a
-            // page that scrolls sideways on a phone feels broken.
             width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
             padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
-            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
           }}>
             <button
               onClick={() => setActiveOnly(!activeOnly)}
@@ -7256,39 +7257,31 @@ const TransitMap: FC = () => {
             >
               {activeOnly ? "Running now" : "Every route"}
             </button>
-            {ROUTE_LISTS.map((cfg) => {
-              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-              if (activeOnly && buses.length > 0 && !hasBuses) return null;
-              const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-              if (toggle && mapHidden.has(toggle)) return null;
-              return (
-                <button
-                  key={cfg.label}
-                  onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  title={`Jump to the ${cfg.label} route`}
-                  style={{
-                    padding: "3px 10px", borderRadius: 10, minHeight: 44,
-                    border: `1px solid ${cfg.color}`, background: "#fff",
-                    color: cfg.color, fontSize: 10, fontWeight: 700,
-                    cursor: "pointer", fontFamily: "inherit",
-                    flexShrink: 0, whiteSpace: "nowrap",
-                  }}
-                >
-                  {cfg.label}
-                </button>
-              );
-            })}
           </div>
+          {/* The card area never goes silently blank: with every card filtered
+              out, one plain line says why, in the place the cards would be. */}
+          {allHidden(LEGEND_TOGGLES, mapDrawnHidden) && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
+              padding: "6px 12px 12px", fontSize: 13, color: "#78909c",
+            }}>
+              {allHidden(LEGEND_TOGGLES, mapHidden)
+                ? "No lines selected — tap a line above."
+                : "None of the selected lines has a bus right now — tap \"Every route\" to see them all."}
+            </div>
+          )}
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
               buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
               routeHours={routeHours} routeActive={routeActive} tick={tick}
-              listView="all" activeOnly={activeOnly && buses.length > 0}
-              // One filter for the page: the chips above already say which
-              // lines the rider cares about, and they persist between visits.
-              hiddenRoutes={mapHidden}
+              listView="all"
+              // The SAME set the map above draws by — chips plus the "Running
+              // now" mode, decided once in drawnHidden(). No activeOnly here:
+              // the toggle is already folded into that set, and a second copy
+              // of the decision is how the two would drift apart again.
+              hiddenRoutes={mapDrawnHidden}
               favorites={favorites} onToggleFavorite={toggleFavorite}
               savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
               userLatLon={userLatLon} onRequestLocate={startLocating}

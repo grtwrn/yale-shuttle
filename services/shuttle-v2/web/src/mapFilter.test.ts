@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 
 const KNOWN = ["Red", "Blue", "Green"];
 
@@ -99,6 +101,91 @@ describe("map route filter", () => {
       const chips = new Set(["Green"]);
       drawnHidden(KNOWN, chips, true, true, running);
       expect([...chips]).toEqual(["Green"]);
+    });
+  });
+
+  describe("Hide all", () => {
+    it("is true only when every known line is hidden", () => {
+      expect(allHidden(KNOWN, new Set(KNOWN))).toBe(true);
+      expect(allHidden(KNOWN, new Set(["Red", "Blue"]))).toBe(false);
+      expect(allHidden(KNOWN, new Set())).toBe(false);
+    });
+
+    it("is never true for an empty legend, so the page cannot open on the empty-state line", () => {
+      expect(allHidden([], new Set())).toBe(false);
+    });
+
+    it("agrees with what toggleAll does next", () => {
+      // toggleAll shows everything exactly when allHidden says all is hidden.
+      for (const hidden of [new Set<string>(), new Set(["Red"]), new Set(KNOWN)]) {
+        expect(toggleAll(KNOWN, hidden).size === 0).toBe(allHidden(KNOWN, hidden));
+      }
+    });
+  });
+
+  describe("one filter for the whole Map tab", () => {
+    // The chip row above the map is the page's ONLY per-route filter, and
+    // "Running now" is folded into it once (drawnHidden). Both consumers —
+    // the map and the route cards — must take that one set, or a line can be
+    // on the map while its card is missing (operator, 2026-09-06: "can both
+    // charts on the map page share one filter setting instead of two?").
+    // Read straight out of the shell's source: a refactor that hands
+    // StopList the raw chip set again, or re-applies activeOnly on top,
+    // brings the second decision back.
+    const src = readFileSync(fileURLToPath(new URL("./TransitMap.tsx", import.meta.url)), "utf8");
+    const start = src.indexOf('listView === "map" ? (');
+    const end = src.indexOf('listView === "issues" ? (', start);
+    const mapTab = src.slice(start, end);
+
+    it("the map tab exists where this test expects it", () => {
+      expect(start).toBeGreaterThan(0);
+      expect(end).toBeGreaterThan(start);
+    });
+
+    it("the map and the route cards are handed the SAME hidden set", () => {
+      expect(mapTab.match(/hiddenRoutes=\{mapDrawnHidden\}/g)?.length).toBe(2);
+      expect(mapTab).not.toMatch(/hiddenRoutes=\{mapHidden\}/);
+    });
+
+    it("the cards do not re-apply the Running now mode on their own", () => {
+      // drawnHidden already folded it in; a second copy is a second decision.
+      expect(mapTab).not.toMatch(/activeOnly=\{/);
+    });
+
+    it("there is only one row of route chips on the page", () => {
+      // The jump index under the map was a second row of route names that
+      // did something different from the first.
+      expect(mapTab).not.toMatch(/Jump to the/);
+      expect(mapTab.match(/LEGEND_ROUTES\.map\(/g)?.length).toBe(1);
+    });
+  });
+
+  describe("the shared decision, as both consumers see it", () => {
+    const running = new Set(["Blue"]);
+
+    it("Hide all hides every line in both modes, buses or not", () => {
+      for (const activeOnly of [true, false]) for (const anyBuses of [true, false]) {
+        const out = drawnHidden(KNOWN, new Set(KNOWN), activeOnly, anyBuses, running);
+        expect(allHidden(KNOWN, out)).toBe(true);
+      }
+    });
+
+    it("two chips off leave exactly the third line, in Every route mode", () => {
+      const out = drawnHidden(KNOWN, new Set(["Red", "Green"]), false, true, running);
+      expect(KNOWN.filter((l) => !out.has(l))).toEqual(["Blue"]);
+    });
+
+    it("Running now with every chip on shows exactly the running lines", () => {
+      const out = drawnHidden(KNOWN, new Set(), true, true, running);
+      expect(KNOWN.filter((l) => !out.has(l))).toEqual(["Blue"]);
+      expect(allHidden(KNOWN, out)).toBe(false);
+    });
+
+    it("Running now with only idle chips on is the 'nothing running' state, not Hide all", () => {
+      const chips = new Set(["Blue"]);
+      const out = drawnHidden(KNOWN, chips, true, true, running);
+      expect(allHidden(KNOWN, out)).toBe(true);
+      expect(allHidden(KNOWN, chips)).toBe(false);
     });
   });
 });
