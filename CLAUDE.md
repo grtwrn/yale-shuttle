@@ -1344,21 +1344,53 @@ the same thing.
 
 **It is the standing watch.** On 2026-09-03 the operator retired the other one
 ("remove the cron. the canary agent can do it all"), so this harness inherited
-the whole job: all fifteen lines, round-robin, one browser at a time. A line
-counts as running when `/api/buses` shows live buses on it — the server already
-drops out-of-service ghosts, so that is the service-hours gate and no schedule
-table is copied into the harness.
+the whole job. A line counts as running when `/api/buses` shows live buses on
+it — the server already drops out-of-service ghosts, so that is the
+service-hours gate and no schedule table is copied into the harness.
 
-Each line is ridden on the operator's own trip, Prospect/Canner → the School of
-Public Health, whenever it comes within 700 m of both ends; otherwise on a trip
-derived from its own published stops (board at the first, ride a quarter of the
-loop). The 700 m is deliberately not `MAX_WALK_M`: at 1500 m fourteen of the
-fifteen lines "serve" this trip, including ones the app is right to bury, and
-every one of them would be reported as a missing line.
+**Two riders, two browsers, never more** (operator, 2026-09-06: "one red line
+rider always when its running and also another always that round Robin
+through running lines"). `--loop` runs both in one process, and every log
+line names its author:
+
+- `[red]` rides `CANARY_LINE` (the keepalive passes Red) on the operator's own
+  trip, Prospect/Canner → the School of Public Health, whenever that line has
+  a rideable bus. Otherwise it idles, and says so ONCE — when the reason
+  changes, not every cycle.
+- `[rotation]` rides every OTHER running line in turn: `CANARY_LINES` order,
+  advancing after each ride, skipping lines with nothing rideable
+  (`nextInRotation` in `scripts/canary-rotation.mjs`, unit-tested). Its place
+  is the label last ridden, not a counter — a line dropping out of service
+  must not shift every other line's turn. It never rides the dedicated line;
+  with only that line up it idles. Each ride is a RANDOM trip on that line
+  with a bus on its way (`randomTripForLine`: board 1–6 stops ahead of a
+  bus's `last_stop_id`, alight 4–11 further on, ≥ `MIN_RIDE_M`), the way
+  `~/eta-live/fleet.sh` and map-bot pick theirs, because a fixed pair only
+  ever exercises one pair of segments and the defects found so far live at
+  particular stops.
+
+Before this it rode Red only and logged "nothing rideable" every ten minutes
+from dawn to dusk on a weekend while four lines ran. The second browser is
+launched 20 s after the first (two chromiums starting in the same second is
+the spike that hurts this Pi). Both riders honour the keepalive's restart
+flag between watches and the process exits once BOTH are between watches; a
+flag older than the process is cleared at start. `CANARY_RIDERS=1` runs the
+dedicated rider alone; `CANARY_DRY_RUN=1` writes `runs.dry.jsonl`, which the
+shipper never reads, for test runs beside the live canary. Runs from the two
+riders never collide in `canary_runs`: the key is `<startedAt>-<line>` and
+the riders never share a line.
+
+The fixed trip (`tripForLine`, what `[red]` rides and what the rotation falls
+back to when no bus on the line reports a position) is the operator's own
+whenever the line comes within 700 m of both ends; otherwise one derived from
+the line's published stops (board at the first, ride a quarter of the loop).
+The 700 m is deliberately not `MAX_WALK_M`: at 1500 m fourteen of the fifteen
+lines "serve" this trip, including ones the app is right to bury, and every
+one of them would be reported as a missing line.
 
 It watches the countdown every 15 s until the bus physically reaches the board
 stop it read out of the app's own Directions link. `npm run canary -- --loop`
-keeps one rider going; silent on a healthy run; `--summary` for the digest.
+keeps both riders going; silent on a healthy run; `--summary` for the digest.
 
 **It never files a report, and a run that read nothing fails.** Both are
 lessons from the watch it replaced: that one auto-filed `[first-rider]` reports
@@ -1845,7 +1877,7 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
 | `lookup-sweep.mjs` | every named Yale/campus place in OSM is findable by the pipeline a rider hits (no browser) |
-| `rider-canary.mjs` | a continuous synthetic rider: watches ONE countdown tick by tick until the bus arrives, and scores the SEQUENCE (jumps, reversals) rather than the aggregate |
+| `rider-canary.mjs` | two continuous synthetic riders — `[red]` on the operator's trip, `[rotation]` round-robin over every other running line on random trips (`canary-rotation.mjs`) — each watching ONE countdown tick by tick until the bus arrives, scoring the SEQUENCE (jumps, reversals) rather than the aggregate |
 | `record-layover-pass.mjs` | records a real pass through a layover ON the marker as the accuracy fixture |
 | `record-approach-rest.mjs` | records a real layover taken SHORT of the marker (the 2026-09-04 case), with the published `stationary_since` per position |
 
