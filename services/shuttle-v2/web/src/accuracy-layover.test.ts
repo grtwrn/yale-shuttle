@@ -28,8 +28,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
-import { haversineMeters, type LatLon } from "./geo";
-import { REST_RADIUS_M } from "./eta/filter";
+import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { registerRoutePaths } from "./anchor";
 import type { AnchorStore } from "./anchorGate";
@@ -364,29 +363,18 @@ describe(`Red through the ${names[pass.layoverStopId]} layover, priced on the ri
     }
   });
 
-  it("the departure collapses the number once the bus is beyond the rest radius, and never climbs on the way", () => {
+  it("the departure collapses the number on the poll it happens", () => {
     const board = boardFor(new Map());
     const lastStanding = standingMoments.at(-1)!;
+    const firstGone = pass.positions.map((p) => p.t).find((t) => t >= LEFT_AT)!;
+    const secondGone = pass.positions.map((p) => p.t).filter((t) => t > firstGone)[0]!;
     const held = board(48, lastStanding)!;
-    const restPoint = { lat: busAt(lastStanding).lat, lon: busAt(lastStanding).lon };
-    // Inside REST_RADIUS_M of where it stood the bus may be creeping — a
-    // repeated fix there would put it back on the SAME stand — so the
-    // shown mode stays "standing" and the number holds (it may not climb);
-    // the first fix beyond the radius ends the rest and the number is the
-    // drive. On this pass the bus is 65, 65 and 101 m out on the first
-    // three polls and past the radius on the fourth.
-    let prev = held;
-    let collapsedAt: number | null = null;
-    for (const t of pass.positions.map((p) => p.t).filter((t) => t >= LEFT_AT)) {
-      const eta = board(48, t);
-      if (eta === null) continue;
-      const away = haversineMeters({ lat: busAt(t).lat, lon: busAt(t).lon }, restPoint);
-      expect(eta, `climbed at ${new Date(t).toISOString().slice(11, 19)}`).toBeLessThanOrEqual(prev + 10);
-      prev = eta;
-      if (away > REST_RADIUS_M) { collapsedAt = t; break; }
-    }
-    expect(collapsedAt).not.toBeNull();
-    expect(prev).toBeLessThan(Math.min(held - 30, held * 0.7));
+    const gone = board(48, firstGone)!;
+    const gone2 = board(48, secondGone)!;
+    // The number before departure is already the conditional residual of a
+    // stand that has run past its p75, so it is small; the departure still
+    // takes the standing term out of it in one or two polls.
+    expect(Math.min(gone, gone2)).toBeLessThan(Math.min(held - 30, held * 0.7));
   });
 
   it("never promises the bus much earlier than it comes, and after the departure is within a minute on the median", () => {

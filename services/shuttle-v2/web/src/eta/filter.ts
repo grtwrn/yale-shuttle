@@ -132,8 +132,6 @@ export const BELIEF_STALE_MS = 600_000;
 export const MIN_STEP_MS = 2_500;
 /** The lead leg switches only when another leg holds this much mass. */
 export const LEAD_SWITCH_MASS = 0.8;
-/** The shown mode on the lead leg switches only when the other mode holds this share of the leg's mass. */
-export const LEAD_MODE_SWITCH = 0.6;
 /** A candidate this many legs ahead of the lead is the bus driving on, not an alternative. */
 export const LEAD_FOLLOW_LEGS = 2;
 /** A lead held against a posterior behind it for this long is released (anchorGate.ts ANCHOR_MAX_HOLD_MS). */
@@ -179,16 +177,6 @@ export interface Belief {
   lastStopId: number | null;
   /** The leg the screen shows the bus on (hysteresis, see `leadLeg`). -1 before the first step. */
   lead: number;
-  /**
-   * The mode the screen prices on the lead leg — true = standing — decided
-   * with hysteresis (`LEAD_MODE_SWITCH`): the standing and moving variants
-   * of a leg differ by the rest of a stand, and mixing them by their raw
-   * masses made the number flip a display bucket whenever the two shares
-   * crossed 0.5 (417 one-bucket reversals against master's 135 on the 9/3
-   * replay). The same rule as the leg: the number follows a decision, the
-   * range carries the posterior.
-   */
-  leadStanding: boolean;
   /** When the mass first left `lead` for a leg BEHIND it, else null (see `leadLeg`). */
   leadDisagreeSince: number | null;
   /** True when this step saw a fresh fix. */
@@ -349,7 +337,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     ringKey: ring.key, p, seenAt: now, lastObs: bus, lastFix: { lat: bus.lat, lon: bus.lon },
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
-    serverSince: since, lastStopId: null, lead: -1, leadStanding: false, leadDisagreeSince: null, fresh: true,
+    serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
   applyLastStop(b, ring, bus, stops);
@@ -357,7 +345,6 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   if (standing) Object.assign(b, restStopFromBelief(ring, b.p, restMask));
   cacheZones(b, ring);
   b.lead = leadLeg(b, ring, -1, now, b);
-  b.leadStanding = leadMode(b, ring, b.lead, null);
   return b;
 }
 
@@ -425,45 +412,6 @@ export function standZone(b: Belief, ring: Ring, c: number): { stop: number; app
  */
 export function anchorLeg(b: Belief, ring: Ring, c: number, standing: boolean): number {
   return standing ? b.standLeg[c]! : ring.leg[c]!;
-}
-
-/**
- * The standing share of a leg's mass, for the shown-mode decision.
- *
- * "Standing" here means AT THE STAND: the standing mass anchored on the leg
- * plus the moving mass still inside the rest radius of the stand the bus is
- * in. A first fresh fix off a stand moves most of the mass to MOVE by the
- * departure prior (0.74 measured), and the next repeated fix — the bus
- * re-froze 50 m on — moves it straight back: that is the filter being right
- * about a bus that crept, and a mode decided on the raw share flipped with
- * it, one poll out and one poll back, on every creep (2,393 reversals
- * introduced against 56 fixed, 9/3 replay). Inside the radius the two
- * hypotheses are not yet distinguishable by construction — a repeat there
- * returns the bus to the SAME stand — so the decision waits until the mass
- * is beyond it, which the drive covers in a poll or two.
- */
-export function standingShare(b: Belief, ring: Ring, leg: number): number {
-  const C = ring.C;
-  const masked = b.rested && b.restStop >= 0;
-  let st = 0, mv = 0;
-  for (let c = 0; c < C; c++) {
-    if (b.standLeg[c] === leg) st += b.p[c]!;
-    if (ring.leg[c] === leg) {
-      // Inside the rest radius, or — before a rest is established, on the
-      // first fixes at a stop — inside the stop's own zone: at the stand.
-      if ((masked && b.restMask[c] === 1) || ring.nearStop[c] === leg) st += b.p[C + c]!;
-      else mv += b.p[C + c]!;
-    }
-  }
-  return st + mv > 0 ? st / (st + mv) : 0;
-}
-
-/** The mode to show on the lead leg, with hysteresis around the previous decision. */
-export function leadMode(b: Belief, ring: Ring, leg: number, prevStanding: boolean | null): boolean {
-  const share = standingShare(b, ring, leg);
-  if (prevStanding === null) return share >= 0.5;
-  if (prevStanding) return share > 1 - LEAD_MODE_SWITCH;
-  return share >= LEAD_MODE_SWITCH;
 }
 
 /** Mass per anchor leg, for the lead and for the fold hysteresis. */
@@ -641,7 +589,7 @@ export function stepBelief(
     restApproach: moved ? false : prev.restApproach,
     restMask: moved ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
-    lastStopId: prev.lastStopId, lead: prev.lead, leadStanding: prev.leadStanding, leadDisagreeSince: prev.leadDisagreeSince, fresh,
+    lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
     standLeg: moved ? new Int32Array(C) : prev.standLeg, zoneKey: moved ? new Int32Array(C) : prev.zoneKey,
   };
   applyLastStop(b, ring, bus, stops);
@@ -659,7 +607,6 @@ export function stepBelief(
     cacheZones(b, ring);
   }
   b.lead = leadLeg(b, ring, prev.lead, now, b);
-  b.leadStanding = leadMode(b, ring, b.lead, b.lead === prev.lead ? prev.leadStanding : null);
   return b;
 }
 

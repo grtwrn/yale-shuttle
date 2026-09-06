@@ -202,7 +202,7 @@ interface Chain {
   standingAt: number;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, asRest = false): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
@@ -215,12 +215,8 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
   // whole new stand on top of the thirteen minutes already stood (Red #304,
   // 14:06Z 9/3: 80 -> 262 s). Mass moving on the layover's OWN leg is the
   // departure hypothesis and keeps the drive-only price.
-  // `asRest`: the shown mode is "standing" (filter.ts `leadMode`) but no
-  // standing situation is left on the lead leg — the mass is moving inside
-  // the rest radius, on the stand's own leg. The number follows the
-  // decision: the rest continuing, then the drive out.
   const repositioning = !sit.standing && restStop >= 0 && sit.inRest >= 0.5
-    && ((tables.stops[restStop]!.layover && (sit.leg + 1) % N === restStop) || (asRest && sit.leg === restStop));
+    && tables.stops[restStop]!.layover && (sit.leg + 1) % N === restStop;
   if ((sit.standing && sit.zoneStop >= 0 && (!sit.approach || tables.stops[sit.zoneStop]!.layover)) || repositioning) {
     // Standing at (or in the approach of) stop j: the rest of the stand, then the drive out of j.
     const j = repositioning ? restStop : sit.zoneStop;
@@ -326,16 +322,8 @@ export function priceRoute(
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
   const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
-  // The lead chain: the lead leg's situation in the SHOWN mode (a decision
-  // with hysteresis, filter.ts `leadMode`), else the heaviest on the leg.
-  let lead = chains.find((c) => c.sit.leg === belief.lead && c.sit.standing === belief.leadStanding);
-  if (!lead && belief.leadStanding && restStop >= 0) {
-    // The decision says "at the stand" and only moving-inside-the-radius
-    // mass is left on the leg: price that situation as the rest continuing.
-    const i = chains.findIndex((c) => c.sit.leg === belief.lead && c.sit.inRest >= 0.5);
-    if (i >= 0) { lead = startChain(sits[i]!, tables, r, restStop, N, true); chains[i] = lead; }
-  }
-  lead ??= chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
+  // The lead chain: the heaviest situation on the lead leg (chains are in mass order).
+  const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
@@ -389,14 +377,23 @@ export function priceRoute(
       chainAt(c, pre, hc, bufs[i]!);
       bufs[i]!.sort();
       all.push({ s: bufs[i]!, w: c.sit.mass });
-      // The number is the lead situation's alone: the lead leg in the shown
-      // mode, both decisions with hysteresis (filter.ts). Every other
-      // situation — the other mode on the same leg, the other branch of a
-      // fold, a lap away, a cold belief's guess two stops back — is an
-      // alternative that the RANGE carries. Mixing by raw mass let a 0.65
-      // guess two stops back turn "in 1" into "in 5", and let the standing
-      // and moving variants flip the number a bucket as their shares
-      // crossed 0.5.
+      // The lead cluster is the lead LEG: its standing and moving variants
+      // (a bus standing at a stop vs just pulled out, mixed by their mass),
+      // so the departure lands on the poll it is seen — the operator's
+      // "5 -> 1 when it leaves". A situation on another leg is an
+      // alternative — the other branch of a fold, a lap away, a cold
+      // belief's guess two stops back — and alternatives are the lead
+      // hysteresis's business, not the mixture's: mixed in by nearness
+      // (12 min), a 0.65 guess that the bus stood two stops back turned
+      // "in 1" into "in 5" on a rider's second poll. (A shown MODE decided
+      // with hysteresis was tried and measured: it held the standing number
+      // until the bus cleared the rest radius, and the chain's stop 48 went
+      // from 0 to 7.8% strands with 59 riders seeing a stale number on the
+      // departure poll. The flapping it was meant to cure came from the
+      // served clock switching source, fixed in filter.ts `clockOrigin`.)
+      if (c.sit.leg !== lead.sit.leg) continue;
+      parts.push({ s: bufs[i]!, w: c.sit.mass });
+      mass += c.sit.mass;
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
