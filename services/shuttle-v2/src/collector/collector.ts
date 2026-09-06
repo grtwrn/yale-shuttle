@@ -48,6 +48,7 @@ import {
 } from "./pathStore.js";
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
 import { UpstreamEtaPoller } from "./upstreamEta.js";
+import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, MIN_INTERVAL_MS as ETA_SAMPLE_MIN_MS, UpstreamEtaSampler } from "./upstreamEtaSampler.js";
 
 // Cadences --------------------------------------------------------------------
 
@@ -246,13 +247,64 @@ const UPSTREAM_PREDICTION_RETAIN_MS =
 /** Key for the extra trim statement; not a table, so not in RETAINED_TABLES. */
 const UPSTREAM_PREDICTION_TRIM = "predictions_log(upstream)";
 
+/**
+ * The verbatim upstream ETA census (`upstream_etas`, see upstreamEtaSampler.ts)
+ * is bounded TWICE: by age, and by row count, and the count is the one that
+ * binds on a weekday.
+ *
+ * Volume is one row per (call, predicted bus) plus one marker per empty call,
+ * at 1 call/s while anything is running. Measured on Sun 2026-09-06 (6 buses,
+ * 4 routes, 57 live stops): 1.64 rows a call, 155 bytes a row with its three
+ * indexes at small scale (~120 at page-fill). A weekday feed answers ~5 rows a
+ * call (the `predictions_log` poller's 30-min-capped 3.5 rows a call,
+ * uncapped) over ~18 service hours: ~320k rows, ~40 MB a day; a weekend day
+ * is ~70k rows, ~9 MB. Thirty days of that is ~900 MB on a 1 GB volume with
+ * 431 MB free (2026-09-06) — it would fill the disk. So the age window says how
+ * long a row MAY live and the row cap says how many may exist: the default cap
+ * holds ~150–185 MB, about four weekdays of census or two quiet weeks, and
+ * neither number can surprise the volume. To keep more, take a DB snapshot off
+ * the machine (scripts/eta-replay/README.md) or slow the census with
+ * SHUTTLE_ETA_SAMPLE_MS. Override with SHUTTLE_ETA_RETAIN_DAYS and
+ * SHUTTLE_ETA_MAX_ROWS; raising the cap costs ~120–155 bytes a row.
+ */
+const UPSTREAM_ETA_RETAIN_DAYS_DEFAULT = 30;
+function resolveUpstreamEtaRetainDays(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_ETA_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const UPSTREAM_ETA_RETAIN_MS = resolveUpstreamEtaRetainDays() * 24 * 60 * 60_000;
+const UPSTREAM_ETA_MAX_ROWS_DEFAULT = 1_200_000;
+function resolveUpstreamEtaMaxRows(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_MAX_ROWS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_ETA_MAX_ROWS_DEFAULT;
+  return Math.floor(raw);
+}
+const UPSTREAM_ETA_MAX_ROWS = resolveUpstreamEtaMaxRows();
+
+/**
+ * Sampling cadence for the census: one call every 3 s by default — each
+ * stop of a weekday fleet about every 8 min, a weekend stop every 3. The
+ * predictions move slowly and the measurement needs samples across horizons,
+ * not every tick (the operator: "one a second for eta might not be
+ * necessary"). `SHUTTLE_ETA_SAMPLE=0` turns it off; `SHUTTLE_ETA_SAMPLE_MS`
+ * changes it, never below one call a second — that floor is the politeness
+ * promise to the provider, not a tunable.
+ */
+function resolveEtaSampleMs(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_SAMPLE_MS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return ETA_SAMPLE_DEFAULT_MS;
+  return Math.max(ETA_SAMPLE_MIN_MS, Math.floor(raw));
+}
+
 type RetainedTable =
   | "raw_positions"
   | "arrivals"
   | "segments"
   | "stop_visits"
   | "legs"
-  | "predictions_log";
+  | "predictions_log"
+  | "upstream_etas";
 const RETAINED_TABLES: readonly RetainedTable[] = [
   "raw_positions",
   "arrivals",
@@ -260,6 +312,7 @@ const RETAINED_TABLES: readonly RetainedTable[] = [
   "stop_visits",
   "legs",
   "predictions_log",
+  "upstream_etas",
 ];
 
 // Batched-delete tuning carried forward from the v1 retention fix:
@@ -333,6 +386,12 @@ export interface CollectorOptions {
    * turns it off in production without a code change.
    */
   upstreamEta?: boolean;
+  /**
+   * The verbatim per-stop ETA census (`upstreamEtaSampler.ts`). Same default
+   * as `upstreamEta`: ON in production, OFF whenever `upstream` is injected.
+   * `SHUTTLE_ETA_SAMPLE=0` turns it off in production.
+   */
+  etaSampler?: boolean;
 }
 
 /**
@@ -421,6 +480,8 @@ export class Collector {
 
   /** Records the operator's own ETAs into predictions_log. Null when disabled. */
   readonly upstreamEta: UpstreamEtaPoller | null;
+  /** The verbatim census of the same endpoint into upstream_etas. Null when disabled. */
+  readonly etaSampler: UpstreamEtaSampler | null;
 
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
@@ -500,6 +561,22 @@ export class Collector {
             upstream: this.upstream,
             liveBuses: () => this.getLiveBuses(),
             logger: this.logger,
+          })
+        : null;
+    // Same gate, same reasoning, its own switch: the census is a heavier
+    // request stream than the poller and the operator may want one without
+    // the other.
+    this.etaSampler =
+      (opts.etaSampler
+        ?? (opts.upstream === undefined && process.env.SHUTTLE_ETA_SAMPLE !== "0"))
+        ? new UpstreamEtaSampler({
+            sqlite: this.sqlite,
+            ref: this.ref,
+            upstream: this.upstream,
+            liveBuses: () => this.getLiveBuses(),
+            routeActive: () => this.routeActiveMap,
+            logger: this.logger,
+            intervalMs: resolveEtaSampleMs(),
           })
         : null;
 
@@ -647,6 +724,7 @@ export class Collector {
     }
 
     this.upstreamEta?.start();
+    this.etaSampler?.start();
 
     void this.runPoll();
     this.logger.info("collector.started");
@@ -664,6 +742,7 @@ export class Collector {
       if (h) clearInterval(h);
     }
     this.upstreamEta?.stop();
+    this.etaSampler?.stop();
     this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
@@ -1205,6 +1284,8 @@ export class Collector {
         // own time budget below, so the order between them does not matter.
         [UPSTREAM_PREDICTION_TRIM, now - UPSTREAM_PREDICTION_RETAIN_MS],
         ["predictions_log", now - PREDICTION_RETAIN_MS],
+        // Age window first; the row cap below may move this cutoff forward.
+        ["upstream_etas", Math.max(now - UPSTREAM_ETA_RETAIN_MS, this.upstreamEtaCapCutoff())],
       ];
       for (const [table, cutoffMs] of trims) {
         const stmt = this.trimStmts.get(table);
@@ -1220,6 +1301,26 @@ export class Collector {
       }
     } catch (err) {
       this.logger.error("collector.retention_failed", { error: (err as Error).message });
+    }
+  }
+
+  /**
+   * The `sampled_at` below which `upstream_etas` exceeds its row cap, or 0
+   * when it does not. One indexed seek (`upstream_etas_time_idx`), newest
+   * first, offset by the cap: everything older than that row goes.
+   */
+  private upstreamEtaCapCutoff(): number {
+    try {
+      const row = this.sqlite
+        .prepare(
+          "SELECT sampled_at AS at FROM upstream_etas ORDER BY sampled_at DESC LIMIT 1 OFFSET ?",
+        )
+        .get(UPSTREAM_ETA_MAX_ROWS) as { at: number } | undefined;
+      // `< cutoff` in the trim, so the row AT the cap survives and the table
+      // settles at cap + 1 rows sharing its oldest instant — close enough.
+      return row ? row.at : 0;
+    } catch {
+      return 0;
     }
   }
 
@@ -1664,5 +1765,7 @@ function retentionColumn(table: RetainedTable): string {
       return "departed_at";
     case "predictions_log":
       return "predicted_at";
+    case "upstream_etas":
+      return "sampled_at";
   }
 }

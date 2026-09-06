@@ -76,23 +76,57 @@ const AnnouncementsResponseSchema = z.array(RawAnnouncementSchema);
  * names `#38`/`#310`/`#49` appear in both), so they need no reconciliation
  * with ours — we poll the same provider.
  */
-const RawStopEtaSchema = z.object({
-  avg: numFromString,
-  bus_id: numFromString,
-  bus_name: z.string(),
-  route: numFromString,
-});
+// Finite, not merely numeric: `numFromString` turns "n/a" into NaN and lets it
+// through, and NaN binds to SQLite as NULL — a row about no bus at all. A row
+// with a word where a number belongs is kept whole in `raw.rejected` instead.
+const finiteFromString = numFromString.refine(Number.isFinite, "not a finite number");
+const RawStopEtaSchema = z
+  .object({
+    avg: finiteFromString,
+    bus_id: finiteFromString,
+    bus_name: z.string(),
+    route: finiteFromString,
+  })
+  // Unknown keys survive the parse so `upstream_etas.raw` can keep them: a
+  // status word or a vehicle flag upstream starts sending is exactly the kind
+  // of field the out-of-service question needs, and dropping it at the
+  // boundary would lose it before anyone could look.
+  .passthrough();
+const KNOWN_ROW_KEYS = new Set(["avg", "bus_id", "bus_name", "route"]);
+const KNOWN_ENVELOPE_KEYS = new Set(["etas", "calculation_time"]);
 
 /**
  * `{"etas":{"<stopId>":{"etas":[...]}},"calculation_time":1788547381}` — and a
  * bare `{}` for a stop with nothing approaching, which is not an error.
  * Rows are validated individually for the same reason bus rows are (see
  * BusesResponseSchema): one malformed vehicle must not cost the whole stop.
+ *
+ * Verbatim from this Pi, Sun 2026-09-06 11:08 ET (one Blue Weekend bus out,
+ * `#49`, asked about two of its stops):
+ *
+ *   GET /routes_eta.php?stop=116  →
+ *   {"etas":{"116":{"etas":[{"avg":40,"bus_id":66029,"bus_name":"#49","route":4}]}},
+ *    "calculation_time":1788707320}
+ *   GET /routes_eta.php?stop=100  →
+ *   {"etas":{"100":{"etas":[{"avg":57,"bus_id":66029,"bus_name":"#49","route":4}]}},
+ *    "calculation_time":1788707320}
+ *
+ * So: one bus, two stops, 40 and 57 minutes out — the endpoint answers for
+ * EVERY stop the vehicle will reach on its loop, not just the near ones, and
+ * `calculation_time` is shared across calls made in the same second (the
+ * provider computes the fleet once and serves slices). No status word, no
+ * vehicle flag, no "not in service" text exists in the shape today; a bus
+ * that is leaving service simply stops appearing. `src/collector/__fixtures__/
+ * routes_eta.stop116.json` is that capture, byte for byte.
  */
-const StopEtaResponseSchema = z.object({
-  etas: z.record(z.string(), z.object({ etas: z.array(z.unknown()) })).optional(),
-  calculation_time: numFromString.optional(),
-});
+const StopEtaResponseSchema = z
+  .object({
+    etas: z
+      .record(z.string(), z.object({ etas: z.array(z.unknown()) }).passthrough())
+      .optional(),
+    calculation_time: numFromString.optional(),
+  })
+  .passthrough();
 
 /** One upstream prediction, flattened onto our identifiers. */
 export interface UpstreamStopEta {
@@ -103,12 +137,21 @@ export interface UpstreamStopEta {
   routeId: number;
   /** Whole minutes, as served. 0 = their app prints "Arrived". */
   avgMin: number;
+  /** Fields on the row beyond the four above. Absent when there are none. */
+  extra?: Record<string, unknown>;
 }
 
 export interface UpstreamStopEtas {
   /** Epoch ms upstream says it computed these, or null when absent/implausible. */
   calculatedAtMs: number | null;
   etas: UpstreamStopEta[];
+  /**
+   * What the columns could not hold, present only when non-empty: envelope
+   * keys beyond `etas`/`calculation_time`, rows that failed the row schema
+   * (`rejected`), and a `calculation_time` too far from our clock to trust.
+   * `upstream_etas.raw` stores it; nothing else reads it.
+   */
+  extra?: Record<string, unknown>;
 }
 
 // The bus list is validated PER ROW. One malformed vehicle (a bus logged in
@@ -199,24 +242,44 @@ export class UpstreamClient {
       StopEtaResponseSchema,
     );
     const etas: UpstreamStopEta[] = [];
+    const extra: Record<string, unknown> = {};
+    const rejected: unknown[] = [];
     for (const [key, value] of Object.entries(body.etas ?? {})) {
       // The response keys itself by stop id. Trust that over the id we asked
       // for, but only when it parses — a key we cannot read is a row we
       // cannot attribute to a stop, and a misattributed prediction is worse
       // than a missing one.
       const keyed = Number.parseInt(key, 10);
-      if (!Number.isInteger(keyed)) continue;
+      if (!Number.isInteger(keyed)) {
+        rejected.push({ [key]: value });
+        continue;
+      }
+      for (const k of Object.keys(value)) {
+        if (k !== "etas") extra[`etas.${key}.${k}`] = value[k];
+      }
       for (const row of value.etas) {
         const parsed = RawStopEtaSchema.safeParse(row);
-        if (!parsed.success) continue;
-        etas.push({
+        if (!parsed.success) {
+          rejected.push(row);
+          continue;
+        }
+        const eta: UpstreamStopEta = {
           stopId: keyed,
           busId: parsed.data.bus_id,
           busName: parsed.data.bus_name,
           routeId: parsed.data.route,
           avgMin: parsed.data.avg,
-        });
+        };
+        const rowExtra: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(parsed.data)) {
+          if (!KNOWN_ROW_KEYS.has(k)) rowExtra[k] = v;
+        }
+        if (Object.keys(rowExtra).length > 0) eta.extra = rowExtra;
+        etas.push(eta);
       }
+    }
+    for (const [k, v] of Object.entries(body)) {
+      if (!KNOWN_ENVELOPE_KEYS.has(k)) extra[k] = v;
     }
     // Seconds upstream, and believed only when it sits near our own clock: a
     // stale or wrong `calculation_time` would place a row at an instant that
@@ -225,8 +288,12 @@ export class UpstreamClient {
     if (body.calculation_time !== undefined && Number.isFinite(body.calculation_time)) {
       const ms = body.calculation_time * 1000;
       if (Math.abs(ms - Date.now()) <= CALC_TIME_TRUST_MS) calculatedAtMs = ms;
+      else extra.calculation_time = body.calculation_time;
     }
-    return { calculatedAtMs, etas };
+    if (rejected.length > 0) extra.rejected = rejected;
+    const out: UpstreamStopEtas = { calculatedAtMs, etas };
+    if (Object.keys(extra).length > 0) out.extra = extra;
+    return out;
   }
 
   async stops(): Promise<Stop[]> {

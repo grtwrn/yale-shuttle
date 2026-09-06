@@ -1585,6 +1585,39 @@ declined class is only scorable with `ORIGIN_OFFSET_M` set.
   below — chords and vertices instead of the published polyline — which
   `traceStopLegs` fixed for drawing and `findRouteAnchor` never got.
 
+## Upstream's own ETAs: the census in `upstream_etas`
+
+The operator's app publishes a per-stop prediction (`routes_eta.php?stop=<id>`,
+whole minutes, one bus per row, `{}` when nothing is coming). Two recorders
+read it and they are NOT redundant:
+
+- `src/collector/upstreamEta.ts` → `predictions_log` (`surface = "upstream"`):
+  a curated, pairable subset (≤ 30 min, stops the route serves, 15 s buckets)
+  at the five focus stops plus stops riders watched — for the head-to-head
+  against what riders were shown. 0.4 req/s, 7-day retention.
+- `src/collector/upstreamEtaSampler.ts` → `upstream_etas`: the VERBATIM
+  census. Every stop of every route with a live bus, round-robin, one call
+  every 3 s (`SHUTTLE_ETA_SAMPLE_MS`, floor 1000; `SHUTTLE_ETA_SAMPLE=0` off),
+  plus once a minute one stop of each route upstream flags active that has
+  no live bus (`probe = 1` — the out-of-service signal). A call that answers
+  nothing writes a MARKER row (`bus_id IS NULL`) so an absence has a
+  timestamp; `raw` holds only fields the schema does not name. Nothing reads
+  it on the request path. It exists to measure, in a few days of data, their
+  error by horizon, whether they know something our posterior does not
+  (direction on a fold, dispatch intent), and what they say in the minutes
+  before a bus leaves service — BEFORE anyone blends their number into ours.
+
+Volume is the constraint, measured not guessed: ~1.6 rows a call on a Sunday,
+~5 on a weekday, 120–155 bytes a row → ~40 MB a weekday, ~900 MB a month, on
+a volume with ~430 MB free. So the table is bounded by age (30 d,
+`SHUTTLE_ETA_RETAIN_DAYS`) AND by count (1.2M rows, `SHUTTLE_ETA_MAX_ROWS`,
+~4 weekdays), swept hourly with the rest. To keep more, snapshot the DB off
+the machine. `node scripts/upstream-eta-report.mjs <db>` prints rows per day
+and the signed error by horizon against `arrivals` (same bus_name + stop,
+first arrival within 45 min); pipe it over stdin to run it on production
+read-only — the recipe is in the script header. Both recorders are OFF
+whenever a test injects `upstream`.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
