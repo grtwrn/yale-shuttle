@@ -219,9 +219,20 @@ export function standingSec(b: Belief, now: number): number {
   return Math.max(0, (now - clockOrigin(b)) / 1000);
 }
 
-/** The origin of that clock, for callers that key on it. */
+/**
+ * The origin of that clock, for callers that key on it: the rest's earliest
+ * known origin (`restSince`), never the served clock alone. The collector's
+ * clock restarts when the bus moves 125 m from where IT saw the bus come to
+ * rest, and its rest point is not this filter's: a shuffle inside a layover
+ * restarted the served clock while the rest identity here — correctly —
+ * continued, and the residual stand restarted from zero: Blue Night #40 at
+ * 22:40Z 9/3, 237 -> 749 s two minutes before it left, a strand for every
+ * rider down the line. The stand tables are arrival-to-departure at the
+ * stop, so the time since the rest began is the clock they were measured
+ * with.
+ */
 export function clockOrigin(b: Belief): number {
-  return b.serverSince ?? b.restSince;
+  return b.restSince;
 }
 
 // -- the move kernel -------------------------------------------------------------
@@ -292,17 +303,29 @@ function restMaskFor(ring: Ring, point: LatLon): Uint8Array {
 }
 
 /** The zone (stop, approach) holding most of the standing mass inside the rest mask. */
+/**
+ * Which stop a rest is at, read off the belief: the zone holding the most
+ * standing mass inside the rest mask — and only if that zone holds the
+ * MAJORITY of the standing mass there. The mask is 125 m wide and a stop's
+ * zone 75 m, so a bus that came to a hold 190 m past a stop has that stop's
+ * kerb inside its mask; with a sliver of mass on the kerb and the rest on
+ * the road, the rest is a hold on the road (restStop -1), not a return to
+ * the stop it just left (Blue Night #40, 22:44Z 9/3: "now" flipping to a
+ * lap away and back as the rest re-attached to the stop behind it).
+ */
 function restStopFromBelief(ring: Ring, p: Float64Array, mask: Uint8Array): { restStop: number; restApproach: boolean } {
   const byZone = new Map<number, number>();
+  let inMask = 0;
   for (let c = 0; c < ring.C; c++) {
     if (mask[c] !== 1 || p[c]! <= 0) continue;
+    inMask += p[c]!;
     const zk = ring.nearStop[c]! >= 0 ? ring.nearStop[c]! : ring.approachOf[c]! >= 0 ? 1000 + ring.approachOf[c]! : -1;
     if (zk < 0) continue;
     byZone.set(zk, (byZone.get(zk) ?? 0) + p[c]!);
   }
   let best = -1, bestMass = 0;
   for (const [zk, m] of byZone) if (m > bestMass) { bestMass = m; best = zk; }
-  if (best < 0) return { restStop: -1, restApproach: false };
+  if (best < 0 || bestMass < 0.5 * inMask) return { restStop: -1, restApproach: false };
   return best >= 1000 ? { restStop: best - 1000, restApproach: true } : { restStop: best, restApproach: false };
 }
 
@@ -324,7 +347,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   const restMask = restMaskFor(ring, bus);
   const b: Belief = {
     ringKey: ring.key, p, seenAt: now, lastObs: bus, lastFix: { lat: bus.lat, lon: bus.lon },
-    fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: now,
+    fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
     serverSince: since, lastStopId: null, lead: -1, leadStanding: false, leadDisagreeSince: null, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
@@ -426,7 +449,9 @@ export function standingShare(b: Belief, ring: Ring, leg: number): number {
   for (let c = 0; c < C; c++) {
     if (b.standLeg[c] === leg) st += b.p[c]!;
     if (ring.leg[c] === leg) {
-      if (masked && b.restMask[c] === 1) st += b.p[C + c]!;
+      // Inside the rest radius, or — before a rest is established, on the
+      // first fixes at a stop — inside the stop's own zone: at the stand.
+      if ((masked && b.restMask[c] === 1) || ring.nearStop[c] === leg) st += b.p[C + c]!;
       else mv += b.p[C + c]!;
     }
   }
