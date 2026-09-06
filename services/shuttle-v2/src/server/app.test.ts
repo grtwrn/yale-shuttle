@@ -1214,6 +1214,94 @@ describe("GET /api/weather", () => {
   });
 });
 
+// The archive feed (docs/closed-loop.md, stage 2): one table, one ET day,
+// JSON lines, admin header only. The Pi keeps what the volume sweeps.
+describe("GET /api/archive/day", () => {
+  const FROZEN = Date.UTC(2026, 8, 6, 16, 0, 0); // Sun 2026-09-06 12:00 ET
+  const DAY_START = Date.UTC(2026, 8, 5, 4, 0, 0); // Sat 2026-09-05 00:00 EDT
+  let archiveApp: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    archiveApp = buildApp({ collector, bundle, now: () => FROZEN, adminToken: TEST_ADMIN_TOKEN });
+    const ins = bundle.sqlite.prepare(
+      "INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, departed_at, dwell_sec, dow, hour) VALUES (1, '#40', 10, 2, ?, NULL, NULL, 6, 12)",
+    );
+    // One before midnight ET, two inside the day, one at the next midnight.
+    for (const t of [DAY_START - 1, DAY_START, DAY_START + 12 * 3_600_000, DAY_START + 24 * 3_600_000]) ins.run(t);
+  });
+
+  const lines = async (res: Response) => (await res.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>);
+
+  it("streams the day's rows between a header and a trailer, bounded to the ET day", async () => {
+    const res = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("application/x-ndjson");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    const out = await lines(res);
+    expect(out[0]).toMatchObject({ table: "arrivals", day: "2026-09-05", from: DAY_START, to: DAY_START + 24 * 3_600_000, build: "dev" });
+    expect((out[0]!.columns as string[])).toContain("arrived_at");
+    expect(out[out.length - 1]).toEqual({ end: true, rows: 2 });
+    const times = out.slice(1, -1).map((r) => r.arrived_at as number);
+    expect(times).toEqual([DAY_START, DAY_START + 12 * 3_600_000]);
+  });
+
+  it("serves an empty day and the day-keyed scorecard table", async () => {
+    const empty = await archiveApp.request("/api/archive/day?day=2026-09-01&table=legs", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(await lines(empty)).toHaveLength(2);
+    bundle.sqlite.prepare(
+      "INSERT INTO scorecard_days (day, route_id, horizon, surface, metrics, scored_through, scored_at, final) VALUES ('2026-09-05', 0, 'all', 'ours', '{}', 1, 1, 1)",
+    ).run();
+    const sc = await archiveApp.request("/api/archive/day?day=2026-09-05&table=scorecard_days", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const out = await lines(sc);
+    expect(out[out.length - 1]).toEqual({ end: true, rows: 1 });
+    expect(out[1]).toMatchObject({ day: "2026-09-05", surface: "ours" });
+  });
+
+  it("refuses anything but the allowlisted tables and a real, retained day", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const q of [
+      "day=2026-09-05&table=reports",            // never: free text and IP addresses
+      "day=2026-09-05&table=arrivals;--",
+      "day=2026-09-05",
+    ]) {
+      const res = await archiveApp.request(`/api/archive/day?${q}`, { headers });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe("unknown_table");
+    }
+    for (const day of ["2026-09-07", "2026-13-01", "yesterday", "2024-01-01", "2026-02-30"]) {
+      const res = await archiveApp.request(`/api/archive/day?day=${day}&table=arrivals`, { headers });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe("bad_day");
+    }
+    // Today is a legitimate partial.
+    expect((await archiveApp.request("/api/archive/day?day=2026-09-06&table=arrivals", { headers })).status).toBe(200);
+  });
+
+  it("takes the admin header and nothing else", async () => {
+    expect((await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals")).status).toBe(401);
+    const login = await archiveApp.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const withCookie = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { cookie: `stats_session=${value}` },
+    });
+    expect(withCookie.status).toBe(401);
+    const wrong = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { "x-admin-token": "nope" },
+    });
+    expect(wrong.status).toBe(401);
+  });
+});
+
 // The dashboard at /stats must not keep the admin token in the browser: one
 // XSS, or one borrowed phone, would otherwise hand over the triage log with
 // every reporter's IP address in it. The token is exchanged once for an
