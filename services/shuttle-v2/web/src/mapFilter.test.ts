@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 
 const KNOWN = ["Red", "Blue", "Green"];
 
@@ -69,5 +69,36 @@ describe("map route filter", () => {
     expect([...before]).toEqual(["Red"]);
     expect([...after].sort()).toEqual(["Blue", "Red"]);
     expect([...toggleOne(after, "Red")]).toEqual(["Blue"]);
+  });
+
+  describe("Running now on the map", () => {
+    const running = new Set(["Blue"]);
+
+    it("hides every line without a bus on top of the chip selection", () => {
+      const out = drawnHidden(KNOWN, new Set(["Green"]), true, true, running);
+      expect([...out].sort()).toEqual(["Green", "Red"]);
+    });
+
+    it("keeps a chip the rider switched off hidden even when that line is running", () => {
+      // The chips are the manual override in ONE direction only.
+      const out = drawnHidden(KNOWN, new Set(["Blue"]), true, true, running);
+      expect([...out].sort()).toEqual(["Blue", "Green", "Red"]);
+    });
+
+    it("with Every route selected the map shows exactly the chip selection", () => {
+      const out = drawnHidden(KNOWN, new Set(["Green"]), false, true, running);
+      expect([...out]).toEqual(["Green"]);
+    });
+
+    it("with no buses reporting the toggle is inert and the chips decide", () => {
+      const out = drawnHidden(KNOWN, new Set(["Green"]), true, false, new Set());
+      expect([...out]).toEqual(["Green"]);
+    });
+
+    it("never mutates the chip set it was given", () => {
+      const chips = new Set(["Green"]);
+      drawnHidden(KNOWN, chips, true, true, running);
+      expect([...chips]).toEqual(["Green"]);
+    });
   });
 });

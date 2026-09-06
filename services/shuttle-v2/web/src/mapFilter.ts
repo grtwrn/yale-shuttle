@@ -54,3 +54,32 @@ export function toggleOne(hidden: Set<string>, label: string): Set<string> {
   else next.add(label);
   return next;
 }
+
+/**
+ * What the MAP hides once the "Running now" toggle is applied on top of the
+ * chip row (operator, 2026-09-06: "have the running now filter work on the
+ * map" — it used to filter only the route cards underneath).
+ *
+ * With the toggle on and buses reporting, every known line without a bus on
+ * it is hidden IN ADDITION to whatever the chips hide, so the chips remain
+ * the manual override in the other direction: a chip switched off stays off.
+ * With the toggle off — or with no buses at all, when it is inert for the
+ * cards too — the chip selection comes back unchanged, so the map behaves
+ * exactly as it did before the toggle reached it.
+ *
+ * `running` is the set of toggle labels with a live bus ON ROUTE, the same
+ * test the cards use — a bus upstream has mis-assigned to a line does not
+ * light that line up here either.
+ */
+export function drawnHidden(
+  known: readonly string[],
+  chipHidden: ReadonlySet<string>,
+  activeOnly: boolean,
+  anyBuses: boolean,
+  running: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set(chipHidden);
+  if (!activeOnly || !anyBuses) return out;
+  for (const label of known) if (!running.has(label)) out.add(label);
+  return out;
+}
