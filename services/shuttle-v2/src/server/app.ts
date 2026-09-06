@@ -784,7 +784,7 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({
       riders: actives.stats(now()),
       since: actives.sinceDay(),
-      etaVsOfficial: predictions.officialComparison(24, now()),
+      etaVsOfficial: predictions.officialComparison(48, now()),
     });
   });
 
