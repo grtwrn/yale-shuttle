@@ -1676,7 +1676,7 @@ metrics JSON / estimator_version), closes the day from scratch at 03:35 and
 backfills on boot. `GET /api/stats/scorecard?days=N` (token or the stats
 cookie, like `/api/stats`) and the "ETA scorecard" section of `/stats`.
 `estimator_version` is `SHUTTLE_BUILD_SHA`, which `scripts/deploy.mjs` passes
-as a build arg and `/healthz` reports as `build`. **Stage 2 (next PR):**
+as a build arg and `/healthz` reports as `build`. **Stage 2, built:**
 `scripts/archive-day.mjs` pulls a day's rows off the volume through
 `GET /api/archive/day` (admin header only) into `~/shuttle-archive/`, 180 days;
 `scripts/archive-check.mjs` says which days are complete; the crontab line is

@@ -4,17 +4,16 @@
 data … build the closed loop." And, the same day: "can the nightly learning be
 increased to hourly?"
 
-**Status:** stage 1 (the scorecard) is built; stage 2 (the archive) is the
-next PR on top of it. This document says what they are, what they write, and
-what stages 3 and 4 need from them. Stages 3 and 4 are designed here and not
-built.
+**Status:** stage 1 (the scorecard) and stage 2 (the archive) are built —
+this document says what they are, what they write, and what stages 3 and 4
+need from them. Stages 3 and 4 are designed here and not built.
 
 ## The four stages
 
 | stage | what | cadence | where | status |
 |---|---|---|---|---|
 | 1 | **Scorecard** — every ETA arm scored against the detector's arrivals under one set of rules, per ET day / route / horizon / surface, versioned by the server build | hourly at :35; a day closes at 03:35 the next morning | `src/server/scorecard.ts`, table `scorecard_days`, `GET /api/stats/scorecard`, the "ETA scorecard" section of `/stats` | **built** |
-| 2 | **Archive** — the rows a replay needs, pulled off the production volume every day before retention sweeps them, kept 180 days on the Pi | daily at 03:40 ET (Pi cron) | `GET /api/archive/day`, `scripts/archive-day.mjs`, `scripts/archive-check.mjs`, `~/shuttle-archive/YYYY-MM-DD/` | next PR |
+| 2 | **Archive** — the rows a replay needs, pulled off the production volume every day before retention sweeps them, kept 180 days on the Pi | daily at 03:40 ET (Pi cron) | `GET /api/archive/day`, `scripts/archive-day.mjs`, `scripts/archive-check.mjs`, `~/shuttle-archive/YYYY-MM-DD/` | **built** |
 | 3 | **Re-estimation** — the filter's parameters fitted from the last N weeks and served in the payload: EM for the HMM's emission/transition probabilities, conformal widening of the 10–90 band per horizon, departure hazards per stop | DAILY, multi-week window (see below) | not built | designed |
 | 4 | **Promotion** — champion/challenger: a candidate parameter set (or estimator) replayed in shadow against the archive and promoted only when the scorecard says so | DAILY, after stage 3 | not built | designed |
 
@@ -198,9 +197,19 @@ The crontab line (not installed by the PR; the operator's call):
 40 3 * * * cd /home/gwarren/yale-shuttle/services/shuttle-v2 && TZ=America/New_York node scripts/archive-day.mjs >> /home/gwarren/shuttle-archive/archive.log 2>&1
 ```
 
-Disk: a weekday is roughly 35 MB of positions, 40 MB of census and 15 MB of
-the rest before compression, ~10–15 MB gzipped; 180 days is under 3 GB on a
-root filesystem with 42 GB free (2026-09-06).
+Disk, measured against the 2026-09-06 snapshot on the Pi: Fri 9/4 archived
+to **2.6 MB** gzipped (173,555 positions from the capture, 6,350 arrivals,
+6,238 visits, 5,427 legs, 19,336 predictions, 211 scorecard rows; the census
+table did not exist yet) in 4.7 s; Sat 9/5 to 1.3 MB. With the census on, a
+weekday adds ~320k rows (~40 MB raw, ~4–5 MB gzipped), so budget **~8 MB a
+weekday, ~3 MB a weekend day, under 1.5 GB for 180 days** — on a root
+filesystem with 42 GB free. A partial day (a hand run at noon) is a legitimate
+archive of what existed; re-running the day after 03:40 replaces it.
+
+`archive-check.mjs` reads the manifests and prints rows per table, size,
+source and completeness per day plus the gaps in the last N days, and exits
+1 when yesterday is missing or incomplete — the same cron line's `&&` can
+chain it, or a second line can alert on it.
 
 ## What stages 3 and 4 need — and get
 

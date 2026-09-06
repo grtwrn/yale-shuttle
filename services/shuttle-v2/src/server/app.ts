@@ -7,7 +7,7 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
-import { streamSSE } from "hono/streaming";
+import { stream, streamSSE } from "hono/streaming";
 
 import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
@@ -39,6 +39,7 @@ import {
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { createSearchTermsTracker } from "./searchTerms.js";
 import { readScorecard, resolveEstimatorVersion } from "./scorecard.js";
+import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
@@ -118,6 +119,27 @@ const SSE_MAX_LIFETIME_MS = 15 * 60_000;
 // A comment line dispatches no event on the client but resets the idle timers
 // of proxies and load balancers in between. Every 4th tick is ample.
 const SSE_HEARTBEAT_EVERY_TICKS = 4;
+
+/**
+ * One archive table's rows for a day, as a lazy iterator over the time index.
+ * `scorecard_days` is keyed by the day string; every other table by an epoch
+ * column named in archive.ts. Column names come from SQLite itself so the
+ * archive records the schema it was taken under.
+ */
+function archiveRows(
+  sqlite: import("better-sqlite3").Database,
+  table: ArchiveTable,
+  range: { day: string; from: number; to: number; column: string | null },
+): { columns: string[]; iterate: () => IterableIterator<unknown> } {
+  const stmt = range.column === null
+    ? sqlite.prepare(`SELECT * FROM ${table} WHERE day = ? ORDER BY route_id, surface, horizon`)
+    : sqlite.prepare(`SELECT * FROM ${table} WHERE ${range.column} >= ? AND ${range.column} < ? ORDER BY ${range.column}, rowid`);
+  const columns = stmt.columns().map((col) => col.name);
+  return {
+    columns,
+    iterate: () => (range.column === null ? stmt.iterate(range.day) : stmt.iterate(range.from, range.to)),
+  };
+}
 
 /**
  * Constant-time string compare, so a token can't be recovered byte-by-byte by
@@ -975,6 +997,48 @@ export function buildApp(opts: AppOptions): Hono {
    * at once, because a pooled median is the error this table's `surface`
    * column was added to prevent.
    */
+  /**
+   * The archive feed (docs/closed-loop.md, stage 2): one table's rows for one
+   * ET day, streamed as JSON lines, so the Pi can keep what the volume cannot.
+   * Admin HEADER only — not under /api/stats, for the same reason as
+   * /api/predictions above. Bounded on purpose: one table per request, from
+   * the allowlist in archive.ts, one day within the retention, every table
+   * read over its time-leading index so no request is a full scan. The first
+   * line names the table, day, columns and build; the last is `{"end":true,
+   * "rows":N}` — a stream without it was cut off, and the archiver says so.
+   */
+  app.get("/api/archive/day", requireAdmin, (c) => {
+    const table = c.req.query("table") ?? "";
+    const day = c.req.query("day") ?? "";
+    if (!isArchiveTable(table)) {
+      return c.json({ error: "unknown_table", tables: ARCHIVE_TABLES }, 400);
+    }
+    const range = archiveDayRange(day, now(), table);
+    if (!range) return c.json({ error: "bad_day" }, 400);
+    c.header("Content-Type", "application/x-ndjson; charset=utf-8");
+    c.header("Cache-Control", "no-store");
+    return stream(c, async (out) => {
+      const rows = archiveRows(opts.bundle.sqlite, table, range);
+      await out.write(JSON.stringify({
+        table, day, from: range.from, to: range.to, columns: rows.columns, build: resolveEstimatorVersion(),
+      }) + "\n");
+      let n = 0;
+      let batch: string[] = [];
+      for (const row of rows.iterate()) {
+        batch.push(JSON.stringify(row));
+        n += 1;
+        // A few hundred rows per write keeps the syscalls down and still gives
+        // the event loop a turn every few milliseconds on a 300k-row day.
+        if (batch.length >= 500) {
+          await out.write(batch.join("\n") + "\n");
+          batch = [];
+        }
+      }
+      if (batch.length) await out.write(batch.join("\n") + "\n");
+      await out.write(JSON.stringify({ end: true, rows: n }) + "\n");
+    });
+  });
+
   app.get("/api/predictions", requireAdmin, (c) => {
     const numeric = (name: string): number | undefined => {
       const raw = c.req.query(name);
