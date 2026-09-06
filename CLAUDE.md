@@ -86,16 +86,22 @@ These came from past bugs/feedback — don't re-litigate them:
 - **Route colour has one source**: `ROUTE_LISTS` in `web/src/routes.ts`. Three other tables used to hold their own copies and two had silently drifted. Everything else derives from it; a test fails if they disagree.
 - **The walk model lives on the server** (`WALK_M_PER_S` in `src/network/TransitNetwork.ts`) and the client mirrors it. `walk.test.ts` parses the server's constant out of its source, so the two cannot drift. Change the server first, never one side alone.
 
-**The two grocery lines alternate whole weekends** (`ROUTE_ALTERNATION` in
-`web/src/schedule.ts`): Grocery TJ on the weekend of 2026-06-20 and every
-second weekend after, Grocery Ham the others — measured over 13 of 13 weekends
-in `arrivals`, never published (the operator's description of both reads
-"7am - 5pm, Sat - Sun"). `serviceStateAt` folds the rule into what the app
-SAYS ("Not this weekend · next Sat Sep 12", not "should be running now"), and
-`isRouteScheduledAt` into which lines a future-dated plan may ride; a partner
-with a bus reporting today overrides the calendar. The in-service gate
-(`isBusInService`) deliberately ignores it — a bus on the "wrong" weekend is
-still shown.
+**The two grocery lines alternate whole weekends, and Yale publishes it**
+(`ROUTE_CALENDAR` in `web/src/schedule.ts`): the "2026 Grocery Shuttle
+Calendar" PDF and the "Alternating Schedule - Weekend Grocery Shuttle Service"
+sheet on your.yale.edu — Grocery TJ on the weekend of 2026-01-03 and every
+second weekend after, Grocery Ham the others, Dec 24–31 closed, both lines
+FlexiStop with no service on holidays and recess. The operator's route
+description carries none of this (both read "7am - 5pm, Sat - Sun"), and the
+`arrivals` table agrees with the calendar on 13 of 13 weekends. At run time
+`serviceStateAt` decides what a card SAYS in this order: upstream's own
+`active` flag per route (`routes_routes.php?inactive=true`, refreshed every
+5 min by the collector, served as `route_active`, trusted as "off" only once
+the window has been open 20 min), then the partner line's bus being out, then
+the calendar — "Not this weekend · next Sat Sep 12", never "should be running
+now". `isRouteScheduledAt` gates which lines a future-dated plan may ride. The
+in-service gate (`isBusInService`) deliberately ignores all of it — a bus on
+the "wrong" weekend is still shown.
 
 ## Bug reports
 

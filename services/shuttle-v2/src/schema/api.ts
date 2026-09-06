@@ -32,6 +32,11 @@ export const RouteSchema = z.object({
   // so a route loaded from the DB fallback simply lacks it. Parsed by
   // server/publishedHours.ts into the `route_hours` riders are shown.
   description: z.string().optional(),
+  // Upstream's "in service right now" flag from routes_routes.php. In-memory
+  // only, like `description`; refreshed every 5 min by the collector and
+  // served as `route_active` so the client can say "not running today"
+  // from the operator's own word rather than from inference.
+  active: z.boolean().optional(),
 });
 export type Route = z.infer<typeof RouteSchema>;
 

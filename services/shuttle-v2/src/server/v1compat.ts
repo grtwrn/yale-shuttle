@@ -275,6 +275,11 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     dwells_by_bus: {},
     route_peaks,
     route_hours,
+    // Upstream's own "in service right now" flag per route id, refreshed
+    // every 5 min. The client's service state reads it before any calendar
+    // inference (web/src/schedule.ts serviceStateAt): on Sun 2026-09-06 it is
+    // what says Grocery Trader Joe's is not out this weekend.
+    route_active: collector.routeActive(),
     bus_pace: {},
   };
 }

@@ -8,7 +8,7 @@ import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 import {
-  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_HOURS, serviceStateAt,
+  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
@@ -549,12 +549,18 @@ export interface PotentialRoute {
    */
   activeNow: boolean;
   /**
-   * The calendar says the line runs on days like today, but this is the
-   * weekend its `partner` runs instead (`ROUTE_ALTERNATION`): the rider reads
-   * "Not this weekend", never "should be running now". `nextActive` is then
-   * the line's own next weekend.
+   * The hours say the line runs now, yet it is not out today — upstream's
+   * `active` flag, the partner line's bus, or the published calendar says so
+   * (`ROUTE_CALENDAR`, schedule.ts). `partner` names the line running instead
+   * when this one alternates weekends ("Not this weekend"), null otherwise
+   * ("Not running today"). Never "should be running now" in this state.
+   * `nextActive` is then the line's own next start.
    */
-  offWeek: { partner: string } | null;
+  off: { partner: string | null } | null;
+  /** The published sheet's one-line note for the route (FlexiStop, holidays), if any. */
+  note: string | null;
+  /** Where the calendar facts come from, for the card's small print. */
+  source: string | null;
 }
 
 /**
@@ -575,6 +581,17 @@ export function publishedWindowFor(
     const w = publishedHours[String(rid)];
     if (w) return w;
   }
+  return undefined;
+}
+
+/** Upstream's `active` flag for a ROUTE_LISTS entry, looked up like `publishedWindowFor`. */
+export function routeActiveFor(
+  cfg: { routeIds: readonly string[]; busRouteIds: readonly number[] },
+  routeActive: Record<string, boolean> | undefined,
+): boolean | undefined {
+  if (!routeActive) return undefined;
+  for (const rid of cfg.routeIds) if (rid in routeActive) return routeActive[rid];
+  for (const rid of cfg.busRouteIds) if (String(rid) in routeActive) return routeActive[String(rid)];
   return undefined;
 }
 
@@ -604,18 +621,21 @@ export function findPotentialRoutes(
   // "Next: …", "should be running"); otherwise the hand-maintained ROUTE_HOURS
   // — which is the widened in-service gate, not the timetable — stands in.
   publishedHours?: Record<string, PublishedWindow>,
-  // The lines with a bus reporting at `now`: the live cross-check for a line
-  // that alternates weekends with another (its partner out today means it is
-  // off today, whatever the calendar arithmetic says). Bears on `after` only
-  // when `after` is today.
-  live?: { labels: ReadonlySet<string>; now: Date },
+  // The feed's evidence at `now`: upstream's `active` flag per route id
+  // (`/api/buses` `route_active`) and the lines with a bus reporting — the
+  // live word on a line that alternates weekends with another. Bears on
+  // `after` only when `after` is today.
+  live?: { labels: ReadonlySet<string>; now: Date; active?: Record<string, boolean> },
 ): PotentialRoute[] {
   const out: PotentialRoute[] = [];
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const published = publishedWindowFor(cfg, publishedHours);
-    const state = serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, after, live);
+    const state = serviceStateAt(
+      published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, after,
+      live ? { labels: live.labels, now: live.now, active: routeActiveFor(cfg, live.active) } : undefined,
+    );
     // Any board stop near "from" and any alight stop near "to",
     // with alight further along the route than board (so we're not
     // suggesting a ride that goes the wrong way).
@@ -650,7 +670,9 @@ export function findPotentialRoutes(
       schedule: published ? fmtWindows([published]) : fmtSchedule(cfg.label),
       nextActive: state.next,
       activeNow: state.open,
-      offWeek: state.offWeek,
+      off: state.off,
+      note: ROUTE_CALENDAR[cfg.label]?.note ?? null,
+      source: ROUTE_CALENDAR[cfg.label]?.source ?? null,
     });
   }
   // Routes that should be running now first, then by next-active — soonest

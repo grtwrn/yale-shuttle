@@ -573,7 +573,7 @@ describe("findPotentialRoutes", () => {
     expect(found[0]!.activeNow).toBe(true);
   });
 
-  // The grocery lines alternate whole weekends (schedule.ts ROUTE_ALTERNATION).
+  // The grocery lines alternate whole weekends (schedule.ts ROUTE_CALENDAR).
   // On Sun 2026-09-06 — Hamden's weekend — the panel read "Should be running
   // now — no bus reporting yet" for Grocery TJ. It must read "not this
   // weekend", with TJ's own next Saturday, and the partner's bus out today
@@ -601,7 +601,8 @@ describe("findPotentialRoutes", () => {
       const tj = found.find((r) => r.label === "Grocery TJ")!;
       expect(tj).toBeDefined();
       expect(tj.activeNow).toBe(false);
-      expect(tj.offWeek).toEqual({ partner: "Grocery Ham" });
+      expect(tj.off).toEqual({ partner: "Grocery Ham" });
+      expect(tj.note).toMatch(/FlexiStop/);
       expect(tj.nextActive?.toISOString()).toBe(new Date("2026-09-12T07:00:00-04:00").toISOString());
       expect(tj.schedule).toBe("Sa/Su 7a–5p");
     });
@@ -609,10 +610,18 @@ describe("findPotentialRoutes", () => {
     it("is 'should be running' on its own weekend, and off when the partner is out that day", () => {
       const own = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published)
         .find((r) => r.label === "Grocery TJ")!;
-      expect(own).toMatchObject({ activeNow: true, offWeek: null });
+      expect(own).toMatchObject({ activeNow: true, off: null });
       const drifted = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
         { labels: new Set(["Grocery Ham"]), now: sat0912 }).find((r) => r.label === "Grocery TJ")!;
-      expect(drifted).toMatchObject({ activeNow: false, offWeek: { partner: "Grocery Ham" } });
+      expect(drifted).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // Upstream's flag is the first word: inactive on the line's own weekend is off.
+      const flagged = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
+        { labels: new Set(), now: sat0912, active: { "6": false, "18": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(flagged).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // And active on the partner's weekend means it is out after all.
+      const out = findPotentialRoutes(from, to, stopsWithTj, coords, sun0906, published,
+        { labels: new Set(["Grocery Ham"]), now: sun0906, active: { "6": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(out).toMatchObject({ activeNow: true, off: null });
     });
   });
 
