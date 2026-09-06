@@ -121,6 +121,20 @@ describe("isBusInService", () => {
     expect(isBusInService(makeBus({ route_id: 999, lat: 41.31, lon: -72.93 }), MON_1630_ET.getTime()))
       .toBe(true);
   });
+
+  // The record, because the first reading of the 2026-09-06 canary finding
+  // blamed this gate. Blue Night's #57 reported route 13 at 17:42 ET on a
+  // Sunday, 18 min before the 18:00 open, and the plan never offered the
+  // line. The gate passed it the whole time — 18 min is well inside the
+  // grace — and the plan was right: the bus was on Whitney Ave in Hamden,
+  // 4 km from the line, deadheading in (isBusOnRoute false). The fix was
+  // in the canary's idea of "running", not here.
+  it("passes a Blue Night bus reporting 18 min before its Sunday open", () => {
+    const sun1742 = new Date("2026-09-06T17:42:00-04:00").getTime();
+    const bus = makeBus({ route_id: 13, bus_name: "#57", lat: 41.3531, lon: -72.9247 });
+    expect(isRouteActiveAt("Blue Night", new Date(sun1742))).toBe(false);
+    expect(isBusInService(bus, sun1742)).toBe(true);
+  });
 });
 
 describe("nextActiveWindow", () => {

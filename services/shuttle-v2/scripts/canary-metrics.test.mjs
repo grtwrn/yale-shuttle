@@ -3,12 +3,34 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
-  ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, CANARY_LINES, CANONICAL_MAX_WALK_M,
+  ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, busOnRoute, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
-  departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
-  pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
+  departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, liveBusesOf, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  OFF_ROUTE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
+
+/**
+ * Blue Night as the canary saw it on Sun 2026-09-06: the Whitney Ave stops
+ * the line serves (real coordinates), a polyline down Whitney between them,
+ * and #57 where the feed had it at 17:42 ET — Whitney Ave in Hamden,
+ * 4 km north of Peabody, reporting route 13 and a stale last_stop_id of
+ * Prospect / Sachem (N). `at` moves the bus.
+ */
+const BLUE_NIGHT = CANARY_LINES.find((l) => l.label === "Blue Night");
+const BLUE_NIGHT_PAYLOAD = (at = { lat: 41.3531, lon: -72.9247 }) => ({
+  buses: [{ bus_id: 66036, bus_name: "#57", route_id: 13, lat: at.lat, lon: at.lon, last_stop_id: 106 }],
+  routes: { 13: [106, 97, 96, 67, 43] },
+  route_paths: { 13: [[41.3172, -72.9247], [41.315675, -72.920859], [41.3121, -72.9243], [41.3095, -72.9282], [41.30199, -72.933299]] },
+  stop_coords: {
+    106: { lat: 41.3172, lon: -72.9247 }, 97: { lat: 41.315675, lon: -72.920859 },
+    96: { lat: 41.3121, lon: -72.9243 }, 67: { lat: 41.3095, lon: -72.9282 }, 43: { lat: 41.30199, lon: -72.933299 },
+  },
+  stop_names: {
+    106: "Prospect / Sachem (N)", 97: "Peabody Museum / Whitney / Sachem", 96: "Payne Whitney Gym",
+    67: "Wall / York", 43: "Congress / Cedar",
+  },
+});
 
 describe("bucketOf", () => {
   it("maps every token fmtMin can print", () => {
@@ -1306,7 +1328,59 @@ describe("which trip a line is ridden on", () => {
   });
 });
 
+describe("busOnRoute", () => {
+  it("is the app's own off-route line, not a second opinion", () => {
+    const src = readFileSync(new URL("../web/src/anchor.ts", import.meta.url), "utf8");
+    const m = src.match(/export const OFF_ROUTE_THRESHOLD_M = (\d+);/);
+    expect(Number(m[1])).toBe(OFF_ROUTE_M);
+  });
+
+  it("rules out #57 deadheading down Whitney Ave from Hamden with route 13 set", () => {
+    const p = BLUE_NIGHT_PAYLOAD();
+    expect(busOnRoute(p, p.buses[0], BLUE_NIGHT)).toBe(false);
+    // ...and where it stopped at 17:52, 977 m short of the line.
+    const parked = BLUE_NIGHT_PAYLOAD({ lat: 41.328989, lon: -72.921811 });
+    expect(busOnRoute(parked, parked.buses[0], BLUE_NIGHT)).toBe(false);
+    expect(liveBusesOf(parked, BLUE_NIGHT)).toEqual([]);
+  });
+
+  it("keeps a bus on the polyline, even between stops", () => {
+    // Mid-leg between Peabody and Payne Whitney, 30 m off the chord.
+    const p = BLUE_NIGHT_PAYLOAD({ lat: 41.31389, lon: -72.92290 });
+    expect(busOnRoute(p, p.buses[0], BLUE_NIGHT)).toBe(true);
+    expect(liveBusesOf(p, BLUE_NIGHT).map((b) => b.bus_name)).toEqual(["#57"]);
+  });
+
+  it("falls back to the stops when the payload carries no polyline", () => {
+    const near = BLUE_NIGHT_PAYLOAD({ lat: 41.3160, lon: -72.9210 });
+    const far = BLUE_NIGHT_PAYLOAD();
+    delete near.route_paths;
+    delete far.route_paths;
+    expect(busOnRoute(near, near.buses[0], BLUE_NIGHT)).toBe(true);
+    expect(busOnRoute(far, far.buses[0], BLUE_NIGHT)).toBe(false);
+  });
+
+  it("never rules out a bus without GPS", () => {
+    const p = BLUE_NIGHT_PAYLOAD();
+    expect(busOnRoute(p, { route_id: 13, bus_name: "#1" }, BLUE_NIGHT)).toBe(true);
+  });
+});
+
 describe("rideableLines", () => {
+  it("does not count a bus that is off its route as the line running (2026-09-06 17:42)", async () => {
+    const { rideableLines } = await import("./rider-canary.mjs");
+    const p = BLUE_NIGHT_PAYLOAD();
+    const bn = rideableLines(p).find((l) => l.label === "Blue Night");
+    // The trip can be built — the stops are all there — but nothing is on it.
+    expect(bn.trip).not.toBeNull();
+    expect(bn.liveBuses).toBe(0);
+    expect(bn.rideable).toBe(false);
+    // The same bus on the line is a line to ride.
+    const on = rideableLines(BLUE_NIGHT_PAYLOAD({ lat: 41.31389, lon: -72.92290 })).find((l) => l.label === "Blue Night");
+    expect(on.liveBuses).toBe(1);
+    expect(on.rideable).toBe(true);
+  });
+
   it("rides only a line with live buses AND a trip", async () => {
     const { rideableLines } = await import("./rider-canary.mjs");
     const payload = {

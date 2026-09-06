@@ -1359,6 +1359,20 @@ the whole job. A line counts as running when `/api/buses` shows live buses on
 it — the server already drops out-of-service ghosts, so that is the
 service-hours gate and no schedule table is copied into the harness.
 
+**A route id on a bus is not a bus on that route.** "Live" is a bus ON the
+line by the app's own test (`busOnRoute` in `canary-metrics.mjs` mirrors
+`isBusOnRoute`, web/src/anchor.ts: within 500 m of the published polyline;
+the test pins the constant). On Sun 2026-09-06 at 17:42 Blue Night's #57
+reported route 13 from Whitney Ave in Hamden, 4 km from the nearest Blue
+Night stop, deadheading in for its 18:00 start; the canary counted "1 live
+bus", the rotation picked a ride "1 stop out" from its stale `last_stop_id`,
+and it filed `line-missing` against an app that had rightly left the bus out
+of every plan. The first reading blamed the in-service gate (`isBusInService`,
+a timetable window ± 90 min): measured, it passed #57 the whole time — 18 min
+before the open is inside the grace — and a test in `schedule.test.ts` now
+says so. Do not add live-evidence overrides to that gate on the strength of
+this finding; nothing measured needs them.
+
 **Two riders, two browsers, never more** (operator, 2026-09-06: "one red line
 rider always when its running and also another always that round Robin
 through running lines"). `--loop` runs both in one process, and every log

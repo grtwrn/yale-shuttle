@@ -64,8 +64,11 @@ function loop({ lastStop = 103, routeId = 9, repeat = false } = {}) {
     stop_names[id] = `Stop ${id}`;
   });
   const seq = repeat ? [...ids, ...ids.slice(1, -1).reverse()] : ids;
+  // The bus sits AT its last stop: the picker only counts a bus that is on
+  // the route, and the ring's centre is 760 m from every stop on it.
+  const at = stop_coords[lastStop] ?? { lat: 41.3, lon: -72.92 };
   return {
-    buses: [{ bus_id: 1, bus_name: "#40", route_id: routeId, lat: 41.3, lon: -72.92, last_stop_id: lastStop }],
+    buses: [{ bus_id: 1, bus_name: "#40", route_id: routeId, lat: at.lat, lon: at.lon, last_stop_id: lastStop }],
     routes: { [routeId]: seq },
     stop_coords, stop_names,
   };
@@ -179,6 +182,21 @@ describe("candidateRides on Grocery Ham (the 2026-09-06 false positive)", () => 
     p.buses[0].last_stop_id = null;
     expect(randomTripForLine(p, HAM).trip).toBeNull();
     expect(randomTripForLine(p, HAM).reason).toMatch(/reports a position/);
+  });
+
+  it("skips a line whose only bus is off the route, whatever last_stop_id says", () => {
+    // #57 on 2026-09-06 17:42: route 13 set, last_stop_id still Prospect /
+    // Sachem (N), and the bus itself on Whitney Ave in Hamden, 4 km from the
+    // nearest stop of the line. The picker built "1 stop out" from the stale
+    // id and the planner, rightly, never offered the ride.
+    const p = HAM_PAYLOAD(170);
+    p.buses[0].lat = 41.45; p.buses[0].lon = -72.917;
+    expect(candidateRides(p, HAM)).toEqual([]);
+    const r = randomTripForLine(p, HAM);
+    expect(r.trip).toBeNull();
+    expect(r.reason).toMatch(/reports a position/);
+    // The same fixture with the bus at Aldi/Walmart, its last stop, rides.
+    expect(randomTripForLine(HAM_PAYLOAD(170), HAM).trip).not.toBeNull();
   });
 });
 

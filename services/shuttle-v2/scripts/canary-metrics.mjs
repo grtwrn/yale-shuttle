@@ -832,6 +832,64 @@ export const CANONICAL_MAX_WALK_M = 700;
 /** Below this the planner would rightly answer "walk", so it is not a ride. */
 export const MIN_RIDE_M = 500;
 
+/**
+ * Mirrors OFF_ROUTE_THRESHOLD_M in web/src/anchor.ts — the app's own line
+ * between "on its route" and "not". A test pins the two equal.
+ */
+export const OFF_ROUTE_M = 500;
+
+/** Metres from `p` to the segment a-b, in the same flat approximation web/src/geo.ts uses. */
+function distanceToSegmentM(p, a, b) {
+  const dx = (b.lon - a.lon) * 84_000, dy = (b.lat - a.lat) * 111_000;
+  const px = (p.lon - a.lon) * 84_000, py = (p.lat - a.lat) * 111_000;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, (px * dx + py * dy) / len2)) : 0;
+  const ex = px - dx * t, ey = py - dy * t;
+  return Math.sqrt(ex * ex + ey * ey);
+}
+
+/**
+ * Is this bus ON the line it reports, by the app's own test (`isBusOnRoute`,
+ * web/src/anchor.ts): within OFF_ROUTE_M of the route's published polyline,
+ * or of one of its stops when the payload carries no polyline; a bus with no
+ * GPS is never ruled out.
+ *
+ * A route id is not a position. On Sun 2026-09-06 at 17:42 ET, Blue Night's
+ * #57 reported route 13 from Whitney Ave in Hamden — 4 km north of the
+ * nearest Blue Night stop, deadheading in for its 18:00 start — and the
+ * canary counted it as "1 live bus", rode Peabody -> Congress / Cedar on the
+ * strength of it, and filed `line-missing` against an app that had (rightly)
+ * excluded the bus from every board and plan because it was not on the
+ * route. The in-service gate was not the cause: with its 90 min grace it
+ * passed #57 the whole time. The bus stopped 977 m off route at 17:52 and
+ * the watch ended before it ever reached the line.
+ */
+export function busOnRoute(payload, bus, line) {
+  if (!Number.isFinite(bus?.lat) || !Number.isFinite(bus?.lon)) return true;
+  const path = payload.route_paths?.[String(bus.route_id)];
+  if (Array.isArray(path) && path.length >= 2) {
+    for (let i = 0; i + 1 < path.length; i++) {
+      const a = { lat: path[i][0], lon: path[i][1] }, b = { lat: path[i + 1][0], lon: path[i + 1][1] };
+      if (distanceToSegmentM(bus, a, b) < OFF_ROUTE_M) return true;
+    }
+    return false;
+  }
+  return stopsOfLine(payload, line).some((id) => {
+    const c = payload.stop_coords?.[id];
+    return c && haversineM(bus, c) < OFF_ROUTE_M;
+  });
+}
+
+/**
+ * The buses the app would show on `line`: reporting one of its route ids AND
+ * on its route. "Running" means vehicles on the line's road, never a route id
+ * on a bus somewhere else, and never a schedule.
+ */
+export function liveBusesOf(payload, line) {
+  return (payload.buses ?? []).filter((b) =>
+    line.busRouteIds.includes(b.route_id) && busOnRoute(payload, b, line));
+}
+
 /** Every stop id on a line, in sequence, from the /api/buses `routes` map. */
 export function stopsOfLine(payload, line) {
   return Object.entries(payload.routes ?? {})

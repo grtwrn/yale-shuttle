@@ -61,7 +61,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as METRICS from "./canary-metrics.mjs";
 import {
   ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, fleetOffAir, haversineM,
-  isAtBoardStop, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
+  isAtBoardStop, liveBusesOf, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
 import { DEDICATED_LINE, nextInRotation, randomTripForLine } from "./canary-rotation.mjs";
 import { seedTestId } from "./testId.mjs";
@@ -148,11 +148,17 @@ const tagged = (tag) => (s, at) => say(s, at, tag);
  * Live buses, not a schedule table, are the service-hours gate. The server
  * already drops out-of-service ghosts (report #30), so a line with no buses is
  * a line with nothing to watch, whatever the timetable says.
+ *
+ * "Live" is a bus ON the line's route (`liveBusesOf`), which is the app's own
+ * test. A bus that merely carries the route id — deadheading in from Hamden
+ * before its evening start, parked in the yard with the transponder left on —
+ * is a bus the app is right to leave out of every plan, and counting it here
+ * turned that into `line-missing` (Blue Night, 2026-09-06 17:42).
  */
 export function rideableLines(payload) {
   return CANARY_LINES.map((line) => {
     const trip = tripForLine(payload, line);
-    const live = (payload.buses ?? []).filter((b) => line.busRouteIds.includes(b.route_id));
+    const live = liveBusesOf(payload, line);
     return {
       ...line, trip,
       liveBuses: live.length,
