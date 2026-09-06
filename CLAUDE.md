@@ -1624,6 +1624,16 @@ whenever a test injects `upstream`.
   trailing window beats a constant-velocity Kalman filter on this feed, and
   the number is only informative about two minutes ahead, so it must never
   feed the ETA. Not built; read it before building it.
+- `docs/eta-ring-posterior.md`, "Velocity on the kernel: measured" — a
+  velocity state on the ring estimator's move kernel (the operator's "u can
+  test if velocity helps?", 2026-09-06). Built behind a switch, measured on
+  the every-line gps-replay, dropped: overall median 60.2 → 60.4 s, moving
+  57.8 → 58.3, the model's lead-disagreement share 12.6 → 12.7% (Blue Night
+  23.6 → 25.1), coverage unchanged. The feed is why: a 5 s chord speed
+  predicts the next pair's speed WORSE than the route median (MAE 4.18 vs
+  4.02 m/s — the deadband is ±3 m/s at 5 s), and the best window gains under
+  3 m a poll against a 20 m emission. Not in the tree; do not rebuild it for
+  this feed.
 - `docs/eta-error-budget.md` — where the ETA error actually lives, and why the
   rider-visible problem is **stability, not accuracy**. Decomposes a hop into
   dwell / hold / drive (standing is 95% of the within-segment variance,
