@@ -40,6 +40,11 @@ ENV PORT=8080
 ENV SHUTTLE_V2_DB=/data/shuttle-v2.db
 ENV SHUTTLE_V2_DB_DIR=/data
 ENV SHUTTLE_V2_STATIC_DIR=/app/web/dist
+# The commit this image was built from. scripts/deploy.mjs passes it as a
+# build arg (git rev-parse HEAD); /healthz reports it and the scorecard
+# versions its rows by it (docs/closed-loop.md). "dev" when built by hand.
+ARG SHUTTLE_BUILD_SHA=dev
+ENV SHUTTLE_BUILD_SHA=$SHUTTLE_BUILD_SHA
 
 WORKDIR /app
 COPY --from=backend /app /app

@@ -1661,6 +1661,29 @@ first arrival within 45 min); pipe it over stdin to run it on production
 read-only — the recipe is in the script header. Both recorders are OFF
 whenever a test injects `upstream`.
 
+## The closed loop: the scorecard and the archive
+
+`docs/closed-loop.md` is the design. **Stage 1, built:** `src/server/scorecard.ts`
+scores every ETA arm — what sampled browsers showed (`trip`/`ride`/`card`,
+pooled as `ours`), the official app's sampled ETAs (`upstream`) and its
+verbatim census (`census`) — against the detector's arrivals under ONE rule,
+`truthAt` in `predictions.ts` (promises ≤ 30 min only, a bus already standing
+at the stop excluded, first arrival within 45 min; error = promise − actual,
+negative = optimistic). It runs HOURLY at :35 in the server process, scores
+the hour whose truth has settled, replaces the day's rows in `scorecard_days`
+(day / route_id 0 = all / horizon 0–2, 2–5, 5–10, 10–30, all / surface /
+metrics JSON / estimator_version), closes the day from scratch at 03:35 and
+backfills on boot. `GET /api/stats/scorecard?days=N` (token or the stats
+cookie, like `/api/stats`) and the "ETA scorecard" section of `/stats`.
+`estimator_version` is `SHUTTLE_BUILD_SHA`, which `scripts/deploy.mjs` passes
+as a build arg and `/healthz` reports as `build`. **Stage 2 (next PR):**
+`scripts/archive-day.mjs` pulls a day's rows off the volume through
+`GET /api/archive/day` (admin header only) into `~/shuttle-archive/`, 180 days;
+`scripts/archive-check.mjs` says which days are complete; the crontab line is
+in the doc. **Stages 3–4 (re-estimation, promotion) are designed, not built,
+and must stay DAILY** — the parameters are stationary over days; hourly is for
+the scorecard and alerts.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s

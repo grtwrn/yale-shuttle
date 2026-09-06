@@ -1289,6 +1289,35 @@ describe("operator stats session", () => {
     expect(body.history[0]!.newRiders).toBe(1);
   });
 
+  // The scorecard rides on the same auth: the header for scripts, the cookie
+  // for the dashboard. /api/scorecard is the same handler under a spelling the
+  // cookie's Path can never reach — header only there, by construction.
+  it("serves the scorecard to the cookie and to the header, and to nobody else", async () => {
+    const { cookie } = await login();
+    const viaCookie = await app.request("/api/stats/scorecard?days=7", { headers: { cookie } });
+    expect(viaCookie.status).toBe(200);
+    expect(viaCookie.headers.get("Cache-Control")).toBe("no-store");
+    const body = (await viaCookie.json()) as {
+      days: unknown[]; rows: unknown[]; routes: Array<{ id: number }>;
+      rules: { horizonCapSec: number; errorSign: string }; estimatorVersion: string;
+    };
+    // Nothing scored yet on a fresh database: the shape is there, the rows are not.
+    expect(body.days).toEqual([]);
+    expect(body.rows).toEqual([]);
+    expect(body.routes.map((r) => r.id)).toEqual([10, 11, 12]);
+    expect(body.rules.horizonCapSec).toBe(30 * 60);
+    expect(body.rules.errorSign).toContain("optimistic");
+    expect(body.estimatorVersion).toBe("dev");
+
+    const viaHeader = await app.request("/api/scorecard", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    expect(viaHeader.status).toBe(200);
+    expect((await app.request("/api/stats/scorecard", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).status).toBe(200);
+
+    expect((await app.request("/api/stats/scorecard")).status).toBe(401);
+    expect((await app.request("/api/scorecard")).status).toBe(401);
+    expect((await app.request("/api/scorecard", { headers: { cookie: `stats_session=${mint(FROZEN + 60_000, "other")}` } })).status).toBe(401);
+  });
+
   // The whole point of scoping the cookie: it must not unlock the triage log.
   it("does not unlock the report routes", async () => {
     const { cookie } = await login();

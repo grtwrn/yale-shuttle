@@ -263,6 +263,33 @@
   .note.alerted { border-color: var(--series-returning); border-width: 2px; }
   .canary-escalated { color: var(--danger); font-weight: 700; }
 
+  /* The ETA scorecard (docs/closed-loop.md, stage 1). Two series only —
+     ours and the official app — on the SAME two validated colours the rider
+     chart uses, because the question is the same shape: us against the
+     other thing. Every number is labelled with the rule it was scored under
+     (horizon cap, standing buses, sign), since without the rules the number
+     read the opposite of the truth once already (see #147). */
+  .score { width: 100%; height: 190px; display: block; overflow: visible; }
+  .score .grid { stroke: var(--grid); stroke-width: 1; }
+  .score .axis-text { fill: var(--ink-2); font-size: 10px; }
+  .score path { fill: none; stroke-linejoin: round; stroke-linecap: round; stroke-width: 2.5; }
+  .score .ours { stroke: var(--series-new); }
+  .score .official { stroke: var(--series-returning); }
+  .score circle.ours { fill: var(--series-new); }
+  .score circle.official { fill: var(--series-returning); }
+  .score-rules { font-size: 12px; color: var(--ink-2); margin-top: 6px; line-height: 1.5; }
+  /* The one other element allowed to scroll sideways: a table with a column
+     per statistic does not fit a phone, and wrapping the numbers would make
+     the rows unreadable. */
+  .score-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin-top: 10px; }
+  .score-table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .score-table th, .score-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+  .score-table th { font-weight: 600; color: var(--ink-2); font-size: 12px; }
+  .score-table th:first-child, .score-table td:first-child { text-align: left; }
+  .score-table td.ours { color: var(--series-new); }
+  .score-table td.official { color: var(--series-returning); }
+  .score-table tr.total td { font-weight: 600; }
+
   /* -- Login / error states --------------------------------------------- */
   .panel {
     background: var(--raised);
@@ -415,6 +442,30 @@
         Every run passed. Nothing to look at.
       </div>
     </section>
+
+    <!-- The ETA scorecard: every arm scored against the detector's arrivals,
+         per day, by the hourly job in src/server/scorecard.ts. "ours" is what
+         sampled browsers had on screen (trip, ride and route cards pooled);
+         "official" is the Downtowner app's own routes_eta.php, whole minutes.
+         Same rules on both: promises of 30 min or less, a bus already standing
+         at the stop excluded, first arrival within 45 min. -->
+    <section>
+      <div class="chart-head">
+        <h2>ETA scorecard</h2>
+        <div class="legend">
+          <span><i class="chip chip-new"></i>ours</span>
+          <span><i class="chip chip-returning"></i>official</span>
+        </div>
+      </div>
+      <svg id="score-chart" class="score" role="img"
+           aria-label="Median absolute ETA error per day, ours against the official app"></svg>
+      <div id="score-note" class="score-rules"></div>
+      <div class="score-wrap">
+        <table id="score-table" class="score-table" hidden></table>
+      </div>
+      <div id="score-rules" class="score-rules"></div>
+      <div id="score-empty" class="empty" hidden>No scored days yet — the first hour settles at :35.</div>
+    </section>
   </div>
 </main>
 
@@ -431,6 +482,9 @@
   // A day of riding. The canary gets through ~11 lines in that time, which is
   // the span over which "which lines were watched" has a true answer.
   var CANARY_HOURS = 24;
+  // A month of days on the scorecard line: the same span as the rider chart,
+  // and a deploy shows up as a step against a fortnight either side.
+  var SCORE_DAYS = 30;
 
   var el = {
     loading: document.getElementById("loading"),
@@ -470,7 +524,12 @@
     canaryNote: document.getElementById("canary-note"),
     canaryAlert: document.getElementById("canary-alert"),
     canaryEmpty: document.getElementById("canary-empty"),
-    canaryClean: document.getElementById("canary-clean")
+    canaryClean: document.getElementById("canary-clean"),
+    scoreChart: document.getElementById("score-chart"),
+    scoreNote: document.getElementById("score-note"),
+    scoreTable: document.getElementById("score-table"),
+    scoreRules: document.getElementById("score-rules"),
+    scoreEmpty: document.getElementById("score-empty")
   };
 
   // Which reports this browser has already been shown. Highest id seen, in
@@ -565,7 +624,8 @@
       getJson("/api/stats/reports?limit=15").catch(function () { return null; }),
       getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; }),
       getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; }),
-      getJson("/api/stats/canary?hours=" + CANARY_HOURS).catch(function () { return null; })
+      getJson("/api/stats/canary?hours=" + CANARY_HOURS).catch(function () { return null; }),
+      getJson("/api/stats/scorecard?days=" + SCORE_DAYS).catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
@@ -574,6 +634,7 @@
       renderHours(both[3] && both[3].hourly);
       renderTerms(both[4]);
       renderCanary(both[5]);
+      renderScorecard(both[6]);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -892,6 +953,164 @@
     // healthy this whole section is one grey sentence.
     el.canaryAlert.hidden = !d.openAlerts;
     el.canaryAlert.textContent = d.openAlerts + " escalated";
+  }
+
+  /**
+   * The ETA scorecard. Three parts: a 30-day line of median |error|, ours
+   * against the official app, every route pooled; the rules the numbers were
+   * scored under, printed rather than implied; and the latest day, route by
+   * route. Drawn by hand in SVG like the hours chart — no libraries here.
+   *
+   * "ours" is the pooled rider surfaces (what a sampled browser had on
+   * screen); "official" is the operator's own routes_eta.php, sampled at the
+   * stops riders watch. The census arm (every stop, uncapped) is in the API
+   * and deliberately not on this page: it covers a different population.
+   */
+  function renderScorecard(payload) {
+    var d = payload || {};
+    var days = d.days || [];
+    var rows = d.rows || [];
+    var rules = d.rules || {};
+    var svg = el.scoreChart;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    el.scoreTable.textContent = "";
+    el.scoreTable.hidden = true;
+    el.scoreEmpty.hidden = days.length > 0;
+    svg.hidden = days.length === 0;
+    el.scoreNote.textContent = "";
+    el.scoreRules.textContent = "";
+    if (!days.length) { svg.setAttribute("viewBox", "0 0 340 190"); return; }
+
+    var capMin = Math.round((rules.horizonCapSec || 1800) / 60);
+    var matchMin = Math.round((rules.matchWindowSec || 2700) / 60);
+    function pick(day, routeId, horizon, surface) {
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r.day === day && r.routeId === routeId && r.horizon === horizon && r.surface === surface) return r.metrics;
+      }
+      return null;
+    }
+
+    // -- the line ------------------------------------------------------------
+    var W = 340, H = 190, padL = 30, padR = 8, padT = 10, padB = 10 + 16;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var series = { ours: [], official: [] };
+    var peak = 60;
+    for (var i = 0; i < days.length; i++) {
+      var o = pick(days[i].day, 0, "all", "ours");
+      var u = pick(days[i].day, 0, "all", "upstream");
+      series.ours.push(o && o.medianAbsSec !== null ? o.medianAbsSec : null);
+      series.official.push(u && u.medianAbsSec !== null ? u.medianAbsSec : null);
+      if (o && o.medianAbsSec !== null) peak = Math.max(peak, o.medianAbsSec);
+      if (u && u.medianAbsSec !== null) peak = Math.max(peak, u.medianAbsSec);
+    }
+    peak = Math.ceil(peak / 60) * 60;
+    var x = function (i) { return days.length === 1 ? padL + plotW / 2 : padL + (i / (days.length - 1)) * plotW; };
+    var y = function (v) { return padT + plotH - (v / peak) * plotH; };
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(0), x2: W - padR, y2: y(0) }));
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(peak), x2: W - padR, y2: y(peak) }));
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(120), x2: W - padR, y2: y(120), "stroke-dasharray": "3 3" }));
+    [[peak, Math.round(peak / 60) + " min"], [120, "2 min"], [0, "0"]].forEach(function (t) {
+      var lbl = svgEl("text", { class: "axis-text", x: 0, y: y(t[0]) + 3 });
+      lbl.textContent = t[1];
+      svg.appendChild(lbl);
+    });
+    var ticks = days.length > 1 ? [0, days.length - 1] : [0];
+    if (days.length > 6) ticks.splice(1, 0, Math.floor((days.length - 1) / 2));
+    ticks.forEach(function (i) {
+      var t = svgEl("text", {
+        class: "axis-text", x: x(i), y: H - 4,
+        "text-anchor": i === 0 ? "start" : (i === days.length - 1 ? "end" : "middle")
+      });
+      t.textContent = dayParts(days[i].day).short;
+      svg.appendChild(t);
+    });
+    ["official", "ours"].forEach(function (name) {
+      var vals = series[name];
+      var parts = [], pen = false;
+      for (var j = 0; j < vals.length; j++) {
+        if (vals[j] === null) { pen = false; continue; }
+        parts.push((pen ? "L" : "M") + x(j).toFixed(1) + " " + y(vals[j]).toFixed(1));
+        pen = true;
+        // A day is a point as well as a vertex: a single scored day, or a gap
+        // in the log, would otherwise draw nothing at all.
+        svg.appendChild(svgEl("circle", { class: name, cx: x(j).toFixed(1), cy: y(vals[j]).toFixed(1), r: 2.5 }));
+      }
+      if (parts.length) svg.appendChild(svgEl("path", { class: name, d: parts.join(" ") }));
+    });
+
+    // -- freshness and the rules ------------------------------------------
+    var last = days[days.length - 1];
+    var through = last.scoredThrough ? clockET(last.scoredThrough) + " ET" : "";
+    el.scoreNote.textContent =
+      "median |error| per day, every route · " + dayParts(last.day).full +
+      (last.final ? " is final" : " scored through " + through) +
+      (last.estimatorVersion ? " · build " + last.estimatorVersion : "");
+    el.scoreRules.textContent =
+      "Rules, both arms alike: promises ≤ " + capMin + " min only (what the official app publishes); " +
+      "a bus already standing at the stop is not a forecast and is excluded; " +
+      "truth is the detector's first arrival within " + matchMin + " min. " +
+      "Error = promise − actual: pessimistic means the bus beat the promise by ≥ 2 min, " +
+      "optimistic that it came ≥ 2 min later. The official app serves whole minutes (±30 s is rounding). " +
+      "A strand is a bus arriving while the last number shown was still ≥ 3 min; " +
+      "a jump is the promised arrival moving ≥ 3 min between looks.";
+
+    // -- the latest day, per route -------------------------------------------
+    var routes = d.routes || [];
+    var names = {};
+    for (var k = 0; k < routes.length; k++) names[routes[k].id] = routes[k].name;
+    var lines = [];
+    var seen = {};
+    for (var m = 0; m < rows.length; m++) {
+      var r = rows[m];
+      if (r.day !== last.day || r.horizon !== "all" || r.routeId === 0) continue;
+      if (r.surface !== "ours" && r.surface !== "upstream") continue;
+      if (!seen[r.routeId]) { seen[r.routeId] = true; lines.push(r.routeId); }
+    }
+    lines.sort(function (a, b) {
+      var oa = pick(last.day, a, "all", "ours"), ob = pick(last.day, b, "all", "ours");
+      return ((ob && ob.paired) || 0) - ((oa && oa.paired) || 0) || a - b;
+    });
+    lines.push(0);
+
+    var table = el.scoreTable;
+    var head = document.createElement("tr");
+    ["route", "paired (ours / official)", "|err| p50", "within 2 min", "pessimistic ≥2 min", "optimistic ≥2 min", "band covers", "strands / waits", "jumps / looks"]
+      .forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+    table.appendChild(head);
+    var secs = function (v) { return v === null || v === undefined ? "—" : Math.round(v) + " s"; };
+    var pc = function (v) { return v === null || v === undefined ? "—" : v + "%"; };
+    var both = function (tr, o, u, f) {
+      var td = document.createElement("td");
+      var a = document.createElement("span"); a.className = "ours"; a.textContent = o ? f(o) : "—";
+      var b = document.createElement("span"); b.className = "official"; b.textContent = u ? f(u) : "—";
+      td.appendChild(a); td.appendChild(document.createTextNode(" / ")); td.appendChild(b);
+      tr.appendChild(td);
+    };
+    for (var n = 0; n < lines.length; n++) {
+      var id = lines[n];
+      var o2 = pick(last.day, id, "all", "ours");
+      var u2 = pick(last.day, id, "all", "upstream");
+      var tr = document.createElement("tr");
+      if (id === 0) tr.className = "total";
+      var name = document.createElement("td");
+      name.textContent = id === 0 ? "every route" : (names[id] || ("route " + id));
+      tr.appendChild(name);
+      both(tr, o2, u2, function (mm) { return num(mm.paired); });
+      both(tr, o2, u2, function (mm) { return secs(mm.medianAbsSec); });
+      both(tr, o2, u2, function (mm) { return pc(mm.within120Pct); });
+      both(tr, o2, u2, function (mm) { return pc(mm.pessimistic120Pct); });
+      both(tr, o2, u2, function (mm) { return pc(mm.optimistic120Pct); });
+      var cov = document.createElement("td");
+      cov.className = "ours";
+      cov.textContent = o2 && o2.intervalCoveragePct !== null ? o2.intervalCoveragePct + "% of " + num(o2.intervalRows) : "—";
+      tr.appendChild(cov);
+      both(tr, o2, u2, function (mm) { return num(mm.strands) + " / " + num(mm.waits); });
+      both(tr, o2, u2, function (mm) { return num(mm.jumps) + " / " + num(mm.jumpPairs); });
+      table.appendChild(tr);
+    }
+    table.hidden = false;
   }
 
   // Ours vs the operator's own app, both paired against the same detected

@@ -6,6 +6,7 @@ import path from "node:path";
 import { Collector } from "./collector/collector.js";
 import { openDb } from "./db/client.js";
 import { buildApp } from "./server/app.js";
+import { createScorecardJob } from "./server/scorecard.js";
 
 const PORT = parseInt(process.env.PORT ?? "8092", 10);
 // How long we let in-flight responses finish on SIGTERM. fly.toml sets no
@@ -35,6 +36,12 @@ async function main(): Promise<void> {
 
   const collector = await Collector.create(bundle);
   await collector.start();
+  // The hourly scorecard (docs/closed-loop.md, stage 1): scores every ETA
+  // arm against the detector's arrivals once their truth has settled, and
+  // backfills every day the logs still cover on boot. Its own timer, its own
+  // failure containment, chunked so the poll above never waits on it.
+  const scorecard = createScorecardJob({ sqlite: bundle.sqlite });
+  scorecard.start();
 
   const staticDir = resolveStaticDir();
   const appOptions: Parameters<typeof buildApp>[0] = { collector, bundle };
@@ -59,6 +66,7 @@ async function main(): Promise<void> {
     // Stop the timers first: no point polling upstream or running a retention
     // sweep against a database we're about to close.
     collector.stop();
+    scorecard.stop();
     // `server.close()` only stops *accepting*; in-flight responses finish on
     // its callback. The old code closed SQLite and exited synchronously right
     // here, which severed every live request on every deploy.

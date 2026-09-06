@@ -38,6 +38,7 @@ import {
 } from "./predictions.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { createSearchTermsTracker } from "./searchTerms.js";
+import { readScorecard, resolveEstimatorVersion } from "./scorecard.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
@@ -788,6 +789,26 @@ export function buildApp(opts: AppOptions): Hono {
     });
   });
 
+  // The scorecard: every ETA arm scored against the detector's arrivals, per
+  // ET day / route / horizon / surface, written hourly by the job in
+  // scorecard.ts (stage 1 of docs/closed-loop.md). Same auth as the rest of
+  // /api/stats — fleet measurement, no rider in it. `/api/scorecard` is the
+  // same handler for scripts with the header; the cookie is scoped to
+  // /api/stats and never reaches that spelling, which is the point of the scope.
+  const SCORECARD_MAX_DAYS = 400;
+  const scorecardHandler = (c: Context) => {
+    const raw = parseInt(c.req.query("days") ?? "", 10);
+    const days = Number.isFinite(raw) ? Math.max(1, Math.min(SCORECARD_MAX_DAYS, raw)) : 30;
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      ...readScorecard(opts.bundle.sqlite, days, now()),
+      estimatorVersion: resolveEstimatorVersion(),
+      now: now(),
+    });
+  };
+  app.get("/api/stats/scorecard", requireStatsAuth, scorecardHandler);
+  app.get("/api/scorecard", requireStatsAuth, scorecardHandler);
+
   // When the app is used, hour by hour, one row per day. Derived from spans
   // already stored — see actives.hourly().
   app.get("/api/stats/hourly", requireStatsAuth, (c) => {
@@ -1180,6 +1201,10 @@ export function buildApp(opts: AppOptions): Hono {
         knownBuses: buses.length,
         pollSkipped: poll.skipped,
         droppedObservations: poll.droppedObservations,
+        // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by
+        // the Dockerfile; "dev" otherwise). The scorecard versions its rows by
+        // it, and "which build is live?" should not need a Fly console.
+        build: resolveEstimatorVersion(),
       },
       healthy ? 200 : 503,
     );

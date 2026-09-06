@@ -426,6 +426,48 @@ export const reports = sqliteTable("reports", {
  * The primary key makes the write idempotent, so a rider polling every 5 s for
  * an hour still produces exactly one row.
  */
+/**
+ * The scorecard: how accurate every ETA arm was, per ET day, route, horizon
+ * bucket and surface — the first stage of the closed loop (docs/closed-loop.md).
+ *
+ * One row per (day, route_id, horizon, surface); `metrics` is the JSON
+ * `ScorecardMetrics` from server/scorecard.ts. `route_id = 0` is every route
+ * pooled and `horizon = "all"` every horizon at or under the 30-min cap, so a
+ * reader never has to combine medians. Rows are REPLACED per day (the scorer
+ * runs hourly and rewrites the day it touched), `scored_through` says how far
+ * into the day the truth had settled when the row was written, `final` is set
+ * by the pass that runs once the day is over, and `estimator_version` is the
+ * server build the rows were scored under — so a change to the scorer or the
+ * rules is visible as a version boundary, not a mystery step in the chart.
+ *
+ * Tiny: a few hundred rows a day, kept 400 days.
+ */
+export const scorecardDays = sqliteTable(
+  "scorecard_days",
+  {
+    /** ET calendar day, YYYY-MM-DD. */
+    day: text("day").notNull(),
+    /** Upstream route id, or 0 for all routes pooled. */
+    routeId: integer("route_id").notNull(),
+    /** "0-2" | "2-5" | "5-10" | "10-30" (promised minutes) | "all". */
+    horizon: text("horizon").notNull(),
+    /** "trip" | "ride" | "card" | "ours" (the three pooled) | "upstream" | "census". */
+    surface: text("surface").notNull(),
+    /** JSON, see ScorecardMetrics. */
+    metrics: text("metrics").notNull(),
+    estimatorVersion: text("estimator_version"),
+    /** Predictions made before this instant (ms) are in the row. */
+    scoredThrough: integer("scored_through").notNull(),
+    scoredAt: integer("scored_at").notNull(),
+    /** 1 once the day has had its closing pass; such a day is never rescored. */
+    final: integer("final").notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.day, t.routeId, t.horizon, t.surface] }),
+    dayIdx: index("scorecard_days_day_idx").on(t.day),
+  }),
+);
+
 export const dailyActives = sqliteTable(
   "daily_actives",
   {
