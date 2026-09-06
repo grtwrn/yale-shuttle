@@ -34,6 +34,8 @@ import {
 import {
   CURRENT_LOCATION_TEXT, isCurrentLocationText, unresolvedEndpoint, unresolvedEndpointHint,
 } from "./endpoints";
+import { loadRecents, recordRecent, samePlace, saveRecents, type SavedTrip } from "./recents";
+import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
@@ -258,12 +260,8 @@ const ROUTE_LABEL_TO_TOGGLE: Record<string, string> = {
 
 type StopGroup = { id: string; name: string; stopIds: number[] };
 
-type SavedTrip = {
-  id: string;
-  name: string;
-  fromText: string; fromLat: number; fromLon: number;
-  toText: string; toLat: number; toLon: number;
-};
+// SavedTrip — the record both the saved and the recent lists store — now
+// lives in ./recents, beside the store that reads and writes it.
 
 // Anything this far from campus isn't reachable by a Yale shuttle — the
 // geocoder result is noise for this app's purpose.
@@ -1742,13 +1740,12 @@ const TripPlanner: FC<{
     return () => clearTimeout(id);
   }, [searching]);
 
-  const pickFrom = (g: GeocodeResult) => {
+  // Settle the From box on a known place — a geocoder pick, a recent, a
+  // saved or popular destination — without going back to the geocoder.
+  const commitFrom = (display: string, ll: LatLon) => {
     fromAbortRef.current?.abort();
     fromAbortRef.current = null;
-    setFromLL({ lat: g.lat, lon: g.lon });
-    // Same label the row carried, town and all — the pill must not quietly
-    // drop the word that made the rider pick this one over its namesake.
-    const display = suggLabel(g, fromSugg);
+    setFromLL({ lat: ll.lat, lon: ll.lon });
     setFromText(display);
     prevFromTextRef.current = display;
     setFromSugg([]);
@@ -1763,6 +1760,9 @@ const TripPlanner: FC<{
     // stuck even though results are now on screen.
     setSearching((cur) => cur === "from" ? null : cur);
   };
+  // Same label the row carried, town and all — the pill must not quietly
+  // drop the word that made the rider pick this one over its namesake.
+  const pickFrom = (g: GeocodeResult) => commitFrom(suggLabel(g, fromSugg), g);
   const pickTo = (g: GeocodeResult) => {
     toAbortRef.current?.abort();
     toAbortRef.current = null;
@@ -2329,30 +2329,26 @@ const TripPlanner: FC<{
   // user's current location, so saving a fixed From coord went stale).
   // SavedTrip shape is kept for storage compatibility; only toText/toLat/
   // toLon are used.
-  const sameDest = (a: { toLat: number; toLon: number }, b: { toLat: number; toLon: number }) =>
-    Math.abs(a.toLat - b.toLat) < 1e-4 && Math.abs(a.toLon - b.toLon) < 1e-4;
+  const sameDest = samePlace;
 
   const alreadySaved = toLL && savedTrips.some((t) => sameDest(t, { toLat: toLL.lat, toLon: toLL.lon }));
 
-  // Record each new destination as "recent". De-dup by to-coord, most
-  // recent first, cap at 10. Skip if already in saved.
-  useEffect(() => {
-    if (!toLL || !toText) return;
-    const key = { toLat: toLL.lat, toLon: toLL.lon };
+  // Record each resolved endpoint as "recent" — ONE list for both boxes
+  // (./recents): a place someone rode to is a natural start next time. Skips
+  // a place already in Saved, and the 📍 sentinel, which is not a place: the
+  // swap button used to put "Current location" into To, and that was being
+  // remembered as a destination with the GPS fix of the moment.
+  const remember = (text: string, ll: LatLon | null) => {
+    if (!ll || isCurrentLocationText(text)) return;
+    const key = { toLat: ll.lat, toLon: ll.lon };
     if (savedTrips.some((t) => sameDest(t, key))) return;
-    const filtered = recentTrips.filter((t) => !sameDest(t, key));
-    const entry: SavedTrip = {
-      id: `r${Date.now().toString(36)}`,
-      name: toText,
-      fromText: "", fromLat: 0, fromLon: 0,
-      toText, toLat: toLL.lat, toLon: toLL.lon,
-    };
-    const next = [entry, ...filtered].slice(0, 10);
-    if (next.length !== recentTrips.length || next[0].id !== recentTrips[0]?.id) {
-      onRecordRecent(next);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toLL?.lat, toLL?.lon]);
+    const next = recordRecent(recentTrips, { text, lat: ll.lat, lon: ll.lon });
+    if (next !== recentTrips) onRecordRecent(next);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => remember(toText, toLL), [toLL?.lat, toLL?.lon]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => remember(fromText, fromLL), [fromLL?.lat, fromLL?.lon]);
 
   // "Current location" isn't a typed value — it's the implicit meaning
   // of an empty From field. Treat empty fromText + userLatLon as valid
@@ -2579,6 +2575,57 @@ const TripPlanner: FC<{
     );
   };
 
+  // The rows under each box, rendered by one PlaceList for both ends.
+  const suggRows = (list: GeocodeResult[], pick: (g: GeocodeResult) => void): PlaceRow[] =>
+    list.map((g) => ({
+      key: `${g.lat},${g.lon},${g.display_name}`,
+      icon: suggIcon(g),
+      label: suggLabel(g, list),
+      onPick: () => pick(g),
+    }));
+  // What the From box offers BEFORE the rider types (operator, 2026-09-06:
+  // "can you add location suggestions when i change start location? like
+  // seeing my recent list would help"): the way back to GPS, then the
+  // recents the To box keeps (one shared list — a place someone rode to is a
+  // natural start next time), then their saved and the popular places. Each
+  // row carries its coordinate, so a pick never goes to the geocoder. Once
+  // they type, the geocoder's suggestions take the space instead.
+  const fromIdleRows = (): PlaceRow[] => {
+    if (!fromExpanded || fromText.trim() || fromSugg.length > 0) return [];
+    const rows: PlaceRow[] = [{
+      key: "current", icon: "📍", label: CURRENT_LOCATION_TEXT,
+      onPick: () => {
+        // Collapse to the pill the way a pick does. The blur handler below
+        // restores `prevFromTextRef`, so it must already say 📍.
+        prevFromTextRef.current = CURRENT_LOCATION_TEXT;
+        useCurrent();
+        fromInputRef.current?.blur();
+        setFromExpanded(false);
+      },
+    }];
+    // One row per place across the groups: the curated Union Station and
+    // the popular chip's hand-typed coordinate are 12 m apart, so the name
+    // is checked as well as the coordinate.
+    const seen: SavedTrip[] = [];
+    const add = (section: string, icon: string, t: SavedTrip) => {
+      if (seen.some((s) => sameDest(s, t) || s.toText.trim().toLowerCase() === t.toText.trim().toLowerCase())) return;
+      seen.push(t);
+      rows.push({
+        key: `${section}-${t.id}`, icon, label: t.toText, section,
+        onPick: () => commitFrom(t.toText, { lat: t.toLat, lon: t.toLon }),
+      });
+    };
+    recentTrips.forEach((t) => add("Recent", "🕘", t));
+    savedTrips.forEach((t) => add("Saved", "★", t));
+    POPULAR_DESTS.forEach((p) => add("Popular", "🏛️", {
+      id: p.name, name: p.name, fromText: "", fromLat: 0, fromLon: 0,
+      toText: p.name, toLat: p.lat, toLon: p.lon,
+    }));
+    return rows;
+  };
+  const fromRows: PlaceRow[] = fromSugg.length > 0 ? suggRows(fromSugg, pickFrom) : fromIdleRows();
+  const toRows: PlaceRow[] = suggRows(toSugg, pickTo);
+
   // Summary label for the collapsed From pill. Mirrors what the trip
   // planner would actually use as the start coord: explicit pick wins,
   // otherwise fall back to live GPS.
@@ -2711,25 +2758,33 @@ const TripPlanner: FC<{
                    if (e.target.value) setFromLL(null);
                  }}
                  onKeyDown={(e) => {
-                   if (e.key === "ArrowDown" && fromSugg.length > 0) {
+                   // The arrows walk whichever list is open: the geocoder's
+                   // suggestions once they type, the recents/saved/popular
+                   // rows before.
+                   if (e.key === "ArrowDown" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromActive((i) => (i + 1) % fromSugg.length);
+                     setFromActive((i) => (i + 1) % fromRows.length);
                      return;
                    }
-                   if (e.key === "ArrowUp" && fromSugg.length > 0) {
+                   if (e.key === "ArrowUp" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromActive((i) => (i <= 0 ? fromSugg.length - 1 : i - 1));
+                     setFromActive((i) => (i <= 0 ? fromRows.length - 1 : i - 1));
                      return;
                    }
-                   if (e.key === "Escape" && fromSugg.length > 0) {
+                   if (e.key === "Escape" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromSugg([]);
+                     // Typed suggestions just close; the idle list has nothing
+                     // to close but the box, so leave it (blur restores the pill).
+                     if (fromSugg.length > 0) setFromSugg([]);
+                     else (e.target as HTMLInputElement).blur();
                      return;
                    }
                    if (e.key !== "Enter") return;
                    if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
                    if (fromSugg.length > 0) {
                      pickFrom(fromSugg[fromActive >= 0 ? fromActive : 0]);
+                   } else if (fromActive >= 0 && fromRows[fromActive]) {
+                     fromRows[fromActive].onPick();
                    } else {
                      geocode(fromText, "from");
                    }
@@ -2740,11 +2795,11 @@ const TripPlanner: FC<{
                    (e.target as HTMLInputElement).blur();
                  }}
                  role="combobox"
-                 aria-expanded={fromSugg.length > 0}
+                 aria-expanded={fromRows.length > 0}
                  aria-autocomplete="list"
                  aria-controls="from-suggestions"
                  aria-activedescendant={
-                   fromActive >= 0 ? `from-sugg-${fromActive}` : undefined
+                   fromActive >= 0 ? `from-suggestions-${fromActive}` : undefined
                  }
                  onBlur={() => {
                    // Bail-out path: if they opened edit mode and
@@ -2772,38 +2827,7 @@ const TripPlanner: FC<{
                  placeholder="📍 Current location"
                  style={inputStyle} />
         </div>
-        {fromSugg.length > 0 && (
-          <div
-            id="from-suggestions"
-            role="listbox"
-            style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}
-          >
-            {fromSugg.map((g, i) => (
-              <div
-                key={`${g.lat},${g.lon},${g.display_name}`}
-                id={`from-sugg-${i}`}
-                role="option"
-                aria-selected={i === fromActive}
-                onMouseEnter={() => setFromActive(i)}
-                onClick={() => pickFrom(g)}
-                style={{
-                  padding: "12px 14px",
-                  fontSize: 15,
-                  cursor: "pointer",
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  background: i === fromActive ? "#eef4ff" : "transparent",
-                  borderBottom: i === fromSugg.length - 1 ? "none" : "1px solid #f0ede8",
-                  gap: 8,
-                }}
-              >
-                <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, fromSugg)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <PlaceList id="from-suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
       </div>
       )}
 
@@ -2913,7 +2937,7 @@ const TripPlanner: FC<{
                  aria-autocomplete="list"
                  aria-controls="to-suggestions"
                  aria-activedescendant={
-                   toActive >= 0 ? `to-sugg-${toActive}` : undefined
+                   toActive >= 0 ? `to-suggestions-${toActive}` : undefined
                  }
                  onBlur={() => {
                    // If the rider opened edit mode on a locked
@@ -2951,38 +2975,7 @@ const TripPlanner: FC<{
             </button>
           )}
         </div>
-        {toSugg.length > 0 && (
-          <div
-            id="to-suggestions"
-            role="listbox"
-            style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}
-          >
-            {toSugg.map((g, i) => (
-              <div
-                key={`${g.lat},${g.lon},${g.display_name}`}
-                id={`to-sugg-${i}`}
-                role="option"
-                aria-selected={i === toActive}
-                onMouseEnter={() => setToActive(i)}
-                onClick={() => pickTo(g)}
-                style={{
-                  padding: "12px 14px",
-                  fontSize: 15,
-                  cursor: "pointer",
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  background: i === toActive ? "#eef4ff" : "transparent",
-                  borderBottom: i === toSugg.length - 1 ? "none" : "1px solid #f0ede8",
-                  gap: 8,
-                }}
-              >
-                <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, toSugg)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <PlaceList id="to-suggestions" rows={toRows} active={toActive} onHover={setToActive} />
       </div>
       )}
       {/* Only while the start still depends on GPS. Once the rider has a
@@ -4778,7 +4771,7 @@ const TripPlanner: FC<{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             marginBottom: 3, padding: "0 2px",
           }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent destinations</span>
+            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent places</span>
             <button
               onClick={onClearRecents}
               style={{
@@ -4787,7 +4780,7 @@ const TripPlanner: FC<{
                 fontSize: 12, fontWeight: 400,
                 cursor: "pointer", padding: "0 4px", lineHeight: 1,
               }}
-              title="Clear all recent destinations"
+              title="Clear all recent places"
             >Clear all</button>
           </div>
           <div style={{
@@ -6717,15 +6710,11 @@ const TransitMap: FC = () => {
     setSavedTrips(t);
     try { localStorage.setItem("shuttle-saved-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
   };
-  const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(() => {
-    try {
-      const saved = localStorage.getItem("shuttle-recent-trips");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  // One recents list, shared by the From and To boxes — see ./recents.
+  const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(loadRecents);
   const saveRecentTrips = (t: SavedTrip[]) => {
     setRecentTrips(t);
-    try { localStorage.setItem("shuttle-recent-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
+    saveRecents(t);
   };
   // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
   // on mount / prop change and applies the from+to fields.
