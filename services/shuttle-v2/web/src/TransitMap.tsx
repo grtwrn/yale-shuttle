@@ -2587,9 +2587,12 @@ const TripPlanner: FC<{
   // "can you add location suggestions when i change start location? like
   // seeing my recent list would help"): the way back to GPS, then the
   // recents the To box keeps (one shared list — a place someone rode to is a
-  // natural start next time), then their saved and the popular places. Each
-  // row carries its coordinate, so a pick never goes to the geocoder. Once
-  // they type, the geocoder's suggestions take the space instead.
+  // natural start next time), then their favourites. Nothing else: the
+  // operator (2026-09-06) — "I dont want start to show recent and popular.
+  // popular could expose private data. I want it to show recent and
+  // favorites" — so the curated Popular list stays a destination-only
+  // affordance. Each row carries its coordinate, so a pick never goes to the
+  // geocoder. Once they type, the geocoder's suggestions take the space.
   const fromIdleRows = (): PlaceRow[] => {
     if (!fromExpanded || fromText.trim() || fromSugg.length > 0) return [];
     const rows: PlaceRow[] = [{
@@ -2603,9 +2606,8 @@ const TripPlanner: FC<{
         setFromExpanded(false);
       },
     }];
-    // One row per place across the groups: the curated Union Station and
-    // the popular chip's hand-typed coordinate are 12 m apart, so the name
-    // is checked as well as the coordinate.
+    // One row per place across the groups: a favourite that is also recent
+    // shows once, and the name is checked as well as the coordinate.
     const seen: SavedTrip[] = [];
     const add = (section: string, icon: string, t: SavedTrip) => {
       if (seen.some((s) => sameDest(s, t) || s.toText.trim().toLowerCase() === t.toText.trim().toLowerCase())) return;
@@ -2616,11 +2618,7 @@ const TripPlanner: FC<{
       });
     };
     recentTrips.forEach((t) => add("Recent", "🕘", t));
-    savedTrips.forEach((t) => add("Saved", "★", t));
-    POPULAR_DESTS.forEach((p) => add("Popular", "🏛️", {
-      id: p.name, name: p.name, fromText: "", fromLat: 0, fromLon: 0,
-      toText: p.name, toLat: p.lat, toLon: p.lon,
-    }));
+    savedTrips.forEach((t) => add("Favorites", "★", t));
     return rows;
   };
   const fromRows: PlaceRow[] = fromSugg.length > 0 ? suggRows(fromSugg, pickFrom) : fromIdleRows();
