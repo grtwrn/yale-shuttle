@@ -21,7 +21,7 @@
  *                     far (the layover padding, the anchor on shared roads)
  *                     live at particular stops.
  */
-import { haversineM, MIN_RIDE_M, stopsOfLine } from "./canary-metrics.mjs";
+import { haversineM, liveBusesOf, MIN_RIDE_M, stopsOfLine } from "./canary-metrics.mjs";
 
 /** The line with its own rider. The rotation never rides it. */
 export const DEDICATED_LINE = "Red";
@@ -131,8 +131,13 @@ export function candidateRides(payload, line) {
   const maxHops = Math.ceil(n / 2);
 
   const out = [];
-  for (const bus of payload.buses ?? []) {
-    if (!line.busRouteIds.includes(bus.route_id) || bus.last_stop_id == null) continue;
+  // Only buses ON the route: `last_stop_id` is upstream's memory of the last
+  // stop the bus visited, and it is still set while the bus deadheads in from
+  // kilometres away (#57 carried Prospect / Sachem (N) all the way down
+  // Whitney Ave from Hamden). A ride "1 stop out" from a bus that is not on
+  // the line is a ride the planner will never offer.
+  for (const bus of liveBusesOf(payload, line)) {
+    if (bus.last_stop_id == null) continue;
     for (let p = 0; p < n; p++) {
       if (stops[p] !== bus.last_stop_id) continue;
       for (let ahead = 1; ahead <= BOARD_AHEAD_MAX; ahead++) {
@@ -179,8 +184,8 @@ export function randomTripForLine(payload, line, rng = Math.random) {
   const stops = stopsOfLine(payload, line);
   const name = (id) => payload.stop_names?.[id] ?? `stop ${id}`;
   const coord = (id) => payload.stop_coords?.[id] ?? null;
-  const positioned = (payload.buses ?? []).some((b) =>
-    line.busRouteIds.includes(b.route_id) && b.last_stop_id != null && stops.includes(b.last_stop_id));
+  const positioned = liveBusesOf(payload, line).some((b) =>
+    b.last_stop_id != null && stops.includes(b.last_stop_id));
   if (!positioned) return { trip: null, reason: `no bus on ${line.label} reports a position on its stops` };
 
   const all = candidateRides(payload, line);
