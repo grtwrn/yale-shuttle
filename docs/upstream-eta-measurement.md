@@ -405,7 +405,12 @@ official 177 s (≤120 s 45.9% vs 32.9%); 5–10 min 132 vs 158 (29 pairs), 10�
 min 137 vs 197 (91); Red 86 vs 177 (34), Orange Day 114 vs 208 (23), Blue Day
 137 vs 137 (29). The replay is the same comparison at 31,810 pairs (Q2).
 
-Two things follow for the dashboard, neither done here (measurement only):
+Two things follow for the dashboard (done after this measurement, in
+`officialComparison`: both arms capped at 30 min, standing rows excluded from
+both and counted, a 45 min pairing window, and a `shared` row on the same
+(bus, stop, minute) withheld below 50 — the 24 h window on this snapshot then
+withholds at 24 usable rider rows, and the 48 h window reads ours 127 s vs
+official 228 s, shared 132 pairs 120 vs 177 s):
 `officialComparison` and `paired()` should (1) exclude rows whose bus is
 standing at the predicted stop, or score them as 0 — under the current rule
 they are a lap of error on both arms — and (2) compare on a shared horizon

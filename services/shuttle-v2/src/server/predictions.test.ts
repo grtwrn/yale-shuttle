@@ -16,6 +16,8 @@ import {
   createPredictionRecorder,
   DEFAULT_PREDICTION_RETAIN_DAYS,
   MAX_READING_AGE_MS,
+  COMPARE_HORIZON_SEC,
+  COMPARE_MATCH_WINDOW_MS,
   MIN_COMPARE_PAIRS,
   PREDICTION_BUCKET_MS,
   RIDER_SURFACES_SQL,
@@ -623,35 +625,63 @@ describe("the operator's arm must never be counted as ours", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("officialComparison — ours against the operator's own app", () => {
+describe("officialComparison — ours against the operator's own app, like for like", () => {
+  const insertPred = () => bundle.sqlite.prepare(
+    `INSERT OR IGNORE INTO predictions_log
+       (bus_id, bus_name, route_id, from_stop_id, to_stop_id, stops_ahead,
+        predicted_sec, predicted_low_sec, predicted_high_sec, predicted_at,
+        client_build, surface)
+     VALUES (?, ?, 10, 1, 2, 1, ?, ?, ?, ?, NULL, ?)`,
+  );
+  const insertArr = () => bundle.sqlite.prepare(
+    `INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, departed_at, dow, hour)
+     VALUES (?, ?, 10, 2, ?, ?, 0, 0)`,
+  );
+  const TRUTH_SEC = 300;
+  const busIdFor = (surface: string, i: number) =>
+    (surface === UPSTREAM_SURFACE ? 10_000 : surface === "card" ? 30_000 : 20_000) + i;
+
   /**
    * `n` predictions in one arm, each `driftSec` off the truth, one per vehicle
    * so nothing collapses on the dedup key and each pairs with its own arrival.
+   * `promisedSec` overrides the horizon (the truth moves with it, so the row is
+   * still `driftSec` off); `standingSince` plants an earlier, unclosed visit at
+   * the stop so the bus is already there when the prediction is made.
    */
-  function seed(surface: string, n: number, driftSec: number, at = NOW - 600_000): void {
-    const insertPred = bundle.sqlite.prepare(
-      `INSERT OR IGNORE INTO predictions_log
-         (bus_id, bus_name, route_id, from_stop_id, to_stop_id, stops_ahead,
-          predicted_sec, predicted_low_sec, predicted_high_sec, predicted_at,
-          client_build, surface)
-       VALUES (?, ?, 10, 1, 2, 1, ?, ?, ?, ?, NULL, ?)`,
-    );
-    const insertArr = bundle.sqlite.prepare(
-      `INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, dow, hour)
-       VALUES (?, ?, 10, 2, ?, 0, 0)`,
-    );
-    const truthSec = 300;
+  function seed(
+    surface: string,
+    n: number,
+    driftSec: number,
+    over: { at?: number; promisedSec?: number; standingSince?: number; idOffset?: number } = {},
+  ): void {
+    const at = over.at ?? NOW - 600_000;
+    const truthSec = over.promisedSec ?? TRUTH_SEC;
+    const pred = insertPred();
+    const arr = insertArr();
     for (let i = 0; i < n; i++) {
       // Distinct bus per arm, so the arms never share a dedup key and each
       // arm's rows are scored against arrivals of their own.
-      const busId = (surface === UPSTREAM_SURFACE ? 10_000 : surface === "card" ? 30_000 : 20_000) + i;
+      const busId = busIdFor(surface, i + (over.idOffset ?? 0));
       const busName = `#${busId}`;
-      insertPred.run(
-        busId, busName,
-        truthSec + driftSec, truthSec + driftSec, truthSec + driftSec,
-        at, surface,
-      );
-      insertArr.run(busId, busName, at + truthSec * 1000);
+      pred.run(busId, busName, truthSec + driftSec, truthSec + driftSec, truthSec + driftSec, at, surface);
+      if (over.standingSince !== undefined) arr.run(busId, busName, over.standingSince, null);
+      arr.run(busId, busName, at + truthSec * 1000, at + truthSec * 1000 + 30_000);
+    }
+  }
+
+  /** The SAME bus, stop and minute predicted by both arms, one arrival. */
+  function seedShared(n: number, ourDriftSec: number, theirDriftSec: number, at = NOW - 600_000): void {
+    const pred = insertPred();
+    const arr = insertArr();
+    for (let i = 0; i < n; i++) {
+      const busId = 40_000 + i;
+      const busName = `#${busId}`;
+      pred.run(busId, busName, TRUTH_SEC + ourDriftSec, TRUTH_SEC + ourDriftSec, TRUTH_SEC + ourDriftSec, at, "trip");
+      // Upstream's clock is whole minutes; 20 s later is the same minute —
+      // and from that instant the bus is 20 s nearer, so its truth is 280 s.
+      const theirs = TRUTH_SEC - 20 + theirDriftSec;
+      pred.run(busId, busName, theirs, theirs, theirs, at + 20_000, UPSTREAM_SURFACE);
+      arr.run(busId, busName, at + TRUTH_SEC * 1000, at + TRUTH_SEC * 1000 + 30_000);
     }
   }
 
@@ -676,6 +706,10 @@ describe("officialComparison — ours against the operator's own app", () => {
     // 30 s is inside two minutes; 150 s is not.
     expect(cmp!.ours.within120Pct).toBe(100);
     expect(cmp!.official.within120Pct).toBe(0);
+    // The rules are echoed so the dashboard can label itself from the data.
+    expect(cmp!.horizonCapSec).toBe(COMPARE_HORIZON_SEC);
+    expect(cmp!.matchWindowSec).toBe(COMPARE_MATCH_WINDOW_MS / 1000);
+    expect(cmp!.minPairs).toBe(MIN_COMPARE_PAIRS);
   });
 
   it("pools every rider-reported screen into `ours`, and only `upstream` into theirs", () => {
@@ -691,5 +725,139 @@ describe("officialComparison — ours against the operator's own app", () => {
   it("is null on an empty database rather than a row of zeroes", () => {
     const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
     expect(rec.officialComparison(24, NOW)).toBeNull();
+  });
+
+  it("caps BOTH arms at the horizon upstream publishes to", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 30);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 30);
+    // Far-horizon rows, each a PERFECT prediction — if they were counted the
+    // medians would drop, and if they were counted on one side only the arms
+    // would no longer be like for like. 40 min is past the 30 min cap.
+    seed("card", 20, 0, { promisedSec: 40 * 60 });
+    seed(UPSTREAM_SURFACE, 20, 0, { promisedSec: COMPARE_HORIZON_SEC + 1, idOffset: 1000 });
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.n).toBe(MIN_COMPARE_PAIRS + 20);
+    expect(cmp.ours.beyondHorizon).toBe(20);
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS);
+    expect(cmp.ours.medianAbsErrorSec).toBeCloseTo(30, 5);
+    expect(cmp.official.n).toBe(MIN_COMPARE_PAIRS + 20);
+    expect(cmp.official.beyondHorizon).toBe(20);
+    expect(cmp.official.paired).toBe(MIN_COMPARE_PAIRS);
+    expect(cmp.official.medianAbsErrorSec).toBeCloseTo(30, 5);
+    // Exactly the cap is still inside it: the 30 min row upstream does publish.
+    seed(UPSTREAM_SURFACE, 1, 0, { promisedSec: COMPARE_HORIZON_SEC, idOffset: 2000 });
+    expect(rec.officialComparison(24, NOW)!.official.paired).toBe(MIN_COMPARE_PAIRS + 1);
+  });
+
+  it("drops a prediction for a bus already standing at the stop, from both arms", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 30);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 30);
+    // A terminus listed on the route cards while the bus sits there, and
+    // upstream saying "0 min" through the same layover: the visit started
+    // 5 min before the prediction and has not ended. The next arrival — the
+    // one the naive rule would pair — is a lap later, 300 s after `at`, so
+    // each of these rows used to score as an error of a whole lap.
+    const at = NOW - 600_000;
+    seed("card", 10, 0, { at, standingSince: at - 300_000, idOffset: 500 });
+    seed(UPSTREAM_SURFACE, 10, 0, { at, standingSince: at - 300_000, idOffset: 500 });
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.standing).toBe(10);
+    expect(cmp.official.standing).toBe(10);
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS);
+    expect(cmp.official.paired).toBe(MIN_COMPARE_PAIRS);
+    expect(cmp.ours.medianAbsErrorSec).toBeCloseTo(30, 5);
+    expect(cmp.official.medianAbsErrorSec).toBeCloseTo(30, 5);
+  });
+
+  it("a visit that ended before the prediction is not standing — the bus has left", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 30);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 30);
+    const at = NOW - 600_000;
+    // Earlier visit, departed a minute before the prediction: a real forecast
+    // of the NEXT visit, scored normally.
+    const arr = insertArr();
+    const pred = insertPred();
+    pred.run(777, "#777", TRUTH_SEC, TRUTH_SEC, TRUTH_SEC, at, "trip");
+    arr.run(777, "#777", at - 300_000, at - 60_000);
+    arr.run(777, "#777", at + TRUTH_SEC * 1000, null);
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.standing).toBe(0);
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS + 1);
+  });
+
+  it("an unclosed visit from hours ago is a lost bus, not a standing one", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 30);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 30);
+    const at = NOW - 600_000;
+    // The detector never wrote a departure for a visit 5 h earlier. That row
+    // must not flag every later prediction at the stop as "standing".
+    seed("card", 1, 0, { at, standingSince: at - 5 * 3_600_000, idOffset: 600 });
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.standing).toBe(0);
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS + 1);
+  });
+
+  it("pairs within 45 min, not 2 h: a later arrival is the next lap, not a late bus", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 30);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 30);
+    const at = NOW - 3 * 3_600_000;
+    const pred = insertPred();
+    const arr = insertArr();
+    pred.run(888, "#888", TRUTH_SEC, TRUTH_SEC, TRUTH_SEC, at, "trip");
+    arr.run(888, "#888", at + COMPARE_MATCH_WINDOW_MS + 60_000, null);
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.n).toBe(MIN_COMPARE_PAIRS + 1);
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS);
+  });
+
+  it("reports the shared (bus, stop, minute) pairs — the same moment, the same arrival", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    // Each arm also has rows of its own that the other never predicted; they
+    // count for the arm and not for `shared`.
+    seed("trip", 20, 10);
+    seed(UPSTREAM_SURFACE, 20, 200);
+    seedShared(MIN_COMPARE_PAIRS + 2, 30, 150);
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.ours.paired).toBe(MIN_COMPARE_PAIRS + 22);
+    expect(cmp.official.paired).toBe(MIN_COMPARE_PAIRS + 22);
+    expect(cmp.shared.n).toBe(MIN_COMPARE_PAIRS + 2);
+    expect(cmp.shared.ours!.medianAbsErrorSec).toBeCloseTo(30, 5);
+    expect(cmp.shared.official!.medianAbsErrorSec).toBeCloseTo(150, 5);
+    expect(cmp.shared.ours!.within120Pct).toBe(100);
+    expect(cmp.shared.official!.within120Pct).toBe(0);
+  });
+
+  it("withholds the shared statistics below the same floor, but still says how many", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 10);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 10);
+    seedShared(12, 30, 150);
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.shared.n).toBe(12);
+    expect(cmp.shared.ours).toBeNull();
+    expect(cmp.shared.official).toBeNull();
+  });
+
+  it("a shared minute whose two rows resolved to different arrivals is not a pair", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    seed("trip", MIN_COMPARE_PAIRS, 10);
+    seed(UPSTREAM_SURFACE, MIN_COMPARE_PAIRS, 10);
+    seedShared(MIN_COMPARE_PAIRS, 30, 150);
+    // One more minute where ours was made just before a departure and theirs
+    // just after: the same minute, but the truth is a different visit.
+    const at = NOW - 300_000;
+    const pred = insertPred();
+    const arr = insertArr();
+    pred.run(999, "#999", 5, 5, 5, at, "trip");
+    pred.run(999, "#999", 600, 600, 600, at + 30_000, UPSTREAM_SURFACE);
+    arr.run(999, "#999", at + 10_000, at + 20_000);
+    arr.run(999, "#999", at + 630_000, null);
+    const cmp = rec.officialComparison(24, NOW)!;
+    expect(cmp.shared.n).toBe(MIN_COMPARE_PAIRS);
   });
 });

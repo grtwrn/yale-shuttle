@@ -101,6 +101,38 @@ const BUILD_PATTERN = /^[A-Za-z0-9_-]{1,24}$/;
 /** Window a prediction may be paired with an arrival across. Matches accuracy.ts. */
 const MATCH_WINDOW_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * The head-to-head's horizon cap, applied to BOTH arms.
+ *
+ * `routes_eta.php` never publishes an ETA past 30 min, so every official row
+ * is inside this by construction, while the route cards log a stop 40 min
+ * out as readily as one 4 min out. In the 24 h ending 2026-09-06 11:25 ET,
+ * 41 of our 88 rows (47%) promised more than 30 min, and those rows carried
+ * most of the error (30–60 min: median 1,076 s) — the dashboard was scoring
+ * our far horizon against their near one and reading "the official app is
+ * better". Trimming ours to their reach is the first half of like-for-like;
+ * the other half is the standing rule below. See
+ * docs/upstream-eta-measurement.md, "The live etaVsOfficial number".
+ */
+export const COMPARE_HORIZON_SEC = 30 * 60;
+
+/**
+ * Pairing window for the head-to-head, narrower than {@link MATCH_WINDOW_MS}.
+ * With every promise capped at 30 min, an arrival 45 min later is not a late
+ * bus but a missed detection paired to the next lap; 2 h would score it as an
+ * error of one loop. This is the replay's `MATCH_MS`
+ * (scripts/eta-replay/upstream-eta-common.ts), so the two agree.
+ */
+export const COMPARE_MATCH_WINDOW_MS = 45 * 60 * 1000;
+
+/**
+ * How far back the standing check looks for the bus's current visit. A
+ * layover is minutes, not hours; an `arrivals` row with no `departed_at`
+ * further back than this is one the detector never closed (the bus dropped
+ * off the feed), not a bus still standing there.
+ */
+const STANDING_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+
 /** One reading as the wire carries it, already parsed. */
 /**
  * The screens that report. A closed set on purpose: it is part of the dedup
@@ -239,32 +271,79 @@ export interface PairedQuery {
  */
 export const MIN_COMPARE_PAIRS = 50;
 
-/** One arm of the head-to-head, already paired against real arrivals. */
-export interface ArmAccuracy {
-  /** Predictions in the window for this arm. */
-  n: number;
-  /** ...of which an arrival was found for. Only these feed the statistics. */
-  paired: number;
+/** The two statistics every arm reports. */
+export interface ErrorStats {
   medianAbsErrorSec: number;
   /** Share of paired rows within 120 s, as a percentage to one decimal. */
   within120Pct: number;
 }
 
+/** One arm of the head-to-head, already paired against real arrivals. */
+export interface ArmAccuracy extends ErrorStats {
+  /** Predictions in the window for this arm, before any rule is applied. */
+  n: number;
+  /** ...promising more than {@link COMPARE_HORIZON_SEC}. Dropped. */
+  beyondHorizon: number;
+  /**
+   * ...made while the bus was already standing at the predicted stop.
+   * Dropped: not a forecast, and under the plain "first arrival at or after"
+   * rule they scored as a whole lap of error.
+   */
+  standing: number;
+  /** ...of which an arrival was found for. Only these feed the statistics. */
+  paired: number;
+}
+
 /**
- * Ours against the operator's, on the same arrivals.
+ * Both arms on the SAME (bus, stop, minute) — the only controlled read the
+ * log can give. `ours` and `official` are null below {@link MIN_COMPARE_PAIRS}
+ * pairs; `n` is always reported so the operator can see why.
+ */
+export interface SharedPairs {
+  n: number;
+  ours: ErrorStats | null;
+  official: ErrorStats | null;
+}
+
+/**
+ * Ours against the operator's, on the same arrivals, like for like.
  *
  * `official` is `surface = "upstream"` — `routes_eta.php`, whole minutes, so
  * ~±30 s of its error is rounding; `ours` is every rider-reported surface
- * pooled. The two arms do NOT cover the same stops (see `upstreamEta.ts`), so
- * this is a summary, not a controlled comparison. The controlled one is
- * `scripts/eta-replay/compare-upstream.ts`, which restricts to shared
- * (bus, stop, minute) pairs; this line exists so the operator sees the shape
- * on a phone without running anything.
+ * pooled. Three rules make the two arms comparable, and every one was set by
+ * measurement (docs/upstream-eta-measurement.md, "The live etaVsOfficial
+ * number"):
+ *
+ *  1. **One horizon.** Rows promising more than {@link COMPARE_HORIZON_SEC}
+ *     are dropped from both arms — upstream has none, ours had 47%.
+ *  2. **A standing bus is not a forecast.** A row whose bus is already at the
+ *     predicted stop at `predicted_at` (its latest `arrivals` row there has
+ *     not departed yet) is dropped from both arms. Both apps print ~0 while a
+ *     layover runs, and the "first arrival at or after" is the NEXT visit, a
+ *     lap away: under that rule upstream's 0–2 min bucket read a median error
+ *     of 2,627 s, and 35 s once standing rows were excluded. The replay
+ *     measured that scoring them as 0 instead moves neither arm's ranking, so
+ *     exclusion — the symmetric, simpler reading — is what both the replay and
+ *     this do. `standing` reports how many.
+ *  3. **Same moment, same arrival.** `shared` scores only the (bus, stop,
+ *     minute) both arms predicted, paired to the same arrival. The per-arm
+ *     numbers still cover different stop populations (see `upstreamEta.ts`),
+ *     so `shared` is the ranking and the arms are the shape.
+ *
+ * The whole thing is null until both arms have {@link MIN_COMPARE_PAIRS}
+ * paired rows under these rules.
  */
 export interface OfficialComparison {
   hours: number;
+  /** {@link COMPARE_HORIZON_SEC}, echoed so the dashboard labels itself. */
+  horizonCapSec: number;
+  /** {@link COMPARE_MATCH_WINDOW_MS} in seconds. */
+  matchWindowSec: number;
+  /** {@link MIN_COMPARE_PAIRS}, echoed for the same reason. */
+  minPairs: number;
   ours: ArmAccuracy;
   official: ArmAccuracy;
+  shared: SharedPairs;
 }
 
 export interface PredictionRecorder {
@@ -575,65 +654,175 @@ export function createPredictionRecorder(
       }
       if (rows.length === 0) return null;
 
-      const earliest = rows[0]!.predicted_at;
-      const latest = rows[rows.length - 1]!.predicted_at + MATCH_WINDOW_MS;
-      let arrivals: ArrivalRow[] = [];
+      // Arrivals from STANDING_LOOKBACK_MS before the first prediction (the
+      // visit a bus may still be standing on) to the match window after the
+      // last. `arrivals_time_idx` serves the range; one scan for both arms.
+      const earliest = rows[0]!.predicted_at - STANDING_LOOKBACK_MS;
+      const latest = rows[rows.length - 1]!.predicted_at + COMPARE_MATCH_WINDOW_MS;
+      let arrivals: VisitRow[] = [];
       try {
         arrivals = bundle.sqlite
           .prepare(
-            `SELECT bus_name, route_id, stop_id, arrived_at FROM arrivals
+            `SELECT bus_name, route_id, stop_id, arrived_at, departed_at FROM arrivals
              WHERE arrived_at >= ? AND arrived_at <= ? ORDER BY arrived_at ASC`,
           )
-          .all(earliest, latest) as ArrivalRow[];
+          .all(earliest, latest) as VisitRow[];
       } catch {
         return null;
       }
-      const index = new Map<string, number[]>();
+      const index = new Map<string, Visit[]>();
       for (const a of arrivals) {
         const key = `${normBusName(a.bus_name)}:${a.route_id}:${a.stop_id}`;
+        const visit = { t: a.arrived_at, d: a.departed_at };
         const list = index.get(key);
-        if (list) list.push(a.arrived_at);
-        else index.set(key, [a.arrived_at]);
+        if (list) list.push(visit);
+        else index.set(key, [visit]);
       }
 
-      // Two arms, same arrivals, same pairing rule as `paired()` above: the
-      // FIRST arrival of that bus at that stop at or after the prediction.
-      const ourErrs: number[] = [];
-      const theirErrs: number[] = [];
-      let ourN = 0;
-      let theirN = 0;
+      const ours = new ArmTally();
+      const theirs = new ArmTally();
+      // Earliest scored row per (bus, stop, minute) on each side, for `shared`.
+      const ourMoments = new Map<string, ScoredMoment>();
+      const theirMoments = new Map<string, ScoredMoment>();
       for (const r of rows) {
         const official = r.surface === UPSTREAM_SURFACE;
-        if (official) theirN += 1;
-        else ourN += 1;
-        const list = index.get(`${normBusName(r.bus_name)}:${r.route_id}:${r.to_stop_id}`);
-        const actual = list ? firstAtLeast(list, r.predicted_at) : null;
-        if (actual === null || actual > r.predicted_at + MATCH_WINDOW_MS) continue;
-        const err = (actual - r.predicted_at) / 1000 - r.predicted_sec;
-        (official ? theirErrs : ourErrs).push(err);
+        const tally = official ? theirs : ours;
+        tally.n += 1;
+        // Rule 1: one horizon for both arms.
+        if (r.predicted_sec > COMPARE_HORIZON_SEC) {
+          tally.beyondHorizon += 1;
+          continue;
+        }
+        const bus = normBusName(r.bus_name);
+        const truth = truthAt(index.get(`${bus}:${r.route_id}:${r.to_stop_id}`), r.predicted_at);
+        // Rule 2: a bus already standing at the stop is not being forecast.
+        if (truth.kind === "standing") {
+          tally.standing += 1;
+          continue;
+        }
+        if (truth.kind === "missing") continue;
+        const err = (truth.at - r.predicted_at) / 1000 - r.predicted_sec;
+        tally.errs.push(err);
+        // Rule 3's raw material: the minute is the resolution of upstream's
+        // clock, and the first row in a minute is the one nearest its start.
+        const moment = `${bus}:${r.to_stop_id}:${Math.floor(r.predicted_at / 60_000)}`;
+        const moments = official ? theirMoments : ourMoments;
+        if (!moments.has(moment)) moments.set(moment, { arrivedAt: truth.at, err });
       }
 
-      if (ourErrs.length < MIN_COMPARE_PAIRS || theirErrs.length < MIN_COMPARE_PAIRS) {
+      if (ours.errs.length < MIN_COMPARE_PAIRS || theirs.errs.length < MIN_COMPARE_PAIRS) {
         return null;
       }
+
+      // Rule 3: the same moment must also have resolved to the same arrival —
+      // two rows a minute apart straddling a departure are not one moment.
+      const sharedOurs: number[] = [];
+      const sharedTheirs: number[] = [];
+      for (const [moment, mine] of ourMoments) {
+        const other = theirMoments.get(moment);
+        if (!other || other.arrivedAt !== mine.arrivedAt) continue;
+        sharedOurs.push(mine.err);
+        sharedTheirs.push(other.err);
+      }
+      const enough = sharedOurs.length >= MIN_COMPARE_PAIRS;
+
       return {
         hours: window,
-        ours: arm(ourN, ourErrs),
-        official: arm(theirN, theirErrs),
+        horizonCapSec: COMPARE_HORIZON_SEC,
+        matchWindowSec: COMPARE_MATCH_WINDOW_MS / 1000,
+        minPairs: MIN_COMPARE_PAIRS,
+        ours: ours.arm(),
+        official: theirs.arm(),
+        shared: {
+          n: sharedOurs.length,
+          ours: enough ? errorStats(sharedOurs) : null,
+          official: enough ? errorStats(sharedTheirs) : null,
+        },
       };
     },
   };
 }
 
-function arm(n: number, errs: readonly number[]): ArmAccuracy {
+/** Running counts for one arm of {@link OfficialComparison}. */
+class ArmTally {
+  n = 0;
+  beyondHorizon = 0;
+  standing = 0;
+  errs: number[] = [];
+  arm(): ArmAccuracy {
+    return {
+      n: this.n,
+      beyondHorizon: this.beyondHorizon,
+      standing: this.standing,
+      paired: this.errs.length,
+      ...errorStats(this.errs),
+    };
+  }
+}
+
+function errorStats(errs: readonly number[]): ErrorStats {
   const abs = errs.map((e) => Math.abs(e));
   const within = abs.filter((a) => a <= 120).length;
   return {
-    n,
-    paired: errs.length,
     medianAbsErrorSec: pct(abs, 0.5),
     within120Pct: errs.length === 0 ? 0 : Math.round((within / errs.length) * 1000) / 10,
   };
+}
+
+/** One `arrivals` row as the comparison sees it: when, and whether it has ended. */
+interface Visit {
+  t: number;
+  /** null while the detector has not seen the bus leave. */
+  d: number | null;
+}
+
+interface ScoredMoment {
+  arrivedAt: number;
+  err: number;
+}
+
+type Truth =
+  | { kind: "arrived"; at: number }
+  | { kind: "standing" }
+  | { kind: "missing" };
+
+/**
+ * What actually happened to a prediction made at `at` for this (bus, route,
+ * stop). The rule is the replay's `truthFor` (upstream-eta-common.ts):
+ *
+ *  - the bus's latest visit at or before `at` has not departed by `at` — it
+ *    is STANDING there, and the prediction is not a forecast;
+ *  - otherwise the first arrival at or after `at`, within the match window;
+ *  - otherwise nothing usable.
+ *
+ * An unclosed visit older than {@link STANDING_LOOKBACK_MS} is not "standing":
+ * the detector lost the bus, and the row would otherwise flag every later
+ * prediction at that stop for as long as it existed.
+ */
+function truthAt(visits: readonly Visit[] | undefined, at: number): Truth {
+  if (!visits || visits.length === 0) return { kind: "missing" };
+  const i = lowerBound(visits, at);
+  if (i > 0) {
+    const prev = visits[i - 1]!;
+    const stillThere = prev.d === null || prev.d >= at;
+    if (stillThere && at - prev.t <= STANDING_LOOKBACK_MS) return { kind: "standing" };
+  }
+  if (i < visits.length && visits[i]!.t - at <= COMPARE_MATCH_WINDOW_MS) {
+    return { kind: "arrived", at: visits[i]!.t };
+  }
+  return { kind: "missing" };
+}
+
+/** Index of the first visit with `t >= at` in an ascending list. */
+function lowerBound(visits: readonly Visit[], at: number): number {
+  let lo = 0;
+  let hi = visits.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (visits[mid]!.t < at) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 // ---------------------------------------------------------------------------
@@ -665,6 +854,10 @@ interface ArrivalRow {
   route_id: number;
   stop_id: number;
   arrived_at: number;
+}
+
+interface VisitRow extends ArrivalRow {
+  departed_at: number | null;
 }
 
 function emptySummary(): PairedSummary {
