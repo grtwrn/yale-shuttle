@@ -323,6 +323,64 @@ export const predictionsLog = sqliteTable(
   }),
 );
 
+/**
+ * The operator's own per-stop ETAs, sampled verbatim (`upstreamEtaSampler.ts`).
+ *
+ * This is the RAW record of what `routes_eta.php?stop=<id>` answered, kept
+ * apart from `predictions_log` on purpose. That table holds a curated,
+ * pairable subset (surface = "upstream": whole-minute rows ≤ 30 min, only for
+ * stops the route serves, one per 15 s bucket) so a head-to-head with what
+ * riders were shown is a query. This table keeps EVERYTHING the endpoint said,
+ * including what the curated row drops and what the endpoint did NOT say:
+ *
+ *  - one row per (call, bus) prediction, with upstream's whole minutes as
+ *    served (`eta_min`) and the derived seconds (`eta_sec`);
+ *  - one MARKER row per call that answered nothing (`bus_id IS NULL`), so an
+ *    absence is a fact with a timestamp rather than a gap — the question
+ *    "when did upstream stop predicting this bus" is answered by rows, not by
+ *    their lack;
+ *  - `probe = 1` when the stop was asked BECAUSE its route is active upstream
+ *    but has no live bus (the out-of-service / not-yet-in-service signal);
+ *  - `raw` only when the response carried fields the columns do not (unknown
+ *    keys on a row or the envelope, rows that failed the row schema, an
+ *    implausible `calculation_time`), capped at 2 KB. NULL is the normal case.
+ *
+ * Nothing here is about a rider: the rows are the operator's statements about
+ * the operator's own fleet, sampled on our timer.
+ */
+export const upstreamEtas = sqliteTable(
+  "upstream_etas",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** When WE made the call (ms). The retention column. */
+    sampledAt: integer("sampled_at", { mode: "timestamp_ms" }).notNull(),
+    /** Upstream's `calculation_time`, ms, when within 5 min of our clock; else NULL. */
+    calcAt: integer("calc_at", { mode: "timestamp_ms" }),
+    stopId: integer("stop_id").notNull(),
+    /** Upstream's `route`; on a marker row, the route the probe was for (or NULL). */
+    routeId: integer("route_id"),
+    /** NULL on a marker row (the call answered no predictions). */
+    busId: integer("bus_id"),
+    /** `#49`, exactly as `/routes_buses.php` and `arrivals` spell it. */
+    busName: text("bus_name"),
+    /** `avg` as served: whole minutes. 0 is what their app prints as "Arrived". */
+    etaMin: integer("eta_min"),
+    /** `eta_min * 60`, so readers and `predictions_log.predicted_sec` agree on units. */
+    etaSec: integer("eta_sec"),
+    /** 1 when the stop was chosen as an idle-route probe (see above). */
+    probe: integer("probe").notNull().default(0),
+    /** Unrecognised response fields, JSON, ≤ 2 KB. NULL unless upstream said something new. */
+    raw: text("raw"),
+  },
+  (t) => ({
+    stopTimeIdx: index("upstream_etas_stop_time_idx").on(t.stopId, t.sampledAt),
+    busTimeIdx: index("upstream_etas_bus_time_idx").on(t.busName, t.sampledAt),
+    // Time-leading, for the retention sweep (`WHERE sampled_at < ?`) and the
+    // row-cap cutoff; neither composite above serves a bare time range.
+    timeIdx: index("upstream_etas_time_idx").on(t.sampledAt),
+  }),
+);
+
 // User-submitted bug reports and feedback. Triage queue for the operator.
 export const reports = sqliteTable("reports", {
   id: integer("id").primaryKey({ autoIncrement: true }),
