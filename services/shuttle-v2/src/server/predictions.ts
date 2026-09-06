@@ -131,7 +131,7 @@ export const COMPARE_MATCH_WINDOW_MS = 45 * 60 * 1000;
  * further back than this is one the detector never closed (the bus dropped
  * off the feed), not a bus still standing there.
  */
-const STANDING_LOOKBACK_MS = 2 * 60 * 60 * 1000;
+export const STANDING_LOOKBACK_MS = 2 * 60 * 60 * 1000;
 
 /** One reading as the wire carries it, already parsed. */
 /**
@@ -770,7 +770,7 @@ function errorStats(errs: readonly number[]): ErrorStats {
 }
 
 /** One `arrivals` row as the comparison sees it: when, and whether it has ended. */
-interface Visit {
+export interface Visit {
   t: number;
   /** null while the detector has not seen the bus leave. */
   d: number | null;
@@ -781,7 +781,7 @@ interface ScoredMoment {
   err: number;
 }
 
-type Truth =
+export type Truth =
   | { kind: "arrived"; at: number }
   | { kind: "standing" }
   | { kind: "missing" };
@@ -798,8 +798,13 @@ type Truth =
  * An unclosed visit older than {@link STANDING_LOOKBACK_MS} is not "standing":
  * the detector lost the bus, and the row would otherwise flag every later
  * prediction at that stop for as long as it existed.
+ *
+ * Exported because the scorecard (scorecard.ts) scores every arm under THIS
+ * rule and no other: the dashboard's head-to-head, the hourly scorecard and
+ * the replay must agree on what "the truth" is, or their numbers cannot be
+ * read against each other.
  */
-function truthAt(visits: readonly Visit[] | undefined, at: number): Truth {
+export function truthAt(visits: readonly Visit[] | undefined, at: number): Truth {
   if (!visits || visits.length === 0) return { kind: "missing" };
   const i = lowerBound(visits, at);
   if (i > 0) {
