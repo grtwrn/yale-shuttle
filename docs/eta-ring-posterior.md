@@ -372,3 +372,124 @@ has out-sat its table (#316 stood 12 min against a p95 of 10) and of a depot
 bus that pulls out and pauses (#309, #304). Nothing in the feed says when a
 driver intends to go; the interval carries it, the point cannot.
 
+
+## Velocity on the kernel: measured (2026-09-06)
+
+**Status: built behind a switch, measured, DROPPED — not in the tree.** The
+operator (a roboticist) asked: "u can test if velocity helps?"; after the
+gps-replay verdict below: "fine drop that." The code (a `MODEL_VELOCITY`
+switch on `filter.ts`, with tests) lives only in the session that measured
+it; what follows is the measurement, so nobody rebuilds it. The kernel in
+`filter.ts` moves MOVING mass forward by a gamma-shaped number of cells whose
+mean is the leg's table speed × dt — it has no memory of the bus's own
+recent motion. The hypothesis: conditioning it on the observed recent
+displacement tracks the bus better, and better tracking cuts the anchor
+error — the largest lever the gps-replay names (where the anchor disagrees
+with the detector the median error is 359 s against 54 s).
+
+### What was built and measured (V1, a velocity state on the belief)
+
+A per-bus velocity state on the belief: `vObs` = chord metres between the
+last two FRESH fixes over their own interval, updated only when the pair is
+within 20 s (a repeated fix is the deadband, not zero speed — 54% of samples
+repeat; and the first fresh fix after a stand spans the stand, 35 m / 300 s,
+so it is not a speed either). Freshness `w = 0.5^(age / 120 s)` — the
+half-life is `docs/bus-speed.md`'s measured crossover, where the current
+speed stops beating the route average. The kernel's mean for moving mass
+becomes `w·v_obs + (1 − w)·v_table` per leg, and its variance the MIXTURE's,
+`w·σ_obs² + (1 − w)·σ_table² + w(1 − w)(v_obs − v_table)²`, so it widens where
+the two sources disagree rather than keeping the table's shape (σ_table is
+the base kernel's own CV, 1/√3; σ_obs the deadband's quantisation of a chord,
+√2·30/√12 = 12.2 m, over the pair's interval). The gamma takes that mean and
+shape (mean²/var, clamped [1, 12]); the far tail and the stop capture were
+unchanged. The transition used the state as it stood BEFORE the fix — the
+prediction, then the emission — and the pair updated it afterwards. With
+the switch off every step was byte-identical (a test ran a fixture both
+ways; the full suite passed with the switch in). The V2 form — a speed
+dimension on the grid — was to be built only if V1 moved the numbers. It
+did not.
+
+For the measurement `gps-replay.ts` was instrumented (one-off, not kept)
+with `leadAgrees` / `leadDisagrees` and a per-route lead-disagreement share:
+the CLIENT's own anchor after the poll (the belief's lead leg on a route the
+model serves) against the detector. The replay's existing `anchorDisagrees`
+rows are the stateless `findRouteAnchor`'s, which the model does not touch,
+so that share (11.8%) is identical in both arms by construction; a change
+to the filter can only show in the lead rows. Anyone re-measuring the
+anchor should re-add that row: it is the store entry's `belief.lead`
+(`anchorKeyFor(label, bus_name)`) against `detIdx`, the same ±1 rule as
+`agree`.
+
+### gps-replay, every line, 2026-09-04 15:51–22:04 ET (205k pairs, proximity truth, client row)
+
+Two runs, identical inputs (`snap-0904-2205.db`, `model-patch-all-0904`),
+`MODEL_VELOCITY` unset vs `1`.
+
+| | off | on |
+|---|---|---|
+| overall median \|err\| / p90 | 60.2 s / 431 | 60.4 s / 431 |
+| moving | 57.8 / 506 | 58.3 / 507 |
+| at stop | 63.6 / 325 | 63.4 / 323 |
+| moving, next stop | 22.8 | 22.9 |
+| by hops 1..5 | 27.2 / 48.9 / 69.6 / 77.7 / 89.3 | 27.2 / 49.1 / 69.7 / 77.6 / 89.7 |
+| lead agrees with the detector | 55.0 s (n 181,897) | 55.0 (n 181,569) |
+| lead disagrees | 181.6 s (n 23,163) | 176.0 (n 23,491) |
+| **lead-disagreement share (k = 1)** | **12.6%** | **12.7%** |
+| `findRouteAnchor` disagreement share | 11.8% | 11.8% (by construction) |
+| 10–90 covers | 76.6% (width 298 s) | 76.6% (298) |
+
+By route the median moves by at most 1.4 s: Pink 106.0 → 107.3, Blue Night
+71.0 → 72.3, Purple 102.9 → 101.9, Brown 79.9 → 79.5, the rest within 0.2 s.
+Lead-disagreement share by route: Purple 19.1 → 18.9, Blue Night 23.6 → 25.1,
+every other line unchanged to a tenth. Detector truth tells the same story
+(75.9 → 76.0 overall; moving 82.4 → 82.6).
+
+### Why a wash, from the feed itself (9/4 capture, 319k rows, 117,793 close fresh-fix pairs)
+
+The pair speed the state is built from is noise at the horizon the kernel
+works at. Predicting the NEXT close pair's chord speed for the same bus:
+
+| predictor | MAE (m/s) | median |
+|---|---|---|
+| the route's median pair speed (≈ the table) | 4.02 | 3.56 |
+| the last pair's speed (V1's `v_obs`) | **4.18** | 3.73 |
+| 50/50 blend | 3.61 | 3.02 |
+| mean of the last two pairs | 3.47 | — |
+
+A single 5 s pair is deadband-quantised at ±15 m each end — ±3 m/s — so on
+its own it predicts the next poll's speed WORSE than the table. The blend
+recovers a little, and a two-pair window a little more (the window result of
+`docs/bus-speed.md` again), but the best of them gains 0.55 m/s over 5 s:
+under 3 m of displacement, a tenth of a cell, against an emission that
+re-anchors every fresh fix at σ = 20 m. Where the kernel actually carries
+the belief — across a repeat spell, when no fix arrives — there is no fresh
+pair to update the velocity from either, and it has decayed toward the
+table by construction. The transition prior has nothing the observation
+does not already say, at the cadence this feed delivers it.
+
+The anchor error the hypothesis aimed at is not a tracking error in the
+sense a velocity can fix: the lead disagrees with the detector on the
+fold-back lines (Green 35%, Purple 19%, Orange East 16%, Blue Night 24% —
+the relief run) where the question is WHICH branch, decided by consistent
+fixes over polls, not how far along it the bus has driven in five seconds.
+(Blue Night's lead disagrees with the detector four times as often as the
+stateless anchor does — 23.6% against 5.2% — which is a finding about the
+deadhead, not about velocity, and is left open here.)
+
+### rider-sim, Red 9/3 — not run
+
+Both arms (`MODEL_VELOCITY` off and on, same tree, paired) were started on
+the 9/3 capture and killed at poll 0: dropped by the operator after the
+gps-replay verdict. There is no chain row and no FIXED / INTRODUCED column
+for this variant.
+
+### Verdict
+
+Dropped. Velocity on the kernel is a wash on every gate the gps-replay
+has — median error, the moving row, the lead-disagreement share, coverage —
+slightly worse on Blue Night, and the feed says why: at one poll a chord
+speed is noise the emission already outweighs. Do not rebuild it for THIS
+feed. It would be worth re-testing only if upstream ever sends a velocity
+field, the deadband narrows below 30 m, or the poll cadence rises — the
+switch was one property read and a per-fix haversine, cheap to restore from
+this section. V2 was not built.
