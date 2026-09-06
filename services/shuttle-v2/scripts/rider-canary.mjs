@@ -17,20 +17,41 @@
  * second." The arithmetic lives in canary-metrics.mjs and is unit-tested; see
  * the note there about why everything is done on display INTERVALS.
  *
- * ONE BROWSER AT A TIME, ALWAYS. This Pi rebooted under memory pressure on
- * 2026-09-01 with ten testers running. --loop launches and closes a single
- * chromium per rider, sequentially, and sleeps when no line is up.
+ * TWO RIDERS, TWO BROWSERS, NEVER MORE (operator, 2026-09-06: "one red line
+ * rider always when its running and also another always that round Robin
+ * through running lines"). In --loop:
+ *
+ *   [red]       rides CANARY_LINE (default Red) on the operator's own trip
+ *               whenever that line has a rideable bus; idles otherwise, and
+ *               says so once rather than every cycle.
+ *   [rotation]  rides every OTHER running line in turn — CANARY_LINES order,
+ *               advancing after each ride, skipping lines with nothing
+ *               rideable (scripts/canary-rotation.mjs) — on a random trip
+ *               with a bus approaching the board stop. It never rides the
+ *               dedicated line; with only that line up, it idles.
+ *
+ * Before this it was one browser riding Red only, which on a weekend meant
+ * "nothing rideable" every ten minutes from dawn to dusk while four lines ran.
+ * This Pi rebooted under memory pressure on 2026-09-01 with ten testers
+ * running, so two is the cap: one chromium per rider, closed after each
+ * watch, and the second launch is staggered so they never spike together.
+ * Both riders honour the keepalive's restart flag between watches; the
+ * process exits once BOTH have finished their current one.
  *
  * SILENT WHEN HEALTHY. A clean run writes its record and exits 0 with no
  * output. A run that finds something prints it to stderr and exits 1.
  *
  *   node scripts/rider-canary.mjs                  one rider, then exit
- *   node scripts/rider-canary.mjs --loop           keep a rider going
+ *   node scripts/rider-canary.mjs --loop           keep both riders going
  *   node scripts/rider-canary.mjs --summary        health digest from the log
  *   node scripts/rider-canary.mjs --verbose        narrate the watch
  *
- * Env: BOT_BASE_URL, BOT_CHROMIUM_PATH, CANARY_DIR, CANARY_LINE (force one),
- *      CANARY_TICK_MS, CANARY_WATCH_MAX_MIN, CANARY_CATASTROPHIC_SEC,
+ * Env: BOT_BASE_URL, BOT_CHROMIUM_PATH, CANARY_DIR,
+ *      CANARY_LINE (the dedicated rider's line, default Red; without --loop
+ *      it forces the one rider onto that line), CANARY_RIDERS (2, or 1 for
+ *      the dedicated rider alone), CANARY_DRY_RUN=1 (records go to
+ *      runs.dry.jsonl, which nothing ships, and the rotation's place is not
+ *      saved), CANARY_TICK_MS, CANARY_WATCH_MAX_MIN, CANARY_CATASTROPHIC_SEC,
  *      CANARY_FIRST_SIGHT_MISS_SEC, CANARY_IDLE_SLEEP_MIN, CANARY_REST_MIN.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
@@ -42,6 +63,7 @@ import {
   ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, fleetOffAir, haversineM,
   isAtBoardStop, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
+import { DEDICATED_LINE, nextInRotation, randomTripForLine } from "./canary-rotation.mjs";
 import { seedTestId } from "./testId.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
@@ -49,8 +71,19 @@ const BASE = (process.env.BOT_BASE_URL || "https://yale-shuttle.fly.dev").replac
 const CHROMIUM = process.env.BOT_CHROMIUM_PATH
   || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined);
 const DIR = process.env.CANARY_DIR || join(HERE, ".canary");
-const RUNS = join(DIR, "runs.jsonl");
+/**
+ * A dry run rides and scores exactly as a real one, but its records go to a
+ * file the shipper (canary-ship.mjs reads runs.jsonl) never opens, and the
+ * rotation's place is kept in memory only. For test runs beside the live
+ * canary: nothing they see reaches /stats or an alert.
+ */
+const DRY = process.env.CANARY_DRY_RUN === "1";
+const RUNS = join(DIR, DRY ? "runs.dry.jsonl" : "runs.jsonl");
 const STATE = join(DIR, "state.json");
+/** The dedicated rider's line. The keepalive passes CANARY_LINE=Red. */
+const DEDICATED = process.env.CANARY_LINE || DEDICATED_LINE;
+/** 2 = the dedicated rider plus the rotation; 1 = the dedicated rider alone. */
+const RIDERS = Number(process.env.CANARY_RIDERS) === 1 ? 1 : 2;
 
 /** Ground truth poll, matching the collector's own 5 s cadence. */
 const TICK_MS = Number(process.env.CANARY_TICK_MS) || 5_000;
@@ -96,7 +129,12 @@ const clock = (ms) => new Date(ms).toLocaleTimeString("en-US",
 // `at` defaults to now, but a scrape passes the tick's own timestamp: under
 // load a page.evaluate can take seconds, and a log line stamped at print time
 // reads as two samples 5 s apart when the record correctly holds 15.
-const say = (s, at = Date.now()) => { if (VERBOSE) process.stderr.write(`[${clock(at)}] ${s}\n`); };
+// Every line names its rider ("[red]" / "[rotation]"): two riders share one
+// log, and a watch narrated without its author is two interleaved stories.
+const say = (s, at = Date.now(), tag = "") => {
+  if (VERBOSE) process.stderr.write(`[${clock(at)}]${tag ? ` [${tag}]` : ""} ${s}\n`);
+};
+const tagged = (tag) => (s, at) => say(s, at, tag);
 
 // ── which line to ride ──────────────────────────────────────────────────────
 
@@ -123,10 +161,16 @@ export function rideableLines(payload) {
   });
 }
 
+// The rotation's place. Only the rotation rider writes it, so two riders in
+// one process never race on the file; a dry run keeps it in memory.
+let memState = null;
 function readState() {
+  if (memState) return memState;
   try { return JSON.parse(readFileSync(STATE, "utf8")); } catch { return { cursor: 0 }; }
 }
 function writeState(s) {
+  memState = s;
+  if (DRY) return;
   mkdirSync(DIR, { recursive: true });
   writeFileSync(STATE, JSON.stringify(s, null, 2));
 }
@@ -247,12 +291,17 @@ async function fetchBuses() {
 }
 
 /** One rider, start to finish. Resolves to the run record. */
-async function runOnce(line) {
+async function runOnce(line, rider) {
+  const say = tagged(rider.tag);
   const startedAt = Date.now();
   const record = {
     startedAt, startedAtEt: clock(startedAt), base: BASE, line: line.label,
+    rider: rider.tag, dryRun: DRY || undefined,
     busRouteIds: line.busRouteIds, thresholds: THRESH,
-    trip: { from: line.trip.origin.label, to: line.trip.destination.display_name, kind: line.trip.kind },
+    trip: {
+      from: line.trip.origin.label, to: line.trip.destination.display_name, kind: line.trip.kind,
+      approaching: line.trip.approaching ?? undefined,
+    },
     samples: [], pins: [], arrivals: [], pageErrors: [], failures: [],
   };
   const fail = (kind, detail) => record.failures.push({ kind, detail, atMs: Date.now() });
@@ -619,7 +668,8 @@ function append(record) {
 }
 
 function describeFailure(record) {
-  const out = [`🐤 rider-canary: ${record.line}, ${record.trip.from} → ${record.trip.to} (${record.startedAtEt} ET)`];
+  const who = record.rider ? `rider-canary [${record.rider}]` : "rider-canary";
+  const out = [`🐤 ${who}: ${record.line}, ${record.trip.from} → ${record.trip.to} (${record.startedAtEt} ET)${record.dryRun ? " [dry run]" : ""}`];
   for (const f of record.failures) out.push(`   ✗ ${f.kind}: ${f.detail}`);
   const s = record.sequence;
   if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
@@ -697,46 +747,147 @@ function summary(days = 7) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-async function oneRider() {
+// ── the two riders ──────────────────────────────────────────────────────────
+//
+// A rider is a tag plus a `pick`: given every line's rideability and the
+// payload it came from, the line to ride now (with its trip attached) or null
+// to idle. Everything else — the browser, the scoring, the record — is shared.
+
+/**
+ * The dedicated rider: one line, the operator's own trip, whenever that line
+ * has a rideable bus. `tripForLine` gives Red the canonical trip (boards at
+ * Division / Prospect, stop 48, as the app chooses it).
+ *
+ * The pick never skips the rideable test. It used to, so the keepalive's
+ * CANARY_LINE=Red kept riding Red after the last bus went home: a twelve
+ * minute watch of an empty line on 2026-09-04, filing `line-missing` ("Red
+ * is running (0 live buses)") against an app that was right to stop offering
+ * it. Zero live buses is `idle` — the loop sleeps and asks again.
+ */
+const dedicatedRider = (label) => ({
+  tag: label.toLowerCase().replace(/\s+/g, "-"),
+  pick(lines) {
+    const line = lines.find((l) => l.label === label);
+    if (!line) return { idle: `${label} is not a line this canary knows` };
+    if (line.rideable) return line;
+    return { idle: line.liveBuses > 0
+      ? `${label} has ${line.liveBuses} live bus(es) but no trip can be built on it`
+      : `${label} has no live buses` };
+  },
+});
+
+/**
+ * The rotation rider: every other running line in turn, on a random trip
+ * with a bus approaching (canary-rotation.mjs). `excluded` is the dedicated
+ * rider's line, or null when this is the only rider (no --loop, no
+ * CANARY_LINE) and every line takes its turn.
+ *
+ * The place is kept as the LABEL last ridden, not a counter: forcing one
+ * line for an investigation must not park the rotation there, and a line
+ * dropping out of service must not shift every other line's turn.
+ */
+const rotationRider = (excluded) => ({
+  tag: "rotation",
+  pick(lines, payload) {
+    const st = readState();
+    const line = nextInRotation(lines, st.lastLine ?? null, excluded);
+    if (!line) {
+      const up = lines.filter((l) => l.liveBuses > 0).map((l) => l.label);
+      return { idle: excluded && up.length && up.every((l) => l === excluded)
+        ? `only ${excluded} is running, and it has its own rider`
+        : `no line${excluded ? ` other than ${excluded}` : ""} is rideable` };
+    }
+    writeState({ ...st, lastLine: line.label, ridden: (st.ridden ?? 0) + 1 });
+    // A random trip with a bus on its way; the fixed derived trip only when
+    // no bus on the line reports a position to place it by.
+    const trip = randomTripForLine(payload, line) ?? line.trip;
+    return { ...line, trip };
+  },
+});
+
+async function oneRider(rider) {
+  const say = tagged(rider.tag);
   let payload;
   try { payload = await fetchBuses(); }
   catch (e) {
-    process.stderr.write(`🐤 rider-canary: cannot reach ${BASE}/api/buses — ${e.message}\n`);
+    process.stderr.write(`🐤 rider-canary [${rider.tag}]: cannot reach ${BASE}/api/buses — ${e.message}\n`);
     return { status: "unreachable" };
   }
   const lines = rideableLines(payload);
-  const forced = process.env.CANARY_LINE;
-  // `forced` picks WHICH line, never whether there is anything to watch.
-  // It used to skip the rideable test outright, so the keepalive's
-  // CANARY_LINE=Red kept riding Red after the last bus went home: a twelve
-  // minute watch of an empty line on 2026-09-04, filing `line-missing`
-  // ("Red is running (0 live buses)") against an app that was right to stop
-  // offering it. Zero live buses is `idle` — the loop sleeps and asks again.
-  const pool = (forced ? lines.filter((l) => l.label === forced) : lines)
-    .filter((l) => l.rideable);
-  if (!pool.length) {
-    say(`nothing rideable: ${lines.map((l) => `${l.label}=${l.liveBuses}`).join(" ")}`);
-    return { status: "idle", lines };
+  const line = rider.pick(lines, payload);
+  if (!line || line.idle) {
+    return {
+      status: "idle", lines,
+      why: `${line?.idle ?? "nothing to ride"}: ${lines.map((l) => `${l.label}=${l.liveBuses}`).join(" ")}`,
+      // Idle is logged when the REASON changes, not every cycle; the bus
+      // counts wobble and are printed only alongside a new reason.
+      key: line?.idle ?? "",
+    };
   }
-  // A monotonic counter, indexed modulo the pool — so the rotation keeps its
-  // place when a line drops out of service mid-evening and the pool shrinks.
-  // CANARY_LINE does not advance it: forcing one line for an investigation
-  // must not leave the rotation parked there afterwards.
-  const st = readState();
-  const line = pool[st.cursor % pool.length];
-  if (!forced) writeState({ ...st, cursor: (st.cursor + 1) % 1e6, lastLine: line.label });
-  say(`riding ${line.label} (${line.liveBuses} live buses) — ${line.trip.origin.label} → ${line.trip.destination.display_name} [${line.trip.kind}]`);
-  const record = await runOnce(line);
+  const t = line.trip;
+  const via = t.approaching ? ` with ${t.approaching.busName} ${t.approaching.stopsAway} stop(s) out` : "";
+  say(`riding ${line.label} (${line.liveBuses} live buses) — ${t.origin.label} → ${t.destination.display_name} [${t.kind}]${via}`);
+  const record = await runOnce(line, rider);
   append(record);
   if (runVerdict(record) === "unreachable") {
     // Neither `ok` nor a finding: the watch happened, the app may have been
     // perfect, and we cannot say. Said out loud so a network outage is not
     // mistaken for a quiet healthy night.
-    process.stderr.write(`🐤 rider-canary: ${line.label} watched ${record.watchedMin} min but ${BASE}/api/buses refused all ${record.feedPolls} polls — no ground truth, nothing judged\n`);
+    process.stderr.write(`🐤 rider-canary [${rider.tag}]: ${line.label} watched ${record.watchedMin} min but ${BASE}/api/buses refused all ${record.feedPolls} polls — no ground truth, nothing judged\n`);
     return { status: "unreachable", record };
   }
   if (!record.ok) process.stderr.write(`${describeFailure(record)}\n`);
+  else say(`${line.label}: clean run, ${record.sequence.readings} readings, watched ${record.watchedMin} min`);
   return { status: record.ok ? "ok" : "finding", record };
+}
+
+// ── the loop ────────────────────────────────────────────────────────────────
+
+const FLAG = join(DIR, "restart-requested");
+/** Set once any rider sees the flag; every loop drains on it. */
+let stopping = false;
+
+/** Sleep, but glance at the flag every 15 s and wake early once a restart is
+ *  pending, so an idle rider never holds the process open for its whole
+ *  ten-minute nap. */
+async function rest(ms) {
+  const until = Date.now() + ms;
+  while (!stopping && Date.now() < until) {
+    await sleep(Math.min(15_000, until - Date.now()));
+    if (existsSync(FLAG)) stopping = true;
+  }
+}
+
+/**
+ * One rider's life. Each turn: honour a pending restart, else ride or idle.
+ * The keepalive asks for a restart by touching FLAG rather than killing the
+ * process: a kill mid-watch aborts the run, files "page-unreadable" +
+ * "no-arrival" against a healthy app, and on a day master moves every twenty
+ * minutes that is most runs. Honoured only between watches, so the current
+ * one always completes — and with two riders, the process waits for both.
+ */
+async function riderLoop(rider, { delayMs = 0 } = {}) {
+  const say = tagged(rider.tag);
+  await rest(delayMs);
+  let idleKey = null;
+  while (!stopping) {
+    if (existsSync(FLAG)) {
+      stopping = true;
+      console.log(`[canary] restart requested; [${rider.tag}] stopping between watches`);
+      break;
+    }
+    const r = await oneRider(rider);
+    if (r.status === "idle") {
+      if (r.key !== idleKey) { say(`idle — ${r.why}`); idleKey = r.key; }
+      await rest(IDLE_SLEEP_MS);
+    } else if (r.status === "unreachable") {
+      idleKey = null;
+      await rest(IDLE_SLEEP_MS);
+    } else {
+      idleKey = null;
+      await rest(Math.max(5_000, REST_MS));
+    }
+  }
 }
 
 // Importing this file must never put a browser on the road. Two exploratory
@@ -752,26 +903,32 @@ if (!RUN_AS_SCRIPT) {
   const i = argv.indexOf("--days");
   summary(i >= 0 ? Number(argv[i + 1]) : 7);
 } else if (has("--loop")) {
-  // "We should always have a rider going when a line is up." One browser,
-  // sequentially, for ever; when nothing is running it sleeps rather than
+  // "We should always have a rider going when a line is up." Two riders, one
+  // browser each, for ever; when nothing is running they sleep rather than
   // spinning up a chromium to look at an empty map.
-  for (;;) {
-    // The keepalive asks for a restart by touching this file rather than
-    // killing the process: a kill mid-watch aborts the run, files
-    // "page-unreadable" + "no-arrival" against a healthy app, and on a day
-    // master moves every twenty minutes that is most runs. Honoured only
-    // between riders, so the current watch always completes.
-    const flag = join(DIR, "restart-requested");
-    if (existsSync(flag)) {
-      try { unlinkSync(flag); } catch {}
-      console.log("[canary] restart requested; exiting between riders");
-      process.exit(0);
-    }
-    const r = await oneRider();
-    if (r.status === "idle" || r.status === "unreachable") await sleep(IDLE_SLEEP_MS);
-    else await sleep(Math.max(5_000, REST_MS));
+  //
+  // A flag older than this process is stale: the keepalive only asks a
+  // RUNNING canary to restart, and a fresh one that exited on a leftover
+  // flag (a kill -9 leaves one) would cost five minutes for nothing.
+  if (existsSync(FLAG)) {
+    try { unlinkSync(FLAG); } catch {}
+    console.log("[canary] cleared a restart flag left from before this start");
   }
+  if (DRY) console.log(`[canary] DRY RUN — records go to ${RUNS}, nothing is shipped`);
+  console.log(`[canary] ${RIDERS === 1 ? `one rider: [${DEDICATED.toLowerCase()}]` : `two riders: [${DEDICATED.toLowerCase()}] and [rotation] over every other line`}`);
+  const riders = [riderLoop(dedicatedRider(DEDICATED))];
+  // Staggered: two chromiums starting in the same second is the spike that
+  // hurts this Pi, not two running (fleet.sh learned the same thing).
+  if (RIDERS === 2) riders.push(riderLoop(rotationRider(DEDICATED), { delayMs: 20_000 }));
+  await Promise.all(riders);
+  try { unlinkSync(FLAG); } catch {}
+  console.log("[canary] restart requested; exiting — every rider is between watches");
+  process.exit(0);
 } else {
-  const r = await oneRider();
+  // One rider, then exit: CANARY_LINE forces the line, else the rotation
+  // takes the next turn across EVERY line, the dedicated one included.
+  const rider = process.env.CANARY_LINE ? dedicatedRider(DEDICATED) : rotationRider(null);
+  const r = await oneRider(rider);
+  if (r.status === "idle") say(`idle — ${r.why}`, Date.now(), rider.tag);
   process.exit(r.status === "finding" || r.status === "unreachable" ? 1 : 0);
 }
