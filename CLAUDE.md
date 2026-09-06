@@ -725,13 +725,21 @@ paired numbers. The short form:
   route's layover / ordinary pool, drives toward road metres × pace
   (`tables.ts`, per-occurrence stands `id#index`); chains are summed with
   common random numbers over ring prefix sums (`arrival.ts`).
-- **Display is a decision, never a mixture median.** The lead LEG and the
-  lead MODE (standing vs moving) each switch with hysteresis in the filter;
-  the row shows quantile τ (0.5) of that one situation and a 10–90 range that
-  widens to the full mixture while the lead holds under 0.8. The #119 clamp
-  stays as a display rule keyed on the rest identity, kept (not applied)
-  across a moving spell. Mixing the modes by mass tripled one-bucket
-  reversals; do not reintroduce it.
+- **The number is the lead LEG's mixture; the lead leg is a decision.** The
+  leg switches with hysteresis in the filter; the row shows quantile τ (0.5)
+  of that leg's standing + moving variants mixed by mass — so a departure
+  lands on the poll it is seen — and a 10–90 range that widens to the full
+  mixture while the lead holds under 0.8. The #119 clamp stays as a display
+  rule keyed on the rest identity, kept (not applied) across a moving spell.
+  A shown MODE decided with hysteresis was tried and withdrawn: it held the
+  standing number until the bus cleared the rest radius and cost the
+  operator's test case its strands (docs/eta-ring-posterior.md §3).
+- **The rest's clock is its earliest known origin**, never the served clock
+  alone: the collector's clock restarts on ITS 125 m rule and switches source
+  between `at_stop_since` and `stationary_since`; read directly it restarted
+  a layover's residual from zero and flapped every kerb-stop number in the
+  simulator. A rest is attributed to a stop only when the stop's zone holds
+  the majority of the standing mass in the rest mask.
 - **Gate every change** with the rider simulator's FIXED/INTRODUCED split
   per route (`pair-by-route.mjs`), the chain block first, then `gps-replay.ts`
   both arms. The replays pair both arms in one process: `MODEL_ROUTES` on

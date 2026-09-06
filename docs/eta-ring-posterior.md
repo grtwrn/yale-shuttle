@@ -74,7 +74,23 @@ radius belongs to it — whichever side of the marker the yard put the bus —
 except a cell at another stop's own kerb. Shuffles reach four cells either
 way inside that radius and nowhere else. On a fold the stop is chosen from
 the belief, not from geometry, so a rest beside twin stops (130 Prospect
-(N)/(S), 28 m apart) lands on the branch the bus is on.
+(N)/(S), 28 m apart) lands on the branch the bus is on; and it is chosen
+only when that stop's zone holds the MAJORITY of the standing mass in the
+mask — a hold 190 m past a stop has the stop's kerb inside its 125 m mask,
+and a sliver of mass there must not re-attach the rest to the stop the bus
+just left.
+
+**The rest's clock is its earliest known origin.** The served clock is read
+into it, but never replaces it: the collector's clock restarts when the bus
+moves 125 m from where the COLLECTOR saw it come to rest — a different point
+from this filter's — and switches source between `at_stop_since` and
+`stationary_since` from poll to poll. Read directly, a shuffle inside a
+layover restarted the residual stand from zero (Blue Night #40, 22:40Z 9/3:
+237 → 749 s two minutes before it left, a strand for every rider down the
+line), and the source switch flapped every Red number a bucket at each kerb
+stop in the simulator — invisible to a script trace that never fed the
+at-stop clock. The stand tables are arrival-to-departure at the stop, so the
+time since the rest began is the clock they were measured with.
 
 **One observation per poll.** A step is taken only for a new payload object at
 least 2.5 s after the last; every other call — the map, the cards, the chip,
@@ -147,21 +163,30 @@ Green's sequence, upstream.
 
 ## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 
-Per (bus, stop): `eta` = quantile τ of the LEAD SITUATION, `low`/`high` = its
-10th and 90th percentiles. The lead situation is a decision made in the
-filter, not a functional of the posterior: the lead LEG follows the mass
-forward once it has left the previous leg (0.8), jumps far only at 0.8, and
-holds against a leg behind it for five minutes (`leadLeg`); the lead MODE on
-that leg — standing or moving — switches only when the other mode holds 0.6
-of the leg's mass (`leadMode`, `LEAD_MODE_SWITCH`). Both replace the same
-failure: the standing and moving variants of a leg differ by the rest of a
-stand, and any number that mixes them by their raw masses flips a display
-bucket whenever the shares cross 0.5 — #88's racing median on a fold, and
-417 one-bucket reversals against master's 135 on the 9/3 Red replay when the
-lead cluster was still a weighted mixture. The range stays honest about the
-rest: while the lead holds less than 0.8 of the mass, `low`/`high` widen to
+Per (bus, stop): `eta` = quantile τ of the LEAD LEG's mixture — its standing
+and moving variants weighted by their mass, so the departure lands on the
+poll it is seen (the operator's "5 → 1 when it leaves") — `low`/`high` = its
+10th and 90th percentiles. The lead LEG is a decision made in the filter,
+not a functional of the posterior: it follows the mass forward once it has
+left the previous leg (0.8), jumps far only at 0.8, and holds against a leg
+behind it for five minutes (`leadLeg`). A situation on another leg is an
+alternative — the other branch of a fold, a lap away, a cold belief's guess
+two stops back — and never enters the number: mixed in by nearness, a 0.65
+guess that the bus stood two stops back turned "in 1" into "in 5" on a
+rider's second poll; raced across the gap by mass, it was #88's median.
+While the lead leg holds less than 0.8 of the mass, `low`/`high` widen to
 the full mixture, so a 50/50 fold does not read as "17 s [13–23]". τ ships
 at 0.5.
+
+**A shown MODE decided with hysteresis was tried and withdrawn.** Deciding
+standing vs moving on the leg (switch at 0.6, then "only once the mass is
+beyond the rest radius") held the standing number until the bus had cleared
+125 m, and the simulator priced that on the operator's own test: Division /
+Prospect strands 0 → 7.8%, 59 chain riders shown a stale number on the
+departure poll, the collapse arriving as a ≥180 s jump. The flapping it was
+meant to cure — one bucket out and back on every creep — turned out to be
+the served clock switching source between polls (§1, the rest's clock), not
+the mixture.
 
 The #119 clamp stays, as a display rule keyed on the stand's identity: while
 the lead stands, the shown remainder may pause and never climb; while it
@@ -190,7 +215,38 @@ with a whole new stand on top.
 
 ## Measurement
 
-### gps-replay, Red, 2026-09-04 15:51–22:04 ET (6.2 h, 21k pairs, next 1–5 stops)
+### gps-replay, every line, 2026-09-04 15:51–22:04 ET (6.2 h, 205k pairs, next 1–5 stops)
+
+The production arm and the model in one process, same `PAYLOAD_PATCH`
+(model-patch-all-0904), same per-vehicle store. Proximity truth (45 m).
+Green is declined by the model (bridged ring) and is byte-identical.
+
+| | median \|err\| | p90 | median bias | pessimistic ≥120 s | optimistic ≥120 s | within 120 s | 10–90 covers |
+|---|---|---|---|---|---|---|---|
+| production | 92.1 s | 537 | +7.1 | 24.1% | 18.4% | 57.5% | 54.6% (±1σ) |
+| ring estimator | **60.2 s** | **431** | −7.9 | **14.8%** | 16.7% | **68.5%** | **76.6%** |
+
+| route | median \|err\| | pessimistic ≥120 s | optimistic ≥120 s | interval covers |
+|---|---|---|---|---|
+| Blue Day | 43.8 → 35.3 | 12.0 → 7.8 | 7.2 → 6.3 | 81% |
+| Orange Day | 36.6 → 28.1 | 10.7 → 5.0 | 2.1 → 3.6 | 84% |
+| Red | 52.8 → 47.6 | 10.1 → 4.8 | 13.4 → 19.0 | 76% |
+| Pink | 178.7 → 106.0 | 13.0 → 9.4 | 49.0 → 36.4 | 68% |
+| Green (declined) | 288.8 → 288.8 | 56.1 → 56.1 | 8.2 → 8.2 | 51% |
+| Purple | 207.1 → 102.9 | 41.3 → 25.3 | 25.0 → 22.0 | 76% |
+| Blue Night | 113.5 → 71.0 | 28.5 → 13.3 | 19.4 → 18.8 | 79% |
+| Orange Night | 54.5 → 39.4 | 5.3 → 3.0 | 16.0 → 9.1 | 83% |
+| Gold | 68.7 → 55.4 | 13.2 → 7.4 | 17.4 → 20.9 | 80% |
+| Blue West | 96.0 → 47.5 | 38.0 → 4.5 | 6.3 → 16.6 | 92% |
+| Orange East | 85.1 → 48.1 | 15.2 → 3.5 | 21.6 → 16.5 | 90% |
+| Brown | 212.2 → 79.9 | 32.8 → 12.7 | 30.7 → 27.4 | 79% |
+
+The dangerous tail — a rider told five minutes for a bus two minutes away —
+is cut by two fifths and the interval is at its nominal 80% on the downtown
+lines, honest about the West Campus and VA folds (68–76%). Detector truth
+tells the same story (103.7 → 75.9 s median, coverage 51 → 65%).
+
+### gps-replay, Red only (the first pass), 2026-09-04 15:51–22:04 ET (6.2 h, 21k pairs, next 1–5 stops)
 
 Both arms in one process, same `PAYLOAD_PATCH` (model-patch-0904), same
 per-vehicle store, `MODEL_ROUTES=""` vs `"3"`. Error = promise − truth,
@@ -212,56 +268,96 @@ quantile, that reads 66%).
 ### rider-sim, 9/3 capture (13:51–24:00 UTC), paired against master 2a5568c
 
 Same capture, snapshot `snap-0904-2205.db`, tables bounded at 9/3 end
-(`model-patch-0903.json` for the candidate, `split-patch-0903.json` for
-master — the same `q`/`drive`), 8,199 paired waits. Green and Purple are
-untouched (the allowlist), byte-identical.
+(`model-patch-all-0903.json` for the candidate, `split-patch-0903.json` for
+master — the same `q`/`drive`), 8,246 paired waits. Green is declined by the
+model (byte-identical); Purple runs on it.
 
 **The 344 Winchester chain, stop by stop (675 waits):**
 
 | stop | strand | jump ≥180 s | jump ≥300 s | reversal ≥60 s | first miss | p90 drift |
 |---|---|---|---|---|---|---|
-| Winchester / Division (146) | 9.6 → 6.1% | 12.2 → 2.6% | 5.2 → 0 | 6.1 → 8.7% | 80 → 80 s | 235 → 170 |
-| Division / Sheffield (49) | 38.6 → 14.0% | 12.3 → 0.9% | 5.3 → 0 | 6.1 → 5.3% | 91 → 68 s | 230 → 170 |
-| **Division / Prospect (48)** | **21.7 → 3.5%** | **16.5 → 0%** | 5.2 → 0 | 6.1 → 3.5% | 85 → 70 s | 235 → 170 |
-| Prospect / Hillside (104) | 7.1 → 3.6% | 12.5 → 0% | 5.4 → 0 | 10.7 → 3.6% | 62 → 74 s | 230 → 170 |
-| SCL (113) | 4.5 → 0% | 18.0 → 0% | 5.4 → 0 | 10.8 → 5.4% | 64 → 83 s | 235 → 170 |
-| 130 Prospect St (S) (4) | 0.9 → 1.9% | 16.7 → 1.9% | 5.6 → 0 | 6.5 → 5.6% | 70 → 106 s | 253 → 170 |
+| Winchester / Division (146) | 9.6 → 10.4% | 12.2 → 5.2% | 5.2 → 0 | 6.1 → 2.6% | 80 → 80 s | 235 → 168 |
+| Division / Sheffield (49) | 38.6 → 9.6% | 12.3 → 5.3% | 5.3 → 0 | 6.1 → 6.1% | 91 → 75 s | 230 → 170 |
+| **Division / Prospect (48)** | **21.7 → 0%** | **16.5 → 5.2%** | 5.2 → 0 | 6.1 → 7.0% | 85 → 80 s | 235 → 115 |
+| Prospect / Hillside (104) | 7.1 → 0% | 12.5 → 5.4% | 5.4 → 0 | 10.7 → 8.0% | 62 → 74 s | 230 → 115 |
+| SCL (113) | 4.5 → 0% | 18.0 → 5.4% | 5.4 → 0 | 10.8 → 7.2% | 64 → 80 s | 235 → 115 |
+| 130 Prospect St (S) (4) | 0.9 → 0.9% | 16.7 → 5.6% | 5.6 → 0 | 6.5 → 2.8% | 70 → 101 s | 253 → 132 |
 
-Departure poll (657 watching riders): displayed drift ≥180 s on **38 → 0**
-riders, p90 0 → 0 s; the raw number 30 s after `at_stop` clears sits 15 → 27 s
-beyond the clock (the reposition prior holds a little mass at the stop for two
-or three fixes).
+Departure poll (657 watching riders): displayed drift ≥180 s on **38 → 15**
+riders, ≥300 s on 36 → 0; the raw number 30 s after the bus leaves sits
+15 → 35 s beyond the clock (the reposition prior holds a little mass at the
+stop for two or three fixes — the price of not flinching at a creep). The
+one ≥180 s step the chain still shows is the SECOND bus's number resolving
+its stand in one −230 s step where master took five smaller ones (#304,
+18:02Z, all six stops).
 
-**Red as a whole (6,021 scored waits):** first-promise |miss| median 54 → 40 s
-(early >60 s 26.2 → 24.2%, late 20.3 → 17.3%); jump ≥180 s 11.3 → 10.6%; jump
-≥300 s 6.1 → 2.0%; strand 6.1 → 3.2%; pin changed 9.2 → 4.3%; dropped while
-approaching 4.5 → 3.4%; reversal ≥60 s 5.6 → 7.6%; worst drift p90 230 → 190 s,
-max 1570 → 595 s; the 10–90 interval at first sight covers 78% (12.4% earlier,
-9.6% later).
+**Red as a whole (6,081 scored waits):** first-promise |miss| median 54 → 40 s
+(early >60 s 26.2 → 24.4%, late 20.3 → 17.4%); jump ≥180 s 11.3 → 9.1%; jump
+≥300 s 6.1 → 2.6%; strand 6.1 → 1.6%; pin changed 9.2 → 3.9%; dropped while
+approaching 4.5 → 1.8%; overshoot 10.3 → 5.6%; reversal ≥60 s 5.6 → 9.0%;
+worst drift p90 230 → 170 s, max 1570 → 595 s; the 10–90 interval at first
+sight covers 77.4% (12.3% earlier, 10.2% later).
 
-**Paired, FIXED / INTRODUCED (Red, 7,107 waits):** strand 406 / 162, jump ≥180 s
-552 / 369, dropped 265 / 194, **reversal 398 / 510**; worst drift improved
-3,276 / worsened 1,518 / same 2,800; first-promise |miss| improved 2,275 /
-worsened 1,573.
+**Paired, FIXED / INTRODUCED (Red, 7,172 waits):** strand 416 / 73, jump ≥180 s
+465 / 215, dropped 283 / 97, **reversal 343 / 553**. Purple (474): strand
+36 / 50, jump 109 / 49, reversal 139 / 23, dropped 83 / 39.
 
 The reversal is the one column that is net worse, and its mechanism is
 known: a bus leaving a depot stop that pulls out, reverses into the yard and
 sits (Red #304 at 14:06Z on 9/3 went 85 m past 344 Winchester, back 130 m,
-sat a minute, then left). The reposition prior after a long stand halved the
-count (580 → 510 introduced); what is left is the number honestly following a
-bus that really did turn round. The next lever is a per-stop reposition prior
-from `stop_visits.shuffles`, which the calibrator does not serve yet.
+sat a minute, then left), and more generally a bus that creeps a fix and
+re-freezes — the posterior follows the evidence out and back, and the number
+with it, one bucket. Holding the number until the bus cleared the rest
+radius was tried and cost stop 48 its strands (§3); the honest residue stays.
 
-### rider-sim, 9/4 capture (the re-dumped window: 9/3 09:51 – 9/4 22:15), paired against master
+### rider-sim, every line, 9/4 capture (9/3 09:51 – 9/5 03:00 ET), paired against master
 
-18,460 paired waits (Red 15,530), `model-patch-0904.json`. Chain, Division /
-Prospect (261 waits): strand 19.5 → 3.4%, jump ≥180 s 13.8 → 0.4%, reversal
-3.8 → 2.3%, p90 drift 230 → 170 s; departure-poll ≥180 s riders 38 → 6. Red
-(12,809 waits): first-promise |miss| 50 → 45 s, strand 6.1 → 2.0%, jump ≥180 s
-13.8 → 6.7%, jump ≥300 s 2.9 → 1.5%, pin changed 7.9 → 5.1%, dropped 2.0%,
-reversal 5.1 → 7.1%, worst drift p90 230 → 170 s, interval coverage 78.7%.
-Paired FIXED / INTRODUCED: strand 890 / 196, jump ≥180 s 1,751 / 629, dropped
-442 / 226, reversal 674 / 1,107; worst drift improved 8,152 / worsened 2,453.
+`model-patch-all-0904.json`, `HOLDOUT=` (every line on the model), run in
+three route groups on the Pi. Paired FIXED / INTRODUCED per route; the
+grocery lines and Green are priced by the legacy arithmetic (declined on
+evidence) and are noise-level.
+
+| route | waits | strand | jump ≥180 s | reversal ≥60 s | dropped |
+|---|---|---|---|---|---|
+| Red | 15,622 | 898 / 127 | 1,794 / 309 | 622 / 1,033 | 445 / 99 |
+| Blue Day | 14,685 | 329 / 164 | 697 / 197 | 437 / 519 | 304 / 12 |
+| Blue Night | 3,061 | 91 / 20 | 1,372 / 93 | 908 / 295 | 972 / 90 |
+| Blue West | 1,248 | 162 / 0 | 587 / 24 | 116 / 434 | 142 / 28 |
+| Brown | 2,181 | 143 / 29 | 1,412 / 33 | 1,607 / 2 | 1,177 / 0 |
+| Gold | 2,592 | 103 / 3 | 1,014 / 247 | 1,146 / 152 | 590 / 6 |
+| Purple | 5,521 | **492 / 689** | 1,180 / 616 | 1,497 / 298 | 1,112 / 480 |
+| Grocery Ham (legacy) | 340 | 1 / 10 | 1 / 4 | 19 / 10 | 1 / 1 |
+| Orange Day | 10,172 | 401 / 63 | 3,228 / 51 | 3,849 / 190 | 1,791 / 0 |
+| Orange Night | 4,972 | **33 / 145** | **251 / 444** | 1,141 / 476 | 347 / 6 |
+| Orange East | 1,526 | 3 / 0 | 114 / 14 | 451 / 15 | 86 / 1 |
+| Pink | 7,021 | **128 / 203** | 3,443 / 286 | 3,521 / 195 | 2,854 / 56 |
+| Blue Weekend | 827 | 3 / 1 | 270 / 8 | 375 / 1 | 170 / 0 |
+| Green (legacy) | 4,452 | 0 / 0 | 0 / 1 | 0 / 5 | 0 / 0 |
+
+The 344 Winchester chain on this day (1,542 waits), Division / Prospect:
+strand 19.5 → 2.7%, jump ≥180 s 13.8 → 0.8%, p90 drift 230 → 115 s;
+departure-poll drift ≥180 s on **38 → 0** riders.
+
+**Three columns regress: Purple's strands, Pink's strands, Orange Night's
+strands and jumps.** Purple's mechanism is traced (#329, 14:12Z 9/3, `traceany.mts`): on leg 1 (300
+George → 100 Church St S) the bus took the parallel one-way street for a
+minute — which is leg 13's published line, the return from West Campus —
+and sat at a light there. Three fixes on that line, 155 m off leg 1's, and
+the position emission moved the whole belief across the fold: the current
+leg pays the stray-fix weight on every fix while the other branch fits at
+1, so a held branch out-lives about two consistent fixes, whatever the
+weight (spread over the loop, 4.6e-6; derived from a local 600 m square,
+2.1e-4 — both tried). 328 riders at 100 Church St S read "in 10" for a bus
+two minutes away. Re-applying `last_stop_id` (300 George, twelve stops from
+anywhere on leg 13) on every poll as a persistent state observation pulled
+a tenth of the mass back and left the number oscillating between the legs;
+withdrawn. The model that fits is a **shadow-leg detour mode**: a detour is
+a persistent lateral offset that follows the leg's geometry, so it pays the
+stray weight once, at entry, and predicts the next fix as well as the line
+does — a third mode of the HMM, the next piece of work. Until then Purple
+trades strands (492 fixed / 689 introduced) for the other three columns
+(jumps 1,180 / 616, reversals 1,497 / 298, drops 1,112 / 480) and a median
+error halved on the gps-replay.
 
 ### The three archived Red riders at Division / Prospect (docs/rider-sim.md acceptance cases)
 
