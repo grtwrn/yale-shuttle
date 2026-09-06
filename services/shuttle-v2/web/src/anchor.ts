@@ -36,6 +36,11 @@ export function registerRoutePaths(
   routePathsById = paths ?? {};
 }
 
+/** The published polyline registered for a route, if any (read by the ring estimator, web/src/eta/). */
+export function routePathFor(routeId: string | number): readonly (readonly [number, number])[] | undefined {
+  return routePathsById[String(routeId)];
+}
+
 function distanceToPathM(bus: LatLon, path: readonly (readonly [number, number])[]): number {
   let best = Infinity;
   for (let i = 0; i + 1 < path.length; i++) {

@@ -285,6 +285,14 @@ export interface Tick {
    * it (the anchor moved the bus past the stop).
    */
   prevSoonest: number | null;
+  /**
+   * The estimator's own interval for the pinned arrival this poll (its
+   * `low`/`high`, seconds), or null when no countdown is shown. Scores the
+   * probabilistic claim: the arrival should fall inside it about as often as
+   * the interval's nominal coverage says.
+   */
+  lowSec?: number | null;
+  highSec?: number | null;
 }
 
 export interface Transition {
@@ -330,6 +338,11 @@ export interface WaitResult {
   readings: number;
   /** First countdown shown: when, text, and the bucket [lo, hi) in seconds. */
   firstSight: { atMs: number; raw: string; lo: number; hi: number } | null;
+  /**
+   * The estimator's interval at first sight and where the arrival fell:
+   * -1 before it (the bus beat the interval), 0 inside, 1 after it.
+   */
+  firstSightInterval: { lo: number; hi: number; where: -1 | 0 | 1 } | null;
   /**
    * Arrival relative to the first promise window, seconds. 0 = inside the
    * window; NEGATIVE = the bus came EARLIER than promised (the direction that
@@ -506,10 +519,16 @@ export function scoreWait(
   const arrivedBus = truth.kind === "arrived" || truth.kind === "boardedOnArrival" ? truth.busName : null;
 
   let firstSight: WaitResult["firstSight"] = null;
+  let firstSightInterval: WaitResult["firstSightInterval"] = null;
   for (let i = 0; i < ticks.length; i++) {
     const s = samples[i]!;
     if (s.eta) {
       firstSight = { atMs: s.atMs, raw: s.eta.raw, lo: s.eta.first[0]!, hi: s.eta.first[1]! };
+      const tk = ticks[i]!;
+      if (tk.lowSec != null && tk.highSec != null && arrivedAt !== null) {
+        const lo = s.atMs + tk.lowSec * 1000, hi = s.atMs + tk.highSec * 1000;
+        firstSightInterval = { lo: tk.lowSec, hi: tk.highSec, where: arrivedAt < lo ? -1 : arrivedAt > hi ? 1 : 0 };
+      }
       break;
     }
   }
@@ -614,7 +633,7 @@ export function scoreWait(
     ...(spec.eventBus ? { eventBus: spec.eventBus } : {}),
     outcome, busAtStopOnArrival, arrivedAt, arrivedBus, detectorArrivedAt, waitSec,
     ticks: allTicks.length, readings: seq.readings,
-    firstSight, firstSightMissSec,
+    firstSight, firstSightMissSec, firstSightInterval,
     transitions, reversals: seq.reversals, notableReversals: seq.notableReversals, catastrophic: seq.catastrophic,
     worstDriftSec, worst,
     pins, pinChanged: pins.length > 1,
@@ -639,6 +658,8 @@ export interface GroupSummary {
   medianWaitMin: number | null;
   p90WaitMin: number | null;
   firstSight: { medianAbsSec: number | null; p90AbsSec: number | null; earlyOver60Pct: number | null; lateOver60Pct: number | null };
+  /** The estimator's interval at first sight: share of arrivals inside / before / after it. */
+  interval: { n: number; insidePct: number | null; earlyPct: number | null; latePct: number | null; medianWidthSec: number | null };
   pctJump180: number;
   pctJump300: number;
   pctReversal60: number;
@@ -681,6 +702,7 @@ export function summarise(waits: readonly WaitResult[]): GroupSummary {
   const scored = arrived.filter((w) => !w.neverShown);
   const miss = scored.map((w) => w.firstSightMissSec).filter((x): x is number => x !== null);
   const worst = scored.map((w) => w.worstDriftSec);
+  const iv = scored.map((w) => w.firstSightInterval).filter((x): x is NonNullable<WaitResult["firstSightInterval"]> => !!x);
   return {
     waits: waits.length,
     arrived: arrived.length,
@@ -695,6 +717,13 @@ export function summarise(waits: readonly WaitResult[]): GroupSummary {
       p90AbsSec: r1(pct(miss.map(Math.abs), 0.9)),
       earlyOver60Pct: miss.length ? share(miss.filter((m) => m < -60).length, miss.length) : null,
       lateOver60Pct: miss.length ? share(miss.filter((m) => m > 60).length, miss.length) : null,
+    },
+    interval: {
+      n: iv.length,
+      insidePct: iv.length ? share(iv.filter((x) => x.where === 0).length, iv.length) : null,
+      earlyPct: iv.length ? share(iv.filter((x) => x.where < 0).length, iv.length) : null,
+      latePct: iv.length ? share(iv.filter((x) => x.where > 0).length, iv.length) : null,
+      medianWidthSec: iv.length ? r1(pct(iv.map((x) => x.hi - x.lo), 0.5)) : null,
     },
     pctJump180: share(scored.filter((w) => w.worstDriftSec >= 180).length, scored.length),
     pctJump300: share(scored.filter((w) => w.worstDriftSec >= 300).length, scored.length),
@@ -880,6 +909,7 @@ export function renderSummary(title: string, s: Summary): string {
   out.push(`${title}`);
   out.push(`  waits ${g.waits}: arrived ${g.arrived}, gave up ${g.gaveUp}, data ended ${g.dataEnded}, boarded on arrival ${g.boardedOnArrival}; scored ${g.scored}`);
   out.push(`  wait median ${g.medianWaitMin} min, p90 ${g.p90WaitMin} min; first promise |miss| median ${g.firstSight.medianAbsSec} s, p90 ${g.firstSight.p90AbsSec} s (early>60 s ${g.firstSight.earlyOver60Pct}%, late>60 s ${g.firstSight.lateOver60Pct}%)`);
+  if (g.interval.n) out.push(`  estimator interval at first sight (n ${g.interval.n}, median width ${g.interval.medianWidthSec} s): inside ${g.interval.insidePct}%, bus earlier ${g.interval.earlyPct}%, later ${g.interval.latePct}%`);
   out.push(`  riders who saw: jump>=180 s ${g.pctJump180}% | jump>=300 s ${g.pctJump300}% | reversal>=60 s ${g.pctReversal60}% | STRAND ${g.pctStrand}% | overshoot ${g.pctOvershoot}% | pin changed ${g.pctPinChanged}% | countdown vanished ${g.pctVanished}% | lap re-priced ${g.pctLapRepriced}% | never shown ${g.pctNeverShown}%`);
   out.push(`  worst drift per wait: p50 ${g.worstDrift.p50} s, p90 ${g.worstDrift.p90} s, max ${g.worstDrift.max} s`);
   out.push(`  DROPPED while still approaching: ${g.pctDropped}% of riders, ${g.drops} drops (${g.dropsDeclined} the card declined a live arrival, ${g.dropsRepriced} the estimator withdrew it)`);

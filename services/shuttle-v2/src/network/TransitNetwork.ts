@@ -3,6 +3,7 @@ import KDBush from "kdbush";
 import type { Route, Stop } from "../schema/api.js";
 
 import { distanceMeters, makeProjector } from "./geo.js";
+import { routeLegMeters } from "./legs.js";
 
 // Tuning constants ------------------------------------------------------------
 
@@ -67,6 +68,31 @@ export interface SegmentStats {
   drive?: number;
   /** Legs behind `drive`. The client gates on it (`MIN_DRIVE_SAMPLES`). */
   driveN?: number;
+  /**
+   * Ascending quantiles of the WHOLE hop, `legs.leg_sec` (drive + every
+   * mid-leg hold, departure at A to the first rest at B), at levels
+   * (i + 0.5) / dq.length over one-hop legs in the split window. `drive` is
+   * one number; this is the distribution the probabilistic estimator sums
+   * over. Absent until a leg has been recorded.
+   */
+  dq?: number[];
+  /** Legs behind `dq`. */
+  dqn?: number;
+}
+
+/**
+ * Route-level pooled pace: quantiles of seconds per ROAD metre
+ * (`legs.leg_sec` / the length of the published line between the two stops,
+ * {@link TransitNetwork.getLegMeters}; the chord only where the line cannot
+ * supply the leg) over every one-hop leg on the route in the split window, at
+ * levels (i + 0.5) / spm.length. The thin-cell prior — a hop with too few
+ * legs of its own is priced from the route's pace times its own `legM`.
+ * Hops whose stops are closer than `PACE_MIN_CHORD_M` are not samples.
+ */
+export interface PaceStats {
+  spm: number[];
+  /** Legs behind `spm`. */
+  n: number;
 }
 
 export interface DwellStats {
@@ -116,6 +142,13 @@ export interface DwellStats {
   q?: number[];
   /** Stopped visits behind `q`. The client gates on it (`MIN_STAND_SAMPLES`). */
   qn?: number;
+  /**
+   * Share of visits that STOPPED here, over visits with outcome `stopped` or
+   * `passed` in the split window (unresolved visits are neither). `q` carries
+   * the same information as its zero mass, but only for PINNED passes; this
+   * counts every pass. Absent wherever `q` is.
+   */
+  pstop?: number;
 }
 
 export interface WalkTransfer {
@@ -193,8 +226,22 @@ export class TransitNetwork {
     ReadonlyMap<number, ReadonlyArray<number>>
   >;
 
+  /**
+   * Road metres of each consecutive hop, keyed like the segment stats
+   * (`segmentKey`), traced along the route's PUBLISHED polyline exactly as the
+   * client traces it (`src/network/legs.ts`, a pinned copy of
+   * `web/src/geo.ts`). Absent where the route has no path, a stop has no
+   * coordinate, or the line cannot supply the leg (a bridged chord is not
+   * road). Static per network, so computed once here rather than on every
+   * payload. On a fold (routes 9/10) the outbound and inbound hops are
+   * different (from, to) pairs and get their own lengths; if a pair ever
+   * repeats verbatim the first occurrence is kept.
+   */
+  private readonly legMeters: ReadonlyMap<string, number>;
+
   private readonly segmentStats = new Map<string, SegmentStats>();
   private readonly dwellStats = new Map<string, DwellStats>();
+  private readonly paceStats = new Map<number, PaceStats>();
 
   private constructor(args: {
     stops: ReadonlyMap<number, Stop>;
@@ -206,6 +253,7 @@ export class TransitNetwork {
       number,
       ReadonlyMap<number, ReadonlyArray<number>>
     >;
+    legMeters: ReadonlyMap<string, number>;
   }) {
     this.stops = args.stops;
     this.routes = args.routes;
@@ -213,6 +261,7 @@ export class TransitNetwork {
     this.walkTransfers = args.walkTransfers;
     this.routeStopIndex = args.routeStopIndex;
     this.routeStopPositions = args.routeStopPositions;
+    this.legMeters = args.legMeters;
   }
 
   static build(stops: readonly Stop[], routes: readonly Route[]): TransitNetwork {
@@ -222,6 +271,7 @@ export class TransitNetwork {
     const walkTransfers = buildWalkTransfers(stops);
     const routeStopPositions = buildRouteStopPositions(routes);
     const routeStopIndex = buildRouteStopIndex(routeStopPositions);
+    const legMeters = buildLegMeters(stopMap, routes);
     return new TransitNetwork({
       stops: stopMap,
       routes: routeMap,
@@ -229,6 +279,7 @@ export class TransitNetwork {
       walkTransfers,
       routeStopIndex,
       routeStopPositions,
+      legMeters,
     });
   }
 
@@ -240,6 +291,19 @@ export class TransitNetwork {
 
   static dwellKey(routeId: number, stopId: number): string {
     return `${routeId}:${stopId}`;
+  }
+
+  /**
+   * The dwell-table key for ONE PASS of a stop the route visits more than
+   * once: `"<route>:<stop>#<index>"`, `index` being the position in the raw
+   * stop sequence (`stop_visits.stop_index`). Routes 9 and 10 stand very
+   * differently on the two passes of a West Campus stop (Purple stop 25: mean
+   * stand 107 s at index 6, 42 s at index 12), so the calibrator keeps a table
+   * per pass beside the pooled `dwellKey` one; the payload spells it
+   * `dwells[route]["<stop>#<index>"]`.
+   */
+  static occurrenceDwellKey(routeId: number, stopId: number, stopIndex: number): string {
+    return `${TransitNetwork.dwellKey(routeId, stopId)}#${stopIndex}`;
   }
 
   getSegmentStats(routeId: number, fromStopId: number, toStopId: number): SegmentStats {
@@ -260,15 +324,45 @@ export class TransitNetwork {
     );
   }
 
-  /** Bulk replacement of all calibrated stats. Atomic from the caller's POV. */
+  /**
+   * The stand table for one pass of a repeated stop (see
+   * {@link occurrenceDwellKey}), or undefined — there is no warm-up default
+   * here, because the pooled {@link getDwellStats} entry IS the fallback.
+   */
+  getOccurrenceDwellStats(routeId: number, stopId: number, stopIndex: number): DwellStats | undefined {
+    return this.dwellStats.get(TransitNetwork.occurrenceDwellKey(routeId, stopId, stopIndex));
+  }
+
+  /** The route's pooled pace, if the calibrator has one (see PaceStats). */
+  getPace(routeId: number): PaceStats | undefined {
+    return this.paceStats.get(routeId);
+  }
+
+  /**
+   * Road metres from `fromStopId` to `toStopId` along the route's published
+   * line (see the `legMeters` field), or undefined where the line cannot
+   * supply the hop. Served as `segments[route]["A-B"].legM`.
+   */
+  getLegMeters(routeId: number, fromStopId: number, toStopId: number): number | undefined {
+    return this.legMeters.get(TransitNetwork.segmentKey(routeId, fromStopId, toStopId));
+  }
+
+  /**
+   * Bulk replacement of all calibrated stats. Atomic from the caller's POV.
+   * `pace` is replaced too — omitting it clears it, so a calibration without
+   * pace never serves a stale one.
+   */
   setCalibration(
     segments: ReadonlyMap<string, SegmentStats>,
     dwells: ReadonlyMap<string, DwellStats>,
+    pace: ReadonlyMap<number, PaceStats> = new Map(),
   ): void {
     this.segmentStats.clear();
     for (const [k, v] of segments) this.segmentStats.set(k, v);
     this.dwellStats.clear();
     for (const [k, v] of dwells) this.dwellStats.set(k, v);
+    this.paceStats.clear();
+    for (const [k, v] of pace) this.paceStats.set(k, v);
   }
 
   // -- Queries ---------------------------------------------------------------
@@ -522,6 +616,35 @@ function buildSegmentEdges(
     }
   }
   return byStop;
+}
+
+function buildLegMeters(
+  stops: ReadonlyMap<number, Stop>,
+  routes: readonly Route[],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const route of routes) {
+    const n = route.stops.length;
+    if (!route.path || n < 2) continue;
+    const coords: Stop[] = [];
+    for (const id of route.stops) {
+      const s = stops.get(id);
+      if (!s) break;
+      coords.push(s);
+    }
+    // A stop without a coordinate breaks the trace for the whole loop (the
+    // tracer walks forward from each stop), so the route gets no lengths at
+    // all rather than a mis-cut set.
+    if (coords.length !== n) continue;
+    const metres = routeLegMeters(route.path, coords);
+    for (let i = 0; i < n; i++) {
+      const m = metres[i];
+      if (m === null || m === undefined) continue;
+      const key = TransitNetwork.segmentKey(route.id, route.stops[i]!, route.stops[(i + 1) % n]!);
+      if (!out.has(key)) out.set(key, m);
+    }
+  }
+  return out;
 }
 
 function buildRouteStopPositions(

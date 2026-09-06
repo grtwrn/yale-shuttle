@@ -696,6 +696,62 @@ These are load-bearing; several rider-visible bugs traced to them:
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
 
+## The ring estimator (every line, 2026-09-05)
+
+Arrivals are priced by `web/src/eta/` — one probabilistic model instead of
+the anchor + gate + stall-credit + approach-zone stack. `MODEL_ROUTE_IDS` in
+`web/src/eta/index.ts` lists every route; the model DECLINES a route on its
+own evidence, never by name: a ring the published line cannot trace
+(`ring.bridged` — Green, whose served sequence is wrong) or a route with no
+measured drive at all (`tables.priced` false — the grocery lines) falls back
+to the legacy arithmetic in `arrivals.ts`. The legacy served split keeps its
+own list (`LEGACY_SPLIT_ROUTE_IDS`, Red and Blue Day), because serving
+tables to every route re-engaged it on Green and cost 77 strands.
+`docs/eta-ring-posterior.md` is the design, the measured decisions and the
+paired numbers. The short form:
+
+- **State** is a distribution over 30 m cells on the published polyline ×
+  {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
+  IS the feed's deadband: a repeated fix means "same cell", a fresh fix means
+  "new cell, near here", with the measured repeat rates for each mode. Table
+  profile on the ring (`setRingProfile`): per-leg speed, per-stop P(stop),
+  stand table and layover flag. A move off a stand splits departure vs
+  reposition by the STOP'S OWN hazard against a measured shuffle rate; the
+  stand's identity (`restStop`, read off the belief) is what the clamp, the
+  chip and the layover approach all key on. `resolveAnchorIndex` runs the
+  same step, so the map, the cards and the countdown answer from one belief.
+- **Price** is a distribution: every served quantile vector is a CDF with a
+  log-linear survival between knots (`dist.ts`); stands shrink toward the
+  route's layover / ordinary pool, drives toward road metres × pace
+  (`tables.ts`, per-occurrence stands `id#index`); chains are summed with
+  common random numbers over ring prefix sums (`arrival.ts`).
+- **The number is the lead LEG's mixture; the lead leg is a decision.** The
+  leg switches with hysteresis in the filter; the row shows quantile τ (0.5)
+  of that leg's standing + moving variants mixed by mass — so a departure
+  lands on the poll it is seen — and a 10–90 range that widens to the full
+  mixture while the lead holds under 0.8. The #119 clamp stays as a display
+  rule keyed on the rest identity, kept (not applied) across a moving spell.
+  A shown MODE decided with hysteresis was tried and withdrawn: it held the
+  standing number until the bus cleared the rest radius and cost the
+  operator's test case its strands (docs/eta-ring-posterior.md §3).
+- **The rest's clock is its earliest known origin**, never the served clock
+  alone: the collector's clock restarts on ITS 125 m rule and switches source
+  between `at_stop_since` and `stationary_since`; read directly it restarted
+  a layover's residual from zero and flapped every kerb-stop number in the
+  simulator. A rest is attributed to a stop only when the stop's zone holds
+  the majority of the standing mass in the rest mask.
+- **Gate every change** with the rider simulator's FIXED/INTRODUCED split
+  per route (`pair-by-route.mjs`), the chain block first, then `gps-replay.ts`
+  both arms. The replays pair both arms in one process: `MODEL_ROUTES` on
+  `gps-replay.ts`, `CLIENT_ROOT` on the rider-sim;
+  `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`) serves
+  `q/drive/dq/pstop/pace` to a replay.
+- Constants in `filter.ts` are measured or derived, not tuned, and each
+  carries the measurement it came from (the off-route emission weight is
+  derived from the loop length, not a floor). A case the model gets wrong is
+  fixed by finding which of the kernel, the likelihood, the tables or the
+  display rule is wrong — not by a new rule.
+
 ## ETA accuracy: measure with the replay, not by eye
 
 `docs/eta-accuracy.md` records the 2026-09-02 replay of the exact client

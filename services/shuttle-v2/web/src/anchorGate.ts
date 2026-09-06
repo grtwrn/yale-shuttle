@@ -36,6 +36,8 @@
  * corroborated, not ignored.
  */
 import { haversineMeters } from "./geo";
+import type { Floors } from "./eta/arrival";
+import type { Belief } from "./eta/filter";
 
 /**
  * Net displacement from where the anchor was set that justifies relocating the
@@ -120,6 +122,14 @@ export interface GatedAnchor {
    */
   fix?: { lat: number; lon: number } | undefined;
   prevFix?: { lat: number; lon: number } | undefined;
+  /**
+   * The ring estimator's state for routes it serves (web/src/eta/): the
+   * posterior over the ring and the shown-instant floors. Carried on the same
+   * entry so one store still means one memory per vehicle, and a storeless
+   * call remains stateless for both estimators.
+   */
+  belief?: Belief | undefined;
+  floors?: Floors | undefined;
 }
 
 export type AnchorStore = Map<string, GatedAnchor>;

@@ -10,6 +10,7 @@ import {
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
 import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
+import { modelServesRoute } from "./eta";
 import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -4251,7 +4252,10 @@ const TripPlanner: FC<{
                   //
                   // If per-bus dwells are ever really served, thread them into
                   // computeUpcomingArrivals FIRST; display follows billing.
-                  const splitServed = splitServedForRoute(routeSegs, routeDwells);
+                  const splitServed = splitServedForRoute(routeSegs, routeDwells, cfg);
+                  // On a route the ring estimator prices, the chip reads the
+                  // model's own stand table (see shownStandSec).
+                  const modelChip = modelServesRoute(cfg) ? { routeDwells } : undefined;
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
                   /**
                    * M:SS for the live pause chip, so a hold keeps its seconds
@@ -4321,7 +4325,8 @@ const TripPlanner: FC<{
                     return shownStandSec(stat, seg, elapsed, splitServed, false,
                       elapsed === null || busMatch == null
                         ? undefined
-                        : { store: liveAnchorStore, key: anchorKeyFor(cfg.label, busMatch.bus_name), stopId: sid, now: Date.now() });
+                        : { store: liveAnchorStore, key: anchorKeyFor(cfg.label, busMatch.bus_name), stopId: sid, now: Date.now() },
+                      modelChip);
                   };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>

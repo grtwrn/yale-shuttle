@@ -40,6 +40,8 @@ import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import type { AnchorStore } from "../../web/src/anchorGate";
+import { PACE_KEY, paceCarrier, type PaceEntry } from "../../src/server/v1compat";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLegs } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
@@ -58,6 +60,12 @@ const POLL_STRIDE = Number(process.env.POLL_STRIDE ?? 1);
 const net = loadNet();
 const { db, network } = net;
 registerRoutePaths(net.routePaths);
+// MODEL_ROUTES="" scores the legacy arithmetic on every route; "3" the ring
+// estimator on Red; unset = the tree's own allowlist (web/src/eta/index.ts).
+if (process.env.MODEL_ROUTES !== undefined) {
+  (globalThis as { __SHUTTLE_MODEL_ROUTES__?: ReadonlySet<string> }).__SHUTTLE_MODEL_ROUTES__ = new Set(process.env.MODEL_ROUTES.split(",").map((x) => x.trim()).filter(Boolean));
+  log(`MODEL_ROUTES=${JSON.stringify(process.env.MODEL_ROUTES)}`);
+}
 
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
 const pos = db
@@ -88,10 +96,20 @@ function payloadAt(t: number) {
       served.set(r.id, s);
       segmentTimes[String(r.id)] = segmentTimesFor(adj, s);
     }
+    // PAYLOAD_PATCH (see rider-sim/run.ts): the split and model fields a
+    // candidate reads that the snapshot's calibrator does not time-travel.
+    if (patch?.segments) for (const [rid, byKey] of Object.entries(patch.segments)) {
+      const r = (segmentTimes[rid] ??= {});
+      for (const [k, fields] of Object.entries(byKey)) Object.assign((r[k] ??= { avg: 0, n: 0 } as any), fields);
+    }
+    if (patch?.pace) for (const [rid, entry] of Object.entries(patch.pace)) (segmentTimes[rid] ??= {})[PACE_KEY] = paceCarrier(entry) as any;
     servedCache.set(String(bs), (p = { served, segmentTimes }));
   }
   return p;
 }
+interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
+const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
+if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 
 // -- Time-travelled dwell calibration (calibrator.ts loadDwellGroups + computeDwellStats) --
 // The payload's dwells[route][stop].med: windowed (dow, hour±1) median over 14 days, else the 14-day median.
@@ -165,6 +183,10 @@ function dwellPayloadAt(t: number): DwellTimes {
       stat = { med, sd: Math.max(percentileOf(win, 0.9) - med, 5), n: win.length, ...(low !== undefined ? { low: Math.min(low, med) } : {}) };
     }
     (out[rid!] ||= {})[sid!] = { med: Math.round(stat.med * 10) / 10, sd: Math.round(stat.sd * 10) / 10, n: stat.n, ...(stat.low !== undefined ? { low: Math.round(stat.low * 10) / 10 } : {}) };
+  }
+  if (patch?.dwells) for (const [rid, byKey] of Object.entries(patch.dwells)) {
+    const r = (out[rid] ??= {});
+    for (const [k, fields] of Object.entries(byKey)) Object.assign((r[k] ??= { med: 0, sd: 0, n: 0 } as any), fields);
   }
   dwellPayloadCache.set(String(start), out);
   return out;
@@ -513,10 +535,16 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
+/**
+ * The real client's memory — production passes `liveAnchorStore` on every
+ * call, so the gated anchor (PR #72) and the ring estimator's belief both
+ * ride it. Observations are in time order, one entry per vehicle.
+ */
+const clientStore: AnchorStore = new Map();
 const counts = { obs: observations.length, offRoute: 0, noAnchor: 0, noRouteCfg: 0, replicaMismatch: 0, noDetector: 0, noProximity: 0, scored: 0 };
 let maxReplicaDiff = 0;
 let diagLeft = 40;
@@ -539,7 +567,7 @@ for (const o of observations) {
   const payload = payloadAt(o.t);
   const targets: number[] = [];
   for (let k = 1; k <= MAX_K; k++) targets.push(stops[(busIdx + k) % stops.length]!);
-  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t))
+  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t), clientStore)
     .filter((a) => a.routeLabel === cfg.label);
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
@@ -595,6 +623,8 @@ for (const o of observations) {
       det: det === null ? null : (det - o.t) / 1000,
       prox: prox === null ? null : (prox - o.t) / 1000,
       realEta: r.eta,
+      realLow: r.low,
+      realHigh: r.high,
     });
   }
 }
@@ -690,14 +720,35 @@ const result: any = {
   atStopShare: Math.round((1000 * pairs.filter((p) => p.atStop).length) / pairs.length) / 10,
   truths: {},
 };
+/** Where the arrival fell against the client's own [low, high]: inside / before / after, and the median width. */
+function coverage(truth: "det" | "prox", filter: (p: Pair) => boolean) {
+  let n = 0, inside = 0, early = 0, late = 0;
+  const widths: number[] = [];
+  for (const p of pairs) {
+    const a = p[truth];
+    if (a === null || !filter(p)) continue;
+    n++;
+    if (a < p.realLow) early++; else if (a > p.realHigh) late++; else inside++;
+    widths.push(p.realHigh - p.realLow);
+  }
+  widths.sort((x, y) => x - y);
+  const pc = (x: number) => (n ? Math.round((1000 * x) / n) / 10 : null);
+  return { n, insidePct: pc(inside), earlyPct: pc(early), latePct: pc(late), medianWidthSec: widths.length ? Math.round(widths[widths.length >> 1]! * 10) / 10 : null };
+}
 for (const truth of ["prox", "det"] as const) {
   const t: any = {};
+  t.clientCoverage = {
+    overall: coverage(truth, () => true),
+    byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, coverage(truth, (p) => p.k === k)])),
+    byRoute: Object.fromEntries(routesSeen.map((r) => [routeName(r), coverage(truth, (p) => p.routeId === r)])),
+  };
   for (const mode of ["client", ...MODES] as const) {
     t[mode] = {
       overall: score(truth, mode, () => true),
       byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, score(truth, mode, (p) => p.k === k)])),
       atStop: score(truth, mode, (p) => p.atStop),
       moving: score(truth, mode, (p) => !p.atStop),
+      byRoute: Object.fromEntries(routesSeen.map((r) => [routeName(r), score(truth, mode, (p) => p.routeId === r)])),
       movingK1: score(truth, mode, (p) => !p.atStop && p.k === 1),
       atStopK1: score(truth, mode, (p) => p.atStop && p.k === 1),
       anchorAgrees: score(truth, mode, (p) => p.agree),

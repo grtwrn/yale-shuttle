@@ -3,11 +3,14 @@
 import { isBusOnRoute } from "./anchor";
 import { type AnchorStore } from "./anchorGate";
 import { anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
+import { arrivalsForBus, modelPricesRoute, modelServesRoute, ringForBus } from "./eta";
+import { residualMedian } from "./eta/dist";
+import { classPools, stopModel } from "./eta/tables";
 import { driveAdequate, flooredStandSec, priceFirstHop, remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M, type StandFloorCtx } from "./hopPricing";
 import { haversineMeters, progressAlongSegment } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
-import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
+import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS, type RouteListConfig } from "./routes";
 
 /**
  * `drive`, when served, is the seconds from the last poll at the from-stop to
@@ -35,6 +38,14 @@ export type DwellsByBus = Record<string, DwellTimes>;
  * empirical rather than a decomposition of the hop.
  */
 export const STALL_CREDIT_MAX_FRACTION = 0.5;
+
+/**
+ * Routes on which the legacy stand/drive split (hopPricing.ts) may run when
+ * the ring estimator declines the route: production's `SPLIT_SERVED_ROUTE_IDS`
+ * (calibrator.ts), moved to the client now that the server serves the split
+ * tables to every route for the estimator's sake.
+ */
+export const LEGACY_SPLIT_ROUTE_IDS: ReadonlySet<string> = new Set(["3", "1"]);
 
 /**
  * The shortest time any hop may be billed at. Shared by the unmeasured-hop
@@ -179,7 +190,14 @@ export function billedDwellSec(
 export function splitServedForRoute(
   routeSegs: Record<string, SegmentStat>,
   routeDwells: Record<string, DwellStat>,
+  /**
+   * The route, when the caller has it: a route the ring estimator prices
+   * never runs the legacy split, whatever its tables carry (the tables are
+   * now served for every route, and the split was measured to strand Purple).
+   */
+  cfg?: RouteListConfig,
 ): boolean {
+  if (cfg && modelServesRoute(cfg)) return false;
   return Object.values(routeSegs).some(driveAdequate)
     && Object.values(routeDwells).some(standAdequate);
 }
@@ -252,7 +270,20 @@ export function shownStandSec(
    * the tests call.
    */
   floor?: StandFloorCtx,
+  /**
+   * On a route the ring estimator prices, the chip reads the model's own
+   * stand table — the class-shrunk survival curve — at the same elapsed
+   * clock the countdown is billed under, so the two cannot disagree.
+   */
+  model?: { routeDwells: Record<string, DwellStat> },
 ): ShownStand | null {
+  if (model && stat && stat.q && stat.q.length >= 3) {
+    const m = stopModel(stat, classPools(model.routeDwells));
+    if (elapsedSec !== null) {
+      return { sec: residualMedian(m.stand, elapsedSec), remaining: true, typicalSec: residualMedian(m.stand, 0) };
+    }
+    return { sec: residualMedian(m.stand, 0), remaining: false };
+  }
   if (splitServed && elapsedSec !== null && standAdequate(stat) && driveAdequate(seg)) {
     return {
       sec: floor
@@ -363,6 +394,32 @@ export function computeUpcomingArrivals(
 
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
     const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
+
+    // A route the ring estimator serves (web/src/eta/) is priced from a
+    // distribution on the ring: no point anchor, no credit, no proration.
+    // Falls through to the legacy arithmetic only when the route's geometry
+    // cannot be traced, the same condition under which `legGeometry` gives up.
+    const ring = modelServesRoute(cfg) && routeBuses[0] ? ringForBus(routeBuses[0], stops, stopCoords) : null;
+    if (ring && modelPricesRoute(ring, stops, stopCoords, routeSegs, routeDwells)) {
+      let priced = false;
+      for (const bus of routeBuses) {
+        const rows = arrivalsForBus(
+          anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
+          routeSegs, routeDwells, targetSet, now,
+        );
+        if (!rows) break;
+        priced = true;
+        for (const row of rows) {
+          result.push({
+            eta: row.eta, low: row.low, high: row.high,
+            routeLabel: cfg.label, color: cfg.color,
+            busName: bus.bus_name.replace("#", ""),
+            stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
+          });
+        }
+      }
+      if (priced) continue;
+    }
     const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
     const avgSeg = segValues.length > 0
       ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
@@ -373,7 +430,13 @@ export function computeUpcomingArrivals(
     // below this line behaves differently from before it existed.
     // Shared with the pause chip on screen (see shownStandSec) so the number
     // shown and the number billed cannot come from two different rules.
-    const splitServed = splitServedForRoute(routeSegs, routeDwells);
+    // The legacy split runs here only when the model did NOT price the route
+    // (no traceable ring, or no measured drive in its tables). The server now
+    // serves the split tables to every route, so the split keeps ITS OWN
+    // allowlist here — the routes it was measured on. On a fold it was
+    // measured to strand Purple (26 introduced / 1 fixed) and, once the
+    // tables reached Green, 77 riders on the 9/3 replay.
+    const splitServed = LEGACY_SPLIT_ROUTE_IDS.has(cfg.routeIds[0] ?? "") && splitServedForRoute(routeSegs, routeDwells);
 
     for (const bus of routeBuses) {
       // Anchor = segment start. GPS is the ground-truth signal;
@@ -568,7 +631,7 @@ export function computeUpcomingArrivals(
         // Both halves must be adequately sampled for THIS hop, independently
         // of every other hop; a thin cell prices exactly as master does.
         const standStat = routeDwells[String(stops[busIdx])];
-        const split = step === 1 && driveAdequate(seg) && standAdequate(standStat)
+        const split = splitServed && step === 1 && driveAdequate(seg) && standAdequate(standStat)
           ? { drive: Math.max(seg.drive, driveFloorSec(stopCoords[stops[prevI]], stopCoords[stops[curI]])), stand: standStat.q }
           : null;
         if (split) {
