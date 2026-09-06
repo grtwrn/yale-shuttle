@@ -1378,7 +1378,18 @@ line names its author:
   bus's `last_stop_id`, alight 4–11 further on, ≥ `MIN_RIDE_M`), the way
   `~/eta-live/fleet.sh` and map-bot pick theirs, because a fixed pair only
   ever exercises one pair of segments and the defects found so far live at
-  particular stops.
+  particular stops. **Only rides the planner would offer** (2026-09-06
+  16:25: on Grocery Ham's 6-stop loop the picker wrapped past the far end
+  and asked for a 5-hop, ~66-min ride for a 1.5 km walk; the app rightly
+  offered Walk and never Grocery Ham, and the canary filed `line-missing`
+  against it). `candidateRides` keeps a ride in one lap, at most half the
+  loop in hops and metres, under the planner's `MAX_RIDE_SEC` priced the
+  planner's way (`seg.avg` when `n ≥ 1`, else crow-flies at
+  `BUS_SPEED_M_S`), and faster than the crow-flies walk at
+  `WALK_EFFECTIVE_M_S` by two minutes — the three constants are parsed out
+  of `web/src` by the test so they cannot drift. No 4–11-hop ride → the
+  longest dominant one; none at all → the line is SKIPPED that cycle with
+  the reason logged, never ridden on a fallback pair.
 
 Before this it rode Red only and logged "nothing rideable" every ten minutes
 from dawn to dusk on a weekend while four lines ran. The second browser is
