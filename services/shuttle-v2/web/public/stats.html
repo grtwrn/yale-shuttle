@@ -328,7 +328,10 @@
       <div class="stamp" id="since"></div>
       <!--
         Ours against the official Downtowner app's own ETAs, scored on the same
-        arrivals. Absent entirely until both arms have enough paired rows to
+        arrivals, like for like: promises of 30 min or less on both sides (all
+        upstream publishes), a bus already standing at the stop excluded on
+        both sides, and a second line on the (bus, stop, minute) both apps
+        predicted. Absent entirely until both arms have enough paired rows to
         mean anything (the server sends null; see MIN_COMPARE_PAIRS) — a
         comparison is a claim, and a thin one flips sign by the hour.
       -->
@@ -892,21 +895,42 @@
   }
 
   // Ours vs the operator's own app, both paired against the same detected
-  // arrivals. One line, and only when the server judged there was enough to
+  // arrivals. Two lines, and only when the server judged there was enough to
   // say: `etaVsOfficial` is null otherwise and this stays hidden.
   //
+  // The label carries the rules because the number is meaningless without
+  // them: both arms are capped at the horizon upstream publishes to (30 min —
+  // ours used to be scored out to 90), and a prediction for a bus already
+  // standing at the stop is excluded from both (it used to be paired with the
+  // NEXT visit, a lap later). The second line is the only controlled read:
+  // the same bus, stop and minute predicted by both apps, paired to the same
+  // arrival. Below the floor it prints the count and withholds the numbers.
+  //
   // "official" is `routes_eta.php`, which serves WHOLE MINUTES, so roughly
-  // ±30 s of its error is rounding. That is why the line names the two
-  // numbers and draws no conclusion — the controlled read is
-  // scripts/eta-replay/compare-upstream.ts.
+  // ±30 s of its error is rounding. That is why the lines name the two
+  // numbers and draw no conclusion — the full read is
+  // scripts/eta-replay/compare-upstream.ts and docs/upstream-eta-measurement.md.
   function renderEtaVs(d) {
     if (!d || !d.ours || !d.official) { el.etaVs.hidden = true; return; }
     var secs = function (x) { return Math.round(x) + " s"; };
-    el.etaVs.textContent =
-      "ours vs official, last " + d.hours + " h: |err| p50 " +
-      secs(d.ours.medianAbsErrorSec) + " vs " + secs(d.official.medianAbsErrorSec) +
-      " · within 2 min " + d.ours.within120Pct + "% vs " + d.official.within120Pct + "%" +
-      " (" + num(d.ours.paired) + " vs " + num(d.official.paired) + " paired)";
+    var versus = function (a, b) {
+      return "|err| p50 " + secs(a.medianAbsErrorSec) + " vs " + secs(b.medianAbsErrorSec) +
+        " · within 2 min " + a.within120Pct + "% vs " + b.within120Pct + "%";
+    };
+    var capMin = Math.round((d.horizonCapSec || 1800) / 60);
+    var excluded = (d.ours.standing || 0) + (d.official.standing || 0);
+    var arms = document.createElement("div");
+    arms.textContent =
+      "ours vs official, last " + d.hours + " h, promises ≤ " + capMin + " min" +
+      ", standing buses excluded: " + versus(d.ours, d.official) +
+      " (" + num(d.ours.paired) + " vs " + num(d.official.paired) + " paired" +
+      (excluded ? ", " + num(excluded) + " standing" : "") + ")";
+    var shared = document.createElement("div");
+    var s = d.shared || { n: 0, ours: null, official: null };
+    shared.textContent = s.ours && s.official
+      ? "same bus, stop & minute, " + num(s.n) + " pairs: " + versus(s.ours, s.official)
+      : "same bus, stop & minute: " + num(s.n) + " pairs, below the " + num(d.minPairs || 50) + " needed to compare";
+    el.etaVs.replaceChildren(arms, shared);
     el.etaVs.hidden = false;
   }
 
