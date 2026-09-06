@@ -86,6 +86,17 @@ These came from past bugs/feedback — don't re-litigate them:
 - **Route colour has one source**: `ROUTE_LISTS` in `web/src/routes.ts`. Three other tables used to hold their own copies and two had silently drifted. Everything else derives from it; a test fails if they disagree.
 - **The walk model lives on the server** (`WALK_M_PER_S` in `src/network/TransitNetwork.ts`) and the client mirrors it. `walk.test.ts` parses the server's constant out of its source, so the two cannot drift. Change the server first, never one side alone.
 
+**The two grocery lines alternate whole weekends** (`ROUTE_ALTERNATION` in
+`web/src/schedule.ts`): Grocery TJ on the weekend of 2026-06-20 and every
+second weekend after, Grocery Ham the others — measured over 13 of 13 weekends
+in `arrivals`, never published (the operator's description of both reads
+"7am - 5pm, Sat - Sun"). `serviceStateAt` folds the rule into what the app
+SAYS ("Not this weekend · next Sat Sep 12", not "should be running now"), and
+`isRouteScheduledAt` into which lines a future-dated plan may ride; a partner
+with a bus reporting today overrides the calendar. The in-service gate
+(`isBusInService`) deliberately ignores it — a bus on the "wrong" weekend is
+still shown.
+
 ## Bug reports
 
 Users submit reports via the in-app "🚩 Report issue" / "💬 Send feedback". Workflow:

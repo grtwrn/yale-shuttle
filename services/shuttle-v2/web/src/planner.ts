@@ -8,7 +8,7 @@ import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 import {
-  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
+  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_HOURS, serviceStateAt,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
@@ -300,7 +300,9 @@ export function planTrip(
     // Skip routes that won't be running at the target time. In live mode
     // we still let computeUpcomingArrivals gate (bus presence filters
     // naturally).
-    if (futureMode && !isRouteActiveAt(cfg.label, targetDate!)) continue;
+    // The calendar question, alternation included: a plan for next Saturday
+    // must not ride the grocery line that runs the OTHER weekends.
+    if (futureMode && !isRouteScheduledAt(cfg.label, targetDate!)) continue;
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
@@ -546,6 +548,13 @@ export interface PotentialRoute {
    * `nextActive` alone says at 07:02 on a school morning.
    */
   activeNow: boolean;
+  /**
+   * The calendar says the line runs on days like today, but this is the
+   * weekend its `partner` runs instead (`ROUTE_ALTERNATION`): the rider reads
+   * "Not this weekend", never "should be running now". `nextActive` is then
+   * the line's own next weekend.
+   */
+  offWeek: { partner: string } | null;
 }
 
 /**
@@ -595,12 +604,18 @@ export function findPotentialRoutes(
   // "Next: …", "should be running"); otherwise the hand-maintained ROUTE_HOURS
   // — which is the widened in-service gate, not the timetable — stands in.
   publishedHours?: Record<string, PublishedWindow>,
+  // The lines with a bus reporting at `now`: the live cross-check for a line
+  // that alternates weekends with another (its partner out today means it is
+  // off today, whatever the calendar arithmetic says). Bears on `after` only
+  // when `after` is today.
+  live?: { labels: ReadonlySet<string>; now: Date },
 ): PotentialRoute[] {
   const out: PotentialRoute[] = [];
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const published = publishedWindowFor(cfg, publishedHours);
+    const state = serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, after, live);
     // Any board stop near "from" and any alight stop near "to",
     // with alight further along the route than board (so we're not
     // suggesting a ride that goes the wrong way).
@@ -633,8 +648,9 @@ export function findPotentialRoutes(
       boardStopId: bestBoard,
       alightStopId: bestAlight,
       schedule: published ? fmtWindows([published]) : fmtSchedule(cfg.label),
-      nextActive: published ? nextWindowStart([published], after) : nextActiveWindow(cfg.label, after),
-      activeNow: published ? isWindowActiveAt([published], after) : isRouteActiveAt(cfg.label, after),
+      nextActive: state.next,
+      activeNow: state.open,
+      offWeek: state.offWeek,
     });
   }
   // Routes that should be running now first, then by next-active — soonest

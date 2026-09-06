@@ -55,10 +55,11 @@ import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
+  ROUTE_ID_LABEL,
   BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
-import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
+import { fmtSchedule, fmtWindows, isBusInService, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { AT_PLACE_M, walkSecFromMeters } from "./walk";
@@ -1987,6 +1988,14 @@ const TripPlanner: FC<{
     }
   }, [busRoster, stableOptions]);
 
+  // Which lines have a bus out right now — the live half of the weekend
+  // alternation (schedule.ts ROUTE_ALTERNATION). Keyed as a string so the
+  // memo below recomputes when a line appears or vanishes, not every poll.
+  const liveLabelsKey = useMemo(
+    () => [...new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l))].sort().join("|"),
+    [buses],
+  );
+  const liveLabels = useMemo(() => new Set(liveLabelsKey ? liveLabelsKey.split("|") : []), [liveLabelsKey]);
   // "Routes that could get you there, but aren't running right now"
   // — displayed when planTrip yields only Walk. Recomputed alongside
   // stableOptions because it depends on the same endpoint + targetDate.
@@ -1995,9 +2004,9 @@ const TripPlanner: FC<{
     const after = targetDate && targetDate.getTime() > Date.now()
       ? targetDate
       : new Date();
-    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours);
+    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours, { labels: liveLabels, now: new Date() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, refreshKey]);
+  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, refreshKey, liveLabelsKey]);
   const options: TripOption[] | null = useMemo(() => {
     if (!stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
@@ -3276,6 +3285,11 @@ const TripPlanner: FC<{
                     hour: "numeric", minute: "2-digit",
                   })
                 : null;
+              // A line off for the whole weekend gets a date, not a time —
+              // "next Sat Sep 12", the day the rider will plan around.
+              const nextDayStr = p.nextActive
+                ? p.nextActive.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+                : null;
               return (
                 <div key={p.label} style={{
                   padding: "10px 12px", background: "#fff", borderRadius: 10,
@@ -3297,6 +3311,21 @@ const TripPlanner: FC<{
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
                       </div>
+                    ) : p.offWeek ? (
+                      // The grocery lines alternate whole weekends (a pattern
+                      // measured over every weekend since June, not a
+                      // published timetable — say so). Before this the card
+                      // read "should be running now — no bus reporting yet"
+                      // every other weekend, which is a broken feed, not a
+                      // line that is simply not out this week.
+                      <>
+                        <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
+                          Not this weekend{nextDayStr ? ` · next ${nextDayStr}` : ""}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#78909c", marginTop: 2 }}>
+                          Alternates weekends with {p.offWeek.partner} — a pattern we see, not a published schedule
+                        </div>
+                      </>
                     ) : nextStr && (
                       // Report #86 asked whether a route that is not running
                       // should be listed at all. It should — the alternative
@@ -5308,7 +5337,16 @@ const StopList: FC<{
         // Published hours when the server parsed them; ROUTE_HOURS (the wider
         // in-service gate) only as a fallback.
         const published = publishedWindowFor(cfg, routeHours);
-        const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        const hoursText = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        // A line whose partner runs this weekend (schedule.ts
+        // ROUTE_ALTERNATION) says so beside its hours, so "0/1 bus" under
+        // "Sa/Su 7a–5p" on a Sunday does not read as a bus that failed to
+        // come out.
+        const offWeek = routeBuses.length === 0
+          ? serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, new Date(),
+              { labels: new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l)), now: new Date() }).offWeek
+          : null;
+        const schedule = offWeek ? `${hoursText} · not this weekend` : hoursText;
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
 

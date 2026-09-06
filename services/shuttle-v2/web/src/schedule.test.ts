@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  etDayAndMinutes, fmtSchedule, fmtScheduleDays, fmtScheduleTime, fmtWindows,
-  isBusInService, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
-  ROUTE_HOURS, SERVICE_GRACE_MS,
+  etDayAndMinutes, etDayNumber, fmtSchedule, fmtScheduleDays, fmtScheduleTime, fmtWindows,
+  isBusInService, isOnWeekAt, isRouteActiveAt, isRouteScheduledAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
+  ROUTE_ALTERNATION, ROUTE_HOURS, SERVICE_GRACE_MS, serviceStateAt,
 } from "./schedule";
 import { ROUTE_LISTS } from "./routes";
 import { makeBus } from "./__fixtures__/payload";
@@ -412,4 +412,129 @@ describe("fmtWindows / isWindowActiveAt / nextWindowStart", () => {
       }
     }
   });
+});
+
+// The two grocery lines alternate whole weekends. Measured from `arrivals`,
+// every weekend 2026-06-13 → 2026-09-06 (13 of 13, never both, never twice
+// running): the calendar below IS the evidence, and the rule must reproduce
+// every weekend of it. On Sun 2026-09-06 10:28 ET the operator planned to
+// Trader Joe's and read "Should be running now — no bus reporting yet" on a
+// Hamden weekend.
+describe("ROUTE_ALTERNATION (the grocery lines' alternate weekends)", () => {
+  const TJ_WEEKENDS = ["2026-06-20", "2026-07-04", "2026-07-18", "2026-08-01", "2026-08-15", "2026-08-29"];
+  const HAM_WEEKENDS = ["2026-06-13", "2026-06-27", "2026-07-11", "2026-07-25", "2026-08-08", "2026-08-22", "2026-09-05"];
+  const sat = (iso: string, h = 10) => new Date(`${iso}T${String(h).padStart(2, "0")}:00:00-04:00`);
+  const sun = (iso: string, h = 10) => new Date(sat(iso, h).getTime() + 86_400_000);
+  const tj = ROUTE_ALTERNATION["Grocery TJ"]!, ham = ROUTE_ALTERNATION["Grocery Ham"]!;
+  const SUN_0906_1028 = new Date("2026-09-06T10:28:00-04:00");
+  const SAT_0912_0700 = new Date("2026-09-12T07:00:00-04:00");
+
+  it("reproduces every observed weekend, both days, for both lines", () => {
+    for (const w of TJ_WEEKENDS) {
+      expect(isOnWeekAt(tj, sat(w)), `TJ on ${w}`).toBe(true);
+      expect(isOnWeekAt(tj, sun(w)), `TJ on ${w}+1`).toBe(true);
+      expect(isOnWeekAt(ham, sat(w)), `Ham off ${w}`).toBe(false);
+      expect(isOnWeekAt(ham, sun(w)), `Ham off ${w}+1`).toBe(false);
+    }
+    for (const w of HAM_WEEKENDS) {
+      expect(isOnWeekAt(ham, sat(w)), `Ham on ${w}`).toBe(true);
+      expect(isOnWeekAt(ham, sun(w)), `Ham on ${w}+1`).toBe(true);
+      expect(isOnWeekAt(tj, sat(w)), `TJ off ${w}`).toBe(false);
+      expect(isOnWeekAt(tj, sun(w)), `TJ off ${w}+1`).toBe(false);
+    }
+  });
+
+  it("the two rules are each other's partner and never both on", () => {
+    expect(tj.partner).toBe("Grocery Ham");
+    expect(ham.partner).toBe("Grocery TJ");
+    for (let day = 0; day < 8 * 7; day++) {
+      const d = new Date(sat("2026-06-13").getTime() + day * 86_400_000);
+      expect(isOnWeekAt(tj, d) !== isOnWeekAt(ham, d), d.toISOString()).toBe(true);
+    }
+  });
+
+  it("a TJ weekend day is in service; a Hamden weekend day is 'not this weekend', with TJ's next date", () => {
+    // Sat Sep 12 is TJ's: open.
+    expect(isRouteScheduledAt("Grocery TJ", sat("2026-09-12"))).toBe(true);
+    expect(serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", sat("2026-09-12"))).toMatchObject({ open: true, offWeek: null });
+    // Sun Sep 6 is Hamden's: TJ is off for the weekend, next Sat Sep 12 07:00 ET.
+    expect(isRouteScheduledAt("Grocery TJ", SUN_0906_1028)).toBe(false);
+    const st = serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", SUN_0906_1028);
+    expect(st.open).toBe(false);
+    expect(st.offWeek).toEqual({ partner: "Grocery Ham" });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    // And Hamden itself is open that morning.
+    expect(serviceStateAt(ROUTE_HOURS["Grocery Ham"], "Grocery Ham", SUN_0906_1028)).toMatchObject({ open: true, offWeek: null });
+  });
+
+  it("the same answers against the operator's PUBLISHED window (what riders are shown)", () => {
+    const published = [{ days: [0, 6], startMin: 7 * 60, endMin: 17 * 60, text: "7am - 5pm, Sat - Sun" }];
+    const st = serviceStateAt(published, "Grocery TJ", SUN_0906_1028);
+    expect(st).toMatchObject({ open: false, offWeek: { partner: "Grocery Ham" } });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    expect(serviceStateAt(published, "Grocery TJ", sat("2026-09-12"))).toMatchObject({ open: true, offWeek: null });
+  });
+
+  it("a weekday is simply not running — no 'not this weekend' — and next is the line's own Saturday", () => {
+    const wed = new Date("2026-09-09T12:00:00-04:00");
+    const st = serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", wed);
+    expect(st).toMatchObject({ open: false, offWeek: null });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    // Hamden's next from that Wednesday skips TJ's weekend: Sat Sep 19.
+    const hamNext = serviceStateAt(ROUTE_HOURS["Grocery Ham"], "Grocery Ham", wed).next;
+    expect(hamNext?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    // Off-hours on the line's own weekend: closed, next is that day's 07:00.
+    const satEve = new Date("2026-09-12T20:00:00-04:00");
+    expect(serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", satEve)).toMatchObject({ open: false, offWeek: null });
+    expect(nextWindowStart(ROUTE_HOURS["Grocery TJ"]!, satEve, tj)?.toISOString()).toBe(new Date("2026-09-13T07:00:00-04:00").toISOString());
+  });
+
+  it("the partner's bus out today overrides the calendar (drift after a holiday), today only", () => {
+    // Calendar says Sat Sep 12 is TJ's — but Hamden is reporting.
+    const live = { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") };
+    const st = serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", sat("2026-09-12"), live);
+    expect(st).toMatchObject({ open: false, offWeek: { partner: "Grocery Ham" } });
+    // The honest next is the first opening after this weekend, not a whole cycle away.
+    expect(st.next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    // A partner out TODAY says nothing about a plan for next Saturday.
+    const later = serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") });
+    expect(later.open).toBe(false); // Sep 19 is Hamden's by the calendar
+    const laterOwn = serviceStateAt(ROUTE_HOURS["Grocery TJ"], "Grocery TJ", sat("2026-09-26"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") });
+    expect(laterOwn.open).toBe(true);
+    // The partner's own bus never turns the partner off.
+    expect(serviceStateAt(ROUTE_HOURS["Grocery Ham"], "Grocery Ham", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(true);
+  });
+
+  it("the in-service gate stays wide: a TJ bus on a Hamden weekend is still shown", () => {
+    const bus = makeBus({ route_id: 6, lat: 41.2513, lon: -73.0177 });
+    expect(isBusInService(bus, SUN_0906_1028.getTime())).toBe(true);
+    expect(isRouteActiveAt("Grocery TJ", SUN_0906_1028)).toBe(true);
+  });
+
+  it("lines without a rule are untouched", () => {
+    const d = new Date("2026-09-05T10:00:00-04:00");
+    const st = serviceStateAt(ROUTE_HOURS["Blue Weekend"], "Blue Weekend", d, { labels: new Set(["Grocery Ham"]), now: d });
+    expect(st).toMatchObject({ open: true, offWeek: null });
+    expect(serviceStateAt(undefined, "Nowhere", d)).toEqual({ open: true, offWeek: null, next: null });
+    expect(isRouteScheduledAt("Nowhere", d)).toBe(true);
+  });
+
+  // Fri 2026-09-11 23:30 ET is 03:30 UTC on Sat Sep 12. On the ET calendar
+  // that is still the Hamden week's Friday; on a UTC device it is TJ's
+  // Saturday. Every zone must read the ET calendar.
+  const FRI_2330_ET = new Date("2026-09-12T03:30:00Z");
+  const zones = ["UTC", "Asia/Tokyo", "America/Los_Angeles", "Pacific/Kiritimati", "Europe/London"];
+  for (const tz of zones) {
+    it(`resolves the weekend on the ET calendar under TZ=${tz}`, async () => {
+      process.env.TZ = tz;
+      vi.resetModules();
+      const mod = await import("./schedule");
+      const rule = mod.ROUTE_ALTERNATION["Grocery TJ"]!;
+      expect(mod.etDayNumber(FRI_2330_ET)).toBe(etDayNumber(new Date("2026-09-11T12:00:00-04:00")));
+      expect(mod.isOnWeekAt(rule, FRI_2330_ET)).toBe(false);
+      expect(mod.isOnWeekAt(rule, new Date(FRI_2330_ET.getTime() + 5 * 3_600_000))).toBe(true);
+      expect(mod.serviceStateAt(mod.ROUTE_HOURS["Grocery TJ"], "Grocery TJ", SUN_0906_1028)).toMatchObject({ open: false, offWeek: { partner: "Grocery Ham" } });
+      expect(mod.serviceStateAt(mod.ROUTE_HOURS["Grocery TJ"], "Grocery TJ", SUN_0906_1028).next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    });
+  }
 });
