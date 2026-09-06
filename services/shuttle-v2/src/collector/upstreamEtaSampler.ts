@@ -25,13 +25,14 @@
  *     are probed once a minute on purpose.
  *
  * So this is a census, not a sample: every stop of every route with a live
- * bus, round-robin, one call a second, verbatim into `upstream_etas`
+ * bus, round-robin, one call every 3 s by default (never more than one a second), verbatim into `upstream_etas`
  * (`src/db/schema.ts` says what the columns mean). It is a data-collection
  * job; nothing reads the table on the request path.
  *
  * ── Policy ─────────────────────────────────────────────────────────────────
  *
- *  - One request per {@link DEFAULT_INTERVAL_MS} (1 s), never faster: the
+ *  - One request per {@link DEFAULT_INTERVAL_MS} (3 s; the env may slow it,
+ *    never below {@link MIN_INTERVAL_MS}, 1 s), never faster: the
  *    interval is the rate limit and an in-flight call skips the tick. The
  *    official app makes one such request per visible stop every 30 s, so a
  *    rider with a 30-stop route open costs the provider what we do.
@@ -60,7 +61,9 @@ import type { Logger } from "./collector.js";
 import { UpstreamClient, UpstreamError, type UpstreamStopEtas } from "./upstream.js";
 
 /** One call a second — the ceiling, and the default. */
-export const DEFAULT_INTERVAL_MS = 1_000;
+export const DEFAULT_INTERVAL_MS = 3_000;
+/** The politeness floor to the provider: never more than one census call a second, whatever the env says. */
+export const MIN_INTERVAL_MS = 1_000;
 /** How often each active-but-empty route gets one stop probed. */
 export const IDLE_PROBE_MS = 60_000;
 /** Cadence of the `collector.eta_sampled` summary line. */

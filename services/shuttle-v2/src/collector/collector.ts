@@ -48,7 +48,7 @@ import {
 } from "./pathStore.js";
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
 import { UpstreamEtaPoller } from "./upstreamEta.js";
-import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, UpstreamEtaSampler } from "./upstreamEtaSampler.js";
+import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, MIN_INTERVAL_MS as ETA_SAMPLE_MIN_MS, UpstreamEtaSampler } from "./upstreamEtaSampler.js";
 
 // Cadences --------------------------------------------------------------------
 
@@ -283,15 +283,18 @@ function resolveUpstreamEtaMaxRows(): number {
 const UPSTREAM_ETA_MAX_ROWS = resolveUpstreamEtaMaxRows();
 
 /**
- * Sampling cadence for the census. `SHUTTLE_ETA_SAMPLE=0` turns it off;
- * `SHUTTLE_ETA_SAMPLE_MS` slows it down. It can never go below one call a
- * second — that ceiling is the politeness promise to the provider, not a
- * tunable.
+ * Sampling cadence for the census: one call every 3 s by default — each
+ * stop of a weekday fleet about every 8 min, a weekend stop every 3. The
+ * predictions move slowly and the measurement needs samples across horizons,
+ * not every tick (the operator: "one a second for eta might not be
+ * necessary"). `SHUTTLE_ETA_SAMPLE=0` turns it off; `SHUTTLE_ETA_SAMPLE_MS`
+ * changes it, never below one call a second — that floor is the politeness
+ * promise to the provider, not a tunable.
  */
 function resolveEtaSampleMs(): number {
   const raw = Number(process.env.SHUTTLE_ETA_SAMPLE_MS ?? Number.NaN);
   if (!Number.isFinite(raw) || raw <= 0) return ETA_SAMPLE_DEFAULT_MS;
-  return Math.max(ETA_SAMPLE_DEFAULT_MS, Math.floor(raw));
+  return Math.max(ETA_SAMPLE_MIN_MS, Math.floor(raw));
 }
 
 type RetainedTable =

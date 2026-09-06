@@ -1596,8 +1596,8 @@ read it and they are NOT redundant:
   at the five focus stops plus stops riders watched — for the head-to-head
   against what riders were shown. 0.4 req/s, 7-day retention.
 - `src/collector/upstreamEtaSampler.ts` → `upstream_etas`: the VERBATIM
-  census. Every stop of every route with a live bus, round-robin, one call a
-  second (`SHUTTLE_ETA_SAMPLE_MS`, floor 1000; `SHUTTLE_ETA_SAMPLE=0` off),
+  census. Every stop of every route with a live bus, round-robin, one call
+  every 3 s (`SHUTTLE_ETA_SAMPLE_MS`, floor 1000; `SHUTTLE_ETA_SAMPLE=0` off),
   plus once a minute one stop of each route upstream flags active that has
   no live bus (`probe = 1` — the out-of-service signal). A call that answers
   nothing writes a MARKER row (`bus_id IS NULL`) so an absence has a
