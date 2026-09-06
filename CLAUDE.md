@@ -145,14 +145,25 @@ still takes `listView="all"` internally — that is the card-list mode, not a
 tab. With every line switched off the map keeps a basemap centred on New
 Haven rather than rendering a grey void.
 
-The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
-above the map toggles each route, and the choice is remembered in
-localStorage as the HIDDEN toggle labels — so a route added upstream appears
-by default rather than staying invisible. It is deliberately separate state
-from `hiddenRoutes`, which every view change resets (that reset exists so the
-favourites filter cannot leak into the All page, and it would wipe the map's
-filter on every tab switch). Every storage touch is guarded; blocked storage
-means the filter simply does not persist.
+The Map tab has ONE route filter (`web/src/mapFilter.ts`): the scrolling
+chip row above the map toggles each line for the map AND the route cards
+under it — a line hidden there is drawn nowhere on the page, and "Hide all"
+leaves the New Haven basemap plus one plain line where the cards were. The
+choice is remembered in localStorage as the HIDDEN toggle labels — so a route
+added upstream appears by default rather than staying invisible. "Running now
+/ Every route" (under the map) is the MODE that filter is read in, not a
+second per-route setting: `drawnHidden()` folds it into the chip set once,
+and `AllRoutesMap` and `StopList` are handed that same set (a source-level
+test in `mapFilter.test.ts` fails if either consumer takes anything else).
+There used to be a second row of route chips under the map that scrolled to a
+card; it was removed on 2026-09-06 (operator: "can both charts on the map
+page share one filter setting instead of two?") — two rows of route names
+that did different things read as two settings. Do not bring a second row
+back. It is deliberately separate state from `hiddenRoutes`, which every view
+change resets (that reset exists so the favourites filter cannot leak into
+the All page, and it would wipe the map's filter on every tab switch). Every
+storage touch is guarded; blocked storage means the filter simply does not
+persist.
 
 The forecast has TWO sources (`src/server/weather.ts`): Open-Meteo first,
 then the National Weather Service (`api.weather.gov`, no key). Open-Meteo's
