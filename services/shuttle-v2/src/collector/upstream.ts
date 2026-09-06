@@ -40,6 +40,13 @@ const RawRouteSchema = z.object({
   stops: z.array(numFromString),
   // Flat [lat, lon, lat, lon, ...]; sometimes absent on older feeds.
   path: z.array(numFromString).optional(),
+  // Whether upstream counts the route as in service right now — with
+  // `?inactive=true` the list carries every route and this says which are
+  // out. On Sun 2026-09-06 10:45 ET: the weekday lines and the night lines
+  // false, Blue Weekend / Green / Purple / Grocery Hamden true, Grocery
+  // Trader Joe's false — the operator's own word on which grocery line runs
+  // this weekend (they alternate; see web/src/schedule.ts ROUTE_CALENDAR).
+  active: z.boolean().optional(),
 });
 
 const RawAnnouncementSchema = z.object({
@@ -255,6 +262,7 @@ export class UpstreamClient {
         // Kept verbatim (trimmed) so the timetable riders see is the one the
         // operator publishes, not our hand-maintained ROUTE_HOURS table.
         ...(r.description.trim() ? { description: r.description.trim() } : {}),
+        ...(r.active !== undefined ? { active: r.active } : {}),
       };
     });
   }

@@ -42,7 +42,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
+  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -55,15 +55,19 @@ import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
+  ROUTE_ID_LABEL,
   BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
-import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
+import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { AT_PLACE_M, walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
+
+/** Yale's published 2026 grocery shuttle calendar (the alternating weekends). */
+const GROCERY_CALENDAR_URL = "https://your.yale.edu/sites/default/files/2026-01/2026_Grocery_Shuttle_Calendar.pdf";
 
 const SVG_W = 960;
 const SVG_H = 1120;
@@ -1583,6 +1587,8 @@ const TripPlanner: FC<{
   // Operator-published timetable per route id (`/api/buses` `route_hours`);
   // what the "Shuttles that go there" panel prints and judges "running" by.
   routeHours: Record<string, PublishedWindow>;
+  // Upstream's "in service right now" flag per route id (`route_active`).
+  routeActive: Record<string, boolean>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -1605,7 +1611,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [fromText, setFromText] = useState("");
   const [toText, setToText] = useState("");
   const [fromLL, setFromLL] = useState<LatLon | null>(null);
@@ -1987,6 +1993,14 @@ const TripPlanner: FC<{
     }
   }, [busRoster, stableOptions]);
 
+  // Which lines have a bus out right now — the live half of the weekend
+  // alternation (schedule.ts ROUTE_CALENDAR). Keyed as a string so the
+  // memo below recomputes when a line appears or vanishes, not every poll.
+  const liveLabelsKey = useMemo(
+    () => [...new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l))].sort().join("|"),
+    [buses],
+  );
+  const liveLabels = useMemo(() => new Set(liveLabelsKey ? liveLabelsKey.split("|") : []), [liveLabelsKey]);
   // "Routes that could get you there, but aren't running right now"
   // — displayed when planTrip yields only Walk. Recomputed alongside
   // stableOptions because it depends on the same endpoint + targetDate.
@@ -1995,9 +2009,9 @@ const TripPlanner: FC<{
     const after = targetDate && targetDate.getTime() > Date.now()
       ? targetDate
       : new Date();
-    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours);
+    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours, { labels: liveLabels, now: new Date(), active: routeActive });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, refreshKey]);
+  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
   const options: TripOption[] | null = useMemo(() => {
     if (!stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
@@ -3276,6 +3290,11 @@ const TripPlanner: FC<{
                     hour: "numeric", minute: "2-digit",
                   })
                 : null;
+              // A line off for the whole weekend gets a date, not a time —
+              // "next Sat Sep 12", the day the rider will plan around.
+              const nextDayStr = p.nextActive
+                ? p.nextActive.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
+                : null;
               return (
                 <div key={p.label} style={{
                   padding: "10px 12px", background: "#fff", borderRadius: 10,
@@ -3297,6 +3316,25 @@ const TripPlanner: FC<{
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
                       </div>
+                    ) : p.off ? (
+                      // The hours say open but the line is not out today —
+                      // upstream's own active flag, the partner's bus, or
+                      // the published calendar (schedule.ts ROUTE_CALENDAR).
+                      // Before this the card read "should be running now —
+                      // no bus reporting yet" every other weekend for the
+                      // grocery lines, which is a broken feed, not a line
+                      // that is simply the other one's this week.
+                      <>
+                        <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
+                          {p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
+                        </div>
+                        {p.off.partner && (
+                          <div style={{ fontSize: 11, color: "#78909c", marginTop: 2 }}>
+                            Alternates weekends with {p.off.partner}
+                            {p.source ? <> — <a href={GROCERY_CALENDAR_URL} target="_blank" rel="noopener" style={{ color: "#78909c" }}>{p.source}</a></> : null}
+                          </div>
+                        )}
+                      </>
                     ) : nextStr && (
                       // Report #86 asked whether a route that is not running
                       // should be listed at all. It should — the alternative
@@ -3308,6 +3346,11 @@ const TripPlanner: FC<{
                       </div>
                     )}
                   </span>
+                  {p.note && (
+                    <div style={{ flexBasis: "100%", fontSize: 11, color: "#78909c", lineHeight: 1.4 }}>
+                      {p.note}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -5090,6 +5133,7 @@ const StopList: FC<{
   routePeaks?: Record<string, number>;
   // Operator-published timetable per route id; the All tab's schedule line.
   routeHours?: Record<string, PublishedWindow>;
+  routeActive?: Record<string, boolean>;
   tick: number;
   listView: "all" | "favorites" | "accuracy";
   activeOnly?: boolean;
@@ -5101,7 +5145,7 @@ const StopList: FC<{
   onToggleSavedStop: (stopId: number) => void;
   userLatLon?: LatLon | null;
   onRequestLocate?: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
   // purpose: leaving the tab unmounts this list, so isolation never survives a
   // visit. The effect covers the case where the view changes underneath us
@@ -5308,7 +5352,20 @@ const StopList: FC<{
         // Published hours when the server parsed them; ROUTE_HOURS (the wider
         // in-service gate) only as a fallback.
         const published = publishedWindowFor(cfg, routeHours);
-        const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        const hoursText = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        // A line whose partner runs this weekend (schedule.ts
+        // ROUTE_CALENDAR) says so beside its hours, so "0/1 bus" under
+        // "Sa/Su 7a–5p" on a Sunday does not read as a bus that failed to
+        // come out.
+        const off = routeBuses.length === 0
+          ? serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, new Date(), {
+              labels: new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l)),
+              now: new Date(),
+              active: routeActiveFor(cfg, routeActive),
+            }).off
+          : null;
+        const schedule = off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
+        const routeNote = ROUTE_CALENDAR[cfg.label]?.note ?? null;
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
 
@@ -5563,6 +5620,9 @@ const StopList: FC<{
                   {schedule}
                 </span>
                 <span>{busLabel}</span>
+                {routeNote && (
+                  <span style={{ flexBasis: "100%", lineHeight: 1.4 }}>{routeNote}</span>
+                )}
               </div>
             )}
 
@@ -6149,6 +6209,9 @@ const TransitMap: FC = () => {
   // route description (`route_hours`). Riders are shown THIS; the in-service
   // gate (isBusInService) stays on ROUTE_HOURS. Empty until the first poll.
   const [routeHours, setRouteHours] = useState<Record<string, PublishedWindow>>({});
+  // Upstream's "in service right now" flag per route id (`route_active`),
+  // the first word on whether a line with no bus is off today.
+  const [routeActive, setRouteActive] = useState<Record<string, boolean>>({});
   // Full per-route polyline from downtownerapp's routes_routes.php
   // `path` field. Used to draw exact bus-route shapes on the trip map,
   // replacing the OSRM driving-directions fallback that occasionally
@@ -6821,6 +6884,10 @@ const TransitMap: FC = () => {
         if (data.dwells) setDwellTimes(data.dwells);
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
+        if (data.route_active && typeof data.route_active === "object" && !Array.isArray(data.route_active)) {
+          const fresh = data.route_active as Record<string, boolean>;
+          setRouteActive((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
+        }
         if (data.route_hours && typeof data.route_hours === "object" && !Array.isArray(data.route_hours)) {
           setRouteHours(data.route_hours as Record<string, PublishedWindow>);
         }
@@ -7188,7 +7255,7 @@ const TransitMap: FC = () => {
               buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
-              routeHours={routeHours} tick={tick}
+              routeHours={routeHours} routeActive={routeActive} tick={tick}
               listView="all" activeOnly={activeOnly && buses.length > 0}
               // One filter for the page: the chips above already say which
               // lines the rider cares about, and they persist between visits.
@@ -7205,7 +7272,7 @@ const TransitMap: FC = () => {
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
-          routeHours={routeHours}
+          routeHours={routeHours} routeActive={routeActive}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}
@@ -7450,7 +7517,7 @@ const TransitMap: FC = () => {
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
-            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
+            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} routeActive={routeActive} tick={tick}
             listView={listView} activeOnly={activeFilter}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}

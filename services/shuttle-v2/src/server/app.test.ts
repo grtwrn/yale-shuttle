@@ -32,6 +32,7 @@ function fakeUpstream(buses: RawBus[], stops: Stop[], routes: Route[]): Upstream
         stops: r.stops,
         ...(r.path !== undefined ? { path: r.path } : {}),
         ...(r.description !== undefined ? { description: r.description } : {}),
+        ...(r.active !== undefined ? { active: r.active } : {}),
       })),
   } as UpstreamClient;
 }
@@ -43,10 +44,10 @@ const stops: Stop[] = [
 ];
 
 const routes: Route[] = [
-  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F" },
+  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F", active: true },
   // A description the parser cannot read: must be absent from route_hours,
   // never a crash or a half-parsed window.
-  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website" },
+  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website", active: false },
   { id: 12, name: "Bare", shortName: "B", color: "#222", stops: [1, 3] },
 ];
 
@@ -232,6 +233,7 @@ describe("GET /api/buses", () => {
       "dwells",
       "dwells_by_bus",
       "pace",
+      "route_active",
       "route_hours",
       "route_paths",
       "route_peaks",
@@ -256,6 +258,13 @@ describe("GET /api/buses", () => {
     expect(body.route_hours).toEqual({
       "10": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
     });
+  });
+
+  it("publishes upstream's active flag per route as route_active, only where upstream said", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as { route_active: Record<string, boolean> };
+    // Route 12 carried no flag: absent, not false — the client then falls
+    // back to the calendar rather than reading "not running today".
+    expect(body.route_active).toEqual({ "10": true, "11": false });
   });
 
   // The stand/drive split the client's hopPricing.ts consumes: `q`/`qn` on the

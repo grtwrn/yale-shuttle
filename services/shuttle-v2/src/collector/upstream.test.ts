@@ -49,6 +49,15 @@ describe("UpstreamClient.routes keeps the published timetable", () => {
     path: [41.31, -72.93, 41.32, -72.92],
   };
 
+  it("threads upstream's active flag through, and omits it when absent", async () => {
+    const [on] = await clientFor([{ ...route, active: true }]).routes();
+    expect(on!.active).toBe(true);
+    const [off] = await clientFor([{ ...route, active: false }]).routes();
+    expect(off!.active).toBe(false);
+    const [bare] = await clientFor([route]).routes();
+    expect(bare).not.toHaveProperty("active");
+  });
+
   it("threads a trimmed description through", async () => {
     const client = clientFor([{ ...route, description: "  7am - 6pm, M - F " }]);
     const [r] = await client.routes();

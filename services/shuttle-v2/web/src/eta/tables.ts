@@ -81,7 +81,7 @@ export interface HopModel {
    * it rests on carries it, as a drive whose median exceeds road metres x
    * pace by a layover's length (LAYOVER_MIN_SEC). On the 9/4 tables: Blue
    * West's last hop 960 s for 1,044 m (free 167 s), Blue Night 587 vs 204,
-   * Orange East 500 vs 274, Blue Weekend 476 vs 324. The excess, quantile
+   * Orange East 500 vs 274, Brown 476 vs 324. The excess, quantile
    * by quantile, is the hidden stand; a bus HOLDING mid-leg on such a hop
    * is priced as that rest continuing (given the time already stood) plus
    * the free-flow drive left, not as a fraction of a 16-minute "drive".

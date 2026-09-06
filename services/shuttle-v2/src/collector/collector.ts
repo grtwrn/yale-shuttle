@@ -450,6 +450,13 @@ export class Collector {
   // flaky upstream never blanks a live construction notice.
   private announcementsList: Announcement[] = [];
   private announcementsHandle: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Upstream's `active` flag per route id, from routes_routes.php. Refreshed
+   * on every static refresh and, because the flag changes with the service
+   * day while the topology does not, on the announcements' 5-min cadence
+   * too. Served as `route_active` in /api/buses.
+   */
+  private routeActiveMap = new Map<number, boolean>();
   private staticRetryHandle: NodeJS.Timeout | undefined;
   private staticRetryDelayMs = STATIC_RETRY_BASE_MS;
   /** Upstream rows rejected by `sanitizeObservations`, cumulative. */
@@ -625,7 +632,7 @@ export class Collector {
     this.deriveHandle = setInterval(() => this.runDerivePaths(), DERIVE_INTERVAL_MS);
     void this.refreshAnnouncements();
     this.announcementsHandle = setInterval(
-      () => void this.refreshAnnouncements(),
+      () => { void this.refreshAnnouncements(); void this.refreshRouteActive(); },
       ANNOUNCEMENTS_INTERVAL_MS,
     );
     for (const h of [
@@ -1065,6 +1072,37 @@ export class Collector {
     return this.announcementsList;
   }
 
+  /** Upstream's `active` flag per route id (as strings, for the payload); routes without one are absent. */
+  routeActive(): Record<string, boolean> {
+    const out: Record<string, boolean> = {};
+    for (const [id, a] of this.routeActiveMap) out[String(id)] = a;
+    return out;
+  }
+
+  private applyRouteActive(routes: readonly Route[]): void {
+    const fresh = new Map<number, boolean>();
+    for (const r of routes) if (r.active !== undefined) fresh.set(r.id, r.active);
+    let changed = fresh.size !== this.routeActiveMap.size;
+    if (!changed) for (const [id, a] of fresh) if (this.routeActiveMap.get(id) !== a) { changed = true; break; }
+    this.routeActiveMap = fresh;
+    if (changed) {
+      // The /api/buses payload embeds these and is memoized on dataVersion().
+      this.version++;
+      this.logger.info("collector.route_active_changed", {
+        active: [...fresh].filter(([, a]) => a).map(([id]) => id),
+      });
+    }
+  }
+
+  private async refreshRouteActive(): Promise<void> {
+    try {
+      const routes = await this.upstream.routes();
+      if (routes.length > 0) this.applyRouteActive(routes);
+    } catch {
+      // Same policy as the announcements: the last flags stand.
+    }
+  }
+
   private async refreshAnnouncements(): Promise<void> {
     try {
       const fresh = await this.upstream.announcements();
@@ -1103,6 +1141,7 @@ export class Collector {
         return;
       }
       this.persistStatic(stops, routes);
+      this.applyRouteActive(routes);
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
       const rebuilt = TransitNetwork.build(stops, routes);

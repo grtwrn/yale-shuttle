@@ -143,7 +143,7 @@ is in no stand table (those are pinned within 75 m of a stop), but the leg
 it lies on carries it: a drive whose median exceeds road metres × pace by a
 layover's length. On the 9/4 tables that is Blue West's last hop (960 s for
 1,044 m against 167 s of driving), Blue Night (587 vs 204), Orange East
-(500 vs 274) and Blue Weekend (476 vs 324). The excess, quantile by
+(500 vs 274) and Brown (476 vs 324). The excess, quantile by
 quantile, is the hop's hidden stand (`tables.ts` `hiddenRest`), and a bus
 HOLDING mid-leg on such a hop is priced as that rest continuing given the
 time already stood, plus the free-flow drive left — not as a fraction of a

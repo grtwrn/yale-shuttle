@@ -1,3 +1,4 @@
+import type { LatLon } from "./geo";
 import { describe, expect, it } from "vitest";
 
 import { remainingSec } from "./format";
@@ -570,6 +571,58 @@ describe("findPotentialRoutes", () => {
     expect(weekend.activeNow).toBe(false);
     // Active-now routes lead the list even though their nextActive is later.
     expect(found[0]!.activeNow).toBe(true);
+  });
+
+  // The grocery lines alternate whole weekends (schedule.ts ROUTE_CALENDAR).
+  // On Sun 2026-09-06 — Hamden's weekend — the panel read "Should be running
+  // now — no bus reporting yet" for Grocery TJ. It must read "not this
+  // weekend", with TJ's own next Saturday, and the partner's bus out today
+  // must say the same even when the calendar disagrees.
+  describe("a line that alternates weekends", () => {
+    // Grocery TJ's real stop list and coordinates (the fixture payload maps
+    // only Blue Day / Blue Weekend), from /api/buses on 2026-09-06.
+    const tjStops = [97, 118, 42, 38, 119];
+    const coords: Record<number, LatLon> = {
+      ...stopCoords,
+      97: { lat: 41.315675, lon: -72.920859 },   // Peabody Museum / Whitney / Sachem
+      118: { lat: 41.311184, lon: -72.923753 },  // Temple / Grove
+      38: { lat: 41.306177, lon: -72.929592 },   // College / Crown
+      119: { lat: 41.251375, lon: -73.018082 },  // Trader Joe's
+    };
+    const stopsWithTj = { ...routeStops, "6": tjStops };
+    const from = { lat: coords[97]!.lat + 0.0005, lon: coords[97]!.lon };
+    const to = { lat: coords[119]!.lat + 0.0005, lon: coords[119]!.lon };
+    const sun0906 = new Date("2026-09-06T10:28:00-04:00");
+    const sat0912 = new Date("2026-09-12T10:00:00-04:00");
+    const published = { "6": { days: [0, 6], startMin: 7 * 60, endMin: 17 * 60, text: "7am - 5pm, Sat - Sun" } };
+
+    it("says 'not this weekend' on the partner's weekend, never 'should be running'", () => {
+      const found = findPotentialRoutes(from, to, stopsWithTj, coords, sun0906, published);
+      const tj = found.find((r) => r.label === "Grocery TJ")!;
+      expect(tj).toBeDefined();
+      expect(tj.activeNow).toBe(false);
+      expect(tj.off).toEqual({ partner: "Grocery Ham" });
+      expect(tj.note).toMatch(/FlexiStop/);
+      expect(tj.nextActive?.toISOString()).toBe(new Date("2026-09-12T07:00:00-04:00").toISOString());
+      expect(tj.schedule).toBe("Sa/Su 7a–5p");
+    });
+
+    it("is 'should be running' on its own weekend, and off when the partner is out that day", () => {
+      const own = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published)
+        .find((r) => r.label === "Grocery TJ")!;
+      expect(own).toMatchObject({ activeNow: true, off: null });
+      const drifted = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
+        { labels: new Set(["Grocery Ham"]), now: sat0912 }).find((r) => r.label === "Grocery TJ")!;
+      expect(drifted).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // Upstream's flag is the first word: inactive on the line's own weekend is off.
+      const flagged = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
+        { labels: new Set(), now: sat0912, active: { "6": false, "18": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(flagged).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // And active on the partner's weekend means it is out after all.
+      const out = findPotentialRoutes(from, to, stopsWithTj, coords, sun0906, published,
+        { labels: new Set(["Grocery Ham"]), now: sun0906, active: { "6": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(out).toMatchObject({ activeNow: true, off: null });
+    });
   });
 
   it("returns nothing for a destination no route reaches", () => {
