@@ -47,7 +47,7 @@ import { topVisibleOptions,
   directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
-import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -6282,6 +6282,31 @@ const TransitMap: FC = () => {
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
   const activeFilter = activeOnly && buses.length > 0;
+  // Which lines have a bus ON ROUTE right now, as toggle labels — the same
+  // test the route cards use (isBusOnRoute over the merged stop list), so a
+  // bus upstream has mis-assigned to a line does not light it up. Feeds the
+  // Map tab: "Running now" hides the other lines from the map as well as from
+  // the cards (operator, 2026-09-06). Recomputed per poll; fifteen routes by
+  // ~17 buses is nothing.
+  const runningToggles = useMemo(() => {
+    const out = new Set<string>();
+    for (const cfg of ROUTE_LISTS) {
+      const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+      if (!toggle || out.has(toggle)) continue;
+      const canonical = mergedRouteStops(cfg, routeStops);
+      if (buses.some((b) => cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, canonical, stopCoords))) {
+        out.add(toggle);
+      }
+    }
+    return out;
+  }, [buses, routeStops, stopCoords]);
+  // The set the MAP draws by: the chips, plus every idle line while "Running
+  // now" is on. The chips alone still drive the cards' hiddenRoutes below —
+  // StopList applies activeOnly itself, and doubling it up would be harmless
+  // but pointless.
+  const mapDrawnHidden = useMemo(
+    () => drawnHidden(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden, activeOnly, buses.length > 0, runningToggles),
+    [mapHidden, activeOnly, buses.length, runningToggles]);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
   // /api/report endpoint as the per-route report button, tagged
@@ -7144,16 +7169,23 @@ const TransitMap: FC = () => {
             </button>
             {LEGEND_ROUTES.map((r) => {
               const off = mapHidden.has(r.toggleLabel);
+              // On, but not drawn: "Running now" is on and this line has no
+              // bus. Outlined in its own colour rather than dimmed — a filled
+              // chip at half opacity loses its white text — so the three
+              // states read apart: filled = on the map, outlined = switched on
+              // but idle, grey = switched off. Still 44 px and still tappable.
+              const idle = !off && activeFilter && !runningToggles.has(r.toggleLabel);
               return (
                 <button
                   key={r.toggleLabel}
                   onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
                   aria-pressed={!off}
+                  title={idle ? `No ${r.label} bus right now — hidden by "Running now"` : undefined}
                   style={{
                     padding: "3px 10px", borderRadius: 10,
                     border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
-                    background: off ? "#fff" : r.color,
-                    color: off ? "#90a4ae" : "#fff",
+                    background: off || idle ? "#fff" : r.color,
+                    color: off ? "#90a4ae" : idle ? r.color : "#fff",
                     fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                     minHeight: 44, display: "inline-flex", alignItems: "center",
                     flexShrink: 0, whiteSpace: "nowrap",
@@ -7164,21 +7196,31 @@ const TransitMap: FC = () => {
               );
             })}
           </div>
-          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) && (
+          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? (
             <div style={{
               width: "100%", maxWidth: 800, margin: "0 auto",
               padding: "0 12px 8px", fontSize: 13, color: "#78909c",
             }}>
               Every line is switched off — tap one above to put it back on the map.
             </div>
-          )}
+          ) : LEGEND_ROUTES.every((r) => mapDrawnHidden.has(r.toggleLabel)) ? (
+            // The chips leave something on, but none of it has a bus: say so,
+            // or an empty map under lit chips reads as broken.
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto",
+              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
+            }}>
+              None of the lines switched on has a bus right now — the map shows only running lines. Tap "Every route" below to see them all.
+            </div>
+          ) : null}
           <AllRoutesMap
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
             height="min(48vh, 430px)"
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-            hiddenRoutes={mapHidden}
+            // The chips, plus every idle line while "Running now" is on.
+            hiddenRoutes={mapDrawnHidden}
             userLatLon={userLatLon} onRequestLocate={startLocating}
           />
 

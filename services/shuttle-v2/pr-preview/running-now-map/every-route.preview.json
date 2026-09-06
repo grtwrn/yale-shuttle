@@ -1,0 +1,18 @@
+{
+  "caption": "Map tab after tapping the toggle to \"Every route\": every chip-selected line is drawn, as before",
+  "base": "http://127.0.0.1:8102",
+  "trip": {
+    "board": 127,
+    "dest": 23
+  },
+  "views": [
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/f257f79c-ae61-4a88-8421-ba9846255709/scratchpad/shots-every-route2/map.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
