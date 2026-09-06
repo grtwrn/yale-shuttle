@@ -790,18 +790,29 @@ const rotationRider = (excluded) => ({
   tag: "rotation",
   pick(lines, payload) {
     const st = readState();
-    const line = nextInRotation(lines, st.lastLine ?? null, excluded);
-    if (!line) {
-      const up = lines.filter((l) => l.liveBuses > 0).map((l) => l.label);
-      return { idle: excluded && up.length && up.every((l) => l === excluded)
-        ? `only ${excluded} is running, and it has its own rider`
-        : `no line${excluded ? ` other than ${excluded}` : ""} is rideable` };
+    let last = st.lastLine ?? null;
+    const skipped = [];
+    // A line with no ride the planner would offer is SKIPPED this cycle — it
+    // still takes its turn, so the rotation moves on — and never ridden on a
+    // fallback trip: on 2026-09-06 Grocery Ham's fixed pair was the long way
+    // round a 6-stop loop and the canary filed two findings against a
+    // healthy app. Bounded by the number of lines, so it cannot spin.
+    for (let tries = 0; tries < lines.length; tries++) {
+      const line = nextInRotation(lines, last, excluded);
+      if (!line) break;
+      writeState({ ...st, lastLine: line.label, ridden: (st.ridden ?? 0) + 1 });
+      last = line.label;
+      const { trip, reason } = randomTripForLine(payload, line);
+      if (trip) return { ...line, trip, skipped };
+      skipped.push(`${line.label}: ${reason}`);
     }
-    writeState({ ...st, lastLine: line.label, ridden: (st.ridden ?? 0) + 1 });
-    // A random trip with a bus on its way; the fixed derived trip only when
-    // no bus on the line reports a position to place it by.
-    const trip = randomTripForLine(payload, line) ?? line.trip;
-    return { ...line, trip };
+    const up = lines.filter((l) => l.liveBuses > 0).map((l) => l.label);
+    const why = skipped.length
+      ? `every rideable line was skipped this cycle (${skipped.join("; ")})`
+      : excluded && up.length && up.every((l) => l === excluded)
+        ? `only ${excluded} is running, and it has its own rider`
+        : `no line${excluded ? ` other than ${excluded}` : ""} is rideable`;
+    return { idle: why };
   },
 });
 
@@ -824,8 +835,10 @@ async function oneRider(rider) {
       key: line?.idle ?? "",
     };
   }
+  for (const sk of line.skipped ?? []) say(`skipping ${sk}`);
   const t = line.trip;
-  const via = t.approaching ? ` with ${t.approaching.busName} ${t.approaching.stopsAway} stop(s) out` : "";
+  const est = t.estimate ? `, ${t.estimate.hops} hop(s) ~${Math.round(t.estimate.rideSec / 60)} min ride vs ${Math.round(t.estimate.walkSec / 60)} min walk` : "";
+  const via = t.approaching ? ` with ${t.approaching.busName} ${t.approaching.stopsAway} stop(s) out${est}` : "";
   say(`riding ${line.label} (${line.liveBuses} live buses) — ${t.origin.label} → ${t.destination.display_name} [${t.kind}]${via}`);
   const record = await runOnce(line, rider);
   append(record);
