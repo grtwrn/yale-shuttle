@@ -193,7 +193,7 @@ the change addresses.
 |---|---|---|---|---|---|---|
 | **Grocery Ham** | 10,972 | 222.5 → 229.2 | 588 → 684 | **59.1 → 19.7%** | 12.3 → 48.2% | 28.6 → **32.1%** |
 | **Blue Weekend** | 15,642 | 165.4 → **154.2** | 595 → 607 | 37.9 → **34.5%** | 24.1 → 24.7% | 38.0 → **40.8%** |
-| Green (declined) | 35,876 | 300.2 → 300.2 | — | — | — | identical |
+| Green (declined then; see the section below) | 35,876 | 300.2 → 300.2 | — | — | — | identical |
 | Purple | 34,736 | 134.9 → 134.9 | — | — | — | identical |
 | overall | 97,226 | 188.0 → 185.9 | 877 → 898 | 40.3 → **35.4%** | 22.2 → 26.4% | 37.4 → 38.3% |
 
@@ -215,45 +215,155 @@ that knows only its length — and it is better on Blue Weekend (median
 59.1 → **75.4%** instead of 19.7%, and Pink, which has one such hop, loses 6 s
 of median. The pace prior stays ahead of `avg`.
 
-### Green still declines: a bridged ring, and the numbers that deferred it
+### Green: the published order was wrong, and the ring is now built on the driven one (2026-09-07)
 
-A route whose published line cannot be traced through its stop sequence (a leg
-bridged with a chord) is still priced by the legacy arithmetic. That is Green,
-whose buses call at West Haven station before Building 900 on the return, so
-the served leg times carry a station stop inside an 11 km highway hop and no
-model on that ring can be right. The condition is the geometry's
-(`ring.bridged`), never a route list.
+**Status: shipped.** `src/network/alignStops.ts`, `TransitNetwork.build`
+(`Route.publishedStops`), `web/src/eta/ring.ts` (`ring.stops` / `ring.order` /
+`ring.repaired`). Green was the app's worst line by every measure — a
+gps-replay median of 288.8 s against ~60 s elsewhere, and the canary flapping
+43 ↔ 55 min on it all Sunday — and the only line the model declined, because
+`buildRing` could not trace its published stop sequence along its published
+polyline and bridged three legs with chords.
 
-Retiring that decline WAS built and measured — the branch is
-`eta/retire-legacy-green`, and it deletes the legacy arm entirely. It is not
-shipped, because on the two numbers that decide a rider's morning Green is
-worse on the ring:
+**The diagnosis, and the correction to what this document said.** It was not
+the geometry, and the sequence was wrong in a different way than recorded here.
+The published polyline passes, in this order:
 
-| Green, 9/4, 22,610 pairs | legacy | on the bridged ring |
+    ... Building 800, Building 900, West Haven station, Bradley (N) ...
+
+and the published stop LIST says
+
+    ... Building 800, West Haven station, Building 900, Bradley (N) ...
+
+The line is right. Over the snapshot's three months of `arrivals`, Green's
+buses drive the line's order, not the list's: **2,943 consecutive
+Building 800 → Building 900 arrivals against 1 for Building 800 → station**,
+then 676 Building 900 → station and 666 station → Bradley (N). (This document
+previously said the buses "call at West Haven station before Building 900 on
+the return"; they call there *after* it. The claim was never measured.) The
+list is also short of a stop: the line passes the station TWICE, out and back,
+and the buses call there both times — 676 station → Building 900 arrivals on
+the way out to match the 676 the other way — while the list names it once.
+
+Reconstructed lap by lap (arrivals cut at a per-route anchor, 847 laps in the
+28 days to 9/4), the modal lap is
+`… Bradley → STN → B900 → B800 → B750 → B600 → B400 → B600 → B750 → B800 →
+B900 → STN → Bradley …` on 52% of laps, and the West Campus block runs in that
+order on 2,221 of 2,949 contiguous blocks — never in the published one.
+
+**So the mechanism reads the order off the LINE**, which is the same move that
+fixed the drawn route lines ("the published geometry is right, drawing it was
+wrong"), and it needs no service history at all: a route new this morning gets
+it. `alignStopsToPath` gives every stop its CANDIDATE PASSES (the local minima
+of its distance to the line, within `MAX_STOP_OFFSET_M` = 200 m), then a
+dynamic program walks the published order and assigns each occurrence a pass
+that does not go backwards along the line, minimising first the number of
+occurrences it must SKIP and then the total offset; each skipped occurrence is
+placed afterwards at the pass that disturbs the published order least. A stop
+the line drives past for more than `SPUR_LEG_M` (2 km) inside one leg, that no
+occurrence claimed and that is `SPUR_SEPARATION_M` (200 m) from every pass
+already used, is ADDED — that is the station's outbound call.
+
+On Green that is **one move and one addition out of 23**, and the answer is the
+driven order exactly, with a median offset of 4 m and a worst of 99 m
+(Building 800's outbound pass, where the marker is at the building and the road
+runs behind it). The legs are slices of the published line and sum to it:
+29,086 m drawn of a 29,086 m loop, against 36,270 m before, 7 km of which was
+chord straight through West Haven.
+
+**It is the trigger and the guards that make this a no-op elsewhere.** The
+repair runs only where the published order's own trace BRIDGES a leg, which on
+the fifteen published lines is Green alone; the other fourteen rings are
+byte-identical, cell for cell, and a test measures it. Two guards then refuse a
+repair that is not a correction:
+
+- **Two occurrences may not stack on one pass.** A small out-and-back bridges
+  its return leg by construction — it covers most of a short loop — while its
+  published order is perfectly right; asked to repair that, the assignment can
+  only put a repeated stop's two occurrences on the one pass the line makes,
+  i.e. a hop from a stop to itself.
+- **At most one occurrence in ten may move** (`MAX_MOVED_FRACTION`). A line
+  published COUNTER to its stop list — the "whole route painted solid" defect a
+  rider once reported — bridges every leg and would be "repaired" by reversing
+  the list. There the list is right and the LINE is the defect; reversing it
+  would run the estimator round the route backwards. Past the bound the route
+  keeps its published order, its bridged ring and the legacy arithmetic, and
+  `derivePath.ts` is the remedy for the geometry.
+
+**The server holds the repaired order too, and that is where most of the win
+is.** `TransitNetwork.build` applies it before anything is built on it, keeping
+upstream's list as `Route.publishedStops`; `/api/buses` still publishes THAT
+(the map and the planner draw and list exactly what upstream sent) and carries
+segment rows for both adjacencies, so the legacy arm keeps its keys. The reason
+this matters: with the station missing from the outbound, a bus that stopped
+there anchored nine hops ahead and the detector discarded the leg for exceeding
+`MAX_SEGMENT_HOPS`, so **Green's longest hop had no measured drive at all** and
+was priced at the route's downtown pace — 11.7 km × 0.134 s/m = 1,573 s against
+a real 675 s. On the repaired order every one of the 24 hops is billed, n ≈ 57
+each over 36 h of capture: Bradley (S) → station 694 s over 9,353 m,
+station → Building 900 261 s, Building 900 → station 226 s,
+station → Bradley (N) 538 s.
+
+**Measured** (gps-replay, 9/4 15:51–22:04 ET, 226k pairs, proximity truth; both
+arms on tables re-derived from the same capture by the collector's own reducer,
+so the only difference between them is the stop order):
+
+| Green, 22,610 pairs | published order (legacy) | repaired ring (model) |
 |---|---|---|
-| median \|err\| | **288.8 s** | 384.8 s |
-| pessimistic ≥120 s (the bus beat the promise) | **56.1%** | 65.4% |
-| p90 \|err\| | 2,817 s | **767 s** |
-| optimistic ≥120 s | 8.2% | **4.0%** |
-| within 120 s | **35.7%** | 30.6% |
+| median \|err\| | 288.8 s | **70.1 s** |
+| p90 \|err\| | 2,817 s | **500 s** |
+| median bias | +247.6 s | **−2.7 s** |
+| pessimistic ≥120 s (the bus beat the promise) | 56.1% | **12.1%** |
+| optimistic ≥120 s | 8.2% | 23.9% |
+| within 120 s | 35.7% | **64.1%** |
+| 10–90 interval covers | 50.5% (width 825 s) | **71.8%** (width 369 s) |
 
-(The same comparison on the 9/6 Sunday capture, 35,876 pairs: 300.2 → 352.2
-median, p90 3,101 → 1,154, pessimistic 44.8 → 60.1%, optimistic 24.0 → 10.8%.)
+The bar this had to clear was the legacy arm's own 288.8 s median and 56.1%
+dangerous tail — what riders got — and it clears both by a factor of four. The
+optimistic tail grows, which is the safe direction and the West Campus fold's
+signature (Pink and Purple read the same way).
 
-The p90 win is real and large — the legacy arm is capable of 47-minute errors
-on this line — but it is the tail of an already-bad line, and a rider reads the
-median and misses the bus on the pessimistic tail. **Green needs its ring fixed
-first**: a ring built from `raw_positions` (how the buses actually drive)
-rather than from a stop sequence that does not describe it. The day that
-lands, `eta/retire-legacy-green` lands with it and the second arithmetic goes.
-Until then the numbers above are the bar the data-built ring has to clear.
+**Every other route is unchanged to within 0.2 s of median, 0.2 pp of any tail
+and 1.3 s of p90**, and their rings are byte-identical. The residue is not the
+ring: route 9's stand tables and its 24 legs enter the ALL-ROUTES class pools
+and the pooled pace, which every route leans on by design.
 
-What the legacy arm is still reachable through, so nothing is deleted by
-accident: a bridged ring (Green), a route with no ring yet (the first render,
-before the payload registers the polylines — which is also why
-`LEGACY_SPLIT_ROUTE_IDS` / `splitServedForRoute` are still live for Red and
-Blue Day), and the replays' `MODEL_ROUTES=""` arm, which is the counterfactual
-every retirement decision is measured against.
+**On deploy the new hops warm up from zero, and nothing is miskeyed.** The
+route's `stop_index` / `from_index` change meaning, so rows written before the
+change are keyed to slots the repaired ring does not ask for and are simply
+ignored — the one (stop, index) pair that coincides, `26#19` (Building 900 on
+the return), means the same thing in both orders. Three hops have no history at
+all because the old order could never bill them (`81-127`, `26-127`, `127-80`),
+so for their first day they price from the route's pace and read `estimated`;
+the per-pass stand tables inside West Campus fall back to their pooled stop
+table for up to `SPLIT_WINDOW_DAYS`. The measurement above is the steady state:
+both arms ran on tables re-derived from the same 36 h capture.
+
+Two smaller things the order still does not describe, both left as measured
+open items: Green's buses call at Building 750 on the OUTBOUND pass too (the
+line passes it, and 2,221 of 2,949 West Campus blocks stop there), which the
+list omits and the spur rule does not reach because that leg is 236 m; and the
+station is served on only about a quarter of laps, so its stand table mixes a
+seven-minute layover with a drive-through.
+
+The canary's Sunday case replayed through the real client entry point
+(`computeUpcomingArrivals`, route 9, #326, 2026-09-06 18:55–19:35 UTC, a rider
+at Building 600 bound for Orange / Humphrey (N)):
+
+| | published order | repaired ring |
+|---|---|---|
+| Building 600, 18:55 → 19:05 | 16.3 → 6.0 min, then a jump to 49.7 | 14.5 → 2.9 min, monotone |
+| the wait after that, 19:22 → 19:31 | wanders 55.3 → 48.7 → 49.4 → 42.6 | counts down 49.7 → 44.4 |
+| destination, 18:55 → 19:05 | 56.4 → 46.1, then −28 min to 18.1, then back up to 23.7 | 39.1 → 26.7, monotone |
+
+`eta/retire-legacy-green` (which deletes the legacy arm outright) is still not
+merged: what shipped here is Green joining the model on a ring that is right,
+not the retirement of the second arithmetic. The arm is still reachable through
+a ring that is bridged AFTER the repair (a route past the guards above), a
+route with no ring yet (the first render, before the payload registers the
+polylines — which is also why `LEGACY_SPLIT_ROUTE_IDS` / `splitServedForRoute`
+are still live for Red and Blue Day), and the replays' `MODEL_ROUTES=""` arm,
+which is the counterfactual every retirement decision is measured against.
 
 ## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 
@@ -313,7 +423,8 @@ with a whole new stand on top.
 
 The production arm and the model in one process, same `PAYLOAD_PATCH`
 (model-patch-all-0904), same per-vehicle store. Proximity truth (45 m).
-Green is declined by the model (bridged ring) and is byte-identical.
+Green was declined by the model in this run (bridged ring — repaired on
+2026-09-07, see §2) and is byte-identical here.
 
 | | median \|err\| | p90 | median bias | pessimistic ≥120 s | optimistic ≥120 s | within 120 s | 10–90 covers |
 |---|---|---|---|---|---|---|---|
@@ -326,7 +437,7 @@ Green is declined by the model (bridged ring) and is byte-identical.
 | Orange Day | 36.6 → 28.1 | 10.7 → 5.0 | 2.1 → 3.6 | 84% |
 | Red | 52.8 → 47.6 | 10.1 → 4.8 | 13.4 → 19.0 | 76% |
 | Pink | 178.7 → 106.0 | 13.0 → 9.4 | 49.0 → 36.4 | 68% |
-| Green (declined) | 288.8 → 288.8 | 56.1 → 56.1 | 8.2 → 8.2 | 51% |
+| Green (declined in this run) | 288.8 → 288.8 | 56.1 → 56.1 | 8.2 → 8.2 | 51% |
 | Purple | 207.1 → 102.9 | 41.3 → 25.3 | 25.0 → 22.0 | 76% |
 | Blue Night | 113.5 → 71.0 | 28.5 → 13.3 | 19.4 → 18.8 | 79% |
 | Orange Night | 54.5 → 39.4 | 5.3 → 3.0 | 16.0 → 9.1 | 83% |
@@ -363,8 +474,8 @@ quantile, that reads 66%).
 
 Same capture, snapshot `snap-0904-2205.db`, tables bounded at 9/3 end
 (`model-patch-all-0903.json` for the candidate, `split-patch-0903.json` for
-master — the same `q`/`drive`), 8,246 paired waits. Green is declined by the
-model (byte-identical); Purple runs on it.
+master — the same `q`/`drive`), 8,246 paired waits. Green was declined by the
+model in this run (byte-identical); Purple runs on it.
 
 **The 344 Winchester chain, stop by stop (675 waits):**
 
@@ -408,8 +519,8 @@ radius was tried and cost stop 48 its strands (§3); the honest residue stays.
 
 `model-patch-all-0904.json`, `HOLDOUT=` (every line on the model), run in
 three route groups on the Pi. Paired FIXED / INTRODUCED per route; the
-grocery lines and Green are priced by the legacy arithmetic (declined on
-evidence) and are noise-level.
+grocery lines and Green were priced by the legacy arithmetic in this run
+(declined on evidence at the time) and are noise-level.
 
 | route | waits | strand | jump ≥180 s | reversal ≥60 s | dropped |
 |---|---|---|---|---|---|
@@ -426,7 +537,7 @@ evidence) and are noise-level.
 | Orange East | 1,526 | 3 / 0 | 114 / 14 | 451 / 15 | 86 / 1 |
 | Pink | 7,021 | **128 / 203** | 3,443 / 286 | 3,521 / 195 | 2,854 / 56 |
 | Blue Weekend | 827 | 3 / 1 | 270 / 8 | 375 / 1 | 170 / 0 |
-| Green (legacy) | 4,452 | 0 / 0 | 0 / 1 | 0 / 5 | 0 / 0 |
+| Green (legacy in this run) | 4,452 | 0 / 0 | 0 / 1 | 0 / 5 | 0 / 0 |
 
 The 344 Winchester chain on this day (1,542 waits), Division / Prospect:
 strand 19.5 → 2.7%, jump ≥180 s 13.8 → 0.8%, p90 drift 230 → 115 s;

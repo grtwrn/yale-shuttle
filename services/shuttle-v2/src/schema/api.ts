@@ -37,6 +37,14 @@ export const RouteSchema = z.object({
   // served as `route_active` so the client can say "not running today"
   // from the operator's own word rather than from inference.
   active: z.boolean().optional(),
+  // Upstream's own stop order, kept when `stops` had to be REPAIRED against
+  // upstream's own polyline (src/network/alignStops.ts). In-memory only, like
+  // `description`: the network runs on the repaired order — the detector, the
+  // legs it bills and the hop keys the calibrator fills — while `/api/buses`
+  // keeps publishing this one, so the map and the planner still draw and list
+  // exactly what upstream sent. Absent on every route the line already
+  // describes, which is fourteen of fifteen.
+  publishedStops: z.array(z.number().int()).optional(),
 });
 export type Route = z.infer<typeof RouteSchema>;
 

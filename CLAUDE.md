@@ -672,6 +672,56 @@ Do **not** reintroduce a ratio-of-straight-line rule per leg. Purple's West
 Campus out-and-back legitimately doubles back; that rule scored it 72.8%
 on-street and drew a chord across the water.
 
+### When the published stop ORDER disagrees with the published line
+
+`src/network/alignStops.ts`. One route of fifteen — Green — lists its stops in
+an order its own polyline cannot be walked through: the line passes
+`… B800, B900, West Haven station, Bradley (N) …` and the list says
+`… B800, station, B900, Bradley (N) …`, and it names the station once where the
+line passes it twice. `traceStopLegs` bridged three legs with chords, which is
+what made Green's ring `bridged` and made the ETA model decline the line.
+
+**The list is the defect, not the line, and the arrivals record says so**:
+2,943 consecutive B800 → B900 arrivals against 1 for B800 → station; 676
+B900 → station and 666 station → Bradley (N); and the station served on both
+the outbound and the return leg, 676 each way. So the ring's order is read off
+the LINE (a monotone min-offset assignment of each stop occurrence to a pass
+the line makes), which needs no service history — a route new this morning gets
+it.
+
+Three things keep it a correction rather than a rewrite, and all three are
+load-bearing:
+
+- **The trigger is a bridged leg**, and nothing else. The other fourteen rings
+  are byte-identical, cell for cell; a test measures it.
+- **Two occurrences may not stack on one pass.** A small out-and-back bridges
+  its return leg by construction while its order is right.
+- **At most one occurrence in ten may move.** A line published COUNTER to its
+  stop list (the "whole route painted solid" bug) bridges every leg; there the
+  LIST is right and reversing it would run the estimator round the route
+  backwards. Past the bound the route keeps its published order and the legacy
+  arithmetic, and derived geometry is the remedy.
+
+`TransitNetwork.build` applies the repair before anything is built on it and
+keeps upstream's list as `Route.publishedStops`. **`/api/buses` still publishes
+upstream's list** (`routes[r]`), so the map and the planner are untouched; the
+segment rows carry both adjacencies so the legacy arm keeps its keys. The
+client's ring recomputes the identical repair from `routes[r]` + `route_paths[r]`
+(`ring.stops` / `ring.order` / `ring.repaired`), so there is no new payload
+field and no version skew — `src/network/alignStops.ts` is imported by BOTH
+sides and the Docker web stage copies that one file, which is why it must stay
+import-free (a test pins that).
+
+Most of the win is server-side: with the station missing from the outbound, a
+bus that stopped there anchored nine hops ahead and the detector discarded the
+leg for exceeding `MAX_SEGMENT_HOPS`, so **Green's longest hop had no measured
+drive at all** and was priced at the route's downtown pace (11.7 km × 0.134 s/m
+= 1,573 s against a real 675 s). On the repaired order all 24 hops are billed.
+Measured on the 9/4 gps-replay, Green's median error goes **288.8 → 70.1 s**,
+its dangerous tail 56.1 → 12.1%, p90 2,817 → 500 s; every other route moves by
+at most 0.2 s of median (route 9's tables feed the all-routes pools). See
+`docs/eta-ring-posterior.md` §2.
+
 ### Derived route paths (`src/network/derivePath.ts`)
 
 Rebuilds a route's loop from `raw_positions`. **Not served to riders**: the
@@ -708,7 +758,10 @@ These are load-bearing; several rider-visible bugs traced to them:
   statistic** (including the median — on long hops the bad samples were the
   majority). Without it the planner priced an 8.4 km ride at 97 seconds.
 - **Routes 9 and 10 repeat stops** for the West Campus out-and-back. Keep the
-  sequence verbatim and index by position; de-duplicating loses real legs.
+  sequence verbatim and index by position; de-duplicating loses real legs. (Route
+  9's sequence is also in the wrong ORDER upstream, and the network repairs it
+  before use — see "When the published stop ORDER disagrees with the published
+  line". `Route.publishedStops` is what `/api/buses` still serves.)
 - **`arrivals.dwell_sec` is NOT standing time — it is anchor residence time.**
   `detector.ts` computes one `elapsedSec` per anchor transition and emits it
   as BOTH the dwell event and the segment event, so `arrivals.dwell_sec` and

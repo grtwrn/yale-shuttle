@@ -163,7 +163,11 @@ console.error(
 const segTable = new Map<string, SegmentStats>();
 const dwTable = new Map<string, DwellStats>();
 let paceTable = new Map<number, PaceStats>();
-for (const r of net.routes) {
+// The NETWORK's routes, not the raw list: on a route whose published order its
+// line cannot supply, the network runs on the repaired order
+// (src/network/alignStops.ts) and so do the calibrator's keys, exactly as the
+// live server serves them.
+for (const r of net.network.routes.values()) {
   const n = r.stops.length;
   for (let i = 0; i < n; i++) {
     const from = r.stops[i]!;
@@ -194,7 +198,7 @@ const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoute
   // exactly as `calibrate` serves it (withPooledPace), so a replay prices
   // the grocery lines from the same prior production does.
   const pooled = computePooledPace(legGroups, net.network, withheld);
-  paceTable = withPooledPace(ownPace, pooled, net.routes.map((r) => r.id));
+  paceTable = withPooledPace(ownPace, pooled, [...net.network.routes.keys()]);
   console.error(`MODEL_ROUTES=${MODEL_ROUTES}: withheld ${withheld.size} routes, ${standCount} stand tables (+${occCount} per-pass), ${driveCount} drives, ${dqCount} hop quantile tables, ${ownPace.size} route paces of their own`);
   if (pooled) console.error(`pooled pace over every route: median ${paceEntry(pooled).spm[4]}–${paceEntry(pooled).spm[5]} s/m, p10 ${paceEntry(pooled).spm[0]} p90 ${paceEntry(pooled).spm[9]}, n ${pooled.n}; fills ${paceTable.size - ownPace.size} route(s) without legs`);
 }
@@ -203,7 +207,10 @@ const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoute
 // the fields the replay cannot serve.
 const patch: Patch = { segments: {}, dwells: {}, pace: {} };
 const rows: Array<{ route: string; hops: number; drives: number; dqs: number; stops: number; stands: number; passes: number; legMs: number; pace: string }> = [];
-for (const r of net.routes) {
+// The NETWORK's routes again: the emission must walk the same sequence the
+// calibrator keyed, or a repaired route's hops are asked for under keys the
+// tables do not have.
+for (const r of net.network.routes.values()) {
   const rid = String(r.id);
   const n = r.stops.length;
   const segMap: Patch["segments"][string] = {};
