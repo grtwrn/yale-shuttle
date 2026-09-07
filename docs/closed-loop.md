@@ -4,9 +4,8 @@
 data … build the closed loop." And, the same day: "can the nightly learning be
 increased to hourly?"
 
-**Status:** stage 1 (the scorecard) and stage 2 (the archive) are built —
-this document says what they are, what they write, and what stages 3 and 4
-need from them. Stages 3 and 4 are designed here and not built.
+**Status:** all four stages are built. This document says what each one is,
+what it writes, and the rules the last two decide by.
 
 ## The four stages
 
@@ -14,8 +13,8 @@ need from them. Stages 3 and 4 are designed here and not built.
 |---|---|---|---|---|
 | 1 | **Scorecard** — every ETA arm scored against the detector's arrivals under one set of rules, per ET day / route / horizon / surface, versioned by the server build | hourly at :35; a day closes at 03:35 the next morning | `src/server/scorecard.ts`, table `scorecard_days`, `GET /api/stats/scorecard`, the "ETA scorecard" section of `/stats` | **built** |
 | 2 | **Archive** — the rows a replay needs, pulled off the production volume every day before retention sweeps them, kept 180 days on the Pi | daily at 03:40 ET (Pi cron) | `GET /api/archive/day`, `scripts/archive-day.mjs`, `scripts/archive-check.mjs`, `~/shuttle-archive/YYYY-MM-DD/` | **built** |
-| 3 | **Re-estimation** — the filter's parameters fitted from the last N weeks and served in the payload: EM for the HMM's emission/transition probabilities, conformal widening of the 10–90 band per horizon, departure hazards per stop | DAILY, multi-week window (see below) | not built | designed |
-| 4 | **Promotion** — champion/challenger: a candidate parameter set (or estimator) replayed in shadow against the archive and promoted only when the scorecard says so | DAILY, after stage 3 | not built | designed |
+| 3 | **Re-estimation** — the filter's re-estimable parameters counted from the last N archived days and served in the `/api/buses` payload: the deadband emissions, the two hold hazards, the shuffle rate, the departure prior, and a conformal widening of the 10–90 band per horizon | DAILY, 14-day window | `scripts/reestimate-params.mjs` + `scripts/reestimate-lib.mjs`, `web/src/eta/params.ts`, `src/server/modelParams.ts`, table `model_params`, `POST /api/model-params`, the "Learning" section of `/stats` | **built** |
+| 4 | **Promotion** — champion/challenger: the candidate replayed against the archive through the real client and promoted only when the scorecard says so | DAILY, in the same run | `scripts/eta-replay/archive-db.ts`, `gps-replay.ts`'s `MODEL_PARAMS`/`PAIRS_OUT`, `POST /api/scorecard/replay`, `surface = "replay:<name>"` | **built** |
 
 **Why the scorecard is hourly and stages 3–4 stay daily.** The scorecard and
 the alerts read from it are *observations*, and an observation is worth
@@ -210,6 +209,323 @@ archive of what existed; re-running the day after 03:40 replaces it.
 source and completeness per day plus the gaps in the last N days, and exits
 1 when yesterday is missing or incomplete — the same cron line's `&&` can
 chain it, or a second line can alert on it.
+
+## Stage 3 — the parameters, served and re-estimated
+
+### What is re-estimable, and what is not
+
+The ring estimator (`docs/eta-ring-posterior.md`) runs on a handful of
+constants, and they are not all the same kind of thing. Seven of them are
+**counts over the feed** — how often a standing bus repeats its fix, how often
+a moving one does, the two hold hazards, the shuffle rate at rest, the share of
+"a standing bus moved" events that were departures. Those are re-countable
+every night from the archive, and they are what stage 3 serves:
+
+| key | what it is | measured in |
+|---|---|---|
+| `P_REPEAT_STAND` | P(byte-identical fix \| standing), per poll | docs/eta-error-budget.md |
+| `P_REPEAT_MOVE` | the same, moving, open road | " |
+| `P_REPEAT_MOVE_ZONE` | the same, within 75 m of a stop of the route | filter.ts (an **estimate**, see below) |
+| `HOLD_ENTER_PER_S` | off-stop run → stand hazard | docs/eta-error-budget.md |
+| `HOLD_LEAVE_PER_S` | off-stop stand → run hazard | " |
+| `SHUFFLE_PER_POLL` | repositions per poll at rest | docs/departure-derivation.md (an estimate) |
+| `P_DEPART_ON_FRESH` | P(departure \| a standing bus moved), no stand table | departure.ts |
+| `CONFORMAL[h]` | multiplicative widening of the shown 10–90 band, per promised-minutes bucket | **new here** |
+
+Everything else in `filter.ts` stays compiled, on purpose. `SIGMA_M`,
+`OFF_ROUTE_SHARE`, `TELEPORT`, `LEAD_SWITCH_MASS`, `REST_RADIUS_M` and the rest
+are either derived quantities (`offRouteWeight` is a formula, not a count) or
+decisions about behaviour rather than measurements of the world — a served
+`LEAD_MAX_HOLD_MS` would be a UI change with no deploy and no review, which is
+not what this loop is for. The line is: **a nightly job may re-measure the
+world; it may not redesign the estimator.**
+
+### The seam on the client
+
+`web/src/eta/params.ts` holds one mutable object, `MP`, whose defaults are the
+compiled constants byte for byte. `filter.ts` reads `MP.P_REPEAT_STAND` where
+it used to read the literal — eight call sites, nothing restructured — and the
+literals stay in `filter.ts` beside the measurement that set them, because that
+is where a reader looks. `params.test.ts` pins the two copies equal AND runs a
+scripted day on a synthetic block twice, once on the constants and once on a
+served set equal to them, asserting **every cell mass and every priced row is
+identical**. That test is what makes "publish" safe to reason about: the
+default path is provably the old path.
+
+`arrival.ts` applies `widenBand(eta, low, high)` as the last step of pricing,
+after the floor clamp, because the factor is fitted against the number a rider
+was actually shown. At a factor of exactly 1 it returns `[low, high]` itself
+rather than computing `eta - (eta - low) * 1`, which can differ in the last
+bit.
+
+`TransitMap.tsx` calls `applyModelParams(data.model_params)` on every poll,
+before anything prices a row. Absent, malformed, or with any key outside its
+range, the whole set is rejected and `MP` resets to the constants — a set is
+all or nothing, because a half-applied set is a mixture nobody measured. An
+older server, a rolled-back publish and a corrupt field therefore all degrade
+the same way, to today's client.
+
+### The wire and the store
+
+`/api/buses` grows one optional key:
+
+```
+model_params: { version, publishedAt, params: { …the eight above… } }
+```
+
+It is **absent** until something is accepted, so a database with no published
+row serves exactly the payload it served before. The payload cache
+(`createBusesPayloadCache`) keys on the parameter version as well as
+`collector.dataVersion()`: a publish lands between two collector ticks and
+would otherwise wait for one.
+
+`model_params` (migration 0016) is append-only, one row per nightly decision —
+**accepted or not**, because "we tried this and it was worse" is the half a
+dashboard has no other way to show. Columns: `published_at`, `accepted`,
+`version`, the window (`from`, `to`, `days`), `params`, `n`, `note`,
+`decision`. The server serves the latest accepted row.
+
+`POST /api/model-params` is **admin header only**, and deliberately not under
+`/api/stats`: the dashboard's `stats_session` cookie is scoped
+`Path=/api/stats`, so the browser never even sends it here. Reading
+(`GET /api/stats/model-params`, which the Learning block on `/stats` uses) takes
+either credential, like the rest of `/api/stats`. Every value is validated
+against `PARAM_RANGES` on the way in, and the client re-checks the identical
+table on the way out; a test pins the two equal, and a third copy in
+`reestimate-lib.mjs` is pinned to them as well.
+
+### The job
+
+`TZ=America/New_York node scripts/reestimate-params.mjs [--dry-run]`, on the
+Pi, reading `~/shuttle-archive` — **not** the volume, where `raw_positions` is
+swept after six hours. It counts on the last 14 available archived days
+(`--days`), replays the last 3 (`--replay-days`), and posts one row either way.
+
+The counters live in `scripts/reestimate-lib.mjs` as pure functions over rows,
+so `reestimate-lib.test.mjs` can hand them fixtures whose answers are known by
+construction. The classifier is the repo's own: a sample is **standing** iff
+some run of consecutive samples containing it stays inside a 25 m ball for at
+least 15 s with no feed gap over 60 s (`hop-anatomy.ts`) — not "the coordinate
+did not change", which calls a moving bus stopped on a fifth of its samples
+(docs/bus-speed.md).
+
+**Nothing is published that cannot be defended.** A key keeps the champion's
+value, and the reason is printed and stored in `decision.issues`, when:
+
+- its sample is under the floor (`N_FLOORS`: 5,000 poll pairs for the pooled
+  emissions, 2,000 for the in-zone split, 500 transitions for a hazard, 200
+  stopped visits for the visit rates, 300 scored pairs for a conformal bucket);
+- the value is outside `PARAM_RANGES` — never waived, by any flag;
+- it is further from the **compiled** constant than its drift bound (`DRIFT`: a
+  probability by 0.15 absolute, a rate by a factor of two), unless
+  `--allow-drift` is passed. A re-measurement of a stationary quantity lands
+  well inside these; a jump past them is a changed definition or a broken feed,
+  and wants a human.
+
+### The first fit, 2026-09-07 — and the one number that disagreed
+
+Counted on the four archived days 9/3–9/6 (455,009 positions, 15,524 stop
+visits). Six of the seven reproduce the hand measurement; the seventh is a
+finding.
+
+| key | fitted | compiled | n |
+|---|---|---|---|
+| `P_REPEAT_STAND` | **0.92643** | 0.919 | 224,917 poll pairs |
+| `P_REPEAT_MOVE` | **0.13503** | 0.159 | 228,752 poll pairs |
+| `P_REPEAT_MOVE_ZONE` | **0.21541** | 0.5 | 65,792 in-zone moving pairs |
+| `HOLD_ENTER_PER_S` | **0.01337** | 0.01612 | 15,401 transitions / 1,151,799 s |
+| `HOLD_LEAVE_PER_S` | **0.01362** | 0.01457 | 15,418 transitions / 1,132,143 s |
+| `SHUFFLE_PER_POLL` | **0.02774** | 0.03 | 3,054 shuffles / 110,104 rest polls |
+| `P_DEPART_ON_FRESH` | **0.72607** | 0.76 | 8,095 stopped visits |
+
+The two emission probabilities land within 0.008 and 0.024 of numbers measured
+by hand on a different window, which is the check that the definition in
+`reestimate-lib.mjs` is the one `docs/eta-error-budget.md` used. The hazards
+are 17% and 6.5% below theirs; both classifiers agree on the shape and differ
+in the detail (the error budget's labels came from the progress filter's
+`|Δx| < 30 m` censoring bound, this one from the 25 m / 15 s run), so the
+hazards are re-measurements, not reproductions, and the drift bound of ×2 is
+what keeps that honest.
+
+**`P_REPEAT_MOVE_ZONE` disagrees materially: 0.215 measured against 0.5
+compiled, and the job refuses to publish it.** This is the right outcome and it
+was not a surprise: `filter.ts` says of the 0.5 in as many words, "it is an
+estimate, not a measurement" — the collector's three-poll rule written as a
+probability, chosen high on purpose because calling every in-zone repeat a
+stand once flipped an arriving bus to standing at 5.8 : 1. The measurement says
+a moving bus inside a stop's zone repeats its fix about a fifth of the time,
+not half. **Do not simply lower it.** The 0.5 is a deliberate bias in the
+likelihood, and the number that would settle it is not the emission rate — it
+is what the anchor does on the whole day at 0.215, which is a stage-4 replay
+somebody should run behind `--allow-drift` and read before touching the
+constant. Until then the drift bound holds the line and the disagreement is on
+the record here.
+
+## Stage 4 — champion against challenger
+
+### Replaying an archived day through the real client
+
+`scripts/eta-replay/archive-db.ts <day> <base snapshot> <out.db>` builds a
+throwaway database in the replay's own schema (the real migrations, so
+`model-patch.ts`'s calibrator loaders work unchanged): topology and 30 days of
+prior calibration from the snapshot, the day's `raw_positions`, `arrivals`,
+`legs` and `stop_visits` from the archive, de-duplicated on primary key.
+Nothing after the day's end is copied — those rows are the future for every
+rider in the replay.
+
+`gps-replay.ts` then runs the day through `computeUpcomingArrivals`, i.e.
+through the ring estimator itself, and two new environment variables make it a
+champion/challenger harness:
+
+- **`MODEL_PARAMS=<file>`** applies a served parameter set to the estimator
+  before the run, through the client's own `applyModelParams` — so a set the
+  client would reject cannot be scored, and the script exits 2 saying so.
+- **`PAIRS_OUT=<file>`** writes the real client's three numbers per pair
+  (`eta`, `low`, `high`) with the detector's truth, as JSON lines. Both arms
+  are then scored by the same code (`scoreRows` in `reestimate-lib.mjs`, the
+  scorecard's rules), so they cannot drift apart through the script's own
+  summary.
+
+**`MODEL_ROUTES` must be left unset for `gps-replay`.** Unset means the tree's
+own allowlist, which is production (all fifteen routes since 2026-09-05).
+Setting it to `"all"` builds the set `{"all"}`, matches no route id, and
+quietly scores the *legacy* arithmetic on every line — an estimator no rider is
+running. `model-patch.ts` reads the same variable with a different meaning and
+does want `all`; the job passes it there and not to the replay.
+
+The band widening is fitted on the champion's **raw** bands (the replay is run
+with `CONFORMAL` forced to 1 on both arms) and both tables are applied
+afterwards by `scoreRows`, so champion and challenger are compared band for
+band by one piece of code. When the challenger's scalars equal the champion's —
+only the widening moved — the second replay is skipped and the same pairs serve
+both arms.
+
+### Where the scores go
+
+`POST /api/scorecard/replay` (admin header) writes one day's rows under
+`surface = "replay:<name>"`, the hook stage 1 left open. Two consequences were
+load-bearing:
+
+- `writeDay`, the hourly job's own writer, used to delete **every** row of the
+  day before re-inserting. It now spares `replay:%`, or a promotion comparison
+  would live one hour.
+- A replay's own re-run replaces only its own arm.
+
+The dashboard's reader skips surfaces it does not know, so these rows sit
+beside `ours` without being counted into it.
+
+### The first conformal fit, 2026-09-07 — the band is too narrow everywhere
+
+Fitted on 9/4 and 9/5 (the champion's raw bands, 1.1 M scored pairs), held out
+on 9/6:
+
+| bucket | factor to reach 80% coverage | n |
+|---|---|---|
+| 0–2 min | **5.39** — outside the accepted [0.5, 4], refused | 194,182 (5,170 with a zero-width band) |
+| 2–5 min | 1.452 | 277,517 |
+| 5–10 min | 1.302 | 291,987 |
+| 10–30 min | 1.425 | 348,935 |
+
+**The shown 10–90 band is too narrow in every bucket**, and in the nearest one
+it is not close: a bus two minutes out would need its band scaled more than
+five-fold to cover the arrival four times in five, and 5,170 of those pairs
+showed a band with no width at all, which no factor can widen. That is not a
+calibration knob to be turned quietly — a band that narrow next to a number
+that is right (the median |error| is ~100 s) says the estimator is confident
+about the last two minutes in a way the arrivals do not support, and the honest
+place to look is `arrival.ts`'s mixture near the stop and the stall credit, not
+the multiplier. The range guard refuses it and the run says so; the other three
+buckets, at 1.3–1.45×, are ordinary widenings and are what the challenger
+carries.
+
+### The promotion rule, and its noise bound
+
+A challenger is promoted only if, over the replayed days:
+
+1. its **mean median |error|** is not worse than the champion's by more than
+   `medianBound`, and
+2. its **held-out interval coverage** is not lower than the champion's by more
+   than `coverageBound`.
+
+Both bounds are **measured, not chosen**: they are the day-to-day standard
+deviation of the *champion's own* numbers across those same days — that is how
+much the same estimator moves with nothing changed — floored at 3 s and 2
+percentage points so that a freak run of three near-identical days cannot make
+the rule infinitely strict. The held-out day is the last replayed day, the one
+the conformal table was **not** fitted on; its coverage is the only honest
+coverage number, because a split-conformal factor covers its own fitting set by
+construction.
+
+The decision, its bounds, its per-day table and the reasons are stored in the
+`model_params` row and shown on `/stats`. A run that declines to publish is
+exactly the one worth reading, which is why the Learning block reads the last
+decision from the history, not from the served set.
+
+### The first decision, 2026-09-07 — promoted, and what actually moved
+
+| day | champion p50 \|err\| / band coverage | challenger |
+|---|---|---|
+| Fri 9/4 | 77.2 s / 65.9% | 77.1 s / **77.1%** |
+| Sat 9/5 | 128.9 s / 51.5% | 128.8 s / **64.0%** |
+| Sun 9/6 (held out) | 126.0 s / 56.5% | 125.9 s / **70.8%** |
+
+Bounds: median 29.0 s, coverage 7.3 points. Mean median difference **−0.1 s**;
+held-out coverage difference **+14.3 points**. Promoted.
+
+**Read this honestly.** The six re-counted scalars moved the median absolute
+error by a tenth of a second — which is to say, by nothing. That is the
+expected result and it is good news: it says the hand measurements those
+constants came from were right, and that re-counting them nightly is
+maintenance, not improvement. **Everything the challenger won, it won on the
+band**: coverage rises 11–14 points on every day, because the shown 10–90
+interval was too narrow and the conformal factors widen it. If a future run
+ever reports a large median gain from these seven numbers, be suspicious of the
+fit before believing it.
+
+**The median bound is weak here, and knowingly so.** 29 s is the champion's own
+spread across a Friday (77 s) and two weekend days (~127 s) — that spread is
+*day type*, not estimator noise, so a challenger could be genuinely 20 s worse
+and still pass. The coverage bound (7.3 points) has the same problem in
+miniature. With only four archived days there is no way around it; the rule
+degrades safely (it is a floor of 3 s and 2 points when the days agree, and
+merely permissive when they do not) and it tightens on its own as the archive
+fills with comparable days. **Comparing like days — weekday against weekday —
+is the first improvement to make once 14 days exist**, and it needs no new
+data, only a filter on which days enter the comparison.
+
+**Coverage is still under target.** The factors were fitted to reach 80% and
+the held-out day reads 70.8%: split conformal fitted on Friday and Saturday
+does not fully transfer to Sunday, and the 0–2 min bucket — refused by the
+range guard — is still at 1.0 and drags the pooled number down. The direction
+is right; the level is not yet the promise.
+
+## The cron line
+
+Not installed by the PR — the operator's call. It runs after the archive's
+03:40 line has landed the night's day:
+
+```
+20 4 * * * cd /home/gwarren/yale-shuttle/services/shuttle-v2 && TZ=America/New_York node scripts/reestimate-params.mjs >> /home/gwarren/shuttle-archive/reestimate.log 2>&1
+```
+
+Add `--dry-run` to watch it for a week before letting it publish.
+
+**Cost, measured on this Pi (2026-09-07).** The counting half is 2 s over four
+days of positions. The replay half is the whole job: `gps-replay` with the ring
+on all fifteen routes takes **413 s for a weekday** (9/4, 173k positions,
+822,671 scored pairs) and 175–200 s for a weekend day, and the run makes one
+pass per arm per day — six for three days when the scalars move, three when
+only the band does. Budget **~25 minutes**, which is why 04:20 and not a
+service hour. Everything is cached under `scripts/.reestimate/` (gitignored):
+~45 MB for a day's replay database and 25–63 MB for each arm's pairs, so
+~170 MB a replayed weekday. An interrupted run resumes at the replay it had
+reached, because a pairs file that already exists is not recomputed.
+
+**Memory is the constraint, not CPU.** A weekday's pairs are 63 MB of JSON
+lines; holding three days times two arms as objects is ~2.5 GB, which this Pi
+does not have (it OOMed the first attempt). Everything downstream of the replay
+streams the file one pair at a time (`readPairs`) and only the tallies are
+held.
 
 ## What stages 3 and 4 need — and get
 

@@ -43,10 +43,21 @@
 
 import { haversineMeters, type LatLon } from "../geo";
 import { hazard } from "./dist";
+import { MP } from "./params";
 import { distancesTo, type Ring } from "./ring";
 
 /** Position noise on a fresh fix, metres. Deadband-scale, deliberately not 10 m (#88's overconfidence). */
 export const SIGMA_M = 20;
+/**
+ * SEVEN OF THE CONSTANTS BELOW ARE RE-ESTIMABLE FROM THE FEED and are served,
+ * not compiled: the step reads them through `MP` (./params), whose defaults
+ * are these exact literals and which the payload's `model_params` may replace
+ * (docs/closed-loop.md, stage 3). The literals stay here, beside the
+ * measurement that set them, because that is where a reader looks; params.ts
+ * duplicates them and `params.test.ts` pins the two equal and proves a served
+ * copy of them reproduces every mass exactly. To change one by hand, change
+ * BOTH — or, better, let the nightly fit publish it.
+ */
 /** Measured per-poll emissions (docs/eta-error-budget.md, n = 39,319 / 35,576). */
 export const P_REPEAT_STAND = 0.919;
 export const P_REPEAT_MOVE = 0.159;
@@ -492,7 +503,7 @@ export function stepBelief(
   const fresh = prev.lastFix === null || prev.lastFix.lat !== bus.lat || prev.lastFix.lon !== bus.lon;
   const q = new Float64Array(2 * C);
   const p = prev.p;
-  const hIn = Math.min(0.5, HOLD_ENTER_PER_S * dt);
+  const hIn = Math.min(0.5, MP.HOLD_ENTER_PER_S * dt);
   const cellM = ring.loopM / ring.C;
 
   if (fresh) {
@@ -501,12 +512,12 @@ export function stepBelief(
     // = 1 - P_REPEAT_MOVE. Without the first factor a single crawl repeat
     // left a standing ghost that fresh fixes never cancelled (review, 9).
     const stood = prev.rested ? standingSec(prev, prev.seenAt) : 0;
-    const shufflePoll = SHUFFLE_PER_POLL * (dt / 5);
-    const fromStand = 1 - P_REPEAT_STAND;
+    const shufflePoll = MP.SHUFFLE_PER_POLL * (dt / 5);
+    const fromStand = 1 - MP.P_REPEAT_STAND;
     const departKern = Float64Array.from(DEPART_KERNEL);
     for (let c = 0; c < C; c++) {
       const inZone = ring.nearStop[c]! >= 0 || ring.approachOf[c]! >= 0 || (prev.rested && prev.restMask[c] === 1);
-      const fromMove = 1 - (inZone ? P_REPEAT_MOVE_ZONE : P_REPEAT_MOVE);
+      const fromMove = 1 - (inZone ? MP.P_REPEAT_MOVE_ZONE : MP.P_REPEAT_MOVE);
       const mStand = p[c]! * fromStand, mMove = p[C + c]! * fromMove;
       if (mStand + mMove < PROPAGATE_MIN) continue;
       if (mStand > 1e-12) {
@@ -526,7 +537,7 @@ export function stepBelief(
             const hd = hazard(table, stood) * dt;
             pDepart = hd / (hd + shufflePoll);
           } else {
-            pDepart = P_DEPART_ON_FRESH;
+            pDepart = MP.P_DEPART_ON_FRESH;
           }
         }
         // Through `advance`, so a first step that lands ON a stop cell is
@@ -563,10 +574,10 @@ export function stepBelief(
     for (let c = 0; c < C; c++) {
       const mStand = p[c]!, mMove = p[C + c]!;
       const atStop = ring.nearStop[c]! >= 0 || ring.approachOf[c]! >= 0 || (prev.rested && prev.restMask[c] === 1);
-      const hLeave = Math.min(0.5, (atStop ? STOP_LEAVE_PER_S : HOLD_LEAVE_PER_S) * dt);
-      const stay = mStand * P_REPEAT_STAND;
+      const hLeave = Math.min(0.5, (atStop ? STOP_LEAVE_PER_S : MP.HOLD_LEAVE_PER_S) * dt);
+      const stay = mStand * MP.P_REPEAT_STAND;
       const leak = stay * hLeave;
-      const movedRepeat = mMove * (atStop ? P_REPEAT_MOVE_ZONE : P_REPEAT_MOVE);
+      const movedRepeat = mMove * (atStop ? MP.P_REPEAT_MOVE_ZONE : MP.P_REPEAT_MOVE);
       q[c] = q[c]! + stay - leak + movedRepeat * hIn;
       q[C + c] = q[C + c]! + leak + movedRepeat * (1 - hIn);
     }

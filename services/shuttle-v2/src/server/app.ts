@@ -38,7 +38,12 @@ import {
 } from "./predictions.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
 import { createSearchTermsTracker } from "./searchTerms.js";
-import { readScorecard, resolveEstimatorVersion } from "./scorecard.js";
+import {
+  createModelParamsSource, currentModelParams, modelParamsHistory, parseSubmission, recordModelParams,
+} from "./modelParams.js";
+import {
+  parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
+} from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
@@ -81,6 +86,14 @@ const CANARY_DEFAULT_HOURS = 24;
 // against that and still small enough that the endpoint cannot be used to push
 // bulk into the process.
 const SHOWN_BODY_LIMIT = 32 * 1024;
+/**
+ * A parameter set is seven numbers, four factors, their sample counts and the
+ * promotion comparison — a couple of KB. 64 is room for the per-day table and
+ * no room for anything else.
+ */
+const MODEL_PARAMS_BODY_LIMIT = 64 * 1024;
+/** One replayed day of scorecard rows: ~16 routes x 5 horizons of small JSON. */
+const SCORECARD_REPLAY_BODY_LIMIT = 512 * 1024;
 /** Readings accepted per post. A rider's screen shows a handful at a time. */
 const SHOWN_MAX_READINGS = 200;
 
@@ -260,7 +273,11 @@ export function buildApp(opts: AppOptions): Hono {
   // see createBusesPayloadCache for why the naive per-request build was the
   // most expensive thing this process did. Per-app instance so tests that
   // build several apps over one collector stay independent.
-  const busesJson = createBusesPayloadCache(opts.collector);
+  // The estimator's learned parameters, re-read on every publish (stage 3 of
+  // docs/closed-loop.md). Null until a fit is accepted, and then the payload
+  // carries `model_params`.
+  const modelParams = createModelParamsSource(opts.bundle.sqlite);
+  const busesJson = createBusesPayloadCache(opts.collector, modelParams);
 
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a
@@ -830,6 +847,58 @@ export function buildApp(opts: AppOptions): Hono {
   };
   app.get("/api/stats/scorecard", requireStatsAuth, scorecardHandler);
   app.get("/api/scorecard", requireStatsAuth, scorecardHandler);
+
+  // -- The learned parameters (docs/closed-loop.md, stages 3-4) --------------
+  //
+  // What the nightly fit publishes, and what it decided. Reading is fleet
+  // measurement like the rest of /api/stats, so the dashboard's cookie opens
+  // it. WRITING IS THE HEADER ALONE: a published set is a live change to the
+  // ETA every rider sees, with no deploy and no review in between, so it must
+  // not be reachable by anything the browser is holding. The cookie is scoped
+  // Path=/api/stats and this route is deliberately NOT under that prefix, so
+  // the scope enforces the rule as well as the middleware does.
+  app.get("/api/stats/model-params", requireStatsAuth, (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      current: currentModelParams(opts.bundle.sqlite),
+      history: modelParamsHistory(opts.bundle.sqlite, 10),
+      endpointReady: true,
+    });
+  });
+
+  app.post("/api/model-params", requireAdmin, bodyLimit({
+    maxSize: MODEL_PARAMS_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as unknown;
+    const parsed = parseSubmission(body);
+    if (!parsed.ok) return c.json({ error: "invalid_request", reason: parsed.error }, 400);
+    const id = recordModelParams(opts.bundle.sqlite, parsed.value, now());
+    // Take effect on the next poll, not the next collector tick.
+    modelParams.refresh();
+    c.header("Cache-Control", "no-store");
+    return c.json({ ok: true, id, accepted: parsed.value.accepted, serving: modelParams.wire() });
+  });
+
+  // A challenger scored offline on the Pi's archive, written back as
+  // `surface = "replay:<name>"` rows for one ET day — the hook stage 1 left
+  // open. Header only: it writes into the table the dashboard reads.
+  app.post("/api/scorecard/replay", requireAdmin, bodyLimit({
+    maxSize: SCORECARD_REPLAY_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as
+      | { day?: unknown; name?: unknown; rows?: unknown; estimatorVersion?: unknown; scoredThrough?: unknown }
+      | null;
+    const parsed = parseReplayRows(body);
+    if (!parsed.ok) return c.json({ error: "invalid_request", reason: parsed.error }, 400);
+    writeReplayDay(opts.bundle.sqlite, parsed.value, now());
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      ok: true, day: parsed.value.day, surface: replaySurface(parsed.value.name),
+      rows: parsed.value.rows.length,
+    });
+  });
 
   // When the app is used, hour by hour, one row per day. Derived from spans
   // already stored — see actives.hourly().

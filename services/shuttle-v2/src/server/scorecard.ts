@@ -565,7 +565,11 @@ export function writeDay(
   rows: readonly ScorecardRow[],
   meta: DayMeta,
 ): void {
-  const del = sqlite.prepare("DELETE FROM scorecard_days WHERE day = ?");
+  // NOT every row of the day: a replayed challenger's rows (surface
+  // `replay:<name>`, written by writeReplayDay) are not this job's to produce
+  // and must survive its hourly rewrite, or a promotion comparison would be
+  // erased by the next tick.
+  const del = sqlite.prepare(`DELETE FROM scorecard_days WHERE day = ? AND surface NOT LIKE '${REPLAY_PREFIX}%'`);
   const ins = sqlite.prepare(
     `INSERT INTO scorecard_days
        (day, route_id, horizon, surface, metrics, estimator_version, scored_through, scored_at, final)
@@ -691,11 +695,17 @@ export function pruneScorecard(sqlite: Database.Database, now: number): number {
   }
 }
 
-/** Days already closed. */
+/**
+ * Days already closed BY THIS JOB. The replay surfaces are excluded on
+ * purpose: a challenger's rows are final in their own right (they score a day
+ * that is over), and counting them here would make the job skip a day it had
+ * never scored — a replayed day would keep the ETA scorecard's own arms
+ * forever empty.
+ */
 function finalDays(sqlite: Database.Database): Set<string> {
   try {
     const rows = sqlite
-      .prepare("SELECT DISTINCT day FROM scorecard_days WHERE final = 1")
+      .prepare(`SELECT DISTINCT day FROM scorecard_days WHERE final = 1 AND surface NOT LIKE '${REPLAY_PREFIX}%'`)
       .all() as Array<{ day: string }>;
     return new Set(rows.map((r) => r.day));
   } catch {
@@ -871,4 +881,110 @@ export function createScorecardJob(opts: ScorecardJobOptions): ScorecardJob {
     },
     tick,
   };
+}
+
+// -- Replayed challengers (docs/closed-loop.md, stage 4) ------------------------
+
+/**
+ * The surface prefix a replay writes under. The dashboard's reader skips
+ * surfaces it does not know, so these rows sit beside `ours` without being
+ * counted into it; `writeDay`'s delete deliberately spares them.
+ */
+export const REPLAY_PREFIX = "replay:";
+const REPLAY_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,39}$/i;
+
+export function replaySurface(name: string): string {
+  return `${REPLAY_PREFIX}${name}`;
+}
+
+export interface ReplayDay {
+  day: string;
+  /** The arm's name — `champion`, `challenger`, a fit's version. */
+  name: string;
+  estimatorVersion: string;
+  scoredThrough: number;
+  rows: ScorecardRow[];
+}
+
+const METRIC_COUNTS = ["n", "beyondHorizon", "standing", "missing", "paired", "intervalRows", "waits", "strands", "jumpPairs", "jumps"] as const;
+const METRIC_NULLABLE = ["medianSignedSec", "medianAbsSec", "p90AbsSec", "within120Pct", "pessimistic120Pct", "optimistic120Pct", "intervalCoveragePct"] as const;
+
+/**
+ * Validate a POSTed replay day. Every number is checked because these rows are
+ * written by a script on the Pi over the admin API, and a row with a NaN in it
+ * would poison the dashboard's own arithmetic — the endpoint is authenticated,
+ * not trusted.
+ */
+export function parseReplayRows(raw: unknown): { ok: true; value: ReplayDay } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object") return { ok: false, error: "body_not_object" };
+  const b = raw as Record<string, unknown>;
+  if (typeof b["day"] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b["day"])) return { ok: false, error: "day" };
+  if (typeof b["name"] !== "string" || !REPLAY_NAME_RE.test(b["name"])) return { ok: false, error: "name" };
+  const ev = b["estimatorVersion"];
+  if (ev !== undefined && (typeof ev !== "string" || ev.length > 80)) return { ok: false, error: "estimatorVersion" };
+  const st = b["scoredThrough"];
+  if (st !== undefined && (typeof st !== "number" || !Number.isFinite(st))) return { ok: false, error: "scoredThrough" };
+  if (!Array.isArray(b["rows"])) return { ok: false, error: "rows_not_array" };
+  if (b["rows"].length > 5000) return { ok: false, error: "too_many_rows" };
+  const horizons: string[] = [...HORIZONS, ALL_HORIZON];
+  const rows: ScorecardRow[] = [];
+  for (const [i, r] of (b["rows"] as unknown[]).entries()) {
+    if (!r || typeof r !== "object") return { ok: false, error: `row_${i}_not_object` };
+    const row = r as Record<string, unknown>;
+    if (typeof row["routeId"] !== "number" || !Number.isInteger(row["routeId"]) || row["routeId"] < 0) return { ok: false, error: `row_${i}_routeId` };
+    if (typeof row["horizon"] !== "string" || !horizons.includes(row["horizon"])) return { ok: false, error: `row_${i}_horizon` };
+    const m = row["metrics"];
+    if (!m || typeof m !== "object") return { ok: false, error: `row_${i}_metrics` };
+    const mm = m as Record<string, unknown>;
+    const out = {} as Record<string, unknown>;
+    for (const k of METRIC_COUNTS) {
+      const v = mm[k] ?? 0;
+      if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return { ok: false, error: `row_${i}_${k}` };
+      out[k] = v;
+    }
+    for (const k of METRIC_NULLABLE) {
+      const v = mm[k];
+      if (v === undefined || v === null) { out[k] = null; continue; }
+      if (typeof v !== "number" || !Number.isFinite(v)) return { ok: false, error: `row_${i}_${k}` };
+      out[k] = v;
+    }
+    rows.push({
+      routeId: row["routeId"],
+      horizon: row["horizon"] as ScorecardRow["horizon"],
+      surface: replaySurface(b["name"]) as ScorecardSurface,
+      metrics: out as unknown as ScorecardMetrics,
+    });
+  }
+  return {
+    ok: true,
+    value: {
+      day: b["day"], name: b["name"],
+      estimatorVersion: typeof ev === "string" ? ev : "replay",
+      scoredThrough: typeof st === "number" ? st : 0,
+      rows,
+    },
+  };
+}
+
+/**
+ * Replace one arm's rows for one day, and nothing else's. A re-run of the same
+ * replay is a replacement; the hourly job's own rows are untouched.
+ */
+export function writeReplayDay(sqlite: Database.Database, r: ReplayDay, now: number): void {
+  const surface = replaySurface(r.name);
+  const del = sqlite.prepare("DELETE FROM scorecard_days WHERE day = ? AND surface = ?");
+  const ins = sqlite.prepare(
+    `INSERT INTO scorecard_days
+       (day, route_id, horizon, surface, metrics, estimator_version, scored_through, scored_at, final)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  sqlite.transaction(() => {
+    del.run(r.day, surface);
+    for (const row of r.rows) {
+      ins.run(
+        r.day, row.routeId, row.horizon, surface, JSON.stringify(row.metrics),
+        r.estimatorVersion, r.scoredThrough, now, 1,
+      );
+    }
+  })();
 }

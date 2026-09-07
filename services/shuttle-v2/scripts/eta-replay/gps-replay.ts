@@ -46,6 +46,7 @@ import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLeg
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
 import { MAX_PLAUSIBLE_M_S } from "../../web/src/arrivals";
+import { applyModelParams, activeModelParams } from "../../web/src/eta/params";
 
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
@@ -65,6 +66,17 @@ registerRoutePaths(net.routePaths);
 if (process.env.MODEL_ROUTES !== undefined) {
   (globalThis as { __SHUTTLE_MODEL_ROUTES__?: ReadonlySet<string> }).__SHUTTLE_MODEL_ROUTES__ = new Set(process.env.MODEL_ROUTES.split(",").map((x) => x.trim()).filter(Boolean));
   log(`MODEL_ROUTES=${JSON.stringify(process.env.MODEL_ROUTES)}`);
+}
+// A CHALLENGER parameter set (docs/closed-loop.md, stage 4): the same file the
+// nightly fit POSTs to /api/model-params, applied to the estimator this replay
+// runs. Absent = the compiled constants, i.e. the champion the tree ships.
+if (process.env.MODEL_PARAMS) {
+  const wire = JSON.parse(fs.readFileSync(process.env.MODEL_PARAMS, "utf8")) as unknown;
+  if (!applyModelParams(wire)) {
+    console.error(`MODEL_PARAMS=${process.env.MODEL_PARAMS} was rejected by the client's own validation — refusing to score a set no rider could receive.`);
+    process.exit(2);
+  }
+  log(`MODEL_PARAMS ${activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
 }
 
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
@@ -661,6 +673,25 @@ for (const o of observations) {
   }
 }
 log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max replica diff ${maxReplicaDiff}`);
+// The REAL client's three numbers per pair, as JSON lines, for anything that
+// wants to score them outside this script — the promotion comparison in
+// scripts/reestimate-params.mjs re-scores champion and challenger from two of
+// these files under the scorecard's own rules, so the two arms cannot drift
+// apart through this script's own summary code.
+if (process.env.PAIRS_OUT) {
+  const out: string[] = [];
+  for (const p of pairs) {
+    out.push(JSON.stringify({
+      r: p.routeId, k: p.k, atStop: p.atStop,
+      eta: Math.round(p.realEta * 10) / 10,
+      low: Math.round(p.realLow * 10) / 10,
+      high: Math.round(p.realHigh * 10) / 10,
+      det: p.det === null ? null : Math.round(p.det * 10) / 10,
+    }));
+  }
+  fs.writeFileSync(process.env.PAIRS_OUT, out.join("\n") + (out.length ? "\n" : ""));
+  log(`wrote ${process.env.PAIRS_OUT} (${out.length} pairs)`);
+}
 // The replica below is a HAND COPY of computeUpcomingArrivals kept so the
 // counterfactual modes can be run. It has gone stale before -- silently, as a
 // counter in the JSON nobody read -- and the `chord` row was reported as "the

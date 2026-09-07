@@ -1837,3 +1837,168 @@ describe("canary ingest and panel", () => {
     expect(body.lines).toEqual([]);
   });
 });
+
+/**
+ * `res.json()` is `unknown` here; every assertion below is over a shape this
+ * file itself constructed, so one cast at the boundary is honest.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const jsonOf = async (res: Response): Promise<any> => (await res.json()) as any;
+
+describe("the learned parameters (docs/closed-loop.md, stage 3)", () => {
+  const FROZEN = 1_700_000_000_000;
+  const goodParams = () => ({
+    P_REPEAT_STAND: 0.926, P_REPEAT_MOVE: 0.135, P_REPEAT_MOVE_ZONE: 0.5,
+    HOLD_ENTER_PER_S: 0.0134, HOLD_LEAVE_PER_S: 0.0136,
+    SHUFFLE_PER_POLL: 0.0277, P_DEPART_ON_FRESH: 0.726,
+    CONFORMAL: { "0-2": 1.4, "2-5": 1.2, "5-10": 1.1, "10-30": 1 },
+  });
+  const submission = (over: Record<string, unknown> = {}) => ({
+    params: goodParams(),
+    n: { P_REPEAT_STAND: 224917, "CONFORMAL.0-2": 4210 },
+    window: { from: "2026-09-03", to: "2026-09-06", days: 4 },
+    version: "fit-2026-09-06",
+    accepted: true,
+    note: "promoted",
+    ...over,
+  });
+  const post = (body: unknown, headers: Record<string, string> = { "x-admin-token": TEST_ADMIN_TOKEN }) =>
+    app.request("/api/model-params", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    });
+
+  const mint = (expiryMs: number) =>
+    `${expiryMs}.${crypto.createHmac("sha256", TEST_ADMIN_TOKEN).update(String(expiryMs)).digest("hex")}`;
+
+  it("serves no model_params until something is published — the compiled client, byte for byte", async () => {
+    const res = await app.request("/api/buses");
+    const body = await jsonOf(res);
+    expect(body.model_params).toBeUndefined();
+    expect("model_params" in body).toBe(false);
+  });
+
+  it("publishes a set and serves it on the very next poll", async () => {
+    const before = await jsonOf(await app.request("/api/buses"));
+    expect(before.model_params).toBeUndefined();
+    const res = await post(submission());
+    expect(res.status).toBe(200);
+    const out = await jsonOf(res);
+    expect(out.ok).toBe(true);
+    expect(out.accepted).toBe(true);
+    // No collector tick happened in between: the payload cache must key on the
+    // parameter version too, or a publish would wait for one.
+    const after = await jsonOf(await app.request("/api/buses"));
+    expect(after.model_params.version).toBe("fit-2026-09-06");
+    expect(after.model_params.params.P_REPEAT_STAND).toBe(0.926);
+    expect(after.model_params.params.CONFORMAL["0-2"]).toBe(1.4);
+    expect(after.model_params.publishedAt).toBe(FROZEN);
+  });
+
+  it("a set the fit did NOT accept is recorded and NOT served", async () => {
+    await post(submission({ accepted: false, note: "kept the champion: median |err| worse by 30.0 s" }));
+    const body = await jsonOf(await app.request("/api/buses"));
+    expect(body.model_params).toBeUndefined();
+    const read = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(read.current).toBeNull();
+    expect(read.history).toHaveLength(1);
+    expect(read.history[0].accepted).toBe(false);
+    expect(read.history[0].note).toContain("kept the champion");
+  });
+
+  it("refuses a value outside its range, naming the key, and changes nothing", async () => {
+    await post(submission());
+    for (const [over, reason] of [
+      [{ params: { ...goodParams(), P_REPEAT_STAND: 1.4 } }, "out_of_range:P_REPEAT_STAND"],
+      [{ params: { ...goodParams(), CONFORMAL: { ...goodParams().CONFORMAL, "2-5": 99 } } }, "out_of_range:CONFORMAL.2-5"],
+      [{ window: { from: "2026-09-06", to: "2026-09-03", days: 4 } }, "window_order"],
+      [{ version: "no spaces allowed" }, "version"],
+      [{ accepted: "yes" }, "accepted"],
+    ] as Array<[Record<string, unknown>, string]>) {
+      const res = await post(submission(over));
+      expect(res.status).toBe(400);
+      expect((await jsonOf(res)).reason).toBe(reason);
+    }
+    // Still the one good set.
+    const read = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(read.history).toHaveLength(1);
+  });
+
+  it("the stats cookie reads but must NOT publish", async () => {
+    const login = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const cookie = `stats_session=${value}`;
+    expect(value).not.toBe("");
+
+    const read = await app.request("/api/stats/model-params", { headers: { cookie } });
+    expect(read.status).toBe(200);
+
+    const write = await post(submission(), { cookie });
+    expect(write.status).toBe(401);
+    // A hand-forged cookie is no better: the write path never looks at cookies.
+    const forged = await post(submission(), { cookie: `stats_session=${mint(FROZEN + 86_400_000)}` });
+    expect(forged.status).toBe(401);
+    const still = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(still.history).toHaveLength(0);
+  });
+
+  it("refuses both routes without any credential", async () => {
+    expect((await app.request("/api/stats/model-params")).status).toBe(401);
+    expect((await post(submission(), {})).status).toBe(401);
+    expect((await post(submission(), { "x-admin-token": "wrong" })).status).toBe(401);
+  });
+});
+
+describe("a replayed challenger in the scorecard (stage 4)", () => {
+  const rows = (medianAbsSec: number) => [
+    { routeId: 0, horizon: "all", metrics: { n: 100, paired: 90, medianAbsSec, intervalCoveragePct: 78.5, intervalRows: 90 } },
+    { routeId: 3, horizon: "0-2", metrics: { n: 20, paired: 20, medianAbsSec: 12.5 } },
+  ];
+  const post = (body: unknown, headers: Record<string, string> = { "x-admin-token": TEST_ADMIN_TOKEN }) =>
+    app.request("/api/scorecard/replay", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it("writes replay:<name> rows the reader hands back, and re-running replaces them", async () => {
+    expect((await post({ day: "2026-09-05", name: "challenger", rows: rows(101.5) })).status).toBe(200);
+    expect((await post({ day: "2026-09-05", name: "champion", rows: rows(104.2) })).status).toBe(200);
+    let read = await jsonOf(await app.request("/api/scorecard?days=400", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    const surfaces = read.rows.map((r: { surface: string }) => r.surface);
+    expect(surfaces).toContain("replay:challenger");
+    expect(surfaces).toContain("replay:champion");
+    expect(read.rows.filter((r: { surface: string }) => r.surface.startsWith("replay:"))).toHaveLength(4);
+
+    await post({ day: "2026-09-05", name: "challenger", rows: rows(99.9) });
+    read = await jsonOf(await app.request("/api/scorecard?days=400", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    const chall = read.rows.filter((r: { surface: string }) => r.surface === "replay:challenger");
+    expect(chall).toHaveLength(2);
+    expect(chall.find((r: { horizon: string }) => r.horizon === "all").metrics.medianAbsSec).toBe(99.9);
+    // The champion's rows were not touched by the challenger's re-run.
+    expect(read.rows.filter((r: { surface: string }) => r.surface === "replay:champion")).toHaveLength(2);
+  });
+
+  it("rejects a malformed row, a bad day and a bad name, and needs the header", async () => {
+    for (const [body, reason] of [
+      [{ day: "nope", name: "x", rows: [] }, "day"],
+      [{ day: "2026-09-05", name: "a b", rows: [] }, "name"],
+      [{ day: "2026-09-05", name: "x", rows: {} }, "rows_not_array"],
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "nope", metrics: {} }] }, "row_0_horizon"],
+      // NaN cannot travel over JSON at all (it serialises to null, i.e. 0);
+      // a negative count is what a buggy script actually sends.
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "all", metrics: { n: -1 } }] }, "row_0_n"],
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "all", metrics: { medianAbsSec: "12" } }] }, "row_0_medianAbsSec"],
+    ] as Array<[Record<string, unknown>, string]>) {
+      const res = await post(body);
+      expect(res.status).toBe(400);
+      expect((await jsonOf(res)).reason).toBe(reason);
+    }
+    expect((await post({ day: "2026-09-05", name: "x", rows: [] }, {})).status).toBe(401);
+  });
+});

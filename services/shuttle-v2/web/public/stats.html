@@ -290,6 +290,18 @@
   .score-table td.official { color: var(--series-returning); }
   .score-table tr.total td { font-weight: 600; }
 
+  /* Learning (docs/closed-loop.md, stages 3-4): what the nightly fit
+     published, and whether the last run promoted it. A table and some
+     sentences, no chart — so it needs no colour of its own. The only thing
+     the eye has to find is the row that actually MOVED, and a muted
+     "unchanged" beside every other one does that without adding a hue. */
+  .learn { display: grid; gap: 10px; margin-top: 10px; }
+  .learn-line { font-size: 15px; font-weight: 600; }
+  .learn-sub { font-size: 13px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
+  .learn-reasons { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+  .learn-reasons li { margin-bottom: 2px; overflow-wrap: anywhere; }
+  .score-table td.quiet { color: var(--ink-2); }
+
   /* -- Login / error states --------------------------------------------- */
   .panel {
     background: var(--raised);
@@ -466,6 +478,29 @@
       <div id="score-rules" class="score-rules"></div>
       <div id="score-empty" class="empty" hidden>No scored days yet — the first hour settles at :35.</div>
     </section>
+
+    <!-- Learning: stages 3 and 4 of docs/closed-loop.md — the parameters the
+         nightly fit published, beside the constants the client ships with,
+         and the last promotion decision. Fed by GET /api/stats/model-params;
+         if that endpoint is not there yet the whole section hides itself and
+         the rest of the dashboard is untouched. -->
+    <section id="learn-section" hidden>
+      <div class="chart-head">
+        <h2>Learning</h2>
+      </div>
+      <div id="learn-stamp" class="score-rules"></div>
+      <div id="learn-empty" class="empty" hidden>
+        Nothing published yet — the client is running its compiled constants.
+      </div>
+      <div class="score-wrap">
+        <table id="learn-params" class="score-table" hidden></table>
+      </div>
+      <div id="learn-decision" class="learn"></div>
+      <div class="score-wrap">
+        <table id="learn-perday" class="score-table" hidden></table>
+      </div>
+      <div id="learn-issues" class="score-rules"></div>
+    </section>
   </div>
 </main>
 
@@ -529,7 +564,14 @@
     scoreNote: document.getElementById("score-note"),
     scoreTable: document.getElementById("score-table"),
     scoreRules: document.getElementById("score-rules"),
-    scoreEmpty: document.getElementById("score-empty")
+    scoreEmpty: document.getElementById("score-empty"),
+    learnSection: document.getElementById("learn-section"),
+    learnStamp: document.getElementById("learn-stamp"),
+    learnEmpty: document.getElementById("learn-empty"),
+    learnParams: document.getElementById("learn-params"),
+    learnDecision: document.getElementById("learn-decision"),
+    learnPerDay: document.getElementById("learn-perday"),
+    learnIssues: document.getElementById("learn-issues")
   };
 
   // Which reports this browser has already been shown. Highest id seen, in
@@ -581,6 +623,9 @@
     }
     return {
       full: f({ weekday: "short", month: "short", day: "numeric" }),
+      // "Sep 3" — for a span, where the weekday is noise and "9/3" beside a
+      // second date reads as a fraction.
+      md: f({ month: "short", day: "numeric" }),
       short: f({ month: "numeric", day: "numeric" })
     };
   }
@@ -625,7 +670,10 @@
       getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; }),
       getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; }),
       getJson("/api/stats/canary?hours=" + CANARY_HOURS).catch(function () { return null; }),
-      getJson("/api/stats/scorecard?days=" + SCORE_DAYS).catch(function () { return null; })
+      getJson("/api/stats/scorecard?days=" + SCORE_DAYS).catch(function () { return null; }),
+      // Stages 3-4. The endpoint may not exist on this build at all;
+      // then the Learning section simply never appears.
+      getJson("/api/stats/model-params").catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
@@ -635,6 +683,7 @@
       renderTerms(both[4]);
       renderCanary(both[5]);
       renderScorecard(both[6]);
+      renderLearning(both[7]);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -1111,6 +1160,283 @@
       table.appendChild(tr);
     }
     table.hidden = false;
+  }
+
+
+  /**
+   * Learning — stages 3 and 4 of docs/closed-loop.md. Three questions, in the
+   * order the operator asks them: what is being SERVED (and which of it moved
+   * off the compiled constant), did the last run PROMOTE anything, and which
+   * keys the fit refused to publish.
+   *
+   * The promotion decision is read from the newest run in `history`, not from
+   * `current`: a run that declined to publish leaves `current` untouched and
+   * is exactly the run worth reading.
+   *
+   * Every level of the payload is optional — the endpoint may not exist yet
+   * (then this section hides itself and nothing else on the page changes),
+   * a run may have published nothing, and any single field may be absent.
+   * The whole render sits in a try/catch for the same reason: a shape this
+   * page did not expect must not take the rider numbers down with it.
+   */
+  var LEARN_KEY_ORDER = [
+    "P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE",
+    "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S",
+    "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH"
+  ];
+  var LEARN_BAND_ORDER = ["0-2", "2-5", "5-10", "10-30"];
+
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  // Anything that is not a plain object becomes one, so `in` and property
+  // reads below can never throw on a null or a primitive.
+  function obj(v) { return v && typeof v === "object" ? v : {}; }
+
+  function sec1(v) { return isNum(v) ? v.toFixed(1) + " s" : "—"; }
+  function sec1Signed(v) { return isNum(v) ? (v > 0 ? "+" : "") + v.toFixed(1) + " s" : "—"; }
+  function pct1(v) { return isNum(v) ? v.toFixed(1) + "%" : "—"; }
+  function pct1Signed(v) { return isNum(v) ? (v > 0 ? "+" : "") + v.toFixed(1) + "%" : "—"; }
+
+  // Probabilities and rates as they were fitted: five significant digits at
+  // most, and never in scientific notation — "1.63e-2" is not a number an
+  // operator can compare against the constant beside it.
+  function prob5(v) {
+    if (!isNum(v)) return "—";
+    var n = Number(v.toPrecision(5));
+    var s = String(n);
+    if (s.indexOf("e") < 0 && s.indexOf("E") < 0) return s;
+    return n.toFixed(20).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  // Epoch ms -> "Sun Sep 6" in ET, matching dayParts().full for a calendar
+  // day. The operator's phone may be anywhere; the fit is stamped in ET.
+  function dayET(ms) {
+    if (!isNum(ms)) return "";
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: ET, weekday: "short", month: "short", day: "numeric"
+      }).format(new Date(ms));
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function cell(tr, text, cls) {
+    var td = document.createElement("td");
+    if (cls) td.className = cls;
+    td.textContent = text;
+    tr.appendChild(td);
+    return td;
+  }
+  function headRow(table, labels) {
+    var tr = document.createElement("tr");
+    labels.forEach(function (h) {
+      var th = document.createElement("th");
+      th.textContent = h;
+      tr.appendChild(th);
+    });
+    table.appendChild(tr);
+  }
+
+  function hideLearning() {
+    el.learnSection.hidden = true;
+    el.learnStamp.textContent = "";
+    el.learnParams.textContent = "";
+    el.learnParams.hidden = true;
+    el.learnDecision.textContent = "";
+    el.learnPerDay.textContent = "";
+    el.learnPerDay.hidden = true;
+    el.learnIssues.textContent = "";
+    el.learnEmpty.hidden = true;
+  }
+
+  function renderLearning(payload) {
+    try {
+      drawLearning(payload);
+    } catch (e) {
+      hideLearning();
+    }
+  }
+
+  function drawLearning(payload) {
+    hideLearning();
+    var d = obj(payload);
+    // No endpoint (404, network, or not deployed yet) — say nothing at all.
+    if (!payload || d.endpointReady === false) return;
+    var hist = Array.isArray(d.history) ? d.history : [];
+    var cur = d.current ? obj(d.current) : null;
+    // The run that DECIDED last, published or not; falls back to the served
+    // set when there is no history.
+    var latest = obj(hist[0] || cur);
+    el.learnSection.hidden = false;
+
+    // -- 1. the stamp ------------------------------------------------------
+    if (cur) {
+      var parts = [];
+      var fitted = dayET(cur.publishedAt);
+      if (fitted) parts.push("fitted " + fitted);
+      var w = obj(cur.window);
+      var span = w.from && w.to
+        ? dayParts(w.from).md + "–" + dayParts(w.to).md
+        : (w.from ? dayParts(w.from).md : (w.to ? dayParts(w.to).md : ""));
+      if (isNum(w.days) || span) {
+        parts.push("from " +
+          (isNum(w.days) ? w.days + (w.days === 1 ? " day" : " days") : "the fit window") +
+          (span ? ", " + span : ""));
+      }
+      if (cur.version) parts.push(String(cur.version));
+      if (cur.accepted === false) parts.push("not accepted");
+      if (cur.note) parts.push(String(cur.note));
+      el.learnStamp.textContent = parts.join(" · ");
+    }
+
+    // -- 2. the served parameters, beside the compiled constants -----------
+    // Anything printed at all clears the empty state; a payload this page
+    // cannot read prints nothing, and then it says so rather than leaving a
+    // bare heading.
+    var printed = false;
+    if (cur) {
+      var params = obj(cur.params);
+      var compiled = obj(obj(cur.decision).compiled);
+      var counts = obj(cur.n);
+      var rows = [];
+      var used = {};
+      function addRow(label, key, published, constant, n) {
+        rows.push({ label: label, published: published, constant: constant, n: n });
+        if (key) used[key] = true;
+      }
+      LEARN_KEY_ORDER.forEach(function (k) {
+        if (!(k in params) && !(k in compiled)) return;
+        addRow(k, k, params[k], compiled[k], counts[k]);
+      });
+      // A key the fit added that this page has never heard of still gets a row.
+      Object.keys(params).forEach(function (k) {
+        if (used[k] || k === "CONFORMAL") return;
+        addRow(k, k, params[k], compiled[k], counts[k]);
+      });
+      var pubBands = obj(params.CONFORMAL);
+      var compBands = obj(compiled.CONFORMAL);
+      var bands = LEARN_BAND_ORDER.slice();
+      Object.keys(pubBands).forEach(function (b) {
+        if (bands.indexOf(b) < 0) bands.push(b);
+      });
+      bands.forEach(function (b) {
+        if (!(b in pubBands) && !(b in compBands)) return;
+        addRow("band × (" + b + " min)", null, pubBands[b], compBands[b], counts["CONFORMAL." + b]);
+      });
+
+      if (rows.length) {
+        headRow(el.learnParams, ["parameter", "serving", "compiled", "n"]);
+        rows.forEach(function (r) {
+          var tr = document.createElement("tr");
+          cell(tr, r.label);
+          cell(tr, prob5(r.published));
+          // Quietly "unchanged" when the fit landed on the constant the
+          // client already ships: the rows that MOVED are the ones to find.
+          var same = isNum(r.published) && isNum(r.constant) &&
+            Math.abs(r.published - r.constant) < 1e-9;
+          cell(tr, same ? "unchanged" : prob5(r.constant), same ? "quiet" : "");
+          cell(tr, num(r.n), "quiet");
+          el.learnParams.appendChild(tr);
+        });
+        el.learnParams.hidden = false;
+        printed = true;
+      }
+    }
+
+    // -- 3. the last promotion decision ------------------------------------
+    var promo = obj(obj(latest.decision).promotion);
+    var hasPromo = typeof promo.promote === "boolean" ||
+      isNum(promo.medianDiffSec) || isNum(promo.coverageDiffPct) ||
+      Array.isArray(promo.reasons) || Array.isArray(promo.perDay);
+    if (hasPromo) {
+      var card = document.createElement("div");
+      card.className = "note";
+
+      var head = document.createElement("div");
+      head.className = "learn-line";
+      head.textContent = promo.promote ? "Promoted" : "Kept the champion";
+      card.appendChild(head);
+
+      var meta = document.createElement("div");
+      meta.className = "learn-sub";
+      var bits = [];
+      var decided = dayET(latest.publishedAt);
+      if (decided) bits.push("decided " + decided);
+      if (promo.heldOut) bits.push("held out " + dayParts(promo.heldOut).full);
+      if (latest.version) bits.push(String(latest.version));
+      meta.textContent = bits.join(" · ");
+      card.appendChild(meta);
+
+      // Why it declined, in the fit's own words. Nothing is printed when it
+      // promoted: the reasons list is empty then by construction.
+      var reasons = Array.isArray(promo.reasons) ? promo.reasons : [];
+      if (!promo.promote && reasons.length) {
+        var ul = document.createElement("ul");
+        ul.className = "learn-reasons";
+        reasons.forEach(function (r) {
+          var li = document.createElement("li");
+          li.textContent = String(r);
+          ul.appendChild(li);
+        });
+        card.appendChild(ul);
+      }
+
+      var bounds = obj(promo.bounds);
+      var nums = document.createElement("div");
+      nums.className = "learn-sub";
+      nums.textContent =
+        "median |err| " + sec1Signed(promo.medianDiffSec) +
+        " (noise bound " + sec1(bounds.medianSec) + ")" +
+        " · held-out coverage " + pct1Signed(promo.coverageDiffPct) +
+        " (bound " + pct1(bounds.coveragePct) + ")" +
+        " · challenger minus champion, so a negative error favours the challenger";
+      card.appendChild(nums);
+      el.learnDecision.appendChild(card);
+      printed = true;
+    }
+
+    var perDay = Array.isArray(promo.perDay) ? promo.perDay : [];
+    if (perDay.length) {
+      headRow(el.learnPerDay,
+        ["day", "champion |err| p50", "challenger |err| p50", "difference", "band covers (champ / chall)"]);
+      perDay.forEach(function (p) {
+        var row = obj(p);
+        var champ = obj(row.champion);
+        var chall = obj(row.challenger);
+        var tr = document.createElement("tr");
+        cell(tr, row.day ? dayParts(row.day).full : "—");
+        cell(tr, sec1(champ.medianAbsSec));
+        cell(tr, sec1(chall.medianAbsSec));
+        cell(tr, sec1Signed(row.medianDiffSec));
+        cell(tr, pct1(champ.intervalCoveragePct) + " / " + pct1(chall.intervalCoveragePct), "quiet");
+        el.learnPerDay.appendChild(tr);
+      });
+      el.learnPerDay.hidden = false;
+    }
+
+    // -- 4. what the fit refused to publish --------------------------------
+    var issues = Array.isArray(obj(latest.decision).issues)
+      ? obj(latest.decision).issues
+      : (cur && Array.isArray(obj(cur.decision).issues) ? obj(cur.decision).issues : []);
+    if (issues.length) {
+      var lead = document.createElement("div");
+      lead.textContent = "Held back this run:";
+      el.learnIssues.appendChild(lead);
+      var ul2 = document.createElement("ul");
+      ul2.className = "learn-reasons";
+      issues.forEach(function (it) {
+        var i2 = obj(it);
+        var li2 = document.createElement("li");
+        li2.textContent = (i2.key ? String(i2.key) : "?") +
+          " — " + (i2.reason ? String(i2.reason) : "no reason given") +
+          (isNum(i2.kept) ? " (kept " + prob5(i2.kept) + ")" : "");
+        ul2.appendChild(li2);
+      });
+      el.learnIssues.appendChild(ul2);
+      printed = true;
+    }
+
+    el.learnEmpty.hidden = !!cur && printed;
   }
 
   // Ours vs the operator's own app, both paired against the same detected
