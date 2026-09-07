@@ -15,15 +15,28 @@
  *                    layovers' shape, not on a kerb stop's. (A hand-typed
  *                    prior of the wrong shape pulled a 3-visit layover's
  *                    median from ~420 s to 202 s — the review's finding 6.)
+ *                    A route with no pool of a class falls through to the
+ *                    ALL-ROUTES pool of that class (`globalClassPools`, built
+ *                    from every route's tables); a stop with no table at all
+ *                    takes the route's ordinary pool, else the network's,
+ *                    else DEFAULT_STAND_Q — and is flagged unmeasured.
  *  drive on hop i    `segments["A-B"].dq` (ten quantiles of `legs.leg_sec`,
  *                    drive + hold), shrunk toward the route's pace prior:
- *                    road metres x `pace.spm` (seconds per metre, route
- *                    pooled). Missing dq: the served `drive` median as a
- *                    lognormal; missing that: the pace prior alone; missing
- *                    that too: the arrival-to-arrival `avg`/`sd` as a
- *                    lognormal that INCLUDES the stand at A. A route with no
- *                    measured hop at all is not priced by the model (index.ts
- *                    falls back to the legacy arithmetic).
+ *                    road metres x `pace.spm` (seconds per metre). The server
+ *                    serves a pace for EVERY route — its own where it has
+ *                    legs, the all-routes pooled one where it has none
+ *                    (calibrator.ts `withPooledPace`, flagged `spmPooled`) —
+ *                    so every hop has a drive prior. Missing dq: the served
+ *                    `drive` median as a lognormal; missing that: the pace
+ *                    prior alone, flagged unmeasured (the pooled quantiles
+ *                    are wider than a route's own, so the range widens where
+ *                    the route has not been measured); no pace at all (a
+ *                    cold database): the arrival-to-arrival `avg`/`sd` as a
+ *                    lognormal that INCLUDES the stand at A, and last the
+ *                    road at BUS_SPEED_M_S. So `priced` is false only for a
+ *                    route with no hop the model can put a number on at all;
+ *                    what still declines a route is a BRIDGED ring
+ *                    (index.ts), not a thin table.
  *
  * `pace` travels inside `segmentTimes[route]["__pace"]` (a reserved key, see
  * v1compat.ts) so the client signature did not have to change. Road metres
@@ -99,7 +112,7 @@ export interface RouteTables {
   priced: boolean;
 }
 
-export interface SegmentLike { avg: number; sd?: number | undefined; n: number; drive?: number | undefined; driveN?: number | undefined; dq?: number[] | undefined; dqn?: number | undefined; spm?: number[] | undefined; legM?: number | undefined }
+export interface SegmentLike { avg: number; sd?: number | undefined; n: number; drive?: number | undefined; driveN?: number | undefined; dq?: number[] | undefined; dqn?: number | undefined; spm?: number[] | undefined; spmN?: number | undefined; spmPooled?: boolean | undefined; legM?: number | undefined }
 export interface DwellLike { med: number; n: number; q?: number[] | undefined; qn?: number | undefined; pstop?: number | undefined }
 
 export const PACE_KEY = "__pace";
@@ -112,9 +125,31 @@ function ascending(q: readonly number[] | undefined): q is number[] {
   return Number.isFinite(q[0]!);
 }
 
+export interface ClassPools { layover: Dist | null; ordinary: Dist | null }
+
 /** The route's two class pools, each a qn-weighted mixture of its members' tables. */
-export function classPools(routeDwells: Record<string, DwellLike>): { layover: Dist | null; ordinary: Dist | null } {
+export function classPools(routeDwells: Record<string, DwellLike>): ClassPools {
   const lay: [Dist, number][] = [], ord: [Dist, number][] = [];
+  collectClassMembers(routeDwells, lay, ord);
+  return { layover: lay.length ? mixture(lay) : null, ordinary: ord.length ? mixture(ord) : null };
+}
+
+/**
+ * The ALL-ROUTES class pools: every stand table of every route, in the same
+ * two classes. The level above the route in the hierarchy stop -> route
+ * class pool -> network class pool: a route that has no layover table of its
+ * own leans on the network's layovers, and a route with no tables at all
+ * (the grocery lines, which run one weekend and whose visits the retention
+ * window often does not hold) prices every stop from the network's ordinary
+ * pool rather than from a hand-typed constant.
+ */
+export function globalClassPools(dwellsByRoute: Record<string, Record<string, DwellLike>>): ClassPools {
+  const lay: [Dist, number][] = [], ord: [Dist, number][] = [];
+  for (const r in dwellsByRoute) collectClassMembers(dwellsByRoute[r]!, lay, ord);
+  return { layover: lay.length ? mixture(lay) : null, ordinary: ord.length ? mixture(ord) : null };
+}
+
+function collectClassMembers(routeDwells: Record<string, DwellLike>, lay: [Dist, number][], ord: [Dist, number][]): void {
   for (const k in routeDwells) {
     const d = routeDwells[k]!;
     if (!ascending(d.q)) continue;
@@ -123,10 +158,14 @@ export function classPools(routeDwells: Record<string, DwellLike>): { layover: D
     const emp = fromQuantiles(d.q);
     (quantile(emp, 0.5) >= LAYOVER_MIN_SEC ? lay : ord).push([emp, n]);
   }
-  return { layover: lay.length ? mixture(lay) : null, ordinary: ord.length ? mixture(ord) : null };
 }
 
-export function stopModel(dwell: DwellLike | undefined, pools: { layover: Dist | null; ordinary: Dist | null }): StopModel {
+/** The route's pools where it has them, the network's where it does not. */
+export function poolsWithFallback(route: ClassPools, global: ClassPools | undefined): ClassPools {
+  return { layover: route.layover ?? global?.layover ?? null, ordinary: route.ordinary ?? global?.ordinary ?? null };
+}
+
+export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): StopModel {
   const ordinaryPrior = pools.ordinary ?? DEFAULT_STAND;
   if (!dwell || !ascending(dwell.q)) {
     return { stand: ordinaryPrior, layover: false, pStop: DEFAULT_P_STOP, measured: false };
@@ -161,6 +200,10 @@ export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: read
     const drive = prior ? shrinkToward(emp, prior, Math.max(0, n), SHRINK_K) : emp;
     return { drive, includesStand: false, measured: true, speedMps: speedOf(drive), hidden: prior ? hiddenRest(drive, prior) : null, free: prior };
   }
+  // The pace prior alone — the route's own, or the network's pooled one on a
+  // line the collector has not timed yet. Unmeasured: the row gets the `~`,
+  // and the pooled quantiles are wider than a route's own, so the 10-90 range
+  // widens where the route has not been measured.
   if (prior) return { drive: prior, includesStand: false, measured: false, speedMps: speedOf(prior), hidden: null, free: prior };
   if (seg && seg.n >= 1 && Number.isFinite(seg.avg) && seg.avg > 0) {
     return { drive: lognormalMeanSd(seg.avg, seg.sd ?? seg.avg * 0.5), includesStand: true, measured: true, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
@@ -194,10 +237,12 @@ export function buildTables(
   routeSegs: Record<string, SegmentLike>,
   routeDwells: Record<string, DwellLike>,
   ring?: Ring,
+  /** The all-routes class pools (`globalClassPools`), the level above the route's own. */
+  globalPools?: ClassPools,
 ): RouteTables {
   const N = stops.length;
   const pace = routeSegs[PACE_KEY]?.spm;
-  const pools = classPools(routeDwells);
+  const pools = poolsWithFallback(classPools(routeDwells), globalPools);
   const out: RouteTables = { stops: [], hops: [], priced: false };
   for (let i = 0; i < N; i++) {
     const a = stops[i]!, b = stops[(i + 1) % N]!;
@@ -210,7 +255,19 @@ export function buildTables(
     const roadM = seg?.legM && Number.isFinite(seg.legM) && seg.legM > 0 ? seg.legM : ring ? ring.legM[i]! : chord;
     const hop = hopModel(seg, roadM, pace);
     out.hops.push(hop);
-    if (hop.measured && !hop.includesStand) out.priced = true;
+    // `priced` asks whether there is anything to price the leg ON, not whether
+    // this route has been measured: a hop answered from the NETWORK's pooled
+    // pace carries a real drive distribution, and `measured: false` is how the
+    // row says so to the rider (the `~`, and the pooled quantiles' wider
+    // 10-90). That is the whole of this change — before it, a line with no
+    // legs of its own fell through to a second arithmetic.
+    //
+    // Still not a price: a whole-hop `avg` (it CONTAINS the stand at A, so it
+    // is not the leg's distribution) and the last-resort road-length-over-a-
+    // constant guess. Both need no pace anywhere, i.e. a cold database. What
+    // declines a route in practice is a BRIDGED ring, and that decision is
+    // index.ts'.
+    if (!hop.includesStand && (hop.measured || hop.free)) out.priced = true;
   }
   return out;
 }

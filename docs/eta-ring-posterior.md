@@ -151,15 +151,107 @@ sixteen-minute "drive", which read a bus twelve minutes into a yard rest as
 eight minutes of driving away (Blue West's optimistic ≥120 s tail, 6 → 27%
 on the gps-replay before this term).
 
-A route whose tables carry no measured drive (the grocery lines, until they
-have `legs`) is priced by the legacy arithmetic, and so is a route whose
-published line cannot be traced through its stop sequence (a leg bridged with
-a chord): that is Green, whose buses call at West Haven station before
-Building 900 on the return, so the served leg times carry a station stop
-inside an 11 km highway hop and no model on that ring can be right (the
-gps-replay put the model at 415 s median against the legacy's 289 on Green,
-and every other line better). The dispatch is data-driven; the open item is
-Green's sequence, upstream.
+### The pooled priors: a line the collector has not timed yet (2026-09-06)
+
+The model declined two classes of route and handed them to the legacy
+arithmetic. **One of those declines is gone; the other is deferred, on
+evidence, and the numbers are below.**
+
+A route with no measured drive at all used to be one of them — the grocery
+lines, which run one weekend and whose legs the retention window often does
+not hold. It is now priced from one more level of the same hierarchy, with no
+per-route rule anywhere:
+
+- **drive** — hop `dq`/`drive` → the ROUTE's pace → the NETWORK's pooled pace.
+  The calibrator pools every route's pace samples into one ten-knot quantile
+  vector (`computePooledPace`) and serves it, flagged, to any route with no
+  legs of its own (`withPooledPace`; `pace[r].pooled` and
+  `segments[r]["__pace"].spmPooled` on the carrier row). On the 9/4 tables that
+  pool is **0.1363–0.1535 s/m at the median over n = 9,077 legs** (p10 0.0769,
+  p90 0.3357) and it fills two routes, 6 and 18.
+- **stand** — the stop's table → the ROUTE's class pool → the NETWORK's class
+  pool (`globalClassPools` over the payload's whole `dwells`), layovers with
+  layovers and kerbs with kerbs. A route with no table at all prices every stop
+  from the network's ordinary pool rather than from a hand-typed constant.
+
+Anything answered from a pool is `measured: false`, so the chain reads
+`estimated`, the rider gets the `~`, and the 10–90 range widens with the
+pooled quantiles instead of showing a prior as a measurement. `priced` is now
+false only for a cold database — no pace anywhere, nothing to put a number on.
+
+**Measured** (gps-replay, both arms, same `PAYLOAD_PATCH`, proximity truth;
+`pessimistic ≥120 s` is the dangerous tail — the app named a time the bus beat,
+and the rider strolls up and watches it leave). On the 9/4 window every route
+is **byte-identical**, overall included. The grocery lines cannot be measured
+there at all — they are weekend-only and none runs in it — so the row below
+drives 9/6's Sunday buses through the 9/4 tables, which is exactly the state
+the change addresses.
+
+| route | n | median \|err\| | p90 | pessimistic ≥120 s | optimistic ≥120 s | within 120 s |
+|---|---|---|---|---|---|---|
+| **Grocery Ham** | 10,972 | 222.5 → 229.2 | 588 → 684 | **59.1 → 19.7%** | 12.3 → 48.2% | 28.6 → **32.1%** |
+| **Blue Weekend** | 15,642 | 165.4 → **154.2** | 595 → 607 | 37.9 → **34.5%** | 24.1 → 24.7% | 38.0 → **40.8%** |
+| Green (declined) | 35,876 | 300.2 → 300.2 | — | — | — | identical |
+| Purple | 34,736 | 134.9 → 134.9 | — | — | — | identical |
+| overall | 97,226 | 188.0 → 185.9 | 877 → 898 | 40.3 → **35.4%** | 22.2 → 26.4% | 37.4 → 38.3% |
+
+Grocery Ham is the case the pools were built for: the dangerous tail falls by
+two thirds. It buys that by being late instead — the safe direction — and the
+median barely moves. Blue Weekend, whose 31 stops carried two stand tables and
+which already had a pace of its own, improves on every column that matters;
+that is the network **stand** pools alone.
+
+By 9/6 route 18 has four timed hops and a pace of its own, and both arms then
+price it identically; route 6 (Trader Joe's) still had no legs at all and ran
+in neither window, so it inherits this row by construction, not by observation.
+
+An ordering inside `hopModel` was tried and **rejected on this measurement**:
+serving v1's arrival-to-arrival `avg` (which CONTAINS the stand at A) ahead of
+the pace prior looks more principled — a measurement of the hop beating a prior
+that knows only its length — and it is better on Blue Weekend (median
+154 → 122). It is much worse where it counts: Grocery Ham's dangerous tail goes
+59.1 → **75.4%** instead of 19.7%, and Pink, which has one such hop, loses 6 s
+of median. The pace prior stays ahead of `avg`.
+
+### Green still declines: a bridged ring, and the numbers that deferred it
+
+A route whose published line cannot be traced through its stop sequence (a leg
+bridged with a chord) is still priced by the legacy arithmetic. That is Green,
+whose buses call at West Haven station before Building 900 on the return, so
+the served leg times carry a station stop inside an 11 km highway hop and no
+model on that ring can be right. The condition is the geometry's
+(`ring.bridged`), never a route list.
+
+Retiring that decline WAS built and measured — the branch is
+`eta/retire-legacy-green`, and it deletes the legacy arm entirely. It is not
+shipped, because on the two numbers that decide a rider's morning Green is
+worse on the ring:
+
+| Green, 9/4, 22,610 pairs | legacy | on the bridged ring |
+|---|---|---|
+| median \|err\| | **288.8 s** | 384.8 s |
+| pessimistic ≥120 s (the bus beat the promise) | **56.1%** | 65.4% |
+| p90 \|err\| | 2,817 s | **767 s** |
+| optimistic ≥120 s | 8.2% | **4.0%** |
+| within 120 s | **35.7%** | 30.6% |
+
+(The same comparison on the 9/6 Sunday capture, 35,876 pairs: 300.2 → 352.2
+median, p90 3,101 → 1,154, pessimistic 44.8 → 60.1%, optimistic 24.0 → 10.8%.)
+
+The p90 win is real and large — the legacy arm is capable of 47-minute errors
+on this line — but it is the tail of an already-bad line, and a rider reads the
+median and misses the bus on the pessimistic tail. **Green needs its ring fixed
+first**: a ring built from `raw_positions` (how the buses actually drive)
+rather than from a stop sequence that does not describe it. The day that
+lands, `eta/retire-legacy-green` lands with it and the second arithmetic goes.
+Until then the numbers above are the bar the data-built ring has to clear.
+
+What the legacy arm is still reachable through, so nothing is deleted by
+accident: a bridged ring (Green), a route with no ring yet (the first render,
+before the payload registers the polylines — which is also why
+`LEGACY_SPLIT_ROUTE_IDS` / `splitServedForRoute` are still live for Red and
+Blue Day), and the replays' `MODEL_ROUTES=""` arm, which is the counterfactual
+every retirement decision is measured against.
 
 ## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 
@@ -372,6 +464,49 @@ has out-sat its table (#316 stood 12 min against a p95 of 10) and of a depot
 bus that pulls out and pauses (#309, #304). Nothing in the feed says when a
 driver intends to go; the interval carries it, the point cannot.
 
+
+## OPEN: the second stand, when a rest is served short of the marker
+
+**Rider-facing, in the shipped model, on every line the ring prices. Found
+2026-09-07; not fixed.** This is the next piece of work and its evidence is
+already checked in.
+
+A Red bus that takes its 344 Winchester layover 83–147 m short of the marker —
+on the road, or in the Science Park Garage lot (report #102) — rests, then
+rolls the last stretch to the marker and stands again. The retired approach
+zone treated that as ONE wait: the rest was charged against 344 Winchester and
+#119's ceiling held the number flat across the roll-in. **The belief does not.**
+The rest ends when the bus moves, a new rest begins at the marker, and the
+shown number steps UP as the second stand is charged.
+
+Measured over the whole span from the start of the rest to the last poll at the
+marker, on the two recordings the fixtures hold:
+
+| recording | metres short | largest single step up, stop 146 / stop 48 |
+|---|---|---|
+| Red #310, 13:28 ET (`__fixtures__/red-approach-rest.json`) | 147 | 185 s / 190 s |
+| Red #304, 14:06 ET, the garage lot (`__fixtures__/red-garage-rest.json`) | 83 | 154 s / 144 s |
+
+It is not a regression of anything recent: Red has been priced on the ring in
+every browser since the estimator shipped. It was invisible because
+`web/src/accuracy-approach-rest.test.ts` registers **no route polyline**, which
+sends those two recordings down the legacy arithmetic instead — register Red's
+line in that file on master and its four "one wait" assertions fail exactly as
+they do on the branch that deletes the legacy arm.
+
+Two things the same recordings show that are NOT wrong, so the fix must not
+undo them: the board falls by 153–209 s over the rest (the retired arm froze
+it), and withholding `stationary_since` changes the answer by under 10 s —
+the belief reads the rest off the repeated fixes rather than off the server's
+declaration.
+
+**Where the fix belongs**: the rest's identity in `eta/filter.ts`. A rest
+re-established within the radius of the one just left, on the leg INTO the same
+stop, is the same wait, and its clock is the earlier one — the same principle
+already written down in §1 ("the rest's clock is its earliest known origin"),
+applied across a short roll-in rather than only across a shuffle. Not a
+distance rule bolted back on; the approach zone was measured to fire on one
+episode in nine hours and any replacement has to be that narrow.
 
 ## Velocity on the kernel: measured (2026-09-06)
 

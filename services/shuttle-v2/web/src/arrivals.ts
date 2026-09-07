@@ -399,13 +399,19 @@ export function computeUpcomingArrivals(
     // distribution on the ring: no point anchor, no credit, no proration.
     // Falls through to the legacy arithmetic only when the route's geometry
     // cannot be traced, the same condition under which `legGeometry` gives up.
+    //
+    // `dwellTimes` — every route's tables, not just this one's — goes in so a
+    // line the collector has not timed yet can lean on the NETWORK's stand
+    // pools (eta/tables.ts `globalClassPools`), the level above its own. With
+    // the all-routes pooled pace beside it (calibrator.ts `withPooledPace`)
+    // that is what took the grocery lines off the arithmetic below.
     const ring = modelServesRoute(cfg) && routeBuses[0] ? ringForBus(routeBuses[0], stops, stopCoords) : null;
-    if (ring && modelPricesRoute(ring, stops, stopCoords, routeSegs, routeDwells)) {
+    if (ring && modelPricesRoute(ring, stops, stopCoords, routeSegs, routeDwells, dwellTimes)) {
       let priced = false;
       for (const bus of routeBuses) {
         const rows = arrivalsForBus(
           anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
-          routeSegs, routeDwells, targetSet, now,
+          routeSegs, routeDwells, targetSet, now, undefined, dwellTimes,
         );
         if (!rows) break;
         priced = true;

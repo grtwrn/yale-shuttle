@@ -729,14 +729,38 @@ These are load-bearing; several rider-visible bugs traced to them:
 Arrivals are priced by `web/src/eta/` — one probabilistic model instead of
 the anchor + gate + stall-credit + approach-zone stack. `MODEL_ROUTE_IDS` in
 `web/src/eta/index.ts` lists every route; the model DECLINES a route on its
-own evidence, never by name: a ring the published line cannot trace
-(`ring.bridged` — Green, whose served sequence is wrong) or a route with no
-measured drive at all (`tables.priced` false — the grocery lines) falls back
-to the legacy arithmetic in `arrivals.ts`. The legacy served split keeps its
-own list (`LEGACY_SPLIT_ROUTE_IDS`, Red and Blue Day), because serving
-tables to every route re-engaged it on Green and cost 77 strands.
+own evidence, never by name.
+
+**One decline is left: a ring the published line cannot trace** (`ring.bridged`
+— Green, whose buses call at West Haven station before Building 900 and whose
+served sequence therefore does not describe how they drive), which falls back
+to the legacy arithmetic in `arrivals.ts`. Retiring that too was built and
+measured (branch `eta/retire-legacy-green`) and is **deferred on the numbers**:
+on the bridged ring Green's median error goes 289 → 385 s and its dangerous
+tail 56 → 65%, buying a p90 of 767 s against 2,817. Green needs a ring built
+from `raw_positions` first; that branch lands the day it does.
+
+**A route with no measured drive is no longer declined** (2026-09-06). It is
+priced from the level above in the hierarchy, with no per-route rule: hop
+`dq`/`drive` → the ROUTE's pace → the ALL-ROUTES pooled pace the calibrator
+serves (`computePooledPace` / `withPooledPace`, flagged `pooled` / `spmPooled`;
+0.1363–0.1535 s/m over n = 9,077 on the 9/4 tables), and the stop's table →
+the ROUTE's class pool → the NETWORK's class pool (`globalClassPools`).
+Anything from a pool is `measured: false`, so the row reads `estimated` (`~`)
+and its 10–90 range widens rather than showing a prior as a measurement. That
+took the grocery lines off the legacy arm and cut the dangerous tail on the
+untimed-line row 59.1 → 19.7%, with every other route byte-identical.
+`tables.priced` is false only for a cold database with no pace anywhere.
+
+The legacy served split keeps its own list (`LEGACY_SPLIT_ROUTE_IDS`, Red and
+Blue Day), because serving tables to every route re-engaged it on Green and
+cost 77 strands; it is still reachable on the first render, before the payload
+registers the route polylines and a ring can be built.
 `docs/eta-ring-posterior.md` is the design, the measured decisions and the
-paired numbers. The short form:
+paired numbers — including the **open defect** it names: after a rest served
+83–147 m short of a layover marker the belief ends the rest as the bus rolls
+in and charges a SECOND stand, a step of 144–190 s on the two recorded
+incidents. The short form of the model:
 
 - **State** is a distribution over 30 m cells on the published polyline ×
   {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
@@ -768,12 +792,16 @@ paired numbers. The short form:
   a layover's residual from zero and flapped every kerb-stop number in the
   simulator. A rest is attributed to a stop only when the stop's zone holds
   the majority of the standing mass in the rest mask.
-- **Gate every change** with the rider simulator's FIXED/INTRODUCED split
-  per route (`pair-by-route.mjs`), the chain block first, then `gps-replay.ts`
-  both arms. The replays pair both arms in one process: `MODEL_ROUTES` on
+- **Gate every change** with `gps-replay.ts` per route first (minutes), then
+  the rider simulator's FIXED/INTRODUCED split (`pair-by-route.mjs`), chain
+  block first. The replays pair both arms in one process: `MODEL_ROUTES` on
   `gps-replay.ts`, `CLIENT_ROOT` on the rider-sim;
   `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`) serves
-  `q/drive/dq/pstop/pace` to a replay.
+  `q/drive/dq/pstop/pace` to a replay. **A full-day rider-sim pins all four of
+  the Pi's cores for three to four hours** — it crashed the machine on
+  2026-09-06; slice it by route and by `FROM`/`TO`, and `nice` it. In
+  `common.ts`'s metrics, `pessimistic120` (predicted > actual: the bus beat the
+  promise) is the dangerous tail; `optimistic120` is the rider waiting.
 - Constants in `filter.ts` are measured or derived, not tuned, and each
   carries the measurement it came from (the off-route emission weight is
   derived from the loop length, not a floor). A case the model gets wrong is
