@@ -44,7 +44,7 @@
 import { haversineMeters, type LatLon } from "../geo";
 import { hazard } from "./dist";
 import { MP } from "./params";
-import { distancesTo, type Ring } from "./ring";
+import { distancesTo, NEAR_STOP_M, type Ring } from "./ring";
 
 /** Position noise on a fresh fix, metres. Deadband-scale, deliberately not 10 m (#88's overconfidence). */
 export const SIGMA_M = 20;
@@ -294,6 +294,12 @@ function lastStopLikelihood(offset: number, N: number): number {
 
 // -- the step --------------------------------------------------------------------
 
+/** The published coordinate of stop `i` — the cell the ring puts on the marker. */
+function stopPoint(ring: Ring, i: number): LatLon {
+  const c = ring.stopCell[i]!;
+  return { lat: ring.lat[c]!, lon: ring.lon[c]! };
+}
+
 function restMaskFor(ring: Ring, point: LatLon): Uint8Array {
   const d = distancesTo(ring, point);
   const mask = new Uint8Array(ring.C);
@@ -501,6 +507,10 @@ export function stepBelief(
   const C = ring.C;
   const dt = Math.max(1, Math.min(60, (now - prev.seenAt) / 1000));
   const fresh = prev.lastFix === null || prev.lastFix.lat !== bus.lat || prev.lastFix.lon !== bus.lon;
+  // Has the fix left the rest? The collector's own rule (STATIONARY_RADIUS_M):
+  // inside the radius the bus is still where it came to rest, whatever the
+  // published line says.
+  const leftRest = fresh && haversineMeters(prev.restPoint, bus) > REST_RADIUS_M;
   const q = new Float64Array(2 * C);
   const p = prev.p;
   const hIn = Math.min(0.5, MP.HOLD_ENTER_PER_S * dt);
@@ -562,8 +572,37 @@ export function stepBelief(
     for (let i = 0; i < 2 * C; i++) q[i] = q[i]! * (1 - TELEPORT) + tp;
     const d = distancesTo(ring, bus);
     const off = offRouteWeight(ring);
+    // A fix that is off the line carries almost no positional weight: at
+    // 93 m the Gaussian is 2e-5, barely above the stray floor, so the
+    // TRANSITION decides and the departure hazard walks the bus on. That is
+    // how Red #304 — resting in the Science Park Garage lot, 93-154 m off
+    // Red's line — had half its mass past 344 Winchester on the poll it
+    // drove back toward the road, and a rider at Winchester / Division was
+    // shown "in 9 s" for a bus three and a half minutes away.
+    //
+    // But the fix says something the line cannot: it is 37 m from where the
+    // bus came to rest. While the rest still holds — the fix inside
+    // REST_RADIUS_M of the rest point, the collector's own definition of
+    // standing — a cell outside the rest's extent is not somewhere the bus
+    // can be, so it gets no stray floor. Cells inside keep it, and TELEPORT
+    // still re-finds a bus that really has relocated. The moment the fix
+    // leaves the radius the rest ends and the floor is back everywhere.
+    //
+    // Only for a rest that has an IDENTITY (`restStop`), and that is the
+    // measurement talking, not taste. Applied to every rest — including the
+    // ones the belief cannot name, a hold at a light, a yard mid-leg — the
+    // 9/4 gps-replay moved Purple's median 102.9 -> 105.0 s and Orange
+    // East's 48.1 -> 48.5, which is Purple's known fold detour (§ the open
+    // fold): the bus sits on a parallel street that IS another leg's
+    // published line, and the stray floor is exactly what lets consistent
+    // fixes pull the belief onto the branch it is really on. A rest we
+    // cannot name is the case where the branch is least certain, so it
+    // keeps its escape hatch. Restricted to named rests, no route is worse
+    // and Blue Night's p90 comes down.
+    const held = prev.rested && prev.restStop >= 0 && !leftRest;
     for (let c = 0; c < C; c++) {
-      const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M)) + off;
+      const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M))
+        + (held && prev.restMask[c] !== 1 ? 0 : off);
       q[c] = q[c]! * e;
       q[C + c] = q[C + c]! * e;
     }
@@ -583,31 +622,57 @@ export function stepBelief(
     }
   }
 
-  const moved = fresh && haversineMeters(prev.restPoint, bus) > REST_RADIUS_M;
+  // A fix beyond the rest radius is the bus having left where it rested —
+  // EXCEPT when what it left was the approach to a layover it was already
+  // serving, and where it arrived is that same layover's marker. Then it has
+  // closed the last metres of a wait it has been serving all along
+  // (docs/eta-ring-posterior.md, "the second stand"): Red #310 rested 147 m
+  // short of 344 Winchester for 7 min, rolled in, and the board stepped UP
+  // 185 s as the stop's whole stand was charged a second time; Red #304 did
+  // the same from the garage lot, 83 m short, for 154 s. The rest continues,
+  // RE-CENTRED on the marker so the mask and the next radius test are taken
+  // from where the bus now stands, and its clock stays the earliest known
+  // origin — the same principle as the shuffle, across a short roll-in.
+  //
+  // It is as narrow as the approach zone it replaces: the previous rest must
+  // already have been ATTRIBUTED to that stop (`restApproach`, the majority
+  // rule in `restStopFromBelief`), the stop must be a layover by its own
+  // stand table, and the fix must be inside the stop's own zone. A bus that
+  // rests short of a stop and drives PAST it is beyond NEAR_STOP_M and
+  // departs normally; a rest short of a KERB stop is a hold on the road and
+  // is never attributed to it, so pulling in there is a genuine new stand.
+  const closedIn = leftRest && prev.rested && prev.restApproach && prev.restStop >= 0
+    && ring.layover[prev.restStop] === 1
+    && haversineMeters(stopPoint(ring, prev.restStop), bus) <= NEAR_STOP_M;
+  const moved = leftRest && !closedIn;
   const since = serverClockMs(bus);
   const b: Belief = {
     ringKey: ring.key, p: q, seenAt: now, lastObs: bus,
     lastFix: fresh ? { lat: bus.lat, lon: bus.lon } : prev.lastFix,
     fixAt: fresh ? now : prev.fixAt,
-    restPoint: moved ? { lat: bus.lat, lon: bus.lon } : prev.restPoint,
+    restPoint: moved || closedIn ? { lat: bus.lat, lon: bus.lon } : prev.restPoint,
     // The rest's clock is its EARLIEST known origin: the server's clock
     // when served (the collector's, which the stand tables were measured
     // with), else the local one — and a creep inside the radius that costs
-    // the served clock must not restart the residual from zero.
+    // the served clock must not restart the residual from zero. The roll-in
+    // costs it too: `at_stop_since` begins at the marker, minutes after the
+    // bus actually stopped.
     restSince: moved ? (since ?? now) : Math.min(prev.restSince, since ?? Infinity),
     rested: moved ? false : prev.rested,
     restStop: moved ? -1 : prev.restStop,
-    restApproach: moved ? false : prev.restApproach,
-    restMask: moved ? restMaskFor(ring, bus) : prev.restMask,
+    // At the marker the rest is the stop's own, no longer its approach.
+    restApproach: moved || closedIn ? false : prev.restApproach,
+    restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
     lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
-    standLeg: moved ? new Int32Array(C) : prev.standLeg, zoneKey: moved ? new Int32Array(C) : prev.zoneKey,
+    standLeg: moved || closedIn ? new Int32Array(C) : prev.standLeg,
+    zoneKey: moved || closedIn ? new Int32Array(C) : prev.zoneKey,
   };
   applyLastStop(b, ring, bus, stops);
   normalise(b.p);
   // The rest is established by a repeated fix (or a server clock already
   // running), and its stop is read off the belief at that moment.
-  let restChanged = moved;
+  let restChanged = moved || closedIn;
   if (!b.rested && (!fresh || (since !== null && (now - since) / 1000 >= STANDING_MIN_S))) {
     b.rested = true;
     Object.assign(b, restStopFromBelief(ring, b.p, b.restMask));

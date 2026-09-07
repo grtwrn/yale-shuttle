@@ -37,12 +37,24 @@
 //     the detector's clock carries across the shuffling (283 s), so the rest
 //     reads as one wait rather than three short ones.
 //
-// WHAT IT PINS. The two arms below are the SAME code over the SAME recording,
-// differing in one payload field: `stationary_since`, which is the whole of
-// the server side of this fix. So "master" here is not a reconstruction of the
-// old client — it is this client with the new signal withheld, which is
-// exactly what a browser talking to an un-deployed server sees, and it must
-// keep behaving as it always did.
+// WHAT IT PINS, AND WHAT CHANGED ON 2026-09-07. Both recordings are now priced
+// on the RING (`web/src/eta/`), because Red's published line is registered
+// below. It was not, and that omission hid a rider-facing defect for three
+// days: with no polyline the two recordings fell through to the legacy
+// arithmetic, and CI never saw what a browser sees. Registering the line made
+// four assertions fail — the belief ENDED the rest when the bus rolled the
+// last 83-147 m to the marker and charged 344 Winchester's whole stand a
+// second time, stepping the board UP by 185 s / 190 s (#310) and
+// 154 s / 144 s (#304). Fixed in `eta/filter.ts` (the rest's identity across
+// a roll-in) and pinned by "one visit, one stand" below.
+//
+// The two arms are the SAME code over the SAME recording, differing in one
+// payload field: `stationary_since`. On the ring that field is nearly
+// redundant — the rest is read off the repeated fixes — so the arms must AGREE
+// to within a few seconds, and the assertions below say so. (On the legacy
+// arithmetic, withholding it froze the board for the whole wait; that is what
+// the retired approach zone was for, and it is not what this file measures any
+// more.)
 //
 // Do not loosen a bound or re-record a fixture to make a change pass. See
 // `scripts/record-approach-rest.mjs` to regenerate (`BUS=#304 MIN_REST_SEC=120`
@@ -62,12 +74,25 @@ import {
 } from "./hopPricing";
 import type { BusData } from "./map-data";
 
+import incidents from "./__fixtures__/anchor-incidents.json";
 import onRoadFx from "./__fixtures__/red-approach-rest.json";
 import garageFx from "./__fixtures__/red-garage-rest.json";
 
 const ROUTE = "3";
 const LAYOVER = 11; // 344 Winchester
 const PREV = 27; // Canal / Munson — the stop the bus had just left
+
+/**
+ * RED'S PUBLISHED LINE. A browser always has it — it arrives in the same
+ * payload as the buses — so Red is priced on the ring (web/src/eta/), not by
+ * the legacy arithmetic. This file used to register NO polyline, which sent
+ * both recordings down the legacy path and hid the double stand from CI for
+ * three days (docs/eta-ring-posterior.md, "the second stand"). The boards
+ * below are built while the module loads, so this registration is too.
+ */
+const RED_PATH = (incidents as unknown as { routes: Record<string, { path: [number, number][] }> })
+  .routes[ROUTE]!.path;
+registerRoutePaths({ [ROUTE]: RED_PATH });
 
 type Fixture = typeof onRoadFx;
 type Position = {
@@ -78,11 +103,13 @@ type Position = {
 /**
  * Everything the assertions need for one recorded incident.
  *
- * `lateBySec` is the floor on how wrong the un-signalled client ends up at the
- * end of the rest — per fixture, because it depends on how much of the layover
- * had run by then, not on anything the estimator chooses.
+ * `fallsBySec` is the floor on how far the board must come DOWN over the rest.
+ * It is per fixture because it is a property of the recording — how much of
+ * the layover ran while the bus sat short of the marker — not of anything the
+ * estimator chooses. The retired approach-zone arm froze the number here; the
+ * belief counts it down where the wait actually happens.
  */
-function incident(fx: Fixture, lateBySec: number) {
+function incident(fx: Fixture, fallsBySec: number) {
   const routeStops = fx.routeStops as Record<string, number[]>;
   const stopCoords = fx.stopCoords as unknown as Record<number, LatLon>;
   const names = fx.stopNames as unknown as Record<number, string>;
@@ -104,6 +131,9 @@ function incident(fx: Fixture, lateBySec: number) {
   const LAST_AT_MARKER = positions
     .filter((p) => p.t > REST_TO && p.at_stop_id === LAYOVER)
     .at(-1)!.t;
+
+  /** The FIRST poll at the marker — the instant the roll-in completes. */
+  const FIRST_AT_MARKER = positions.find((p) => p.t > REST_TO && p.at_stop_id === LAYOVER)!.t;
 
   const arrivedAt = (stopId: number, after: number): number | null => {
     const v = (fx.visits as { stopId: number; arrivedAt: number | null }[])
@@ -145,23 +175,23 @@ function incident(fx: Fixture, lateBySec: number) {
   const duringRest = <T extends { t: number }>(rows: T[]) =>
     rows.filter((r) => r.t >= REST_FROM && r.t <= REST_TO);
 
-  return { fx, names, dwellsOf, positions, REST_FROM, REST_TO, LAST_AT_MARKER, arrivedAt, board, duringRest, lateBySec };
+  return { fx, names, dwellsOf, positions, REST_FROM, REST_TO, FIRST_AT_MARKER, LAST_AT_MARKER, arrivedAt, board, duringRest, fallsBySec };
 }
 
 const INCIDENTS = [
-  { title: "Red #310 taking its 344 Winchester layover short of the marker", ctx: incident(onRoadFx, 300) },
-  { title: "Red #304 taking the same layover in the Science Park Garage lot (report #102)", ctx: incident(garageFx, 240) },
+  // Measured falls over the rest: #310 209 s / 202 s, #304 105 s / 102 s at
+  // the two target stops. The bounds are the recordings rounded down.
+  { title: "Red #310 taking its 344 Winchester layover short of the marker", ctx: incident(onRoadFx, 180) },
+  { title: "Red #304 taking the same layover in the Science Park Garage lot (report #102)", ctx: incident(garageFx, 90) },
 ];
 
 for (const { title, ctx } of INCIDENTS) {
   const {
-    fx, names, dwellsOf, positions, REST_FROM, REST_TO, LAST_AT_MARKER,
-    arrivedAt, board, duringRest, lateBySec,
+    fx, names, dwellsOf, positions, REST_FROM, REST_TO, FIRST_AT_MARKER, LAST_AT_MARKER,
+    arrivedAt, board, duringRest, fallsBySec,
   } = ctx;
 
   describe(title, () => {
-    registerRoutePaths(null);
-
     it("the recording is the shape this test needs", () => {
       // A real rest, off the marker, inside the zone the client prices in.
       expect(fx.approachRest.metresShort).toBeGreaterThan(75); // past AT_STOP_PIN_M
@@ -193,23 +223,37 @@ for (const { title, ctx } of INCIDENTS) {
         const withSignal = board(target, true);
         const withheld = board(target, false);
 
-        it("without the signal the board FREEZES while the bus's wait runs out", () => {
-          // The defect, stated as a measurement: over the rest the bus's real
-          // remaining time falls by minutes and the number does not move.
-          const rows = duringRest(withheld).filter((r) => r.eta != null);
+        it("the board COUNTS DOWN across the rest — the wait is served where it happens", () => {
+          // The rest is the layover, so the number must fall through it at
+          // roughly the rate the clock runs. The retired approach zone froze
+          // it instead (its stand was charged but never spent), and the
+          // legacy arithmetic without `stationary_since` froze it too — the
+          // shape this file used to pin. Neither is what the recordings show.
+          const rows = duringRest(withSignal).filter((r) => r.eta != null);
           const first = rows[0]!, last = rows.at(-1)!;
-          const realFall = (last.t - first.t) / 1000;
-          expect(realFall).toBeGreaterThan(180);
-          const spread = Math.max(...rows.map((r) => r.eta!)) - Math.min(...rows.map((r) => r.eta!));
-          expect(spread).toBeLessThan(15);
+          expect((last.t - first.t) / 1000).toBeGreaterThan(180);
+          expect(
+            first.eta! - last.eta!,
+            `${names[target]}: the board moved ${(first.eta! - last.eta!).toFixed(0)}s over the rest`,
+          ).toBeGreaterThan(fallsBySec);
         });
 
-        it("without the signal it ends the rest minutes LATE — the rider misses the bus", () => {
-          const last = duringRest(withheld).filter((r) => r.eta != null).at(-1)!;
-          const error = last.eta! - (truth - last.t) / 1000;
-          // Promising a bus LATER than it comes is the direction that has a
-          // rider stroll down and find it gone.
-          expect(error).toBeGreaterThan(lateBySec);
+        it("withholding `stationary_since` barely changes it — the rest is read off the fixes", () => {
+          // The belief calls a repeated fix a rest on its own; the server's
+          // clock is read into it but is not what establishes it. So a browser
+          // talking to a server that stops sending the field sees the same
+          // number, which is also why this file's second arm is no longer a
+          // stand-in for the old client.
+          let worst = 0, at = 0;
+          for (let i = 0; i < withSignal.length; i++) {
+            const a = withSignal[i]!.eta, b = withheld[i]!.eta;
+            if (a == null || b == null) continue;
+            if (Math.abs(a - b) > worst) { worst = Math.abs(a - b); at = withSignal[i]!.t; }
+          }
+          expect(
+            worst,
+            `${names[target]}: the arms differ by ${worst.toFixed(0)}s at ${new Date(at).toISOString().slice(11, 19)}`,
+          ).toBeLessThan(10);
         });
 
         it("with the signal the standing term is charged against the layover stop", () => {
@@ -218,23 +262,45 @@ for (const { title, ctx } of INCIDENTS) {
           expect(Math.abs(error)).toBeLessThan(120);
         });
 
-        it("with the signal the countdown never climbs while the bus stands", () => {
-          // #119's ceiling, reaching a case it could not previously see: the
-          // standing term was never charged, so there was nothing to hold flat.
+        it("the countdown never climbs from the start of the rest to the marker", () => {
+          // The window is the wait itself: the bus comes to rest short of the
+          // marker, sits, then rolls in. It is ONE wait and must read as one.
           //
-          // The window runs from the start of the rest to the last poll the bus
-          // is still at the marker, so it spans the roll-in AND the shuffles
-          // that drop at_stop_id for a poll — the case `standingAt`'s memory
-          // exists for. It is all one wait and must read as one.
+          // Tolerance 10 s, the bound `accuracy-layover.test.ts` uses on the
+          // ring for the same reason: the standing and moving pricings of the
+          // same arrival differ by a few seconds and the mixture's weight
+          // shifts on the poll the bus settles. It is two orders below the
+          // 154-190 s steps this test exists to catch, and below any display
+          // bucket.
           const rows = withSignal
-            .filter((r) => r.t >= REST_FROM && r.t <= LAST_AT_MARKER && r.eta != null);
+            .filter((r) => r.t >= REST_FROM && r.t <= FIRST_AT_MARKER && r.eta != null);
           expect(rows.length).toBeGreaterThan(40);
           for (let i = 1; i < rows.length; i++) {
             const rise = rows[i]!.eta! - rows[i - 1]!.eta!;
             expect(
               rise,
               `${new Date(rows[i]!.t).toISOString()} rose ${rise.toFixed(0)}s while the bus stood still`,
-            ).toBeLessThanOrEqual(1);
+            ).toBeLessThanOrEqual(10);
+          }
+        });
+
+        it("standing on at the marker never re-charges the stand", () => {
+          // Past the roll-in the bus shuffles at the kerb and the belief
+          // carries a departure hypothesis for a poll or two — the residue
+          // §3 of docs/eta-ring-posterior.md measured and kept (holding the
+          // number until the bus cleared the rest radius was tried and cost
+          // more than it saved). What must NEVER happen is the one this test
+          // is about: the number going back ABOVE the wait it was already
+          // serving when it reached the marker.
+          const atMarker = withSignal.find((r) => r.t === FIRST_AT_MARKER)!.eta!;
+          const after = withSignal
+            .filter((r) => r.t > FIRST_AT_MARKER && r.t <= LAST_AT_MARKER && r.eta != null);
+          expect(after.length).toBeGreaterThan(3);
+          for (const r of after) {
+            expect(
+              r.eta!,
+              `${new Date(r.t).toISOString()} showed ${r.eta!.toFixed(0)}s, past the ${atMarker.toFixed(0)}s it had at the marker`,
+            ).toBeLessThanOrEqual(atMarker + 1);
           }
         });
 

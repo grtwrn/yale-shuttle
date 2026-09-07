@@ -79,6 +79,8 @@ only when that stop's zone holds the MAJORITY of the standing mass in the
 mask — a hold 190 m past a stop has the stop's kerb inside its 125 m mask,
 and a sliver of mass there must not re-attach the rest to the stop the bus
 just left.
+A rest short of a layover that then closes the last metres onto that
+layover's marker is the SAME rest, re-centred: see "the second stand" below.
 
 **The rest's clock is its earliest known origin.** The served clock is read
 into it, but never replaces it: the collector's clock restarts when the bus
@@ -465,48 +467,126 @@ bus that pulls out and pauses (#309, #304). Nothing in the feed says when a
 driver intends to go; the interval carries it, the point cannot.
 
 
-## OPEN: the second stand, when a rest is served short of the marker
+## The second stand, when a rest is served short of the marker (fixed 2026-09-07)
 
-**Rider-facing, in the shipped model, on every line the ring prices. Found
-2026-09-07; not fixed.** This is the next piece of work and its evidence is
-already checked in.
+**Status: shipped. Found and fixed 2026-09-07** (`eta/filter.ts`, PR
+`eta/rest-double-stand`). It was rider-facing on every line the ring prices,
+for as long as the estimator had shipped.
 
 A Red bus that takes its 344 Winchester layover 83–147 m short of the marker —
 on the road, or in the Science Park Garage lot (report #102) — rests, then
 rolls the last stretch to the marker and stands again. The retired approach
 zone treated that as ONE wait: the rest was charged against 344 Winchester and
-#119's ceiling held the number flat across the roll-in. **The belief does not.**
-The rest ends when the bus moves, a new rest begins at the marker, and the
-shown number steps UP as the second stand is charged.
+#119's ceiling held the number flat across the roll-in. **The belief did not.**
+The rest ended when the bus moved, a new rest began at the marker, and the
+shown number stepped UP as the second stand was charged.
 
-Measured over the whole span from the start of the rest to the last poll at the
-marker, on the two recordings the fixtures hold:
-
-| recording | metres short | largest single step up, stop 146 / stop 48 |
+| recording | metres short | largest step up, stop 146 / stop 48 |
 |---|---|---|
 | Red #310, 13:28 ET (`__fixtures__/red-approach-rest.json`) | 147 | 185 s / 190 s |
 | Red #304, 14:06 ET, the garage lot (`__fixtures__/red-garage-rest.json`) | 83 | 154 s / 144 s |
 
-It is not a regression of anything recent: Red has been priced on the ring in
-every browser since the estimator shipped. It was invisible because
-`web/src/accuracy-approach-rest.test.ts` registers **no route polyline**, which
-sends those two recordings down the legacy arithmetic instead — register Red's
-line in that file on master and its four "one wait" assertions fail exactly as
-they do on the branch that deletes the legacy arm.
+It was not a regression of anything recent. It was invisible because
+`web/src/accuracy-approach-rest.test.ts` registered **no route polyline**,
+which sent both recordings down the legacy arithmetic instead of the ring —
+so CI scored a path no browser takes. Red's line is registered in that file
+now, and four of its assertions failed on master the moment it was.
 
-Two things the same recordings show that are NOT wrong, so the fix must not
-undo them: the board falls by 153–209 s over the rest (the retired arm froze
-it), and withholding `stationary_since` changes the answer by under 10 s —
-the belief reads the rest off the repeated fixes rather than off the server's
+### The mechanism, and the two things that had to survive
+
+`moved` — the flag that ends a rest — is `fresh && haversine(restPoint, fix) >
+REST_RADIUS_M`. Rolling in from the approach clears 125 m, so the rest ended,
+`restStop` went to −1, `restSince` restarted at the server's `at_stop_since`
+(which begins at the marker, minutes after the bus actually stopped), and the
+bus arrived at the marker as a NEW arrival owing 344 Winchester's whole stand
+on top of the one it had already served. `traceany.mts` on the 9/4 capture,
+stop 146 / stop 48:
+
+| bus | poll | before | after |
+|---|---|---|---|
+| #310 | 17:34:53 → 17:34:58 (reaches the marker) | 103 → **305**, 164 → **359**; `r` 425 s → **0** | 103 → 102, 164 → 161; `r` 425 → 430 |
+| #304 | 18:10:58 → 18:11:03 (reaches the marker) | 150 → **305**, 217 → **359**; `r` 284 s → **0** | 188 → 186, 240 → 236; `r` 284 → 288 |
+
+Two things the same recordings show that are NOT wrong, and the fix keeps
+both: the board falls by 102–209 s over the rest (the retired arm froze it),
+and withholding `stationary_since` changes the answer by under 10 s — the
+belief reads the rest off the repeated fixes, not off the server's
 declaration.
 
-**Where the fix belongs**: the rest's identity in `eta/filter.ts`. A rest
-re-established within the radius of the one just left, on the leg INTO the same
-stop, is the same wait, and its clock is the earlier one — the same principle
-already written down in §1 ("the rest's clock is its earliest known origin"),
-applied across a short roll-in rather than only across a shuffle. Not a
-distance rule bolted back on; the approach zone was measured to fire on one
-episode in nine hours and any replacement has to be that narrow.
+### The fix: two rules, both about the rest's identity
+
+**1. Closing the last metres onto the marker is the same rest.** A fresh fix
+beyond the rest radius ends the rest, EXCEPT when the rest was already
+attributed to a stop's approach (`restApproach`, decided by the majority rule
+in `restStopFromBelief`), that stop is a layover by its own stand table, and
+the fix is inside the stop's own zone (`NEAR_STOP_M`). Then the rest
+continues, RE-CENTRED on the marker so the mask and the next radius test are
+taken from where the bus now stands, with `restApproach` cleared and the clock
+left at its earliest known origin — §1's rule applied across a short roll-in
+instead of only across a shuffle. It is as narrow as the approach zone it
+replaces: a bus that rests short of a stop and drives PAST it is outside
+`NEAR_STOP_M` and departs normally, and a rest short of a KERB stop is a hold
+on the road that is never attributed to it, so pulling in there is a genuine
+new stand. No constant was invented — `APPROACH_M`, `REST_RADIUS_M` and
+`NEAR_STOP_M` are the ring's own.
+
+**2. While a NAMED rest holds, a cell outside it gets no stray-fix floor.** The
+garage recording exposed a second half of the same failure. A fix 93–154 m off
+the published line scores 2e-5 under the position emission — barely above the
+off-route floor (1.3e-5 on Red) — so the emission says almost nothing and the
+TRANSITION decides: the departure hazard walked half the mass past 344
+Winchester on the poll the bus drove back toward the road, and a rider at
+Winchester / Division was shown **"in 9 s" for a bus three and a half minutes
+away** (the whole board then climbed 109 s / 106 s recovering). But the fix
+says something the line cannot: it is 37 m from where the bus came to rest.
+So while the rest still holds — the fix inside `REST_RADIUS_M` of the rest
+point, the collector's own definition of standing — cells outside the rest
+mask get no stray floor. Cells inside keep it, `TELEPORT` still re-finds a bus
+that really has relocated, and the moment the fix leaves the radius the rest
+ends and the floor is back everywhere. #304's whole wait is now a monotone
+226 → 145 s.
+
+It applies only to a rest with an IDENTITY (`restStop >= 0`), and that is the
+measurement talking. Applied to EVERY rest — including the ones the belief
+cannot name — the 9/4 gps-replay moved Purple's median 102.9 → 105.0 s
+(pessimistic ≥120 s 25.3 → 25.7%, coverage 76.1 → 75.3%) and Orange East's
+48.1 → 48.5 (pessimistic 3.5 → 4.1%), while gaining about as much on Orange
+Day, Red and Blue Night. Purple's loss is its known fold detour (§ the open
+fold): the bus sits at a light on a parallel street that IS another leg's
+published line, and the stray floor is precisely what lets consistent fixes
+pull the belief onto the branch the bus is really on. A rest the belief cannot
+name is the case where the branch is least certain, so it keeps its escape
+hatch. Restricted to named rests, no route is worse and Blue Night improves.
+
+### Measurement: gps-replay, every line, 9/4 15:51–22:04 ET (205k pairs, proximity truth)
+
+Branch vs `origin/master` (8d093a3), same `PAYLOAD_PATCH`
+(model-patch-all-0904), same snapshot, separate `REPLAY_OUT`.
+
+| | median \|err\| | p90 | pessimistic ≥120 s | optimistic ≥120 s | within 120 s | 10–90 covers |
+|---|---|---|---|---|---|---|
+| overall (n 205,060) | 60.2 → 60.2 | 430.9 → **430.4** | 14.8 → 14.8 | 16.7 → 16.7 | 68.5 → 68.5 | 76.6 → 76.6 |
+| Blue Night (22,973) | 71.0 → **70.8** | 226.6 → **225.3** | 13.3 → **13.1** | 18.8 → 18.8 | 67.9 → **68.1** | 78.8 → 78.8 |
+| Red (20,972) | 47.6 → 47.6 | 255.3 → 255.3 | 4.8 → 4.8 | 19.0 → 19.0 | 76.3 → 76.2 | 76.3 → 76.3 |
+| Blue West (12,037) | 47.5 → 47.5 | 196.3 → 196.3 | 4.5 → 4.5 | 16.6 → 16.6 | 78.9 → 78.9 | 91.5 → 91.5 |
+| Orange East (11,656) | 48.1 → 48.1 | 192.7 → 192.7 | 3.5 → 3.5 | 16.5 → 16.5 | 80.0 → 80.0 | 89.8 → 89.8 |
+| every other line | unchanged to a tenth | | | | | |
+
+Detector truth is unchanged to a tenth as well (75.9 → 75.9 overall, p90
+591.9 → 591.1). Rule 1 on its own is **byte-identical** to master over this
+window: a rest served short of a layover marker is rare — the retired
+approach zone fired on one episode in nine hours — so it moves two recorded
+riders' boards by three minutes and 205k scored pairs not at all. That is
+what the fixtures are for, and why this file's polyline registration was the
+part that mattered.
+
+### What is left, deliberately
+
+Past the roll-in the bus shuffles at the kerb and the belief carries a
+departure hypothesis for a poll or two — §3's measured residue, kept because
+holding the number until the bus cleared the rest radius was tried and cost
+more than it saved. The test bounds it the honest way: nothing after the
+marker may exceed the number the board already showed on reaching it.
 
 ## Velocity on the kernel: measured (2026-09-06)
 
