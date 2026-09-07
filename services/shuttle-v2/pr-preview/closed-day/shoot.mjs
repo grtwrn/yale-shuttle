@@ -1,0 +1,16 @@
+import { chromium } from "playwright-core";
+import { seedTestId } from "/home/gwarren/yale-shuttle-wt/holiday/services/shuttle-v2/scripts/testId.mjs";
+const OUT = "/home/gwarren/yale-shuttle-wt/holiday/services/shuttle-v2/pr-preview/closed-day";
+const b = await chromium.launch({ executablePath: "/usr/bin/chromium", args: ["--no-sandbox","--disable-gpu","--disable-dev-shm-usage"] });
+const ctx = await b.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, geolocation: { latitude: 41.3163, longitude: -72.9223 }, permissions: ["geolocation"] });
+await seedTestId(ctx);
+const p = await ctx.newPage();
+await p.goto("http://127.0.0.1:8115/", { waitUntil: "domcontentloaded" });
+await p.waitForTimeout(5000);
+await p.screenshot({ path: `${OUT}/1-trip-labor-day.png`, fullPage: true });
+console.log("TRIP TAB:\n" + (await p.evaluate(() => document.body.innerText)).replace(/\n{2,}/g,"\n").slice(0, 1800));
+await p.getByRole("button", { name: /^\s*(\S+\s+)?Map\s*$/i }).first().click({ timeout: 10000 }).catch(e=>console.log("map click failed"));
+await p.waitForTimeout(3500);
+await p.screenshot({ path: `${OUT}/2-map-labor-day.png`, fullPage: true });
+console.log("\nMAP TAB:\n" + (await p.evaluate(() => document.body.innerText)).replace(/\n{2,}/g,"\n").slice(0, 1800));
+await b.close();

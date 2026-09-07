@@ -11,7 +11,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
 import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
 import { modelServesRoute } from "./eta";
-import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
+import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
@@ -4630,6 +4630,24 @@ const TripPlanner: FC<{
                 ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
                 : "😴 No shuttles running right now"}
             </div>
+            {/* WHY nothing is running, in Yale's own words. A system-wide
+                notice names no route, so the per-option banners never showed
+                it: on Labor Day 2026 the feed said "Yale Shuttles will be
+                closed … resume on 09/08/2026" while this screen said only
+                "No shuttles running right now", which reads as a broken app
+                rather than a holiday. Shown only when nothing is running, so
+                a normal service day is not covered in notices. */}
+            {buses.length === 0 && generalAnnouncements(announcements).map((a) => (
+              <div key={a.id} style={{
+                marginTop: 8, padding: "10px 12px", borderRadius: 10,
+                background: "#fff8e1", border: "1px solid #ffe082",
+                fontSize: 13, color: "#5d4037", lineHeight: 1.45,
+              }}>
+                <span style={{ fontWeight: 700 }}>{a.title}</span>
+                <span style={{ margin: "0 6px" }}>·</span>
+                <span>{a.message}</span>
+              </div>
+            ))}
             {firstTimer && buses.length > 0 && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
                 Pick a destination — we compare walking against every shuttle.
@@ -7241,6 +7259,17 @@ const TransitMap: FC = () => {
               something different from the first, and with one filter a rider
               who wants one card taps "Hide all" and that line, which puts the
               card directly under the map. */}
+          {buses.length === 0 && generalAnnouncements(announcements).map((a) => (
+            <div key={a.id} style={{
+              margin: "10px 0 0", padding: "10px 12px", borderRadius: 10,
+              background: "#fff8e1", border: "1px solid #ffe082",
+              fontSize: 13, color: "#5d4037", lineHeight: 1.45,
+            }}>
+              <span style={{ fontWeight: 700 }}>{a.title}</span>
+              <span style={{ margin: "0 6px" }}>·</span>
+              <span>{a.message}</span>
+            </div>
+          ))}
           <div style={{
             width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
             padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
