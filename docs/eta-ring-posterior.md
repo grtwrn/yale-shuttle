@@ -328,6 +328,17 @@ and 1.3 s of p90**, and their rings are byte-identical. The residue is not the
 ring: route 9's stand tables and its 24 legs enter the ALL-ROUTES class pools
 and the pooled pace, which every route leans on by design.
 
+**On deploy the new hops warm up from zero, and nothing is miskeyed.** The
+route's `stop_index` / `from_index` change meaning, so rows written before the
+change are keyed to slots the repaired ring does not ask for and are simply
+ignored — the one (stop, index) pair that coincides, `26#19` (Building 900 on
+the return), means the same thing in both orders. Three hops have no history at
+all because the old order could never bill them (`81-127`, `26-127`, `127-80`),
+so for their first day they price from the route's pace and read `estimated`;
+the per-pass stand tables inside West Campus fall back to their pooled stop
+table for up to `SPLIT_WINDOW_DAYS`. The measurement above is the steady state:
+both arms ran on tables re-derived from the same 36 h capture.
+
 Two smaller things the order still does not describe, both left as measured
 open items: Green's buses call at Building 750 on the OUTBOUND pass too (the
 line passes it, and 2,221 of 2,949 West Campus blocks stop there), which the
