@@ -1705,9 +1705,35 @@ as a build arg and `/healthz` reports as `build`. **Stage 2, built:**
 `scripts/archive-day.mjs` pulls a day's rows off the volume through
 `GET /api/archive/day` (admin header only) into `~/shuttle-archive/`, 180 days;
 `scripts/archive-check.mjs` says which days are complete; the crontab line is
-in the doc. **Stages 3–4 (re-estimation, promotion) are designed, not built,
-and must stay DAILY** — the parameters are stationary over days; hourly is for
-the scorecard and alerts.
+in the doc.
+
+**Stages 3–4, built, and DAILY — never hourly** (the parameters are stationary
+over days; hourly is for the scorecard and alerts). Seven of the ring
+estimator's constants are counts over the feed, so they are **served, not
+compiled**: `web/src/eta/params.ts` holds `MP`, whose defaults ARE the literals
+in `filter.ts` (a test pins the two equal and proves a served copy of them
+reproduces every cell mass and every priced row), and the payload's optional
+`model_params` may replace them. An absent, malformed or out-of-range set
+resets to the constants — all or nothing, never half a set. An eighth key,
+`CONFORMAL[horizon]`, widens the shown 10–90 band and is a no-op at its default
+1. **Everything else in `filter.ts` stays compiled on purpose**: a nightly job
+may re-measure the world, it may not redesign the estimator.
+`scripts/reestimate-params.mjs` (Pi cron, reads `~/shuttle-archive` because the
+volume sweeps `raw_positions` after 6 h) counts them on 14 days, replays the
+last 3 through the REAL client (`archive-db.ts` builds the day, `gps-replay.ts`
+takes `MODEL_PARAMS` and `PAIRS_OUT`; **leave `MODEL_ROUTES` unset there** or
+you score the legacy arithmetic), and posts to `POST /api/model-params` —
+admin HEADER only, deliberately outside `/api/stats` so the dashboard cookie
+cannot reach it. A key under its n floor, outside its range, or past its drift
+bound from the compiled constant keeps the champion and says why. Promotion
+needs the challenger no worse on median |error| or held-out band coverage than
+a noise bound taken from the CHAMPION'S OWN day-to-day spread; both arms are
+written as `surface = "replay:<name>"` (which `writeDay` now spares) and shown
+in the "Learning" block of `/stats`. **The 2026-09-07 fit reproduced six of
+seven constants and refused the seventh**: `P_REPEAT_MOVE_ZONE` measures 0.215
+against the compiled 0.5 — which `filter.ts` already calls an estimate, not a
+measurement. Don't just lower it; the number that settles it is a stage-4
+replay, not the emission rate. See docs/closed-loop.md.
 
 ## Investigations that did not become code
 

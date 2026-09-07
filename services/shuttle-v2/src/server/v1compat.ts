@@ -19,6 +19,7 @@ import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
 import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode, normalizeName, relevanceOf } from "./geocode.js";
+import type { ModelParamsSource } from "./modelParams.js";
 import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
@@ -126,9 +127,13 @@ export function paceCarrier(p: PaceEntry): SegmentEntry {
 
 // -- /api/buses ---------------------------------------------------------------
 
-export function buildBusesPayload(collector: Collector): Record<string, unknown> {
+export function buildBusesPayload(
+  collector: Collector,
+  modelParams?: ModelParamsSource | null,
+): Record<string, unknown> {
   const net = collector.ref.get();
   const live = collector.getLiveBuses();
+  const mp = modelParams?.wire() ?? null;
   // Geometry derived from where buses actually drove, best-so-far per route.
   // Usually empty at first boot and fills in over the following days as each
   // route is caught running; see `Collector.runDerivePaths`.
@@ -281,6 +286,12 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     // what says Grocery Trader Joe's is not out this weekend.
     route_active: collector.routeActive(),
     bus_pace: {},
+    // The estimator's learned parameters (docs/closed-loop.md, stage 3), when
+    // a fit has been accepted. ADDITIVE AND OPTIONAL: with nothing published
+    // the key is absent and every client runs the constants it was compiled
+    // with, which is the behaviour this field was added to. An old client
+    // ignores it; a new client validates it and falls back the same way.
+    ...(mp ? { model_params: mp } : {}),
   };
 }
 
@@ -310,17 +321,30 @@ const BUSES_CACHE_MAX_AGE_MS = 1_000;
  * version-only key would keep serving ghost buses that have aged off the map.
  * Re-checking once a second still collapses ~40:1 at launch load.
  */
-export function createBusesPayloadCache(collector: Collector): () => string {
+export function createBusesPayloadCache(
+  collector: Collector,
+  modelParams?: ModelParamsSource | null,
+): () => string {
   let cachedVersion = -1;
+  let cachedParamsVersion = -1;
   let cachedAt = 0;
   let cachedJson = "";
   return () => {
     const nowMs = Date.now();
-    if (cachedVersion === collector.dataVersion() && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS) {
+    // The parameter set is its own version because a publish must reach riders
+    // on their next poll and does NOT move the collector's data version: the
+    // fit lands between two collector ticks and would otherwise wait for one.
+    const paramsVersion = modelParams?.version() ?? 0;
+    if (
+      cachedVersion === collector.dataVersion()
+      && cachedParamsVersion === paramsVersion
+      && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS
+    ) {
       return cachedJson;
     }
     cachedVersion = collector.dataVersion();
-    cachedJson = JSON.stringify(buildBusesPayload(collector));
+    cachedParamsVersion = paramsVersion;
+    cachedJson = JSON.stringify(buildBusesPayload(collector, modelParams));
     cachedAt = nowMs;
     return cachedJson;
   };

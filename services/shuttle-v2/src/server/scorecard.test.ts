@@ -25,6 +25,8 @@ import {
   readScorecard,
   resolveEstimatorVersion,
   writeDay,
+  writeReplayDay,
+  replaySurface,
   type ScorecardRow,
 } from "./scorecard.js";
 import { COMPARE_HORIZON_SEC, UPSTREAM_SURFACE } from "./predictions.js";
@@ -452,5 +454,72 @@ describe("createScorecardJob", () => {
       if (saved === undefined) delete process.env.SHUTTLE_BUILD_SHA;
       else process.env.SHUTTLE_BUILD_SHA = saved;
     }
+  });
+});
+
+describe("a replayed challenger's rows (docs/closed-loop.md, stage 4)", () => {
+  const metrics = (medianAbsSec: number) => ({
+    n: 100, beyondHorizon: 0, standing: 0, missing: 10, paired: 90,
+    medianSignedSec: 0, medianAbsSec, p90AbsSec: null,
+    within120Pct: null, pessimistic120Pct: null, optimistic120Pct: null,
+    intervalRows: 90, intervalCoveragePct: 78.5,
+    waits: 0, strands: 0, jumpPairs: 0, jumps: 0,
+  });
+  const writeReplay = (name: string, med: number) =>
+    writeReplayDay(bundle.sqlite, {
+      day: DAY, name, estimatorVersion: "fit-2026-09-08", scoredThrough: 0,
+      rows: [{ routeId: ALL_ROUTES, horizon: ALL_HORIZON, surface: replaySurface(name) as ScorecardRow["surface"], metrics: metrics(med) }],
+    }, 1_700_000_000_000);
+  const surfaces = () =>
+    (bundle.sqlite.prepare("SELECT surface FROM scorecard_days WHERE day = ? ORDER BY surface").all(DAY) as Array<{ surface: string }>)
+      .map((r) => r.surface);
+
+  it("survives the hourly job's rewrite of the same day", () => {
+    writeReplay("challenger", 101.5);
+    // The hourly job then rebuilds the whole day from scratch, as it does
+    // every tick and again at the closing pass. Its DELETE must spare an arm
+    // it did not produce, or a promotion comparison lives one hour.
+    writeDay(bundle.sqlite, DAY, [
+      { routeId: ALL_ROUTES, horizon: ALL_HORIZON, surface: OURS_SURFACE, metrics: metrics(104.2) },
+    ], { scoredThrough: 1, scoredAt: 2, final: false, estimatorVersion: "abc" });
+    expect(surfaces()).toEqual([OURS_SURFACE, "replay:challenger"]);
+  });
+
+  it("its own re-run replaces only its own arm", () => {
+    writeReplay("champion", 104.2);
+    writeReplay("challenger", 101.5);
+    writeReplay("challenger", 99.9);
+    const rows = bundle.sqlite
+      .prepare("SELECT surface, metrics FROM scorecard_days WHERE day = ? ORDER BY surface")
+      .all(DAY) as Array<{ surface: string; metrics: string }>;
+    expect(rows.map((r) => r.surface)).toEqual(["replay:challenger", "replay:champion"]);
+    expect(JSON.parse(rows[0]!.metrics).medianAbsSec).toBe(99.9);
+    expect(JSON.parse(rows[1]!.metrics).medianAbsSec).toBe(104.2);
+  });
+
+  it("does not make the hourly job think it has already closed the day", async () => {
+    // A replay's rows are final in their own right — they score a day that is
+    // over — but they are not THIS job's rows. Counting them as "closed" would
+    // make the job skip a day it had never scored, and the rider arms of a
+    // replayed day would stay empty forever.
+    writeReplay("challenger", 101.5);
+    arrival({ bus: "40", route: 3, stop: 2, arrived: at(12, 10) });
+    prediction({ bus: "40", route: 3, stop: 2, at: at(12, 5), sec: 240 });
+    const job = createScorecardJob({
+      sqlite: bundle.sqlite, logger: { info: () => {}, warn: () => {}, error: () => {} },
+      now: () => at(13, 35), estimatorVersion: "v1", yieldFn: async () => {},
+    });
+    const r = await job.tick();
+    expect(r.days.map((d) => d.day)).toContain(DAY);
+    const report = readScorecard(bundle.sqlite, 400, at(13, 35));
+    expect(report.rows.some((row) => row.surface === "trip")).toBe(true);
+    expect(report.rows.some((row) => row.surface === ("replay:challenger" as ScorecardRow["surface"]))).toBe(true);
+  });
+
+  it("the reader hands the rows back under their own surface", () => {
+    writeReplay("challenger", 101.5);
+    const report = readScorecard(bundle.sqlite, 400, DAY_START + 3_600_000);
+    const row = report.rows.find((r) => r.surface === ("replay:challenger" as ScorecardRow["surface"]));
+    expect(row?.metrics.medianAbsSec).toBe(101.5);
   });
 });

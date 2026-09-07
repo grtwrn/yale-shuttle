@@ -708,3 +708,43 @@ export const canaryRuns = sqliteTable(
 );
 
 export type DbCanaryRun = typeof canaryRuns.$inferSelect;
+
+/**
+ * The estimator's learned parameters — one row per daily fit, accepted or not
+ * (docs/closed-loop.md, stages 3-4).
+ *
+ * `scripts/reestimate-params.mjs` re-counts the ring filter's re-estimable
+ * constants on the Pi's archive, replays the candidate against the champion,
+ * and POSTs the outcome here. The server serves the latest ACCEPTED row as
+ * `model_params` in the /api/buses payload; the rejected rows are kept because
+ * "we tried this and it was worse" is the half of the record a dashboard has
+ * no other way to show. Append-only — a publish is never an UPDATE, so the
+ * history is the audit.
+ */
+export const modelParams = sqliteTable(
+  "model_params",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    publishedAt: integer("published_at").notNull(),
+    /** 1 = this set is served; 0 = the fit ran and kept the champion. */
+    accepted: integer("accepted").notNull(),
+    /** The fit's own name, e.g. "fit-2026-09-06". */
+    version: text("version").notNull(),
+    /** The ET days the fit read, inclusive. */
+    windowFrom: text("window_from").notNull(),
+    windowTo: text("window_to").notNull(),
+    windowDays: integer("window_days").notNull(),
+    /** The full parameter set as JSON — validated against PARAM_RANGES before it lands. */
+    params: text("params").notNull(),
+    /** Sample count behind each key, as JSON. An estimate without its n is not a measurement. */
+    n: text("n").notNull(),
+    note: text("note"),
+    /** The promotion comparison as JSON: bounds, per-day medians, the reasons. */
+    decision: text("decision"),
+  },
+  (t) => ({
+    publishedIdx: index("model_params_published_idx").on(t.publishedAt),
+  }),
+);
+
+export type DbModelParams = typeof modelParams.$inferSelect;

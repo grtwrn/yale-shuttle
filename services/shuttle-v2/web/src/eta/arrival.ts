@@ -36,6 +36,7 @@
 
 import { quantile, residual, type Dist } from "./dist";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
+import { widenBand } from "./params";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
 
@@ -417,11 +418,17 @@ export function priceRoute(
         floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
       }
     }
+    // The learned per-horizon widening (params.ts, docs/closed-loop.md stage 3)
+    // is the LAST thing applied: it is fitted against the number a rider was
+    // actually shown, so it must scale the band about that number, after the
+    // floor clamp has moved it. At the default 1.0 it returns [low, high]
+    // itself, so the served defaults are byte-identical to no widening.
+    const [wLow, wHigh] = widenBand(eta, low, high);
     out.push({
       stopId: sid,
       occurrence: o,
       stopsAhead: h,
-      eta, low: Math.min(low, eta), high: Math.max(high, eta),
+      eta, low: Math.min(wLow, eta), high: Math.max(wHigh, eta),
       leadMass: mass,
       estimated: !lead.measured && !anyMeasured,
       standingAt: lead.standingAt,

@@ -11,6 +11,7 @@ import { isBusOnRoute, registerRoutePaths } from "./anchor";
 import { liveAnchorStore } from "./anchorGate";
 import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
 import { modelServesRoute } from "./eta";
+import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
@@ -6909,6 +6910,12 @@ const TransitMap: FC = () => {
         const data = await res.json();
         if (stopped || mySeq <= latestApplied) return;
         latestApplied = mySeq;
+        // The estimator's learned parameters, before anything that prices a
+        // row with them (docs/closed-loop.md, stage 3). Absent, malformed or
+        // out of range and this resets to the compiled constants, which is
+        // exactly the client without this line — an older server, a rolled-back
+        // publish and a corrupt field all degrade the same way.
+        applyModelParams(data.model_params);
         // Drop out-of-service ghosts (see isBusInService) before anything
         // downstream — map markers, planner, and arrival boards all read
         // this state.
