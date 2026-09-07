@@ -71,6 +71,7 @@ import {
   attachStandTables,
   calibrate,
   computePace,
+  computePooledPace,
   loadDriveGroups,
   loadLegGroups,
   loadStandGroups,
@@ -78,6 +79,7 @@ import {
   loadStopOccurrenceShares,
   loadStopShares,
   splitWithheldRoutes,
+  withPooledPace,
 } from "../../src/calibrator/calibrator.js";
 import { TransitNetwork, type DwellStats, type PaceStats, type SegmentStats } from "../../src/network/TransitNetwork.js";
 import {
@@ -187,8 +189,14 @@ const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoute
     : 0;
   const driveCount = attachDrives(segTable, loadDriveGroups(db, SPLIT_WINDOW_DAYS, NOW), withheld);
   const dqCount = attachLegQuantiles(segTable, legGroups, withheld);
-  paceTable = computePace(legGroups, net.network, withheld);
-  console.error(`MODEL_ROUTES=${MODEL_ROUTES}: withheld ${withheld.size} routes, ${standCount} stand tables (+${occCount} per-pass), ${driveCount} drives, ${dqCount} hop quantile tables, ${paceTable.size} route paces`);
+  const ownPace = computePace(legGroups, net.network, withheld);
+  // The all-routes pooled pace fills every route without legs of its own,
+  // exactly as `calibrate` serves it (withPooledPace), so a replay prices
+  // the grocery lines from the same prior production does.
+  const pooled = computePooledPace(legGroups, net.network, withheld);
+  paceTable = withPooledPace(ownPace, pooled, net.routes.map((r) => r.id));
+  console.error(`MODEL_ROUTES=${MODEL_ROUTES}: withheld ${withheld.size} routes, ${standCount} stand tables (+${occCount} per-pass), ${driveCount} drives, ${dqCount} hop quantile tables, ${ownPace.size} route paces of their own`);
+  if (pooled) console.error(`pooled pace over every route: median ${paceEntry(pooled).spm[4]}–${paceEntry(pooled).spm[5]} s/m, p10 ${paceEntry(pooled).spm[0]} p90 ${paceEntry(pooled).spm[9]}, n ${pooled.n}; fills ${paceTable.size - ownPace.size} route(s) without legs`);
 }
 
 // The same loops `v1compat.ts` runs, through its own emitters, carrying only
@@ -234,7 +242,7 @@ for (const r of net.routes) {
       stops: new Set(r.stops).size, stands: Object.keys(dwMap).filter((k) => !k.includes("#")).length,
       passes: Object.keys(dwMap).filter((k) => k.includes("#")).length,
       legMs: Object.values(segMap).filter((x) => x.legM !== undefined).length,
-      pace: p ? `${paceEntry(p).spm[4]}–${paceEntry(p).spm[5]} s/m over ${p.n}` : "-",
+      pace: p ? `${paceEntry(p).spm[4]}–${paceEntry(p).spm[5]} s/m over ${p.n}${p.pooled ? " (pooled)" : ""}` : "-",
     });
   }
 }

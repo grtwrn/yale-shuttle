@@ -93,6 +93,12 @@ export interface PaceStats {
   spm: number[];
   /** Legs behind `spm`. */
   n: number;
+  /**
+   * True when this is the ALL-ROUTES pooled pace standing in for a route
+   * that has no legs of its own (`computePooledPace`); `n` is then the
+   * pooled count. Absent on a route's own pace.
+   */
+  pooled?: boolean;
 }
 
 export interface DwellStats {

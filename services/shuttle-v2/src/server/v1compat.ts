@@ -45,8 +45,8 @@ export type SegmentEntry = {
    * {@link TransitNetwork.getLegMeters}). Static geometry, not calibration.
    */
   legM?: number;
-  /** Only on the {@link PACE_KEY} carrier row — see {@link paceCarrier}. */
-  spm?: number[]; spmN?: number;
+  /** Only on the {@link PACE_KEY} carrier row — see {@link paceCarrier}; `spmPooled` marks the all-routes pace. */
+  spm?: number[]; spmN?: number; spmPooled?: boolean;
 };
 /**
  * One stop of `dwells[route]`. Keyed by stop id for the pooled entry; a stop
@@ -56,8 +56,13 @@ export type SegmentEntry = {
  * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
  */
 export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
-/** `pace[route]`: seconds per ROAD metre (`legM`; chord where absent), quantiles at (i + 0.5) / spm.length, 4 decimals. */
-export type PaceEntry = { spm: number[]; n: number };
+/**
+ * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
+ * quantiles at (i + 0.5) / spm.length, 4 decimals. `pooled: true` when the
+ * route has no legs of its own and this is the all-routes pooled pace
+ * (`computePooledPace`), `n` then being the pooled count.
+ */
+export type PaceEntry = { spm: number[]; n: number; pooled?: boolean };
 
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
 const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
@@ -100,7 +105,7 @@ export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "
 
 /** `pace[route]` as it goes on the wire: 4 decimals, the true count. */
 export function paceEntry(p: PaceStats): PaceEntry {
-  return { spm: p.spm.map(round4), n: p.n };
+  return { spm: p.spm.map(round4), n: p.n, ...(p.pooled ? { pooled: true } : {}) };
 }
 
 /**
@@ -122,7 +127,7 @@ export const PACE_KEY = "__pace";
  * `segmentTimes[route][PACE_KEY].spm` / `.spmN`.
  */
 export function paceCarrier(p: PaceEntry): SegmentEntry {
-  return { avg: 0, sd: 0, n: 0, spm: p.spm, spmN: p.n };
+  return { avg: 0, sd: 0, n: 0, spm: p.spm, spmN: p.n, ...(p.pooled ? { spmPooled: true } : {}) };
 }
 
 // -- /api/buses ---------------------------------------------------------------
@@ -218,10 +223,12 @@ export function buildBusesPayload(
         ...legMetersField(net, r.id, from, to),
       };
     }
-    // The route's pooled pace, twice: as `pace[rid]` (the documented shape)
-    // and as the inert carrier row `segments[rid][PACE_KEY]`, which is how it
-    // reaches the client's arrivals math without a signature change. Absent
-    // on both sides wherever the calibrator has none (withheld, or no legs).
+    // The route's pace, twice: as `pace[rid]` (the documented shape) and as
+    // the inert carrier row `segments[rid][PACE_KEY]`, which is how it
+    // reaches the client's arrivals math without a signature change. A route
+    // with no legs of its own carries the all-routes pooled pace, flagged
+    // `pooled` (calibrator.ts withPooledPace); absent only before any route
+    // in the network has a leg.
     const p = net.getPace(r.id);
     if (p) {
       const entry = paceEntry(p);
@@ -274,8 +281,9 @@ export function buildBusesPayload(
     stop_coords,
     segments,
     dwells,
-    // Per-route pooled pace for the probabilistic estimator's thin-cell
-    // prior; `{}` until a route has legs. See PaceEntry / PACE_KEY.
+    // Per-route pace for the probabilistic estimator's drive prior — the
+    // route's own, or the network's pooled one where it has no legs; `{}`
+    // until any route has legs. See PaceEntry / PACE_KEY.
     pace,
     dwells_by_bus: {},
     route_peaks,

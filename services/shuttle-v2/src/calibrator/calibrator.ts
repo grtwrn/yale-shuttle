@@ -102,9 +102,12 @@ export interface CalibrationStats {
   /** Stops carrying a stand table (`q`) and hops carrying a `drive`. */
   standCount: number;
   driveCount: number;
-  /** Hops carrying leg quantiles (`dq`) and routes carrying a pooled `pace`. */
+  /** Hops carrying leg quantiles (`dq`) and routes carrying a pace OF THEIR OWN (the rest get the pooled one). */
   legQuantileCount: number;
   paceRouteCount: number;
+  /** The all-routes pooled pace behind every route without legs: its sample count and median s/m (null before any leg). */
+  pooledPaceN: number;
+  pooledPaceMedianSpm: number | null;
   /** Per-pass stand tables (`"<stop>#<index>"`) on routes that repeat a stop. */
   occurrenceStandCount: number;
   /** Stopped visits + one-hop legs behind them. */
@@ -151,7 +154,14 @@ export function calibrate(
   );
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
-  const pace = computePace(legGroups, network);
+  const ownPace = computePace(legGroups, network);
+  // The network-wide pace fills every route that has no legs yet, so the
+  // estimator prices every route from the same model (see computePooledPace).
+  const pooledPace = computePooledPace(legGroups, network);
+  // Guarded on `pooledPace` so the route list is read only when there is
+  // something to fill it with — before any route has a leg there is nothing
+  // to pool, and `ownPace` is already the whole answer.
+  const pace = pooledPace ? withPooledPace(ownPace, pooledPace, network.routes.keys()) : ownPace;
 
   network.setCalibration(segmentStats, dwellStats, pace);
 
@@ -162,7 +172,9 @@ export function calibrate(
     standCount,
     driveCount,
     legQuantileCount,
-    paceRouteCount: pace.size,
+    paceRouteCount: ownPace.size,
+    pooledPaceN: pooledPace ? pooledPace.n : 0,
+    pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
     occurrenceStandCount,
     splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
     durationMs: Date.now() - t0,
@@ -749,6 +761,17 @@ export function computePace(
   network: TransitNetwork,
   withheld: ReadonlySet<number> = new Set(),
 ): Map<number, PaceStats> {
+  const out = new Map<number, PaceStats>();
+  for (const [rid, l] of paceSamples(groups, network, withheld)) if (l.length > 0) out.set(rid, { spm: standQuantiles(l), n: l.length });
+  return out;
+}
+
+/** Seconds per road metre, one list per route, from every one-hop leg (see {@link computePace}). */
+function paceSamples(
+  groups: readonly ValueGroup[],
+  network: TransitNetwork,
+  withheld: ReadonlySet<number>,
+): Map<number, number[]> {
   const samples = new Map<number, number[]>();
   for (const g of groups) {
     const rid = routeOf(g.key);
@@ -763,8 +786,43 @@ export function computePace(
       if (Number.isFinite(spm) && spm > 0) l.push(spm);
     }
   }
-  const out = new Map<number, PaceStats>();
-  for (const [rid, l] of samples) if (l.length > 0) out.set(rid, { spm: standQuantiles(l), n: l.length });
+  return samples;
+}
+
+/**
+ * The ALL-ROUTES pooled pace: the same quantile form as a route's own, over
+ * every pace sample of every route. The level above the route in the
+ * hierarchy leg -> route pace -> network pace: a route that has no legs of
+ * its own yet (the grocery lines, 2026-09-06) is priced from this, so the
+ * estimator has a drive prior for every hop on every route and never has to
+ * fall back to a second arithmetic. `pooled: true` marks it, and `n` is the
+ * pooled count, so a reader can tell the network's prior from the route's
+ * own evidence. Null until any route has a leg.
+ */
+export function computePooledPace(
+  groups: readonly ValueGroup[],
+  network: TransitNetwork,
+  withheld: ReadonlySet<number> = new Set(),
+): PaceStats | null {
+  const all: number[] = [];
+  for (const l of paceSamples(groups, network, withheld).values()) for (const x of l) all.push(x);
+  return all.length > 0 ? { spm: standQuantiles(all), n: all.length, pooled: true } : null;
+}
+
+/**
+ * Every route the network lists gets a pace: its own where it has legs, the
+ * pooled one otherwise. A route's own pace is served UNCHANGED, however thin
+ * (Blue Weekend had n = 2 on 2026-09-04) — shrinking it toward the pool was
+ * not done here so every route that already had a pace stays byte-identical;
+ * the client's drive shrinkage (`SHRINK_K`) is what tempers a thin hop.
+ */
+export function withPooledPace(
+  own: ReadonlyMap<number, PaceStats>,
+  pooled: PaceStats | null,
+  routeIds: Iterable<number>,
+): Map<number, PaceStats> {
+  const out = new Map<number, PaceStats>(own);
+  if (pooled) for (const rid of routeIds) if (!out.has(rid)) out.set(rid, pooled);
   return out;
 }
 

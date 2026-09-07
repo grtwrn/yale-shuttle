@@ -20,12 +20,14 @@ import {
   calibrate,
   computeDwellStats,
   computePace,
+  computePooledPace,
   computeSegmentStats,
   foldRoutes,
   hourWindow,
   PACE_MIN_CHORD_M,
   SPLIT_SERVED_ROUTE_IDS,
   splitWithheldRoutes,
+  withPooledPace,
   parseValueList,
   STAND_Q_COUNT,
   standQuantiles,
@@ -834,5 +836,50 @@ describe("stand tables and drives", () => {
     expect(pace.get(3)!.spm).toHaveLength(STAND_Q_COUNT);
     // No legs at all: no pace at all — the payload's `pace` is then `{}`.
     expect(computePace([], network).size).toBe(0);
+  });
+
+  it("pools one pace over EVERY route for the routes that have none", () => {
+    // The level above the route: the estimator needs a drive prior for every
+    // hop of every route, or a line the collector has not timed yet (the two
+    // grocery lines, which run one weekend in the retention window) has
+    // nothing to price on and the client would need a second arithmetic.
+    const network = TransitNetwork.build(
+      [
+        { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+        { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+        { id: 3, name: "C", lat: 41.31, lon: -72.91 },
+      ],
+      [
+        { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] },
+        { id: 8, name: "Pink", shortName: "K", color: "#f8c", stops: [1, 2, 3] },
+        { id: 18, name: "Grocery", shortName: "G", color: "#0a0", stops: [1, 2, 3] },
+      ],
+    );
+    const chord = distanceMeters({ lat: 41.31, lon: -72.93 }, { lat: 41.31, lon: -72.92 });
+    const groups: ValueGroup[] = [
+      { key: "3:1:2", n: 2, all: [100, 200], windowed: [] },
+      { key: "8:2:3", n: 1, all: [150], windowed: [] },
+      // route 18 has no legs at all
+    ];
+    const pooled = computePooledPace(groups, network)!;
+    // Every sample of every route, in one pool, in the same quantile form.
+    expect(pooled.n).toBe(3);
+    expect(pooled.pooled).toBe(true);
+    expect(pooled.spm).toEqual(standQuantiles([100 / chord, 200 / chord, 150 / chord]));
+    expect(pooled.spm).toHaveLength(STAND_Q_COUNT);
+    expect(computePooledPace(groups, network, new Set([3, 8]))).toBeNull();
+    expect(computePooledPace([], network)).toBeNull();
+
+    // ...and it fills exactly the routes without one of their own, leaving
+    // every route that has legs byte-identical.
+    const own = computePace(groups, network);
+    const served = withPooledPace(own, pooled, network.routes.keys());
+    expect([...served.keys()].sort((a, b) => a - b)).toEqual([3, 8, 18]);
+    expect(served.get(3)).toBe(own.get(3));
+    expect(served.get(8)).toBe(own.get(8));
+    expect(served.get(18)).toBe(pooled);
+    expect(served.get(18)!.pooled).toBe(true);
+    // Before any route has a leg there is nothing to pool and nothing is served.
+    expect(withPooledPace(new Map(), null, network.routes.keys()).size).toBe(0);
   });
 });
