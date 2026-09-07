@@ -112,7 +112,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "divinity library", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
   { label: "School of Art (Green Hall)", lat: 41.308301, lon: -72.933003, aliases: ["art school", "school of art", "green hall", "1156 chapel", "iseman theater", "iseman"], poi: "college", anchorStop: "York / Chapel" }, // OSM W224973110
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
-  { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine", "harkness auditorium (shm)", "harkness auditorium", "med school auditorium"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
+  { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
   { label: "School of Nursing (West Campus)", lat: 41.255831, lon: -72.992846, aliases: ["nursing", "nursing school", "ysn", "400 west campus"], poi: "college", anchorStop: "Building 400" }, // OSM W336607422
   { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["ysph", "public health", "leph", "60 college", "epidemiology"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W239527110
   { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall", "law"], poi: "college", anchorStop: "Wall / York" }, // OSM R2840491
@@ -122,6 +122,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Asian American Cultural Center", lat: 41.306987, lon: -72.931583, aliases: ["aacc", "asian american center", "295 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240137
   { label: "Dwight Hall", lat: 41.308947, lon: -72.929297, aliases: ["dwight", "dwight chapel", "67 high"], poi: "college", anchorStop: "Phelps Gate" }, // OSM W139753858
   { label: "Graduate & Professional Student Center (GPSCY)", lat: 41.309255, lon: -72.931882, aliases: ["gpscy", "gypsy", "grad center", "204 york", "gryphon", "gryphons", "gryphon's pub", "the gryphon"], poi: "college", anchorStop: "180 York (A&A)" }, // OSM W224973083
+  { label: "McDougal Center (Founders Hall)", lat: 41.3157176, lon: -72.9241619, aliases: ["mcdougal", "mcdougal center", "mcdougal graduate student center", "founders hall", "135 prospect"], poi: "college", anchorStop: "Prospect / Sachem (N)" }, // OSM W210260688
   { label: "La Casa Cultural", lat: 41.307061, lon: -72.931765, aliases: ["la casa", "latino cultural center", "301 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240136
   { label: "Native American Cultural Center", lat: 41.306961, lon: -72.93118, aliases: ["nacc", "native american center", "26 high"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606236056
   { label: "Schwarzman Center", lat: 41.311808, lon: -72.92644, aliases: ["commons", "the commons", "schwarzman", "schwarzman commons", "the elm", "the well", "dome"], poi: "college", anchorStop: "College / Grove (N)" }, // OSM W363426802
@@ -141,6 +142,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale University Art Gallery", lat: 41.308435, lon: -72.93088, aliases: ["yuag", "art gallery", "the gallery", "1111 chapel"], poi: "museum", anchorStop: "Chapel / York" }, // OSM R6686912
 
   // -- Medical campus and hospitals ------------------------------------------
+  { label: "Mary S. Harkness Auditorium", lat: 41.3034645, lon: -72.9338409, aliases: ["harkness auditorium", "harkness memorial auditorium", "mary s harkness memorial auditorium", "harkness auditorium (shm)", "shm auditorium", "med school auditorium"], poi: "theatre", anchorStop: "333 Cedar" }, // OSM N367139179
   { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
   { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709
