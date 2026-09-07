@@ -3,7 +3,8 @@ import KDBush from "kdbush";
 import type { Route, Stop } from "../schema/api.js";
 
 import { distanceMeters, makeProjector } from "./geo.js";
-import { routeLegMeters } from "./legs.js";
+import { repairedStopOrder } from "./alignStops.js";
+import { routeLegMeters, traceStopLegs, type LatLon } from "./legs.js";
 
 // Tuning constants ------------------------------------------------------------
 
@@ -270,8 +271,16 @@ export class TransitNetwork {
     this.legMeters = args.legMeters;
   }
 
-  static build(stops: readonly Stop[], routes: readonly Route[]): TransitNetwork {
+  static build(stops: readonly Stop[], routesIn: readonly Route[]): TransitNetwork {
     const stopMap = new Map(stops.map((s) => [s.id, s]));
+    // Upstream's stop ORDER is taken as read wherever upstream's own polyline
+    // can be walked through it. Where it cannot — one route of fifteen, Green,
+    // whose list has the West Haven station one slot before the pass the line
+    // (and the buses) make at it — the order is repaired against the line
+    // before anything else is built on it, so the detector anchors, the legs
+    // it bills and the hop keys the calibrator fills are all in the order the
+    // buses drive. `publishedStops` keeps upstream's list for the payload.
+    const routes = routesIn.map((r) => repairRouteOrder(r, stopMap));
     const routeMap = new Map(routes.map((r) => [r.id, r]));
     const segmentEdges = buildSegmentEdges(routes);
     const walkTransfers = buildWalkTransfers(stops);
@@ -622,6 +631,29 @@ function buildSegmentEdges(
     }
   }
   return byStop;
+}
+
+/**
+ * A route whose published stop order its published line cannot supply, in the
+ * order the line does supply — see src/network/alignStops.ts. Everything else
+ * is returned untouched, so this is a no-op on fourteen of fifteen routes.
+ */
+function repairRouteOrder(route: Route, stops: ReadonlyMap<number, Stop>): Route {
+  if (!route.path || route.stops.length < 2 || route.publishedStops) return route;
+  const coords: LatLon[] = [];
+  for (const id of route.stops) {
+    const s = stops.get(id);
+    if (!s) return route;
+    coords.push({ lat: s.lat, lon: s.lon });
+  }
+  // The trigger is the evidence, and only the evidence: a leg the published
+  // line could not supply for the published order, which the length guard
+  // replaced with a chord. A route that traces is never repaired.
+  const traced = traceStopLegs(route.path as [number, number][], [...coords, coords[0]!]);
+  if (traced.length !== coords.length || !traced.some((l) => l.bridged)) return route;
+  const order = repairedStopOrder(route.path, coords);
+  if (!order) return route;
+  return { ...route, stops: order.map((i) => route.stops[i]!), publishedStops: route.stops };
 }
 
 function buildLegMeters(

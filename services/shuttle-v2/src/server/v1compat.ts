@@ -196,7 +196,11 @@ export function buildBusesPayload(
 
   for (const r of net.routes.values()) {
     const rid = String(r.id);
-    routes[rid] = r.stops;
+    // Upstream's own list, always — the map draws it, the planner lists it and
+    // riders read it. Where the network runs on a REPAIRED order (Green; see
+    // src/network/alignStops.ts) the client recomputes that repair from this
+    // list and `route_paths` for its ring alone, so nothing here changes.
+    routes[rid] = r.publishedStops ?? r.stops;
     const published = parsePublishedHours(r.description);
     if (published) route_hours[rid] = published;
     // Prefer the derived line over upstream's published one. Several published
@@ -211,17 +215,25 @@ export function buildBusesPayload(
     else if (r.path) route_paths[rid] = r.path;
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
-    const n = r.stops.length;
     const segMap: Record<string, SegmentEntry> = {};
-    for (let i = 0; i < n; i++) {
-      const from = r.stops[i]!;
-      const to = r.stops[(i + 1) % n]!;
-      const s = net.getSegmentStats(r.id, from, to);
-      segMap[`${from}-${to}`] = {
-        avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
-        ...segmentSplitFields(s),
-        ...legMetersField(net, r.id, from, to),
-      };
+    // Both adjacencies, when they differ: the RING's (the network's own order,
+    // which is what the calibrator filled and what the client's ring prices
+    // on) and UPSTREAM's (which the legacy arithmetic still walks, since it
+    // walks `routes[rid]`). A repaired route would otherwise lose the legacy
+    // arm's keys the moment the model declined it.
+    for (const seq of r.publishedStops ? [r.stops, r.publishedStops] : [r.stops]) {
+      const n = seq.length;
+      for (let i = 0; i < n; i++) {
+        const from = seq[i]!;
+        const to = seq[(i + 1) % n]!;
+        if (segMap[`${from}-${to}`]) continue;
+        const s = net.getSegmentStats(r.id, from, to);
+        segMap[`${from}-${to}`] = {
+          avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
+          ...segmentSplitFields(s),
+          ...legMetersField(net, r.id, from, to),
+        };
+      }
     }
     // The route's pace, twice: as `pace[rid]` (the documented shape) and as
     // the inert carrier row `segments[rid][PACE_KEY]`, which is how it
@@ -251,7 +263,7 @@ export function buildBusesPayload(
     // A stop the route lists more than once (the West Campus out-and-backs)
     // also carries one entry per PASS, `"<stop>#<index>"`, when the calibrator
     // has a table for that pass. See DwellEntry.
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < r.stops.length; i++) {
       const sid = r.stops[i]!;
       if (net.positionsOnRoute(r.id, sid).length < 2) continue;
       const d = net.getOccurrenceDwellStats(r.id, sid, i);

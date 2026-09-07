@@ -84,9 +84,10 @@ export function beliefFor(
   stops: readonly number[],
   now: number,
 ): Belief {
-  if (!store) return stepBelief(undefined, ring, bus, now, stops);
+  const seq = ring.stops.length === ring.N ? ring.stops : stops;
+  if (!store) return stepBelief(undefined, ring, bus, now, seq);
   const e = entryFor(store, key);
-  const b = stepBelief(e.belief, ring, bus, now, stops);
+  const b = stepBelief(e.belief, ring, bus, now, seq);
   e.belief = b;
   return b;
 }
@@ -118,29 +119,29 @@ export function arrivalsForBus(
   dwellsByRoute?: Record<string, Record<string, DwellLike>>,
 ): StopArrival[] | null {
   if (ring.bridged) return null;
-  const tables = tablesFor(ring, stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
+  const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
   if (!tables.priced) return null;
-  const belief = beliefFor(store, key, bus, ring, stops, now);
+  const belief = beliefFor(store, key, bus, ring, ring.stops, now);
   let floors: Floors | undefined;
   if (store) {
     const e = entryFor(store, key);
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, stops, targetStopIds, now, tau, floors);
+  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors);
 }
 
 /** Whether the model prices this route's payload at all (its tables carry a measured drive). */
 export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>, routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>, dwellsByRoute?: Record<string, Record<string, DwellLike>>): boolean {
   // A route whose published line cannot be traced through its stop sequence
   // (a leg had to be bridged with a chord) is a route whose sequence does not
-  // describe how the buses drive: Green's West Campus spur, where buses call
-  // at West Haven station before Building 900 on the return and the served
-  // leg times carry the station stop inside an 11 km highway hop. No model
-  // on that ring can be right, and the legacy arithmetic is no worse. The
-  // condition is the geometry's, not a route list.
+  // describe how the buses drive, and no model on that ring can be right.
+  // `buildRing` first tries to REPAIR such an order against the published line
+  // (eta/align.ts) — that is what took Green off the legacy arithmetic; a ring
+  // still bridged after the repair declines, and the condition stays the
+  // geometry's, not a route list.
   if (ring.bridged) return false;
-  return tablesFor(ring, stops, stopCoords, routeSegs, routeDwells, dwellsByRoute).priced;
+  return tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute).priced;
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
@@ -197,7 +198,10 @@ function tablesFor(
   let t = bySegs.get(key);
   if (!t) {
     if (bySegs.size > 8) bySegs.clear();
-    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring, global?.pools);
+    // The per-pass stand tables are keyed by UPSTREAM's index (the server
+    // serves `"<stop>#<index>"` against the list it publishes), so a repaired
+    // ring asks for its occurrences under the slot upstream gave them.
+    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring, global?.pools, ring.repaired ? ring.order : undefined);
     bySegs.set(key, t);
     // The kernel's profile lives on the shared ring, so every call site —
     // including the table-free `resolveAnchorIndex` — steps with the same speeds.

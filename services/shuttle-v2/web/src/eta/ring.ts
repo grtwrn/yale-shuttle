@@ -16,6 +16,7 @@
  */
 
 import { haversineMeters, polylineMeters, traceStopLegs, type LatLon } from "../geo";
+import { alignStopsToPath } from "../../../src/network/alignStops";
 import type { Dist } from "./dist";
 
 /** Cell pitch, metres. The sensor's deadband. */
@@ -63,6 +64,18 @@ export interface Ring {
   approachOf: Int32Array;
   /** True when any leg had to be bridged with a chord (the published line could not supply it). */
   bridged: boolean;
+  /**
+   * The ring's own stop sequence, in travel order. Upstream's list where it
+   * describes the line (fourteen routes of fifteen); the ALIGNED order where
+   * it does not (align.ts). Every consumer of the ring — the tables, the
+   * belief, the chain — indexes by ring position, so this is the sequence they
+   * mean, and `order` translates a ring position back to upstream's list.
+   */
+  stops: number[];
+  /** Ring position -> index into the stop list the ring was built from. Identity unless repaired. */
+  order: number[];
+  /** True when the published order had to be repaired against the published line. */
+  repaired: boolean;
   /**
    * Per-leg driving speed, m/s, for the transition kernel — set from the
    * served drive tables (`setRingProfile`), DEFAULT_DRIVE_M_S until then. The
@@ -161,7 +174,7 @@ export function buildRing(
   stops: readonly number[],
   stopCoords: Record<number, LatLon>,
 ): Ring | null {
-  const N = stops.length;
+  const published = stops.length;
   const coords: LatLon[] = [];
   for (const sid of stops) {
     const c = stopCoords[sid];
@@ -169,16 +182,40 @@ export function buildRing(
     coords.push(c);
   }
   coords.push(coords[0]!); // close the loop
-  const legs = traceStopLegs(path as [number, number][], coords);
-  if (legs.length !== N) return null;
+  let legs = traceStopLegs(path as [number, number][], coords);
+  if (legs.length !== published) return null;
+
+  // A bridged leg is the evidence that the published order does not describe
+  // the published line, and it is the ONLY trigger: a route whose order the
+  // line supports never reaches the aligner, so its ring is byte-identical.
+  let order = Array.from({ length: published }, (_, i) => i);
+  let repaired = false;
+  if (legs.some((l) => l.bridged)) {
+    const aligned = alignStopsToPath(path, coords.slice(0, published));
+    if (aligned && aligned.legs.length === aligned.order.length) {
+      const cand = aligned.legs.map((slice) => ({ slice, bridged: false }));
+      // Accept only a repair that leaves nothing bridged AND draws the line
+      // once: the slices of a monotone assignment sum to the loop, so a
+      // repair that does not is one this ring should not be built on.
+      const drawn = cand.reduce((a, l) => a + polylineMeters(l.slice), 0);
+      const loop = polylineMeters(path as [number, number][]);
+      if (drawn <= loop * 1.02) {
+        legs = cand;
+        order = aligned.order;
+        repaired = true;
+      }
+    }
+  }
+  const N = order.length;
+  const ringStops = order.map((i) => stops[i]!);
+  const ringCoords = order.map((i) => coords[i]!);
+  ringCoords.push(ringCoords[0]!);
 
   const lat: number[] = [], lon: number[] = [], metre: number[] = [], leg: number[] = [], frac: number[] = [];
   const stopCell: number[] = [], legM: number[] = [];
   let cum = 0;
-  let bridged = false;
   for (let i = 0; i < N; i++) {
     const slice = legs[i]!.slice;
-    bridged = bridged || legs[i]!.bridged;
     const L = Math.max(1, polylineMeters(slice));
     const n = Math.max(1, Math.round(L / CELL_M));
     const w = walkLeg(slice, n);
@@ -199,8 +236,8 @@ export function buildRing(
     const i = leg[c]!;
     const j = (i + 1) % N;
     const here = { lat: lat[c]!, lon: lon[c]! };
-    const dA = haversineMeters(here, coords[i]!);
-    const dB = haversineMeters(here, coords[j]!);
+    const dA = haversineMeters(here, ringCoords[i]!);
+    const dB = haversineMeters(here, ringCoords[j]!);
     if (dA <= NEAR_STOP_M || dB <= NEAR_STOP_M) {
       nearStop[c] = dA <= dB ? i : j;
       continue;
@@ -213,7 +250,8 @@ export function buildRing(
     lat: Float64Array.from(lat), lon: Float64Array.from(lon), metre: Float64Array.from(metre),
     leg: Int32Array.from(leg), frac: Float32Array.from(frac),
     stopCell: Int32Array.from(stopCell), legM: Float64Array.from(legM),
-    nearStop, approachOf, bridged,
+    nearStop, approachOf, bridged: legs.some((l) => l.bridged),
+    stops: ringStops, order, repaired,
     legSpeed: new Float64Array(N).fill(DEFAULT_DRIVE_M_S),
     pStop: new Float64Array(N).fill(DEFAULT_P_STOP),
     stand: new Array<Dist | null>(N).fill(null),

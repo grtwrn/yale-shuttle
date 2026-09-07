@@ -18,6 +18,8 @@
  * Nothing here reads the database or the network class; it is geometry only.
  */
 
+import { legSlicesInOrder } from "./alignStops.js";
+
 export type LatLon = { lat: number; lon: number };
 
 export function haversineMeters(a: LatLon, b: LatLon): number {
@@ -157,14 +159,32 @@ export function polylineMeters(pts: readonly [number, number][]): number {
  * the chord there rather than pricing a straight line as road. An unusable
  * path or a sequence under two stops yields all nulls.
  */
+/**
+ * The legs a stop list draws along a line: the plain trace, or — when the
+ * list's order is one the line cannot supply and the caller has already
+ * REPAIRED it (TransitNetwork.build) — the slices the alignment cut.
+ *
+ * The repaired order defeats the forward walk: `traceStopLegs` reaches each
+ * stop greedily and, on Green, meets Building 900 first on the pass that is
+ * 12 m from the marker rather than the 73 m one it should take, so the next
+ * stop is behind it and the leg wraps. The alignment has already decided
+ * every stop's pass; these are its own slices.
+ */
+function legsAlong(path: [number, number][], stops: readonly LatLon[]): TracedLeg[] | null {
+  const traced = traceStopLegs(path, [...stops, stops[0]!]);
+  if (traced.length !== stops.length || !traced.some((l) => l.bridged)) return traced;
+  const slices = legSlicesInOrder(path, stops);
+  return slices ? slices.map((slice) => ({ slice, bridged: false })) : traced;
+}
+
 export function routeLegMeters(
   path: readonly (readonly [number, number])[] | undefined, stops: readonly LatLon[],
 ): (number | null)[] {
   const n = stops.length;
   const out: (number | null)[] = new Array<number | null>(n).fill(null);
   if (!path || path.length < 2 || n < 2) return out;
-  const legs = traceStopLegs(path as [number, number][], [...stops, stops[0]!]);
-  if (legs.length !== n) return out;
+  const legs = legsAlong(path as [number, number][], stops);
+  if (!legs || legs.length !== n) return out;
   for (let i = 0; i < n; i++) {
     const l = legs[i]!;
     if (!l.bridged) out[i] = polylineMeters(l.slice);

@@ -239,6 +239,14 @@ export function buildTables(
   ring?: Ring,
   /** The all-routes class pools (`globalClassPools`), the level above the route's own. */
   globalPools?: ClassPools,
+  /**
+   * Ring position -> the index UPSTREAM gave that occurrence, on a route whose
+   * order had to be repaired against its published line
+   * (src/network/alignStops.ts). A server on this build already keys its
+   * per-pass stand tables by the repaired order, so this is only the fallback
+   * for a payload served before the change; absent everywhere else.
+   */
+  pubIndex?: readonly number[],
 ): RouteTables {
   const N = stops.length;
   const pace = routeSegs[PACE_KEY]?.spm;
@@ -248,7 +256,17 @@ export function buildTables(
     const a = stops[i]!, b = stops[(i + 1) % N]!;
     // A stop the route visits twice has a table per occurrence; the pooled
     // one is the fallback.
-    out.stops.push(stopModel(routeDwells[`${a}#${i}`] ?? routeDwells[String(a)], pools));
+    // The RING's index first — a server on this build keys its per-pass stand
+    // tables by the same repaired order (v1compat.ts walks the network's own
+    // sequence) — then the slot UPSTREAM gave the occurrence, so a payload
+    // served before this change still finds its tables, then the pooled one.
+    const pub = pubIndex?.[i];
+    out.stops.push(stopModel(
+      routeDwells[`${a}#${i}`]
+        ?? (pub !== undefined ? routeDwells[`${a}#${pub}`] : undefined)
+        ?? routeDwells[String(a)],
+      pools,
+    ));
     const seg = routeSegs[`${a}-${b}`];
     const ca = stopCoords[a], cb = stopCoords[b];
     const chord = ca && cb ? haversineMeters(ca, cb) : 0;

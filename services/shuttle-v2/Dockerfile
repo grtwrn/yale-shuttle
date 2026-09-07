@@ -10,6 +10,11 @@ WORKDIR /app
 # also has zod, but the resolver doesn't reach across to it.)
 RUN npm init -y > /dev/null && npm install zod@^3.23.0 > /dev/null
 COPY src/schema /app/src/schema
+# One more shared module: `web/src/eta/ring.ts` imports the stop-order repair
+# (the ring and the server's own network must agree on the order, and only
+# `src/` reaches the runtime image — see src/network/alignStops.ts). It is pure
+# geometry with no imports of its own, so the file alone is enough.
+COPY src/network/alignStops.ts /app/src/network/alignStops.ts
 COPY web/ /app/web/
 WORKDIR /app/web
 RUN npm ci
