@@ -504,10 +504,20 @@ export interface Metrics {
   within120: number;
   /**
    * The tails that decide whether a change is shippable. Error is
-   * predicted - actual, so NEGATIVE is optimistic: the app named a time the
-   * bus beat, and the rider who trusted it strolled up and watched it leave.
-   * `optimistic120` is therefore the number that must not grow, whatever the
-   * median does — see docs/eta-accuracy.md.
+   * `predicted - actual`.
+   *
+   * NEGATIVE is optimistic: the app named a time the bus did not manage, so
+   * the rider arrives early and WAITS. Annoying; safe.
+   *
+   * POSITIVE is pessimistic: the app named a time the BUS BEAT — "5 min" for
+   * a bus two minutes away — so the rider strolls up and watches it leave.
+   * **`pessimistic120` is the number that must not grow**, whatever the
+   * median does; see docs/eta-accuracy.md.
+   *
+   * (This comment said the opposite until 2026-09-07 — it glossed the
+   * negative tail as "the bus beat the time", which is the positive one. The
+   * field NAMES were right and every table in docs/ is keyed on them, so no
+   * measurement was misread; a reader might have been.)
    */
   optimistic120: number;
   pessimistic120: number;

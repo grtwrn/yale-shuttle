@@ -21,7 +21,7 @@ import type { RouteListConfig } from "../routes";
 import { priceRoute, type Floors, type StopArrival } from "./arrival";
 import { stepBelief, type Belief } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
-import { buildTables, type DwellLike, type SegmentLike } from "./tables";
+import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
 
 /**
  * Routes priced by the model: every route the payload lists. A route whose
@@ -94,8 +94,14 @@ export function beliefFor(
 export interface ModelArrival extends StopArrival { busName: string }
 
 /**
- * Price every target stop for one bus, or null when the route's tables carry
- * no measured drive (the caller then runs the legacy arithmetic).
+ * Price every target stop for one bus, or null when the model declines the
+ * route and the caller must run the legacy arithmetic: a BRIDGED ring (the
+ * published line cannot be traced through the stop sequence), or tables with
+ * no hop the model can put a number on at all.
+ *
+ * `dwellsByRoute` is every route's dwell table (the payload's `dwells`), from
+ * which the all-routes stand pools are pooled; omit it and a route leans only
+ * on its own tables.
  */
 export function arrivalsForBus(
   store: AnchorStore | undefined,
@@ -109,9 +115,10 @@ export function arrivalsForBus(
   targetStopIds: ReadonlySet<number>,
   now: number,
   tau = DISPLAY_TAU,
+  dwellsByRoute?: Record<string, Record<string, DwellLike>>,
 ): StopArrival[] | null {
   if (ring.bridged) return null;
-  const tables = tablesFor(ring, stops, stopCoords, routeSegs, routeDwells);
+  const tables = tablesFor(ring, stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
   if (!tables.priced) return null;
   const belief = beliefFor(store, key, bus, ring, stops, now);
   let floors: Floors | undefined;
@@ -124,7 +131,7 @@ export function arrivalsForBus(
 }
 
 /** Whether the model prices this route's payload at all (its tables carry a measured drive). */
-export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>, routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>): boolean {
+export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>, routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>, dwellsByRoute?: Record<string, Record<string, DwellLike>>): boolean {
   // A route whose published line cannot be traced through its stop sequence
   // (a leg had to be bridged with a chord) is a route whose sequence does not
   // describe how the buses drive: Green's West Campus spur, where buses call
@@ -133,7 +140,7 @@ export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoord
   // on that ring can be right, and the legacy arithmetic is no worse. The
   // condition is the geometry's, not a route list.
   if (ring.bridged) return false;
-  return tablesFor(ring, stops, stopCoords, routeSegs, routeDwells).priced;
+  return tablesFor(ring, stops, stopCoords, routeSegs, routeDwells, dwellsByRoute).priced;
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
@@ -143,8 +150,7 @@ export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoord
 // a fresh dwell object every poll; keyed on identity alone this rebuilt the
 // prefix sums for every rider on every poll, a second per poll.
 const tableCache = new WeakMap<object, Map<string, ReturnType<typeof buildTables>>>();
-function dwellFingerprint(routeDwells: Record<string, DwellLike>): string {
-  let h = 2166136261;
+function mixInto(h: number, routeDwells: Record<string, DwellLike>): number {
   const mix = (v: number) => { h = Math.imul(h ^ (v | 0), 16777619); };
   for (const k in routeDwells) {
     const d = routeDwells[k]!;
@@ -153,19 +159,45 @@ function dwellFingerprint(routeDwells: Record<string, DwellLike>): string {
     mix(Math.round((d.pstop ?? -1) * 1000));
     if (d.q) for (const x of d.q) mix(Math.round(x));
   }
-  return (h >>> 0).toString(16);
+  return h;
+}
+function dwellFingerprint(routeDwells: Record<string, DwellLike>): string {
+  return (mixInto(2166136261, routeDwells) >>> 0).toString(16);
+}
+
+// The all-routes pools are pooled once per distinct dwell payload, by
+// CONTENT, for the same reason as the tables above: a caller that merges a
+// patch hands over a fresh object every poll, and pooling every route's
+// tables on every poll for every rider is not free.
+const globalPoolCache = new Map<string, ClassPools>();
+export function globalPoolsFor(dwellsByRoute: Record<string, Record<string, DwellLike>>): { pools: ClassPools; key: string } {
+  let h = 2166136261;
+  for (const r in dwellsByRoute) {
+    for (let i = 0; i < r.length; i++) h = Math.imul(h ^ r.charCodeAt(i), 16777619);
+    h = mixInto(h, dwellsByRoute[r]!);
+  }
+  const key = (h >>> 0).toString(16);
+  let pools = globalPoolCache.get(key);
+  if (!pools) {
+    if (globalPoolCache.size > 8) globalPoolCache.clear();
+    pools = globalClassPools(dwellsByRoute);
+    globalPoolCache.set(key, pools);
+  }
+  return { pools, key };
 }
 function tablesFor(
   ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>,
   routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>,
+  dwellsByRoute?: Record<string, Record<string, DwellLike>>,
 ) {
   let bySegs = tableCache.get(routeSegs);
   if (!bySegs) { bySegs = new Map(); tableCache.set(routeSegs, bySegs); }
-  const key = ring.key + "|" + dwellFingerprint(routeDwells);
+  const global = dwellsByRoute ? globalPoolsFor(dwellsByRoute) : undefined;
+  const key = ring.key + "|" + dwellFingerprint(routeDwells) + "|" + (global?.key ?? "");
   let t = bySegs.get(key);
   if (!t) {
     if (bySegs.size > 8) bySegs.clear();
-    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring);
+    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring, global?.pools);
     bySegs.set(key, t);
     // The kernel's profile lives on the shared ring, so every call site —
     // including the table-free `resolveAnchorIndex` — steps with the same speeds.
