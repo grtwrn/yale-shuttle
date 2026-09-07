@@ -513,6 +513,24 @@ describe("the real list against every live stop", () => {
     ["sss", "Sheffield-Sterling-Strathcona Hall (SSS)"],
     ["wlh", "William L. Harkness Hall (WLH)"],
     ["hgs", "Humanities Quadrangle (HQ)"],
+    // Yale has four Harknesses within a mile, and the production search log
+    // shows riders typing the full name of only one of them: "harkness
+    // memorial auditorium" (6 searches plus ten typo variants) returned
+    // nothing, because the auditorium's own OSM node is named "Mary Harkness
+    // Auditorium" and "memorial" matched no word on either side. The three
+    // rows below must stay three different places.
+    ["harkness memorial auditorium", "Mary S. Harkness Auditorium"],
+    ["harkness auditorium", "Mary S. Harkness Auditorium"],
+    ["harkness tower", "Branford College"],
+    ["harkness hall", "William L. Harkness Hall (WLH)"],
+    // The McDougal Center left the Hall of Graduate Studies during the
+    // Humanities Quadrangle renovation; it is now the upper level of
+    // Founders Hall, 135 Prospect Street. "hall of graduate studies" must
+    // still be HQ, and "mcdougal" must not be.
+    ["mcdougal", "McDougal Center (Founders Hall)"],
+    ["mcdougal center", "McDougal Center (Founders Hall)"],
+    ["founders hall", "McDougal Center (Founders Hall)"],
+    ["hall of graduate studies", "Humanities Quadrangle (HQ)"],
     ["becton", "Becton Center"],
     ["evans hall", "School of Management (SOM)"],
     ["som", "School of Management (SOM)"],

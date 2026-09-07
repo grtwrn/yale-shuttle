@@ -415,8 +415,8 @@ Three layers, local first, and the response shape is v1's
 (`{results:[{display_name,lat,lon,type,class}]}`; the frontend auto-picks on
 class `yale`, type `bus_stop`/`house`, or a single result — keep those values):
 
-1. **Curated landmarks** — `src/server/landmarks.ts`, 148 entries, every one
-   VERIFIED against OpenStreetMap on 2026-09-02 and pinned to the live stop
+1. **Curated landmarks** — `src/server/landmarks.ts`, 152 entries, every one
+   VERIFIED against OpenStreetMap and pinned to the live stop
    that serves it (`anchorStop`). `geocode.test.ts` recomputes the nearest
    stop from the checked-in 172-stop fixture (`src/server/__fixtures__/stops.json`)
    for every entry, so a moved or mistyped coordinate fails the suite. **To add
@@ -480,6 +480,13 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    in `v1compat.geocode.test.ts` is now Photon's real answer, coordinates
    included, precisely so a green test cannot disagree with the live server
    again.
+
+**A curated place can move.** The McDougal Graduate Student Center was in the
+Hall of Graduate Studies; it is now the upper level of Founders Hall, 135
+Prospect Street (Yale GSAS, checked 2026-09-07), a different stop entirely
+(Prospect / Sachem (N), not Wall / York). When the production `search_terms`
+log shows a name returning nothing, check where the place IS before assuming
+which existing entry should answer for it.
 
 The frontend's 8 km radius filter exempts class `yale`/`shuttle` rows — a
 curated destination is by definition reachable, and Trader Joe's (Milford) at
