@@ -167,16 +167,19 @@ export interface Alignment {
  * back within {@link FOLD_CORRIDOR_M} of it at least {@link FOLD_MIN_ALONG_M}
  * further along):
  *
- *   plain loops     Orange Night 225 m, Blue Weekend 325 m, Blue Night 350 m,
- *                   Blue Day 400 m, Orange Day 400 m, Red 500 m,
+ *   plain loops     Orange Night 224 m, Blue Weekend 332 m, Blue Night 345 m,
+ *                   Blue Day 381 m, Orange Day 381 m, Red 490 m,
  *                   Gold / Blue West / Grocery Hamden / Brown 0 m
- *   out-and-backs   Orange East 1,225 m, Green 3,075 m, Pink 3,250 m,
- *                   Purple 4,075 m, Grocery TJ 8,550 m
+ *   out-and-backs   Orange East 1,149 m, Green 3,125 m, Pink 3,225 m,
+ *                   Purple 4,167 m, Grocery TJ 8,540 m
  *
- * The longest fold on a plain loop is 500 m and the shortest on an
- * out-and-back is 1,225 m — a factor of 2.45, and 1,000 m sits in the middle
- * of it. A downtown block driven both ways is a corner; a spur to a hospital
- * is a kilometre.
+ * The longest fold on a plain loop is 490 m and the shortest on an
+ * out-and-back is 1,149 m — a factor of 2.34, and 1,000 m sits inside it. A
+ * downtown block driven both ways is a corner; a spur to a hospital is a
+ * kilometre.
+ *
+ * It costs 43 ms for all fifteen lines on the Pi that runs the harnesses, once
+ * per ring (they are cached), so the phone does not notice.
  */
 export const FOLD_M = 1_000;
 
