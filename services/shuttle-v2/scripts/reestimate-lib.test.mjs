@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMPILED, CONFORMAL_RANGE, DRIFT, GAP_MS, HORIZONS, MIN_COVERAGE_BOUND_PCT, MIN_MEDIAN_BOUND_SEC,
-  N_FLOORS, RANGES, SCALAR_KEYS, assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
-  estimateVisitRates, horizonOf, pooled, promotionDecision, sameParams, scoreRows, stillRuns,
-  tracksByName, widen, zoneTester,
+  N_FLOORS, RANGES, ROUTE_SCALE_FLOOR_SEC, ROUTE_SCALE_MAX_POOLED, ROUTE_SCALE_RANGE, ROUTE_SCALE_SHRINK_K, SCALAR_KEYS,
+  assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
+  estimateVisitRates, fitRouteScales, hinge, horizonOf, pooled, promotionDecision, sameParams,
+  scaleEffect, scoreRows, stillRuns, tracksByName, widen, zoneTester,
 } from "./reestimate-lib.mjs";
-import { PARAM_RANGES, CONFORMAL_RANGE as CLIENT_CONFORMAL_RANGE, COMPILED_MODEL_PARAMS } from "../web/src/eta/params";
+import {
+  PARAM_RANGES, CONFORMAL_RANGE as CLIENT_CONFORMAL_RANGE, COMPILED_MODEL_PARAMS,
+  ROUTE_SCALE_RANGE as CLIENT_ROUTE_SCALE_RANGE, ROUTE_SCALE_FLOOR_SEC as CLIENT_FLOOR,
+  applyRouteScale,
+} from "../web/src/eta/params";
 
 // A synthetic feed with the answers known by construction. One degree of
 // latitude is ~111 km, so 0.001 is ~111 m — well outside the 25 m ball.
@@ -253,6 +258,87 @@ describe("assembling the candidate", () => {
   });
 });
 
+describe("the per-route scale", () => {
+  // A route whose buses arrive exactly where the hinge at `f` would put them:
+  // the fit must recover `f` (before shrinkage) whatever the promises look like.
+  const pairsFor = (r, f, n, etaFrom = 300, etaStep = 17) =>
+    Array.from({ length: n }, (_, i) => {
+      const eta = etaFrom + (i % 40) * etaStep;
+      const truth = hinge(eta, f);
+      return { r, k: 1, eta, low: eta * 0.8, high: eta * 1.2, det: truth - 12, prox: truth };
+    });
+
+  it("recovers the hinged factor, on the rider's truth, shrunk toward 1 by sample", () => {
+    const n = ROUTE_SCALE_SHRINK_K; // shrinkage of exactly one half
+    const fit = fitRouteScales(pairsFor("3", 1.2, n));
+    expect(fit["3"].raw).toBeCloseTo(1.2, 2);
+    expect(fit["3"].n).toBe(n);
+    expect(fit["3"].value).toBeCloseTo(1.1, 2);
+    // 12 s of detector lead is ignored while `prox` is there, and used when it is not.
+    const noProx = pairsFor("3", 1.2, n).map(({ prox: _drop, ...p }) => p);
+    expect(fitRouteScales(noProx)["3"].raw).toBeLessThan(1.2);
+  });
+
+  it("ignores promises under the hinge — no factor can move them", () => {
+    const short = Array.from({ length: 500 }, () => ({ r: "3", eta: ROUTE_SCALE_FLOOR_SEC - 1, prox: 300 }));
+    expect(fitRouteScales(short)["3"]).toBeUndefined();
+  });
+
+  it("the fitter's hinge is the client's, and one promise never crosses the threshold", () => {
+    expect(ROUTE_SCALE_FLOOR_SEC).toBe(CLIENT_FLOOR);
+    for (const sec of [0, 30, 179, 179.9, 180, 181, 600, 1800]) {
+      for (const s of [0.8, 1, 1.25]) expect(hinge(sec, s)).toBeCloseTo(applyRouteScale(sec, s), 9);
+      // whatever the factor, a number under 180 s is not raised over it
+      for (const s of [1.01, 1.25, 3]) expect(hinge(Math.min(sec, 179.9), s)).toBeLessThan(180);
+    }
+  });
+
+  it("is published only when the sample, the range, the drift bound, the pooled share and the held-out day all agree", () => {
+    const champ = { ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL }, ROUTE_SCALE: {} };
+    const goodFits = () => Object.fromEntries(SCALAR_KEYS.map((k) => [k, { value: COMPILED[k], n: N_FLOORS[k] }]));
+    const goodConf = () => Object.fromEntries(HORIZONS.map((h) => [h, { w: 1, n: N_FLOORS.CONFORMAL }]));
+    const scales = {
+      "3": { value: 1.09, raw: 1.09, n: 50_000, pooledShare: 0 },              // publishes
+      "8": { value: 1.09, raw: 1.09, n: N_FLOORS.ROUTE_SCALE - 1, pooledShare: 0 }, // thin
+      "9": { value: 0.74, raw: 0.74, n: 50_000, pooledShare: 0.72 },           // the Green hole
+      "10": { value: 1.4, raw: 1.4, n: 50_000, pooledShare: 0 },               // out of range
+      "13": { value: 1.21, raw: 1.21, n: 50_000, pooledShare: 0 },             // past the drift bound
+      "14": { value: 1.09, raw: 1.09, n: 50_000, pooledShare: 0 },             // worse on the held-out day
+    };
+    const heldOut = {
+      day: "2026-09-06",
+      "3": { before: { medianAbsSec: 60 }, after: { medianAbsSec: 50 } },
+      "14": { before: { medianAbsSec: 40 }, after: { medianAbsSec: 44 } },
+    };
+    const { params, issues } = assembleCandidate(goodFits(), goodConf(), champ, { routeScales: scales, heldOut });
+    expect(params.ROUTE_SCALE).toEqual({ "3": 1.09 });
+    const why = Object.fromEntries(issues.map((i) => [i.key, i.reason]));
+    expect(why["ROUTE_SCALE.8"]).toContain("under the floor");
+    expect(why["ROUTE_SCALE.9"]).toContain("pooled prior");
+    expect(why["ROUTE_SCALE.10"]).toContain("outside");
+    expect(why["ROUTE_SCALE.13"]).toContain("more than");
+    expect(why["ROUTE_SCALE.14"]).toContain("held out");
+    expect(ROUTE_SCALE_MAX_POOLED).toBeLessThan(0.72);
+  });
+
+  it("scores by arithmetic — a corrected pair is exactly hinge(eta, s)", () => {
+    const pairs = pairsFor("3", 1.2, 100);
+    const eff = scaleEffect(pairs, { "3": 1.2 });
+    expect(eff["3"].before.medianSignedSec).toBeLessThan(0);
+    expect(eff["3"].after.medianSignedSec).toBe(0);
+    expect(eff["3"].after.medianAbsSec).toBe(0);
+  });
+
+  it("a scale nobody published is not a change", () => {
+    const a = { ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL }, ROUTE_SCALE: {} };
+    const b = { ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL }, ROUTE_SCALE: { "3": 1 } };
+    expect(sameParams(a, b)).toBe(true);
+    expect(sameParams(a, { ...b, ROUTE_SCALE: { "3": 1.05 } })).toBe(false);
+    // A champion published before the key existed carries none at all.
+    expect(sameParams({ ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL } }, a)).toBe(true);
+  });
+});
+
 describe("the promotion rule", () => {
   const day = (d, cm, cc, hm, hc) => ({
     day: d,
@@ -300,6 +386,7 @@ describe("the three copies of the ranges agree", () => {
     expect(Object.keys(RANGES).sort()).toEqual([...SCALAR_KEYS].sort());
     for (const k of SCALAR_KEYS) expect(RANGES[k]).toEqual([...PARAM_RANGES[k]]);
     expect(CONFORMAL_RANGE).toEqual([...CLIENT_CONFORMAL_RANGE]);
+    expect(ROUTE_SCALE_RANGE).toEqual([...CLIENT_ROUTE_SCALE_RANGE]);
   });
 
   it("the fitter's COMPILED is the client's COMPILED_MODEL_PARAMS", () => {

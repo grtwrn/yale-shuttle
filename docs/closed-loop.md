@@ -231,6 +231,7 @@ every night from the archive, and they are what stage 3 serves:
 | `SHUFFLE_PER_POLL` | repositions per poll at rest | docs/departure-derivation.md (an estimate) |
 | `P_DEPART_ON_FRESH` | P(departure \| a standing bus moved), no stand table | departure.ts |
 | `CONFORMAL[h]` | multiplicative widening of the shown 10–90 band, per promised-minutes bucket | **new here** |
+| `ROUTE_SCALE[r]` | multiplicative correction of the shown arrival, per bus route | docs/route-bias.md |
 
 Everything else in `filter.ts` stays compiled, on purpose. `SIGMA_M`,
 `OFF_ROUTE_SHARE`, `TELEPORT`, `LEAD_SWITCH_MASS`, `REST_RADIUS_M` and the rest
@@ -437,6 +438,53 @@ place to look is `arrival.ts`'s mixture near the stop and the stall credit, not
 the multiplier. The range guard refuses it and the run says so; the other three
 buckets, at 1.3–1.45×, are ordinary widenings and are what the challenger
 carries.
+
+### The per-route scale (added 2026-09-08)
+
+`ROUTE_SCALE` is fitted beside the conformal widening, on the same days, from
+the same champion pairs, and held out on the same last one — but it is not the
+same kind of quantity, and the difference is worth stating. The seven scalars
+are counts over the feed: the loop re-measures the world. The conformal factor
+and the route scale are fitted against the estimator's own scored errors: the
+loop measures ITSELF. Both are legitimate, and the second kind needs harder
+guards, because an estimator that is wrong for a reason will happily have that
+reason fitted into a constant.
+
+The fit is the factor on the excess above 180 s (`ROUTE_SCALE_FLOOR_SEC`, the
+strand threshold the correction is hinged at) that puts the route's median
+error at zero, bisected, shrunk toward 1 by `n / (n + 2000)`, on the replay's **proximity**
+truth where the pairs carry it (`gps-replay`'s `PAIRS_OUT` now emits it). That
+is a deliberate departure from the scorecard's truth, and `docs/route-bias.md`
+§4 is the argument: the detector's arrival fires 10–75 s before the bus is at
+the kerb, route by route, and the two truths ask a per-route correction for
+opposite things. The consequence to keep in mind: **a published scale will read
+on `/stats` as that route becoming more pessimistic**, because the dashboard
+scores against the detector.
+
+Five guards, and the middle one is the load-bearing one:
+
+- the sample floor (2,000 pairs promising over 180 s — the ones a factor can move);
+- **the pooled-prior share** — no scale for a route more than 10% of whose lap
+  metres are priced from the network's pooled pace. Such a route is not
+  biased, it is INCOMPLETE, and its error closes on its own as the collector
+  fills the hops. Green on 2026-09-04 was 73% by this measure and read a
+  +113 s bias; with its three new hops timed, as production had them by 09-08,
+  the same replay reads −6 s. The fit asks for 0.759 there and the guard
+  refuses it; had it published, Green's held-out median |error| would have gone
+  71 → 118 s;
+- the range [0.75, 1.25], never waived;
+- the drift bound, ±0.20 from 1, waivable only with `--allow-drift`;
+- **the held-out day, per route**: a scale that does not improve its own
+  route's median |error| on a day it was not fitted on is not published. Twelve
+  numbers fitted on twelve disjoint samples are twelve decisions, and one
+  route's failure never touches another's.
+
+Because the correction is the last step of pricing and feeds nothing back, a
+scaled pair is exactly `eta × s`, so the held-out check is arithmetic on the
+champion's own pairs and costs no replay. The challenger replay still runs, and
+it is the CHECK on that identity: on 9/4, 0 of 226,052 pairs differed from
+`eta × s` (max |Δ| 0.00 s).
+
 
 ### The promotion rule, and its noise bound
 

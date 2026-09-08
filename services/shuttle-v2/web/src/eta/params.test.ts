@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  applyModelParams, COMPILED_MODEL_PARAMS, CONFORMAL_HORIZONS, MP, PARAM_RANGES, parseModelParams,
-  resetModelParams, SCALAR_PARAM_KEYS, widenBand, activeModelParams,
+  applyModelParams, applyRouteScale, COMPILED_MODEL_PARAMS, CONFORMAL_HORIZONS, MP, PARAM_RANGES,
+  parseModelParams, resetModelParams, ROUTE_SCALE_FLOOR_SEC, ROUTE_SCALE_RANGE, routeScale,
+  SCALAR_PARAM_KEYS, widenBand, activeModelParams,
 } from "./params";
 import {
   HOLD_ENTER_PER_S, HOLD_LEAVE_PER_S, P_DEPART_ON_FRESH, P_REPEAT_MOVE, P_REPEAT_MOVE_ZONE, P_REPEAT_STAND,
@@ -154,5 +155,83 @@ describe("the conformal widening", () => {
     expect(widenBand(1200, 1000, 1400)).toEqual([900, 1500]);
     // Past the cap nothing is learned about, so nothing is applied.
     expect(widenBand(2400, 2000, 2800)).toEqual([2000, 2800]);
+  });
+});
+
+describe("the per-route scale", () => {
+  // The same block, ringed under a numeric route id so a published scale can
+  // key to it (the key's first field is the ring's `routeId`).
+  function pricedOn(routeId: string, tau = 0.5): Array<[number, number, number, number]> {
+    const r = buildRing(`${routeId}|x`, PATH, STOPS, COORDS);
+    if (!r) throw new Error("ring");
+    const tables = buildTables(STOPS, COORDS, SEGS, DWELLS, r);
+    const b = stepBelief(undefined, r, { lat: corners[0]!.lat, lon: corners[0]!.lon, last_stop_id: 4 }, 0, STOPS);
+    return priceRoute(b, r, tables, STOPS, new Set(STOPS), 0, tau).map((x) => [x.stopId, x.eta, x.low, x.high]);
+  }
+
+  it("is 1 for every route until something is published, and the priced rows are untouched", () => {
+    expect(COMPILED_MODEL_PARAMS.ROUTE_SCALE).toEqual({});
+    expect(routeScale(3)).toBe(1);
+    const base = pricedOn("3");
+    expect(applyModelParams({ version: "s0", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL }, ROUTE_SCALE: {} } })).toBe(true);
+    expect(pricedOn("3")).toEqual(base);
+  });
+
+  it("stretches the number and the band of ITS route only, through the hinge", () => {
+    const base3 = pricedOn("3");
+    const base8 = pricedOn("8");
+    applyModelParams({ version: "s1", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL }, ROUTE_SCALE: { "3": 1.1 } } });
+    expect(routeScale(3)).toBe(1.1);
+    expect(routeScale("8")).toBe(1);
+    const got3 = pricedOn("3");
+    let moved = 0;
+    for (let i = 0; i < base3.length; i++) {
+      expect(got3[i]![0]).toBe(base3[i]![0]);
+      for (const j of [1, 2, 3] as const) {
+        expect(got3[i]![j]).toBeCloseTo(applyRouteScale(base3[i]![j]!, 1.1), 9);
+        if (got3[i]![j] !== base3[i]![j]) moved++;
+      }
+    }
+    expect(moved).toBeGreaterThan(0);
+    expect(pricedOn("8")).toEqual(base8);
+  });
+
+  it("the hinge is a no-op under the strand threshold and monotone through it", () => {
+    expect(ROUTE_SCALE_FLOOR_SEC).toBe(180);
+    expect(applyRouteScale(0, 1.2)).toBe(0);
+    expect(applyRouteScale(179.9, 3)).toBe(179.9);
+    expect(applyRouteScale(180, 1.2)).toBe(180);
+    expect(applyRouteScale(280, 1.2)).toBeCloseTo(300, 9);
+    expect(applyRouteScale(280, 0.8)).toBeCloseTo(260, 9);
+    expect(applyRouteScale(600, 1)).toBe(600);
+    // A number under the threshold is never raised over it, at any factor.
+    // (That is a property of ONE promise, not of a rider's whole watched
+    // sequence: the simulator still measured strands, because the bus a rider
+    // is pinned to moves with the numbers. docs/route-bias.md §6.)
+    for (const s of [1.01, 1.25, 3]) expect(applyRouteScale(179.99, s)).toBeLessThan(180);
+    // Monotone, so low <= eta <= high survives.
+    let prev = -1;
+    for (let sec = 0; sec < 2000; sec += 7) { const v = applyRouteScale(sec, 1.2); expect(v).toBeGreaterThan(prev); prev = v; }
+  });
+
+  it("rejects the whole set for a scale out of range or a key that is not a route id", () => {
+    const ok = { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL } };
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: { "3": ROUTE_SCALE_RANGE[1] + 0.01 } })).toBeNull();
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: { "3": ROUTE_SCALE_RANGE[0] - 0.01 } })).toBeNull();
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: { "Red": 1.1 } })).toBeNull();
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: { "3": "1.1" } })).toBeNull();
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: 1.1 })).toBeNull();
+    expect(parseModelParams({ ...ok, ROUTE_SCALE: { "3": 1.1 } })?.ROUTE_SCALE).toEqual({ "3": 1.1 });
+  });
+
+  it("parses a set published before the key existed, and applying one clears the last", () => {
+    const { ROUTE_SCALE: _gone, ...older } = COMPILED_MODEL_PARAMS;
+    expect(parseModelParams(older)?.ROUTE_SCALE).toEqual({});
+    applyModelParams({ version: "s2", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, ROUTE_SCALE: { "3": 1.1 } } });
+    expect(MP.ROUTE_SCALE).toEqual({ "3": 1.1 });
+    applyModelParams({ version: "s3", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, ROUTE_SCALE: { "8": 0.9 } } });
+    expect(MP.ROUTE_SCALE).toEqual({ "8": 0.9 });
+    applyModelParams(undefined);
+    expect(MP.ROUTE_SCALE).toEqual({});
   });
 });

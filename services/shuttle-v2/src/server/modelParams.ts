@@ -45,8 +45,16 @@ export const PARAM_RANGES: Readonly<Record<ScalarParamKey, readonly [number, num
   P_DEPART_ON_FRESH: [0.3, 0.98],
 };
 export const CONFORMAL_RANGE: readonly [number, number] = [0.5, 4];
+/** Mirrors web/src/eta/params.ts ROUTE_SCALE_RANGE / MAX_ROUTE_SCALE_KEYS. */
+export const ROUTE_SCALE_RANGE: readonly [number, number] = [0.75, 1.25];
+export const MAX_ROUTE_SCALE_KEYS = 64;
+const ROUTE_KEY_RE = /^[0-9]{1,6}$/;
 
-export type ModelParamSet = Record<ScalarParamKey, number> & { CONFORMAL: Record<ConformalHorizon, number> };
+export type ModelParamSet = Record<ScalarParamKey, number> & {
+  CONFORMAL: Record<ConformalHorizon, number>;
+  /** Per bus route id, the multiplicative correction on the priced arrival. */
+  ROUTE_SCALE: Record<string, number>;
+};
 
 export interface ModelParamsSubmission {
   params: ModelParamSet;
@@ -86,7 +94,22 @@ export function parseParamSet(raw: unknown): { ok: true; value: ModelParamSet } 
     if (!inRange(c[h], CONFORMAL_RANGE)) return { ok: false, error: `out_of_range:CONFORMAL.${h}` };
     conformal[h] = c[h] as number;
   }
-  return { ok: true, value: { ...(out as Record<ScalarParamKey, number>), CONFORMAL: conformal } };
+  // ROUTE_SCALE is optional on the way in: the row published on 2026-09-07
+  // predates it and must keep parsing, or the payload would stop serving a
+  // set that riders are already running.
+  const scales: Record<string, number> = {};
+  const rs = o["ROUTE_SCALE"];
+  if (rs !== undefined && rs !== null) {
+    if (typeof rs !== "object") return { ok: false, error: "route_scale_not_object" };
+    const entries = Object.entries(rs as Record<string, unknown>);
+    if (entries.length > MAX_ROUTE_SCALE_KEYS) return { ok: false, error: "route_scale_too_many_keys" };
+    for (const [k, v] of entries) {
+      if (!ROUTE_KEY_RE.test(k)) return { ok: false, error: `route_scale_key:${k}` };
+      if (!inRange(v, ROUTE_SCALE_RANGE)) return { ok: false, error: `out_of_range:ROUTE_SCALE.${k}` };
+      scales[k] = v as number;
+    }
+  }
+  return { ok: true, value: { ...(out as Record<ScalarParamKey, number>), CONFORMAL: conformal, ROUTE_SCALE: scales } };
 }
 
 /** The whole POST body, validated. */

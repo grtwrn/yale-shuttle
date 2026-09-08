@@ -41,6 +41,8 @@ export const APPROACH_M = 200;
 export interface Ring {
   /** Cache key: route id + stop sequence + polyline content hash. */
   key: string;
+  /** The BUS route id the ring was built for (the key's first field). */
+  routeId: string;
   /** Number of cells. */
   C: number;
   /** Number of stops (= legs). */
@@ -246,7 +248,7 @@ export function buildRing(
     if (toEnd <= APPROACH_M) approachOf[c] = j;
   }
   return {
-    key, C, N, loopM: cum,
+    key, routeId: key.split("|")[0]!, C, N, loopM: cum,
     lat: Float64Array.from(lat), lon: Float64Array.from(lon), metre: Float64Array.from(metre),
     leg: Int32Array.from(leg), frac: Float32Array.from(frac),
     stopCell: Int32Array.from(stopCell), legM: Float64Array.from(legM),

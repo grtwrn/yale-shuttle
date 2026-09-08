@@ -25,6 +25,30 @@
  * ETA with no deploy in between.
  */
 
+/**
+ * The correction is applied only to the part of a promise ABOVE this many
+ * seconds — which is where the deficit is. The measured bias inside two
+ * minutes is +2 to +20 s on EVERY line (the number is already right, or
+ * slightly late) and −80 to −175 s at ten to thirty (docs/route-bias.md §1),
+ * so a correction that touches the near number is correcting nothing.
+ *
+ * 180 s is the strand threshold (docs/rider-sim.md), and this hinge does
+ * guarantee that a given (bus, stop) promise under it is returned unchanged.
+ * **That is NOT the same as "cannot introduce a strand", and this comment used
+ * to say so.** The rider simulator measured both forms on Red and the hinge
+ * introduced twelve strands where the uniform form introduced ten: a rider's
+ * wait is scored against the bus they are PINNED to, and changing the numbers
+ * changes which bus that is. The hinge is kept because it is the right shape,
+ * not because it is free (docs/route-bias.md §6).
+ */
+export const ROUTE_SCALE_FLOOR_SEC = 180;
+
+/** A published per-route scale must sit here; 1 is "no correction". */
+export const ROUTE_SCALE_RANGE: readonly [number, number] = [0.75, 1.25];
+/** At most this many routes may carry one (the network has fifteen). */
+export const MAX_ROUTE_SCALE_KEYS = 64;
+const ROUTE_KEY_RE = /^[0-9]{1,6}$/;
+
 /** Promised-minutes buckets, the scorecard's (src/server/scorecard.ts HORIZONS). */
 export const CONFORMAL_HORIZONS = ["0-2", "2-5", "5-10", "10-30"] as const;
 export type ConformalHorizon = (typeof CONFORMAL_HORIZONS)[number];
@@ -51,9 +75,30 @@ export interface ModelParams {
    * byte-identical). Split-conformal, fitted by the daily job.
    */
   CONFORMAL: Record<ConformalHorizon, number>;
+  /**
+   * Per BUS ROUTE ID, a correction on the priced arrival, applied to the part
+   * of it above `ROUTE_SCALE_FLOOR_SEC`:
+   *
+   *     eta' = eta + max(0, eta − 180) × (s − 1)
+   *
+   * and low/high through the same hinge, which is monotone, so the band keeps
+   * its order. Absent (the default, and every route not listed) is 1 and is
+   * skipped entirely, so a payload with no `ROUTE_SCALE` prices
+   * byte-identically to one that never had the key.
+   *
+   * It exists because the ring's LAP is short on the routes whose published
+   * stop list flattens an out-and-back: the list omits passes the bus makes,
+   * so no adjacency of it can be billed for that time and every promise that
+   * spans the fold is optimistic in proportion to how much of the lap it
+   * spans (docs/route-bias.md). That proportionality is why this is a scale
+   * and not an offset — an additive per-route constant, fitted the same way
+   * on the same pairs, made the pooled median |error| WORSE (60.8 s against
+   * the champion's 59.2) where the scale took it to 54.4.
+   */
+  ROUTE_SCALE: Record<string, number>;
 }
 
-export type ScalarParamKey = Exclude<keyof ModelParams, "CONFORMAL">;
+export type ScalarParamKey = Exclude<keyof ModelParams, "CONFORMAL" | "ROUTE_SCALE">;
 export const SCALAR_PARAM_KEYS: readonly ScalarParamKey[] = [
   "P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE",
   "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S", "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH",
@@ -85,10 +130,11 @@ export const COMPILED_MODEL_PARAMS: Readonly<ModelParams> = Object.freeze({
   SHUFFLE_PER_POLL: 0.03,
   P_DEPART_ON_FRESH: 0.76,
   CONFORMAL: Object.freeze({ "0-2": 1, "2-5": 1, "5-10": 1, "10-30": 1 }),
+  ROUTE_SCALE: Object.freeze({}),
 });
 
 /** The live set the filter and the pricing read. Mutated only through `applyModelParams` / `resetModelParams`. */
-export const MP: ModelParams = { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL } };
+export const MP: ModelParams = { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL }, ROUTE_SCALE: { ...COMPILED_MODEL_PARAMS.ROUTE_SCALE } };
 
 /** What the server sends: `payload.model_params`. */
 export interface ModelParamsWire {
@@ -128,7 +174,20 @@ export function parseModelParams(raw: unknown): ModelParams | null {
     if (!inRange(c[h], CONFORMAL_RANGE)) return null;
     conformal[h] = c[h] as number;
   }
-  return { ...(out as Omit<ModelParams, "CONFORMAL">), CONFORMAL: conformal };
+  // ROUTE_SCALE is OPTIONAL: a set published before it existed (the
+  // 2026-09-07 fit) must keep applying rather than being rejected whole.
+  const scales: Record<string, number> = {};
+  const rs = o["ROUTE_SCALE"];
+  if (rs !== undefined && rs !== null) {
+    if (typeof rs !== "object") return null;
+    const entries = Object.entries(rs as Record<string, unknown>);
+    if (entries.length > MAX_ROUTE_SCALE_KEYS) return null;
+    for (const [k, v] of entries) {
+      if (!ROUTE_KEY_RE.test(k) || !inRange(v, ROUTE_SCALE_RANGE)) return null;
+      scales[k] = v as number;
+    }
+  }
+  return { ...(out as Omit<ModelParams, "CONFORMAL" | "ROUTE_SCALE">), CONFORMAL: conformal, ROUTE_SCALE: scales };
 }
 
 /**
@@ -142,6 +201,8 @@ export function applyModelParams(wire: unknown): boolean {
   if (!params) { resetModelParams(); return false; }
   for (const k of SCALAR_PARAM_KEYS) MP[k] = params[k];
   for (const h of CONFORMAL_HORIZONS) MP.CONFORMAL[h] = params.CONFORMAL[h];
+  for (const k of Object.keys(MP.ROUTE_SCALE)) delete MP.ROUTE_SCALE[k];
+  for (const [k, v] of Object.entries(params.ROUTE_SCALE)) MP.ROUTE_SCALE[k] = v;
   active = {
     version: typeof w!.version === "string" ? w!.version : "?",
     publishedAt: typeof w!.publishedAt === "number" ? w!.publishedAt : 0,
@@ -152,6 +213,7 @@ export function applyModelParams(wire: unknown): boolean {
 export function resetModelParams(): void {
   for (const k of SCALAR_PARAM_KEYS) MP[k] = COMPILED_MODEL_PARAMS[k];
   for (const h of CONFORMAL_HORIZONS) MP.CONFORMAL[h] = COMPILED_MODEL_PARAMS.CONFORMAL[h];
+  for (const k of Object.keys(MP.ROUTE_SCALE)) delete MP.ROUTE_SCALE[k];
   active = null;
 }
 
@@ -175,4 +237,26 @@ export function widenBand(eta: number, low: number, high: number): [number, numb
   const w = h === null ? 1 : MP.CONFORMAL[h];
   if (w === 1) return [low, high];
   return [eta - (eta - low) * w, eta + (high - eta) * w];
+}
+
+/**
+ * The published scale for a bus route, or 1. Keyed on the BUS route id — the
+ * same id the replay's pairs and the scorecard's rows carry — so the number
+ * that was fitted and the number that is applied cannot be keyed apart.
+ */
+export function routeScale(routeId: string | number): number {
+  const s = MP.ROUTE_SCALE[String(routeId)];
+  return typeof s === "number" && Number.isFinite(s) ? s : 1;
+}
+
+/**
+ * A promised number of seconds with a route's correction applied. Hinged at
+ * `ROUTE_SCALE_FLOOR_SEC`: everything under it is returned unchanged, so the
+ * correction cannot move a number across the strand threshold, and everything
+ * above it is stretched by `s`. Monotone in `sec`, so applying it to `low`,
+ * `eta` and `high` keeps the band's order.
+ */
+export function applyRouteScale(sec: number, s: number): number {
+  if (s === 1) return sec;
+  return sec + Math.max(0, sec - ROUTE_SCALE_FLOOR_SEC) * (s - 1);
 }

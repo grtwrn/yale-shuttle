@@ -89,6 +89,7 @@ import {
   type AdjEntry,
 } from "../common.js";
 import { distanceMeters } from "../../../src/network/geo.js";
+import { applyModelParams, activeModelParams } from "../../../web/src/eta/params.js";
 import { PACE_KEY, paceCarrier, type PaceEntry } from "../../../src/server/v1compat.js";
 import {
   aggregate,
@@ -302,6 +303,18 @@ const dwellCache = makeDwellCache(net, dataStart, dataEnd);
 const dwellsAt0 = (t: number) => dwellCache.at(calibCache.bucketStart(t));
 /** PAYLOAD_PATCH: fields the candidate reads that the snapshot cannot serve (see header). */
 interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
+// A CHALLENGER parameter set (docs/closed-loop.md stage 4, the same file the
+// nightly fit POSTs to /api/model-params), applied through the client's own
+// validation — so a set no rider could receive cannot be scored at rider
+// level either. Absent = the compiled constants, i.e. the champion.
+if (process.env.MODEL_PARAMS) {
+  const wire = JSON.parse(fs.readFileSync(process.env.MODEL_PARAMS, "utf8")) as unknown;
+  if (!applyModelParams(wire)) {
+    console.error(`MODEL_PARAMS=${process.env.MODEL_PARAMS} was rejected by the client's own validation — refusing to score a set no rider could receive.`);
+    process.exit(2);
+  }
+  log(`MODEL_PARAMS ${activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
+}
 const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
 const patched = new WeakSet<object>();
 type PatchTable = Record<string, Record<string, Record<string, unknown>>>;

@@ -36,7 +36,7 @@
 
 import { quantile, residual, type Dist } from "./dist";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
-import { widenBand } from "./params";
+import { applyRouteScale, routeScale, widenBand } from "./params";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
 
@@ -336,6 +336,7 @@ export function priceRoute(
   // drive-only figure the moving spell showed. The floor is dropped only
   // when the rest itself ends (the clock changes).
   const clampAt = lead.standingAt;
+  const scale = routeScale(ring.routeId);
   const bufs = chains.map(() => new Float64Array(K));
   const leadBuf = new Float64Array(K);
   const anyMeasured = tables.hops.some((x) => x.measured);
@@ -417,6 +418,27 @@ export function priceRoute(
       } else {
         floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
       }
+    }
+    // The learned per-ROUTE correction (params.ts, docs/route-bias.md). The
+    // ring's lap is short on the lines whose published stop list flattens an
+    // out-and-back — it omits passes the bus makes, so no adjacency can be
+    // billed for that time — and the shortfall a promise carries is
+    // proportional to the share of the lap it spans, which is why it is a
+    // factor and not an offset. HINGED at 180 s, where the measured bias
+    // actually starts: inside two minutes every line is already right or
+    // slightly late, so a correction there corrects nothing. (It does NOT
+    // follow that the hinge cannot cost a strand — the rider simulator says
+    // it can, because the rider's pinned bus moves with the numbers.)
+    //
+    // Applied AFTER the clamp: the hinge is monotone and time-invariant, so it
+    // preserves "the shown remainder never climbs", and the floor then stores
+    // the uncorrected number — the published set can change between two polls
+    // without the floor meaning something else. 1 — every route, until
+    // something is published — is skipped entirely.
+    if (scale !== 1) {
+      eta = applyRouteScale(eta, scale);
+      low = applyRouteScale(low, scale);
+      high = applyRouteScale(high, scale);
     }
     // The learned per-horizon widening (params.ts, docs/closed-loop.md stage 3)
     // is the LAST thing applied: it is fitted against the number a rider was

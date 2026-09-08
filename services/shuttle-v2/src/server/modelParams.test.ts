@@ -9,7 +9,9 @@ import { openDb, type DbBundle } from "../db/client.js";
 import {
   CONFORMAL_HORIZONS,
   CONFORMAL_RANGE,
+  MAX_ROUTE_SCALE_KEYS,
   PARAM_RANGES,
+  ROUTE_SCALE_RANGE,
   SCALAR_PARAM_KEYS,
   createModelParamsSource,
   currentModelParams,
@@ -27,6 +29,7 @@ function goodParams(): ModelParamSet {
   const out = {} as Record<string, unknown>;
   for (const k of SCALAR_PARAM_KEYS) out[k] = mid(PARAM_RANGES[k]);
   out["CONFORMAL"] = Object.fromEntries(CONFORMAL_HORIZONS.map((h) => [h, mid(CONFORMAL_RANGE)]));
+  out["ROUTE_SCALE"] = {};
   return out as ModelParamSet;
 }
 
@@ -127,6 +130,37 @@ describe("the ranges match the client's", () => {
     const m = /export const CONFORMAL_RANGE[^=]*= \[([0-9.]+), ([0-9.]+)\];/.exec(src);
     expect(m, "CONFORMAL_RANGE in web/src/eta/params.ts").toBeTruthy();
     expect([Number(m![1]), Number(m![2])]).toEqual([...CONFORMAL_RANGE]);
+  });
+
+  it("ROUTE_SCALE_RANGE and its key cap", () => {
+    const m = /export const ROUTE_SCALE_RANGE[^=]*= \[([0-9.]+), ([0-9.]+)\];/.exec(src);
+    expect(m, "ROUTE_SCALE_RANGE in web/src/eta/params.ts").toBeTruthy();
+    expect([Number(m![1]), Number(m![2])]).toEqual([...ROUTE_SCALE_RANGE]);
+    const cap = /export const MAX_ROUTE_SCALE_KEYS = (\d+);/.exec(src);
+    expect(cap, "MAX_ROUTE_SCALE_KEYS in web/src/eta/params.ts").toBeTruthy();
+    expect(Number(cap![1])).toBe(MAX_ROUTE_SCALE_KEYS);
+  });
+});
+
+describe("ROUTE_SCALE on the wire", () => {
+  it("is optional — a set published before the key existed still parses", () => {
+    const { ROUTE_SCALE: _gone, ...older } = goodParams();
+    const r = parseParamSet(older);
+    expect(r.ok && r.value.ROUTE_SCALE).toEqual({});
+  });
+
+  it("takes route ids in range and refuses anything else, whole", () => {
+    expect(parseParamSet({ ...goodParams(), ROUTE_SCALE: { "3": 1.1, "8": 0.9 } }))
+      .toMatchObject({ ok: true });
+    expect(parseParamSet({ ...goodParams(), ROUTE_SCALE: { "3": ROUTE_SCALE_RANGE[1] + 1e-9 } }))
+      .toMatchObject({ ok: false, error: "out_of_range:ROUTE_SCALE.3" });
+    expect(parseParamSet({ ...goodParams(), ROUTE_SCALE: { Red: 1.1 } }))
+      .toMatchObject({ ok: false, error: "route_scale_key:Red" });
+    expect(parseParamSet({ ...goodParams(), ROUTE_SCALE: 1.1 }))
+      .toMatchObject({ ok: false, error: "route_scale_not_object" });
+    const many = Object.fromEntries(Array.from({ length: MAX_ROUTE_SCALE_KEYS + 1 }, (_, i) => [String(i + 1), 1]));
+    expect(parseParamSet({ ...goodParams(), ROUTE_SCALE: many }))
+      .toMatchObject({ ok: false, error: "route_scale_too_many_keys" });
   });
 });
 
