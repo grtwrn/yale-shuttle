@@ -815,6 +815,10 @@ describe("step: the movement clock survives a restart", () => {
       stationaryLat: stops[0]!.lat,
       stationaryLon: stops[0]!.lon,
       stationaryStopId: stops[0]!.id,
+      unbrokenSince: stoodSince,
+      restedSince: stoodSince,
+      restSince: stoodSince,
+      restPolls: 96,
     })).state!;
     expect(seeded.stationarySince).toBe(stoodSince);
     expect(seeded.lastMovedAt).toBe(stoodSince);
