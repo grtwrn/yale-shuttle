@@ -40,6 +40,14 @@ const ONLY_BUS = process.env.BUS ?? null;
 // The instant the bus drew level with the board stop. Without it the recorder
 // picks the most recent pass-through (a visit the detector scored `passed`).
 const PASS_AT = process.env.PASS_AT ? Date.parse(process.env.PASS_AT) : null;
+/**
+ * Which kind of ghost to record. `passed` is a bus that drove straight through
+ * and never stood (the 2026-09-08 Red incident). `stopped` is the other half of
+ * the same error and the one riders write in about: the bus DID stand, and has
+ * pulled away — the served clock is pinned to the stop until the bus is 125 m
+ * off, so a cold page load still reads it as standing there.
+ */
+const OUTCOME = process.env.OUTCOME ?? "passed";
 const WINDOW_H = Number(process.env.WINDOW_H ?? 6);
 const BASE = process.env.BOT_BASE_URL ?? "https://yale-shuttle.fly.dev";
 const FLYCTL = process.env.FLYCTL ?? `${process.env.HOME}/.fly/bin/flyctl`;
@@ -83,6 +91,8 @@ function hav(a, b) {
 const since = PASS_AT ? PASS_AT - WINDOW_H * 3600_000 : Date.now() - WINDOW_H * 3600_000;
 const until = PASS_AT ? PASS_AT + 3600_000 : Date.now();
 
+const payload = await (await fetch(`${BASE}/api/buses`)).json();
+
 let pos, stops;
 if (process.env.POSITIONS) {
   pos = [];
@@ -94,7 +104,10 @@ if (process.env.POSITIONS) {
     pos.push(r);
   }
   pos.sort((a, b) => a.collected_at - b.collected_at);
-  stops = onProd(`console.log(JSON.stringify(db.prepare("SELECT id,name,lat,lon FROM stops").all()));`);
+  // The payload carries every stop's coordinate and name, so a run from an
+  // archived day (`~/shuttle-archive/<day>/`) touches no production at all.
+  stops = Object.entries(payload.stop_coords).map(([id, c]) => (
+    { id: Number(id), name: payload.stop_names[id] ?? String(id), lat: c.lat, lon: c.lon }));
 } else {
   ({ pos, stops } = onProd(
     `const pos=db.prepare("SELECT bus_id,bus_name,lat,lon,heading,last_stop_id,collected_at ` +
@@ -108,7 +121,6 @@ const stopById = new Map(stops.map((s) => [s.id, s]));
 const board = stopById.get(BOARD_STOP);
 if (!board) throw new Error(`stop ${BOARD_STOP} not found`);
 
-const payload = await (await fetch(`${BASE}/api/buses`)).json();
 const seqIds = payload.routes[String(ROUTE_ID)];
 if (!seqIds) throw new Error(`route ${ROUTE_ID} is not in the payload`);
 const routeStopList = seqIds.map((id) => stopById.get(id)).filter(Boolean);
@@ -118,7 +130,12 @@ const routeStopList = seqIds.map((id) => stopById.get(id)).filter(Boolean);
 // `at_stop_since` the payload publishes. It is the ground truth the fixture
 // is anchored on, and the reason this incident is provable rather than argued.
 const visits = process.env.VISITS
+  // A dumped table carries every route; the production query filters by route
+  // and so must this, or a stop several lines share (Phelps Gate) hands the
+  // fixture "the next bus" from a line the rider is not waiting for.
   ? JSON.parse(fs.readFileSync(process.env.VISITS, "utf8"))
+    .filter((v) => Number(v.route_id) === ROUTE_ID
+      && v.anchored_at >= since && v.anchored_at <= until)
   : onProd(
     `console.log(JSON.stringify(db.prepare("SELECT bus_name,stop_id,anchored_at,pinned_at,arrived_at,` +
       `departed_at,outcome,stand_sec,closest_m FROM stop_visits WHERE route_id=${ROUTE_ID} ` +
@@ -131,9 +148,9 @@ let pass = null;
 for (const v of visits) {
   if (v.stop_id !== BOARD_STOP) continue;
   if (ONLY_BUS && v.bus_name !== ONLY_BUS) continue;
-  if (v.outcome !== "passed") continue;
+  if (v.outcome !== OUTCOME) continue;
   if (v.pinned_at === null) continue;
-  if (PASS_AT !== null && Math.abs(v.arrived_at - PASS_AT) > 120_000) continue;
+  if (PASS_AT !== null && Math.abs((v.departed_at ?? v.arrived_at) - PASS_AT) > 120_000) continue;
   if (!pass || v.arrived_at > pass.arrived_at) pass = v;
 }
 if (!pass) {
@@ -142,7 +159,8 @@ if (!pass) {
   process.exit(1);
 }
 console.error(
-  `recording ${pass.bus_name} PASSING ${board.name} at ${new Date(pass.arrived_at).toISOString()} `
+  `recording ${pass.bus_name} ${OUTCOME === "passed" ? "PASSING" : "LEAVING"} ${board.name} at `
+  + `${new Date(pass.departed_at ?? pass.arrived_at).toISOString()} `
   + `(stand_sec=${pass.stand_sec}, closest ${Number(pass.closest_m).toFixed(1)} m, `
   + `at_stop_since ${new Date(pass.pinned_at).toISOString()})`,
 );
@@ -211,8 +229,9 @@ const nextOther = visits
   .filter((v) => v.stop_id === BOARD_STOP && v.arrived_at !== null
     && v.arrived_at > pass.arrived_at && v.bus_name !== pass.bus_name)
   .sort((a, b) => a.arrived_at - b.arrived_at)[0] ?? null;
-const from = pass.arrived_at - LEAD_MS;
-const to = (nextOther ? nextOther.departed_at ?? nextOther.arrived_at : pass.arrived_at) + TRAIL_PAD_MS;
+const REF = pass.departed_at ?? pass.arrived_at;
+const from = REF - LEAD_MS;
+const to = (nextOther ? nextOther.departed_at ?? nextOther.arrived_at : REF) + TRAIL_PAD_MS;
 if (nextOther) {
   console.error(
     `...and on to ${nextOther.bus_name}, which really reached ${board.name} at `
@@ -240,6 +259,11 @@ for (const [busName, rows] of byTrack) {
       at_stop_since: v.atStopSince === null ? null : new Date(v.atStopSince).toISOString().replace(/Z$/, ""),
       stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, ""),
       last_moved_at: new Date(v.lastMovedAt).toISOString().replace(/Z$/, ""),
+      // The poll this fix was reported on. With `last_moved_at` beside it the
+      // pair says how many POLLS ago the bus moved, on the server's own clock
+      // — which is what separates the bus that has just pulled in (one repeat)
+      // from the one still driving through (a fresh fix).
+      seen_at: new Date(r.collected_at).toISOString().replace(/Z$/, ""),
     };
   });
 }
@@ -260,7 +284,8 @@ for (const id of new Set(seqIds)) {
 const fixture = {
   capturedAt: new Date(from).toISOString(),
   note:
-    `Route ${ROUTE_ID} bus ${pass.bus_name} DRIVING PAST ${board.name} (stop ${BOARD_STOP}) at `
+    `Route ${ROUTE_ID} bus ${pass.bus_name} ${OUTCOME === "passed" ? "DRIVING PAST" : "LEAVING"} `
+    + `${board.name} (stop ${BOARD_STOP}) at `
     + `${new Date(pass.arrived_at).toISOString()}, with every other bus on the line over the same `
     + `window. The detector scored this visit outcome=${pass.outcome}, stand_sec=${pass.stand_sec}: `
     + `the bus never stood. It was nonetheless pinned at `
