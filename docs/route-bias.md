@@ -273,7 +273,9 @@ have this section in hand.
 ### A scale, not an offset — measured, not argued
 
 Fit each shape per route on half the 9/4 pairs by zeroing the median error, and
-score the other half:
+score the other half (both forms uniform here — the hinge below is a separate
+decision, made on a separate measurement, and it applies to whichever shape
+wins this one):
 
 | held-out half, 102,528 pairs | median \|err\| | median bias | pess ≥120 s | opt ≥120 s |
 |---|---|---|---|---|
