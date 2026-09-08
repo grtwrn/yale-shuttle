@@ -61,7 +61,7 @@
 
 import { haversineMeters, type LatLon } from "../geo";
 import { BUS_SPEED_M_S } from "../routes";
-import { cdf, fromQuantiles, lognormalMeanSd, mixture, quantile, shrinkToward, type Dist } from "./dist";
+import { cdf, fromQuantiles, lognormalMeanSd, mixture, quantile, scaled, shrinkToward, type Dist } from "./dist";
 import { DEFAULT_DRIVE_M_S, DEFAULT_P_STOP, type Ring } from "./ring";
 
 /** Shrinkage weight for drives, as in calibrator/shrinkage.ts: the pace prior is the same shape scaled. */
@@ -133,8 +133,85 @@ export interface RouteTables {
   priced: boolean;
 }
 
+/**
+ * The served diurnal profile (`stand_hours`), by ET hour and stop class.
+ * Mirrors `src/calibrator/diurnal.ts`'s `StandHourProfile`; a
+ * `diurnal.test.ts` case parses the server's constants out of its source so
+ * the two cannot drift.
+ */
+export interface StandHourProfile {
+  layover: number[];
+  ordinary: number[];
+  layoverN: number[];
+  ordinaryN: number[];
+}
+
+/**
+ * Which hour to price at, and the profile to price it with. Absent (or with
+ * no profile) the stand tables are used exactly as served — the pre-diurnal
+ * behaviour, byte for byte.
+ *
+ * `hour` is 0..23 in AMERICA/NEW_YORK and must be resolved that way:
+ * `web/src/schedule.ts`'s `etHourOf`, never `Date#getHours()`. The calibrator
+ * writes `stop_visits.hour` in ET (the Dockerfile pins the container's TZ), so
+ * a phone in another timezone reading its own clock would index a profile
+ * built on someone else's day — the same class of bug as the "No shuttles
+ * running" one `schedule.ts` exists to prevent.
+ */
+export interface HourContext {
+  hour: number;
+  profile: StandHourProfile | undefined;
+}
+
+/**
+ * Pseudo-samples the class profile is worth against a stop's own hour —
+ * `STAND_HOUR_SHRINK_K` in src/calibrator/diurnal.ts, which the test parses
+ * out of the server's source. k = sigma^2 / tau^2: the per-visit spread of
+ * log(stand) inside a cell is sigma ~ 0.55 and the class-level swing bounds
+ * the true per-(stop, hour) deviation at tau <~ 0.15.
+ */
+export const STAND_HOUR_SHRINK_K = 12;
+
+/** The factor is clamped to this band, as it is on the server. */
+export const STAND_HOUR_MIN_FACTOR = 0.5;
+export const STAND_HOUR_MAX_FACTOR = 2;
+
+function clampFactor(f: number): number {
+  if (!Number.isFinite(f) || f <= 0) return 1;
+  return Math.min(STAND_HOUR_MAX_FACTOR, Math.max(STAND_HOUR_MIN_FACTOR, f));
+}
+
+/**
+ * The diurnal factor for one stop at one ET hour: the CLASS factor from the
+ * served profile, with the stop's own hour blended in by its sample count.
+ *
+ * log f = (n log f_stop + k log F_class) / (n + k)
+ *
+ * — the same partial pooling `shrinkToward` applies to the stand's SHAPE,
+ * applied here to its SCALE. n = 0 (or no served cell) gives the class factor
+ * exactly; a large n gives the stop's own. With no profile and no cell the
+ * answer is 1, and 1 leaves `scaled` a no-op, which is how this degrades to
+ * the pre-diurnal behaviour.
+ */
+export function hourFactor(
+  dwell: DwellLike | undefined,
+  ctx: HourContext | undefined,
+  layover: boolean,
+): number {
+  if (!ctx) return 1;
+  const h = ctx.hour;
+  if (!Number.isInteger(h) || h < 0 || h > 23) return 1;
+  const pool = ctx.profile ? (layover ? ctx.profile.layover : ctx.profile.ordinary) : undefined;
+  const cls = pool && Number.isFinite(pool[h]) && pool[h]! > 0 ? clampFactor(pool[h]!) : 1;
+  const own = dwell?.hq?.[h];
+  const n = dwell?.hqn?.[h];
+  if (!own || !Number.isFinite(own) || own <= 0 || !n || !Number.isFinite(n) || n <= 0) return cls;
+  const f = clampFactor(own / 100);
+  return clampFactor(Math.exp((n * Math.log(f) + STAND_HOUR_SHRINK_K * Math.log(cls)) / (n + STAND_HOUR_SHRINK_K)));
+}
+
 export interface SegmentLike { avg: number; sd?: number | undefined; n: number; drive?: number | undefined; driveN?: number | undefined; dq?: number[] | undefined; dqn?: number | undefined; spm?: number[] | undefined; spmN?: number | undefined; spmPooled?: boolean | undefined; legM?: number | undefined }
-export interface DwellLike { med: number; n: number; q?: number[] | undefined; qn?: number | undefined; pstop?: number | undefined }
+export interface DwellLike { med: number; n: number; q?: number[] | undefined; qn?: number | undefined; pstop?: number | undefined; hq?: number[] | undefined; hqn?: number[] | undefined }
 
 export const PACE_KEY = "__pace";
 
@@ -186,16 +263,31 @@ export function poolsWithFallback(route: ClassPools, global: ClassPools | undefi
   return { layover: route.layover ?? global?.layover ?? null, ordinary: route.ordinary ?? global?.ordinary ?? null };
 }
 
-export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): StopModel {
+export function stopModel(dwell: DwellLike | undefined, pools: ClassPools, hour?: HourContext): StopModel {
   const ordinaryPrior = pools.ordinary ?? DEFAULT_STAND;
   if (!dwell || !ascending(dwell.q)) {
+    // No table: the class prior, and no diurnal factor. There is no cell to
+    // scale and the pooled prior is already every hour's average.
     return { stand: ordinaryPrior, layover: false, pStop: DEFAULT_P_STOP, measured: false };
   }
   const n = Math.max(0, dwell.qn ?? dwell.n);
   const emp = fromQuantiles(dwell.q);
   const ownClassIsLayover = n >= CLASS_MIN_N && quantile(emp, 0.5) >= LAYOVER_MIN_SEC;
   const prior = ownClassIsLayover ? (pools.layover ?? emp) : ordinaryPrior;
-  const stand = shrinkToward(emp, prior, n, STAND_SHRINK_K);
+  const shrunk = shrinkToward(emp, prior, n, STAND_SHRINK_K);
+  // The hour scales the WHOLE distribution, after the shape has been borrowed
+  // from the class pool. Multiplicatively, so:
+  //   - the mass at zero stays at zero, i.e. P(stop) is untouched (whether a
+  //     bus stops at all is a different question from how long it stands, and
+  //     it is served separately as `pstop`);
+  //   - S_scaled(x) = S(x / f), so the residual given r elapsed is just
+  //     f * residual(r / f) — the conditional arithmetic in dist.ts stays
+  //     coherent and monotone under the scaling;
+  //   - the class the stop belongs to is decided BEFORE scaling, on its own
+  //     all-day median, so a 09:00 factor cannot tip a kerb stop into the
+  //     layover pool for one hour.
+  const f = hourFactor(dwell, hour, ownClassIsLayover);
+  const stand = f === 1 ? shrunk : scaled(shrunk, f);
   const pStop = dwell.pstop !== undefined && Number.isFinite(dwell.pstop)
     ? Math.min(1, Math.max(0, dwell.pstop))
     : 1 - cdf(stand, 0);
@@ -272,6 +364,8 @@ export function buildTables(
    * for a payload served before the change; absent everywhere else.
    */
   pubIndex?: readonly number[],
+  /** The ET hour and the served profile; omit and every stand is priced as served. */
+  hour?: HourContext,
 ): RouteTables {
   const N = stops.length;
   const pace = routeSegs[PACE_KEY]?.spm;
@@ -291,6 +385,7 @@ export function buildTables(
         ?? (pub !== undefined ? routeDwells[`${a}#${pub}`] : undefined)
         ?? routeDwells[String(a)],
       pools,
+      hour,
     ));
     const seg = routeSegs[`${a}-${b}`];
     const ca = stopCoords[a], cb = stopCoords[b];

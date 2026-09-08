@@ -8,7 +8,8 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
-import { liveAnchorStore } from "./eta";
+import { hourContext, liveAnchorStore, liveStandHours } from "./eta";
+import { chipRemainder, liveChipFloors, restKey } from "./standChip";
 import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
@@ -19,7 +20,7 @@ import {
 } from "./weather";
 import {
   computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec,
-  type DwellStat, type SegmentStat, type UpcomingArrival,
+  type DwellStat, type SegmentStat, type StandHourProfile, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
 // module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
@@ -2031,7 +2032,7 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore, liveStandHours.profile,
       ).filter((a) => a.routeLabel === o.routeLabel);
       // THE countdown — the number every accuracy and stability finding is
       // about, and until now the one nothing recorded. Sampled and dedup'd
@@ -3680,7 +3681,7 @@ const TripPlanner: FC<{
                     // dwellTimes matters here: #32 made a dwell able to cancel
                     // the waiting inside a segment, and hoisting this call must
                     // not quietly drop that argument.
-                    [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+                    [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore, liveStandHours.profile,
                   ).filter((a) => a.routeLabel === o.routeLabel),
                   o.busName,
                   busEtaLive,
@@ -4360,7 +4361,12 @@ const TripPlanner: FC<{
                   const standAt = (sid: number, elapsed: number | null) => {
                     const stat = routeDwells[String(sid)];
                     if (!stat || stat.n < 3) return null;
-                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
+                    // The SAME hour context the countdown was priced with
+                    // (eta/index.ts `hourContext`): one clock, one profile,
+                    // resolved in ET. Passing one here and not there is the
+                    // disagreement shownStandSec exists to prevent.
+                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined,
+                      hourContext(Date.now(), liveStandHours.profile));
                   };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
@@ -4422,21 +4428,24 @@ const TripPlanner: FC<{
                                     // from the same quantile table the ETA
                                     // prices from — not from `dwell.med`.
                                     //
-                                    // Unconditional, so it does not move while
-                                    // the bus sits. The conditional total does
-                                    // move, and correctly (inspection paradox:
-                                    // a bus still standing at five minutes is
-                                    // drawn from the longer-hold population).
-                                    // Both were put in front of the operator;
-                                    // their call was "well actually, stable
-                                    // makes more sense" — the figure reads as a
-                                    // fact about the STOP, and a number creeping
-                                    // upward while nothing happens invites the
-                                    // reader to hunt a cause that is not there.
+                                    // The second number is what is LEFT — the
+                                    // very term the countdown adds — not the
+                                    // stop's unconditional typical hold, which
+                                    // is what it used to be and which a rider
+                                    // subtracts from ("2:21 of ~4:48" reads as
+                                    // 2:27 to go; the countdown was billing
+                                    // 3:31). See web/src/standChip.ts: the
+                                    // operator hit exactly that at 344
+                                    // Winchester on 2026-09-08.
                                     //
-                                    // The cost: Y - X is NOT what is left. The
-                                    // countdown beside it is. Elsewhere the old
-                                    // figure stands, since there it IS billed.
+                                    // Floored non-increasing within one rest,
+                                    // because the #119 clamp forbids the
+                                    // countdown beside it from climbing and the
+                                    // two must not move in opposite directions.
+                                    // A stop the bus has NOT reached still shows
+                                    // the typical hold: there is no remainder to
+                                    // state there, and the typical IS the
+                                    // honest answer.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                           title={(standing?.approach
                                             ? "Waiting for this stop, holding just short of the marker. "
@@ -4447,7 +4456,12 @@ const TripPlanner: FC<{
                                               : `Typically holds ~${fmtShort(stand.sec)}`)}>
                                       ⏸ {fmtMmss(liveElapsedSec!)}
                                       {stand == null ? "" : stand.remaining
-                                        ? ` / ~${fmtMmss(stand.typicalSec ?? stand.sec)}`
+                                        ? ` · ~${fmtMmss(chipRemainder(
+                                            liveChipFloors,
+                                            `${busMatch?.bus_name ?? ""}:${sid}`,
+                                            restKey(sid, Date.now(), liveElapsedSec!),
+                                            stand.sec,
+                                          ))} left`
                                         : ` / ~${fmtMmss(stand.sec)}`}
                                     </span>
                                   )}
@@ -5233,7 +5247,7 @@ const StopList: FC<{
     });
 
     const live = computeUpcomingArrivals(
-      targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+      targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore, liveStandHours.profile,
     );
     // Sorted by eta ascending, so the first entry for a (line, stop) is this
     // lap and any later one is the same vehicle coming round again. A card row
@@ -5933,7 +5947,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore, liveStandHours.profile,
     );
     // The ride page's countdown to the alight stop. Same estimator, different
     // population — one stop the rider is already travelling to — so it says so.
@@ -6084,7 +6098,7 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore, liveStandHours.profile,
     );
     noteShown(arr, "ride");
     const mine = arr.find(
@@ -6919,6 +6933,10 @@ const TransitMap: FC = () => {
         if (data.stop_names) setStopNames(data.stop_names);
         if (data.segments) setSegmentTimes(data.segments);
         if (data.dwells) setDwellTimes(data.dwells);
+        // The diurnal stand profile rides beside the dwells. Held in a module
+        // holder, not in state: every surface that prices reads the same one,
+        // and it must not re-render anything by itself (eta/index.ts).
+        liveStandHours.profile = (data as { stand_hours?: StandHourProfile }).stand_hours;
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
         if (data.route_active && typeof data.route_active === "object" && !Array.isArray(data.route_active)) {

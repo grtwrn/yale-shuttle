@@ -239,6 +239,11 @@ describe("GET /api/buses", () => {
       "route_peaks",
       "routes",
       "segments",
+      // The diurnal stand profile, by ET hour and stop class. Additive: a
+      // client that has never heard of it prices exactly as before, and it is
+      // all 1s (an inert no-op) until the calibrator has enough positive
+      // stands in a class-hour to publish one.
+      "stand_hours",
       "stop_coords",
       "stop_names",
     ]);

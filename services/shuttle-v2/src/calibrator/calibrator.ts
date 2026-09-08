@@ -9,6 +9,10 @@ import type {
   SegmentStats,
 } from "../network/TransitNetwork.js";
 
+import {
+  buildProfile, stopHourFactors,
+  type HourCell, type StandHourProfile,
+} from "./diurnal.js";
 import { median, percentile, shrink } from "./shrinkage.js";
 
 // Tuning ---------------------------------------------------------------------
@@ -110,6 +114,8 @@ export interface CalibrationStats {
   pooledPaceMedianSpm: number | null;
   /** Per-pass stand tables (`"<stop>#<index>"`) on routes that repeat a stop. */
   occurrenceStandCount: number;
+  /** Stops carrying at least one published diurnal factor (`hq`). */
+  standHourCount: number;
   /** Stopped visits + one-hop legs behind them. */
   splitSampleCount: number;
   durationMs: number;
@@ -152,6 +158,13 @@ export function calibrate(
     loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, nowMs),
     loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
   );
+  // The diurnal factor rides ON TOP of the stand tables, so it is built after
+  // them: a cell's class (layover or kerb) is read off the `q` just attached,
+  // which is the same median the client classifies on.
+  const hourCells = loadStandHourCells(db, SPLIT_WINDOW_DAYS, nowMs);
+  const standHours = buildProfile(hourCells, (key) => classOfDwell(dwellStats.get(key)));
+  const standHourCount = attachStandHourFactors(dwellStats, hourCells);
+
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
   const ownPace = computePace(legGroups, network);
@@ -163,7 +176,7 @@ export function calibrate(
   // to pool, and `ownPace` is already the whole answer.
   const pace = pooledPace ? withPooledPace(ownPace, pooledPace, network.routes.keys()) : ownPace;
 
-  network.setCalibration(segmentStats, dwellStats, pace);
+  network.setCalibration(segmentStats, dwellStats, pace, standHours);
 
   return {
     segmentCount: segmentStats.size,
@@ -176,6 +189,7 @@ export function calibrate(
     pooledPaceN: pooledPace ? pooledPace.n : 0,
     pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
     occurrenceStandCount,
+    standHourCount,
     splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
     durationMs: Date.now() - t0,
   };
@@ -999,4 +1013,81 @@ export function hourWindow(center: number, halfWidth: number): number[] {
     out.push((center + d + 24) % 24);
   }
   return out;
+}
+
+// Diurnal stands ---------------------------------------------------------------
+
+interface StandHourRow { routeId: number; stopId: number; hour: number; n: number; logSum: number }
+
+/**
+ * Positive stands per (route, stop, ET hour), already logged in SQL so the
+ * whole record never crosses the C++/JS boundary (the same reason the other
+ * loaders group in SQLite — see {@link parseValueList}).
+ *
+ * `hour` is the collector's own ET column (the Dockerfile pins
+ * TZ=America/New_York), and the CLIENT resolves the display hour through
+ * `web/src/schedule.ts`'s explicit America/New_York formatter, never
+ * `getHours()`. Both sides therefore name the same hour for a phone left on
+ * another timezone, and a DST boundary moves both together.
+ *
+ * PASSES ARE EXCLUDED: a pass is a 0 s stand, log 0 is not a number, and
+ * "does it stop at all" is P(stop), a separate served term that a
+ * multiplicative factor on `q` deliberately leaves alone (diurnal.ts).
+ */
+export function loadStandHourCells(db: DB, windowDays: number, nowMs: number): Map<string, HourCell[]> {
+  const cutoff = nowMs - windowDays * 86_400_000;
+  const rows = db.all<StandHourRow>(sql`
+    SELECT
+      route_id AS routeId,
+      stop_id  AS stopId,
+      hour     AS hour,
+      COUNT(*) AS n,
+      SUM(LN((departed_at - pinned_at) / 1000.0)) AS logSum
+    FROM stop_visits
+    WHERE anchored_at >= ${cutoff} AND anchored_at <= ${nowMs}
+      AND pinned_at IS NOT NULL
+      AND outcome = 'stopped'
+      AND departed_at IS NOT NULL
+      AND departed_at > pinned_at
+    GROUP BY route_id, stop_id, hour
+  `);
+  const out = new Map<string, HourCell[]>();
+  for (const r of rows) {
+    if (!Number.isFinite(r.logSum) || !(r.n > 0)) continue;
+    const key = TransitNetwork.dwellKey(r.routeId, r.stopId);
+    const list = out.get(key) ?? [];
+    if (list.length === 0) out.set(key, list);
+    list.push({ key, hour: r.hour, n: r.n, logSum: r.logSum });
+  }
+  return out;
+}
+
+/**
+ * The class a stand table belongs to, on the same median the client uses
+ * (`LAYOVER_MIN_SEC`, web/src/eta/tables.ts). Null for a stop with no table:
+ * it has no baseline to normalise against and must not pollute the pools.
+ */
+export function classOfDwell(d: DwellStats | undefined): "layover" | "ordinary" | null {
+  if (!d?.q || d.q.length < 3) return null;
+  return median(d.q) >= LAYOVER_MIN_SEC ? "layover" : "ordinary";
+}
+
+/** A stop whose typical stand reaches this is a layover (mirrors the client). */
+export const LAYOVER_MIN_SEC = 120;
+
+/** Attach each stop's own raw hourly factors. Returns how many stops got any. */
+export function attachStandHourFactors(
+  dwells: Map<string, DwellStats>,
+  byCell: ReadonlyMap<string, readonly HourCell[]>,
+): number {
+  let n = 0;
+  for (const [key, cells] of byCell) {
+    const cur = dwells.get(key);
+    if (!cur) continue;
+    const f = stopHourFactors(cells);
+    if (!f) continue;
+    dwells.set(key, { ...cur, hq: f.hq, hqn: f.hqn });
+    n++;
+  }
+  return n;
 }
