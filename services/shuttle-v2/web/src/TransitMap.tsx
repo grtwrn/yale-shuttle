@@ -3777,8 +3777,19 @@ const TripPlanner: FC<{
                             The canary reads this line as TEXT and used to key on
                             the glyph — scripts/canary-metrics.mjs now accepts both
                             forms, because it watches production, which is always a
-                            deploy behind this. */}
-                        {busEtaLive !== null && !o.departed && !isExpanded && (
+                            deploy behind this.
+
+                            Shown EXPANDED as well as collapsed (operator,
+                            2026-09-08, comparing the two cards side by side:
+                            "were just missing some data in the route plan
+                            region, that should look like trip overview
+                            region"). Opening a card used to drop the pair —
+                            the one figure that says when the NEXT bus comes if
+                            this one is missed — so the detail view carried
+                            less than the summary it came from. The leg strip
+                            below spells out this bus's wait; the pair is about
+                            the one after it. */}
+                        {busEtaLive !== null && !o.departed && (
                           <span style={{
                             fontSize: 13, color: "#5f6368", fontWeight: 500,
                             minWidth: 0, overflow: "hidden",
