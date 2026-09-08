@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import green from "../__fixtures__/green-published-order.json";
+import pink from "../__fixtures__/pink-published-order.json";
+import purple from "../__fixtures__/purple-published-order.json";
 import incidents from "../__fixtures__/anchor-incidents.json";
 import { polylineMeters, traceStopLegs, type LatLon } from "../geo";
 import { buildRing } from "./ring";
@@ -54,6 +56,48 @@ describe("the ring repairs a stop order its own line cannot supply", () => {
   });
 });
 
+describe("the ring adds the passes an out-and-back's list flattens", () => {
+  const coordsOf = (fx: { stopCoords: Record<string, number[]> }) => {
+    const out: Record<number, LatLon> = {};
+    for (const [id, c] of Object.entries(fx.stopCoords)) out[Number(id)] = { lat: c[0]!, lon: c[1]! };
+    return out;
+  };
+  const pinkRing = buildRing("pink", pink.path as [number, number][], pink.stops as number[], coordsOf(pink as never))!;
+
+  it("gives Pink the sixteen occurrences its twelve-stop list names once", () => {
+    expect(pinkRing).not.toBeNull();
+    expect(pinkRing.repaired).toBe(true);
+    expect(pinkRing.bridged).toBe(false);
+    expect(pinkRing.N).toBe(16);
+    expect(pinkRing.stops).toEqual([149, 72, 43, 44, 60, 109, 110, 124, 123, 125, 123, 124, 110, 109, 59, 46]);
+  });
+
+  it("splits the hop the model priced at a quarter of its real time", () => {
+    // Published, 109 -> 123 is one 1,755 m leg that the calibrator could only
+    // sample on the laps where the detector missed Quigley Outbound and VA
+    // Entrance Outbound inside it: billed 55 s against a driven 240 s
+    // (docs/route-bias.md §3). Repaired, that drive is its own hop.
+    const legM = Array.from(pinkRing.legM).map(Math.round);
+    expect(legM[5]).toBeLessThan(100);            // 109 -> 110, the twin
+    expect(legM[6]).toBeGreaterThan(1_500);       // 110 -> 124, the drive
+    expect(legM[7]).toBeLessThan(100);            // 124 -> 123, the twin
+  });
+
+  it("still draws the published line once and no more", () => {
+    const loop = polylineMeters(pink.path as [number, number][]);
+    expect(Math.abs(pinkRing.loopM - loop) / loop).toBeLessThan(0.005);
+  });
+
+  it("gives Purple its return call at West Haven station", () => {
+    const ring = buildRing("purple", purple.path as [number, number][], purple.stops as number[], coordsOf(purple as never))!;
+    expect(ring.repaired).toBe(true);
+    expect(ring.N).toBe((purple.stops as number[]).length + 1);
+    expect(ring.stops.slice(-3)).toEqual([26, 127, 72]);
+    const loop = polylineMeters(purple.path as [number, number][]);
+    expect(Math.abs(ring.loopM - loop) / loop).toBeLessThan(0.005);
+  });
+});
+
 describe("a route whose published order its line supports is built exactly as before", () => {
   for (const routeId of Object.keys(others.routes)) {
     it(`route ${routeId} is untouched, cell for cell`, () => {
@@ -65,8 +109,9 @@ describe("a route whose published order its line supports is built exactly as be
       expect(Array.from(ring.order)).toEqual(stops.map((_, i) => i));
       expect(ring.stops).toEqual(stops);
 
-      // The trigger is the bridge and only the bridge: with none, the ring's
-      // legs are the tracer's own, so the cells are where they always were.
+      // The trigger is the evidence and only the evidence: with no bridged leg
+      // and no fold, the ring's legs are the tracer's own, so the cells are
+      // where they always were.
       const coords = stops.map((id) => otherCoords[id]!);
       const legs = traceStopLegs(path, [...coords, coords[0]!]);
       expect(legs.some((l) => l.bridged)).toBe(false);

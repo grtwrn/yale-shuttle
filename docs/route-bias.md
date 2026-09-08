@@ -554,15 +554,32 @@ fills.
 
 ## 9. What this does not fix
 
-1. **The flattened out-and-back stop lists.** §3. Pink, Purple, Brown and
-   Orange East hand the estimator a lap that is 14–27% shorter than the one
-   their buses drive. Extending #160's `alignStopsToPath` to add the
-   occurrences the list omits — not only to reorder a list the line cannot
-   trace — would remove the cause, and then most of these scales should fit to
-   1 on their own. That is the next piece of work, and the scale is explicitly
-   a placeholder for it: **when the source is fixed, the fit will walk the
-   scales back by itself, and the pooled-prior guard will hold them at 1 while
-   the new hops warm up.**
+1. ~~**The flattened out-and-back stop lists.**~~ **Done for two of the four,
+   2026-09-08, on branch `eta/pink-passes`.** `alignStopsToPath` now also runs
+   on a route whose line RETRACES itself for a kilometre or more, and adds the
+   occurrences the list omits at a pass the line makes within 50 m of the
+   marker. Measured on all fifteen published lines, that is Pink (+4 of 12) and
+   Purple (+1 of 15) and nothing else; the six downtown routes whose local
+   geometry is identical (College / Wall (S) and (N), passed both ways and
+   named once each — correctly) have folds of 225–500 m and are never reached.
+
+   | route | a2a / lap, published | a2a / lap, repaired |
+   |---|---|---|
+   | Pink | 0.858 | **0.980** |
+   | Purple | 0.729 | **0.782** |
+   | Green (already, #160) | 0.698 | 0.984 |
+   | every other route | unchanged, to the second | |
+
+   Pink's replay bias goes −54.9 → **−22.9 s** and its median \|error\|
+   106.1 → **72.3 s** with both ≥120 s tails improving, on the tables the
+   snapshot has. **Brown and Orange East are not fixed**: their unclaimed
+   passes are 106–196 m from their markers, which is the line coming near a
+   stop on another street rather than driving past it, so the rule declines
+   them and their deficit (0.839 / 0.776) has some other cause.
+
+   The scale remains a placeholder for what is left: **when the source is
+   fixed, the fit walks the scales back by itself, and the pooled-prior guard
+   holds them at 1 while the new hops warm up.**
 2. **The truth.** §4. Nothing in production records when a bus was actually at
    a stop; the scorecard scores against an event that fires 10–75 s early, and
    the number that decides a per-route correction depends on which of the two

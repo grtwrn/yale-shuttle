@@ -80,14 +80,20 @@ describe("every route the payload serves is priced by the model", () => {
     expect(t.stops).toHaveLength(P.routes[rid]!.length);
   });
 
-  it("Green is the repaired one, and only Green", () => {
+  it("repairs the three out-and-backs the evidence names, and nothing else", () => {
     // Pinned so the repair cannot silently start firing on a line whose
     // published order is right: it is a correction, not a normalisation.
+    // Green (9) is the bridged one; Pink (8) and Purple (10) trace perfectly
+    // and are wrong anyway, and reach the aligner on the fold instead.
     const repaired = ROUTE_IDS.filter((rid) => ringForBus({ route_id: rid }, P.routes[rid]!, P.stop_coords)!.repaired);
-    expect(repaired).toEqual(["9"]);
-    // The line passes West Haven station twice and the list names it once, so
-    // the repaired ring carries one cell more than the published list.
-    const green = ringForBus({ route_id: "9" }, P.routes["9"]!, P.stop_coords)!;
-    expect(green.N).toBe(P.routes["9"]!.length + 1);
+    expect(repaired).toEqual(["8", "9", "10"]);
+    // Green: the line passes West Haven station twice and the list names it
+    // once, so the repaired ring carries one cell more than the published
+    // list. Purple: the same station, the same one extra. Pink: twelve
+    // published stops for a lap of eighteen passes, of which the line can
+    // name sixteen.
+    expect(ringForBus({ route_id: "9" }, P.routes["9"]!, P.stop_coords)!.N).toBe(P.routes["9"]!.length + 1);
+    expect(ringForBus({ route_id: "10" }, P.routes["10"]!, P.stop_coords)!.N).toBe(P.routes["10"]!.length + 1);
+    expect(ringForBus({ route_id: "8" }, P.routes["8"]!, P.stop_coords)!.N).toBe(P.routes["8"]!.length + 4);
   });
 });
