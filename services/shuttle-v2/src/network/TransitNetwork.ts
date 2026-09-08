@@ -3,7 +3,7 @@ import KDBush from "kdbush";
 import type { Route, Stop } from "../schema/api.js";
 
 import { distanceMeters, makeProjector } from "./geo.js";
-import { repairedStopOrder } from "./alignStops.js";
+import { alignmentWarranted, repairedStopOrder } from "./alignStops.js";
 import { routeLegMeters, traceStopLegs, type LatLon } from "./legs.js";
 
 // Tuning constants ------------------------------------------------------------
@@ -647,10 +647,12 @@ function repairRouteOrder(route: Route, stops: ReadonlyMap<number, Stop>): Route
     coords.push({ lat: s.lat, lon: s.lon });
   }
   // The trigger is the evidence, and only the evidence: a leg the published
-  // line could not supply for the published order, which the length guard
-  // replaced with a chord. A route that traces is never repaired.
+  // line could not supply for the published order (Green), or a route that
+  // doubles back far enough for a marker to be driven past twice and named
+  // once (Pink). A route with neither is never repaired.
   const traced = traceStopLegs(route.path as [number, number][], [...coords, coords[0]!]);
-  if (traced.length !== coords.length || !traced.some((l) => l.bridged)) return route;
+  if (traced.length !== coords.length) return route;
+  if (!alignmentWarranted(route.path, traced.some((l) => l.bridged))) return route;
   const order = repairedStopOrder(route.path, coords);
   if (!order) return route;
   return { ...route, stops: order.map((i) => route.stops[i]!), publishedStops: route.stops };

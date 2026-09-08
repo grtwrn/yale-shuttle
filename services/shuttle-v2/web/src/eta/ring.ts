@@ -16,7 +16,7 @@
  */
 
 import { haversineMeters, polylineMeters, traceStopLegs, type LatLon } from "../geo";
-import { alignStopsToPath } from "../../../src/network/alignStops";
+import { alignStopsToPath, alignmentWarranted } from "../../../src/network/alignStops";
 import type { Dist } from "./dist";
 
 /** Cell pitch, metres. The sensor's deadband. */
@@ -187,12 +187,14 @@ export function buildRing(
   let legs = traceStopLegs(path as [number, number][], coords);
   if (legs.length !== published) return null;
 
-  // A bridged leg is the evidence that the published order does not describe
-  // the published line, and it is the ONLY trigger: a route whose order the
-  // line supports never reaches the aligner, so its ring is byte-identical.
+  // The evidence, and only the evidence: a bridged leg (the published order is
+  // not one the published line can supply — Green), or a long fold (the route
+  // doubles back, so a marker the line drives past twice can be named once —
+  // Pink). A route with neither never reaches the aligner and its ring is
+  // byte-identical. See src/network/alignStops.ts.
   let order = Array.from({ length: published }, (_, i) => i);
   let repaired = false;
-  if (legs.some((l) => l.bridged)) {
+  if (alignmentWarranted(path, legs.some((l) => l.bridged))) {
     const aligned = alignStopsToPath(path, coords.slice(0, published));
     if (aligned && aligned.legs.length === aligned.order.length) {
       const cand = aligned.legs.map((slice) => ({ slice, bridged: false }));
