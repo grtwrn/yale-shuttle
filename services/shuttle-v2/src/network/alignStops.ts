@@ -544,7 +544,8 @@ function solve(
           // declines Grocery TJ (Trader Joe's has three passes and one entry)
           // and Purple's second West Haven pass, which sits 176 m after the
           // one the list already names.
-          let before = k, after = (k + 1) % ring.length;
+          // The ring is sorted along the line; these wrap at the seam.
+          let before = ring.length - 1, after = 0;
           for (let q = 0; q < ring.length; q++) {
             if (ring[q]!.p.m < cand.p.m) before = q; else { after = q; break; }
           }
