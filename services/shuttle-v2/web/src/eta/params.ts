@@ -27,13 +27,19 @@
 
 /**
  * The correction is applied only to the part of a promise ABOVE this many
- * seconds. Measured, not chosen: a strand is the bus arriving while the number
- * still says ≥180 s (docs/rider-sim.md), so a correction that never raises a
- * number from under 180 to over it cannot introduce one — and the rider
- * simulator caught the uniform form doing exactly that on Red (1,988 paired
- * waits, strands 38 → 47, reversals 132 → 151). It is also where the deficit
- * is: the measured bias inside two minutes is +2 to +20 s on every line and
- * −80 to −175 s at ten to thirty (docs/route-bias.md §1).
+ * seconds — which is where the deficit is. The measured bias inside two
+ * minutes is +2 to +20 s on EVERY line (the number is already right, or
+ * slightly late) and −80 to −175 s at ten to thirty (docs/route-bias.md §1),
+ * so a correction that touches the near number is correcting nothing.
+ *
+ * 180 s is the strand threshold (docs/rider-sim.md), and this hinge does
+ * guarantee that a given (bus, stop) promise under it is returned unchanged.
+ * **That is NOT the same as "cannot introduce a strand", and this comment used
+ * to say so.** The rider simulator measured both forms on Red and the hinge
+ * introduced twelve strands where the uniform form introduced ten: a rider's
+ * wait is scored against the bus they are PINNED to, and changing the numbers
+ * changes which bus that is. The hinge is kept because it is the right shape,
+ * not because it is free (docs/route-bias.md §6).
  */
 export const ROUTE_SCALE_FLOOR_SEC = 180;
 

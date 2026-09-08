@@ -204,8 +204,10 @@ describe("the per-route scale", () => {
     expect(applyRouteScale(280, 1.2)).toBeCloseTo(300, 9);
     expect(applyRouteScale(280, 0.8)).toBeCloseTo(260, 9);
     expect(applyRouteScale(600, 1)).toBe(600);
-    // A number under the threshold is never raised over it, at any factor —
-    // which is what makes the correction unable to introduce a strand.
+    // A number under the threshold is never raised over it, at any factor.
+    // (That is a property of ONE promise, not of a rider's whole watched
+    // sequence: the simulator still measured strands, because the bus a rider
+    // is pinned to moves with the numbers. docs/route-bias.md §6.)
     for (const s of [1.01, 1.25, 3]) expect(applyRouteScale(179.99, s)).toBeLessThan(180);
     // Monotone, so low <= eta <= high survives.
     let prev = -1;

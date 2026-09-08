@@ -469,17 +469,19 @@ median signed error is +2 to +20 s inside two minutes on every line and −80 to
 the closed loop's `model_params` path and applied by `arrival.ts` as the last
 step of pricing — after the #119 clamp, so the floor keeps storing the
 uncorrected number and the (monotone, time-invariant) correction cannot make
-the shown remainder climb. It is HINGED at 180 s, the strand definition, so it
-never raises a number from under that threshold to over it: the uniform form
-was built first and the rider simulator caught it introducing ten strands on
-Red to fix one (1,988 paired waits, 38 → 47).
+the shown remainder climb. It is HINGED at 180 s, where the measured
+bias begins — inside two minutes every line is already right or slightly late,
+so a correction there corrects nothing. The uniform form was built first and
+the rider simulator caught it introducing ten strands on Red to fix one (1,988
+paired waits, 38 → 47); the hinge introduces twelve (1,986 waits, 38 → 49), so
+the hinge is the right SHAPE and not a way of making the correction free.
 It defaults to `{}`: every route 1, the branch skipped, the priced rows
 byte-identical (proved on 226,052 pairs against `origin/master`, and by
 `params.test.ts` on the synthetic block).
 
 Three things about it are measurements rather than choices. It is HINGED
-because of the rider simulator above, and because the measured bias inside two
-minutes is already zero or positive on every line. It is a SCALE because the
+because the measured bias inside two minutes is already zero or positive on
+every line, so a uniform factor moves the one number that was right. It is a SCALE because the
 additive form, fitted the same way on the same pairs, made the
 held-out median |error| worse (60.8 s against the champion's 59.2) where the
 scale took it to 54.4. And it is refused on any route more than a tenth of
@@ -490,6 +492,12 @@ the route pace. Give the same 9/4 replay the drives production had measured by
 09-08 and Green reads −6.2 s, its |error| 191.3 → 71.1 s and its dangerous
 tail 49.1 → 11.9%. A scale fitted through that hole would have been 0.759 and
 would have taken Green's held-out |error| to 118 s.
+
+**No values are published.** The mechanism ships empty, because the rider
+simulator prices the correction on Red at about ten introduced strands per two
+thousand waits — half what the display quantile at 0.55 cost, in the same
+currency it was refused for. The aggregate gain and that cost are both in
+docs/route-bias.md and the decision is the operator's.
 
 **The scale is a placeholder for a source fix**, and it is written down as
 one: the repair is to extend #160's `alignStopsToPath` to add the stop

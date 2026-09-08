@@ -324,12 +324,19 @@ So the correction is **hinged**:
 eta'  = eta + max(0, eta − 180) × (s − 1)      // and low, high, through the same hinge
 ```
 
-`ROUTE_SCALE_FLOOR_SEC = 180` is the strand definition itself, so **a hinged
-correction cannot introduce a strand**: it never raises a number from under
-180 s to over it, at any factor, which is a property and not a measurement
-(`params.test.ts` and `reestimate-lib.test.mjs` both pin it). The hinge is
-monotone, so `low ≤ eta ≤ high` survives it, and it is where the deficit
-actually is.
+`ROUTE_SCALE_FLOOR_SEC = 180` is the strand threshold, and the hinge does
+guarantee that a given (bus, stop) promise under it comes back unchanged, at
+any factor (`params.test.ts` and `reestimate-lib.test.mjs` both pin it). The
+hinge is monotone, so `low ≤ eta ≤ high` survives it. And it is where the
+deficit is: below 180 s there is nothing to correct.
+
+**It does NOT follow that the hinge cannot cost a strand, and this document
+said so before it was measured.** Run the same two arms on the hinged form and
+it introduces *twelve* strands where the uniform form introduced ten (§6). A
+rider's wait is scored against the bus they are PINNED to, and changing the
+numbers changes which bus that is; the guarantee is about one promise, not
+about a rider's whole watched sequence. The hinge is kept because it is the
+right shape — it corrects only where the bias is — not because it is free.
 
 `arrival.ts` applies it as the **last** step of pricing, after the #119 floor
 clamp: the hinge is monotone and time-invariant, so it preserves "the shown
@@ -339,6 +346,43 @@ else. It defaults to `{}` — every route 1, the branch skipped entirely — so 
 payload with no `ROUTE_SCALE` prices exactly as master does (§6), and the key
 is **optional on the wire** on both sides, so the set published on 2026-09-07
 keeps applying.
+
+### The rider simulator: both forms cost strands on Red
+
+Three arms over the 9/3 capture from this tree, identical but for the published
+set, paired wait for wait against the champion (2,169 riders, `ROUTES=Red
+POP=uniform`; Red's own scale was fitted on this day, so the factor is
+in-sample and every column below is not):
+
+| Red, 9/3, paired against the champion | champion | uniform × 1.055 | **hinged, s = 1.098** |
+|---|---|---|---|
+| paired waits | — | 1,988 | 1,986 |
+| **strand** | 38 | **47** (1 fixed / 10 introduced) | **49** (1 / 12) |
+| jump ≥180 s | 93 | 100 (4 / 11) | 114 (1 / 22) |
+| reversal ≥60 s | 132 | 151 (19 / 38) | 149 (15 / 32) |
+| dropped while approaching | 18 | 22 (0 / 4) | 23 (0 / 5) |
+| worst drift | — | improved 282 / worsened 394 | improved 176 / worsened 436 |
+| first-promise \|miss\| | — | improved 295 / worsened 533 | improved 285 / worsened 561 |
+
+**This is the measurement that decides whether values get published, and on
+Red it says not yet.** The two forms are within each other's noise on strands
+(10 against 12 introduced, on ~1,990 waits) and the hinge is worse on jumps,
+because it applies a larger factor to the long numbers by construction. For
+scale: the display quantile at 0.55, refused on exactly this evidence
+(`docs/display-quantile-sweep.md` §6), cost 20 introduced strands against 4
+fixed and 75 introduced reversals. This correction costs about half of that and
+buys more accuracy — but it is the same currency, and it is not free.
+
+The introduced strands are not diffuse either: both forms introduce essentially
+the SAME waits (three riders at 18:01:14 at different stops, one at 17:01, one
+at 18:01:58), which points at one or two buses rather than a broad
+degradation, and is where anyone continuing this should look first.
+
+**So: the mechanism ships, the values do not.** `ROUTE_SCALE` is empty in this
+branch and nothing is posted to `/api/model-params`; the operator has the
+aggregate gain and the rider-level cost side by side, which is what
+`docs/display-quantile-sweep.md` §9 asked for — "it should go out per route …
+and behind a rider-sim run on each route it touches".
 
 Because it is the last step and feeds nothing back, a corrected pair is
 exactly `hinge(eta, s)`: the fit's held-out check needs no second replay, and

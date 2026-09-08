@@ -284,7 +284,7 @@ describe("the per-route scale", () => {
     expect(fitRouteScales(short)["3"]).toBeUndefined();
   });
 
-  it("the fitter's hinge is the client's, and it cannot cross the strand threshold", () => {
+  it("the fitter's hinge is the client's, and one promise never crosses the threshold", () => {
     expect(ROUTE_SCALE_FLOOR_SEC).toBe(CLIENT_FLOOR);
     for (const sec of [0, 30, 179, 179.9, 180, 181, 600, 1800]) {
       for (const s of [0.8, 1, 1.25]) expect(hinge(sec, s)).toBeCloseTo(applyRouteScale(sec, s), 9);

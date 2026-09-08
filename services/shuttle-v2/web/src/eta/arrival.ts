@@ -424,9 +424,11 @@ export function priceRoute(
     // out-and-back — it omits passes the bus makes, so no adjacency can be
     // billed for that time — and the shortfall a promise carries is
     // proportional to the share of the lap it spans, which is why it is a
-    // factor and not an offset. HINGED at 180 s, so it never raises a number
-    // across the strand threshold: the rider simulator caught the unhinged
-    // form introducing ten strands on Red to fix one.
+    // factor and not an offset. HINGED at 180 s, where the measured bias
+    // actually starts: inside two minutes every line is already right or
+    // slightly late, so a correction there corrects nothing. (It does NOT
+    // follow that the hinge cannot cost a strand — the rider simulator says
+    // it can, because the rider's pinned bus moves with the numbers.)
     //
     // Applied AFTER the clamp: the hinge is monotone and time-invariant, so it
     // preserves "the shown remainder never climbs", and the floor then stores

@@ -71,7 +71,8 @@ export const ROUTE_SCALE_MAX_POOLED = 0.10;
  * The correction applies only above this promise (web/src/eta/params.ts
  * ROUTE_SCALE_FLOOR_SEC; reestimate-lib.test.mjs pins the two equal). It is
  * also the floor the fit counts its sample above, since a pair below it is
- * unaffected by any factor.
+ * unaffected by any factor. It is where the measured bias begins, not a
+ * guarantee about strands — see docs/route-bias.md §6.
  */
 export const ROUTE_SCALE_FLOOR_SEC = 180;
 /** Shrinkage toward 1: n / (n + k). */
