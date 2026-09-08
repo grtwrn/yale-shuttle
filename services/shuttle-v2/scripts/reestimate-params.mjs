@@ -452,7 +452,15 @@ async function main() {
       fits: Object.fromEntries(SCALAR_KEYS.map((k) => [k, { value: fits[k]?.value === null || fits[k]?.value === undefined ? null : round5(fits[k].value), n: fits[k]?.n ?? 0 }])),
       conformal,
       routeScales: routeScaleFit,
-      routeScaleHeldOut,
+      // Trimmed to the two numbers the decision turns on: the stored blob is
+      // capped at 16 KB by the server and a full effect table for fifteen
+      // routes would crowd out the promotion's own record.
+      routeScaleHeldOut: routeScaleHeldOut && Object.fromEntries(
+        Object.entries(routeScaleHeldOut)
+          .filter(([, v]) => v && typeof v === "object")
+          .map(([r, v]) => [r, { absBefore: v.before.medianAbsSec, absAfter: v.after.medianAbsSec, biasBefore: v.before.medianSignedSec, biasAfter: v.after.medianSignedSec }]),
+      ),
+      routeScaleHeldOutDay: routeScaleHeldOut?.day ?? null,
       issues: candidate.issues,
       promotion: decision,
     },
