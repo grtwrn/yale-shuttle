@@ -587,3 +587,236 @@ fills.
    the positions before it sweeps them) would settle it and would make the
    dashboard and the replay agree.
 3. **The anchor**, still the largest lever on record (`docs/eta-ring-posterior.md`).
+
+---
+
+## 10. `heading` on the fold: it discriminates, and it is REFUSED as an emission
+
+**Measured 2026-09-08.** Branch `eta/heading-emission`. Instrument:
+`scripts/eta-replay/heading-fold.ts` (new). Nothing shipped; the estimator is
+unchanged. This is the third measured change this week to be written down
+rather than merged, after `ROUTE_SCALE`'s values (§5) and τ = 0.55
+(`docs/display-quantile-sweep.md` §6), and it is recorded here for the same
+reason: the discrimination is real and large, so the next person to have this
+idea should find the numbers rather than rebuild them.
+
+### The question
+
+Where a route FOLDS — one road carrying two legs of the loop in opposite
+directions — the cell nearest a fix can be on the wrong branch, and the bus is
+then anchored to a pass that serves the opposite direction. Nothing in the
+estimator reads `heading`. PR #176's measurement noted in passing that
+`heading` against the ring's own bearing is p50 2 deg with an 11.3% reversed
+tail on moving fixes, and guessed that the tail is the fold. This is that
+guess, measured.
+
+### What `heading` is
+
+**It is not a sensor. It is the bearing of the fix pair just closed.** Over
+129,523 consecutive pairs of 2026-09-04, `angle(heading, bearing(previous fix
+-> this fix))` is p50 **0.58 deg**, p90 1.83 deg; against the NEXT pair's
+bearing it is p50 2.4 deg, p90 40 deg. And it is frozen while the bus is
+still: over 189,824 repeated fixes the heading changed **once**. Upstream's
+deadband means every fresh fix has moved at least 20 m — in the whole day's
+capture there is no fresh fix under 20 m — so there is no jiggle for a heading
+to be computed from, and no threshold is needed to make it inert at rest.
+
+That is the finding that governs everything below: **`heading` is a
+deterministic function of two fixes the filter has already used**, the previous
+one through the belief and this one through the position emission.
+
+### The discrimination, against the trajectory's own decode
+
+Truth is a non-causal Viterbi over the ring cells (forward-biased transition,
+Gaussian emission, a backward step paid for) run over each bus's whole series.
+It sees the future as well as the past, so at a fold it is settled by where the
+bus actually went, and it never reads a heading. 307,246 frames within 60 m of
+a published line, 2026-09-04, every route.
+
+| | frames | fold frames | **wrong-branch frames** |
+|---|---|---|---|
+| all routes | 307,246 | 97,089 (31.6%) | **29,689 (9.7%)** |
+
+On a wrong-branch frame, scored at each of the two candidate cells:
+
+| | n | heading ≤45 deg | ≤90 deg | ≥135 deg |
+|---|---|---|---|---|
+| the TRUE branch's cell, fix moved | 15,489 | **91.7%** | 96.4% | 1.8% |
+| the FALSE branch's cell (the nearest), fix moved | 15,489 | **7.6%** | 11.0% | 81.5% |
+| the TRUE branch's cell, fix repeated | 14,200 | 86.0% | 92.2% | 2.8% |
+| the FALSE branch's cell, fix repeated | 14,200 | 16.6% | 21.1% | 69.8% |
+
+**Likelihood ratio 12.1 : 1 on a moved fix** (91.7 / 7.6), 5.2 : 1 on a
+repeated one. And the reversed tail #176 saw is overwhelmingly a real wrong
+branch, not a bad heading: of the frames whose heading is ≥135 deg from the
+NEAREST cell's bearing, **95.0% are genuinely on the wrong branch** on a moved
+fix and 87.7% on a repeated one. The tail is not noise; it is the defect.
+
+It scales with the displacement the bearing was computed from — LR 7.8 at
+20–40 m, 55.7 at 40–80 m, 353 past 80 m.
+
+### Where the mass is
+
+| route | frames | fold | wrong-branch | LR (≤45 deg) | branches apart | ring |
+|---|---|---|---|---|---|---|
+| Pink | 34,711 | 49.3% | **22.9%** | 1875 | 180 deg | repaired |
+| Purple | 52,618 | 61.6% | **16.7%** | 7.1 | 171 deg | repaired |
+| Green | 47,455 | 62.3% | **13.6%** | 9.2 | 175 deg | repaired |
+| Orange East | 5,680 | 19.6% | 7.7% | inf | 180 deg | |
+| Red | 42,046 | 20.2% | 6.3% | 9.2 | 180 deg | |
+| Blue Night | 9,343 | 12.1% | 4.4% | 3.3 | 169 deg | |
+| Orange Day / Blue Day / Orange Night | | ≤9.5% | 1.9–4.2% | inf | 180 deg | |
+| **Brown, Gold, Blue West, Blue Weekend** | 36,870 | **0.0%** | **0.0%** | — | — | |
+
+Four lines have no fold at all — they are the controls, and no change of this
+kind can touch them. The busiest legs are Quigley Stadium Outbound (2,218
+wrong-branch frames), Building 900 on Purple (2,943) and on Green (1,830),
+West Haven Train Station (2,400 / 1,517), Congress / Howard (1,533).
+
+### The change that was built
+
+A von Mises factor on the position emission, per cell, from the angle between
+the reported heading and the direction of travel ARRIVING at that cell (the
+arriving bearing beats the departing one: 96.4% within 45 deg against 93.0%,
+because the heading is the chord just driven). No threshold, no route in it,
+applied exactly where the position emission is — on a fresh fix — so it is
+inert for a bus at rest by construction.
+
+Its concentration was set to the measured evidence and nothing more:
+`exp(2k) = 12.1`, so the most it can say is the 12.1 : 1 the measurement found,
+which the position emission overturns with 45 m. **Fitting the SHAPE of the
+angular error instead is a trap**: the residual's median is 1.4 deg, so the
+maximum-likelihood fit runs away to k ≈ 10 with a 2.5% flat floor, and that
+factor penalises a bus mid-turn 17 : 1 for being 45 deg off its own cell. It
+was measured too, and it is worse — see the table below.
+
+### The gate: gps-replay, 9/4, 205,066 pairs, proximity truth
+
+Against `origin/master` (a73acb4), same snapshot, same `PAYLOAD_PATCH`.
+
+| route | n | median \|err\| | p90 | opt ≥120 s | pess ≥120 s | within 120 s |
+|---|---|---|---|---|---|---|
+| **Pink** | 19,066 | 73.4 → **73.1** | 490.2 → **449.8** | 24.2 → **23.9** | 7.2 → 7.2 | 68.7 → **68.9** |
+| Brown | 8,307 | 79.9 → **79.2** | 517.3 → 517.3 | 27.7 → 27.7 | 12.7 → **12.6** | 59.6 → **59.7** |
+| Red | 20,972 | 47.9 → 48.0 | 255.3 → **255.1** | 19.0 → 19.1 | 4.8 → **4.7** | 76.2 → 76.2 |
+| Orange East | 11,656 | 47.8 → **47.7** | 192.3 → **192.2** | 16.5 → 16.5 | 3.5 → 3.5 | 80.0 → 80.0 |
+| **Green** | 22,611 | 191.2 → **193.0** | 642.6 → **647.8** | 11.3 → 11.3 | 49.0 → **49.2** | 39.6 → **39.5** |
+| **Purple** | 27,102 | 102.6 → **103.6** | 680.1 → 679.0 | 22.0 → 21.8 | 25.3 → **25.7** | 52.7 → **52.5** |
+| **Blue Night** | 22,973 | 70.5 → **70.9** | 225.4 → **227.2** | 18.8 → 18.8 | 13.0 → **13.2** | 68.2 → **68.0** |
+| Blue Day / Orange Day / Orange Night / Gold / Blue West | | ±0.1 | ±0.1 | | | |
+| **pooled** | 205,066 | **57.8 → 57.9** | **392.1 → 395.3** | 16.0 → 15.9 | 13.8 → 13.9 | 70.2 → 70.2 |
+
+Paired pair-for-pair, summing the seconds of |error| gained and lost:
+
+| route | pairs changed | riders' seconds better | worse | **net** |
+|---|---|---|---|---|
+| Pink | 4,911 | 125,100 | 3,827 | **+121,273** |
+| Brown | 2,150 | 6,016 | 1,576 | +4,440 |
+| Orange Day / Orange East / Orange Night | | | | +0.4k to +0.9k |
+| Red | 6,811 | 27,790 | 28,167 | −377 |
+| Purple | 12,312 | 58,042 | 59,251 | −1,209 |
+| **Blue Night** | 7,011 | 5,890 | 128,434 | **−122,545** |
+| **Green** | 6,385 | 12,422 | 341,896 | **−329,474** |
+
+**Green's and Blue Night's losses are whole laps** — `eta 4 s → 4,355 s` at
+Building 800 — and they are concentrated at exactly the stops the fold lives
+on: Building 900 (112 of the 338 broken leads), West Haven Train Station (91),
+Building 600 (47), Building 800 (39). Green's lead agrees with the detector
+62.1% → **57.6%** of the time (90 fixed, 338 broken); Purple 86.5 → 86.0
+(0 / 34); Blue Night 76.4 → 75.4 (0 / 50). The four fold-free control routes
+are byte-identical, which is the one thing that went exactly as designed.
+
+At the shape-fitted concentration (k = 9.8) the same trade is louder in both
+directions: Pink p90 490.2 → **391.1** and net **+258,347** rider-seconds,
+Green net **−409,352**, Blue Night **−557,322**, Purple median 102.6 → 107.9.
+
+### The rider gate: rider-sim, Pink and a fold-free control, 9/4 10:00-18:00 ET
+
+`ROUTES=Pink HOLDOUT=Brown POP=both`, 2,550 waits paired wait for wait
+(`pair-by-route.mjs`). Brown is one of the four lines with **no fold frames at
+all**, so a fold fix should not be able to touch it.
+
+| route | paired waits | **strand** | jump ≥180 s | reversal ≥60 s | dropped while approaching |
+|---|---|---|---|---|---|
+| **Brown** (fold-free control) | 360 | **0 fixed / 4 introduced** | 1 / 9 | 0 / 12 | 0 / 0 |
+| **Pink** | 2,190 | **2 / 9** | 6 / 17 | 6 / 33 | **0 / 23** |
+| ALL | 2,550 | **2 / 13** | 7 / 26 | 6 / 45 | 0 / 23 |
+
+**Strands rise on both routes, and Pink — the line the whole change is for —
+introduces 23 riders whose countdown was withdrawn while their bus was still
+approaching.** That is the bar `docs/display-quantile-sweep.md` §6 and §5 above
+set, and it is not met.
+
+**The control is the finding.** Brown has no fold; the aggregate replay moved
+it by 0.7 s of median and called that a small gain; at rider level it is 4
+introduced strands, 9 jumps and 12 reversals. A factor on every cell is not a
+fold fix — it sharpens the belief along the road everywhere, most of all
+through curves, where the heading is the chord just driven and the cell
+bearings around it are not. A change that cannot in principle help a route it
+demonstrably hurts has the wrong shape.
+
+### Why it loses where it loses, and why that is not fixable by tuning
+
+**It is not conditionally independent of what the filter already used.**
+`heading` is the bearing between the last two fixes; the belief has already
+integrated the first of those and the emission the second. Where continuity has
+already resolved the fold — Green's lead was right on 62% of frames and
+Purple's on 86% — re-asserting a correlated 12 : 1 factor every poll can only
+overturn correct beliefs on the 8% of frames where the heading is wrong, and
+each overturn on an out-and-back costs a lap. Where continuity has NOT resolved
+it — Pink, whose lead agrees with the detector on 43% of frames, the worst of
+any line — the same factor is a large win.
+
+Two compositions were tried and neither changes this. Multiplying the whole
+mixture (Gaussian + stray floor) and multiplying only the on-the-cell Gaussian
+— the correct form, since a bus off the line points where that street points,
+not where the cell does — differ by under a second on every route: Purple
+102.6 → 107.9 either way. The off-line hypothesis was wrong.
+
+### The case that names the problem is not a branch error at all
+
+Pink #124, 2026-09-04 15:31:16Z, 44 m from the Quigley Stadium Outbound marker
+heading 192 deg (southbound), which it actually served at 15:46:48 heading 337
+(northbound). **The arm is byte-identical on it**, and the trace says why: the
+belief is already correct. After #175 Pink's repaired ring names the marker
+TWICE — ring 6, cell 106, bearing 158 deg (the southbound pass) and ring 12,
+cell 259, bearing 338 deg (the northbound one) — and the belief sits at cells
+104–106 southbound, which is where the bus is. The ghost is that `priceRoute`
+answers for occurrence 0, the southbound one, 5 s away, when the marker is only
+SERVED on the northbound pass. No emission can fix that: it is a question about
+which passes a marker is served on, and it belongs with the repair that added
+the passes, not with the observation model.
+
+**Upstream settles which pass it is, and the ring has it wrong.** On the
+southbound run the feed's own `last_stop_id` goes 60 -> **109** and never names
+110; on the northbound run at 15:46:53 it goes to **110** and never names 109,
+though the bus passes within 21 m of the 109 marker. The two markers are 60 m
+apart on a road the line drives twice, so the 50 m pass rule #175 added claimed
+BOTH of them on BOTH passes: ring 6 (110, southbound) and ring 13 (109,
+northbound) are occurrences the operator does not serve. That is one leg of
+Pink's 22.9% and it is a defect in the repair, checkable against a field the
+payload already carries.
+
+### Verdict
+
+**Refused.** The discrimination is real and worth 12 : 1, the instrument is
+kept (`scripts/eta-replay/heading-fold.ts`), and the emission form is not
+merged. Three independent readings say the same thing: pooled it is a wash
+(median 57.8 → 57.9 s, p90 392 → 395), it costs Green and Blue Night more than
+it buys Pink, and at rider level **strands rise on Pink AND on a route that has
+no fold for it to fix**. Nothing in this section is a knob that was not turned:
+both mixture compositions and both concentrations were measured, and the
+regression is the same either way.
+
+What the numbers say to try next, in order:
+
+1. **The cold start only.** `initBelief` has one frame and NO history, so
+   double-counting is impossible there by construction, and it is exactly
+   where #176 spent the other half of this coin. The right instrument is
+   `cold-start-ghosts.ts`, not the gps-replay, whose beliefs are warm after
+   one poll.
+2. **Pink alone would take it**, and that is what a per-route rule looks like
+   from the inside. Do not write it. If Pink's lead is right on 43% of frames
+   while every other line is over 62%, the thing to fix is why.
+3. **The shadow-leg detour mode** (`docs/eta-ring-posterior.md`, § the open
+   fold) is still the piece of work this keeps arriving back at.

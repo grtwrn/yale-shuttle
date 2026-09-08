@@ -731,7 +731,20 @@ a tenth of the mass back and left the number oscillating between the legs;
 withdrawn. The model that fits is a **shadow-leg detour mode**: a detour is
 a persistent lateral offset that follows the leg's geometry, so it pays the
 stray weight once, at entry, and predicts the next fix as well as the line
-does — a third mode of the HMM, the next piece of work. Until then Purple
+does — a third mode of the HMM, the next piece of work.
+
+**`heading` is not the answer to it, and that is measured.** It reads which way
+the bus is pointing and it separates the two branches of a fold at 12.1 : 1 on
+a moved fix; as a per-cell von Mises factor on the position emission it is
+still a wash pooled (median 57.8 → 57.9 s on the 9/4 replay) and costs Green
+and Blue Night whole laps for what it buys Pink. The reason is structural:
+`heading` is the bearing of the fix pair just closed, so it is a deterministic
+function of two fixes the filter has already used, and re-asserting it every
+poll overturns beliefs that continuity had already got right. The numbers, the
+instrument (`scripts/eta-replay/heading-fold.ts`) and what to try instead are
+in `docs/route-bias.md` § 10.
+
+Until then Purple
 trades strands (492 fixed / 689 introduced) for the other three columns
 (jumps 1,180 / 616, reversals 1,497 / 298, drops 1,112 / 480) and a median
 error halved on the gps-replay.

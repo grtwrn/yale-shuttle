@@ -128,6 +128,30 @@ TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/belief
 TZ=America/New_York REPLAY_DB=./store/snap2.db npx tsx scripts/eta-replay/priors.ts
 ```
 
+## heading-fold.ts — does `heading` pick the right branch of a fold?
+
+Scores the one payload field the estimator does not read against the
+trajectory itself. Truth is a non-causal Viterbi over the ring's cells
+(forward-biased transition, Gaussian emission), so at a fold it is settled by
+where the bus actually went next; the decode never sees a heading. Prints the
+wrong-branch rate per route, the likelihood ratio heading carries about the
+branch, how much of the reversed tail is a real wrong branch rather than a
+stale heading, the reliability by the displacement the bearing was computed
+from, and the two constants a von Mises emission would take.
+
+```bash
+TZ=America/New_York PAYLOAD=store/buses.json REPLAY_DB=./store/snap.db \
+  POSITIONS=~/shuttle-captures/positions-20260904.jsonl \
+  npx tsx scripts/eta-replay/heading-fold.ts
+#   ROUTES=8  FOLD_SLACK_M=40  FOLD_SEP_CELLS=10  CAND_M=150  TOP_STOPS=12
+```
+
+Findings, and why the emission it suggested was refused: `docs/route-bias.md`
+§ 10. **9.7% of frames are on the wrong branch** (Pink 22.9%, Purple 16.7%,
+Green 13.6%; four lines have no fold at all), heading separates the two
+branches at **12.1 : 1** on a moved fix, and it is still not a change worth
+making.
+
 ## rider-sim/ — a day of riders, each one's countdown from first sight to boarding
 
 `rider-sim/run.ts` is the third instrument, and the one that answers the
