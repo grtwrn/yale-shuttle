@@ -413,7 +413,64 @@ the last three archived days, fits the scale beside the conformal widening on
 all but the last, checks both on the last, and posts one row either way
 (`--dry-run` to watch it).
 
-## 8. What this does not fix
+## 8. Caveats, and the one that changes how it is run
+
+### The scale is not stationary across the day-part, and the guard catches it
+
+Run the cross-validation the other way — fit on **9/4** (the 6.2 h evening
+window) and hold out on **9/3** (the whole archived day) — and the same
+estimator asks for materially larger factors and over-corrects:
+
+| route | fitted on 9/3 (whole day) | fitted on 9/4 (evening) | held out on 9/3: median \|err\| | bias |
+|---|---|---|---|---|
+| Red | 1.055 | **1.085** | 48.2 → 49.8 s | −11.0 → +7.0 |
+| Pink | 1.075 | **1.136** | 98.2 → 103.0 | −27.0 → +16.6 |
+| Blue Night | 1.030 | **1.070** | 67.1 → 71.0 | −8.4 → +8.4 |
+| Orange Night | 1.057 | **1.094** | 44.4 → 50.0 | −10.8 → +5.6 |
+| Gold | 1.076 | 1.053 | 87.9 → 85.0 | −27.4 → −8.6 |
+| Blue West | 1.033 | 1.033 | 78.4 → 76.1 | −10.4 → +1.4 |
+
+**The per-route held-out guard refuses all four of the overshooting ones**,
+which is the guard working exactly as specified — but the finding underneath
+is worth stating plainly: the ratio depends on when you measure it. On the 9/3
+pairs, split at 16:00 ET:
+
+| route | daytime ratio (n) | evening ratio (n) |
+|---|---|---|
+| Blue Day | 0.996 (55,527) | **1.195** (16,074) |
+| Orange Day | 1.006 (26,447) | 1.008 (12,141) |
+| Red | 1.059 (58,294) | 1.040 (19,011) |
+| Pink | 1.052 (38,977) | **1.147** (15,424) |
+| Purple | 0.956 (39,228) | **1.080** (30,109) |
+| Gold | 1.090 (20,471) | 1.010 (5,635) |
+| Brown | 1.047 (19,323) | **1.127** (8,141) |
+
+Evening stands are longer and more variable — `docs/display-quantile-sweep.md`
+§11 warned about exactly this window — so a scale fitted on an evening
+over-corrects a day. **The job always replays whole archived days**, which is
+the fit that generalises here; a partial window must not be used, and the
+guard is what enforces it if one is. A per-route × day-part scale is the
+obvious extension and is deliberately not taken: PR #164 excluded hour-of-day
+for the estimator at ±6%, and doubling the parameter count on one day of
+evidence is how a correction becomes a fit.
+
+### The pooled-prior guard reads the PUBLISHED adjacencies
+
+It walks `routes.stops_json` — upstream's list — because that is what a plain
+JS job on the archive has. On Green the ring is built on the REPAIRED order,
+whose hops are not in that list at all, so the guard reads 73–80% and Green is
+excluded whatever its tables say. That is the safe direction and Green needs no
+scale (§2), but it is a crudeness on the record: the guard should read the
+ring's own adjacencies once `alignStopsToPath` can be reached from the job.
+
+### One day type
+
+Both fits are weekdays. Blue Weekend and the grocery lines never clear the
+sample floor on a Thursday and carry no scale; a weekend fit would be a
+separate measurement, and the loop will make it on its own as the archive
+fills.
+
+## 9. What this does not fix
 
 1. **The flattened out-and-back stop lists.** §3. Pink, Purple, Brown and
    Orange East hand the estimator a lap that is 14–27% shorter than the one
