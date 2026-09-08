@@ -306,22 +306,50 @@ if (DRY) {
   process.exit(0);
 }
 
-const res = await fetch(`${BASE}/api/canary/runs`, {
-  method: "POST",
-  headers: { "content-type": "application/json", "x-admin-token": token() },
-  body: JSON.stringify({ runs }),
-  signal: AbortSignal.timeout(30_000),
-});
-if (!res.ok) {
-  // The cursor is NOT advanced: the next run re-ships, and the server drops
-  // the duplicates on run_key.
-  console.error(`ship failed: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-  process.exit(1);
+/**
+ * The server accepts `CANARY_MAX_RUNS_PER_POST` (50) and SILENTLY TRUNCATES a
+ * longer batch — `raw.slice(0, MAX)` in src/server/canary.ts — returning 200
+ * for the whole request. This script used to POST every pending run at once
+ * and then advance the cursor to the newest of them, so on 2026-09-08 a
+ * backlog of 202 runs shipped 50 and threw the other 152 away, with no error
+ * anywhere and the operator's dashboard quietly missing five days of riding.
+ * The canary is the app's eyes; evidence it collected must not be dropped by
+ * a batch boundary.
+ *
+ * So: send in chunks the server will accept whole, and advance the cursor
+ * only over runs the server has actually acknowledged. A failure mid-backlog
+ * leaves the cursor at the last acknowledged chunk, and the next run resumes
+ * there — the server de-duplicates on run_key, so a repeat costs nothing.
+ */
+const CHUNK = 50;
+let stored = 0, duplicate = 0, rejected = 0, suppressed = 0;
+const alerts = [], resolved = [];
+for (let i = 0; i < runs.length; i += CHUNK) {
+  const batch = runs.slice(i, i + CHUNK);
+  const res = await fetch(`${BASE}/api/canary/runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-admin-token": token() },
+    body: JSON.stringify({ runs: batch }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    // The cursor stands at the last acknowledged chunk: the next run re-ships
+    // from there, and the server drops the duplicates on run_key.
+    console.error(`ship failed after ${stored} stored: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    process.exit(1);
+  }
+  const body = await res.json();
+  stored += body.stored ?? 0;
+  duplicate += body.duplicate ?? 0;
+  rejected += body.rejected ?? 0;
+  suppressed += body.suppressed ?? 0;
+  alerts.push(...(body.alerts ?? []));
+  resolved.push(...(body.resolved ?? []));
+  // Acknowledged: this chunk's newest run is the new high-water mark.
+  saveCursor(records[Math.min(i + batch.length, records.length) - 1].startedAt);
 }
-const body = await res.json();
 console.log(
-  `shipped ${runs.length} run(s): ${body.stored} stored, ${body.duplicate} already known, ` +
-  `${body.rejected} rejected, ${body.alerts.length} escalated, ${body.suppressed} held back`,
+  `shipped ${runs.length} run(s) in ${Math.ceil(runs.length / CHUNK)} batch(es): ${stored} stored, ${duplicate} already known, ` +
+  `${rejected} rejected, ${alerts.length} escalated, ${suppressed} held back`,
 );
-saveCursor(records[records.length - 1].startedAt);
-await escalate(body.alerts ?? [], body.resolved ?? []);
+await escalate(alerts, resolved);

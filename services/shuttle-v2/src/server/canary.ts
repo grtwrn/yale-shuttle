@@ -261,6 +261,8 @@ export interface CanaryResolution {
 }
 
 export interface CanaryIngestResult {
+  /** Set when the batch exceeded the cap: nothing was stored, resend in chunks. */
+  tooMany?: { limit: number; sent: number };
   stored: number;
   duplicate: number;
   rejected: number;
@@ -282,7 +284,18 @@ export function recordCanaryRuns(
   raw: unknown,
   nowMs: number,
 ): CanaryIngestResult {
-  const list = Array.isArray(raw) ? raw.slice(0, CANARY_MAX_RUNS_PER_POST) : [];
+  // Truncating silently was how 152 canary runs were lost on 2026-09-08: the
+  // shipper sent its whole backlog, this took the first 50, answered 200, and
+  // the shipper advanced its cursor past the rest. The cap stays — an
+  // unbounded batch is a memory risk — but an over-size batch is now an
+  // error the caller can see and act on, rather than data silently dropped.
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > CANARY_MAX_RUNS_PER_POST) {
+    return {
+      tooMany: { limit: CANARY_MAX_RUNS_PER_POST, sent: list.length },
+      stored: 0, duplicate: 0, rejected: 0, alerts: [], resolved: [], suppressed: 0,
+    };
+  }
   const runs: CanaryRunInput[] = [];
   let rejected = 0;
   for (const item of list) {

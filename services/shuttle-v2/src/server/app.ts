@@ -976,7 +976,11 @@ export function buildApp(opts: AppOptions): Hono {
       return c.json({ error: "invalid_request" }, 400);
     }
     c.header("Cache-Control", "no-store");
-    return c.json(recordCanaryRuns(opts.bundle, body.runs, now()));
+    const ingest = recordCanaryRuns(opts.bundle, body.runs, now());
+    // An over-size batch is refused whole rather than truncated, so a shipper
+    // cannot advance its cursor past runs the server never stored (2026-09-08:
+    // 152 canary runs lost exactly that way).
+    return ingest.tooMany ? c.json(ingest, 413) : c.json(ingest);
   });
 
   // Claim (or release) a browser as the operator's own, so its reports stop
