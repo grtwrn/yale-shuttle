@@ -34,7 +34,14 @@ import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
 
-/** The displayed quantile. 0.5 = the median; see the plan's Step 4 sweep. */
+/**
+ * The displayed quantile. 0.5 = the median.
+ *
+ * SWEPT AND LEFT HERE, not defaulted here: `docs/display-quantile-sweep.md`
+ * (PR #165). The pooled aggregates favour 0.55–0.60; the paired rider
+ * simulator refuses them — τ = 0.55 cost 42% more strands on 2,001 identical
+ * Red waits. `display-tau.test.ts` pins it so the next move is a measured one.
+ */
 export const DISPLAY_TAU = 0.5;
 
 /**
