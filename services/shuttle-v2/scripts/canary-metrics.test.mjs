@@ -6,6 +6,7 @@ import {
   ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, busOnRoute, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
   departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, liveBusesOf, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  pinnedVehicleAt, scraperMissedTheCountdown, standEndedFor, standPollsBefore, unexplainedJumps,
   OFF_ROUTE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -1484,5 +1485,142 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[1]).toMatchObject({ totalMin: 17, arriveText: "1:48p" });
     expect(opts[1].eta.raw).toBe("in 4, 19 min");
     expect(opts[2]).toMatchObject({ mode: "walk", totalMin: 41 });
+  });
+});
+
+
+/**
+ * THE STAND THE BOARD-STOP RULE CANNOT SEE.
+ *
+ * Every frame below is copied out of scripts/.canary/runs.jsonl on the Pi —
+ * `atMs`, the countdown text the rider was shown, and the feed's own bus list
+ * — for the transitions the canary filed as `eta-jump` in the 24 h to
+ * 2026-09-08 21:00 UTC. Six of the sixteen it filed that day were the app
+ * repricing a bus that had just left a stand somewhere out on the loop, which
+ * is what the ring posterior is FOR (docs/eta-ring-posterior.md).
+ */
+describe("a stand ending out on the loop", () => {
+  const frame = (atMs, raw, buses, missedBus = null) => ({
+    atMs, present: true, eta: parseBusEtaText(`🚌 ${raw}`), missedBus, buses,
+  });
+  const jumpsOf = (samples, pins) => unexplainedJumps(scoreSequence(samples, THRESHOLDS, { pins }));
+
+  /** Gold, 2026-09-08 20:35 ET. One bus on the line, standing at stop 10. */
+  const GOLD = [
+    ...[1_788_899_855_485, 1_788_899_872_327, 1_788_899_887_451, 1_788_899_902_587,
+      1_788_899_917_777, 1_788_899_933_153, 1_788_899_948_462, 1_788_899_963_744,
+      1_788_899_979_069, 1_788_899_996_038]
+      .map((at) => frame(at, "in 8, 44 min", [{ name: "#310", distM: 263, atStop: 10 }])),
+    frame(1_788_900_011_375, "in 7, 43 min", [{ name: "#310", distM: 237, atStop: 10 }]),
+    frame(1_788_900_026_702, "in 1, 37 min", [{ name: "#310", distM: 188, atStop: 10 }]),
+  ];
+  const GOLD_PINS = [{ atMs: 1_788_899_980_836, busName: "310" }, { atMs: 1_788_900_028_614, busName: "310" }];
+
+  it("credits the pinned bus's countdown collapsing on the frame its stand ended", () => {
+    // Ten frames at exactly 263 m — the feed repeating a fix, which is the only
+    // way a stand is visible here — then 237, then 188. #310 reached the board
+    // stop 1.7 min after the jump, so "in 1 min" was the truthful number and
+    // "in 8" was the stale one.
+    expect(standPollsBefore(GOLD, 9, "#310")).toBe(9);
+    expect(standEndedFor(GOLD, 10, "310")).toBe(true);
+    expect(jumpsOf(GOLD, GOLD_PINS)).toEqual([]);
+  });
+
+  it("still files it when there is no pin to attribute the stand to", () => {
+    // No pin, no vehicle, no credit: the rule never guesses which bus moved.
+    expect(jumpsOf(GOLD, [])).toHaveLength(1);
+  });
+
+  it("counts one card-wide re-price once, not once per slot", () => {
+    // Gold has ONE bus, so the "37 min" is #310's next lap — the first number
+    // plus the loop — and it cannot fail to move when the first does. The
+    // canary filed this transition twice on 2026-09-08, as the leader and as
+    // "the bus after the pinned one", with identical text.
+    const seq = scoreSequence(GOLD, THRESHOLDS, { pins: GOLD_PINS });
+    const both = seq.transitions.filter((t) => t.catastrophic);
+    expect(both).toHaveLength(2);
+    expect(both.map((t) => t.event).sort()).toEqual(["next-lap", "stand-end"]);
+    // And with the leader NOT credited, the pair still reports as one finding.
+    expect(unexplainedJumps({ transitions: both.map((t) => ({ ...t, eventful: false })) })).toHaveLength(1);
+  });
+});
+
+describe("what a stand ending must NOT excuse", () => {
+  const frame = (atMs, raw, buses, missedBus = null) => ({
+    atMs, present: true, eta: parseBusEtaText(`🚌 ${raw}`), missedBus, buses,
+  });
+  const jumpsOf = (samples, pins) => unexplainedJumps(scoreSequence(samples, THRESHOLDS, { pins }));
+
+  it("keeps the flag on a bus that dropped to a minute as it PULLED IN and then sat", () => {
+    // Pink, 2026-09-08 19:05 ET. #124 arrives at stop 149, 297 m out; the card
+    // goes "in 6" -> "in 1". The bus then stood there and took 7.7 min to
+    // reach the board stop, so the jump moved the number AWAY from the truth.
+    // A stand BEGINNING is not a departure and buys nothing.
+    const PINK = [
+      frame(1_788_894_726_988, "in 8, 25 min", [{ name: "#124", distM: 461, atStop: 46 }, { name: "#324", distM: 2426, atStop: null }]),
+      frame(1_788_894_742_309, "in 7, 25 min", [{ name: "#124", distM: 328, atStop: null }, { name: "#324", distM: 2426, atStop: null }]),
+      frame(1_788_894_757_628, "in 6, 25 min", [{ name: "#124", distM: 297, atStop: 149 }, { name: "#324", distM: 2426, atStop: null }]),
+      frame(1_788_894_772_952, "in 1, 25 min", [{ name: "#124", distM: 269, atStop: 149 }, { name: "#324", distM: 2426, atStop: null }]),
+    ];
+    const pins = [{ atMs: 1_788_894_711_830, busName: "124" }, { atMs: 1_788_894_774_854, busName: "124" }];
+    expect(standEndedFor(PINK, 3, "124")).toBe(false);
+    expect(jumpsOf(PINK, pins).map((t) => t.to)).toEqual(["in 1, 25 min"]);
+  });
+
+  it("keeps the flag on a countdown that jumped OUTWARD while its bus closed in", () => {
+    // Green, 2026-09-08 15:29 ET. "in <1, 10 min" -> "in 9, 20 min" with the
+    // app announcing it had swapped vehicles — and #302, the bus it wrote off,
+    // was 123 m out and reached the stop 32 s later. A stand ending can only
+    // make a bus sooner, so a rise is never credited by it.
+    const GREEN = [
+      frame(1_788_882_244_579, "in 1, 10 min", [{ name: "#302", distM: 217, atStop: 23 }, { name: "#329", distM: 4669, atStop: null }, { name: "#126", distM: 9102, atStop: 84 }]),
+      frame(1_788_882_261_473, "in <1, 10 min", [{ name: "#302", distM: 133, atStop: null }, { name: "#329", distM: 4266, atStop: null }, { name: "#126", distM: 9102, atStop: 84 }]),
+      frame(1_788_882_276_779, "in 9, 20 min", [{ name: "#302", distM: 123, atStop: null }, { name: "#329", distM: 3895, atStop: null }, { name: "#126", distM: 9102, atStop: 84 }], 302),
+    ];
+    const pins = [{ atMs: 1_788_882_246_225, busName: "302" }, { atMs: 1_788_882_278_463, busName: "329" }];
+    expect(jumpsOf(GREEN, pins).map((t) => t.to)).toContain("in 9, 20 min");
+  });
+
+  it("keeps the flag on the SECOND number when only some other bus left a stand", () => {
+    // Red, 2026-09-08 12:47 ET. The card is pinned to #304, whose own number
+    // does not move; the second number drops five minutes on the frame #307
+    // leaves stop 121 after nine frozen fixes. Tempting, and refused: nothing
+    // names the vehicle in slot 1, and across the archive a non-pinned stand
+    // end sits under 32 % of catastrophic secondary drops against 45 % of
+    // ordinary ones — likelier where nothing went wrong.
+    const RED = [
+      frame(1_788_872_351_618, "in 1, 35 min", [{ name: "#304", distM: 414, atStop: 11 }, { name: "#306", distM: 2446, atStop: 72 }, { name: "#307", distM: 3015, atStop: 121 }]),
+      frame(1_788_872_366_913, "in 1, 35 min", [{ name: "#304", distM: 414, atStop: 11 }, { name: "#306", distM: 2546, atStop: null }, { name: "#307", distM: 3015, atStop: 121 }]),
+      frame(1_788_872_382_221, "in 1, 35 min", [{ name: "#304", distM: 414, atStop: 11 }, { name: "#306", distM: 2636, atStop: null }, { name: "#307", distM: 3015, atStop: 121 }]),
+      frame(1_788_872_397_531, "in 1, 35 min", [{ name: "#304", distM: 414, atStop: 11 }, { name: "#306", distM: 2636, atStop: null }, { name: "#307", distM: 3015, atStop: 121 }]),
+      frame(1_788_872_412_854, "in 1, 30 min", [{ name: "#304", distM: 370, atStop: 11 }, { name: "#306", distM: 2676, atStop: 117 }, { name: "#307", distM: 2927, atStop: null }]),
+    ];
+    const pins = [{ atMs: 1_788_872_414_604, busName: "304" }];
+    expect(standEndedFor(RED, 4, "307")).toBe(true);   // #307 really did leave
+    expect(standEndedFor(RED, 4, "304")).toBe(true);   // so did the pinned bus
+    expect(jumpsOf(RED, pins).map((t) => t.to)).toEqual(["in 1, 30 min"]);
+  });
+
+  it("names no vehicle when the nearest pin is too stale to be about this frame", () => {
+    expect(pinnedVehicleAt([{ atMs: 1_000_000, busName: "#40" }], 1_000_000 + 200_000)).toBeNull();
+    expect(pinnedVehicleAt([{ atMs: 1_000_000, busName: "#40" }], 1_000_000 + 1_000)).toBe("40");
+    expect(pinnedVehicleAt([], 1_000_000)).toBeNull();
+  });
+});
+
+describe("a watch that read no countdown", () => {
+  it("blames the scraper when nothing was read and no bus ever arrived", () => {
+    // 2026-09-04 14:47: five frames, zero readable countdowns, no arrival.
+    expect(scraperMissedTheCountdown({ readings: 0, anyPresent: true, arrived: false })).toBe(true);
+  });
+
+  it("does not blame it when the watch ended because the bus reached the stop", () => {
+    // 2026-09-08 19:24 Purple and 19:46 Orange Day: one reading each, 0.4 and
+    // 0.5 min watched, `arrived` set. A successful ride, filed as a defect.
+    expect(scraperMissedTheCountdown({ readings: 1, anyPresent: true, arrived: true })).toBe(false);
+  });
+
+  it("says nothing about a run where the option was never on the plan", () => {
+    expect(scraperMissedTheCountdown({ readings: 0, anyPresent: false, arrived: false })).toBe(false);
   });
 });
