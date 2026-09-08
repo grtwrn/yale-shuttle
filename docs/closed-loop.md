@@ -450,8 +450,9 @@ loop measures ITSELF. Both are legitimate, and the second kind needs harder
 guards, because an estimator that is wrong for a reason will happily have that
 reason fitted into a constant.
 
-The fit is `median(truth / promise)` per route over pairs promising more than a
-minute, shrunk toward 1 by `n / (n + 2000)`, on the replay's **proximity**
+The fit is the factor on the excess above 180 s (`ROUTE_SCALE_FLOOR_SEC`, the
+strand threshold the correction is hinged at) that puts the route's median
+error at zero, bisected, shrunk toward 1 by `n / (n + 2000)`, on the replay's **proximity**
 truth where the pairs carry it (`gps-replay`'s `PAIRS_OUT` now emits it). That
 is a deliberate departure from the scorecard's truth, and `docs/route-bias.md`
 §4 is the argument: the detector's arrival fires 10–75 s before the bus is at
@@ -462,7 +463,7 @@ scores against the detector.
 
 Five guards, and the middle one is the load-bearing one:
 
-- the sample floor (2,000 scored pairs);
+- the sample floor (2,000 pairs promising over 180 s — the ones a factor can move);
 - **the pooled-prior share** — no scale for a route more than 10% of whose lap
   metres are priced from the network's pooled pace. Such a route is not
   biased, it is INCOMPLETE, and its error closes on its own as the collector

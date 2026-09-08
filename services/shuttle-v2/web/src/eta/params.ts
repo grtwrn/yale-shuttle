@@ -25,6 +25,18 @@
  * ETA with no deploy in between.
  */
 
+/**
+ * The correction is applied only to the part of a promise ABOVE this many
+ * seconds. Measured, not chosen: a strand is the bus arriving while the number
+ * still says ≥180 s (docs/rider-sim.md), so a correction that never raises a
+ * number from under 180 to over it cannot introduce one — and the rider
+ * simulator caught the uniform form doing exactly that on Red (1,988 paired
+ * waits, strands 38 → 47, reversals 132 → 151). It is also where the deficit
+ * is: the measured bias inside two minutes is +2 to +20 s on every line and
+ * −80 to −175 s at ten to thirty (docs/route-bias.md §1).
+ */
+export const ROUTE_SCALE_FLOOR_SEC = 180;
+
 /** A published per-route scale must sit here; 1 is "no correction". */
 export const ROUTE_SCALE_RANGE: readonly [number, number] = [0.75, 1.25];
 /** At most this many routes may carry one (the network has fifteen). */
@@ -58,10 +70,15 @@ export interface ModelParams {
    */
   CONFORMAL: Record<ConformalHorizon, number>;
   /**
-   * Per BUS ROUTE ID, a multiplicative correction on the priced arrival:
-   * `eta' = eta * s`, and the band with it. Absent (the default, and every
-   * route not listed) is 1 and is skipped entirely, so a payload with no
-   * `ROUTE_SCALE` prices byte-identically to one that never had the key.
+   * Per BUS ROUTE ID, a correction on the priced arrival, applied to the part
+   * of it above `ROUTE_SCALE_FLOOR_SEC`:
+   *
+   *     eta' = eta + max(0, eta − 180) × (s − 1)
+   *
+   * and low/high through the same hinge, which is monotone, so the band keeps
+   * its order. Absent (the default, and every route not listed) is 1 and is
+   * skipped entirely, so a payload with no `ROUTE_SCALE` prices
+   * byte-identically to one that never had the key.
    *
    * It exists because the ring's LAP is short on the routes whose published
    * stop list flattens an out-and-back: the list omits passes the bus makes,
@@ -224,4 +241,16 @@ export function widenBand(eta: number, low: number, high: number): [number, numb
 export function routeScale(routeId: string | number): number {
   const s = MP.ROUTE_SCALE[String(routeId)];
   return typeof s === "number" && Number.isFinite(s) ? s : 1;
+}
+
+/**
+ * A promised number of seconds with a route's correction applied. Hinged at
+ * `ROUTE_SCALE_FLOOR_SEC`: everything under it is returned unchanged, so the
+ * correction cannot move a number across the strand threshold, and everything
+ * above it is stretched by `s`. Monotone in `sec`, so applying it to `low`,
+ * `eta` and `high` keeps the band's order.
+ */
+export function applyRouteScale(sec: number, s: number): number {
+  if (s === 1) return sec;
+  return sec + Math.max(0, sec - ROUTE_SCALE_FLOOR_SEC) * (s - 1);
 }

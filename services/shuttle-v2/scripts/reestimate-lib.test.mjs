@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMPILED, CONFORMAL_RANGE, DRIFT, GAP_MS, HORIZONS, MIN_COVERAGE_BOUND_PCT, MIN_MEDIAN_BOUND_SEC,
-  N_FLOORS, RANGES, ROUTE_SCALE_MAX_POOLED, ROUTE_SCALE_RANGE, ROUTE_SCALE_SHRINK_K, SCALAR_KEYS,
+  N_FLOORS, RANGES, ROUTE_SCALE_FLOOR_SEC, ROUTE_SCALE_MAX_POOLED, ROUTE_SCALE_RANGE, ROUTE_SCALE_SHRINK_K, SCALAR_KEYS,
   assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
-  estimateVisitRates, fitRouteScales, horizonOf, pooled, promotionDecision, sameParams, scaleEffect,
-  scoreRows, stillRuns, tracksByName, widen, zoneTester,
+  estimateVisitRates, fitRouteScales, hinge, horizonOf, pooled, promotionDecision, sameParams,
+  scaleEffect, scoreRows, stillRuns, tracksByName, widen, zoneTester,
 } from "./reestimate-lib.mjs";
 import {
   PARAM_RANGES, CONFORMAL_RANGE as CLIENT_CONFORMAL_RANGE, COMPILED_MODEL_PARAMS,
-  ROUTE_SCALE_RANGE as CLIENT_ROUTE_SCALE_RANGE,
+  ROUTE_SCALE_RANGE as CLIENT_ROUTE_SCALE_RANGE, ROUTE_SCALE_FLOOR_SEC as CLIENT_FLOOR,
+  applyRouteScale,
 } from "../web/src/eta/params";
 
 // A synthetic feed with the answers known by construction. One degree of
@@ -258,28 +259,38 @@ describe("assembling the candidate", () => {
 });
 
 describe("the per-route scale", () => {
-  // A route whose buses take exactly `f` times as long as the promise: the
-  // fit must recover `f` (before shrinkage) whatever the promises look like.
-  const pairsFor = (r, f, n, etaFrom = 120, etaStep = 7) =>
+  // A route whose buses arrive exactly where the hinge at `f` would put them:
+  // the fit must recover `f` (before shrinkage) whatever the promises look like.
+  const pairsFor = (r, f, n, etaFrom = 300, etaStep = 17) =>
     Array.from({ length: n }, (_, i) => {
       const eta = etaFrom + (i % 40) * etaStep;
-      return { r, k: 1, eta, low: eta * 0.8, high: eta * 1.2, det: eta * f - 12, prox: eta * f };
+      const truth = hinge(eta, f);
+      return { r, k: 1, eta, low: eta * 0.8, high: eta * 1.2, det: truth - 12, prox: truth };
     });
 
-  it("recovers the ratio, on the rider's truth, shrunk toward 1 by sample", () => {
+  it("recovers the hinged factor, on the rider's truth, shrunk toward 1 by sample", () => {
     const n = ROUTE_SCALE_SHRINK_K; // shrinkage of exactly one half
     const fit = fitRouteScales(pairsFor("3", 1.2, n));
-    expect(fit["3"].raw).toBe(1.2);
+    expect(fit["3"].raw).toBeCloseTo(1.2, 2);
     expect(fit["3"].n).toBe(n);
-    expect(fit["3"].value).toBeCloseTo(1.1, 3);
+    expect(fit["3"].value).toBeCloseTo(1.1, 2);
     // 12 s of detector lead is ignored while `prox` is there, and used when it is not.
     const noProx = pairsFor("3", 1.2, n).map(({ prox: _drop, ...p }) => p);
     expect(fitRouteScales(noProx)["3"].raw).toBeLessThan(1.2);
   });
 
-  it("ignores promises under a minute — there the number is the last stand, not the chain", () => {
-    const short = Array.from({ length: 500 }, () => ({ r: "3", eta: 30, prox: 90 }));
+  it("ignores promises under the hinge — no factor can move them", () => {
+    const short = Array.from({ length: 500 }, () => ({ r: "3", eta: ROUTE_SCALE_FLOOR_SEC - 1, prox: 300 }));
     expect(fitRouteScales(short)["3"]).toBeUndefined();
+  });
+
+  it("the fitter's hinge is the client's, and it cannot cross the strand threshold", () => {
+    expect(ROUTE_SCALE_FLOOR_SEC).toBe(CLIENT_FLOOR);
+    for (const sec of [0, 30, 179, 179.9, 180, 181, 600, 1800]) {
+      for (const s of [0.8, 1, 1.25]) expect(hinge(sec, s)).toBeCloseTo(applyRouteScale(sec, s), 9);
+      // whatever the factor, a number under 180 s is not raised over it
+      for (const s of [1.01, 1.25, 3]) expect(hinge(Math.min(sec, 179.9), s)).toBeLessThan(180);
+    }
   });
 
   it("is published only when the sample, the range, the drift bound, the pooled share and the held-out day all agree", () => {
@@ -310,7 +321,7 @@ describe("the per-route scale", () => {
     expect(ROUTE_SCALE_MAX_POOLED).toBeLessThan(0.72);
   });
 
-  it("scores by arithmetic — a scaled pair is exactly eta x s", () => {
+  it("scores by arithmetic — a corrected pair is exactly hinge(eta, s)", () => {
     const pairs = pairsFor("3", 1.2, 100);
     const eff = scaleEffect(pairs, { "3": 1.2 });
     expect(eff["3"].before.medianSignedSec).toBeLessThan(0);

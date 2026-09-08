@@ -468,13 +468,19 @@ median signed error is +2 to +20 s inside two minutes on every line and −80 to
 `web/src/eta/params.ts` gains `ROUTE_SCALE`, a per-route factor served through
 the closed loop's `model_params` path and applied by `arrival.ts` as the last
 step of pricing — after the #119 clamp, so the floor keeps storing the
-unscaled number and a constant factor cannot make the shown remainder climb.
+uncorrected number and the (monotone, time-invariant) correction cannot make
+the shown remainder climb. It is HINGED at 180 s, the strand definition, so it
+never raises a number from under that threshold to over it: the uniform form
+was built first and the rider simulator caught it introducing ten strands on
+Red to fix one (1,988 paired waits, 38 → 47).
 It defaults to `{}`: every route 1, the branch skipped, the priced rows
 byte-identical (proved on 226,052 pairs against `origin/master`, and by
 `params.test.ts` on the synthetic block).
 
-Two things about it are measurements rather than choices. It is a SCALE
-because the additive form, fitted the same way on the same pairs, made the
+Three things about it are measurements rather than choices. It is HINGED
+because of the rider simulator above, and because the measured bias inside two
+minutes is already zero or positive on every line. It is a SCALE because the
+additive form, fitted the same way on the same pairs, made the
 held-out median |error| worse (60.8 s against the champion's 59.2) where the
 scale took it to 54.4. And it is refused on any route more than a tenth of
 whose lap metres are priced from the pooled pace, because **Green's +113 s

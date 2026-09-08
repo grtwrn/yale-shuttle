@@ -67,8 +67,13 @@ export const ROUTE_SCALE_RANGE = [0.75, 1.25];
  * would have been 0.74, and wrong the moment the collector filled it.
  */
 export const ROUTE_SCALE_MAX_POOLED = 0.10;
-/** A ratio below this promise is dominated by the last stand, not the chain. */
-export const ROUTE_SCALE_MIN_ETA_SEC = 60;
+/**
+ * The correction applies only above this promise (web/src/eta/params.ts
+ * ROUTE_SCALE_FLOOR_SEC; reestimate-lib.test.mjs pins the two equal). It is
+ * also the floor the fit counts its sample above, since a pair below it is
+ * unaffected by any factor.
+ */
+export const ROUTE_SCALE_FLOOR_SEC = 180;
 /** Shrinkage toward 1: n / (n + k). */
 export const ROUTE_SCALE_SHRINK_K = 2000;
 
@@ -430,7 +435,25 @@ export function assembleCandidate(fits, conformal, champion, { allowDrift = fals
  * how much of the lap it spans, which is what the hops-ahead decomposition
  * shows and what the additive form fails to reproduce.
  */
-export function fitRouteScales(pairs, { coverage = {}, minEta = ROUTE_SCALE_MIN_ETA_SEC, shrinkK = ROUTE_SCALE_SHRINK_K } = {}) {
+/**
+ * The per-route correction, fitted on the champion's own replayed pairs.
+ *
+ * `s_r` is the factor on the part of a promise ABOVE `ROUTE_SCALE_FLOOR_SEC`
+ * that puts the route's median error at zero. The truth is the PROXIMITY one
+ * (the first moment the bus's own track comes within 45 m of the stop) where
+ * the pairs carry it, because that is the instant a rider at the kerb calls
+ * arrival; the detector's "nearest stop changed" event fires 10-75 s earlier,
+ * route by route, and fitting to it would correct the estimator for the
+ * definition of arrival rather than for anything it did (docs/route-bias.md).
+ *
+ * A factor and not an offset: the shortfall is proportional to how much of the
+ * lap a promise spans, which is what the hops-ahead decomposition shows and
+ * what the additive form fails to reproduce. Hinged rather than uniform: the
+ * measured bias inside two minutes is already zero or positive, and the rider
+ * simulator caught the uniform form pushing numbers across the 180 s strand
+ * threshold.
+ */
+export function fitRouteScales(pairs, { coverage = {}, floorSec = ROUTE_SCALE_FLOOR_SEC, shrinkK = ROUTE_SCALE_SHRINK_K } = {}) {
   const byRoute = new Map();
   for (const p of pairs) {
     // `prox` ABSENT means the file predates the field and the detector is all
@@ -439,17 +462,26 @@ export function fitRouteScales(pairs, { coverage = {}, minEta = ROUTE_SCALE_MIN_
     // those alone would tilt the fit by the very gap this corrects for.
     const truth = p.prox === undefined ? p.det : p.prox;
     if (truth === null || truth === undefined) continue;
-    if (!(p.eta > minEta) || !(truth > 0)) continue;
+    if (!(p.eta > floorSec) || !(truth > 0)) continue;
     const r = String(p.r);
     let a = byRoute.get(r);
     if (!a) byRoute.set(r, (a = []));
-    a.push(truth / p.eta);
+    a.push([p.eta, truth]);
   }
   const out = {};
-  for (const [r, ratios] of byRoute) {
-    ratios.sort((a, b) => a - b);
-    const raw = ratios[Math.floor(ratios.length / 2)];
-    const n = ratios.length;
+  for (const [r, rows] of byRoute) {
+    const n = rows.length;
+    // Bisect the factor that puts the route's MEDIAN hinged error at zero.
+    // There is no closed form once the correction is hinged, and the median
+    // is what a per-route bias means; the objective is monotone in s, so 40
+    // halvings of [0.5, 3] settle it to 1e-11.
+    let lo = 0.5, hi = 3;
+    for (let it = 0; it < 40; it++) {
+      const g = (lo + hi) / 2;
+      const errs = rows.map(([eta, truth]) => hinge(eta, g, floorSec) - truth).sort((a, b) => a - b);
+      if (errs[Math.floor(errs.length / 2)] < 0) lo = g; else hi = g;
+    }
+    const raw = (lo + hi) / 2;
     const shrunk = 1 + (raw - 1) * (n / (n + shrinkK));
     out[r] = {
       value: Math.round(shrunk * 1000) / 1000,
@@ -461,13 +493,19 @@ export function fitRouteScales(pairs, { coverage = {}, minEta = ROUTE_SCALE_MIN_
   return out;
 }
 
+/** The shipped hinge (web/src/eta/params.ts `applyRouteScale`). */
+export function hinge(sec, s, floorSec = ROUTE_SCALE_FLOOR_SEC) {
+  if (s === 1) return sec;
+  return sec + Math.max(0, sec - floorSec) * (s - 1);
+}
+
 /**
  * What a set of scales does to a held-out day, per route, by arithmetic.
  *
  * The correction is the LAST step of pricing and feeds nothing back — not the
- * belief, not the #119 floor, which stores the unscaled number — so a scaled
- * pair is exactly `eta * s` and a held-out check needs no second replay. The
- * challenger replay still runs, and `routeScaleFidelity` below is what says
+ * belief, not the #119 floor, which stores the uncorrected number — so a
+ * corrected pair is exactly `hinge(eta, s)` and a held-out check needs no
+ * second replay. The challenger replay still runs, and it is the check that
  * the arithmetic and the client agree.
  */
 export function scaleEffect(pairs, scales) {
@@ -479,7 +517,7 @@ export function scaleEffect(pairs, scales) {
     let c = cells.get(r);
     if (!c) cells.set(r, (c = { before: [], after: [] }));
     c.before.push(p.eta - truth);
-    c.after.push(p.eta * (scales[r] ?? 1) - truth);
+    c.after.push(hinge(p.eta, scales[r] ?? 1) - truth);
   }
   const out = {};
   for (const [r, c] of cells) {

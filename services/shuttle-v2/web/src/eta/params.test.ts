@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  applyModelParams, COMPILED_MODEL_PARAMS, CONFORMAL_HORIZONS, MP, PARAM_RANGES, parseModelParams,
-  resetModelParams, ROUTE_SCALE_RANGE, routeScale, SCALAR_PARAM_KEYS, widenBand, activeModelParams,
+  applyModelParams, applyRouteScale, COMPILED_MODEL_PARAMS, CONFORMAL_HORIZONS, MP, PARAM_RANGES,
+  parseModelParams, resetModelParams, ROUTE_SCALE_FLOOR_SEC, ROUTE_SCALE_RANGE, routeScale,
+  SCALAR_PARAM_KEYS, widenBand, activeModelParams,
 } from "./params";
 import {
   HOLD_ENTER_PER_S, HOLD_LEAVE_PER_S, P_DEPART_ON_FRESH, P_REPEAT_MOVE, P_REPEAT_MOVE_ZONE, P_REPEAT_STAND,
@@ -176,18 +177,39 @@ describe("the per-route scale", () => {
     expect(pricedOn("3")).toEqual(base);
   });
 
-  it("multiplies the number and the band of ITS route only, exactly", () => {
+  it("stretches the number and the band of ITS route only, through the hinge", () => {
     const base3 = pricedOn("3");
     const base8 = pricedOn("8");
     applyModelParams({ version: "s1", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL }, ROUTE_SCALE: { "3": 1.1 } } });
     expect(routeScale(3)).toBe(1.1);
     expect(routeScale("8")).toBe(1);
     const got3 = pricedOn("3");
+    let moved = 0;
     for (let i = 0; i < base3.length; i++) {
       expect(got3[i]![0]).toBe(base3[i]![0]);
-      for (const j of [1, 2, 3] as const) expect(got3[i]![j]).toBeCloseTo(base3[i]![j]! * 1.1, 9);
+      for (const j of [1, 2, 3] as const) {
+        expect(got3[i]![j]).toBeCloseTo(applyRouteScale(base3[i]![j]!, 1.1), 9);
+        if (got3[i]![j] !== base3[i]![j]) moved++;
+      }
     }
+    expect(moved).toBeGreaterThan(0);
     expect(pricedOn("8")).toEqual(base8);
+  });
+
+  it("the hinge is a no-op under the strand threshold and monotone through it", () => {
+    expect(ROUTE_SCALE_FLOOR_SEC).toBe(180);
+    expect(applyRouteScale(0, 1.2)).toBe(0);
+    expect(applyRouteScale(179.9, 3)).toBe(179.9);
+    expect(applyRouteScale(180, 1.2)).toBe(180);
+    expect(applyRouteScale(280, 1.2)).toBeCloseTo(300, 9);
+    expect(applyRouteScale(280, 0.8)).toBeCloseTo(260, 9);
+    expect(applyRouteScale(600, 1)).toBe(600);
+    // A number under the threshold is never raised over it, at any factor —
+    // which is what makes the correction unable to introduce a strand.
+    for (const s of [1.01, 1.25, 3]) expect(applyRouteScale(179.99, s)).toBeLessThan(180);
+    // Monotone, so low <= eta <= high survives.
+    let prev = -1;
+    for (let sec = 0; sec < 2000; sec += 7) { const v = applyRouteScale(sec, 1.2); expect(v).toBeGreaterThan(prev); prev = v; }
   });
 
   it("rejects the whole set for a scale out of range or a key that is not a route id", () => {

@@ -294,48 +294,79 @@ against per-route's ±6 on every line. **The per-route part is worth ~0.8 s of
 pooled median error and ~±14 s of per-route calibration**, which is precisely
 the claim `docs/display-quantile-sweep.md` §9 made and could not test.
 
-### `ROUTE_SCALE`, through the closed loop
+### Hinged at 180 s — because the rider simulator caught the uniform form
 
-`web/src/eta/params.ts` grows one key, `ROUTE_SCALE: Record<busRouteId,
-number>`, and `arrival.ts` applies it as the **last** step of pricing:
+The first build multiplied the whole number, and the aggregate liked it. The
+rider simulator did not. Two arms over the 9/3 capture, identical in
+everything but the published set (2,169 riders, `ROUTES=Red POP=uniform`),
+paired wait for wait — **1,988 paired waits**:
+
+| Red, 9/3, paired | champion | × 1.055 uniform | fixed | **introduced** |
+|---|---|---|---|---|
+| **strand** (the bus arrives while the number says ≥180 s) | 38 | **47** | 1 | **10** |
+| jump ≥180 s | 93 | 100 | 4 | 11 |
+| reversal ≥60 s | 132 | 151 | 19 | 38 |
+| dropped while approaching | 18 | 22 | 0 | 4 |
+| first-promise \|miss\| | — | — | improved 295 | worsened 533 |
+
+That is `docs/display-quantile-sweep.md` §6 happening again, and for the same
+mechanical reason: **multiplying a number that is already right pushes it over
+the strand threshold.** 238 of Red's 9/4 pairs promised under 180 s and would
+have been raised over it by a factor of 1.055 (Pink 415, Orange Night 391) —
+and §1 says the near-term number needs no correction at all, being +2 to +20 s
+biased *late* inside two minutes on every line.
+
+So the correction is **hinged**:
 
 ```
-eta *= s; low *= s; high *= s;      // then widenBand, as before
+eta'  = eta + max(0, eta − 180) × (s − 1)      // and low, high, through the same hinge
 ```
 
-after the #119 floor clamp, so the floor stores the unscaled number and a
-constant factor preserves "the shown remainder never climbs". It defaults to
-`{}` — every route 1, and the branch skipped entirely — so a payload with no
-`ROUTE_SCALE` prices exactly as master does (§6). It is **optional on the
-wire** on both sides, so the set published on 2026-09-07 keeps applying.
+`ROUTE_SCALE_FLOOR_SEC = 180` is the strand definition itself, so **a hinged
+correction cannot introduce a strand**: it never raises a number from under
+180 s to over it, at any factor, which is a property and not a measurement
+(`params.test.ts` and `reestimate-lib.test.mjs` both pin it). The hinge is
+monotone, so `low ≤ eta ≤ high` survives it, and it is where the deficit
+actually is.
 
-Because it is the last step and feeds nothing back, a scaled pair is exactly
-`eta × s`: the fit's held-out check needs no second replay, and the challenger
-replay is a *check on that identity* rather than the way the number is
-obtained. Measured on 9/4: **0 of 226,052 pairs differ from `eta × s`, max
-|Δ| 0.00 s.**
+`arrival.ts` applies it as the **last** step of pricing, after the #119 floor
+clamp: the hinge is monotone and time-invariant, so it preserves "the shown
+remainder never climbs", and the floor then stores the uncorrected number — a
+published set can change between two polls without the floor meaning something
+else. It defaults to `{}` — every route 1, the branch skipped entirely — so a
+payload with no `ROUTE_SCALE` prices exactly as master does (§6), and the key
+is **optional on the wire** on both sides, so the set published on 2026-09-07
+keeps applying.
+
+Because it is the last step and feeds nothing back, a corrected pair is
+exactly `hinge(eta, s)`: the fit's held-out check needs no second replay, and
+the challenger replay is a *check on that identity* rather than the way the
+number is obtained. Measured on 9/4: **0 of 226,052 pairs differ from
+`hinge(eta, s)`, max |Δ| 0.00 s.**
 
 `scripts/reestimate-lib.mjs` fits it, on the champion's own replayed pairs from
-the archive, as `median(truth / promise)` over pairs promising more than a
-minute, shrunk toward 1 by `n / (n + 2000)`. Five guards; three of them fired
+the archive, as the factor on the excess above 180 s that puts the route's
+**median error at zero** — bisected, since the hinge has no closed form —
+counted over the pairs the hinge can move, and shrunk toward 1 by
+`n / (n + 2000)`. Five guards; three of them fired
 on the real fit, and the sample-floor and held-out ones are what the two
 cross-validation directions in §8 turn on:
 
 | guard | value | what it caught on the 9/3 fit |
 |---|---|---|
-| sample floor | 2,000 scored pairs | Blue Weekend (17 pairs — it does not run on a Thursday) |
+| sample floor | 2,000 pairs promising over 180 s | Blue Weekend (4 pairs — it does not run on a Thursday) |
 | **pooled-prior share** | >10% of the lap's road metres priced from the pooled pace | **Green (73%)**, Purple (38%), Brown (23%), Orange East (21%) |
 | range | outside [0.75, 1.25] | — (nothing fitted outside it) |
-| drift | more than ±0.20 from 1 without `--allow-drift` | — (the largest fit was 1.075) |
-| held-out day | the route's own median \|err\| must not get worse | Blue Day (35.3 → 36.5 s) |
+| drift | more than ±0.20 from 1 without `--allow-drift` | — (the largest fit was 1.115) |
+| held-out day | the route's own median \|err\| must not get worse | Blue Day (35.3 → 36.2 s) |
 
 The pooled-prior guard is the one §2 pays for. It is not a taste: a route whose
 lap is largely priced from the network's pooled pace is not biased, it is
 **incomplete**, and its error closes on its own as the collector fills the
 hops. On the 9/3 fit it refused four routes; of those, the held-out day says
-Green's scale would have been a disaster (71.1 → 118.2 s), Brown's would have
-hurt (79.3 → 87.6), Purple's was a no-op, and Orange East's would have helped
-by 3.8 s. Refusing a real gain on one line is the price of never publishing a
+Green's scale would have been a disaster (71.1 → 124.0 s), Brown's would have
+hurt (79.3 → 90.9), Purple's would have hurt slightly, and Orange East's would
+have helped by 4.7 s. Refusing a real gain on one line is the price of never publishing a
 correction for a hole, and after §2 that is a price worth paying.
 
 ## 6. The gates
@@ -359,38 +390,38 @@ and an empty `ROUTE_SCALE` leaves the rows untouched.
 
 Scales fitted on **9/3** (the whole archived day, 606,236 pairs) and scored on
 **9/4** (205,061 pairs with a proximity truth), which the fit never saw.
-Published set: `{"2":1.007,"3":1.055,"8":1.075,"13":1.03,"14":1.057,
-"15":1.076,"16":1.033}`.
+Published set: `{"2":1.039,"3":1.098,"8":1.106,"13":1.041,"14":1.115,
+"15":1.113,"16":1.07}`.
 
 | route | n | s | median \|err\| | p90 | **median bias** | pess ≥120 s | opt ≥120 s | within 120 s | 10–90 covers |
 |---|---|---|---|---|---|---|---|---|---|
 | Blue Day | 12,274 | — | 35.3 → 35.3 | 158 → 158 | +6.2 → +6.2 | 7.8 → 7.8 | 6.3 → 6.3 | 85.9 → 85.9 | 81.4 → 81.4 |
-| Orange Day | 13,982 | 1.007 | 28.1 → 28.0 | 110 → 109 | +3.8 → +4.7 | 5.0 → 5.1 | 3.6 → 3.4 | 91.5 → 91.5 | 83.7 → 83.6 |
-| Red | 20,972 | 1.055 | 47.6 → **45.7** | 255 → **241** | −19.7 → **−6.7** | 4.8 → 6.0 | 19.0 → **16.0** | 76.3 → **78.0** | 76.4 → **79.1** |
-| Pink | 19,061 | 1.075 | 106.1 → **97.5** | 455 → **418** | −54.9 → **−23.6** | 9.4 → 13.7 | 36.4 → **28.5** | 54.2 → **57.8** | 68.0 → **69.9** |
+| Orange Day | 13,982 | 1.039 | 28.1 → **27.9** | 110 → **105** | +3.8 → +5.1 | 5.0 → 5.4 | 3.6 → **2.9** | 91.5 → **91.7** | 83.7 → 83.9 |
+| Red | 20,972 | 1.098 | 47.6 → **45.9** | 255 → **244** | −19.7 → **−10.3** | 4.8 → 6.2 | 19.0 → **15.8** | 76.3 → **78.0** | 76.4 → **79.9** |
+| Pink | 19,061 | 1.106 | 106.1 → **98.3** | 455 → **415** | −54.9 → **−27.9** | 9.4 → 13.8 | 36.4 → **28.9** | 54.2 → **57.3** | 68.0 → **70.6** |
 | Green | 22,611 | — | 71.1 → 71.1 | 509 → 509 | −6.2 → −6.2 | 11.9 → 11.9 | 24.9 → 24.9 | 63.2 → 63.2 | 76.1 → 76.1 |
 | Purple | 27,102 | — | 102.9 → 102.9 | 664 → 664 | −0.4 → −0.4 | 25.3 → 25.3 | 22.0 → 22.0 | 52.7 → 52.7 | 76.2 → 76.2 |
-| Blue Night | 22,973 | 1.03 | 70.8 → **67.2** | 225 → 225 | −20.5 → **−11.9** | 13.1 → 14.8 | 18.8 → **15.4** | 68.1 → **69.8** | 78.8 → **81.4** |
-| Orange Night | 28,068 | 1.057 | 39.4 → **36.7** | 129 → **119** | −18.9 → **−7.6** | 3.0 → 4.2 | 9.1 → **5.6** | 87.9 → **90.2** | 83.4 → **86.6** |
-| Gold | 6,018 | 1.076 | 55.4 → **51.6** | 220 → 234 | −27.9 → **+1.3** | 7.4 → 12.7 | 20.9 → **12.6** | 71.7 → **74.7** | 79.8 → **81.1** |
-| Blue West | 12,037 | 1.033 | 47.5 → **46.5** | 196 → **175** | −16.5 → **−0.4** | 4.5 → 5.9 | 16.6 → **11.4** | 78.9 → **82.7** | 91.6 → 91.3 |
+| Blue Night | 22,973 | 1.041 | 70.8 → **68.2** | 225 → 224 | −20.5 → **−14.4** | 13.1 → 14.7 | 18.8 → **15.7** | 68.1 → **69.7** | 78.8 → **81.7** |
+| Orange Night | 28,068 | 1.115 | 39.4 → **37.0** | 129 → **121** | −18.9 → **−11.0** | 3.0 → 4.6 | 9.1 → **5.5** | 87.9 → **89.8** | 83.4 → **86.9** |
+| Gold | 6,018 | 1.113 | 55.4 → **50.0** | 220 → 240 | −27.9 → **−1.2** | 7.4 → 13.9 | 20.9 → **12.3** | 71.7 → **73.9** | 79.8 → **80.7** |
+| Blue West | 12,037 | 1.07 | 47.5 → **43.5** | 196 → **161** | −16.5 → **+3.6** | 4.5 → 6.5 | 16.6 → **8.4** | 78.9 → **85.1** | 91.6 → **92.0** |
 | Orange East | 11,656 | — | 48.1 → 48.1 | 193 → 193 | −19.9 → −19.9 | 3.5 → 3.5 | 16.5 → 16.5 | 80.0 → 80.0 | 89.9 → 89.9 |
 | Brown | 8,307 | — | 79.3 → 79.3 | 517 → 517 | −28.0 → −28.0 | 12.7 → 12.7 | 27.4 → 27.4 | 60.0 → 60.0 | 79.4 → 79.4 |
-| **pooled** | 205,061 | | **55.5 → 53.7** | **343 → 333** | **−13.6 → −5.9** | **9.9 → 11.0** | **18.6 → 16.1** | **71.5 → 72.9** | **79.5 → 80.7** |
+| **pooled** | 205,061 | | **55.5 → 53.4** | **343 → 333** | **−13.6 → −7.1** | **9.9 → 11.2** | **18.6 → 15.9** | **71.5 → 72.9** | **79.5 → 80.9** |
 
 (The pooled row is on the Green-hops patch of §2, which is why it reads 55.5 s
 where §1's table, on the 9/4-as-it-was tables, reads 59.5.)
 
-**Every route it touches improves on median |error|, on the bias and on the
-optimistic tail; five of seven improve p90; six of seven improve interval
-coverage. The pessimistic tail rises — 9.9 → 11.0 points pooled, and 9.4 →
-13.7 on Pink.** That is not a free trade and it should not be presented as
-one: removing an optimistic bias necessarily moves some mass across the
-promise. What it buys per point given up is better than the display quantile's:
-τ 0.50 → 0.55 buys 1.3 points off the optimistic tail per point onto the
-pessimistic one and 1.6 s of median (`docs/display-quantile-sweep.md` §2); this
-buys 2.3 points and 1.8 s, and unlike τ it leaves nine routes exactly as they
-were.
+**Every route it touches improves on median |error| and on the optimistic
+tail; six of seven improve p90 or leave it; seven of seven improve the bias
+toward zero; six of seven improve interval coverage. The pessimistic tail
+rises — 9.9 → 11.2 points pooled, and 9.4 → 13.8 on Pink.** That is not a free
+trade and should not be presented as one: removing an optimistic bias
+necessarily moves some mass across the promise. What it buys per point given
+up is better than the display quantile's: τ 0.50 → 0.55 buys 1.3 points off the
+optimistic tail per point onto the pessimistic one and 1.6 s of median
+(`docs/display-quantile-sweep.md` §2); this buys 2.1 points and 2.1 s, and it
+leaves five of twelve routes exactly as they were.
 
 ## 7. Reproducing
 
@@ -430,6 +461,10 @@ estimator asks for materially larger factors and over-corrects:
 | Orange Night | 1.057 | **1.094** | 44.4 → 50.0 | −10.8 → +5.6 |
 | Gold | 1.076 | 1.053 | 87.9 → 85.0 | −27.4 → −8.6 |
 | Blue West | 1.033 | 1.033 | 78.4 → 76.1 | −10.4 → +1.4 |
+
+(measured on the UNIFORM form, before the hinge; the direction is the finding
+and the hinge does not change it — a factor fitted on an evening is a factor
+fitted on the wrong population either way)
 
 **The per-route held-out guard refuses all four of the overshooting ones**,
 which is the guard working exactly as specified — but the finding underneath
