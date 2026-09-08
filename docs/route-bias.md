@@ -317,15 +317,16 @@ obtained. Measured on 9/4: **0 of 226,052 pairs differ from `eta × s`, max
 
 `scripts/reestimate-lib.mjs` fits it, on the champion's own replayed pairs from
 the archive, as `median(truth / promise)` over pairs promising more than a
-minute, shrunk toward 1 by `n / (n + 2000)`. Five guards, and every one of them
-fired on the real fit:
+minute, shrunk toward 1 by `n / (n + 2000)`. Five guards; three of them fired
+on the real fit, and the sample-floor and held-out ones are what the two
+cross-validation directions in §8 turn on:
 
 | guard | value | what it caught on the 9/3 fit |
 |---|---|---|
 | sample floor | 2,000 scored pairs | Blue Weekend (17 pairs — it does not run on a Thursday) |
 | **pooled-prior share** | >10% of the lap's road metres priced from the pooled pace | **Green (73%)**, Purple (38%), Brown (23%), Orange East (21%) |
-| range | outside [0.75, 1.25] | — |
-| drift | more than ±0.20 from 1 without `--allow-drift` | — |
+| range | outside [0.75, 1.25] | — (nothing fitted outside it) |
+| drift | more than ±0.20 from 1 without `--allow-drift` | — (the largest fit was 1.075) |
 | held-out day | the route's own median \|err\| must not get worse | Blue Day (35.3 → 36.5 s) |
 
 The pooled-prior guard is the one §2 pays for. It is not a taste: a route whose
