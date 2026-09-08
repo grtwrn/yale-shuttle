@@ -15,6 +15,7 @@
  *   cd services/shuttle-v2 && TZ=America/New_York npx tsx <this file>
  */
 import fs from "node:fs";
+import path from "node:path";
 
 import {
   OUT_DIR,
@@ -40,6 +41,8 @@ import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { anchorKeyFor } from "../../web/src/liveAnchor";
+import { ringForBus } from "../../web/src/eta/index";
 // The retired legacy arithmetic, kept as the replay's own copy: the `chord`
 // replica below is that estimator — the stateless anchor, the stall credit
 // and its bounds, chord proration — run as a counterfactual baseline against
@@ -558,7 +561,7 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
@@ -594,6 +597,19 @@ for (const o of observations) {
     .filter((a) => a.routeLabel === cfg.label);
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
+  // The CLIENT's own anchor after this poll: the belief's lead leg, which is
+  // what actually prices the row (`findRouteAnchor`, above, only picks the
+  // targets). docs/eta-ring-posterior.md asks anyone re-measuring the anchor
+  // to record it; the decomposition in docs/route-bias.md is that reading.
+  // Compared by STOP ID, not by index: Green's ring is built on the repaired
+  // order (alignStops.ts), so its leg indices are not the published list's.
+  const leadLeg = clientStore.get(anchorKeyFor(cfg.label, o.bus.bus_name))?.belief?.lead ?? -1;
+  const ringStops = ringForBus(o.bus, stops, net.stopCoords)?.stops;
+  const leadSid = leadLeg >= 0 && ringStops ? (ringStops[leadLeg] ?? -1) : -1;
+  // The same +-1 rule `agree` uses: the detector's nearest stop is the leg's
+  // start (the bus has passed it) or its end (the bus is closing on it).
+  const leadNextSid = leadLeg >= 0 && ringStops ? (ringStops[(leadLeg + 1) % ringStops.length] ?? -1) : -1;
+  const detSid = o.detIdx >= 0 ? (stops[o.detIdx] ?? -1) : -1;
   const routeSegs = payload.segmentTimes[cfg.routeIds[0]!] ?? {};
   const etas: Record<Proration, number[]> = {} as any;
   for (const m of MODES) {
@@ -645,6 +661,9 @@ for (const o of observations) {
       routeId: o.routeId,
       dwellBin,
       agree: o.detIdx >= 0 && ((busIdx - o.detIdx + stops.length) % stops.length === 0 || (o.detIdx - busIdx + stops.length) % stops.length === 1),
+      leadAgree: leadSid < 0 || detSid < 0 ? null : leadSid === detSid || leadNextSid === detSid,
+      sid,
+      t: o.t,
       eta: Object.fromEntries(MODES.map((m) => [m, etas[m][k - 1]!])) as Record<Proration, number>,
       det: det === null ? null : (det - o.t) / 1000,
       prox: prox === null ? null : (prox - o.t) / 1000,
@@ -701,8 +720,17 @@ if (process.env.PAIRS_OUT) {
       low: Math.round(p.realLow * 10) / 10,
       high: Math.round(p.realHigh * 10) / 10,
       det: p.det === null ? null : Math.round(p.det * 10) / 10,
+      // Everything below is for the DECOMPOSITION (docs/route-bias.md): the
+      // rider's truth, which stop and when, whether the client's own lead leg
+      // agreed with the detector, and the dwell bin. `reestimate-lib.mjs`
+      // reads the six keys above and ignores these, so the promotion
+      // comparison is unaffected.
+      prox: p.prox === null ? null : Math.round(p.prox * 10) / 10,
+      sid: p.sid, t: p.t, dwell: p.dwellBin,
+      agree: p.agree, leadAgree: p.leadAgree,
     }));
   }
+  fs.mkdirSync(path.dirname(process.env.PAIRS_OUT), { recursive: true });
   fs.writeFileSync(process.env.PAIRS_OUT, out.join("\n") + (out.length ? "\n" : ""));
   log(`wrote ${process.env.PAIRS_OUT} (${out.length} pairs)`);
 }
