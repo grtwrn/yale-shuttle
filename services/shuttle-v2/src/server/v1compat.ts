@@ -175,6 +175,14 @@ export function buildBusesPayload(
     ...(b.stationarySince != null
       ? { stationary_since: new Date(b.stationarySince).toISOString().replace(/Z$/, "") }
       : {}),
+    // When the fix last CHANGED. The two clocks above are pinned to a stop, so
+    // both keep running while a bus drives through that stop's zone — which is
+    // how a client with one frame and no history came to price a bus that had
+    // already gone as arriving "now" (Red #307, Division / Prospect,
+    // 2026-09-08). Same naive-UTC spelling; the client appends the "Z".
+    ...(b.lastMovedAt != null
+      ? { last_moved_at: new Date(b.lastMovedAt).toISOString().replace(/Z$/, "") }
+      : {}),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".

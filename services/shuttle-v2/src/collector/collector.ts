@@ -1123,6 +1123,12 @@ export class Collector {
         // BusPosition.stationarySince).
         stationarySince: state ? state.stationarySince : null,
         stationaryStopId: state ? state.stationaryStopId : null,
+        // When the fix last changed. The clock above says how long the WAIT
+        // has been going on and is pinned to a stop so a shuffle cannot
+        // restart it; that pinning makes it run straight through a bus that is
+        // only driving past. This one answers "is it moving", which is what a
+        // client holding a single frame has no other way to know.
+        lastMovedAt: state ? state.lastMovedAt : null,
         collectedAt: o.collectedAt,
       });
     }

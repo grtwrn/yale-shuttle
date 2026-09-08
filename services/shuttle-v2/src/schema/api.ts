@@ -77,6 +77,15 @@ export const BusPositionSchema = z.object({
   stationarySince: EpochMsSchema.nullable().optional(),
   /** The stop the stationary clock is pinned to, or null when resting off-marker. */
   stationaryStopId: z.number().int().nullable().optional(),
+  /**
+   * When the bus's reported fix last changed (detector.ts `MOVED_M`).
+   *
+   * `stationarySince` is pinned to a stop and therefore keeps running while a
+   * bus drives through that stop's zone; this one is pinned to nothing, so it
+   * is the only thing in the payload that says whether the bus is moving right
+   * now. A client seeing its first frame has no history to infer it from.
+   */
+  lastMovedAt: EpochMsSchema.nullable().optional(),
   collectedAt: EpochMsSchema,
 });
 export type BusPosition = z.infer<typeof BusPositionSchema>;

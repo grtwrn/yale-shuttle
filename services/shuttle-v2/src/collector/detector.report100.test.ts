@@ -183,6 +183,7 @@ describe("report #100: the Blue #44 layover at 333 Cedar, replayed from producti
       nearestIndex: 30,
       enteredAt: at(RESTART) - 5_000,
       lastObservedAt: at(RESTART) - 5_000,
+      lastMovedAt: at(RESTART) - 5_000,
       lat: prospectTrumbull.lat,
       lon: prospectTrumbull.lon,
       stationarySince: at(RESTART) - 5_000,

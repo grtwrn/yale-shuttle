@@ -51,6 +51,18 @@ export interface BusData {
    * older than 2026-09-04. See `APPROACH_ZONE_M` in hopPricing.ts.
    */
   stationary_since?: string;
+  /**
+   * When the bus's fix last changed — naive UTC, same spelling as the two
+   * clocks above. Absent from a server older than 2026-09-08.
+   *
+   * Those two are pinned to a stop — the collector anchors them the moment a
+   * bus comes within 75 m and carries them until it is 125 m away — so both
+   * keep running while a bus drives straight THROUGH a stop's zone. This is the
+   * only field that says whether the bus is moving right now, and it is what
+   * stops a first render pricing a bus that has already gone as arriving
+   * "now". See `stillSec()` in eta/filter.ts.
+   */
+  last_moved_at?: string;
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────

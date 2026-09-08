@@ -204,13 +204,91 @@ export interface FilterBus {
   last_stop_id?: number | null | undefined;
   at_stop_since?: string | null | undefined;
   stationary_since?: string | null | undefined;
+  /** When the fix last changed (v1compat `last_moved_at`). See {@link stillSec}. */
+  last_moved_at?: string | null | undefined;
 }
 
-function serverClockMs(bus: FilterBus): number | null {
-  const s = bus.stationary_since ?? bus.at_stop_since;
+function naiveUtcMs(s: string | null | undefined): number | null {
   if (!s) return null;
   const t = new Date(s.endsWith("Z") ? s : s + "Z").getTime();
   return Number.isFinite(t) ? t : null;
+}
+
+function serverClockMs(bus: FilterBus): number | null {
+  return naiveUtcMs(bus.stationary_since ?? bus.at_stop_since);
+}
+
+/**
+ * How long the bus's fix has been unchanged, or Infinity when the payload does
+ * not say.
+ *
+ * Both of the clocks `serverClockMs` reads are pinned to a stop: the collector
+ * anchors them the moment a bus comes within 75 m and carries them until it is
+ * 125 m away, so they keep running while a bus drives straight THROUGH a
+ * stop's zone (detector.ts `stationaryFields`, and `at_stop_since` is the same
+ * clock behind a gate a drive-through also passes). They answer "how long has
+ * this wait been going on", which is the right question for pricing the
+ * remainder of a stand and the wrong one for "is the bus still here".
+ *
+ * `last_moved_at` is the collector's answer to the second question. A payload
+ * that does not carry it — an older server, a fixture, a replay — says nothing
+ * either way, and then the served clock decides alone, exactly as before.
+ */
+/**
+ * How far from a stop's marker a bus can be and still be standing AT it.
+ *
+ * Read off where buses actually come to rest, not chosen: over the 23,226
+ * polls of 2026-09-08 on which a bus was demonstrably at rest inside a stop's
+ * zone, its distance to that stop's coordinate was 22 m at the median, 39 m at
+ * p75 and 55 m at p90. Buses pull up past the sign, so the marker is not where
+ * they stand.
+ *
+ * Inside this radius the belief is left alone: a bus here is close enough that
+ * "now" is true whether it is pulling in, pulling out, or crawling through, and
+ * refusing the stand would only trade one wrong answer for another — the moving
+ * half of a cold belief sits on the leg OUT of the stop, so a bus refused its
+ * stand reads as a LAP away, not as "about to arrive".
+ */
+export const STOOD_HERE_M = 55;
+
+function stillSec(bus: FilterBus, now: number): number {
+  const t = naiveUtcMs(bus.last_moved_at);
+  return t === null ? Infinity : (now - t) / 1000;
+}
+
+/**
+ * Is the bus in the act of LEAVING the stop the feed says it last served?
+ *
+ * This is the whole of the correction, and it is deliberately narrow. Refusing
+ * to believe the served clock whenever the bus is moving also catches a bus
+ * that has merely SHUFFLED where it stands, or has just pulled in and not yet
+ * held still for `STANDING_MIN_S` — and getting those wrong is not cheap. The
+ * moving half of a cold belief sits on the leg OUT of the nearest stop, so a
+ * bus refused its stand does not read as "about to arrive", it reads as a lap
+ * away: on the 2026-09-08 cold-start replay, 95% of the frames a blanket rule
+ * newly withheld showed the bus at the kerb as more than ten minutes off.
+ *
+ * A departure has a second witness, and it is the one the feed gives for free:
+ * `last_stop_id` has already advanced to this stop. So both must hold — the
+ * fix is moving, and upstream says the stop is behind the bus — and then the
+ * bus is inside the zone of a stop it has served and is not standing at it.
+ *
+ * A bus at rest passes `stillSec` and is untouched whatever `last_stop_id`
+ * says; a bus still approaching has the PREVIOUS stop in `last_stop_id` and is
+ * untouched too. And a bus close enough to the marker to BE at it
+ * ({@link STOOD_HERE_M}) is untouched whatever it is doing, because there
+ * "now" is not a lie whether it is pulling in, pulling out or crawling through.
+ */
+function leavingLastStop(bus: FilterBus, ring: Ring, stops: readonly number[], now: number): boolean {
+  if (stillSec(bus, now) >= STANDING_MIN_S) return false;
+  const lsid = bus.last_stop_id ?? null;
+  if (lsid === null) return false;
+  for (let i = 0; i < ring.N; i++) {
+    if (stops[i] !== lsid) continue;
+    const d = haversineMeters(stopPoint(ring, i), bus);
+    if (d > STOOD_HERE_M && d <= NEAR_STOP_M) return true;
+  }
+  return false;
 }
 
 /** Seconds the bus has been standing, on the clock the stand tables were measured with. */
@@ -340,7 +418,22 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   const d = distancesTo(ring, bus);
   const since = serverClockMs(bus);
   const age = since === null ? 0 : (now - since) / 1000;
-  const standing = since !== null && age >= STANDING_MIN_S;
+  // A warm belief decides this from its own fixes — it watches the bus and
+  // sees it move — and it gets it right: on the incident below, a tracked
+  // belief dropped #307 to next-lap on the very poll it pulled out. A COLD
+  // belief has one frame and no history, so it believed the served clock, and
+  // the served clock is pinned to a stop and runs on through a drive-past.
+  //
+  // Red #307, Division / Prospect, 2026-09-08 10:35:15 ET: `stationary_since`
+  // 20 s old, `at_stop_id` 48, and the bus 67 m beyond the stop doing 6.6 m/s,
+  // having served it ten seconds earlier. A fresh page load priced it `eta 0`
+  // — "now, then 67 min" — and the rider's actual bus was 11.5 min away.
+  //
+  // `last_moved_at` is the evidence the warm belief builds for itself, handed
+  // over in the payload; `leavingLastStop` is where it is spent, and why it is
+  // spent narrowly. Where the payload does not carry the clock — an older
+  // server, a fixture, a replay — the served clock decides alone, as before.
+  const standing = since !== null && age >= STANDING_MIN_S && !leavingLastStop(bus, ring, stops, now);
   const pStand = standing ? 0.9 : 0.3;
   // No off-route floor on a cold start: there is no prior for it to protect,
   // and a flat weight over three hundred cells would outweigh the fix itself.
@@ -673,7 +766,15 @@ export function stepBelief(
   // The rest is established by a repeated fix (or a server clock already
   // running), and its stop is read off the belief at that moment.
   let restChanged = moved || closedIn;
-  if (!b.rested && (!fresh || (since !== null && (now - since) / 1000 >= STANDING_MIN_S))) {
+  // The same soundness as the cold start above: the served clock's age is not
+  // by itself evidence of a stand, because it is pinned to a stop and runs on
+  // through a bus that is merely driving past. A repeated fix (`!fresh`) IS
+  // evidence and is untouched; the served-clock arm now has to agree with the
+  // movement clock when the payload carries one.
+  const servedSaysStanding = since !== null
+    && (now - since) / 1000 >= STANDING_MIN_S
+    && !leavingLastStop(bus, ring, stops, now);
+  if (!b.rested && (!fresh || servedSaysStanding)) {
     b.rested = true;
     Object.assign(b, restStopFromBelief(ring, b.p, b.restMask));
     restChanged = true;

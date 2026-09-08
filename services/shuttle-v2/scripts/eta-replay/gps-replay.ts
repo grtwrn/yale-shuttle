@@ -286,6 +286,10 @@ const observations: Obs[] = [];
         last_stop_id: o.lastStopId as number,
         stationary: atStop != null,
         ...(atStop ? { at_stop_id: atStop.id, at_stop_since: new Date(atStop.since).toISOString().replace(/Z$/, "") } : {}),
+        // The movement clock the payload publishes (v1compat `last_moved_at`).
+        // Without it this replay cannot see the cold-start fix at all, and the
+        // arm comparison would report "identical" for the wrong reason.
+        ...(st ? { last_moved_at: new Date(st.lastMovedAt).toISOString().replace(/Z$/, "") } : {}),
       };
       observations.push({ bus, t: o.collectedAt, routeId: o.routeId, atStop: atStop != null, detIdx: st ? st.nearestIndex : -1 });
     }
