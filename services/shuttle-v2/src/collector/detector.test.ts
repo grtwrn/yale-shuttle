@@ -120,6 +120,7 @@ describe("step", () => {
       nearestIndex: 0,
       enteredAt: T0,
       lastObservedAt: T0,
+      lastMovedAt: T0,
       lat: stops[0]!.lat,
       lon: stops[0]!.lon,
       stationarySince: T0,
@@ -142,6 +143,7 @@ describe("step", () => {
       nearestIndex: 0,
       enteredAt: T0,
       lastObservedAt: T0,
+      lastMovedAt: T0,
       lat: stops[0]!.lat,
       lon: stops[0]!.lon,
       stationarySince: T0,
@@ -730,3 +732,101 @@ describe("the stationary clock survives a parked shuffle (2026-09-03)", () => {
 // The Red #316 incident (report #82) is replayed from the unedited production
 // feed, against the real stop geometry, in `detector.report82.test.ts`. The
 // synthetic two-stop version that used to live here was superseded by it.
+
+describe("step: the movement clock (lastMovedAt)", () => {
+  // `stationarySince` is pinned to a stop and so keeps running while a bus
+  // drives THROUGH the stop's zone; `lastMovedAt` is the clock that is pinned
+  // to nothing. Red #307 past Division / Prospect, 2026-09-08: the payload
+  // claimed a 20 s stand on a bus doing 6.6 m/s and a fresh page load said
+  // "now".
+  const at = (lat: number, lon: number, when: number): BusObservation => ({
+    busId: 42, busName: "#42", routeId: 1, lat, lon, heading: 90,
+    lastStopId: 1, collectedAt: when,
+  });
+  /** Metres east of stop A, as a longitude. */
+  const east = (m: number) => stops[0]!.lon + m / (111_320 * Math.cos(41.31 * Math.PI / 180));
+
+  function run(fixes: Array<{ m: number; t: number }>) {
+    let state: BusState | null = null;
+    const seen: Array<{ t: number; stillSec: number }> = [];
+    for (const f of fixes) {
+      state = step(net, state, at(stops[0]!.lat, east(f.m), f.t)).state;
+      seen.push({ t: f.t, stillSec: (f.t - state!.lastMovedAt) / 1000 });
+    }
+    return { state: state!, seen };
+  }
+
+  it("a bus driving through never reads as still, however long its stop clock has run", () => {
+    // 7 m/s past the stop: 35 m every 5 s. This is the incident's geometry.
+    const { seen } = run(Array.from({ length: 12 }, (_, i) => ({ m: i * 35, t: T0 + i * 5000 })));
+    expect(seen.every((s) => s.stillSec < 15)).toBe(true);
+  });
+
+  it("a bus that has come to rest accumulates stillness from when it stopped", () => {
+    const fixes = [
+      ...Array.from({ length: 8 }, (_, i) => ({ m: i * 35, t: T0 + i * 5000 })),
+      ...Array.from({ length: 8 }, (_, i) => ({ m: 245, t: T0 + (8 + i) * 5000 })),
+    ];
+    const { seen } = run(fixes);
+    // Stillness accrues from the poll on which it last moved — the one that
+    // brought it to 245 m — so 15 s is reached three polls later, the same
+    // threshold the belief uses for a stand.
+    expect(seen[7]!.stillSec).toBe(0);
+    expect(seen[10]!.stillSec).toBe(15);
+    expect(seen[seen.length - 1]!.stillSec).toBeGreaterThanOrEqual(15);
+  });
+
+  it("the quantised feed: an unchanged coordinate is stillness", () => {
+    // Upstream repeats the coordinate rather than interpolating, which is what
+    // makes MOVED_M a gap rather than a threshold.
+    const { seen } = run(Array.from({ length: 6 }, (_, i) => ({ m: 100, t: T0 + i * 5000 })));
+    expect(seen[seen.length - 1]!.stillSec).toBe(25);
+  });
+
+  it("after a gap long enough to reanchor, the bus counts as having just moved", () => {
+    // Nothing is known about what happened in the gap, and inventing stillness
+    // is the one direction that invents a "now".
+    let state = step(net, null, at(stops[0]!.lat, stops[0]!.lon, T0)).state!;
+    for (let i = 1; i < 10; i++) {
+      state = step(net, state, at(stops[0]!.lat, stops[0]!.lon, T0 + i * 5000)).state!;
+    }
+    expect(T0 + 45_000 - state.lastMovedAt).toBe(45_000);
+    const after = step(net, state, at(stops[0]!.lat, stops[0]!.lon, T0 + 60 * 60_000)).state!;
+    expect(after.lastMovedAt).toBe(T0 + 60 * 60_000);
+  });
+});
+
+describe("step: the movement clock survives a restart", () => {
+  // Report #100: a deploy zeroed every standing bus's clock and riders watched
+  // the countdown restart. #129 seeds `stationarySince` from recorded
+  // positions on first sighting; the movement clock has to come with it, or
+  // for the first STANDING_MIN_S after every deploy a bus at the kerb reads as
+  // moving and is refused its "now".
+  const obs = (when: number): BusObservation => ({
+    busId: 42, busName: "#42", routeId: 1,
+    lat: stops[0]!.lat, lon: stops[0]!.lon, heading: 90,
+    lastStopId: 1, collectedAt: when,
+  });
+
+  it("a seeded stand seeds the movement clock with it", () => {
+    const stoodSince = T0 - 8 * 60_000;
+    const seeded = step(net, null, obs(T0), () => ({
+      stationarySince: stoodSince,
+      stationaryLat: stops[0]!.lat,
+      stationaryLon: stops[0]!.lon,
+      stationaryStopId: stops[0]!.id,
+      unbrokenSince: stoodSince,
+      restedSince: stoodSince,
+      restSince: stoodSince,
+      restPolls: 96,
+    })).state!;
+    expect(seeded.stationarySince).toBe(stoodSince);
+    expect(seeded.lastMovedAt).toBe(stoodSince);
+  });
+
+  it("with no seed the bus reads as having just moved, which withholds", () => {
+    // The safe direction: it can cost a "now" for one threshold, never invent one.
+    const cold = step(net, null, obs(T0)).state!;
+    expect(cold.lastMovedAt).toBe(T0);
+  });
+});

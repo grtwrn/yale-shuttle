@@ -77,6 +77,23 @@ export interface BusState extends TrackedIdentity {
   stationaryLat: number;
   stationaryLon: number;
   /**
+   * When the bus's REPORTED FIX last changed.
+   *
+   * {@link stationarySince} answers "how long has this wait been going on", and
+   * it is pinned to a stop on purpose (see {@link stationaryStopId}) so a yard
+   * shuffle cannot restart it. That pinning costs it the other question, the one
+   * a rider asks first: *is the bus moving right now?* The clock is anchored the
+   * moment a bus comes within {@link AT_STOP_PIN_M} of a stop and carried until
+   * it is {@link STATIONARY_RADIUS_M} away, so it runs on while a bus DRIVES
+   * STRAIGHT THROUGH the stop's zone — for Red #307 past Division / Prospect on
+   * 2026-09-08, a 20 s "stationary" clock on a bus doing 6.6 m/s, which a client
+   * holding one frame and no history priced as standing at the kerb: "now", for
+   * a bus already 67 m gone.
+   *
+   * This clock answers only that question, and is pinned to nothing.
+   */
+  lastMovedAt: EpochMs;
+  /**
    * The stop {@link stationaryLat}/{@link stationaryLon} is pinned to, or null
    * while the bus is standing somewhere that is not a stop.
    *
@@ -258,6 +275,25 @@ export const STATIONARY_RADIUS_M = 125;
  * pins the two equal so they cannot drift apart.
  */
 export const AT_STOP_PIN_M = 75;
+
+/**
+ * How far the reported fix must change for {@link BusState.lastMovedAt} to call
+ * it movement.
+ *
+ * Not a tuned number: upstream quantises position, so a standing bus repeats its
+ * coordinate exactly (95.1% of 26,295 in-stand polls on 2026-09-08) and anything
+ * else jumps at least 33 m. Every value from 1 m to 25 m classifies every poll
+ * of that day identically, so this is really "the fix changed", spelled with a
+ * radius so a feed that starts dithering by a metre does not read as movement.
+ *
+ * A WINDOW rule was built and measured against this one and is not what shipped:
+ * requiring the bus to have covered 50 m in 30 s ignores a layover shuffle,
+ * which this clock does not, but it also lets a bus CRAWLING past a stop count
+ * as standing — and on the cold-start replay of 2026-09-08 that put the "now"
+ * rows for a bus that had gone back up from 9.3% to 14.7%. The shuffle costs
+ * seconds; the crawl costs a rider the bus.
+ */
+export const MOVED_M = 8;
 
 /** The fields {@link stationaryFields} carries. */
 export type StationaryState = Pick<
@@ -722,6 +758,16 @@ export function step(
 
   const gap = prev ? obs.collectedAt - prev.lastObservedAt : Infinity;
 
+  // When the fix last changed. A reanchor (below) throws this away with
+  // everything else: after a gap we do not know what the bus did, and inventing
+  // stillness there is the one direction that invents a "now". With no history
+  // the bus counts as having just moved, which withholds.
+  const continuousHistory = prev != null && gap <= MAX_OBSERVATION_GAP_MS;
+  const lastMovedAt: EpochMs = continuousHistory
+    && distanceMeters(obs, { lat: prev.lat, lon: prev.lon }) <= MOVED_M
+    ? prev.lastMovedAt
+    : obs.collectedAt;
+
   // Identity handoff. Because tracking is keyed on the stable `bus_name`
   // (see `trackKeyFor`), `prev` can have been recorded under a different
   // `bus_id` than the one now reporting. That is normally the same physical
@@ -796,6 +842,14 @@ export function step(
     discontinuous ||
     !continuous;
   if (reanchor) {
+    // The stationary seed recovers how long this bus has been standing from
+    // recorded positions, so a restart does not zero every standing clock
+    // (report #100, #129). The movement clock has to be recovered with it: a
+    // bus the seed says has been stationary since T has not moved since T
+    // either, and without this every bus on the road reads as "just moved" for
+    // the first STANDING_MIN_S after a deploy — which withholds "now" from a
+    // bus sitting at the kerb.
+    const stationary = stationaryFields(seeded, obs, anchorStop);
     return {
       state: {
         busId: obs.busId,
@@ -810,6 +864,7 @@ export function step(
         // otherwise withhold the stop for three polls after every deploy.
         enteredAt: resumed?.enteredAt ?? obs.collectedAt,
         lastObservedAt: obs.collectedAt,
+        lastMovedAt: Math.min(lastMovedAt, stationary.stationarySince),
         lat: obs.lat,
         lon: obs.lon,
         // A reanchor means we lost track of this bus; nothing about how long
@@ -820,7 +875,7 @@ export function step(
         //
         // {@link StationarySeed} is the exception, and only on a first
         // sighting: it recovers the clock from recorded positions.
-        ...stationaryFields(seeded, obs, anchorStop),
+        ...stationary,
       },
       // A resumed stand already HAS its arrival row. Writing another is the
       // duplicate this exists to end — and each one truncated the measured
@@ -859,6 +914,7 @@ export function step(
         busId: obs.busId,
         busName: obs.busName,
         lastObservedAt: obs.collectedAt,
+        lastMovedAt,
         lat: obs.lat,
         lon: obs.lon,
         ...stationaryFields(prev, obs, anchorStop),
@@ -939,6 +995,7 @@ export function step(
       // the dwell/segment events above depend on it.
       enteredAt: obs.collectedAt,
       lastObservedAt: obs.collectedAt,
+      lastMovedAt,
       lat: obs.lat,
       lon: obs.lon,
       // ...but the stationary clock does NOT, unless the bus actually reached
