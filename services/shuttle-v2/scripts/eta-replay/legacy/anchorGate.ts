@@ -1,4 +1,9 @@
 /**
+ * THE RETIRED ANCHOR GATE — the replay's own copy (see legacy/anchor.ts).
+ * Verbatim as it last shipped in web/src/anchorGate.ts, 2026-09-06. Only the
+ * historical instruments under scripts/eta-replay/ import it now.
+ */
+/**
  * The corroborated anchor: a bus may only be relocated on the loop when
  * something in the world says it moved.
  *
@@ -35,9 +40,9 @@
  * disambiguation work where a route revisits a vicinity. It is required to be
  * corroborated, not ignored.
  */
-import { haversineMeters } from "./geo";
-import type { Floors } from "./eta/arrival";
-import type { Belief } from "./eta/filter";
+import { haversineMeters } from "../../../web/src/geo";
+import type { Floors } from "../../../web/src/eta/arrival";
+import type { Belief } from "../../../web/src/eta/filter";
 
 /**
  * Net displacement from where the anchor was set that justifies relocating the

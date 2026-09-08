@@ -52,7 +52,8 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { computeUpcomingArrivals, type SegmentTimes } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";

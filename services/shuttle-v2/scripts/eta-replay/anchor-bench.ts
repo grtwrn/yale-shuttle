@@ -1,5 +1,6 @@
 import { loadNet } from "./common.js";
-import { findRouteAnchor, registerRoutePaths } from "../../web/src/anchor.js";
+import { registerRoutePaths } from "../../web/src/anchor.js";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
 
 const net = loadNet();

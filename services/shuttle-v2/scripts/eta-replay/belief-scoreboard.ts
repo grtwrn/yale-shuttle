@@ -51,9 +51,10 @@ import { planTracks, stepMany, type BusObservation, type BusState } from "../../
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
-import type { AnchorStore } from "../../web/src/anchorGate";
+import type { AnchorStore } from "../../web/src/eta/index.js";
 import { computeUpcomingArrivalsAnchored, type AnchorBelief, type BusDiag } from "./arrivals-anchored.js";
-import { ANCHOR_GPS_THRESHOLD_M, registerRoutePaths } from "../../web/src/anchor";
+import { registerRoutePaths } from "../../web/src/anchor";
+import { ANCHOR_GPS_THRESHOLD_M } from "./legacy/anchor.js";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";

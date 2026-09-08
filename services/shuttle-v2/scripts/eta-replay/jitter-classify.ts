@@ -51,7 +51,8 @@ import {
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { fmtMin } from "../../web/src/format";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";

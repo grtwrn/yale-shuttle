@@ -25,7 +25,8 @@ One Node process (`src/index.ts`, run via tsx) does everything:
   |---|---|
   | `planner.ts` | `planTrip`, trip options, walk/ride/dominance rules |
   | `arrivals.ts` | `computeUpcomingArrivals` — per-stop ETA math |
-  | `anchor.ts` | `findRouteAnchor` — which stop a bus is at / has passed |
+  | `eta/` | the ring estimator: where each bus is and when it reaches each stop (see below) |
+  | `anchor.ts` | `isBusOnRoute`, `registerRoutePaths` — the published polyline and the off-route filter |
   | `schedule.ts` | `ROUTE_HOURS`, `isBusInService`, ET day/hour resolution |
   | `routes.ts` | `ROUTE_LISTS` — **the single source of truth for route colour** |
   | `walk.ts` | the walk model (mirrors the server's `WALK_M_PER_S`) |
@@ -784,43 +785,52 @@ These are load-bearing; several rider-visible bugs traced to them:
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
 
-## The ring estimator (every line, 2026-09-05)
+## The ring estimator (every line, and the only one, 2026-09-06)
 
-Arrivals are priced by `web/src/eta/` — one probabilistic model instead of
-the anchor + gate + stall-credit + approach-zone stack. `MODEL_ROUTE_IDS` in
-`web/src/eta/index.ts` lists every route; the model DECLINES a route on its
-own evidence, never by name.
+Arrivals are priced by `web/src/eta/`, one probabilistic model. **There is no
+second arithmetic.** The anchor + gate + stall-credit + approach-zone stack it
+replaced was deleted on 2026-09-07 — `web/src/anchorGate.ts`,
+`web/src/hopPricing.ts`, `findRouteAnchor` and its dials in `web/src/anchor.ts`,
+the fallback half of `web/src/arrivals.ts`, `LEGACY_SPLIT_ROUTE_IDS` /
+`splitServedForRoute`, and with them `MODEL_ROUTE_IDS`, `modelServesRoute` and
+`modelPricesRoute`. `isBusOnRoute` and `registerRoutePaths` stay in `anchor.ts`
+(many callers). The replays keep their OWN copies of the retired code under
+`scripts/eta-replay/legacy/`, because the `MODEL_ROUTES=""` arm is the
+counterfactual baseline every retirement was measured against; it is no longer
+a replica of the client, and the scripts say so.
 
-**One decline is left: a ring the published line cannot trace** (`ring.bridged`
-— Green, whose buses call at West Haven station before Building 900 and whose
-served sequence therefore does not describe how they drive), which falls back
-to the legacy arithmetic in `arrivals.ts`. Retiring that too was built and
-measured (branch `eta/retire-legacy-green`) and is **deferred on the numbers**:
-on the bridged ring Green's median error goes 289 → 385 s and its dangerous
-tail 56 → 65%, buying a p90 of 767 s against 2,817. Green needs a ring built
-from `raw_positions` first; that branch lands the day it does.
+**Nothing declines any more.** The model used to hand two classes of route to
+that arithmetic, on its own evidence and never by name, and both declines were
+closed by measurement:
 
-**A route with no measured drive is no longer declined** (2026-09-06). It is
-priced from the level above in the hierarchy, with no per-route rule: hop
-`dq`/`drive` → the ROUTE's pace → the ALL-ROUTES pooled pace the calibrator
-serves (`computePooledPace` / `withPooledPace`, flagged `pooled` / `spmPooled`;
-0.1363–0.1535 s/m over n = 9,077 on the 9/4 tables), and the stop's table →
-the ROUTE's class pool → the NETWORK's class pool (`globalClassPools`).
-Anything from a pool is `measured: false`, so the row reads `estimated` (`~`)
-and its 10–90 range widens rather than showing a prior as a measurement. That
-took the grocery lines off the legacy arm and cut the dangerous tail on the
-untimed-line row 59.1 → 19.7%, with every other route byte-identical.
-`tables.priced` is false only for a cold database with no pace anywhere.
+- a route with no measured drive (`tables.priced`, the grocery lines) now
+  takes the level above in the hierarchy — hop `dq`/`drive` → the ROUTE's pace
+  → the ALL-ROUTES pooled pace the calibrator serves (`computePooledPace` /
+  `withPooledPace`, flagged `pooled` / `spmPooled`; 0.1363–0.1535 s/m over
+  n = 9,077 on the 9/4 tables), and the stop's table → the ROUTE's class pool
+  → the NETWORK's class pool (`globalClassPools`). Dangerous tail on the
+  untimed line 59.1 → 19.7%, every other route byte-identical (#157).
+- a ring the published line could not trace (`ring.bridged`, Green) was fixed
+  at the source: `src/network/alignStops.ts` reads the stop ORDER off the
+  published polyline, taking Green's replay median 288.8 → 70.1 s and its
+  dangerous tail 56.1 → 12.1% (#160).
 
-The legacy served split keeps its own list (`LEGACY_SPLIT_ROUTE_IDS`, Red and
-Blue Day), because serving tables to every route re-engaged it on Green and
-cost 77 strands; it is still reachable on the first render, before the payload
-registers the route polylines and a ring can be built.
+**`web/src/eta/no-bridged-ring.test.ts` is what keeps it that way**: it builds
+the ring for every route in the checked-in `/api/buses` payload fixture and
+fails if any is `bridged`, or if `buildTables` cannot price one. An upstream
+sequence change that re-bridges a ring now fails CI, because there is no
+longer a second arithmetic to catch it silently.
+
+The only thing that declines a route now is having **no ring at all** — fewer
+than two stops, or a stop with no coordinate. A route whose polyline has not
+been registered is ringed on its stop CHORDS instead
+(`ringForBus`/`chordPath`), so the first render is not a special case: measured
+on the live payload, all 15 routes carry a path and `registerRoutePaths` runs
+in the same handler as `setBuses`, before React re-renders, so no poll ever
+reaches it — it is there so the deletion is sound rather than nearly sound.
+
 `docs/eta-ring-posterior.md` is the design, the measured decisions and the
-paired numbers — including the **open defect** it names: after a rest served
-83–147 m short of a layover marker the belief ends the rest as the bus rolls
-in and charges a SECOND stand, a step of 144–190 s on the two recorded
-incidents. The short form of the model:
+paired numbers. The short form of the model:
 
 - **State** is a distribution over 30 m cells on the published polyline ×
   {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
@@ -854,14 +864,16 @@ incidents. The short form of the model:
   the majority of the standing mass in the rest mask.
 - **Gate every change** with `gps-replay.ts` per route first (minutes), then
   the rider simulator's FIXED/INTRODUCED split (`pair-by-route.mjs`), chain
-  block first. The replays pair both arms in one process: `MODEL_ROUTES` on
-  `gps-replay.ts`, `CLIENT_ROOT` on the rider-sim;
-  `scripts/eta-replay/model-patch.ts` (bounded by `MODEL_NOW`) serves
-  `q/drive/dq/pstop/pace` to a replay. **A full-day rider-sim pins all four of
-  the Pi's cores for three to four hours** — it crashed the machine on
-  2026-09-06; slice it by route and by `FROM`/`TO`, and `nice` it. In
-  `common.ts`'s metrics, `pessimistic120` (predicted > actual: the bus beat the
-  promise) is the dangerous tail; `optimistic120` is the rider waiting.
+  block first. Since the arms are no longer switchable in one process
+  (`MODEL_ROUTES=""` now selects the replays' OWN legacy copy, not the
+  client's), run each arm from its own worktree into its own `REPLAY_OUT`
+  (`CLIENT_ROOT` for the rider-sim); `scripts/eta-replay/model-patch.ts`
+  (bounded by `MODEL_NOW`) serves `q/drive/dq/pstop/pace` to a replay. **A
+  full-day rider-sim pins all four of the Pi's cores for three to four
+  hours** — it crashed the machine on 2026-09-06; slice it by route and by
+  `FROM`/`TO`, and `nice` it. In `common.ts`'s metrics, `pessimistic120`
+  (predicted > actual: the bus beat the promise) is the dangerous tail;
+  `optimistic120` is the rider waiting.
 - Constants in `filter.ts` are measured or derived, not tuned, and each
   carries the measurement it came from (the off-route emission weight is
   derived from the loop length, not a floor). A case the model gets wrong is
@@ -1258,6 +1270,18 @@ stop.** Elapsed runs from when it stopped, the remainder is conditional on it,
 #119's ceiling applies — the same arithmetic as a bus resting on the marker,
 because it is the same wait. Fixed, the same replay tracks 262 → 117 s, never
 climbing.
+
+⚠️ **The RULE below is gone; the requirement is not.** The zone and its three
+gates lived in `web/src/hopPricing.ts`, which was deleted with the legacy arm
+on 2026-09-06 (the ring estimator reads a rest off the belief instead). On the
+two recorded rests the belief does NOT hold this promise: it ends the rest when
+the bus rolls the last 83–147 m to the marker and charges a second stand there,
+a step of 144–190 s, bounded and recorded in
+`web/src/accuracy-approach-rest.test.ts`. That is shipped behaviour on Red
+since the estimator shipped, not a new defect, and the fix belongs in the
+belief's rest attachment (`eta/filter.ts`) — not in a distance rule bolted back
+on. Everything below is the record of what the retired rule did and why, kept
+because the next attempt must clear the same bar.
 
 `stationary_since` on `/api/buses` is the server half (+0.72% payload): the
 detector already had the clock (`BusState.stationarySince`) and simply never

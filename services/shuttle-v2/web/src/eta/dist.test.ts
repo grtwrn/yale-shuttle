@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { cdf, fromQuantiles, hazard, lognormalMeanSd, median, point, quantile, residual, residualMedian, scaled, shrinkToward } from "./dist";
-import { remainingStandSec } from "../hopPricing";
 
 // Red stop 11 (344 Winchester), the served stand table on 2026-09-04.
 const Q11 = [83, 129, 145, 191, 288, 333, 437, 473, 543, 674];
@@ -54,15 +53,13 @@ describe("dist: a quantile vector is a CDF", () => {
 });
 
 describe("dist: the residual given elapsed time", () => {
-  it("agrees with hopPricing's conditional median to within the interpolation, and is smoother", () => {
-    // Same knots; hopPricing joins them linearly in F, this joins them
-    // log-linearly in S. They agree at the knots and differ inside segments.
+  it("is smooth in the elapsed clock", () => {
+    // The retired `remainingStandSec` (hopPricing.ts, now under
+    // scripts/eta-replay/legacy/) joined the same knots linearly in F and this
+    // joins them log-linearly in S; they agreed at the knots to within 45 s,
+    // and that agreement test went with the code. What is kept is the
+    // property that motivated the change: no saw-tooth in r.
     const d = fromQuantiles(Q11);
-    for (const r of [0, 30, 100, 168, 240, 300, 420]) {
-      const ours = residualMedian(d, r);
-      const shipped = remainingStandSec(Q11, r);
-      expect(Math.abs(ours - shipped)).toBeLessThan(45);
-    }
     // The residual median never jumps between consecutive seconds of r.
     let prev = residualMedian(d, 0);
     for (let r = 1; r <= 800; r++) {

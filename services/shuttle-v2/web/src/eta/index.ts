@@ -1,72 +1,89 @@
 /**
  * The ring-posterior estimator, behind `computeUpcomingArrivals`' contract.
  *
- * Enabled per route by `MODEL_ROUTE_IDS`, the same way the stand/drive split
- * was rolled out (`SPLIT_SERVED_ROUTE_IDS` in calibrator.ts): a route on the
- * list is priced from a distribution on the ring (filter.ts -> arrival.ts);
- * every other route runs the legacy arithmetic in arrivals.ts unchanged. The
- * list widens route by route on the rider simulator's FIXED/INTRODUCED split
- * (docs/rider-sim.md), never by argument.
+ * It prices EVERY route, and there is no second estimator behind it. It went
+ * out route by route on the rider simulator's FIXED/INTRODUCED split
+ * (docs/rider-sim.md) behind an allowlist, then declined two classes on their
+ * own evidence — a route with no measured drive (`tables.priced`, the grocery
+ * lines) and a ring the published line could not trace (`ring.bridged`,
+ * Green) — to the legacy anchor + gate + stall-credit + approach-zone
+ * arithmetic in arrivals.ts. Both declines were closed by measurement, not by
+ * argument: #157 gave a line the collector has not timed the NETWORK's pooled
+ * pace and stand pools (tables.ts), and #160 read Green's stop ORDER off its
+ * published polyline (`alignStops.ts`), which took its replay median 288.8 ->
+ * 70.1 s. With no route left to decline, the legacy arithmetic had no caller,
+ * and it is gone (2026-09-07). `eta/no-bridged-ring.test.ts` pins the second
+ * half of that: no route in the checked-in payload fixture builds a bridged
+ * ring, so an upstream sequence change fails CI rather than resurrecting a
+ * dead arm that is no longer there to catch it.
+ *
+ * The only thing that declines a route now is having no ring at all — fewer
+ * than two stops, or a stop with no coordinate — and then the route shows no
+ * times, because there is nothing to price on.
  *
  * State rides the caller's `AnchorStore` entry (`belief`, `floors`), so a
  * storeless call — a replay, a hypothetical, a pure test — prices from the
- * stateless prior and remembers nothing, exactly as the anchor gate does.
+ * stateless prior and remembers nothing.
  */
 
 import { routePathFor } from "../anchor";
-import type { AnchorStore, GatedAnchor } from "../anchorGate";
 import type { LatLon } from "../geo";
 import type { BusData } from "../map-data";
-import type { RouteListConfig } from "../routes";
 import { priceRoute, type Floors, type StopArrival } from "./arrival";
-import { stepBelief, type Belief } from "./filter";
+import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
-
-/**
- * Routes priced by the model: every route the payload lists. A route whose
- * tables carry no measured drive at all (the two grocery lines, until they
- * have `legs`) is priced by the legacy arithmetic instead — see
- * `arrivalsForBus` returning null — so the dispatch is data-driven, not a
- * list. The set is kept for the replays' override (`modelRouteIds`).
- */
-export const MODEL_ROUTE_IDS: ReadonlySet<string> = new Set(["1", "2", "3", "4", "6", "8", "9", "10", "13", "14", "15", "16", "17", "18", "19"]);
 
 /** The displayed quantile. 0.5 = the median; see the plan's Step 4 sweep. */
 export const DISPLAY_TAU = 0.5;
 
 /**
- * The replays pair the model against the legacy arithmetic in ONE process
- * (scripts/eta-replay/gps-replay.ts, `MODEL_ROUTES=`), so the allowlist can be
- * overridden through a global the browser never sets. Never read anywhere
- * else; never a runtime switch for riders.
+ * Per-vehicle memory: the belief on the ring and the #119 display floors.
+ * Keyed by `anchorKeyFor(routeLabel, busName)` (liveAnchor.ts) — the bus
+ * NAME, never `bus_id`, which TransLoc reissues per service block.
  */
-export function modelRouteIds(): ReadonlySet<string> {
-  const g = globalThis as { __SHUTTLE_MODEL_ROUTES__?: ReadonlySet<string> };
-  return g.__SHUTTLE_MODEL_ROUTES__ ?? MODEL_ROUTE_IDS;
-}
+export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined }
+export type AnchorStore = Map<string, ModelEntry>;
 
-export function modelServesRoute(cfg: RouteListConfig): boolean {
-  const ids = modelRouteIds();
-  return cfg.routeIds.some((r) => ids.has(String(r)));
-}
+/**
+ * The one store the live app passes everywhere — the map, the route cards,
+ * the trip card and the ride page — so every surface answers from one
+ * belief per bus. Replays and tests make their own.
+ */
+export const liveAnchorStore: AnchorStore = new Map();
 
 /**
  * The ring for a bus's route and the canonical sequence, or null when the
  * geometry cannot be traced. Keyed on the BUS's route id, which is what the
  * payload registers the polyline under (`registerRoutePaths`) and what
  * `resolveAnchorIndex` has in hand, so both answer from one ring.
+ *
+ * A route with no registered line is ringed on its chords — the stop
+ * coordinates joined in sequence — so it is still priced; the emission's
+ * off-route mixture absorbs the road's bow. That is the cold first render
+ * and a route upstream ships without a path, not any of the fifteen lines.
  */
 export function ringForBus(bus: { route_id: number | string }, stops: readonly number[], stopCoords: Record<number, LatLon>): Ring | null {
-  return ringFor(bus.route_id, routePathFor(bus.route_id), stops, stopCoords);
+  const path = routePathFor(bus.route_id) ?? chordPath(stops, stopCoords);
+  return ringFor(bus.route_id, path, stops, stopCoords);
 }
 
-interface ModelEntry extends GatedAnchor { belief?: Belief | undefined; floors?: Floors | undefined }
+function chordPath(stops: readonly number[], stopCoords: Record<number, LatLon>): readonly (readonly [number, number])[] | undefined {
+  const pts: [number, number][] = [];
+  for (const sid of stops) {
+    const c = stopCoords[sid];
+    if (!c) return undefined;
+    pts.push([c.lat, c.lon]);
+  }
+  if (pts.length < 2) return undefined;
+  pts.push(pts[0]!);
+  return pts;
+}
 
 function entryFor(store: AnchorStore, key: string): ModelEntry {
-  let e = store.get(key) as ModelEntry | undefined;
+  let e = store.get(key);
   if (!e) {
-    e = { index: -1, lat: 0, lon: 0, atStopId: null, lastStopId: null, disagreeSince: null, seenAt: 0 };
+    e = {};
     store.set(key, e);
   }
   return e;
@@ -79,7 +96,7 @@ function entryFor(store: AnchorStore, key: string): ModelEntry {
 export function beliefFor(
   store: AnchorStore | undefined,
   key: string,
-  bus: BusData,
+  bus: FilterBus,
   ring: Ring,
   stops: readonly number[],
   now: number,
@@ -95,14 +112,9 @@ export function beliefFor(
 export interface ModelArrival extends StopArrival { busName: string }
 
 /**
- * Price every target stop for one bus, or null when the model declines the
- * route and the caller must run the legacy arithmetic: a BRIDGED ring (the
- * published line cannot be traced through the stop sequence), or tables with
- * no hop the model can put a number on at all.
- *
- * `dwellsByRoute` is every route's dwell table (the payload's `dwells`), from
- * which the all-routes stand pools are pooled; omit it and a route leans only
- * on its own tables.
+ * Price every target stop for one bus. `dwellsByRoute` is every route's
+ * dwell table (the payload's `dwells`), from which the all-routes stand
+ * pools are pooled; omit it and a route leans only on its own tables.
  */
 export function arrivalsForBus(
   store: AnchorStore | undefined,
@@ -117,10 +129,8 @@ export function arrivalsForBus(
   now: number,
   tau = DISPLAY_TAU,
   dwellsByRoute?: Record<string, Record<string, DwellLike>>,
-): StopArrival[] | null {
-  if (ring.bridged) return null;
+): StopArrival[] {
   const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
-  if (!tables.priced) return null;
   const belief = beliefFor(store, key, bus, ring, ring.stops, now);
   let floors: Floors | undefined;
   if (store) {
@@ -131,22 +141,9 @@ export function arrivalsForBus(
   return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors);
 }
 
-/** Whether the model prices this route's payload at all (its tables carry a measured drive). */
-export function modelPricesRoute(ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>, routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>, dwellsByRoute?: Record<string, Record<string, DwellLike>>): boolean {
-  // A route whose published line cannot be traced through its stop sequence
-  // (a leg had to be bridged with a chord) is a route whose sequence does not
-  // describe how the buses drive, and no model on that ring can be right.
-  // `buildRing` first tries to REPAIR such an order against the published line
-  // (eta/align.ts) — that is what took Green off the legacy arithmetic; a ring
-  // still bridged after the repair declines, and the condition stays the
-  // geometry's, not a route list.
-  if (ring.bridged) return false;
-  return tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute).priced;
-}
-
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
 // when the served numbers change. Keyed on the segment table's identity — one
-// object per payload — and on a fingerprint of the dwell table's CONTENT,
+// object per payload — and on a fingerprint of the dwell tables' CONTENT,
 // because the rider simulator (and any caller that merges a patch) hands over
 // a fresh dwell object every poll; keyed on identity alone this rebuilt the
 // prefix sums for every rider on every poll, a second per poll.
@@ -167,9 +164,7 @@ function dwellFingerprint(routeDwells: Record<string, DwellLike>): string {
 }
 
 // The all-routes pools are pooled once per distinct dwell payload, by
-// CONTENT, for the same reason as the tables above: a caller that merges a
-// patch hands over a fresh object every poll, and pooling every route's
-// tables on every poll for every rider is not free.
+// content, for the same reason as above.
 const globalPoolCache = new Map<string, ClassPools>();
 export function globalPoolsFor(dwellsByRoute: Record<string, Record<string, DwellLike>>): { pools: ClassPools; key: string } {
   let h = 2166136261;
@@ -186,6 +181,7 @@ export function globalPoolsFor(dwellsByRoute: Record<string, Record<string, Dwel
   }
   return { pools, key };
 }
+
 function tablesFor(
   ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>,
   routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>,

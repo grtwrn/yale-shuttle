@@ -1,4 +1,10 @@
 /**
+ * THE RETIRED STAND/DRIVE SPLIT — the replay's own copy (see legacy/anchor.ts).
+ * Verbatim as it last shipped in web/src/hopPricing.ts, 2026-09-06. Only the
+ * historical instruments under scripts/eta-replay/ import it now; the model
+ * prices the same residual stand from the survival curve in eta/dist.ts.
+ */
+/**
  * Pricing the FIRST hop from a stand/drive split instead of a credit.
  *
  * A calibrated segment is arrival-to-arrival: it contains every second the

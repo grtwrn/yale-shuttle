@@ -1,48 +1,43 @@
 /**
  * ONE answer per bus per poll.
  *
- * `findRouteAnchor` is stateless and `gateAnchor` (anchorGate.ts) is what stops
- * its answer moving backwards or jumping without corroboration. The gate's
- * memory lives on a store, and `liveAnchorStore` exists precisely so "the map,
- * the route cards and the trip card" cannot disagree about where a bus is.
+ * Every surface that asks where a bus is — the countdown, the map marker, the
+ * route cards' "N stops away", the ride page, the pause chip — reads the SAME
+ * belief off the SAME store (`liveAnchorStore`, web/src/eta/index.ts). It
+ * exists because they used not to: five render sites in TransitMap.tsx once
+ * called a stateless anchor with no memory while the countdown beside them
+ * used a gated one, and the operator watched the stops-away column read
+ * 3 / 4 / 4 / 2 / 4 on consecutive polls (2026-09-04, Red #316 oscillating
+ * between 344 Winchester and Canal/Munson) while the ETA held still. Two
+ * numbers, one screen, contradicting each other.
  *
- * `computeUpcomingArrivals` ran the full sequence — `noteFix` ->
- * `findRouteAnchor` -> `gateAnchor` — but five places in TransitMap.tsx called
- * `findRouteAnchor` directly with no store, so the screen could hold two
- * answers at once: a gated countdown beside an ungated "N stops away". The
- * operator watched that column read 3 / 4 / 4 / 2 / 4 on consecutive polls
- * (2026-09-04, Red #316 oscillating between 344 Winchester and Canal/Munson)
- * while the ETA beside it stayed put. Two numbers, one screen, contradicting
- * each other.
+ * So the sequence lives here once and everything runs it: build the ring,
+ * step the belief for this poll (idempotent within a poll — a second call
+ * with the same payload object is a query), answer from it.
  *
- * So the sequence lives here once and everything runs it.
+ * THE INDEX SPACE IS THE STORE'S. The belief's lead leg is an index into the
+ * canonical `mergedRouteStops` sequence, which keeps the primary route's
+ * stops VERBATIM — repeats and all, because routes 9 and 10 pass West Campus
+ * twice and de-duplicating loses real legs. TransitMap's render sites build
+ * their own de-duplicated list (Green 23 -> 20 stops, Purple 15 -> 11), so an
+ * index means something different there. Hence {@link anchorIndexOnList}:
+ * anchor on the canonical list, then translate the answer back to the
+ * caller's list by STOP ID.
  *
- * THE INDEX SPACE IS THE STORE'S. The gate remembers an index, so every caller
- * sharing a store must mean the same thing by it. `computeUpcomingArrivals`
- * anchors on `mergedRouteStops`, which keeps the primary route's sequence
- * VERBATIM — repeats and all, because routes 9 and 10 pass West Campus twice
- * and de-duplicating loses real legs. TransitMap's render sites build their own
- * de-duplicated list (Green 23 -> 20 stops, Purple 15 -> 11), so an index means
- * something different there. Sharing one store across the two spaces would put
- * Green and Purple buses a few slots out rather than fixing anything. Hence
- * {@link anchorIndexOnList}: anchor on the canonical list, then translate the
- * answer back to the caller's list by STOP ID.
- *
- * HYPOTHETICAL CALLERS PASS THEIR OWN STORE, OR NONE. With no store this is
- * exactly `findRouteAnchor` and nothing is remembered — which is what the
- * replay harnesses and the existing tests depend on.
+ * HYPOTHETICAL CALLERS PASS THEIR OWN STORE, OR NONE. With no store the
+ * belief is built from the fix alone and nothing is remembered — which is
+ * what the replay harnesses and the pure tests depend on.
  */
-import { findRouteAnchor, routePathFor } from "./anchor";
-import type { AnchorBus } from "./anchor";
-import { beliefFor, modelRouteIds } from "./eta";
-import { ringFor } from "./eta/ring";
-import { gateAnchor, noteFix, type AnchorStore, type GateBus } from "./anchorGate";
+import { beliefFor, ringForBus, type AnchorStore } from "./eta";
+import { standingSec, type FilterBus } from "./eta/filter";
 import type { LatLon } from "./geo";
-import { remainingStandSec, standAdequate, standingAt, STANDING_HOLD_M } from "./hopPricing";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
 
+/** What the anchor needs of a bus: a fix, the clocks, and the route whose line it is measured against. */
+export type AnchorBus = FilterBus & { route_id: number | string };
+
 /**
- * The gate's per-vehicle key. Route label plus the bus NAME, never `bus_id`:
+ * The store's per-vehicle key. Route label plus the bus NAME, never `bus_id`:
  * TransLoc reissues ids per service block (~1,000 ids for 50 buses in 30 days)
  * and `bus_name` is the identity.
  */
@@ -51,47 +46,28 @@ export function anchorKeyFor(routeLabel: string, busName: string): string {
 }
 
 /**
- * Where this bus is on `stops`, corroborated. Runs the whole sequence in the
- * one order it must run in: remember the fix (so the anchor can read direction
- * of travel off the last two DISTINCT ones), pick the raw anchor, then gate it.
+ * Where this bus is on `stops`: the leg the countdown is priced on, with the
+ * same hysteresis (`leadLeg` in eta/filter.ts), so "N stops away" and the
+ * number beside it come from one posterior.
  *
- * Returns -1 when the raw anchor has no opinion — an empty stop list — which
- * is the same answer `findRouteAnchor` gives, so a caller's existing `< 0`
- * guard keeps working.
+ * Returns -1 when there is nothing to answer from — an empty stop list, or a
+ * stop with no coordinate, which is the one case the ring cannot be built.
  */
 export function resolveAnchorIndex(
-  bus: AnchorBus & GateBus,
+  bus: AnchorBus,
   stops: number[],
   stopCoords: Record<number, LatLon>,
   key: string,
   now: number,
   store?: AnchorStore | undefined,
 ): number {
-  // `noteFix` is idempotent within a poll on purpose: arrivals are computed
-  // several times per poll off one shared store, and a repeated coordinate is
-  // not a new fix. Calling it once per render site is therefore safe — it does
-  // not consume the fix memory `findRouteAnchor` reads direction from.
-  // A route the ring estimator serves answers from its belief: the leg the
-  // countdown is priced on, with the same hysteresis, so "N stops away" and
-  // the number beside it come from one posterior. The legacy path below is
-  // untouched for every other route.
-  if (bus.route_id !== undefined && modelRouteIds().has(String(bus.route_id))) {
-    const ring = ringFor(bus.route_id, routePathFor(bus.route_id), stops, stopCoords);
-    if (ring && !ring.bridged) {
-      const lead = beliefFor(store, key, bus as never, ring, stops, now).lead;
-      // The belief runs on the RING's sequence, which on a repaired route is
-      // not upstream's (eta/align.ts); callers index upstream's list.
-      return ring.repaired ? (ring.order[lead] ?? lead) : lead;
-    }
-  }
-  const travelFrom = store ? noteFix(store, key, bus, now) : null;
-  const raw = findRouteAnchor(bus, stops, stopCoords, travelFrom);
-  if (raw < 0) return raw;
-  // The gate needs the route's stop count for its ring arithmetic, and the
-  // sequence itself to ask whether `at_stop_id` names the very slot proposed —
-  // both from the list it was just asked about, not some other spelling of the
-  // route.
-  return store ? gateAnchor(store, key, raw, bus, now, stops.length, stops).index : raw;
+  const ring = ringForBus(bus, stops, stopCoords);
+  if (!ring) return -1;
+  const lead = beliefFor(store, key, bus, ring, stops, now).lead;
+  // The belief runs on the RING's sequence, which on a route whose order was
+  // repaired against its published line is not upstream's (#160,
+  // src/network/alignStops.ts); every caller indexes upstream's list.
+  return ring.repaired ? (ring.order[lead] ?? lead) : lead;
 }
 
 /**
@@ -104,7 +80,7 @@ export function resolveAnchorIndex(
  * before; a caller passing the canonical list gets the index untouched.
  */
 export function anchorIndexOnList(
-  bus: AnchorBus & GateBus & { bus_name: string },
+  bus: AnchorBus & { bus_name: string },
   cfg: RouteListConfig,
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
@@ -132,72 +108,56 @@ export function anchorIndexOnList(
 /**
  * WHICH STOP IS THIS BUS STANDING AT, AND FOR HOW LONG — one answer, shared.
  *
- * The estimator has always had to decide this to price the first hop, and it
- * decided it inline. The SCREEN had to decide it too, and decided it
- * differently: the pause chip read `at_stop_id` / `at_stop_since` straight off
- * the payload. That was harmless while the two agreed, and stopped being
- * harmless the moment the approach-zone rule shipped (#130), because a bus
- * taking its layover short of the marker publishes no `at_stop_id` at all. The
- * countdown then prices it as standing — correctly — while the chip beside it
- * shows nothing and the row reads as a bus still rolling.
+ * The price has to decide this to bill the residual stand, and the SCREEN has
+ * to decide it to draw the pause chip. They once decided it differently: the
+ * chip read `at_stop_id` / `at_stop_since` straight off the payload, which
+ * stopped agreeing the moment a bus took its layover short of the marker —
+ * no `at_stop_id` is published there, so the countdown priced it as standing
+ * while the chip showed nothing and the row read as a bus still rolling.
+ * That is report #102, "a bus sitting in a garage lot was counted down as if
+ * on its way". So the decision lives here, once, and both read it.
  *
- * That is the same "two answers, one screen" this module was created to end,
- * and it is the substance of report #102: "a bus sitting in a garage lot was
- * counted down as if on its way". So the decision lives here, once, and both
- * the price and the label read it.
+ * The answer is the belief's rest: `restStop` is the stop whose zone held the
+ * standing mass when the rest was established (the approach cells of a
+ * layover stop count as that stop, so the short-of-the-marker rest lands on
+ * 344 Winchester), and the clock is the rest's earliest known origin, the
+ * clock the stand tables were measured with (eta/filter.ts).
  *
- * `approach` is true when the answer came from the approach zone rather than
- * from a published `at_stop_id` — the caller needs it because the honest label
- * differs for a bus that is not, physically, at the marker.
+ * `approach` is true when the bus is not, physically, at the published
+ * marker — the caller needs it because the honest label differs.
  *
- * Storeless callers get null: `standingAt`'s memory and the approach memo both
- * ride the caller's store, exactly as the anchor gate does, so a replay or a
- * pure test behaves as it always did.
+ * Storeless callers get null: the belief rides the caller's store, so a
+ * replay or a pure test behaves as it always did.
  */
 export interface StandingAnswer {
   /** The stop the bus is standing at — a canonical-sequence stop id. */
   stopId: number;
   /** Seconds it has been standing, on the same clock the price bills. */
   standingSec: number;
-  /** True when this came from the approach zone, not a published at_stop_id. */
+  /** True when the bus is resting short of the marker rather than at it. */
   approach: boolean;
 }
 
 export function resolveStandingStop(
-  bus: AnchorBus & GateBus & {
-    bus_name: string;
-    at_stop_since?: string | null | undefined;
-    stationary_since?: string | null | undefined;
-  },
+  bus: AnchorBus & { bus_name: string; at_stop_id?: number | null | undefined },
   cfg: RouteListConfig,
   routeStops: Record<string, number[]>,
   stopCoords: Record<number, LatLon>,
-  dwellTimes: Record<string, { q?: number[] | undefined; qn?: number | undefined; n: number }>,
   now: number,
   store: AnchorStore | undefined,
-  /** The anchor index, when the caller has already resolved it this poll. */
-  anchorIdx?: number,
 ): StandingAnswer | null {
   if (!store) return null;
   const stops = mergedRouteStops(cfg, routeStops);
   if (stops.length === 0) return null;
-  const key = anchorKeyFor(cfg.label, bus.bus_name);
-  const idx = anchorIdx ?? resolveAnchorIndex(bus, stops, stopCoords, key, now, store);
-  if (idx < 0) return null;
-  // The candidate is the NEXT stop in sequence and never the nearest — see
-  // APPROACH_ZONE_M in hopPricing.ts for why that one constraint is what makes
-  // the rule a scalpel, and why it must never be re-derived from
-  // `last_stop_id`, which is garbage right after a bus_id reissue.
-  const nextStopId = stops[(idx + 1) % stops.length];
-  const nextStand = nextStopId === undefined ? undefined : dwellTimes[String(nextStopId)];
-  const approach = nextStopId !== undefined && standAdequate(nextStand)
-    ? { stopId: nextStopId, typicalStandSec: remainingStandSec(nextStand.q, 0) }
-    : undefined;
-  const st = standingAt(store, key, bus, now, stopCoords, STANDING_HOLD_M, approach);
-  if (!st) return null;
+  const ring = ringForBus(bus, stops, stopCoords);
+  if (!ring) return null;
+  const b = beliefFor(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, now);
+  if (!b.rested || b.restStop < 0) return null;
+  const stopId = stops[b.restStop];
+  if (stopId === undefined) return null;
   return {
-    stopId: st.stopId,
-    standingSec: st.standingSec,
-    approach: !(bus.at_stop_id != null && bus.at_stop_id === st.stopId),
+    stopId,
+    standingSec: standingSec(b, now),
+    approach: !(bus.at_stop_id != null && bus.at_stop_id === stopId),
   };
 }

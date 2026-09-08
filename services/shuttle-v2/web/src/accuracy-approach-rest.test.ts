@@ -64,15 +64,24 @@ import { describe, expect, it } from "vitest";
 import { computeUpcomingArrivals } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import { registerRoutePaths } from "./anchor";
-import type { AnchorStore } from "./anchorGate";
+import { fromQuantiles, residualMedian } from "./eta/dist";
+import type { AnchorStore } from "./eta";
 import type { LatLon } from "./geo";
-import {
-  APPROACH_LAYOVER_MIN_SEC,
-  APPROACH_REST_MIN_SEC,
-  APPROACH_ZONE_M,
-  remainingStandSec,
-} from "./hopPricing";
 import type { BusData } from "./map-data";
+
+// The retired approach zone's three dials (web/src/hopPricing.ts until
+// 2026-09-07; the replays keep a copy at scripts/eta-replay/legacy/). The RULE
+// is gone — the model reads a rest inside a stop's zone off the belief, not
+// off a distance/duration threshold — but the numbers still DESCRIBE the two
+// recordings below, which is all they are used for here: this rest was 147 m
+// short and lasted 425 s, and 344 Winchester is a layover stop while
+// Canal / Munson is not. Every behavioural assertion underneath is the
+// estimator's.
+const APPROACH_ZONE_M = 200;
+const APPROACH_REST_MIN_SEC = 150;
+const APPROACH_LAYOVER_MIN_SEC = 120;
+/** The stop's typical hold — the median of its stand table, read the way the model reads it. */
+const remainingStandSec = (q: readonly number[], r: number): number => residualMedian(fromQuantiles(q), r);
 
 import incidents from "./__fixtures__/anchor-incidents.json";
 import onRoadFx from "./__fixtures__/red-approach-rest.json";

@@ -33,7 +33,8 @@ import {
 import { planTracks, stepMany, type BusObservation, type BusState } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median, percentile } from "../../src/calibrator/shrinkage.js";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";

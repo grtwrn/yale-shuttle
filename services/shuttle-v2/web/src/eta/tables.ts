@@ -34,14 +34,29 @@
  *                    cold database): the arrival-to-arrival `avg`/`sd` as a
  *                    lognormal that INCLUDES the stand at A, and last the
  *                    road at BUS_SPEED_M_S. So `priced` is false only for a
- *                    route with no hop the model can put a number on at all;
- *                    what still declines a route is a BRIDGED ring
- *                    (index.ts), not a thin table.
+ *                    route with no hop the model can put a number on at all —
+ *                    a cold database with no pace anywhere. Nothing dispatches
+ *                    on it any more (there is no second estimator to dispatch
+ *                    to); it is the diagnostic `no-bridged-ring.test.ts`
+ *                    asserts against the payload fixture.
  *
  * `pace` travels inside `segmentTimes[route]["__pace"]` (a reserved key, see
  * v1compat.ts) so the client signature did not have to change. Road metres
  * per hop come from the ring (`legM`), the same length the server's pace is
  * measured against.
+ *
+ * WHAT A DWELL STATISTIC ACTUALLY MEASURES — read this before using the v1
+ * `med` / `avg` fields for anything. `dwells[r][stop].med` does NOT measure
+ * how long a bus stands: `detector.ts` computes ONE elapsed time per
+ * transition (nearest stop A -> nearest stop B) and emits it as both the
+ * dwell at A and the segment A->B — 119,329 of 119,329 joined rows over 30
+ * days were identical — so `seg.avg - med` is two estimators of the same
+ * quantity disagreeing, not "the drive" (the dwell median exceeded the whole
+ * segment average on 41.2% of hops). Two shipped changes rested on that
+ * decomposition and were reverted (docs/eta-accuracy.md). This model reads
+ * `q` (the stand at the stop, from `stop_visits`) and `dq` (the whole leg,
+ * from `legs`), which ARE two measurements; `avg` is touched only in the
+ * cold-database branch below, and there as the whole hop it is.
  */
 
 import { haversineMeters, type LatLon } from "../geo";
@@ -108,7 +123,13 @@ export interface HopModel {
 export interface RouteTables {
   stops: StopModel[];
   hops: HopModel[];
-  /** True when at least one hop carries a measured drive: the model may price this route. */
+  /**
+   * Whether there is anything to price a leg ON — a hop's own `dq`/`drive`,
+   * the route's pace, or the NETWORK's pooled pace. Nothing dispatches on it
+   * any more (there is no second estimator to dispatch to); it is the
+   * diagnostic `no-bridged-ring.test.ts` asserts for every served route, and
+   * it is false only for a cold database with no pace anywhere.
+   */
   priced: boolean;
 }
 
@@ -205,8 +226,12 @@ export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: read
   // and the pooled quantiles are wider than a route's own, so the 10-90 range
   // widens where the route has not been measured.
   if (prior) return { drive: prior, includesStand: false, measured: false, speedMps: speedOf(prior), hidden: null, free: prior };
+  // No pace anywhere (a cold database): the v1 arrival-to-arrival hop, which
+  // CONTAINS the stand at A (see the header) — arrival.ts adds no stand for
+  // such a hop. Unmeasured for the `~`: a whole-hop mean and sd are not the
+  // leg's distribution.
   if (seg && seg.n >= 1 && Number.isFinite(seg.avg) && seg.avg > 0) {
-    return { drive: lognormalMeanSd(seg.avg, seg.sd ?? seg.avg * 0.5), includesStand: true, measured: true, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
+    return { drive: lognormalMeanSd(seg.avg, seg.sd ?? seg.avg * 0.5), includesStand: true, measured: false, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
   }
   const guess = Math.max(30, roadM / BUS_SPEED_M_S);
   return { drive: lognormalMeanSd(guess, guess * 0.5), includesStand: false, measured: false, speedMps: DEFAULT_DRIVE_M_S, hidden: null, free: null };
@@ -277,14 +302,13 @@ export function buildTables(
     // this route has been measured: a hop answered from the NETWORK's pooled
     // pace carries a real drive distribution, and `measured: false` is how the
     // row says so to the rider (the `~`, and the pooled quantiles' wider
-    // 10-90). That is the whole of this change — before it, a line with no
-    // legs of its own fell through to a second arithmetic.
+    // 10-90).
     //
     // Still not a price: a whole-hop `avg` (it CONTAINS the stand at A, so it
     // is not the leg's distribution) and the last-resort road-length-over-a-
-    // constant guess. Both need no pace anywhere, i.e. a cold database. What
-    // declines a route in practice is a BRIDGED ring, and that decision is
-    // index.ts'.
+    // constant guess. Both need no pace anywhere, i.e. a cold database. It no
+    // longer selects an estimator — it is read by the tests that pin every
+    // served route as priceable.
     if (!hop.includesStand && (hop.measured || hop.free)) out.priced = true;
   }
   return out;

@@ -21,7 +21,8 @@
 import { loadNet, fmtEt } from "./common.js";
 import { planTracks, stepMany, type BusObservation, type BusState } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
 import { buildGeometry, pointAt, projectOnLeg, step as filterStep, type FilterState, type RouteGeometry } from "./progress-filter.js";
 

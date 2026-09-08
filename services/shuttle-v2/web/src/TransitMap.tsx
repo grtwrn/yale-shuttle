@@ -8,9 +8,8 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
-import { liveAnchorStore } from "./anchorGate";
-import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
-import { modelServesRoute } from "./eta";
+import { liveAnchorStore } from "./eta";
+import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
 import {
@@ -19,7 +18,7 @@ import {
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import {
-  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec, splitServedForRoute,
+  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
@@ -4267,7 +4266,6 @@ const TripPlanner: FC<{
                   // Dwell readouts: the typical hold at a stop, plus the live
                   // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  const routeSegs = segmentTimes?.[cfg.routeIds[0]] ?? {};
                   // The hold SHOWN must be the hold BILLED — see shownStandSec
                   // (report #73: "it says arrive in 8 but expected dwell is
                   // 10", which was the median on screen and a low quantile in
@@ -4291,10 +4289,8 @@ const TripPlanner: FC<{
                   //
                   // If per-bus dwells are ever really served, thread them into
                   // computeUpcomingArrivals FIRST; display follows billing.
-                  const splitServed = splitServedForRoute(routeSegs, routeDwells, cfg);
-                  // On a route the ring estimator prices, the chip reads the
-                  // model's own stand table (see shownStandSec).
-                  const modelChip = modelServesRoute(cfg) ? { routeDwells } : undefined;
+                  // The chip reads the model's own stand table (see
+                  // shownStandSec), the one the countdown is billed from.
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
                   /**
                    * M:SS for the live pause chip, so a hold keeps its seconds
@@ -4339,7 +4335,7 @@ const TripPlanner: FC<{
                    */
                   const standing = busMatch
                     ? resolveStandingStop(
-                        busMatch, cfg, routeStops, stopCoords, routeDwells, Date.now(), liveAnchorStore,
+                        busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
                       )
                     : null;
                   const liveElapsedSec = standing ? standing.standingSec : null;
@@ -4347,25 +4343,13 @@ const TripPlanner: FC<{
                    * The hold to show at `sid`. `elapsed` is passed only for the
                    * stop the bus is actually standing at — everywhere else
                    * there is no remainder to state, so the typical hold is
-                   * still the honest answer and the legacy path is what runs.
-                   * The drive is looked up for the hop the pricing bills:
-                   * `sid` -> the next stop on the loop.
+                   * the honest answer. Same table, same pools, same clock as
+                   * the countdown (shownStandSec).
                    */
                   const standAt = (sid: number, elapsed: number | null) => {
                     const stat = routeDwells[String(sid)];
                     if (!stat || stat.n < 3) return null;
-                    const i = allStops.indexOf(sid);
-                    const next = i >= 0 ? allStops[(i + 1) % allStops.length] : undefined;
-                    const seg = next === undefined ? undefined : routeSegs[`${sid}-${next}`];
-                    // Same store, same key, same ceiling as the countdown —
-                    // the hold shown must be the hold billed, and since the
-                    // billed remainder is now clamped non-increasing
-                    // (flooredStandSec) the shown one has to be too.
-                    return shownStandSec(stat, seg, elapsed, splitServed, false,
-                      elapsed === null || busMatch == null
-                        ? undefined
-                        : { store: liveAnchorStore, key: anchorKeyFor(cfg.label, busMatch.bus_name), stopId: sid, now: Date.now() },
-                      modelChip);
+                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
                   };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>

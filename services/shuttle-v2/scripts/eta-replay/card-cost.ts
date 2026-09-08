@@ -29,7 +29,7 @@ import { dedupeAndSort, groupPolls, parseCaptureLine, type PosRow } from "./ride
 import * as det from "../../src/collector/detector.js";
 import { computeUpcomingArrivals } from "../../web/src/arrivals.js";
 import { registerRoutePaths } from "../../web/src/anchor.js";
-import { liveAnchorStore } from "../../web/src/anchorGate.js";
+import { liveAnchorStore } from "../../web/src/eta/index.js";
 import { isBusInService } from "../../web/src/schedule.js";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "../../web/src/routes.js";
 import { haversineMeters } from "../../web/src/geo.js";

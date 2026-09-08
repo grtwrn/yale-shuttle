@@ -17,8 +17,10 @@
  * same `__pace` carrier row; the network class pools are pooled here from the
  * payload's whole `dwells` table.
  *
- * A BRIDGED ring still declines — see eta/index.ts and
- * docs/eta-ring-posterior.md §2 for the measurement that deferred that.
+ * A BRIDGED ring was the other decline. #160 repaired Green's order against
+ * its published line and no route builds one any more — `no-bridged-ring.test.ts`
+ * pins that against the payload fixture — so the legacy arithmetic these two
+ * used to fall back to has no caller and is gone (2026-09-07).
  */
 import { describe, expect, it } from "vitest";
 

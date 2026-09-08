@@ -67,10 +67,21 @@ import {
 } from "./rider-sim/lib.js";
 
 import * as det from "../../src/collector/detector.js";
-import { computeUpcomingArrivals, splitServedForRoute } from "../../web/src/arrivals.js";
+import { computeUpcomingArrivals } from "../../web/src/arrivals.js";
+
+/**
+ * Whether a route's payload carried both halves of the retired stand/drive
+ * split (web/src/hopPricing.ts until 2026-09-06: drive n >= 10 on some hop
+ * and stand n >= 20 at some stop). Kept so the `splitSeen` column of this
+ * historical instrument reads as it did when it was measured.
+ */
+function splitServedForRoute(routeSegs: Record<string, { driveN?: number; n: number }>, routeDwells: Record<string, { qn?: number; n: number }>): boolean {
+  return Object.values(routeSegs).some((s) => (s.driveN ?? s.n) >= 10)
+    && Object.values(routeDwells).some((d) => (d.qn ?? d.n) >= 20);
+}
 import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor.js";
 import { anchorIndexOnList } from "../../web/src/liveAnchor.js";
-import { liveAnchorStore } from "../../web/src/anchorGate.js";
+import { liveAnchorStore } from "../../web/src/eta/index.js";
 import { isBusInService } from "../../web/src/schedule.js";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "../../web/src/routes.js";
 import { haversineMeters } from "../../web/src/geo.js";
