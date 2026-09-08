@@ -795,3 +795,34 @@ describe("step: the movement clock (lastMovedAt)", () => {
     expect(after.lastMovedAt).toBe(T0 + 60 * 60_000);
   });
 });
+
+describe("step: the movement clock survives a restart", () => {
+  // Report #100: a deploy zeroed every standing bus's clock and riders watched
+  // the countdown restart. #129 seeds `stationarySince` from recorded
+  // positions on first sighting; the movement clock has to come with it, or
+  // for the first STANDING_MIN_S after every deploy a bus at the kerb reads as
+  // moving and is refused its "now".
+  const obs = (when: number): BusObservation => ({
+    busId: 42, busName: "#42", routeId: 1,
+    lat: stops[0]!.lat, lon: stops[0]!.lon, heading: 90,
+    lastStopId: 1, collectedAt: when,
+  });
+
+  it("a seeded stand seeds the movement clock with it", () => {
+    const stoodSince = T0 - 8 * 60_000;
+    const seeded = step(net, null, obs(T0), () => ({
+      stationarySince: stoodSince,
+      stationaryLat: stops[0]!.lat,
+      stationaryLon: stops[0]!.lon,
+      stationaryStopId: stops[0]!.id,
+    })).state!;
+    expect(seeded.stationarySince).toBe(stoodSince);
+    expect(seeded.lastMovedAt).toBe(stoodSince);
+  });
+
+  it("with no seed the bus reads as having just moved, which withholds", () => {
+    // The safe direction: it can cost a "now" for one threshold, never invent one.
+    const cold = step(net, null, obs(T0)).state!;
+    expect(cold.lastMovedAt).toBe(T0);
+  });
+});

@@ -842,6 +842,14 @@ export function step(
     discontinuous ||
     !continuous;
   if (reanchor) {
+    // The stationary seed recovers how long this bus has been standing from
+    // recorded positions, so a restart does not zero every standing clock
+    // (report #100, #129). The movement clock has to be recovered with it: a
+    // bus the seed says has been stationary since T has not moved since T
+    // either, and without this every bus on the road reads as "just moved" for
+    // the first STANDING_MIN_S after a deploy — which withholds "now" from a
+    // bus sitting at the kerb.
+    const stationary = stationaryFields(seeded, obs, anchorStop);
     return {
       state: {
         busId: obs.busId,
@@ -856,7 +864,7 @@ export function step(
         // otherwise withhold the stop for three polls after every deploy.
         enteredAt: resumed?.enteredAt ?? obs.collectedAt,
         lastObservedAt: obs.collectedAt,
-        lastMovedAt,
+        lastMovedAt: Math.min(lastMovedAt, stationary.stationarySince),
         lat: obs.lat,
         lon: obs.lon,
         // A reanchor means we lost track of this bus; nothing about how long
@@ -867,7 +875,7 @@ export function step(
         //
         // {@link StationarySeed} is the exception, and only on a first
         // sighting: it recovers the clock from recorded positions.
-        ...stationaryFields(seeded, obs, anchorStop),
+        ...stationary,
       },
       // A resumed stand already HAS its arrival row. Writing another is the
       // duplicate this exists to end — and each one truncated the measured
