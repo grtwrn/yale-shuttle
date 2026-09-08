@@ -160,9 +160,24 @@ describe("ingest", () => {
   });
 
   it("refuses a batch larger than the cap rather than accepting it whole", () => {
+    // The name was always right; the assertion used to pin the opposite, and
+    // the truncation it blessed cost 152 canary runs on 2026-09-08 — the
+    // shipper POSTed its whole backlog, got a 200, and advanced its cursor
+    // past everything the server had thrown away. Nothing is stored now, and
+    // the caller is told what the limit was so it can resend in chunks.
     const many = Array.from({ length: CANARY_MAX_RUNS_PER_POST + 10 }, (_, i) =>
       run({ startedAt: T + i * 1000, runKey: `k${i}`, jumps: [] }));
-    expect(recordCanaryRuns(bundle, many, T).stored).toBe(CANARY_MAX_RUNS_PER_POST);
+    const res = recordCanaryRuns(bundle, many, T);
+    expect(res.stored).toBe(0);
+    expect(res.tooMany).toEqual({ limit: CANARY_MAX_RUNS_PER_POST, sent: many.length });
+  });
+
+  it("stores a batch exactly at the cap", () => {
+    const exact = Array.from({ length: CANARY_MAX_RUNS_PER_POST }, (_, i) =>
+      run({ startedAt: T + i * 1000, runKey: `cap${i}`, jumps: [] }));
+    const res = recordCanaryRuns(bundle, exact, T);
+    expect(res.tooMany).toBeUndefined();
+    expect(res.stored).toBe(CANARY_MAX_RUNS_PER_POST);
   });
 });
 
