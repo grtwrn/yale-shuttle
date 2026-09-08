@@ -16,7 +16,8 @@ import { isBusOnRoute } from "./anchor";
 import { anchorKeyFor } from "./liveAnchor";
 import { arrivalsForBus, globalPoolsFor, ringForBus, type AnchorStore } from "./eta";
 import { residualMedian } from "./eta/dist";
-import { classPools, poolsWithFallback, stopModel } from "./eta/tables";
+import { classPools, poolsWithFallback, stopModel, type HourContext, type StandHourProfile } from "./eta/tables";
+export type { StandHourProfile } from "./eta/tables";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { mergedRouteStops, ROUTE_LISTS } from "./routes";
@@ -42,7 +43,7 @@ export type SegmentTimes = Record<string, Record<string, SegmentStat>>;
  * arrival-to-arrival figures, which NOTHING here reads any more (see WHAT A
  * DWELL STATISTIC ACTUALLY MEASURES in eta/tables.ts).
  */
-export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
+export type DwellStat = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number; hq?: number[]; hqn?: number[] };
 export type DwellTimes = Record<string, Record<string, DwellStat>>;
 export type DwellsByBus = Record<string, DwellTimes>;
 
@@ -59,19 +60,19 @@ export interface ShownStand {
    * The stop's TYPICAL hold — what the same table says a bus that has only
    * just arrived still has to stand. Present only when `remaining` is true.
    *
-   * Deliberately unconditional, so it does not move while a bus sits. The
-   * conditional total does move, and correctly: a bus five minutes into a
-   * hold is drawn from the longer-hold population, so its expected total is
-   * genuinely larger than a bus two minutes in (339 s vs 478 s at stop 11).
-   * That is the inspection paradox and it is real — but the operator's call,
-   * having seen both: "well actually, stable makes more sense", because the
-   * figure reads as a fact about the STOP rather than a prediction about the
-   * bus, and a number that creeps upward while nothing happens invites the
-   * reader to look for a cause that is not there.
+   * ⚠️ **`typicalSec - elapsed` is NOT what is left. `sec` is.** A rider five
+   * minutes into a typical six-minute hold may still have three minutes to
+   * go, because a stand that has already lasted five minutes is drawn from
+   * the longer-hold population (the inspection paradox; at stop 11 the
+   * conditional total runs 287 s at arrival, 356 s at 2:21, 702 s at ten
+   * minutes).
    *
-   * The cost, stated so nobody rediscovers it: `typicalSec - elapsed` is NOT
-   * what is left. `sec` is. A rider five minutes into a typical six-minute
-   * hold may still have three minutes to go.
+   * The pause chip printed this beside the elapsed clock until 2026-09-08 —
+   * `⏸ 2:21 / ~4:48` — and riders subtracted, which is the arithmetic above.
+   * It now prints `sec`, the term the countdown actually adds
+   * (web/src/standChip.ts). `typicalSec` stays because the chip still needs
+   * it for a stop the bus has NOT reached, where there is no remainder to
+   * state, and because the tooltip quotes both.
    */
   typicalSec?: number;
 }
@@ -99,10 +100,17 @@ export function shownStandSec(
   routeDwells: Record<string, DwellStat>,
   /** Every route's tables, for the network-level pools (omit: the route's own only). */
   dwellsByRoute?: DwellTimes,
+  /**
+   * The ET hour and the served profile, from `hourContext(now, standHours)` —
+   * the SAME object the countdown was priced with. Passing one here and not
+   * there (or the reverse) is exactly the disagreement this function exists to
+   * make impossible.
+   */
+  hour?: HourContext,
 ): ShownStand | null {
   if (!stat || !stat.q || stat.q.length < 3) return null;
   const pools = poolsWithFallback(classPools(routeDwells), dwellsByRoute ? globalPoolsFor(dwellsByRoute).pools : undefined);
-  const m = stopModel(stat, pools);
+  const m = stopModel(stat, pools, hour);
   if (elapsedSec !== null) {
     return { sec: residualMedian(m.stand, elapsedSec), remaining: true, typicalSec: residualMedian(m.stand, 0) };
   }
@@ -164,6 +172,13 @@ export function computeUpcomingArrivals(
    * what the existing tests assert.
    */
   anchorStore?: AnchorStore,
+  /**
+   * The payload's `stand_hours` — the network's diurnal stand profile by ET
+   * hour and stop class (src/calibrator/diurnal.ts). Omitted, or served by an
+   * older build that has none, every stand is priced exactly as served: the
+   * factor is 1 and `scaled` is not called at all.
+   */
+  standHours?: StandHourProfile,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -198,7 +213,7 @@ export function computeUpcomingArrivals(
     for (const bus of routeBuses) {
       const rows = arrivalsForBus(
         anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
-        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes,
+        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes, standHours,
       );
       for (const row of rows) {
         result.push({

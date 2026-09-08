@@ -1234,8 +1234,24 @@ The ceiling lives per (bus, stop) on the caller's `AnchorStore`, beside
 `standingAt`'s memory and the anchor gate's, and resets on a different stop, a
 restarted hold clock, a stale entry or the departure. **A storeless caller —
 every hypothetical, every pure test — prices exactly as it did before.** The
-chip reads the same ceiling through the same key (`shownStandSec`), because
-the hold shown must be the hold billed.
+chip reads the same table through the same key (`shownStandSec`), because the
+hold shown must be the hold billed.
+
+**What the pause chip shows, corrected 2026-09-08.** It said
+`⏸ 2:21 / ~4:48` — the elapsed clock, then the stop's UNCONDITIONAL median
+stand — while the countdown beside it billed the RESIDUAL of the same table
+given 2:21 already stood (3:31). Two numbers on one line, one of them not the
+one being charged, and a rider subtracts: 4:48 − 2:21 = 2:27. This file and
+`docs/eta-ring-posterior.md` both already claimed the chip quoted the residual
+"so the chip and the countdown cannot disagree"; the tooltip did, the glyph
+did not. It now reads `⏸ 2:21 · ~3:31 left` — the term the countdown adds
+(`web/src/standChip.ts`). Two things stay: a stop the bus has NOT reached
+still shows the stop's typical hold, because there is no remainder to state
+there; and the shown remainder is floored non-increasing within one rest, the
+same discipline as the ceiling above, because the conditional TOTAL rises as a
+bus sits (287 s → 356 s → 702 s at stop 11) and the #119 clamp forbids the
+countdown from showing that rise. On the live tables 167 of 277 stand tables
+have a residual median that rises somewhere, so the floor is not decoration.
 
 Do not monotonise the CDF inside `remainingStandSec` instead: the rise is the
 correct conditional median and the estimator's measured bias depends on it
@@ -1846,6 +1862,34 @@ seven constants and refused the seventh**: `P_REPEAT_MOVE_ZONE` measures 0.215
 against the compiled 0.5 — which `filter.ts` already calls an estimate, not a
 measurement. Don't just lower it; the number that settles it is a stage-4
 replay, not the emission rate. See docs/closed-loop.md.
+
+**The hour of day is priced, and it is small** (2026-09-08,
+`src/calibrator/diurnal.ts`, `web/src/eta/tables.ts` `hourFactor`, served as
+`stand_hours` + `dwells[r][s].hq`/`hqn`). Measured on every `stop_visits` row
+of 2026-09-03..08, within cell: a weekday stand is within **±6%** of its
+stop's own all-day typical at every hour of the service day, against a
+within-stop spread of p75/p25 = 1.89. The shape is real — it reproduces across
+the term-start regime change at correlation 0.93–0.94 on the long `arrivals`
+proxy, and controlling for ISO week changes the hour estimate not at all — but
+it is a twentieth of what a stand does. It is priced as a multiplicative
+factor on `q`, estimated at the CLASS (layover / kerb, over every stand in the
+fleet, because a (stop, hour) cell holds a median of THREE positive stands)
+and borrowed downward with two variance-ratio shrinkages (k = 12 for a stop
+against its class, k = 84 for a class-hour against 1). Multiplicative on
+purpose: scaling leaves 0 at 0, so P(stop) cannot move, and the
+residual-given-elapsed arithmetic stays exactly f · residual(r / f). It
+degrades to the old behaviour byte for byte with no data — the gps-replay run
+with `NO_STAND_HOURS=1` reproduces master on all 205k pairs. Read
+docs/eta-ring-posterior.md §2.1 before touching it; it also records the two
+things measured and NOT built (P(stop) is strongly diurnal but is not
+separable from deadheading, and the 30-day split window will smear the next
+term-start regime change).
+
+**Do not compare `dwells[r][s].med` with `q`.** `med` is the legacy
+(dow, hour ± 1) ARRIVAL-TO-ARRIVAL median and runs +45.1 s past the served
+stand at the median over 6,691 paired visits — roll-in (10.0 s) plus the drive
+to the next anchor (25.2 s). There is no bias between the two records; they
+measure different things, and only `q` is a stand.
 
 ## Investigations that did not become code
 

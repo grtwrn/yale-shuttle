@@ -32,7 +32,8 @@ import type { BusData } from "../map-data";
 import { priceRoute, type Floors, type StopArrival } from "./arrival";
 import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
-import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
+import { etHourOf } from "../schedule";
+import { buildTables, globalClassPools, type ClassPools, type DwellLike, type HourContext, type SegmentLike, type StandHourProfile } from "./tables";
 
 /** The displayed quantile. 0.5 = the median; see the plan's Step 4 sweep. */
 export const DISPLAY_TAU = 0.5;
@@ -51,6 +52,23 @@ export type AnchorStore = Map<string, ModelEntry>;
  * belief per bus. Replays and tests make their own.
  */
 export const liveAnchorStore: AnchorStore = new Map();
+
+/**
+ * The live app's copy of the payload's `stand_hours`, set once per poll where
+ * the payload lands (TransitMap's fetch) and read by every surface that prices
+ * — the map, the route cards, the trip card, the ride page and the pause chip
+ * — so they cannot price at different hours or with different profiles.
+ *
+ * A module-level holder rather than a prop threaded through four components,
+ * for the same reason `liveAnchorStore` is one: five call sites in a 6.8k-line
+ * file, and a `const` referenced from a dependency array declared later in the
+ * component is a TDZ ReferenceError that blank-screens the app.
+ *
+ * `undefined` until a payload carries one — which is also what every test and
+ * every replay sees unless it sets one, so the pre-diurnal behaviour is the
+ * default rather than a special case.
+ */
+export const liveStandHours: { profile: StandHourProfile | undefined } = { profile: undefined };
 
 /**
  * The ring for a bus's route and the canonical sequence, or null when the
@@ -129,8 +147,10 @@ export function arrivalsForBus(
   now: number,
   tau = DISPLAY_TAU,
   dwellsByRoute?: Record<string, Record<string, DwellLike>>,
+  /** The served `stand_hours`; omit and stands are priced as served. */
+  standHours?: StandHourProfile,
 ): StopArrival[] {
-  const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
+  const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute, hourContext(now, standHours));
   const belief = beliefFor(store, key, bus, ring, ring.stops, now);
   let floors: Floors | undefined;
   if (store) {
@@ -182,22 +202,35 @@ export function globalPoolsFor(dwellsByRoute: Record<string, Record<string, Dwel
   return { pools, key };
 }
 
+/**
+ * The hour the stands are priced at, resolved in ET (never `getHours()`), and
+ * the profile to price it with. Undefined with no profile, which is what makes
+ * an old payload — or a server that has not built one — price exactly as it
+ * did before this term existed.
+ */
+export function hourContext(now: number, standHours: StandHourProfile | undefined): HourContext | undefined {
+  return standHours ? { hour: etHourOf(new Date(now)), profile: standHours } : undefined;
+}
+
 function tablesFor(
   ring: Ring, stops: readonly number[], stopCoords: Record<number, LatLon>,
   routeSegs: Record<string, SegmentLike>, routeDwells: Record<string, DwellLike>,
   dwellsByRoute?: Record<string, Record<string, DwellLike>>,
+  hour?: HourContext,
 ) {
   let bySegs = tableCache.get(routeSegs);
   if (!bySegs) { bySegs = new Map(); tableCache.set(routeSegs, bySegs); }
   const global = dwellsByRoute ? globalPoolsFor(dwellsByRoute) : undefined;
-  const key = ring.key + "|" + dwellFingerprint(routeDwells) + "|" + (global?.key ?? "");
+  // The hour is part of the cache key, so the tables rebuild when it turns —
+  // once an hour per route, not once per poll.
+  const key = ring.key + "|" + dwellFingerprint(routeDwells) + "|" + (global?.key ?? "") + "|" + (hour ? hour.hour : "-");
   let t = bySegs.get(key);
   if (!t) {
     if (bySegs.size > 8) bySegs.clear();
     // The per-pass stand tables are keyed by UPSTREAM's index (the server
     // serves `"<stop>#<index>"` against the list it publishes), so a repaired
     // ring asks for its occurrences under the slot upstream gave them.
-    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring, global?.pools, ring.repaired ? ring.order : undefined);
+    t = buildTables(stops, stopCoords, routeSegs, routeDwells, ring, global?.pools, ring.repaired ? ring.order : undefined, hour);
     bySegs.set(key, t);
     // The kernel's profile lives on the shared ring, so every call site —
     // including the table-free `resolveAnchorIndex` — steps with the same speeds.

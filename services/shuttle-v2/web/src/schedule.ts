@@ -270,6 +270,21 @@ export function etDayAndMinutes(d: Date): { day: number; mins: number } {
 }
 
 /**
+ * The hour of the day (0..23) in America/New_York.
+ *
+ * The ONLY way the client may name an hour. The collector writes
+ * `stop_visits.hour` in ET (TZ=America/New_York in the Dockerfile), so a
+ * diurnal table is indexed in ET on the server; a phone left on another
+ * timezone reading `Date#getHours()` would index someone else's day — the
+ * same class of bug as the "No shuttles running" one this module exists to
+ * prevent. Intl resolves DST for us, so the boundary needs no arithmetic
+ * here: 01:30 EDT and 01:30 EST both answer 1.
+ */
+export function etHourOf(d: Date): number {
+  return Math.floor(etDayAndMinutes(d).mins / 60);
+}
+
+/**
  * Is the ET instant `d` inside any of `wins`? False for an empty list. With a
  * calendar, only on days it allows — judged on the ET date the window
  * STARTED (an overnight window's small hours belong to the evening before).

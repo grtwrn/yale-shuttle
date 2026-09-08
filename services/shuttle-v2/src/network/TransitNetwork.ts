@@ -1,5 +1,6 @@
 import KDBush from "kdbush";
 
+import type { StandHourProfile } from "../calibrator/diurnal.js";
 import type { Route, Stop } from "../schema/api.js";
 
 import { distanceMeters, makeProjector } from "./geo.js";
@@ -156,6 +157,20 @@ export interface DwellStats {
    * counts every pass. Absent wherever `q` is.
    */
   pstop?: number;
+  /**
+   * This stop's OWN diurnal factors on `q`, by ET hour (0..23), x100 — 0 at an
+   * hour with too few positive stands to publish. `hqn[h]` is the count behind
+   * `hq[h]`.
+   *
+   * RAW, unshrunk: the client blends them with the served CLASS profile
+   * (`standHours`) weighted by `hqn` and `STAND_HOUR_SHRINK_K`, exactly as it
+   * shrinks `q` toward the class pools, so the server must not pre-filter
+   * beyond the wire budget. See src/calibrator/diurnal.ts for why the effect
+   * is estimated above the stop at all (a (stop, hour) cell holds a median of
+   * three positive stands).
+   */
+  hq?: number[];
+  hqn?: number[];
 }
 
 export interface WalkTransfer {
@@ -249,6 +264,7 @@ export class TransitNetwork {
   private readonly segmentStats = new Map<string, SegmentStats>();
   private readonly dwellStats = new Map<string, DwellStats>();
   private readonly paceStats = new Map<number, PaceStats>();
+  private standHourProfile: StandHourProfile | undefined;
 
   private constructor(args: {
     stops: ReadonlyMap<number, Stop>;
@@ -371,6 +387,7 @@ export class TransitNetwork {
     segments: ReadonlyMap<string, SegmentStats>,
     dwells: ReadonlyMap<string, DwellStats>,
     pace: ReadonlyMap<number, PaceStats> = new Map(),
+    standHours: StandHourProfile | undefined = undefined,
   ): void {
     this.segmentStats.clear();
     for (const [k, v] of segments) this.segmentStats.set(k, v);
@@ -378,6 +395,12 @@ export class TransitNetwork {
     for (const [k, v] of dwells) this.dwellStats.set(k, v);
     this.paceStats.clear();
     for (const [k, v] of pace) this.paceStats.set(k, v);
+    this.standHourProfile = standHours;
+  }
+
+  /** The network-wide diurnal stand profile, if the calibrator has built one. */
+  getStandHours(): StandHourProfile | undefined {
+    return this.standHourProfile;
   }
 
   // -- Queries ---------------------------------------------------------------

@@ -447,6 +447,258 @@ patch, so the comparison is exact — and 191.3 s is still below the legacy arm'
 288.8 s on the same window. Quote 70.1 s for what the line does in production
 and 191.3 s only against the row beside it.
 
+## 2.1 The clock: a diurnal factor on the stand (2026-09-08)
+
+**Measured first, then built, and the measurement is the headline: on the
+record the model prices stands from, the hour of day moves a stand by about
+±5% in the service day — an effect that is real, reproducible, correctly
+signed, and an order of magnitude smaller than the spread it sits inside.**
+
+### The question, and the observation that raised it
+
+A rider watching Red #304 stand at 344 Winchester at 08:56 ET on 2026-09-08
+saw the pause chip read `2:21 / ~4:48`. The served table for that stop is
+`q = [39,118,140,164,265,311,371,438,492,654]`, `qn = 63`, `pstop = 0.952` —
+an unconditional median of 285 s, which is the 4:48. The operator: *"4:48
+seems short for 344 win delay."* The same payload carries `med` 420.3 over
+`n` 17 for that stop, a minute and a half longer.
+
+Three candidate explanations, all measured:
+
+**1. The two numbers on the payload are not the same quantity, and the gap is
+definitional.** `med` is the legacy (dow, hour ± 1) ARRIVAL-TO-ARRIVAL median:
+`detector.ts` emits one elapsed time per anchor transition as both the dwell
+at A and the segment A→B (`WHAT A DWELL STATISTIC ACTUALLY MEASURES`,
+eta/tables.ts). Joined per visit on 6,691 paired stopped visits from the
+2026-09-03..06 snapshot, `arrivals.dwell_sec` runs **+45.1 s** past the served
+stand at the median, and that gap decomposes into the roll-in (`pinned_at −
+anchored_at`, median 10.0 s) and the drive to the next anchor (median 25.2 s).
+At 344 Winchester specifically: stand 323 s, roll-in 15 s, drive to next 15 s,
+`dwell_sec` 380 s. **There is no bias between the records.** The physical rest
+(`departed_at − arrived_at`) is if anything 5.0 s SHORTER than the served
+clock (`departed_at − pinned_at`), and the served clock is the right one
+because it is the clock the CLIENT conditions on — `pinned_at` is production's
+`at_stop_since`.
+
+**2. A regime change at term start, and the table has already followed it.**
+On the long `arrivals` record the 344 Winchester dwell median by ISO week runs
+560–570 s from wk24 to wk33 and then **533 (wk34) → 460 (wk35) → 360 (wk36)**.
+The stand there really did fall by about a third when term began. The operator's
+"about ten minutes" is a correct memory of the summer. `stop_visits` — the
+record the stand tables are built from — begins 2026-09-03, entirely inside
+the new regime, so **4:48 is current, not stale.** This is a live hazard
+rather than a live bug: `SPLIT_WINDOW_DAYS` is 30, and once `stop_visits` is
+thirty days old a change of that size will be smeared across a month. Nothing
+is built for it here; it is written down so the next reader does not have to
+rediscover it.
+
+**3. Time of day.** Measured below.
+
+### The diurnal measurement
+
+Source: every `stop_visits` row on production, 2026-09-03 → 2026-09-08 09:00
+ET, 15,517 pinned visits over 261 (route, stop) cells (18 layover-class).
+Estimator: the **within-cell** log ratio of each positive stand to its own
+cell's all-hours geometric mean — within cell because the route and stop mix
+changes with the hour (night lines run at night), so a raw hourly pooled
+median measures the mix and not the clock.
+
+Weekday, all stops, positive stands (203 cells with ≥ 8):
+
+| ET hour | n | factor | 95% | | ET hour | n | factor | 95% |
+|---|---|---|---|---|---|---|---|---|
+| 06 | 115 | 1.086 | ×1.16 | | 15 | 453 | 0.992 | ×1.05 |
+| 07 | 499 | 0.999 | ×1.05 | | 16 | 548 | 1.024 | ×1.05 |
+| 08 | 613 | **1.055** | ×1.05 | | 17 | 474 | 1.042 | ×1.05 |
+| 09 | 360 | 0.932 | ×1.06 | | 18 | 288 | 0.903 | ×1.07 |
+| 10 | 615 | 0.954 | ×1.05 | | 19 | 210 | 1.018 | ×1.09 |
+| 11 | 487 | 1.016 | ×1.05 | | 20 | 178 | 1.056 | ×1.10 |
+| 12 | 454 | 0.961 | ×1.06 | | 21 | 162 | 1.063 | ×1.10 |
+| 13 | 468 | 0.950 | ×1.05 | | 22 | 161 | 0.969 | ×1.10 |
+| 14 | 455 | 1.030 | ×1.05 | | 23 | 124 | 1.159 | ×1.16 |
+
+Every hour of the service day is within ±6% of 1, and the intervals are ±4–10%.
+The **within-stop spread of the stands themselves is p75/p25 = 1.89**. So the
+clock explains a twentieth of what a stand does. The layover class alone
+(15 cells, 13–60 visits an hour) has intervals of ×1.2–2.0 and shows no
+consistent shape at all. Weekend is flatter still.
+
+**The effect is not an artefact of the regime change.** On the long `arrivals`
+proxy (409k weekday rows, June–September) the hour profile computed with stop
+fixed effects and with stop × ISO-week fixed effects is **identical to three
+decimals at every hour** (max/min swing 5.36× vs 5.53×, both dominated by two
+sub-100-sample hours). And the SHAPE reproduces across the regime change:
+correlation between the summer (wk ≤ 33) and term (wk ≥ 34) hour profiles is
+**0.925** at layover cells and **0.944** at kerb cells. It is a real diurnal
+pattern; it is simply small in the stand, and larger in that proxy because
+`arrivals.dwell_sec` is more than half DRIVE at a kerb stop and its peaks sit
+at 08:00 and 16:00–17:00 — rush hour on the road, not on the kerb.
+
+**What IS strongly diurnal is P(stop), not the stand.** Within stop, weekday,
+the share of visits that stop at all runs 0.63–0.70 of its own baseline at
+05:00–06:00 and 0.75–0.81 at 23:00–00:00 against 1.02–1.12 through the
+afternoon. About half of that survives removing runs of four or more
+consecutive pass-throughs on one route inside fifteen minutes (the deadhead
+signature — 73% of 05:00 passes sit in such a run, against 16–20% midday), and
+the residue is not separable from deadheading with the data at hand. **It is
+therefore NOT priced**, and the multiplicative shape below is chosen partly so
+that it cannot be priced by accident: scaling a quantile vector leaves 0 at 0,
+so P(stop) is exactly where the calibrator measured it.
+
+**Error by hour of day** (43,941 `predictions_log` rows scored against
+`arrivals`, ≤ 2 stops ahead, ≤ 900 s promised) shows a morning bulge —
+median |err| 226/200/168 s at 06/07/08 against 68–118 s at 13:00–19:00, with a
+median bias of +85 to +115 s in the morning against +20 s mid-afternoon. The
+sign is the wrong way round for "we under-price morning stands": positive bias
+is the app promising LONGER than the bus took. The morning routes and the
+morning hours are confounded in that reading and the truth join is naive (the
+first arrival of that bus at that stop), so it is quoted as a caveat, not as
+support.
+
+### The model: partial pooling, at the level that has data
+
+A **multiplicative factor on the stand's quantile vector**, per ET hour and
+per stop class, estimated where the data is and borrowed downward:
+
+```
+log f(stop, h) = ( n(stop, h) · log f_raw(stop, h)
+                 + STAND_HOUR_SHRINK_K · log F(class(stop), h) ) / (n + K)
+
+log F(class, h) = ( n(class, h) / (n(class, h) + STAND_HOUR_CLASS_K) )
+                  · mean over that class-hour's visits of log(stand / cell mean)
+```
+
+`src/calibrator/diurnal.ts` estimates it, `v1compat.ts` serves it as
+`stand_hours` (the class profiles with their counts) plus `dwells[r][s].hq` /
+`.hqn` (a stop's own hourly factors ×100, RAW, and their counts),
+`web/src/eta/tables.ts` `hourFactor` blends and `stopModel` applies it with
+`scaled`.
+
+Why this shape, point by point:
+
+- **The stop is not the level with data.** A (stop, hour) cell holds a MEDIAN
+  OF THREE positive stands (2,436 cells; 504 reach six, 32 reach ten). That is
+  the same reason `calibrator.ts` pools the split tables over the whole window
+  instead of slicing by (dow, hour), and slicing thinner is not an answer. The
+  class — layover or kerb, over every stand in the fleet — has 150–560 positive
+  stands an hour on the kerb side.
+- **Both shrinkages are variance ratios, not taste.** k = σ²/τ². The per-visit
+  spread of log(stand) inside a cell is σ ≈ 0.55. For a stop against its class,
+  τ ≲ 0.15 (bounded by the class swing), so `STAND_HOUR_SHRINK_K = 12`. For a
+  class-hour against 1, τ ≈ 0.06 (what the well-sampled kerb class shows), so
+  `STAND_HOUR_CLASS_K = 84`. The second one is load-bearing: the layover class
+  has ~45 positive stands an hour and its raw 15:00 factor read 1.375; served
+  raw it moved the 15:00 gps-replay bucket from 10.8% to 23.9% pessimistic
+  while every well-sampled hour improved. Damped to 1.118 it costs half that.
+- **Multiplicative on `q`, not additive, and applied AFTER the class-pool
+  shrinkage.** S_scaled(x) = S(x / f), so the residual given r elapsed is
+  exactly f · residual(r / f): the conditional arithmetic in `dist.ts` stays
+  coherent and monotone, the whole distribution scales rather than its median,
+  and the mass at zero — P(stop) — does not move. The stop's CLASS is decided
+  before scaling, on its own all-day median, so an hour cannot tip a kerb stop
+  into the layover pool for sixty minutes.
+- **Raw on the wire, shrunk on the client**, exactly as `q` is, so the server's
+  and the client's gates cannot drift apart. `STAND_HOUR_MIN_CELL = 6` is a
+  PAYLOAD budget and says so: `/api/buses` is 134 KB raw / 33.6 KB gzipped and
+  polled every 5 s, and the whole block costs +10.0 KB raw / **+1.7 KB
+  gzipped** at 81 stops and 209 published cells.
+- **ET on both sides.** The calibrator groups on `stop_visits.hour`, written in
+  ET by a container with `TZ=America/New_York`; the client resolves the display
+  hour with `etHourOf` in `web/src/schedule.ts`, never `Date#getHours()`. A
+  phone left on another timezone would otherwise index someone else's day —
+  the same class of bug as the "No shuttles running" one. Intl resolves DST, so
+  01:30 EDT and 01:30 EST both answer hour 1.
+- **Degrades to nothing, provably.** No profile, no `hq`, an hour the class has
+  too few samples for, an out-of-range hour: the factor is 1, `scaled` is never
+  called, and the distribution is the one built today. Pinned by tests on the
+  knots themselves, and by the replay below.
+
+On the 2026-09-04 tables the published profile is:
+
+```
+kerb    06 1.023  07 0.987  08 1.052  09 0.948  10 0.976  11 1.017  12 0.994
+        13 0.956  14 1.034  15 0.971  16 1.023  17 1.043  18 0.941  19 1.020
+        20 1.052  21 1.027  22 0.953  23 1.055
+layover 10 0.921  11 1.010  12 0.910  13 1.009  14 0.998  15 1.118  16 1.015
+        17 1.003
+```
+
+### gps-replay, every line, 9/4 15:51–22:04 ET, branch vs origin/master
+
+Same snapshot (`snap-0904-2205.db`), same `PAYLOAD_PATCH`
+(`diurnal-patch-0904.json`, built by `model-patch.ts` at MODEL_NOW
+2026-09-05T03:00Z), master run from a second worktree at `1c85638`. Proximity
+truth (45 m), 205,061 pairs, next 1–5 stops.
+
+| | median \|err\| | p90 | median bias | pessimistic ≥120 s | optimistic ≥120 s | within 120 s | 10–90 covers |
+|---|---|---|---|---|---|---|---|
+| origin/master | 59.1 s | 391 | −7.7 | 13.84% | 17.09% | 69.07% | 76.65% |
+| diurnal | **59.0** | **389** | **−5.7** | 14.28% | **16.54%** | **69.18%** | **76.95%** |
+| diurnal, warm (first 30 min dropped) | 58.4 | 385 | −5.6 | 13.99% | 16.37% | 69.65% | 76.95% |
+| master, warm | 58.6 | 388 | −7.1 | 13.76% | 16.86% | 69.38% | 76.69% |
+
+**A third arm proves the degradation claim on data rather than on argument**:
+the branch run with `NO_STAND_HOURS=1` reproduces origin/master to every digit
+on all 205,061 pairs (59.1 / 391 / −7.7 / 17.09% / 13.84% / 69.07%, and
+75.4 / 526.4 / +29.0 on detector truth). With no profile the branch IS master.
+
+The number itself barely moves: **|Δeta| median 2.1 s, p90 10.7 s, ≥ 60 s on
+1.0% of pairs.** Which is the point — a ±5% term on the stand half of a chain
+is a few seconds, and anything larger would have been a bug.
+
+By route (master → diurnal, median |err| and the two ≥120 s tails):
+
+| route | n | median \|err\| | pessimistic ≥120 s | optimistic ≥120 s | within 120 s |
+|---|---|---|---|---|---|
+| Blue Day | 12,274 | 35.3 → 37.6 | 7.8 → 10.9% | 6.3 → 5.9% | 85.9 → 83.2% |
+| Blue Night | 22,973 | 70.8 → 70.2 | 13.1 → 13.2% | 18.8 → 18.5% | 68.1 → 68.3% |
+| Blue West | 12,037 | 47.5 → 48.1 | 4.5 → 4.5% | 16.6 → 16.2% | 78.9 → 79.3% |
+| Brown | 8,307 | 79.3 → 80.3 | 12.7 → 13.2% | 27.4 → 27.0% | 60.0 → 59.8% |
+| Gold | 6,018 | 55.3 → 54.1 | 7.4 → 7.6% | 20.8 → 19.4% | 71.7 → 72.9% |
+| Green | 22,611 | 182.1 → 182.2 | 47.7 → 48.0% | 11.4 → 11.4% | 40.9 → 40.7% |
+| Orange Day | 13,982 | 28.1 → 28.4 | 5.0 → 4.8% | 3.6 → 3.8% | 91.4 → 91.4% |
+| Orange East | 11,656 | 48.1 → 47.8 | 3.5 → 3.6% | 16.5 → 16.6% | 80.0 → 79.8% |
+| Orange Night | 28,068 | 39.4 → 38.8 | 3.0 → 3.0% | 9.1 → 8.7% | 87.9 → 88.3% |
+| Pink | 19,061 | 106.1 → 102.2 | 9.4 → 10.5% | 36.5 → 34.0% | 54.2 → 55.4% |
+| Purple | 27,102 | 102.9 → 102.8 | 25.3 → 25.3% | 22.0 → 22.0% | 52.7 → 52.7% |
+| Red | 20,972 | 47.5 → 46.4 | 4.8 → 5.6% | 19.0 → 17.4% | 76.2 → 77.0% |
+
+By ET hour — the split this term has to be judged on:
+
+| ET hour | n | median \|err\| | pessimistic ≥120 s | optimistic ≥120 s | within 120 s |
+|---|---|---|---|---|---|
+| 15 (partial, 15:51–15:59, cold) | 7,015 | 92.5 → 105.0 | 10.8 → 17.6% | 31.6 → 28.8% | 57.6 → 53.6% |
+| 16 | 53,359 | 58.6 → 58.1 | 16.6 → 16.7% | 15.8 → 15.1% | 67.6 → 68.2% |
+| 17 | 44,299 | 64.2 → 64.1 | 17.2 → 18.0% | 17.7 → 16.8% | 65.1 → 65.2% |
+| 18 | 32,553 | 63.3 → 63.9 | 16.8 → 16.5% | 15.1 → 15.8% | 68.1 → 67.7% |
+| 19 | 24,899 | 54.5 → 54.1 | 11.3 → 11.4% | 15.8 → 15.4% | 72.9 → 73.2% |
+| 20 | 22,376 | 57.1 → 55.4 | 4.9 → 5.1% | 22.4 → 21.3% | 72.7 → 73.6% |
+| 21 | 20,189 | 49.2 → 49.1 | 8.5 → 8.7% | 13.3 → 13.1% | 78.1 → 78.2% |
+
+**Every warm hour is flat or better; the whole regression is the capture's
+first, partial, cold-start bucket**, nine minutes in which every bus's belief
+is still the stateless prior (Blue Day 15h: 7.3 → 41.2% pessimistic on 970
+pairs; Red 15h: 7.3 → 15.9%; every one of those buses' later hours improves).
+That bucket also carries the largest published factor (layover 15:00, 1.118).
+Worth naming rather than hiding: the factor does not only price, it also feeds
+the filter's departure hazard through `setRingProfile`, so a scaled stand
+table changes the STAND/MOVE competition too — coherently (a longer expected
+stand lowers the departure hazard), but it means a cold belief and a scaled
+table compound.
+
+**What this replay cannot say.** The 9/4 capture runs 15:51–22:04 ET, so the
+gate covers hours 15–22 only — precisely the hours whose measured factors are
+nearest 1 (0.94–1.05). The hours where the profile is largest (06:00 1.086,
+08:00 1.055, 23:00 1.159) are not in the window at all. The right verdict on
+the numbers above is "correctly signed, and too small to resolve on the six
+evening hours we have", not "it works".
+
+**Not run: the rider-sim.** 2026-09-08 is a service day with the live canary
+riding and the Pi at load 2.1–3.8 throughout; one browser-driven simulation on
+top of that is what crashed it on the Sunday before. The gps-replay is the
+measurement here; the simulator's chain and departure-poll columns are not
+reported.
+
 ## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 
 Per (bus, stop): `eta` = quantile τ of the LEAD LEG's mixture — its standing
@@ -473,6 +725,30 @@ departure poll, the collapse arriving as a ≥180 s jump. The flapping it was
 meant to cure — one bucket out and back on every creep — turned out to be
 the served clock switching source between polls (§1, the rest's clock), not
 the mixture.
+
+**The pause chip shows the REMAINDER, not the stop's typical hold**
+(2026-09-08, `web/src/standChip.ts`). It used to print `⏸ 2:21 / ~4:48`: the
+elapsed clock, then `residualMedian(stand, 0)` — the unconditional median.
+The countdown beside it was billing `residualMedian(stand, 2:21)` = 3:31,
+because a stand that has already lasted 2:21 is drawn from the longer-hold
+population. A rider subtracts the pair on screen and gets 2:27, which is
+neither number. This document and CLAUDE.md both claimed the chip read the
+residual so that "the chip and the countdown cannot disagree"; the tooltip
+did, the glyph did not. It now reads `⏸ 2:21 · ~3:31 left`.
+
+The honest tension, since it does not go away: the conditional TOTAL rises the
+longer a bus sits (287 s at arrival, 356 s at 2:21, 702 s at ten minutes at
+344 Winchester) and the #119 clamp forbids the countdown from climbing while a
+bus stands — the operator's decision, and it stays. So the chip may not show
+that rise either, or two numbers on one line move in opposite directions with
+nothing on screen to explain it. The remainder mostly falls on its own, but
+not always: on the live tables **167 of 277 stand tables have a residual
+median that rises somewhere** (worst single step +128 s), where a table's own
+tail hazard flattens past its last recorded stand. So the shown remainder
+carries the same floor the countdown does — within ONE rest it may pause and
+fall, never climb; when the rest ends the clock changes and the floor goes
+with it. A stop the bus has NOT reached keeps the stop's typical hold, which
+is the honest answer where there is no remainder to state.
 
 The #119 clamp stays, as a display rule keyed on the stand's identity: while
 the lead stands, the shown remainder may pause and never climb; while it

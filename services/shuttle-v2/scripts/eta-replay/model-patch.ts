@@ -68,19 +68,23 @@ import {
   attachDrives,
   attachLegQuantiles,
   attachOccurrenceStandTables,
+  attachStandHourFactors,
   attachStandTables,
   calibrate,
+  classOfDwell,
   computePace,
   computePooledPace,
   loadDriveGroups,
   loadLegGroups,
   loadStandGroups,
+  loadStandHourCells,
   loadStandOccurrenceGroups,
   loadStopOccurrenceShares,
   loadStopShares,
   splitWithheldRoutes,
   withPooledPace,
 } from "../../src/calibrator/calibrator.js";
+import { buildProfile, type StandHourProfile } from "../../src/calibrator/diurnal.js";
 import { TransitNetwork, type DwellStats, type PaceStats, type SegmentStats } from "../../src/network/TransitNetwork.js";
 import {
   dwellSplitFields,
@@ -108,6 +112,13 @@ interface Patch {
   /** Pooled keys carry the split only; `"<stop>#<index>"` keys are whole entries. */
   dwells: Record<string, Record<string, Pick<DwellEntry, "q" | "qn" | "pstop"> & Partial<Pick<DwellEntry, "med" | "sd" | "n">>>>;
   pace: Record<string, PaceEntry>;
+  /**
+   * The diurnal stand profile (`stand_hours`), by ET hour and stop class —
+   * built by the SAME `buildProfile` the calibrator runs, over the same
+   * MODEL_NOW-bounded window, so a replay prices the hour exactly as
+   * production would have. Per-stop `hq`/`hqn` ride inside `dwells`.
+   */
+  standHours?: StandHourProfile;
 }
 
 const net = loadNet();
@@ -183,9 +194,16 @@ for (const r of net.network.routes.values()) {
   if (p) paceTable.set(r.id, p);
 }
 const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoutes(net.network);
+let standHours: StandHourProfile | undefined;
 {
   const legGroups = loadLegGroups(db, SPLIT_WINDOW_DAYS, NOW);
   const standCount = attachStandTables(dwTable, loadStandGroups(db, SPLIT_WINDOW_DAYS, NOW), withheld, loadStopShares(db, SPLIT_WINDOW_DAYS, NOW));
+  // The diurnal factor, after the stand tables it rides on (a cell's class is
+  // read off the `q` just attached), exactly as `calibrate` orders it.
+  const hourCells = loadStandHourCells(db, SPLIT_WINDOW_DAYS, NOW);
+  standHours = buildProfile(hourCells, (key) => classOfDwell(dwTable.get(key)));
+  const standHourCount = attachStandHourFactors(dwTable, hourCells);
+  console.error(`stand-hour cells: ${hourCells.size} stops; class-hours published: ordinary ${standHours.ordinary.filter((f) => f !== 1).length}, layover ${standHours.layover.filter((f) => f !== 1).length}; stops carrying hq: ${standHourCount}`);
   // Per-pass tables are structural (a fold's two passes), not part of the old
   // allowlist arm: the "served" payload never had them.
   const occCount = MODEL_ROUTES === "all"
@@ -205,7 +223,7 @@ const withheld = MODEL_ROUTES === "all" ? new Set<number>() : splitWithheldRoute
 
 // The same loops `v1compat.ts` runs, through its own emitters, carrying only
 // the fields the replay cannot serve.
-const patch: Patch = { segments: {}, dwells: {}, pace: {} };
+const patch: Patch = { segments: {}, dwells: {}, pace: {}, ...(standHours ? { standHours } : {}) };
 const rows: Array<{ route: string; hops: number; drives: number; dqs: number; stops: number; stands: number; passes: number; legMs: number; pace: string }> = [];
 // The NETWORK's routes again: the emission must walk the same sequence the
 // calibrator keyed, or a repaired route's hops are asked for under keys the

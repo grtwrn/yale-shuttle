@@ -38,7 +38,7 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
-import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type StandHourProfile } from "../../web/src/arrivals";
 import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
 // The retired legacy arithmetic, kept as the replay's own copy: the `chord`
 // replica below is that estimator — the stateless anchor, the stall credit
@@ -129,6 +129,9 @@ function payloadAt(t: number) {
 }
 interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
 const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
+const standHours: StandHourProfile | undefined =
+  process.env.NO_STAND_HOURS === "1" ? undefined : (patch as { standHours?: StandHourProfile } | null)?.standHours;
+if (patch) log(`stand_hours: ${standHours ? `published ordinary ${standHours.ordinary.filter((f) => f !== 1).length}h / layover ${standHours.layover.filter((f) => f !== 1).length}h` : "none (priced as served)"}`);
 if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 
 // -- Time-travelled dwell calibration (calibrator.ts loadDwellGroups + computeDwellStats) --
@@ -558,7 +561,7 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; t: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
@@ -590,7 +593,11 @@ for (const o of observations) {
   const payload = payloadAt(o.t);
   const targets: number[] = [];
   for (let k = 1; k <= MAX_K; k++) targets.push(stops[(busIdx + k) % stops.length]!);
-  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t), clientStore)
+  // The diurnal stand profile the server would have served at this instant
+  // (model-patch.ts builds it with the calibrator's own `buildProfile`). Null
+  // patch — or a patch from before this term existed — hands over `undefined`,
+  // and the client then prices every stand exactly as served.
+  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t), clientStore, standHours)
     .filter((a) => a.routeLabel === cfg.label);
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
@@ -651,6 +658,7 @@ for (const o of observations) {
       realEta: r.eta,
       realLow: r.low,
       realHigh: r.high,
+      t: o.t,
     });
   }
 }
@@ -701,6 +709,11 @@ if (process.env.PAIRS_OUT) {
       low: Math.round(p.realLow * 10) / 10,
       high: Math.round(p.realHigh * 10) / 10,
       det: p.det === null ? null : Math.round(p.det * 10) / 10,
+      // The origin instant and the proximity truth, so a reader outside this
+      // script can split the same pairs by HOUR OF DAY — which is the split a
+      // diurnal term has to be judged on.
+      t: p.t,
+      prox: p.prox === null ? null : Math.round(p.prox * 10) / 10,
     }));
   }
   fs.writeFileSync(process.env.PAIRS_OUT, out.join("\n") + (out.length ? "\n" : ""));

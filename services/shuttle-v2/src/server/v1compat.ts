@@ -55,7 +55,7 @@ export type SegmentEntry = {
  * `med`/`sd`/`n` are that pass's stand summary (median, p90 − median, count)
  * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
  */
-export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
+export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number; hq?: number[]; hqn?: number[] };
 /**
  * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
  * quantiles at (i + 0.5) / spm.length, 4 decimals. `pooled: true` when the
@@ -92,8 +92,13 @@ export function legMetersField(net: TransitNetwork, routeId: number, fromStopId:
 }
 
 /** The split fields of one stop, as they go on the wire (see {@link segmentSplitFields}). */
-export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop"> {
+export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop" | "hq" | "hqn"> {
   return {
+    // The stop's OWN diurnal factors on `q` (x100, 0 where unpublished) and
+    // the positive stands behind each. ADDITIVE: a client that has never
+    // heard of them ignores them and prices exactly as before. Raw, unshrunk
+    // — the client blends them with `standHours` (diurnal.ts).
+    ...(d.hq !== undefined && d.hqn !== undefined ? { hq: d.hq, hqn: d.hqn } : {}),
     // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
     // whole seconds, with the stopped visits behind them. This is the
     // `stand` half the client conditions on r with; `qn` is its gate.
@@ -185,6 +190,7 @@ export function buildBusesPayload(
   const route_paths: Record<string, [number, number][]> = {};
   const segments: Record<string, Record<string, SegmentEntry>> = {};
   const dwells: Record<string, Record<string, DwellEntry>> = {};
+  const standHours = net.getStandHours();
   const pace: Record<string, PaceEntry> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
@@ -293,6 +299,12 @@ export function buildBusesPayload(
     stop_coords,
     segments,
     dwells,
+    // The network's diurnal stand profile, by ET hour and stop class — the
+    // level the effect is estimated at, because a (stop, hour) cell holds a
+    // median of three positive stands (src/calibrator/diurnal.ts). Absent
+    // until the calibrator has built one; a client that does not read it
+    // prices exactly as it did before.
+    ...(standHours ? { stand_hours: standHours } : {}),
     // Per-route pace for the probabilistic estimator's drive prior — the
     // route's own, or the network's pooled one where it has no legs; `{}`
     // until any route has legs. See PaceEntry / PACE_KEY.
