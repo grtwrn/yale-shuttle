@@ -63,6 +63,18 @@ export interface BusData {
    * "now". See `stillSec()` in eta/filter.ts.
    */
   last_moved_at?: string;
+  /**
+   * The poll this fix was reported on — naive UTC, same spelling. Absent from
+   * a server older than 2026-09-08.
+   *
+   * With `last_moved_at` beside it the pair says how many POLLS ago the bus
+   * moved, on the server's own clock: a bus at rest repeats its coordinate, so
+   * one repeat already separates the bus that has pulled in from the one still
+   * driving through. Measuring that against the browser's clock instead spends
+   * the whole margin on the payload's age and the device's clock skew. See
+   * `movedOnLastPoll()` in eta/filter.ts.
+   */
+  seen_at?: string;
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────
