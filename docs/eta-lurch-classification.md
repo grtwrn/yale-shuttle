@@ -423,3 +423,146 @@ arm C.
   and feed gaps, neither of which is modelled here.
 - **`predictions_log` is still empty.** Nothing in production records what
   riders were told, so all of this is reconstruction.
+
+---
+
+# Addendum, 2026-09-08: are the canary's own `eta-jump` findings real?
+
+**Status: measured, from the canary's own run log — 248 archived runs at
+`services/shuttle-v2/scripts/.canary/runs.jsonl`, 104 of them in the 24 h to
+2026-09-08 21:00 UTC.** The question was the operator's: a red finding that is
+really the model behaving correctly is worse than no finding, because it
+teaches its reader to skim.
+
+**Read from the LOCAL log, not the dashboard.** 62 of the day's 104 runs had
+never reached the server when this was written (see the shipper section below),
+including 15 of the 24 failing ones, so `/api/stats/canary` was a 40% sample of
+its own evidence.
+
+## The population
+
+16 `eta-jump` findings in 24 h, which are **13 distinct transitions**: three
+were filed twice, once as "the bus it is counting down" and once as "the bus
+after the pinned one", with identical text, because pairing scores both slots
+and the whole card had re-priced.
+
+## What can be adjudicated, and what cannot
+
+Only a **leader** transition can be judged, and only when the bus the card was
+pinned to was later seen to reach the stop: then the number before the jump and
+the number after can both be scored against the arrival the canary watched for
+itself. Across the whole archive that is **12 cases**.
+
+| | moved TOWARDS the observed arrival | moved AWAY |
+|---|---|---|
+| all 12 | **8** | 4 |
+
+**So two thirds of the adjudicable jumps are the app correcting itself, not
+lurching.** The shape is the one `docs/eta-ring-posterior.md` predicts: a bus
+standing somewhere out on the loop is priced with its remaining stand, and the
+first fresh fix after the stand collapses that term. Gold #310 on 2026-09-08
+20:35 ET is the cleanest — ten consecutive frames at exactly 263 m and at stop
+10, "in 8, 44 min" throughout; on the frame it moved to 237 m the card read
+"in 1, 37 min", and the bus reached the stop 1.7 min later.
+
+The other **9 of 13** are second-slot transitions and **cannot be adjudicated
+at all**: nothing names the vehicle in slot 1 — the app prints the bus number
+only for the pinned one — and the canary stops watching at the first arrival,
+so the second bus's promise is never checked against anything.
+
+## The rule that shipped, and why it is that narrow
+
+`departureBetween` only ever asked about the BOARD stop, inside 120 m. The
+event that matters happens wherever the bus is standing, so `standEndedFor`
+asks the same question of the PINNED vehicle anywhere on the loop, from the
+feed's own `at_stop_id` and from a run of byte-identical distances (the feed
+repeats a fix rather than interpolating — `docs/bus-speed.md`).
+
+Three restrictions, each of them measured rather than chosen:
+
+- **Drops only.** A stand ending can only make a bus sooner. Drops-only credits
+  6 of the 12 adjudicable jumps and **all 6 moved towards the truth**, while all
+  4 that moved away stayed flagged. Crediting rises as well — a stand
+  *beginning* — pulled one of those four in.
+- **Leader only.** Crediting the second slot because some *other* bus left a
+  stand was tried and the archive refused it: a non-pinned stand end sits under
+  **32%** of catastrophic secondary drops against **45%** of ordinary ones. It
+  is likelier where nothing went wrong, so it explains nothing.
+- **Fleet-wide events are not evidence.** "Some bus on the line began or ended
+  a stand within a poll" covers 53% of catastrophic transitions and 41% of
+  ordinary ones. That lift is far too small to excuse a finding with, and a
+  blanket rule built on it would have silenced half the log for nothing.
+
+One card-wide re-price is now **one** finding: a secondary drift at the same
+poll as a credited leader drift inherits the credit when it is the same
+direction and either the line had a single bus (the second number is that same
+vehicle's next lap, arithmetically the first plus the loop) or the two moved by
+the same amount.
+
+Effect on the archive, scoring every run with both versions: **118 → 81**
+`eta-jump` findings (31% fewer), 56 → 48 runs failing on one; in the last 24 h
+**16 → 10**.
+
+## `no-countdown`: the floor is not a clock
+
+Two findings came off runs that watched 0.4 and 0.5 min. Short-watch runs *can*
+fail a run — the rule fires on fewer than two readable countdowns — but a floor
+in minutes is the wrong instrument. All four such findings in the archive are
+runs where **the bus was already at the stop when the watch opened**: the watch
+ended on the arrival and one reading is all it ever had a chance to take. The
+one genuine scraper failure (2026-09-04 14:47 — five frames, zero readable
+countdowns, no arrival) watched **1.6 min**, so any floor that silenced the
+false ones would have silenced it too. The rule now keys on the arrival.
+
+## What is still not settled, and the smallest measurement that would settle it
+
+Nine of thirteen findings a day are second-slot transitions with no vehicle
+identity and no truth. To adjudicate them the canary needs, per frame, **which
+vehicle each slot is about** — the app would have to print the second bus's
+number, or the details view's approach list would have to be scraped without
+collapsing the row the countdown lives on — and it needs to **keep watching
+past the first arrival** so the second bus's promise can be scored against its
+own arrival. Neither is a scoring change; both are capture changes, and until
+one of them exists the honest statement is that the second slot is counted and
+not judged.
+
+---
+
+# Addendum, 2026-09-08: the shipper was losing most of the evidence
+
+Measured while the above was being counted, because the dashboard and the log
+disagreed: **156 of the 248 archived runs (63%) had never reached the server**,
+including **65 of the 117 failing ones**. In the last 24 h: 62 of 104 runs and
+15 of 24 failures. Verified run by run against `canary_runs` on the production
+volume, keyed on `run_key`.
+
+Two causes, and only one of them was known.
+
+**1. The cursor keyed on `startedAt`, and the log is not ordered by it.**
+`runs.jsonl` is appended to in COMPLETION order, and two riders run at once —
+the dedicated Red rider watches up to 25 min while the rotation rider turns
+over every 3–7. So an earlier-STARTED run is routinely written after a
+later-started one, and once the cursor had passed its `startedAt` it was below
+the cursor forever. 22 of the 248 appends are out of start order and 14 of
+those never shipped. The runs that lose are structurally the **long** watches:
+median 25 min against 11.7 for the log as a whole, i.e. the Red rider's, and
+the only runs with enough watched minutes to have standing to fail. Four of
+them were failing runs (three `eta-jump`, one `no-arrival`).
+
+The cursor is now a **byte offset** into the log, plus a fingerprint of its
+immutable opening bytes so a rotation or truncation restarts from zero rather
+than skipping. The log only ever grows at the end, so "everything after offset
+N" is exactly "everything not yet seen", whatever the clocks inside the records
+say.
+
+**2. The remaining 142 are the truncation loss of 2026-09-08** — a backlog
+POSTed whole, silently cut to 50 by the server, answered 200, and the cursor
+advanced past the rest. The server refuses an over-size batch now, but those
+runs stayed below the old cursor. The offset migration re-ships the whole log
+once, which recovers them; the server de-duplicates on `run_key`.
+
+**Both losses were silent, and both were found by a person diffing two files
+days later.** The shipper now reconciles on every invocation — the log's own
+run count for the last 24 h against the server's — and exits non-zero when the
+server holds fewer. A cursor that has skipped past evidence looks exactly like
+a quiet afternoon otherwise.

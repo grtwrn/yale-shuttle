@@ -61,7 +61,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as METRICS from "./canary-metrics.mjs";
 import {
   ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, fleetOffAir, haversineM,
-  isAtBoardStop, liveBusesOf, parseOptions, runVerdict, scoreSequence, THRESHOLDS, tripForLine,
+  isAtBoardStop, liveBusesOf, parseOptions, runVerdict, scoreSequence,
+  scraperMissedTheCountdown, THRESHOLDS, tripForLine, unexplainedJumps,
 } from "./canary-metrics.mjs";
 import { DEDICATED_LINE, nextInRotation, randomTripForLine } from "./canary-rotation.mjs";
 import { seedTestId } from "./testId.mjs";
@@ -534,7 +535,7 @@ async function runOnce(line, rider) {
           if (beat) record.pins.push({ atMs: Date.now(), ...beat, why: "heartbeat" });
         }
 
-        const seq = scoreSequence(record.samples, THRESH);
+        const seq = scoreSequence(record.samples, THRESH, { pins: record.pins });
         const last = seq.transitions[seq.transitions.length - 1];
         if (last && last.atMs === now && Math.abs(last.driftSec) >= THRESH.pinSampleSec) {
           (record.rawAtJump ??= []).push({
@@ -567,7 +568,7 @@ async function runOnce(line, rider) {
     // feed failure that changes the verdict, and it changes it to a THIRD
     // one — `unreachable`, which the --loop already knows how to sleep on.
     record.feedUnreachable = runVerdict(record) === "unreachable";
-    record.sequence = scoreSequence(record.samples, THRESH);
+    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins });
 
     // ── did the first thing the rider was told survive contact with reality?
     if (firstSight && arrived) {
@@ -586,7 +587,7 @@ async function runOnce(line, rider) {
     // #71 measured that at 92.4 % of catastrophic drops, and reporting them
     // as defects is what made every finding need triaging by hand. They are
     // still counted (`catastrophicEventful`) — they just do not fail a run.
-    for (const t of record.sequence.transitions.filter((x) => x.catastrophic && !x.eventful)) {
+    for (const t of unexplainedJumps(record.sequence)) {
       // Which bus moved is now knowable — pairing tells drift apart from a
       // change of cast — so the finding says it. A lurch in the bus-after-the
       // -pinned-one is a real thing riders see, but it is not the countdown
@@ -638,7 +639,13 @@ async function runOnce(line, rider) {
     // "Purple kept its promises" off a ride with zero recorded promises on
     // 2026-09-03 16:00 — a silent scraper failure that reads exactly like
     // success. Two readings is the minimum that can show a transition at all.
-    if (record.sequence.readings < 2 && record.samples.some((s) => s.present)) {
+    // ...unless the bus was already there when the watch opened; see
+    // `scraperMissedTheCountdown` for the four archived findings that was.
+    if (scraperMissedTheCountdown({
+      readings: record.sequence.readings,
+      anyPresent: record.samples.some((s) => s.present),
+      arrived: !!arrived,
+    })) {
       fail("no-countdown", `${line.label} was on the plan but only ${record.sequence.readings} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
     }
     if (record.pageErrors.length) fail("page-error", record.pageErrors.slice(0, 3).join(" | "));
@@ -653,7 +660,7 @@ async function runOnce(line, rider) {
     record.pageAtFailure = page
       ? await page.evaluate(() => document.body.innerText).catch((x) => `unreadable: ${x.message}`)
       : "no page";
-    record.sequence = scoreSequence(record.samples, THRESH);
+    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins });
     return record;
   } finally {
     await browser.close().catch(() => {});

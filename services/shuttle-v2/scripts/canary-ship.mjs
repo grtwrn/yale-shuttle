@@ -24,6 +24,13 @@
  * It is a READER of the canary's log. It never starts, stops or writes to the
  * canary process, so it is safe to run beside a watch that is mid-rotation.
  *
+ *   3. Reconciles, every time: the log's own run count for the last day
+ *      against the server's. Both of this shipper's bugs were SILENT losses
+ *      (a batch truncated to 50 and answered 200; a cursor that skipped every
+ *      earlier-started run that finished late), and both were found by a
+ *      person diffing two files days later. It now exits non-zero when the
+ *      server holds fewer runs than the log does.
+ *
  * Usage:
  *   node scripts/canary-ship.mjs                 ship anything new, escalate
  *   node scripts/canary-ship.mjs --dry-run       show what would be sent
@@ -40,10 +47,14 @@
  *   CANARY_ALERT_REPO     for CANARY_ALERT=gh, default grtwrn/yale-shuttle
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  completeLines, FINGERPRINT_BYTES, fingerprintOf, readCursor, reconcile, resumeOffset,
+} from "./canary-ship-lib.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const BASE = (process.env.BOT_BASE_URL || "https://yale-shuttle.fly.dev").replace(/\/$/, "");
@@ -70,36 +81,88 @@ function token() {
 
 // ── reading the canary's log ────────────────────────────────────────────────
 
-function loadRuns() {
-  if (!existsSync(RUNS)) return [];
-  const out = [];
-  for (const line of readFileSync(RUNS, "utf8").split("\n")) {
-    if (!line.trim()) continue;
-    // One malformed line must not hide every finding behind it: the canary
-    // appends while this reads, so a torn final line is normal.
-    try {
-      out.push(JSON.parse(line));
-    } catch {
-      /* skip */
+/**
+ * Everything appended since the cursor, in APPEND ORDER, with the byte offset
+ * that each record ends at.
+ *
+ * Append order, not `startedAt` order: the offset the cursor saves has to mean
+ * "I have seen every byte up to here", and sorting first would break that. The
+ * server sorts a batch by `startedAt` itself before it escalates, so the
+ * ordering the cooldown depends on is unaffected. See canary-ship-lib.mjs for
+ * why the cursor stopped being a timestamp.
+ */
+function loadPending() {
+  if (!existsSync(RUNS)) return { records: [], resume: { offset: 0, why: "no log yet" }, fingerprint: null, size: 0 };
+  const fd = openSync(RUNS, "r");
+  try {
+    const size = statSync(RUNS).size;
+    const head = Buffer.alloc(Math.min(FINGERPRINT_BYTES, size));
+    if (head.length) readSync(fd, head, 0, head.length, 0);
+    const fingerprint = fingerprintOf(head);
+    const resume = resumeOffset(readCursor(readCursorFile()), { size, fingerprint }, { all: ALL });
+    const length = Math.max(0, size - resume.offset);
+    const buf = Buffer.alloc(length);
+    if (length) readSync(fd, buf, 0, length, resume.offset);
+    const records = [];
+    for (const { line, endOffset } of completeLines(buf, resume.offset)) {
+      if (!line.trim()) continue;
+      // One malformed line must not hide every finding behind it. A TORN line
+      // is not this case — `completeLines` never returns one — so anything
+      // that fails here is genuinely corrupt and skipping it is right.
+      try {
+        records.push({ record: JSON.parse(line), endOffset });
+      } catch {
+        console.error(`skipping an unparseable line at byte ${endOffset}`);
+      }
     }
+    return { records, resume, fingerprint, size };
+  } finally {
+    closeSync(fd);
   }
-  return out.sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
 }
 
-function cursor() {
-  if (ALL) return 0;
+function readCursorFile() {
   try {
-    return Number(JSON.parse(readFileSync(CURSOR, "utf8")).lastStartedAt) || 0;
+    return readFileSync(CURSOR, "utf8");
   } catch {
-    return 0;
+    return null;
   }
 }
 
-function saveCursor(lastStartedAt) {
+/**
+ * Advance only over bytes the SERVER has acknowledged. A failure mid-backlog
+ * leaves the cursor at the last acknowledged chunk and the next run resumes
+ * there; the server de-duplicates on run_key, so a repeat costs nothing.
+ *
+ * `lastStartedAt` is still written, for a human reading the file and for the
+ * old shape's sake. NOTHING READS IT — that is the bug this replaced.
+ */
+function saveCursor(offset, fingerprint, lastStartedAt) {
   try {
-    writeFileSync(CURSOR, `${JSON.stringify({ lastStartedAt }, null, 2)}\n`);
+    writeFileSync(CURSOR, `${JSON.stringify({ offset, fingerprint, lastStartedAt }, null, 2)}\n`);
   } catch {
     /* the cursor is an optimisation; the server de-duplicates on run_key */
+  }
+}
+
+/** Runs in the log that STARTED inside the reconciliation window. */
+function localRunsWithin(records, hours, nowMs) {
+  const since = nowMs - hours * 3_600_000;
+  return records.filter((r) => (r.startedAt ?? 0) >= since).length;
+}
+
+/** What the server thinks it has over the same window. `null` if it will not say. */
+async function shippedRunsWithin(hours) {
+  try {
+    const res = await fetch(`${BASE}/api/stats/canary?hours=${hours}`, {
+      headers: { "x-admin-token": token() },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return Number.isFinite(body?.runs) ? body.runs : null;
+  } catch {
+    return null;
   }
 }
 
@@ -293,43 +356,37 @@ async function escalate(alerts, resolved) {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-const since = cursor();
-const records = loadRuns().filter((r) => (r.startedAt ?? 0) > since);
-if (records.length === 0) {
-  console.log(`nothing new in ${RUNS}`);
-  process.exit(0);
-}
-const runs = records.map(summarize);
+/** The window the reconciliation below argues over. A day of riding. */
+const RECONCILE_HOURS = 24;
+
+const pending = loadPending();
+if (pending.resume.why) console.log(pending.resume.why);
 
 if (DRY) {
-  console.log(JSON.stringify({ runs }, null, 2));
+  console.log(JSON.stringify({ runs: pending.records.map((p) => summarize(p.record)) }, null, 2));
   process.exit(0);
 }
 
 /**
- * The server accepts `CANARY_MAX_RUNS_PER_POST` (50) and SILENTLY TRUNCATES a
- * longer batch — `raw.slice(0, MAX)` in src/server/canary.ts — returning 200
- * for the whole request. This script used to POST every pending run at once
- * and then advance the cursor to the newest of them, so on 2026-09-08 a
+ * The server accepts `CANARY_MAX_RUNS_PER_POST` (50) and used to SILENTLY
+ * TRUNCATE a longer batch — `raw.slice(0, MAX)` in src/server/canary.ts —
+ * returning 200 for the whole request. This script POSTed every pending run at
+ * once and then advanced the cursor past all of them, so on 2026-09-08 a
  * backlog of 202 runs shipped 50 and threw the other 152 away, with no error
  * anywhere and the operator's dashboard quietly missing five days of riding.
- * The canary is the app's eyes; evidence it collected must not be dropped by
- * a batch boundary.
- *
- * So: send in chunks the server will accept whole, and advance the cursor
- * only over runs the server has actually acknowledged. A failure mid-backlog
- * leaves the cursor at the last acknowledged chunk, and the next run resumes
- * there — the server de-duplicates on run_key, so a repeat costs nothing.
+ * The server now refuses an over-size batch outright; this sends chunks it
+ * will accept whole, and advances the cursor only over BYTES the server has
+ * acknowledged.
  */
 const CHUNK = 50;
 let stored = 0, duplicate = 0, rejected = 0, suppressed = 0;
 const alerts = [], resolved = [];
-for (let i = 0; i < runs.length; i += CHUNK) {
-  const batch = runs.slice(i, i + CHUNK);
+for (let i = 0; i < pending.records.length; i += CHUNK) {
+  const slice = pending.records.slice(i, i + CHUNK);
   const res = await fetch(`${BASE}/api/canary/runs`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-admin-token": token() },
-    body: JSON.stringify({ runs: batch }),
+    body: JSON.stringify({ runs: slice.map((p) => summarize(p.record)) }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
@@ -345,11 +402,35 @@ for (let i = 0; i < runs.length; i += CHUNK) {
   suppressed += body.suppressed ?? 0;
   alerts.push(...(body.alerts ?? []));
   resolved.push(...(body.resolved ?? []));
-  // Acknowledged: this chunk's newest run is the new high-water mark.
-  saveCursor(records[Math.min(i + batch.length, records.length) - 1].startedAt);
+  const last = slice[slice.length - 1];
+  saveCursor(last.endOffset, pending.fingerprint, last.record.startedAt ?? null);
 }
-console.log(
-  `shipped ${runs.length} run(s) in ${Math.ceil(runs.length / CHUNK)} batch(es): ${stored} stored, ${duplicate} already known, ` +
-  `${rejected} rejected, ${alerts.length} escalated, ${suppressed} held back`,
-);
+if (pending.records.length === 0) {
+  console.log(`nothing new in ${RUNS}`);
+} else {
+  console.log(
+    `shipped ${pending.records.length} run(s) in ${Math.ceil(pending.records.length / CHUNK)} batch(es): ` +
+    `${stored} stored, ${duplicate} already known, ${rejected} rejected, ${alerts.length} escalated, ${suppressed} held back`,
+  );
+}
+
 await escalate(alerts, resolved);
+
+/**
+ * AND THEN CHECK ITS OWN WORK. Both shipper bugs were silent, and both were
+ * caught by a person diffing the log against the dashboard days later. This
+ * runs on EVERY invocation, including the ones with nothing to send — a cursor
+ * that has skipped past evidence looks exactly like a quiet afternoon.
+ */
+const everything = existsSync(RUNS)
+  ? readFileSync(RUNS, "utf8").split("\n").filter((l) => l.trim()).map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter(Boolean)
+  : [];
+const check = reconcile({
+  localRuns: localRunsWithin(everything, RECONCILE_HOURS, Date.now()),
+  shippedRuns: await shippedRunsWithin(RECONCILE_HOURS),
+  windowHours: RECONCILE_HOURS,
+});
+console[check.ok ? "log" : "error"](check.message);
+if (!check.ok) process.exit(1);

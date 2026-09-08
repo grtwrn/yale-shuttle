@@ -445,10 +445,11 @@ export function parseOptions(bodyText) {
  * `events` is all three in time order; `transitions`, `drops` and `appearances`
  * are the same events split by kind.
  */
-export function scoreSequence(samples, thresholds = THRESHOLDS) {
+export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null } = {}) {
   const transitions = [], drops = [], appearances = [], events = [];
   let prev = null;
-  for (const s of samples) {
+  for (let idx = 0; idx < samples.length; idx++) {
+    const s = samples[idx];
     if (!s.present || !s.eta) { prev = null; continue; }
     if (prev) {
       const dt = (s.atMs - prev.atMs) / 1000;
@@ -466,7 +467,16 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
         const ctx = {
           atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw,
           event, eventful: event === "departure",
+          liveBuses: Array.isArray(s.buses) ? s.buses.length : null,
         };
+        // The pinned vehicle leaving a stand ANYWHERE on the loop — the event
+        // `departureBetween` is blind to, and the one the ring-posterior model
+        // prices. Looked for on this frame and its neighbours: the canary
+        // scrapes the DOM once per 15 s tick and attaches its own most recent
+        // feed poll, so the two clocks are a poll apart either way.
+        const pinned = pins ? pinnedVehicleAt(pins, s.atMs) : null;
+        const standEnd = pinned != null && [idx - 1, idx, idx + 1]
+          .some((w) => standEndedFor(samples, w, pinned));
         // `busName` is the PINNED vehicle, i.e. the one in slot 0. Callers that
         // know it (the rider simulator) get identity pairing there; the live
         // canary passes nothing and gets the nearest-ETA fallback.
@@ -475,8 +485,30 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
         for (const m of paired.matched) {
           if (m.driftSec === 0) continue;
           const drift = Math.round(m.driftSec);
+          // DROPS ONLY, LEADER ONLY. Both halves are measured, not taste.
+          //
+          // Drops only: a stand ENDING can only make a bus sooner. Against the
+          // 12 catastrophic leader jumps in the archive whose pinned bus was
+          // later seen to arrive, drops-only credits 6 and every one of the 6
+          // moved the number TOWARDS the observed arrival, while all four that
+          // moved it away stayed flagged. Crediting rises too (a stand
+          // beginning) pulled one of those four in.
+          //
+          // Leader only: `pinnedVehicleAt` names the vehicle in slot 0 and
+          // nothing names the one in slot 1, and the app does not print it.
+          // Crediting the second slot because SOME other bus left a stand was
+          // tried and the archive refused it — a non-pinned stand end sits
+          // under 32 % of catastrophic secondary drops against 45 % of
+          // ordinary ones, i.e. it is likelier where nothing went wrong. The
+          // only secondary credit that survives is `creditCardReprice`, which
+          // is the same event seen twice rather than a second bus.
+          const departed = standEnd && drift < 0 && m.leader;
           const t = {
-            kind: "drift", ...ctx, driftSec: drift,
+            kind: "drift", ...ctx,
+            event: departed && ctx.event !== "departure" ? "stand-end" : ctx.event,
+            eventful: ctx.eventful || departed,
+            pinnedBus: pinned,
+            driftSec: drift,
             reversal: drift > 0,
             notable: drift >= thresholds.notableReversalSec,
             catastrophic: Math.abs(drift) >= thresholds.catastrophicSec,
@@ -509,6 +541,7 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
     }
     prev = s;
   }
+  creditCardReprice(transitions);
   events.sort((a, b) => a.atMs - b.atMs);
   const abs = transitions.map((t) => Math.abs(t.driftSec)).sort((a, b) => a - b);
   return {
@@ -546,6 +579,67 @@ export function scoreSequence(samples, thresholds = THRESHOLDS) {
     droppedSevereEventless: drops.filter((d) => d.severe && !d.eventful).length,
   };
 }
+
+/**
+ * Two drifts this close at one poll are the card moving as a unit, not two
+ * buses lurching independently. 120 s, because the interval arithmetic that
+ * produces `driftSec` reads the same shift differently in the two slots: the
+ * Gold pair below is -348 s and -228 s for one "in 8, 42 min" -> "in 1, 37 min".
+ */
+export const CARD_REPRICE_TOL_SEC = 120;
+
+/**
+ * One card-wide re-price is ONE event, and the second number is not a second
+ * finding.
+ *
+ * Pairing scores both buses a reading holds, so when the whole card moves it
+ * produces a drift in each slot and the canary files two `eta-jump`s with
+ * IDENTICAL text. Three of the sixteen filed in the 24 h to 2026-09-08 are
+ * that, and on Gold both were the same vehicle: the line had one bus, so the
+ * second number is #310's NEXT LAP — arithmetically the first plus the loop
+ * time, and it cannot fail to move when the first does.
+ *
+ * So a secondary drift at the same poll as a CREDITED leader drift inherits
+ * the credit, when it is the same direction and either the line had a single
+ * bus or the two moved by the same amount. It never invents a credit: with the
+ * leader still flagged, both stay flagged and `unexplainedJumps` reports the
+ * duplicate once.
+ */
+export function creditCardReprice(transitions) {
+  const leaders = transitions.filter((t) => t.leader && t.eventful);
+  for (const t of transitions) {
+    if (t.leader || t.eventful) continue;
+    const lead = leaders.find((l) => l.atMs === t.atMs && Math.sign(l.driftSec) === Math.sign(t.driftSec));
+    if (!lead) continue;
+    const oneBus = t.liveBuses === 1;
+    if (!oneBus && Math.abs(lead.driftSec - t.driftSec) > CARD_REPRICE_TOL_SEC) continue;
+    t.event = oneBus ? "next-lap" : "card-reprice";
+    t.eventful = true;
+  }
+  return transitions;
+}
+
+/**
+ * The jumps worth putting in front of a human: catastrophic, unexplained, and
+ * counted once.
+ *
+ * The de-duplication is the same card-wide re-price as above seen from the
+ * other side — when the leader is NOT credited, both slots still fire with the
+ * same text, and "the bus it is counting down" and "the bus after the pinned
+ * one" saying the identical sentence twice is how a finding list teaches its
+ * reader to skim.
+ */
+export function unexplainedJumps(sequence) {
+  const out = [];
+  for (const t of (sequence?.transitions ?? []).filter((x) => x.catastrophic && !x.eventful)) {
+    if (out.some((u) => u.atMs === t.atMs && u.from === t.from && u.to === t.to)) continue;
+    out.push(t);
+  }
+  return out;
+}
+
+/** `#40` and `40` are the same vehicle; the feed and the DOM disagree on the hash. */
+const norm = (s) => String(s ?? "").replace(/^#/, "");
 
 /** Great-circle metres — the canary's ground truth never shares math with the app. */
 export function haversineM(a, b) {
@@ -652,6 +746,79 @@ export const NEAR_STOP_M = 120;
 export const DEPARTURE_M = 30;
 
 /**
+ * A vehicle is STANDING while the feed keeps reporting it at the same place.
+ *
+ * The feed repeats a position rather than interpolating — 53.6 % of
+ * consecutive samples are byte-identical coordinates, runs of 15 s typically
+ * and up to 28 min (docs/bus-speed.md) — so equality is the only way a stand
+ * is visible at all in what the canary records. Two consecutive repeats is the
+ * floor: one repeat is the ordinary feed cadence and says nothing.
+ */
+export const STAND_MIN_POLLS = 2;
+
+/** How stale a pin sample may be and still name the vehicle a transition is about. */
+export const PIN_TOL_MS = 150_000;
+
+/** Consecutive earlier frames that reported `name` at exactly the distance it holds at `i`. */
+export function standPollsBefore(samples, i, name) {
+  const want = (j) => (samples[j]?.buses ?? []).find((b) => b && norm(b.name) === norm(name));
+  let run = 0;
+  for (let j = i; j > 0; j--) {
+    const a = want(j), b = want(j - 1);
+    if (!a || !b || !Number.isFinite(a.distM) || a.distM !== b.distM) break;
+    run++;
+  }
+  return run;
+}
+
+/**
+ * Did the vehicle the card is pinned to END a stand between frames i-1 and i?
+ *
+ * THIS IS THE EVENT THE RING-POSTERIOR MODEL PRICES, and `departureBetween`
+ * cannot see it. That one asks only about the BOARD stop, inside 120 m; a bus
+ * standing at any other stop on the loop is "none" to it. But the model leaves
+ * the remaining stand on the price the moment a standing bus's first fresh fix
+ * arrives — P(departure | first fresh fix) = 0.74, measured in
+ * docs/eta-ring-posterior.md — so the whole countdown legitimately collapses
+ * on that poll wherever the bus was standing.
+ *
+ * Gold #310, 2026-09-08 20:35 ET, is the shape: 263 m from the board stop and
+ * at stop 10, the same distance for ten consecutive frames, the card reading
+ * "in 8, 44 min" throughout. On the frame it moved to 237 m the card read
+ * "in 1, 37 min" — and the bus reached the stop 1.7 min later. The canary
+ * filed that twice as `eta-jump`.
+ */
+export function standEndedFor(samples, i, name, minPolls = STAND_MIN_POLLS) {
+  if (!name || i < 1 || i >= (samples?.length ?? 0)) return false;
+  const at = (j) => (samples[j]?.buses ?? []).find((b) => b && norm(b.name) === norm(name));
+  const a = at(i - 1), b = at(i);
+  if (!a || !b || !Number.isFinite(a.distM) || !Number.isFinite(b.distM)) return false;
+  // The feed's own word, when it has one: it was at a stop and no longer is.
+  if (a.atStop != null && b.atStop == null && Math.abs(b.distM - a.distM) >= DEPARTURE_M) return true;
+  return a.distM !== b.distM && standPollsBefore(samples, i - 1, name) >= minPolls;
+}
+
+/**
+ * The vehicle the card was pinned to around `atMs`, or null.
+ *
+ * The pin is read by tapping the card open, so `rider-canary.mjs` samples it
+ * on a two-minute heartbeat and again on every jump over 120 s — which is
+ * below `catastrophicSec`, so every transition that can fail a run has a pin
+ * within seconds of it. There is no per-frame pin to be had: the countdown is
+ * rendered only on the COLLAPSED row, so reading the pin every 15 s would
+ * blind the scrape it exists to explain.
+ */
+export function pinnedVehicleAt(pins, atMs, tolMs = PIN_TOL_MS) {
+  let best = null, bestD = Infinity;
+  for (const p of pins ?? []) {
+    if (!p?.busName) continue;
+    const d = Math.abs(p.atMs - atMs);
+    if (d <= tolMs && d < bestD) { best = p; bestD = d; }
+  }
+  return best ? norm(best.busName) : null;
+}
+
+/**
  * Did the bus at the stop LEAVE between these two readings?
  *
  * WHY THIS EXISTS. `docs/eta-lurch-classification.md` (#71) measured that
@@ -709,6 +876,26 @@ export function fleetOffAir(samples) {
   const withBuses = (samples ?? []).filter((s) => Array.isArray(s?.buses));
   if (!withBuses.length) return false;
   return withBuses[withBuses.length - 1].buses.length === 0;
+}
+
+/**
+ * Did the SCRAPER fail, or did the ride simply end quickly?
+ *
+ * A run that read no countdown must never pass — the neighbouring watch at
+ * ~/eta-live reported "Purple kept its promises" off a ride with zero recorded
+ * promises on 2026-09-03, which is a silent scraper failure wearing success's
+ * face. Two readings is the minimum that can show a transition at all.
+ *
+ * BUT A WATCH THAT OPENS ON A BUS AT THE KERB ENDS ON THE ARRIVAL, and one
+ * reading is all it ever had a chance to take. Four of the six `no-countdown`
+ * findings in the archive are exactly that: 0.4-0.6 min watched, the bus
+ * reached the stop, a successful ride filed as a broken instrument. The one
+ * genuine case — 2026-09-04 14:47, five frames, ZERO readable countdowns, no
+ * arrival — watched 1.6 min, so a floor in minutes would have silenced it
+ * alongside the false ones. Arrival is the discriminator; the clock is not.
+ */
+export function scraperMissedTheCountdown({ readings = 0, anyPresent = false, arrived = false } = {}) {
+  return anyPresent && !arrived && readings < 2;
 }
 
 /**
@@ -806,7 +993,6 @@ export function departureBetween(prevBuses, nextBuses) {
   const was = nearest(prevBuses);
   if (!was) return "unknown";
   if (was.distM > NEAR_STOP_M) return "none";
-  const norm = (s) => String(s ?? "").replace(/^#/, "");
   const now = (nextBuses ?? []).find((b) => b && norm(b.name) === norm(was.name));
   if (!now || !Number.isFinite(now.distM)) return "unknown";
   return now.distM - was.distM >= DEPARTURE_M ? "departure" : "closing";
