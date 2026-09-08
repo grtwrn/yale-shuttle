@@ -40,6 +40,7 @@ export const COMPILED = Object.freeze({
   SHUFFLE_PER_POLL: 0.03,
   P_DEPART_ON_FRESH: 0.76,
   CONFORMAL: Object.freeze({ "0-2": 1, "2-5": 1, "5-10": 1, "10-30": 1 }),
+  ROUTE_SCALE: Object.freeze({}),
 });
 export const SCALAR_KEYS = ["P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE", "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S", "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH"];
 export const HORIZONS = ["0-2", "2-5", "5-10", "10-30"];
@@ -54,6 +55,22 @@ export const RANGES = {
   P_DEPART_ON_FRESH: [0.3, 0.98],
 };
 export const CONFORMAL_RANGE = [0.5, 4];
+/** Mirrors web/src/eta/params.ts ROUTE_SCALE_RANGE (reestimate-lib.test.mjs pins it). */
+export const ROUTE_SCALE_RANGE = [0.75, 1.25];
+/**
+ * A route whose lap is priced from the POOLED prior over more than this share
+ * of its road metres gets no scale. Measured, not chosen: on 2026-09-04 the
+ * repaired Green ring asked for three hops the calibration did not yet carry
+ * — 21 km of its 29 km lap, priced at the route pace — and the replay read a
+ * bias of +113 s. Splice the drives production had measured by 09-08 into the
+ * same replay and the same day reads -6 s. A scale fitted through that hole
+ * would have been 0.74, and wrong the moment the collector filled it.
+ */
+export const ROUTE_SCALE_MAX_POOLED = 0.10;
+/** A ratio below this promise is dominated by the last stand, not the chain. */
+export const ROUTE_SCALE_MIN_ETA_SEC = 60;
+/** Shrinkage toward 1: n / (n + k). */
+export const ROUTE_SCALE_SHRINK_K = 2000;
 
 /**
  * The sample a key needs before its estimate is published. Emissions are
@@ -71,6 +88,7 @@ export const N_FLOORS = {
   SHUFFLE_PER_POLL: 200,
   P_DEPART_ON_FRESH: 200,
   CONFORMAL: 300,
+  ROUTE_SCALE: 2000,
 };
 /**
  * How far a fit may move from the compiled constant without `--allow-drift`:
@@ -86,6 +104,7 @@ export const DRIFT = {
   HOLD_ENTER_PER_S: { factor: 2 },
   HOLD_LEAVE_PER_S: { factor: 2 },
   SHUFFLE_PER_POLL: { factor: 2 },
+  ROUTE_SCALE: { abs: 0.20 },
 };
 
 // -- geometry -------------------------------------------------------------------
@@ -339,8 +358,8 @@ export function pooled(rows, horizon = "all") {
  * — within the drift bound of the compiled constant; otherwise it keeps the
  * champion's value and the reason is logged. Returns {params, n, issues}.
  */
-export function assembleCandidate(fits, conformal, champion, { allowDrift = false } = {}) {
-  const params = { ...champion, CONFORMAL: { ...champion.CONFORMAL } };
+export function assembleCandidate(fits, conformal, champion, { allowDrift = false, routeScales = null, heldOut = null } = {}) {
+  const params = { ...champion, CONFORMAL: { ...champion.CONFORMAL }, ROUTE_SCALE: { ...(champion.ROUTE_SCALE ?? {}) } };
   const n = {};
   const issues = [];
   const keep = (key, reason) => issues.push({ key, reason, kept: key.startsWith("CONFORMAL") ? champion.CONFORMAL[key.slice(10)] : champion[key] });
@@ -366,12 +385,128 @@ export function assembleCandidate(fits, conformal, champion, { allowDrift = fals
     if (f.w < CONFORMAL_RANGE[0] || f.w > CONFORMAL_RANGE[1]) { keep(`CONFORMAL.${h}`, `${f.w} outside [${CONFORMAL_RANGE[0]}, ${CONFORMAL_RANGE[1]}]`); continue; }
     params.CONFORMAL[h] = f.w;
   }
+  // Per route, and one route's failure never touches another's: twelve
+  // numbers fitted on twelve disjoint samples are twelve decisions.
+  for (const [r, f] of Object.entries(routeScales ?? {})) {
+    const key = `ROUTE_SCALE.${r}`;
+    n[key] = f.n;
+    const kept = champion.ROUTE_SCALE?.[r] ?? 1;
+    const hold = (reason) => issues.push({ key, reason, kept });
+    if (f.value === null || !Number.isFinite(f.value)) { hold("no estimate"); continue; }
+    if (f.n < N_FLOORS.ROUTE_SCALE) { hold(`n ${f.n} under the floor ${N_FLOORS.ROUTE_SCALE}`); continue; }
+    if (f.pooledShare > ROUTE_SCALE_MAX_POOLED) {
+      hold(`${Math.round(f.pooledShare * 100)}% of the lap's metres are priced from the pooled prior (over ${Math.round(ROUTE_SCALE_MAX_POOLED * 100)}%) — the tables are still filling, and a scale fitted through that hole is a correction for a hole`);
+      continue;
+    }
+    if (f.value < ROUTE_SCALE_RANGE[0] || f.value > ROUTE_SCALE_RANGE[1]) { hold(`${f.value} outside [${ROUTE_SCALE_RANGE[0]}, ${ROUTE_SCALE_RANGE[1]}]`); continue; }
+    if (Math.abs(f.value - 1) > DRIFT.ROUTE_SCALE.abs && !allowDrift) { hold(`${f.value} is more than ±${DRIFT.ROUTE_SCALE.abs} from 1 (pass --allow-drift to publish it)`); continue; }
+    // The held-out day decides, per route: a scale that does not improve the
+    // route's own median |error| on a day it was not fitted on is not
+    // published, however clean its fit looked.
+    const h = heldOut?.[r];
+    if (h && h.after.medianAbsSec > h.before.medianAbsSec) {
+      hold(`held out ${heldOut.day ?? ""}: median |err| ${h.before.medianAbsSec} -> ${h.after.medianAbsSec} s`.trim());
+      continue;
+    }
+    if (f.value === 1) continue; // nothing to say
+    params.ROUTE_SCALE[r] = f.value;
+  }
   return { params, n, issues };
+}
+
+/**
+ * The per-route SCALE, fitted on the champion's own replayed pairs.
+ *
+ * `s_r` = the median of truth / promise over the route's pairs — the factor
+ * that puts the median relative error at zero — shrunk toward 1 by
+ * n / (n + k). The truth is the PROXIMITY one (the first moment the bus's
+ * own track comes within 45 m of the stop) where the pairs carry it, because
+ * that is the instant a rider at the kerb calls arrival; the detector's
+ * "nearest stop changed" event fires 10-75 s earlier, route by route, and
+ * fitting to it would correct the estimator for the definition of arrival
+ * rather than for anything it did (docs/route-bias.md).
+ *
+ * Ratios, not differences: the shortfall a promise carries is proportional to
+ * how much of the lap it spans, which is what the hops-ahead decomposition
+ * shows and what the additive form fails to reproduce.
+ */
+export function fitRouteScales(pairs, { coverage = {}, minEta = ROUTE_SCALE_MIN_ETA_SEC, shrinkK = ROUTE_SCALE_SHRINK_K } = {}) {
+  const byRoute = new Map();
+  for (const p of pairs) {
+    // `prox` ABSENT means the file predates the field and the detector is all
+    // there is; `prox` NULL means this pair has no proximity truth (the bus
+    // never came within 45 m of the stop) and mixing the detector in for
+    // those alone would tilt the fit by the very gap this corrects for.
+    const truth = p.prox === undefined ? p.det : p.prox;
+    if (truth === null || truth === undefined) continue;
+    if (!(p.eta > minEta) || !(truth > 0)) continue;
+    const r = String(p.r);
+    let a = byRoute.get(r);
+    if (!a) byRoute.set(r, (a = []));
+    a.push(truth / p.eta);
+  }
+  const out = {};
+  for (const [r, ratios] of byRoute) {
+    ratios.sort((a, b) => a - b);
+    const raw = ratios[Math.floor(ratios.length / 2)];
+    const n = ratios.length;
+    const shrunk = 1 + (raw - 1) * (n / (n + shrinkK));
+    out[r] = {
+      value: Math.round(shrunk * 1000) / 1000,
+      raw: Math.round(raw * 1000) / 1000,
+      n,
+      pooledShare: coverage[r] ?? 0,
+    };
+  }
+  return out;
+}
+
+/**
+ * What a set of scales does to a held-out day, per route, by arithmetic.
+ *
+ * The correction is the LAST step of pricing and feeds nothing back — not the
+ * belief, not the #119 floor, which stores the unscaled number — so a scaled
+ * pair is exactly `eta * s` and a held-out check needs no second replay. The
+ * challenger replay still runs, and `routeScaleFidelity` below is what says
+ * the arithmetic and the client agree.
+ */
+export function scaleEffect(pairs, scales) {
+  const cells = new Map();
+  for (const p of pairs) {
+    const truth = p.prox === undefined ? p.det : p.prox;
+    if (truth === null || truth === undefined) continue;
+    const r = String(p.r);
+    let c = cells.get(r);
+    if (!c) cells.set(r, (c = { before: [], after: [] }));
+    c.before.push(p.eta - truth);
+    c.after.push(p.eta * (scales[r] ?? 1) - truth);
+  }
+  const out = {};
+  for (const [r, c] of cells) {
+    const stat = (errs) => {
+      const abs = errs.map(Math.abs).sort((a, b) => a - b);
+      const signed = errs.slice().sort((a, b) => a - b);
+      const pick = (arr, q) => arr[Math.min(arr.length - 1, Math.floor(q * arr.length))];
+      return {
+        n: errs.length,
+        medianAbsSec: r1(pick(abs, 0.5)),
+        p90AbsSec: r1(pick(abs, 0.9)),
+        medianSignedSec: r1(pick(signed, 0.5)),
+        pessimistic120Pct: r1((100 * errs.filter((e) => e >= 120).length) / errs.length),
+        optimistic120Pct: r1((100 * errs.filter((e) => e <= -120).length) / errs.length),
+      };
+    };
+    out[r] = { before: stat(c.before), after: stat(c.after) };
+  }
+  return out;
 }
 
 export function sameParams(a, b) {
   for (const k of SCALAR_KEYS) if (a[k] !== b[k]) return false;
   for (const h of HORIZONS) if (a.CONFORMAL[h] !== b.CONFORMAL[h]) return false;
+  const ra = a.ROUTE_SCALE ?? {}, rb = b.ROUTE_SCALE ?? {};
+  const keys = new Set([...Object.keys(ra), ...Object.keys(rb)]);
+  for (const k of keys) if ((ra[k] ?? 1) !== (rb[k] ?? 1)) return false;
   return true;
 }
 

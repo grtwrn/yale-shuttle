@@ -62,8 +62,9 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 
 import {
-  COMPILED, HORIZONS, SCALAR_KEYS, assembleCandidate, conformalFit, estimateEmissions,
-  estimateVisitRates, pooled, promotionDecision, sameParams, scoreRows, tracksByName, zoneTester,
+  COMPILED, HORIZONS, SCALAR_KEYS, assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
+  estimateVisitRates, fitRouteScales, pooled, promotionDecision, sameParams, scaleEffect, scoreRows,
+  tracksByName, zoneTester,
 } from "./reestimate-lib.mjs";
 
 const require = createRequire(import.meta.url);
@@ -124,6 +125,44 @@ function topology() {
     .map((r) => ({ id: r.id, stops: JSON.parse(r.stops_json) }));
   db.close();
   return { stopCoords, routes };
+}
+
+/**
+ * Per route, the share of the published lap's ROAD METRES whose hop has no
+ * served drive quantiles — the part of the lap priced from the network's
+ * pooled pace rather than from anything the collector timed. It is the guard
+ * on the per-route scale: a route in that state is not biased, it is
+ * incomplete, and its shortfall closes on its own as the collector fills the
+ * hops (docs/route-bias.md, "Green").
+ *
+ * `legM` where the patch carries it, the chord between the two stops where it
+ * does not — a hop with no row at all has no length of its own to report, and
+ * the chord is a lower bound on it, which makes the guard conservative in the
+ * direction that matters (it never understates a big missing hop by more than
+ * the road's bow).
+ */
+function pooledShares(patchFiles, routes, stopCoords) {
+  const worst = {};
+  for (const file of patchFiles) {
+    let patch;
+    try { patch = JSON.parse(fs.readFileSync(file, "utf8")); } catch { continue; }
+    for (const r of routes) {
+      const seg = patch.segments?.[String(r.id)] ?? {};
+      let total = 0, pooled = 0;
+      for (let i = 0; i < r.stops.length; i++) {
+        const a = r.stops[i], b = r.stops[(i + 1) % r.stops.length];
+        const row = seg[`${a}-${b}`];
+        const ca = stopCoords[a], cb = stopCoords[b];
+        const m = row?.legM ?? (ca && cb ? distanceMeters(ca, cb) : 0);
+        total += m;
+        if (!row?.dq) pooled += m;
+      }
+      const share = total > 0 ? pooled / total : 1;
+      const key = String(r.id);
+      if (worst[key] === undefined || share > worst[key]) worst[key] = share;
+    }
+  }
+  return worst;
 }
 
 // -- the replay -----------------------------------------------------------------
@@ -302,6 +341,8 @@ async function main() {
   const replayDays = days.slice(-REPLAY_DAYS);
   let conformal = null;
   let decision = null;
+  let routeScaleFit = null;
+  let routeScaleHeldOut = null;
   let candidate = assembleCandidate(fits, null, champ, { allowDrift: ALLOW_DRIFT });
 
   if (!NO_REPLAY) {
@@ -323,8 +364,27 @@ async function main() {
     log("conformal (band x, to reach 80% coverage):");
     for (const h of HORIZONS) log(`  ${h.padEnd(6)} ${conformal[h].w === null ? "-" : conformal[h].w} (n ${conformal[h].n}${conformal[h].infinite ? `, ${conformal[h].infinite} needed an infinite factor` : ""})`);
 
-    candidate = assembleCandidate(fits, conformal, champ, { allowDrift: ALLOW_DRIFT });
-    const scalarsMoved = SCALAR_KEYS.some((k) => candidate.params[k] !== champ[k]);
+    // The per-route scale, fitted on the same days as the widening and held
+    // out on the same last one. It needs no replay of its own: the correction
+    // is the last step of pricing and feeds nothing back, so a scaled pair is
+    // exactly `eta * s` and the held-out check is arithmetic on the
+    // champion's own pairs. (The challenger replay below still runs, and the
+    // fidelity line after it is what says the arithmetic and the client agree.)
+    const shares = pooledShares(replayDays.map((d) => prepared[d].patch), routes, stopCoords);
+    const rawScales = routeScaleFit = fitRouteScales(readAllPairs(replayDays.slice(0, -1).map((d) => champFile[d])), { coverage: shares });
+    const heldOutEffect = routeScaleHeldOut = { day: heldOut, ...scaleEffect(readPairs(champFile[heldOut]), Object.fromEntries(Object.entries(rawScales).map(([r, f]) => [r, f.value]))) };
+    log("");
+    log("route scale (median truth/promise, shrunk):");
+    log("  route      fitted    raw       n   pooled%   held-out |err| before -> after");
+    for (const [r, f] of Object.entries(rawScales).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+      const h = heldOutEffect[r];
+      log(`  ${r.padStart(5)} ${String(f.value).padStart(9)} ${String(f.raw).padStart(6)} ${String(f.n).padStart(8)} ${String(Math.round(f.pooledShare * 100)).padStart(8)}   ${h ? `${h.before.medianAbsSec} -> ${h.after.medianAbsSec} s (bias ${h.before.medianSignedSec} -> ${h.after.medianSignedSec})` : "-"}`);
+    }
+
+    candidate = assembleCandidate(fits, conformal, champ, { allowDrift: ALLOW_DRIFT, routeScales: rawScales, heldOut: heldOutEffect });
+    const scalarsMoved = SCALAR_KEYS.some((k) => candidate.params[k] !== champ[k])
+      || Object.keys({ ...(champ.ROUTE_SCALE ?? {}), ...candidate.params.ROUTE_SCALE })
+        .some((r) => (champ.ROUTE_SCALE?.[r] ?? 1) !== (candidate.params.ROUTE_SCALE[r] ?? 1));
     const challFile = {};
     for (const d of replayDays) {
       challFile[d] = scalarsMoved ? replayFile(d, prepared[d], "challenger", candidate.params) : champFile[d];
@@ -391,6 +451,8 @@ async function main() {
       champion: champ,
       fits: Object.fromEntries(SCALAR_KEYS.map((k) => [k, { value: fits[k]?.value === null || fits[k]?.value === undefined ? null : round5(fits[k].value), n: fits[k]?.n ?? 0 }])),
       conformal,
+      routeScales: routeScaleFit,
+      routeScaleHeldOut,
       issues: candidate.issues,
       promotion: decision,
     },
