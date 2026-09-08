@@ -35,7 +35,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { registerRoutePaths } from "./anchor";
-import { type AnchorStore } from "./anchorGate";
+import { type AnchorStore } from "./eta";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "./arrivals";
 import { haversineMeters, type LatLon } from "./geo";
 import { pickLiveArrival } from "./planner";

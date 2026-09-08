@@ -53,7 +53,7 @@ async function fromClient<T>(rel: string): Promise<T> {
   return (await import(pathToFileURL(path.join(CLIENT_ROOT, rel)).href)) as T;
 }
 type AnchorMod = typeof import("../../web/src/anchor");
-type GateMod = typeof import("../../web/src/anchorGate");
+type GateMod = typeof import("./legacy/anchorGate.js");
 type RoutesMod = typeof import("../../web/src/routes");
 type DetMod = typeof import("../../src/collector/detector.js");
 
@@ -101,7 +101,7 @@ const get = (label: string): Tally => {
 };
 
 const states = new Map<string, import("../../src/collector/detector.js").BusState>();
-const store: import("../../web/src/anchorGate").AnchorStore = new Map();
+const store: import("./legacy/anchorGate.js").AnchorStore = new Map();
 /** the last coordinate each bus reported, to tell a fresh fix from a repeat */
 const lastCoord = new Map<string, { lat: number; lon: number }>();
 /** previous poll's at_stop_id per bus, to spot the departure instant */

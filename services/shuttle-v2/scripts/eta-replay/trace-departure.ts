@@ -58,11 +58,12 @@ import {
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import { fmtMin } from "../../web/src/format";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
-import { pruneAnchors, type AnchorStore } from "../../web/src/anchorGate";
+import { pruneAnchors, type AnchorStore } from "./legacy/anchorGate.js";
 
 
 const T0 = Date.now();
@@ -220,7 +221,7 @@ function nextArrival(busName: string, stopId: number, t: number): number | null 
 
 
 // -- trace ---------------------------------------------------------------------
-import { gateAnchor, type AnchorStore } from "../../web/src/anchorGate";
+import { gateAnchor, type AnchorStore } from "./legacy/anchorGate.js";
 
 const store: AnchorStore = new Map();
 const states = new Map<string, BusState>();

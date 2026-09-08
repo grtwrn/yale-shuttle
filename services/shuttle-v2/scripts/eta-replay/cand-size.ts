@@ -5,7 +5,8 @@
  */
 import { loadNet, fmtEt } from "./common.js";
 import { planTracks, stepMany, type BusObservation, type BusState } from "../../src/collector/detector.js";
-import { isBusOnRoute, registerRoutePaths, ANCHOR_GPS_THRESHOLD_M } from "../../web/src/anchor.js";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor.js";
+import { ANCHOR_GPS_THRESHOLD_M } from "./legacy/anchor.js";
 import { distanceToSegmentM, traceStopLegs } from "../../web/src/geo.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
 import type { LatLon } from "../../web/src/geo.js";

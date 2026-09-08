@@ -63,7 +63,11 @@ import type { Route, Stop } from "../src/schema/api.js";
 import { planTracks, type BusObservation, type BusState } from "../src/collector/detector.js";
 import { stepManyWithVisits, type VisitEvent, type VisitState } from "../src/collector/departure.js";
 import { visitRowsOf, type LegRow, type StopVisitRow } from "../src/collector/visitRows.js";
-import { MIN_DRIVE_SAMPLES, MIN_STAND_SAMPLES } from "../web/src/hopPricing";
+// The retired stand/drive split's sample gates (web/src/hopPricing.ts until
+// 2026-09-06), kept only so this coverage table reads as it always did; the
+// ring estimator has no gate — it shrinks a thin cell toward its class pool.
+const MIN_STAND_SAMPLES = 20;
+const MIN_DRIVE_SAMPLES = 10;
 
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);

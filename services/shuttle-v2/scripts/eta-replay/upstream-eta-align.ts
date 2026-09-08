@@ -39,7 +39,7 @@ import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
-import type { AnchorStore } from "../../web/src/anchorGate";
+import type { AnchorStore } from "../../web/src/eta/index.js";
 import { PACE_KEY, paceCarrier, type PaceEntry } from "../../src/server/v1compat";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";

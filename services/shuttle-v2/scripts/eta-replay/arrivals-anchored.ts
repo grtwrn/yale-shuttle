@@ -19,9 +19,10 @@
  * proration factor) so a jump can be attributed to what THIS estimator did,
  * not only to what the feed did. It never changes the output.
  */
-import { findRouteAnchor, isBusOnRoute } from "../../web/src/anchor";
-import { gateAnchor, type AnchorStore } from "../../web/src/anchorGate";
-import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "../../web/src/hopPricing";
+import { isBusOnRoute } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
+import { gateAnchor, type AnchorStore } from "./legacy/anchorGate.js";
+import { driveAdequate, priceFirstHop, standAdequate, standingAt, STANDING_HOLD_M } from "./legacy/hopPricing.js";
 import { haversineMeters, progressAlongSegment } from "../../web/src/geo";
 import type { LatLon } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";

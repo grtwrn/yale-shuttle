@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findRouteAnchor } from "./anchor";
-import { type AnchorStore } from "./anchorGate";
+import { type AnchorStore } from "./eta";
 import { computeUpcomingArrivals } from "./arrivals";
 import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
@@ -32,30 +31,33 @@ function dedupe(stops: number[]): number[] {
   return out;
 }
 
-describe("a storeless caller is exactly findRouteAnchor", () => {
-  // The replay harnesses and every existing test depend on this: no store, no
-  // memory, no change. Walk the whole loop and assert it stop by stop.
-  it("agrees at every stop of the route", () => {
+describe("a storeless caller keeps nothing", () => {
+  // The replay harnesses and every pure test depend on this: no store, no
+  // memory. (Until 2026-09-06 the same tests pinned the storeless answer to
+  // the retired `findRouteAnchor`; the answer is the ring belief's lead leg
+  // now, built from the fix alone.)
+  it("answers every stop of the route without a store", () => {
     for (let i = 0; i < blueWeekend.length; i++) {
-      const bus = { ...at(blueWeekend[i]!), last_stop_id: blueWeekend[i]! };
-      expect(resolveAnchorIndex(bus, blueWeekend, stopCoords, "k", T0))
-        .toBe(findRouteAnchor(bus, blueWeekend, stopCoords));
-      expect(resolveAnchorIndex(bus, blueWeekend, stopCoords, "k", T0, undefined))
-        .toBe(findRouteAnchor(bus, blueWeekend, stopCoords));
+      const bus = { ...at(blueWeekend[i]!), last_stop_id: blueWeekend[i]!, route_id: BLUE_WEEKEND.busRouteId };
+      const idx = resolveAnchorIndex(bus, blueWeekend, stopCoords, "k", T0);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(blueWeekend.length);
+      expect(resolveAnchorIndex(bus, blueWeekend, stopCoords, "k", T0, undefined)).toBe(idx);
     }
   });
 
   it("nothing is written to a store that was not passed", () => {
     const s = store();
-    const bus = { ...at(STOP.broadwayYork) };
+    const bus = { ...at(STOP.broadwayYork), route_id: BLUE_WEEKEND.busRouteId };
     resolveAnchorIndex(bus, blueWeekend, stopCoords, "Blue Weekend|#101", T0);
     expect(s.size).toBe(0);
   });
 
-  it("keeps findRouteAnchor's -1 for a route with no stops", () => {
+  it("a route with no stops has no anchor", () => {
     const s = store();
-    expect(resolveAnchorIndex({ ...at(STOP.broadwayYork) }, [], stopCoords, "k", T0, s)).toBe(-1);
-    expect(findRouteAnchor({ ...at(STOP.broadwayYork) }, [], stopCoords)).toBe(-1);
+    const bus = { ...at(STOP.broadwayYork), route_id: BLUE_WEEKEND.busRouteId };
+    expect(resolveAnchorIndex(bus, [], stopCoords, "k", T0, s)).toBe(-1);
+    expect(resolveAnchorIndex(bus, [], stopCoords, "k", T0)).toBe(-1);
   });
 });
 
@@ -74,24 +76,22 @@ describe("one bus, one poll, one index", () => {
   });
 
   it("the fixture really is the pathology: a sub-bus-length twitch, two slots", () => {
+    // 22.7 m apart, two slots apart in the sequence. A stateless nearest-leg
+    // answer (the retired `findRouteAnchor`) read 21 at A and 23 at B, so it
+    // flapped 21 / 23 / 21 / 23 on a twitch smaller than a bus.
     expect(haversineMeters(A, B)).toBeLessThan(30);
-    expect(findRouteAnchor({ ...A }, blueWeekend, stopCoords)).toBe(21);
-    expect(findRouteAnchor({ ...B }, blueWeekend, stopCoords)).toBe(23);
+    expect(blueWeekend.indexOf(STOP.broadwayYork)).toBe(22);
+    expect(blueWeekend.indexOf(STOP.elmYorkTyco)).toBe(24);
   });
 
-  it("ungated, the answer flaps with the twitch — this is master", () => {
-    const seen = [A, B, A, B, A].map((c) => findRouteAnchor({ ...c }, blueWeekend, stopCoords));
-    expect(seen).toEqual([21, 23, 21, 23, 21]);
-    expect(new Set(seen).size).toBe(2);
-  });
-
-  it("gated against one shared store, it does not", () => {
+  it("against one shared store, it does not flap", () => {
     const s = store();
     const seen = [A, B, A, B, A].map((c, i) =>
       anchorIndexOnList(bus(c, i), BW, routeStops, stopCoords, dedupe(blueWeekend), T0 + i * 5000, s),
     );
     expect(new Set(seen).size).toBe(1);
-    expect(seen[0]).toBe(21);
+    // ...and it is the leg the bus is actually on, held across the twitch.
+    expect(seen[0]).toBe(blueWeekend.indexOf(STOP.broadwayYork));
   });
 
   it("every render site in a poll gets the SAME index, arrivals included", () => {
@@ -114,8 +114,7 @@ describe("one bus, one poll, one index", () => {
     }
     expect(new Set(answers).size).toBe(1);
     // And it is the held one, not the twitch's.
-    expect(answers[0]).toBe(21);
-    expect(findRouteAnchor({ ...B }, blueWeekend, stopCoords)).toBe(23);
+    expect(answers[0]).toBe(blueWeekend.indexOf(STOP.broadwayYork));
   });
 
   it("the countdown and the stops-away line read the same anchor", () => {
@@ -128,35 +127,34 @@ describe("one bus, one poll, one index", () => {
     computeUpcomingArrivals(
       [STOP.collegeWallN], [b], routeStops, stopCoords, segmentTimes, now, dwellTimes, s,
     );
-    const fromArrivals = s.get(key)!.index;
+    const fromArrivals = resolveAnchorIndex(b, blueWeekend, stopCoords, key, now, s);
     expect(anchorIndexOnList(b, BW, routeStops, stopCoords, dedupe(blueWeekend), now, s))
       .toBe(fromArrivals);
   });
 });
 
-describe("noteFix stays idempotent within a poll", () => {
-  // Arrivals are computed several times per poll off one shared store. If a
-  // repeated coordinate consumed the fix memory, the second caller would lose
-  // the direction of travel that tells the two branches of a fold apart.
+describe("the belief steps once per poll", () => {
+  // Arrivals are computed several times per poll off one shared store. A step
+  // per call would feed the filter observations that never happened — the
+  // review's first finding — so a second call with the same payload and clock
+  // is a query of the stored belief, not a step.
   const A = at(STOP.yorkChapel);
   const B = at(STOP.broadwayYork);
   const key = anchorKeyFor(BW.label, "#101");
 
-  it("repeating a coordinate does not shift the remembered fixes", () => {
+  it("repeating a poll does not move the answer or the stored belief", () => {
     const s = store();
     const bus = (c: LatLon) =>
       makeBus({ route_id: BLUE_WEEKEND.busRouteId, lat: c.lat, lon: c.lon, last_stop_id: STOP.yorkChapel });
     resolveAnchorIndex(bus(A), blueWeekend, stopCoords, key, T0, s);
-    resolveAnchorIndex(bus(B), blueWeekend, stopCoords, key, T0 + 5000, s);
-    const after = { ...s.get(key)! };
-    // Four more callers this same poll, same coordinate.
+    const second = bus(B);
+    const idx = resolveAnchorIndex(second, blueWeekend, stopCoords, key, T0 + 5000, s);
+    const after = s.get(key)!.belief;
+    // Four more callers this same poll, same payload object and clock.
     for (let i = 0; i < 4; i++) {
-      resolveAnchorIndex(bus(B), blueWeekend, stopCoords, key, T0 + 5000, s);
+      expect(resolveAnchorIndex(second, blueWeekend, stopCoords, key, T0 + 5000, s)).toBe(idx);
     }
-    const now = s.get(key)!;
-    expect(now.fix).toEqual(after.fix);
-    expect(now.prevFix).toEqual(after.prevFix);
-    expect(now.index).toBe(after.index);
+    expect(s.get(key)!.belief).toBe(after);
   });
 });
 
@@ -189,7 +187,7 @@ describe("the index space is the store's, not the caller's", () => {
     // between 3 and 2, which is canonical slot 4 — stop 3 on its SECOND pass.
     anchorIndexOnList(bus(coords[4]!), fold, rs, coords, display, T0, s);
     const idx = anchorIndexOnList(bus(here), fold, rs, coords, display, T0 + 5000, s);
-    expect(s.get(key)!.index).toBe(4);
+    expect(resolveAnchorIndex(bus(here), rs.fold, coords, key, T0 + 5000, s)).toBe(4);
     expect(rs.fold[4]).toBe(3);
     // The render site's list has one slot for stop 3, and that is what it gets.
     expect(idx).toBe(display.indexOf(3));

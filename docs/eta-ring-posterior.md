@@ -356,14 +356,96 @@ at Building 600 bound for Orange / Humphrey (N)):
 | the wait after that, 19:22 → 19:31 | wanders 55.3 → 48.7 → 49.4 → 42.6 | counts down 49.7 → 44.4 |
 | destination, 18:55 → 19:05 | 56.4 → 46.1, then −28 min to 18.1, then back up to 23.7 | 39.1 → 26.7, monotone |
 
-`eta/retire-legacy-green` (which deletes the legacy arm outright) is still not
-merged: what shipped here is Green joining the model on a ring that is right,
-not the retirement of the second arithmetic. The arm is still reachable through
-a ring that is bridged AFTER the repair (a route past the guards above), a
-route with no ring yet (the first render, before the payload registers the
-polylines — which is also why `LEGACY_SPLIT_ROUTE_IDS` / `splitServedForRoute`
-are still live for Red and Blue Day), and the replays' `MODEL_ROUTES=""` arm,
-which is the counterfactual every retirement decision is measured against.
+### The legacy arithmetic is deleted (2026-09-07)
+
+**Status: shipped.** With the two declines closed — the grocery lines by the
+pooled priors above, Green by the repaired ring above — the anchor + gate +
+stall-credit + approach-zone + chord-proration stack had no caller left, and
+keeping a second estimator that nothing selected was the whole cost of the
+first arm. Deleted from the client: `web/src/anchorGate.ts`,
+`web/src/hopPricing.ts`, `findRouteAnchor` and its dials in
+`web/src/anchor.ts`, the fallback half of `computeUpcomingArrivals`
+(`stallCreditSec`, the approach zone, `billedDwellSec`, chord proration), the
+gate half of `web/src/liveAnchor.ts`, `LEGACY_SPLIT_ROUTE_IDS` /
+`splitServedForRoute`, and the dispatch itself (`MODEL_ROUTE_IDS`,
+`modelRouteIds`, `modelServesRoute`, `modelPricesRoute`). `isBusOnRoute` and
+`registerRoutePaths` stay: the off-route filter and the polyline registry have
+many callers and are not part of the estimator.
+
+**The deferral this section used to record is withdrawn, and the withdrawal is
+the point.** The measurement that deferred it — pricing Green on its BRIDGED
+ring, 289 → 385 s median, dangerous tail 56 → 65% — was an argument for
+keeping the legacy arm *for Green*. It stopped applying the moment the ring
+stopped being bridged: on the repaired ring the same replay reads 288.8 →
+**70.1 s**. The retirement was never gated on an opinion about which
+arithmetic was nicer; it was gated on there being a route the model could not
+price, and there is not one.
+
+**Proved from the payload, not by argument.** `web/src/eta/no-bridged-ring.test.ts`
+builds the ring for every route in the checked-in `/api/buses` fixture and
+asserts `bridged === false` and `buildTables(...).priced === true` for each of
+the 15. That test is the guard the deletion removed: an upstream sequence
+change that re-bridges a ring used to fall back silently, and now fails CI.
+
+**What survives, and why.**
+
+- **The replays' copies.** `scripts/eta-replay/legacy/{anchor,anchorGate,hopPricing}.ts`
+  are the retired code, moved rather than deleted, because the
+  `MODEL_ROUTES=""` arm is the counterfactual baseline every retirement
+  decision in this document was measured against — including the two tables
+  above. They are no longer a replica of the client and the scripts say so.
+- **A ring on the stop chords when no polyline is registered.**
+  `ringForBus` falls back to `chordPath`. This was measured before it was
+  written: `/api/buses` carries `route_paths` for all 15 routes as part of its
+  static topology, and `registerRoutePaths` runs in the same handler as
+  `setBuses` — synchronously, before React re-renders — so there is no poll on
+  which buses exist and a path does not. The honest choice for the one poll
+  people assumed existed was between showing nothing and showing a chord
+  estimate; the measurement says the poll does not exist, and the chord ring is
+  kept so the deletion is sound rather than nearly sound. A route with fewer
+  than two stops, or a stop with no coordinate, still shows no times — there is
+  nothing to price on.
+- **`tables.priced`.** It no longer selects an estimator. It is the diagnostic
+  the test above asserts, and it is false only for a cold database with no pace
+  anywhere.
+
+**Measured: nothing moved.** gps-replay, 9/4 15:51–22:04 ET, 205,061 pairs,
+proximity truth, next 1–5 stops; this branch against `origin/master` (1a0159c)
+from separate worktrees into separate `REPLAY_OUT`s, same `REPLAY_DB`
+(snap-0904-2205) and same `PAYLOAD_PATCH` (model-patch-all-0904). Of the
+**12,677 leaf metrics** the two runs emit, 12,677 are equal; the only textual
+differences are `generatedAt` and the diagnostic block renamed `replicaCheck`
+→ `legacyBaseline`, whose values (239,680 differing pairs, max 4,956.1 s) are
+themselves identical.
+
+| route | n | median \|err\| | p90 | pessimistic ≥120 s | optimistic ≥120 s | within 120 s |
+|---|---|---|---|---|---|---|
+| Blue Day | 12,274 | 35.3 | 158.3 | 7.8% | 6.3% | 85.9% |
+| Orange Day | 13,982 | 28.1 | 110.0 | 5.0% | 3.6% | 91.4% |
+| Red | 20,972 | 47.5 | 255.3 | 4.8% | 19.0% | 76.3% |
+| Pink | 19,061 | 106.1 | 454.9 | 9.4% | 36.4% | 54.2% |
+| Green | 22,611 | 191.3 | 642.6 | 49.0% | 11.3% | 39.6% |
+| Purple | 27,102 | 102.9 | 664.3 | 25.3% | 22.0% | 52.7% |
+| Blue Night | 22,973 | 70.8 | 225.4 | 13.1% | 18.8% | 68.1% |
+| Orange Night | 28,068 | 39.4 | 129.3 | 3.0% | 9.1% | 87.9% |
+| Gold | 6,018 | 55.4 | 220.4 | 7.4% | 20.9% | 71.7% |
+| Blue West | 12,037 | 47.5 | 196.3 | 4.5% | 16.6% | 78.9% |
+| Orange East | 11,656 | 48.1 | 192.6 | 3.5% | 16.5% | 80.0% |
+| Brown | 8,307 | 79.4 | 517.3 | 12.7% | 27.4% | 60.0% |
+| **overall** | **205,061** | **59.5** | **392.7** | **14.0%** | **17.1%** | **68.9%** |
+
+Both columns of that table are the same number, which is the only acceptable
+result: the deletion removed code nothing called, so a metric that moved would
+have been a defect in the rebase, not a finding.
+
+**Green reads 191.3 s here, not the 70.1 s recorded above, and the difference
+is the PATCH, not the branch.** `model-patch-all-0904` was built before the
+repair, so its per-pass stand tables are keyed to the published order and the
+repaired ring asks for slots it does not carry; the 70.1 s row was measured on
+tables re-derived for the repaired order. Both arms of THIS run share the one
+patch, so the comparison is exact — and 191.3 s is still below the legacy arm's
+288.8 s on the same window. Quote 70.1 s for what the line does in production
+and 191.3 s only against the row beside it.
 
 ## 3. Display: a decision rule (`arrival.ts`, `filter.ts`)
 

@@ -4,7 +4,8 @@
  * snapshot, jitter it, and count how often the anchor changes.
  */
 import { loadNet } from "./common.js";
-import { registerRoutePaths, ANCHOR_GPS_THRESHOLD_M } from "../../web/src/anchor.js";
+import { registerRoutePaths } from "../../web/src/anchor.js";
+import { ANCHOR_GPS_THRESHOLD_M } from "./legacy/anchor.js";
 import { distanceToSegmentM, traceStopLegs } from "../../web/src/geo.js";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
 import type { LatLon } from "../../web/src/geo.js";

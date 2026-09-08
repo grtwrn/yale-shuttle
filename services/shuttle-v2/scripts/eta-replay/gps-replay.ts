@@ -1,9 +1,9 @@
 /**
  * GPS replay: feed every logged raw position (the last ~7 h) through the REAL
- * client ETA path — findRouteAnchor + computeUpcomingArrivals from
- * web/src/arrivals.ts — with the payload the server would have served at that
- * hour, and score the ETA for the bus's next 1..5 stops against two ground
- * truths:
+ * client ETA path — computeUpcomingArrivals from web/src/arrivals.ts, the
+ * ring estimator on every route — with the payload the server would have
+ * served at that hour, and score the ETA for the bus's next 1..5 stops
+ * against two ground truths:
  *
  *   detector  — the arrivals table (the collector's "nearest stop changed"
  *               event, which fires roughly at the midpoint BEFORE the stop)
@@ -38,14 +38,19 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
-import { computeUpcomingArrivals, STALL_CREDIT_MAX_FRACTION, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
-import type { AnchorStore } from "../../web/src/anchorGate";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+// The retired legacy arithmetic, kept as the replay's own copy: the `chord`
+// replica below is that estimator — the stateless anchor, the stall credit
+// and its bounds, chord proration — run as a counterfactual baseline against
+// the shipped `client` row. It stopped being a replica OF the client on
+// 2026-09-06, when the ring estimator took every route.
+import { findRouteAnchor, MAX_PLAUSIBLE_M_S, STALL_CREDIT_MAX_FRACTION } from "./legacy/anchor.js";
+import type { AnchorStore } from "../../web/src/eta/index.js";
 import { PACE_KEY, paceCarrier, type PaceEntry } from "../../src/server/v1compat";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLegs } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
-import { MAX_PLAUSIBLE_M_S } from "../../web/src/arrivals";
 import { applyModelParams, activeModelParams } from "../../web/src/eta/params";
 
 const T0 = Date.now();
@@ -61,11 +66,14 @@ const POLL_STRIDE = Number(process.env.POLL_STRIDE ?? 1);
 const net = loadNet();
 const { db, network } = net;
 registerRoutePaths(net.routePaths);
-// MODEL_ROUTES="" scores the legacy arithmetic on every route; "3" the ring
-// estimator on Red; unset = the tree's own allowlist (web/src/eta/index.ts).
+// MODEL_ROUTES used to pair the legacy arithmetic against the ring estimator
+// in one process (`""` = legacy everywhere, `"3"` = the model on Red). The
+// legacy arm is gone from the client (2026-09-06); the `client` row is the
+// model on every route, and the `chord` row is the legacy arithmetic as the
+// replay's own counterfactual. To pair two ESTIMATORS, run this from each
+// worktree into its own REPLAY_OUT.
 if (process.env.MODEL_ROUTES !== undefined) {
-  (globalThis as { __SHUTTLE_MODEL_ROUTES__?: ReadonlySet<string> }).__SHUTTLE_MODEL_ROUTES__ = new Set(process.env.MODEL_ROUTES.split(",").map((x) => x.trim()).filter(Boolean));
-  log(`MODEL_ROUTES=${JSON.stringify(process.env.MODEL_ROUTES)}`);
+  log(`MODEL_ROUTES=${JSON.stringify(process.env.MODEL_ROUTES)} is ignored: the client prices every route on the ring; the legacy arm is the \`chord\` replica`);
 }
 // A CHALLENGER parameter set (docs/closed-loop.md, stage 4): the same file the
 // nightly fit POSTs to /api/model-params, applied to the estimator this replay
@@ -423,7 +431,11 @@ function pathFraction(routeId: number, idx: number, bus: { lat: number; lon: num
   return Math.max(0, Math.min(1, bestS / leg.total));
 }
 
-// -- Replica of the computeUpcomingArrivals loop for ONE bus ------------------
+// -- The retired legacy arithmetic for ONE bus (the `chord` family) -------------
+// A hand copy of computeUpcomingArrivals as it shipped until 2026-09-06 —
+// stateless anchor, stall credit bounded by the dwell and the drive floor,
+// chord proration — with its historical variants. It is NOT the client any
+// more; it is the baseline every later estimator was measured against.
 type Proration = "chord" | "none" | "path" | "chordNoStall" | "uncapped" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "noFloor" | "driveFloor6" | "driveFloorNoMin" | "oracleAnchor";
 
 // The physical floor on the first hop: a bus cannot cover the distance to the
@@ -484,21 +496,20 @@ function replicaEtas(
       segAvg = avgSeg > 0 && avgSeg >= byDistance ? avgSeg : byDistance || 90;
     }
     if (step === 1 && stallCredit > 0 && !mode.startsWith("dwellSpill")) {
-      // What SHIPS (web/src/arrivals.ts): the credit cancels at most the
-      // calibrated dwell for the anchor stop; the fraction is only the fallback
-      // for a stop the calibrator has never measured. `chord`, `none`, `path`
-      // and `oracleAnchor` are the faithful replica and must carry that bound,
-      // or the replica-fidelity check below compares against code that has not
-      // been live since 2026-09-03. The rest are the historical alternatives.
+      // What SHIPPED until 2026-09-06 (web/src/arrivals.ts): the credit
+      // cancels at most the calibrated dwell for the anchor stop; the fraction
+      // is only the fallback for a stop the calibrator has never measured.
+      // `chord`, `none`, `path` and `oracleAnchor` are that arithmetic and
+      // carry the bound; the rest are its historical alternatives.
       const med = dwellMedAt(bus.route_id, bus.at_stop_id!, now);
       let cancellable = med > 0 ? med : segAvg * STALL_CREDIT_MAX_FRACTION;
       if (mode === "uncapped") cancellable = segAvg;
       if (mode === "cappedStallHalfSeg") cancellable = 0.5 * segAvg;
       if (mode === "cappedStallQuarterSeg") cancellable = 0.25 * segAvg;
       let applied = Math.min(stallCredit, cancellable, segAvg);
-      // The drive floor: a credit may cancel waiting, never driving. It is part
-      // of what SHIPS, so the default family carries it and `noFloor` is the
-      // behaviour it replaced (dwell bound alone, which could bill a hop at 0).
+      // The drive floor: a credit may cancel waiting, never driving. It was
+      // part of what shipped, so the default family carries it and `noFloor`
+      // is the behaviour it replaced (dwell bound alone, which could bill a hop at 0).
       // 6 m/s is the app's TYPICAL bus speed; MAX_PLAUSIBLE_M_S is the fastest
       // a shuttle is believed to cover the straight line. Only the latter is an
       // upper bound on speed, so only it yields a true lower bound on time.
@@ -553,12 +564,12 @@ const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
 /**
  * The real client's memory — production passes `liveAnchorStore` on every
- * call, so the gated anchor (PR #72) and the ring estimator's belief both
- * ride it. Observations are in time order, one entry per vehicle.
+ * call, so the ring estimator's belief and display floors ride it.
+ * Observations are in time order, one entry per vehicle.
  */
 const clientStore: AnchorStore = new Map();
-const counts = { obs: observations.length, offRoute: 0, noAnchor: 0, noRouteCfg: 0, replicaMismatch: 0, noDetector: 0, noProximity: 0, scored: 0 };
-let maxReplicaDiff = 0;
+const counts = { obs: observations.length, offRoute: 0, noAnchor: 0, noRouteCfg: 0, legacyDiffers: 0, noDetector: 0, noProximity: 0, scored: 0 };
+let maxLegacyDiff = 0;
 let diagLeft = 40;
 for (const o of observations) {
   const cfg = ROUTE_LISTS.find((c) => c.busRouteIds.includes(o.routeId));
@@ -610,9 +621,12 @@ for (const o of observations) {
     const forStop = real.filter((a) => a.stopId === sid).sort((a, b) => a.eta - b.eta);
     const r = forStop[occ];
     if (!r) continue;
+    // How far the shipped model sits from the legacy baseline on this pair —
+    // a description of the change, not a fidelity check (the two are
+    // different estimators now).
     const diff = Math.abs(r.eta - etas.chord[k - 1]!);
-    if (diff > maxReplicaDiff) maxReplicaDiff = diff;
-    if (diff > 0.01) counts.replicaMismatch++;
+    if (diff > maxLegacyDiff) maxLegacyDiff = diff;
+    if (diff > 0.01) counts.legacyDiffers++;
     const det = detectorArrival(o.routeId, o.bus.bus_name, sid, o.t, occ);
     const prox = det === null ? null : proximityArrival(o.bus.bus_name, sid, det);
     if (det === null) counts.noDetector++;
@@ -672,7 +686,7 @@ for (const o of observations) {
     oraclePairs.push({ k, routeId: o.routeId, eta: etas[k - 1]!, det: det === null ? null : (det - o.t) / 1000, prox: prox === null ? null : (prox - o.t) / 1000 });
   }
 }
-log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max replica diff ${maxReplicaDiff}`);
+log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max |client - legacy| ${maxLegacyDiff.toFixed(1)} s`);
 // The REAL client's three numbers per pair, as JSON lines, for anything that
 // wants to score them outside this script — the promotion comparison in
 // scripts/reestimate-params.mjs re-scores champion and challenger from two of
@@ -692,24 +706,12 @@ if (process.env.PAIRS_OUT) {
   fs.writeFileSync(process.env.PAIRS_OUT, out.join("\n") + (out.length ? "\n" : ""));
   log(`wrote ${process.env.PAIRS_OUT} (${out.length} pairs)`);
 }
-// The replica below is a HAND COPY of computeUpcomingArrivals kept so the
-// counterfactual modes can be run. It has gone stale before -- silently, as a
-// counter in the JSON nobody read -- and the `chord` row was reported as "the
-// current client" for three commits after it stopped being that. Say so loudly.
-const replicaStaleShare = counts.scored > 0 ? counts.replicaMismatch / counts.scored : 0;
-const REPLICA_TOLERANCE = 0.01;
-if (replicaStaleShare > REPLICA_TOLERANCE) {
-  console.error("");
-  console.error("  ############################################################");
-  console.error("  #  REPLICA IS STALE -- the `chord` row is NOT the client.  #");
-  console.error("  ############################################################");
-  console.error(`  ${(100 * replicaStaleShare).toFixed(1)}% of pairs disagree with the real computeUpcomingArrivals`);
-  console.error(`  (${counts.replicaMismatch}/${counts.scored}), worst ${maxReplicaDiff.toFixed(1)} s.`);
-  console.error("  Read the `client` row for what riders actually get. The replica");
-  console.error("  rows are still valid as DELTAS against `chord`, but not as");
-  console.error("  absolute accuracy. Re-sync replicaEtas() with web/src/arrivals.ts.");
-  console.error("");
-}
+// Until 2026-09-06 `chord` was a hand copy of computeUpcomingArrivals and a
+// fidelity check here shouted when it drifted. The client is the ring
+// estimator on every route now, so `chord` is the RETIRED arithmetic kept as
+// a baseline: `client` is what riders get, the replica rows are the legacy
+// family, and the share that differs is a fact about the change, not a defect.
+const legacyDiffersShare = counts.scored > 0 ? counts.legacyDiffers / counts.scored : 0;
 
 // How often the drive floor actually bites, and by how much. A floor that
 // fires everywhere would be re-tuning the estimator by the back door; one that
@@ -741,12 +743,11 @@ const result: any = {
   generatedAt: new Date().toISOString(),
   window: { start: fmtEt(rawStart), end: fmtEt(rawEnd), hours: Math.round(((rawEnd - rawStart) / 3_600_000) * 10) / 10, pollStride: POLL_STRIDE },
   counts,
-  replicaCheck: {
-    maxAbsDiffSec: maxReplicaDiff,
-    mismatched: counts.replicaMismatch,
-    mismatchedPct: Math.round(1000 * replicaStaleShare) / 10,
-    stale: replicaStaleShare > REPLICA_TOLERANCE,
-    note: "`client` is the real computeUpcomingArrivals. `chord` is a hand replica kept for the counterfactual modes; when `stale` is true it is NOT the shipped client and its absolute numbers must not be quoted.",
+  legacyBaseline: {
+    maxAbsDiffSec: maxLegacyDiff,
+    differs: counts.legacyDiffers,
+    differsPct: Math.round(1000 * legacyDiffersShare) / 10,
+    note: "`client` is the real computeUpcomingArrivals — the ring estimator on every route. `chord` and the other replica modes are the RETIRED legacy arithmetic (scripts/eta-replay/legacy/), kept as the counterfactual baseline; `differs` counts the pairs on which the two estimators disagree by more than 0.01 s.",
   },
   atStopShare: Math.round((1000 * pairs.filter((p) => p.atStop).length) / pairs.length) / 10,
   truths: {},
@@ -824,7 +825,7 @@ for (const truth of ["prox", "det"] as const) {
 }
 fs.writeFileSync(`${OUT_DIR}/gps.json`, JSON.stringify(result, null, 1));
 log(`wrote ${OUT_DIR}/gps.json`);
-console.log(JSON.stringify({ counts, replica: result.replicaCheck, atStopShare: result.atStopShare }, null, 1));
+console.log(JSON.stringify({ counts, legacyBaseline: result.legacyBaseline, atStopShare: result.atStopShare }, null, 1));
 for (const truth of ["prox", "det"] as const) {
   for (const mode of ["client", ...MODES] as const) {
     const t = result.truths[truth][mode];

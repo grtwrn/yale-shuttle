@@ -183,7 +183,6 @@ type PlannerMod = typeof import("../../../web/src/planner");
 type FormatMod = typeof import("../../../web/src/format");
 type RoutesMod = typeof import("../../../web/src/routes");
 type ScheduleMod = typeof import("../../../web/src/schedule");
-type GateMod = typeof import("../../../web/src/anchorGate");
 type WalkMod = typeof import("../../../web/src/walk");
 type GeoMod = typeof import("../../../web/src/geo");
 type DetMod = typeof import("../../../src/collector/detector.js");
@@ -200,18 +199,26 @@ const scheduleMod = await fromClient<ScheduleMod>("web/src/schedule.ts");
 const walkMod = await fromClient<WalkMod>("web/src/walk.ts");
 const geoMod = await fromClient<GeoMod>("web/src/geo.ts");
 const det = await fromClient<DetMod>("src/collector/detector.ts");
-let gateMod: GateMod | null = null;
-try { gateMod = await fromClient<GateMod>("web/src/anchorGate.ts"); } catch { gateMod = null; }
+// The tree's per-vehicle store: the ring estimator's (web/src/eta, every
+// tree since 2026-09-06) or the retired anchor gate's (web/src/anchorGate,
+// trees before it). Either way a cohort gets one Map, and this only names
+// which memory it is for the run's record.
+let storeKind: "eta" | "anchorGate" | "none" = "none";
+try { if ((await fromClient<any>("web/src/eta/index.ts")).liveAnchorStore) storeKind = "eta"; } catch { /* older tree */ }
+if (storeKind === "none") { try { await fromClient<any>("web/src/anchorGate.ts"); storeKind = "anchorGate"; } catch { /* no store at all */ } }
+// The stateless anchor, for the TRACE line only; gone from trees after 2026-09-06.
+const findRouteAnchor: ((b: BusData, stops: number[], coords: Record<number, { lat: number; lon: number }>) => number) | null =
+  typeof (anchorMod as any).findRouteAnchor === "function" ? (anchorMod as any).findRouteAnchor : null;
 const hasNextRule = typeof (arrivalsMod as any).nextArrivalAfterPinned === "function";
 
 function treeInfo() {
   const git = (cmd: string) => { try { return execSync(`git -C "${CLIENT_ROOT}" ${cmd}`, { encoding: "utf8" }).trim(); } catch { return "?"; } };
   const head = git("rev-parse --short HEAD");
   const dirty = git("status --porcelain -- web/src src/collector") !== "";
-  return { root: CLIENT_ROOT, head, dirty, branch: git("rev-parse --abbrev-ref HEAD"), anchorGate: !!gateMod, nextRule: hasNextRule ? "identity (#74)" : "eta > shown + 30" };
+  return { root: CLIENT_ROOT, head, dirty, branch: git("rev-parse --abbrev-ref HEAD"), store: storeKind, nextRule: hasNextRule ? "identity (#74)" : "eta > shown + 30" };
 }
 const tree = treeInfo();
-log(`client tree ${tree.root} @ ${tree.head}${tree.dirty ? " (DIRTY)" : ""} [${tree.branch}]  anchorGate=${tree.anchorGate}  nextIn=${tree.nextRule}`);
+log(`client tree ${tree.root} @ ${tree.head}${tree.dirty ? " (DIRTY)" : ""} [${tree.branch}]  store=${tree.store}  nextIn=${tree.nextRule}`);
 
 // -- data ------------------------------------------------------------------------
 
@@ -626,7 +633,9 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   for (const rid of cfg.routeIds) for (const sid of net.routeStops[rid] ?? []) if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
   const bi = allStops.indexOf(o.boardStopId);
   const busMatch = buses.find((b) => norm(b.bus_name) === norm(u.busName) && cfg.busRouteIds.includes(b.route_id) && anchorMod.isBusOnRoute(b, allStops, net.stopCoords)) ?? null;
-  const stopsAway = bi >= 0 && busMatch && anchorMod.findRouteAnchor(busMatch, allStops, net.stopCoords) >= 0 ? 1 : null;
+  // The row renders while the pinned bus is on the route and the list has
+  // stops (the retired stateless anchor answered -1 only for an empty list).
+  const stopsAway = bi >= 0 && busMatch && allStops.length > 0 ? 1 : null;
   const busEtaLive = busMatch && stopsAway !== null
     ? formatMod.remainingSec(u.busEtaSec ?? o.walkToSec + o.waitSec, u.computedAtMs, t)
     : null;
@@ -676,7 +685,7 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
       if (!o) { skipped.push({ id: spec.id, reason: "noOption" }); continue; }
       if (o.boardStopId !== spec.boardStopId) { skipped.push({ id: spec.id, reason: `boardElsewhere:${o.boardStopId}` }); continue; }
       let cohort = cohorts.get(t);
-      if (!cohort) cohorts.set(t, (cohort = { store: gateMod ? new Map() : undefined, riders: new Set() }));
+      if (!cohort) cohorts.set(t, (cohort = { store: storeKind === "none" ? undefined : new Map(), riders: new Set() }));
       const a: Active = { spec, o, cohort: t, ticks: [], truth, busAtStopOnArrival, endAt: truth.kind === "arrived" ? truth.at : spec.t0 + MAX_WAIT_MS };
       cohort.riders.add(a);
       active.add(a);
@@ -696,9 +705,10 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
           const stops = stopsOf(a.spec.label);
           const board = net.stopCoords[a.spec.boardStopId]!;
           const bs = buses.filter((b) => cfg.busRouteIds.includes(b.route_id)).map((b) => {
-            const raw = anchorMod.findRouteAnchor(b, stops, net.stopCoords);
-            const g = cohort.store?.get(`${cfg.label}|${b.bus_name}`);
-            return `${b.bus_name} d=${Math.round(distanceMeters(b, board))}m last=${b.last_stop_id} at=${b.at_stop_id ?? "-"}${b.at_stop_since ? `(+${Math.round((t - new Date(b.at_stop_since + "Z").getTime()) / 1000)}s)` : ""} anchor=${raw}${g ? `/gate=${g.index}` : ""}/${stops.length}`;
+            const raw = findRouteAnchor ? findRouteAnchor(b, stops, net.stopCoords) : "-";
+            const g = cohort.store?.get(`${cfg.label}|${b.bus_name}`) as { index?: number; belief?: { lead: number } } | undefined;
+            const held = g?.belief ? `/lead=${g.belief.lead}` : g?.index !== undefined ? `/gate=${g.index}` : "";
+            return `${b.bus_name} d=${Math.round(distanceMeters(b, board))}m last=${b.last_stop_id} at=${b.at_stop_id ?? "-"}${b.at_stop_since ? `(+${Math.round((t - new Date(b.at_stop_since + "Z").getTime()) / 1000)}s)` : ""} anchor=${raw}${held}/${stops.length}`;
           });
           const live = arr.filter((x) => x.stopId === a.spec.boardStopId && x.routeLabel === a.spec.label).map((x) => `${x.busName}:${Math.round(x.eta)}`);
           console.error(`  ${new Date(t).toISOString().slice(11, 19)} ${a.spec.id.split("|")[0]}@${a.spec.boardStopId} [${tick.state}] "${tick.token ?? ""}" pin=${tick.bus}  live=[${live.join(" ")}]  ${bs.join(" | ")}`);

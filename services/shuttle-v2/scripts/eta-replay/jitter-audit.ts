@@ -78,7 +78,8 @@ import type { BusObservation, BusState } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type UpcomingArrival } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { findRouteAnchor } from "./legacy/anchor.js";
 import type { BusData } from "../../web/src/map-data";
 import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
 
@@ -125,7 +126,7 @@ if (ARM === "belief") {
 interface ClientTree { compute: any; findRouteAnchor: any; isBusOnRoute: any; pruneAnchors: any; registerRoutePaths: any }
 async function loadTree(dir: string | undefined): Promise<ClientTree> {
   if (!dir) {
-    const g = await import("../../web/src/anchorGate");
+    const g = await import("./legacy/anchorGate.js");
     return { compute: computeUpcomingArrivals, findRouteAnchor, isBusOnRoute, pruneAnchors: g.pruneAnchors, registerRoutePaths };
   }
   const a = await import(`${dir}/arrivals.ts`);
