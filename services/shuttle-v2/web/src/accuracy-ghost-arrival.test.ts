@@ -52,6 +52,7 @@ type Poll = {
   at_stop_since: string | null;
   stationary_since: string;
   last_moved_at: string;
+  seen_at: string;
 };
 
 const FX = fixture as unknown as {
@@ -92,6 +93,7 @@ function busesAt(t: number) {
         : {}),
       stationary_since: row.stationary_since,
       last_moved_at: row.last_moved_at,
+      seen_at: row.seen_at,
     });
   }
   return out as never[];
@@ -163,9 +165,11 @@ describe("a bus that has driven past is not priced as arriving (Red #307, 2026-0
     expect(stationaryFor).toBeGreaterThanOrEqual(15);
     // ...while the bus was well past the stop and still moving.
     expect(haversineMeters(f, board)).toBeGreaterThan(60);
-    // ...and the movement clock says so: the fix changed on this very poll.
-    const stillFor = (t - Date.parse(f.last_moved_at + "Z")) / 1000;
-    expect(stillFor).toBeLessThan(15);
+    // ...and the movement clock says so: the fix changed on this very poll,
+    // which is what the pair of server clocks in the payload states exactly —
+    // `seen_at` is the poll the fix was reported on, `last_moved_at` the poll
+    // it last changed on.
+    expect(f.seen_at).toBe(f.last_moved_at);
   });
 
   it("no cold render calls the departed bus an arrival at the board stop", () => {

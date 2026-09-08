@@ -172,3 +172,64 @@ describe("filter: the deadband is the observation model", () => {
     expect(b.lead).toBe(1);
   });
 });
+
+describe("filter: the cold start's tense", () => {
+  // One frame, no history — every rider's first render. The served clock is
+  // pinned to a stop and runs on through a bus that is only driving past, so
+  // it cannot decide this alone; the two things that can are whether the fix
+  // changed on the newest poll and which side of the stop it is on.
+  const iso = (ms: number) => new Date(ms).toISOString().replace(/Z$/, "");
+  const NOW = 1_700_000_000_000;
+  /** A payload frame at `pos` whose served clock is a minute old. */
+  const frame = (pos: LatLon, movedAgoS: number, opts: { seen?: boolean } = {}) => ({
+    lat: pos.lat, lon: pos.lon,
+    stationary_since: iso(NOW - 60_000),
+    last_moved_at: iso(NOW - movedAgoS * 1000),
+    ...(opts.seen === false ? {} : { seen_at: iso(NOW) }),
+  });
+
+  it("refuses the stand for a bus PAST the stop whose fix changed this poll", () => {
+    const r = ring();
+    // 60 m beyond stop 1 — clear of the cell of slack, where "past" is a fact.
+    const b = stepBelief(undefined, r, frame(onLeg0(60), 0), NOW, STOPS);
+    expect(standMass(b, r)).toBeLessThan(0.5);
+  });
+
+  it("keeps it for the same bus one repeat later", () => {
+    const r = ring();
+    // The bus that pulled up 60 m past the sign five seconds ago has repeated
+    // its coordinate once, which is 5.8 : 1 evidence of a stand.
+    const b = stepBelief(undefined, r, frame(onLeg0(60), 5), NOW, STOPS);
+    expect(standMass(b, r)).toBeGreaterThan(0.8);
+  });
+
+  it("keeps it inside one cell of the marker, whatever the fix is doing", () => {
+    const r = ring();
+    // 20 m past the sign is where buses come to rest (22 m at the median), and
+    // it is inside the sensor's own quantum: pulling in, pulling out and
+    // crawling through are the same picture there, and "now" is true for all
+    // three.
+    const b = stepBelief(undefined, r, frame(onLeg0(20), 0), NOW, STOPS);
+    expect(standMass(b, r)).toBeGreaterThan(0.8);
+  });
+
+  it("keeps it for a bus still APPROACHING, moving or not", () => {
+    const r = ring();
+    // 45 m short of stop 2, fix changed on this very poll: everything the
+    // departing bus shows except the side of the marker it is on. Refusing
+    // this one prices the stop a lap away.
+    const b = stepBelief(undefined, r, frame(onLeg0(855), 0), NOW, STOPS);
+    expect(standMass(b, r)).toBeGreaterThan(0.8);
+  });
+
+  it("falls back to the client's clock when the payload has no `seen_at`", () => {
+    const r = ring();
+    // An older server, a fixture, a replay: without the poll the fix was
+    // reported on, "polls since it moved" cannot be counted and the movement
+    // clock is read against the reader's own clock, as #173 shipped it.
+    const moving = stepBelief(undefined, r, frame(onLeg0(60), 0, { seen: false }), NOW, STOPS);
+    expect(standMass(moving, r)).toBeLessThan(0.5);
+    const stood = stepBelief(undefined, r, frame(onLeg0(60), 60, { seen: false }), NOW, STOPS);
+    expect(standMass(stood, r)).toBeGreaterThan(0.8);
+  });
+});

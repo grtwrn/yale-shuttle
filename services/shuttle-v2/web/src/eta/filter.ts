@@ -204,8 +204,10 @@ export interface FilterBus {
   last_stop_id?: number | null | undefined;
   at_stop_since?: string | null | undefined;
   stationary_since?: string | null | undefined;
-  /** When the fix last changed (v1compat `last_moved_at`). See {@link stillSec}. */
+  /** When the fix last changed (v1compat `last_moved_at`). See {@link movedOnLastPoll}. */
   last_moved_at?: string | null | undefined;
+  /** The poll this fix was reported on (v1compat `seen_at`). See {@link movedOnLastPoll}. */
+  seen_at?: string | null | undefined;
 }
 
 function naiveUtcMs(s: string | null | undefined): number | null {
@@ -218,77 +220,117 @@ function serverClockMs(bus: FilterBus): number | null {
   return naiveUtcMs(bus.stationary_since ?? bus.at_stop_since);
 }
 
-/**
- * How long the bus's fix has been unchanged, or Infinity when the payload does
- * not say.
- *
- * Both of the clocks `serverClockMs` reads are pinned to a stop: the collector
- * anchors them the moment a bus comes within 75 m and carries them until it is
- * 125 m away, so they keep running while a bus drives straight THROUGH a
- * stop's zone (detector.ts `stationaryFields`, and `at_stop_since` is the same
- * clock behind a gate a drive-through also passes). They answer "how long has
- * this wait been going on", which is the right question for pricing the
- * remainder of a stand and the wrong one for "is the bus still here".
- *
- * `last_moved_at` is the collector's answer to the second question. A payload
- * that does not carry it — an older server, a fixture, a replay — says nothing
- * either way, and then the served clock decides alone, exactly as before.
- */
-/**
- * How far from a stop's marker a bus can be and still be standing AT it.
- *
- * Read off where buses actually come to rest, not chosen: over the 23,226
- * polls of 2026-09-08 on which a bus was demonstrably at rest inside a stop's
- * zone, its distance to that stop's coordinate was 22 m at the median, 39 m at
- * p75 and 55 m at p90. Buses pull up past the sign, so the marker is not where
- * they stand.
- *
- * Inside this radius the belief is left alone: a bus here is close enough that
- * "now" is true whether it is pulling in, pulling out, or crawling through, and
- * refusing the stand would only trade one wrong answer for another — the moving
- * half of a cold belief sits on the leg OUT of the stop, so a bus refused its
- * stand reads as a LAP away, not as "about to arrive".
- */
-export const STOOD_HERE_M = 55;
 
-function stillSec(bus: FilterBus, now: number): number {
-  const t = naiveUtcMs(bus.last_moved_at);
-  return t === null ? Infinity : (now - t) / 1000;
+/**
+ * WHICH SIDE OF THE STOP THE FIX SITS ON is the question, not how far from it.
+ *
+ * A radius cannot answer it. Buses pull up PAST the sign — over the 23,226
+ * polls of 2026-09-08 on which a bus was demonstrably at rest inside a stop's
+ * zone, its distance to the marker was 22 m at p50 and 55 m at p90 — so the
+ * bus at the kerb and the bus that has just driven on stand at the same
+ * distance, on opposite sides. The ring already knows the difference: its
+ * cells are in TRAVEL ORDER, so "past the stop" is a fact about the emission,
+ * and this is the share of it lying downstream of the stop whose zone holds it.
+ *
+ * Measured over 222,479 frames within 75 m of a stop (2026-09-03..06, every
+ * route, `scripts/eta-replay/last-stop-direction.ts`), against the
+ * trajectory's own closest approach: the fix is downstream on 85.8% of the
+ * frames where the bus HAS passed the stop and 3.5% of those where it is
+ * still approaching it. `last_stop_id` — the field that names the last stop
+ * PASSED, and the obvious candidate — reads the same two classes 47.3% and
+ * 12.4%: it lags a median 34 m past the closest approach, and in 10,388 of
+ * 16,824 passes it never names the stop at all while the bus is still in its
+ * zone. Geometry is the direction evidence; the feed's own field is the weak
+ * second witness and is left where it already is, the tempered categorical of
+ * `applyLastStop`.
+ */
+function passedShare(ring: Ring, d: Float64Array): number {
+  const C = ring.C;
+  let tot = 0;
+  const w = new Float64Array(C);
+  for (let c = 0; c < C; c++) {
+    const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M));
+    w[c] = e;
+    tot += e;
+  }
+  if (tot <= 0) return 0;
+  // The stop the fix is level with: the zone holding most of the emission.
+  const byStop = new Map<number, number>();
+  for (let c = 0; c < C; c++) {
+    const st = ring.nearStop[c]!;
+    if (st >= 0) byStop.set(st, (byStop.get(st) ?? 0) + w[c]!);
+  }
+  let stop = -1, best = 0;
+  for (const [st, m] of byStop) if (m > best) { best = m; stop = st; }
+  // Not at a stop at all: a majority of the fix's own mass has to lie inside
+  // one stop's zone before there is a stand at a stop to refuse. That is the
+  // test the rest's identity is already decided with (`restStopFromBelief`),
+  // and it is what replaces a radius around the marker.
+  if (stop < 0 || best < 0.5 * tot) return 0;
+  // ONE CELL OF SLACK. A cell is the sensor's own quantum — 30 m, the
+  // deadband upstream reports through — so inside one cell of the marker
+  // "past it" is not a distinction the feed can make, and a bus that has
+  // just pulled up 22 m beyond the sign (the measured median stand position)
+  // reads the same as one that has driven on. Past a cell it does: at the
+  // incident's 67 m the emission is 97% beyond, at 22 m it is 34%.
+  const sc = ring.stopCell[stop]!;
+  let past = 0;
+  for (let c = 0; c < C; c++) {
+    const fwd = ((c - sc) % C + C) % C;
+    if (fwd > 1 && fwd < C / 2) past += w[c]!;
+  }
+  return past / tot;
 }
 
 /**
- * Is the bus in the act of LEAVING the stop the feed says it last served?
+ * Is the bus DRIVING PAST the stop it is level with, rather than standing at
+ * it?
  *
- * This is the whole of the correction, and it is deliberately narrow. Refusing
- * to believe the served clock whenever the bus is moving also catches a bus
- * that has merely SHUFFLED where it stands, or has just pulled in and not yet
- * held still for `STANDING_MIN_S` — and getting those wrong is not cheap. The
- * moving half of a cold belief sits on the leg OUT of the nearest stop, so a
- * bus refused its stand does not read as "about to arrive", it reads as a lap
- * away: on the 2026-09-08 cold-start replay, 95% of the frames a blanket rule
- * newly withheld showed the bus at the kerb as more than ten minutes off.
+ * Two facts, and neither is a threshold:
  *
- * A departure has a second witness, and it is the one the feed gives for free:
- * `last_stop_id` has already advanced to this stop. So both must hold — the
- * fix is moving, and upstream says the stop is behind the bus — and then the
- * bus is inside the zone of a stop it has served and is not standing at it.
+ * 1. THE FIX CHANGED ON THE NEWEST POLL ({@link movedOnLastPoll}). A bus at
+ *    rest repeats its coordinate exactly; the feed's deadband means one repeat
+ *    is already 5.8 : 1 evidence of a stand (P(repeat | standing) 0.919
+ *    against P(repeat | moving) 0.159). So the bus that pulled in five seconds
+ *    ago has repeated once and is NOT refused, while the bus driving through
+ *    reports a new coordinate on the same poll and is. One poll is the finest
+ *    the sensor can resolve, and it is the whole margin between the two
+ *    errors: refusing on "has not moved for 15 s" instead — three polls —
+ *    withholds the bus that has just pulled in, which is 85% of the misses.
+ * 2. THE FIX IS PAST THE STOP in travel order ({@link passedShare}). A bus
+ *    still approaching is never refused, whatever it is doing: there "now" is
+ *    about to be true. This is the half of the coin PR #173 could not spend —
+ *    a bus refused its stand reads as a LAP away, so refusing an arriving bus
+ *    is a far worse sentence than the ghost it removes.
  *
- * A bus at rest passes `stillSec` and is untouched whatever `last_stop_id`
- * says; a bus still approaching has the PREVIOUS stop in `last_stop_id` and is
- * untouched too. And a bus close enough to the marker to BE at it
- * ({@link STOOD_HERE_M}) is untouched whatever it is doing, because there
- * "now" is not a lie whether it is pulling in, pulling out or crawling through.
+ * Neither `last_stop_id` nor a radius around the marker is used. Both were
+ * measured against the trajectory first (see {@link passedShare}) and both
+ * are weaker than the ring's own travel order.
  */
-function leavingLastStop(bus: FilterBus, ring: Ring, stops: readonly number[], now: number): boolean {
-  if (stillSec(bus, now) >= STANDING_MIN_S) return false;
-  const lsid = bus.last_stop_id ?? null;
-  if (lsid === null) return false;
-  for (let i = 0; i < ring.N; i++) {
-    if (stops[i] !== lsid) continue;
-    const d = haversineMeters(stopPoint(ring, i), bus);
-    if (d > STOOD_HERE_M && d <= NEAR_STOP_M) return true;
-  }
-  return false;
+function drivingPast(ring: Ring, bus: FilterBus, now: number, d?: Float64Array): boolean {
+  if (!movedOnLastPoll(bus, now)) return false;
+  return passedShare(ring, d ?? distancesTo(ring, bus)) > 0.5;
+}
+
+/**
+ * Did the reported fix change on the MOST RECENT poll?
+ *
+ * `seen_at` is the poll the fix was reported on and `last_moved_at` the poll
+ * it last changed on (detector.ts `MOVED_M`), and both are the SERVER'S
+ * clock — so their difference is exactly "polls since the bus moved", free of
+ * the payload's age and of the device clock, which on a phone can be minutes
+ * out and which a `now`-based test spends its whole margin on.
+ *
+ * A payload without `seen_at` — an older server, a fixture, a replay — cannot
+ * say that, and falls back to the clock test #173 shipped: moving within
+ * `STANDING_MIN_S` by the client's own clock.
+ */
+function movedOnLastPoll(bus: FilterBus, now: number): boolean {
+  const moved = naiveUtcMs(bus.last_moved_at);
+  if (moved === null) return false;
+  const seen = naiveUtcMs(bus.seen_at);
+  if (seen !== null) return seen <= moved;
+  return (now - moved) / 1000 < STANDING_MIN_S;
 }
 
 /** Seconds the bus has been standing, on the clock the stand tables were measured with. */
@@ -430,10 +472,10 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   // — "now, then 67 min" — and the rider's actual bus was 11.5 min away.
   //
   // `last_moved_at` is the evidence the warm belief builds for itself, handed
-  // over in the payload; `leavingLastStop` is where it is spent, and why it is
+  // over in the payload; `drivingPast` is where it is spent, and why it is
   // spent narrowly. Where the payload does not carry the clock — an older
   // server, a fixture, a replay — the served clock decides alone, as before.
-  const standing = since !== null && age >= STANDING_MIN_S && !leavingLastStop(bus, ring, stops, now);
+  const standing = since !== null && age >= STANDING_MIN_S && !drivingPast(ring, bus, now, d);
   const pStand = standing ? 0.9 : 0.3;
   // No off-route floor on a cold start: there is no prior for it to protect,
   // and a flat weight over three hundred cells would outweigh the fix itself.
@@ -773,7 +815,7 @@ export function stepBelief(
   // movement clock when the payload carries one.
   const servedSaysStanding = since !== null
     && (now - since) / 1000 >= STANDING_MIN_S
-    && !leavingLastStop(bus, ring, stops, now);
+    && !drivingPast(ring, bus, now);
   if (!b.rested && (!fresh || servedSaysStanding)) {
     b.rested = true;
     Object.assign(b, restStopFromBelief(ring, b.p, b.restMask));
