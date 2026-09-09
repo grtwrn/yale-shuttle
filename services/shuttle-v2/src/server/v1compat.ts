@@ -138,6 +138,16 @@ export function buildBusesPayload(
 ): Record<string, unknown> {
   const net = collector.ref.get();
   const live = collector.getLiveBuses();
+  const nameCounts = new Map<string, number>();
+  for (const b of live) {
+    const key = b.busName;
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  // A duplicated fleet name is not a vehicle identity. The collector isolates
+  // those live IDs; a name-based departure history must also fall back.
+  const standingForecasts = new Map(live.map(b => [b.busId,
+    nameCounts.get(b.busName) === 1
+      ? collector.standingForecasts?.(b) ?? [] : []]));
   const mp = modelParams?.wire() ?? null;
   // Geometry derived from where buses actually drove, best-so-far per route.
   // Usually empty at first boot and fills in over the following days as each
@@ -159,6 +169,7 @@ export function buildBusesPayload(
     lon: b.lon,
     heading: b.heading,
     last_stop_id: b.lastStopId,
+    ...(standingForecasts.get(b.busId)?.length ? { standing_forecasts: standingForecasts.get(b.busId) } : {}),
     stationary: b.atStopId != null,
     ...(b.atStopId != null ? { at_stop_id: b.atStopId } : {}),
     // v1's frontend parses this as `new Date(at_stop_since + "Z")` — it

@@ -1,0 +1,7 @@
+# Preserve the standard CSV/Matplotlib exports as recorded research artifacts.
+docs/data/red-first-display-repaired-2026-09-08.csv whitespace=cr-at-eol
+docs/data/red-general-first-total-2026-09-08.csv whitespace=cr-at-eol
+docs/data/red-first-display-repaired-2026-09-08.svg whitespace=-blank-at-eol
+docs/data/red-general-first-total-2026-09-08.svg whitespace=-blank-at-eol
+# This extracted source's exact bytes participate in the validated model hash.
+services/shuttle-v2/src/calibrator/analytic/durationTables.ts whitespace=-blank-at-eof

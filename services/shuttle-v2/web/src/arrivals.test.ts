@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec } from "./arrivals";
+import { fromQuantiles } from "./eta/dist";
+import type { StandingForecasts } from "./eta/standingForecast";
 import type { DwellStat, DwellTimes, SegmentTimes } from "./arrivals";
 import { at, makeBus, routeStops, segmentTimes, STOP, stopCoords } from "./__fixtures__/payload";
 
@@ -137,6 +139,28 @@ describe("shownStandSec — the chip quotes the number the countdown bills", () 
   const KERB: DwellStat = { med: 30, sd: 20, n: 40, q: [0, 12, 15, 18, 22, 26, 31, 40, 55, 90], qn: 40 };
   const ROUTE: Record<string, DwellStat> = { "11": WINCHESTER, "27": KERB };
   const STOOD = 180;
+
+  it("keeps this visit's forecast total stable while conditioning its remaining wait", () => {
+    const arrival = 4_000_000;
+    const forecasts: StandingForecasts = new Map([[0, {
+      prior: { history_available_at: 1, route_id: 3, route_pattern_id: "fixture", canonical_stop_ids: [11, 27],
+        stop_id: 11, stop_index: 0, previous_departed_at: arrival - 3_000_000,
+        observed_visit_start_at: arrival, fitted_at: 1, valid_until: 86_400_000,
+        phase_slot_at: arrival + 600_000, phase_error_q: [-100, -80, -60, -40, -20, 0, 30, 60, 100, 180],
+        phase_weight: 0.9, duration_dist: { xs: [0, 600], ps: [0, 0.95], tail_hazard: 0.01 } },
+      duration: fromQuantiles(WINCHESTER.q!),
+    }]]);
+    const show = (elapsed: number) => shownStandSec(WINCHESTER, elapsed, ROUTE, undefined,
+      { forecasts, stopId: 11, now: arrival + elapsed * 1000 })!;
+    const early = show(30), later = show(300), overdue = show(900);
+    expect(early.typicalSec).toBeGreaterThan(550);
+    expect(later.typicalSec).toBe(early.typicalSec);
+    expect(overdue.typicalSec).toBe(early.typicalSec);
+    expect(later.sec).toBeLessThan(early.sec);
+    expect(overdue.sec).toBeGreaterThan(0);
+    expect(shownStandSec(KERB, 30, ROUTE, undefined, { forecasts, stopId: 27, now: arrival + 30_000 }))
+      .toEqual(shownStandSec(KERB, 30, ROUTE));
+  });
 
   it("says what is LEFT, not a total the rider has to subtract from", () => {
     const shown = shownStandSec(WINCHESTER, STOOD, ROUTE)!;

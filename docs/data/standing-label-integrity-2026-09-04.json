@@ -1,0 +1,180 @@
+{
+  "day": "2026-09-04",
+  "rules": {
+    "entryRadiusM": 75,
+    "exitRadiusM": 150,
+    "restMinMs": 14000,
+    "maxGapMs": 30000,
+    "departureMatchToleranceMs": 30000,
+    "identity": "global same-name duplicate timestamps break tracks",
+    "nearbyStops": "exclude any rest plateau simultaneously within75m of multiple physical stops",
+    "occurrences": "physical stop identity only; no repeated occurrence inferred from GPS proximity",
+    "selection": "no model predictions consulted"
+  },
+  "coverage": {
+    "rightCensoredPhysicalRests": 31,
+    "trackGaps": 14,
+    "ambiguousIdentityPositions": 2442,
+    "physicalEvents": 3876,
+    "missingOrAmbiguousDepartureMatch": 135,
+    "leftCensoredPhysicalEvents": 22,
+    "ambiguousNearbyStopEvents": 967
+  },
+  "all": {
+    "matchedEvents": 2752,
+    "medianEntryDelaySec": 0.0,
+    "meanEntryDelaySec": 11.147224927325581,
+    "pinAfterConfirmedRestAbove30Sec": 129,
+    "pinAfterConfirmedRestAbove120Sec": 63,
+    "totalOmittedRestSecAbove30": 27730.238,
+    "labelPassDespitePhysicalRest": 58
+  },
+  "strongRestAtLeast60Sec": {
+    "matchedEvents": 743,
+    "medianEntryDelaySec": 0.0,
+    "meanEntryDelaySec": 37.2321130551817,
+    "pinAfterConfirmedRestAbove30Sec": 100,
+    "pinAfterConfirmedRestAbove120Sec": 63,
+    "totalOmittedRestSecAbove30": 26364.004,
+    "labelPassDespitePhysicalRest": 16
+  },
+  "byRoute": {
+    "1": {
+      "matchedEvents": 642,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 9.023542056074767,
+      "pinAfterConfirmedRestAbove30Sec": 30,
+      "pinAfterConfirmedRestAbove120Sec": 12,
+      "totalOmittedRestSecAbove30": 5040.197,
+      "labelPassDespitePhysicalRest": 16
+    },
+    "2": {
+      "matchedEvents": 469,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 5.770761194029851,
+      "pinAfterConfirmedRestAbove30Sec": 16,
+      "pinAfterConfirmedRestAbove120Sec": 4,
+      "totalOmittedRestSecAbove30": 2158.882,
+      "labelPassDespitePhysicalRest": 10
+    },
+    "3": {
+      "matchedEvents": 444,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 13.478536036036036,
+      "pinAfterConfirmedRestAbove30Sec": 26,
+      "pinAfterConfirmedRestAbove120Sec": 15,
+      "totalOmittedRestSecAbove30": 5430.0070000000005,
+      "labelPassDespitePhysicalRest": 11
+    },
+    "4": {
+      "matchedEvents": 1,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 0.0,
+      "pinAfterConfirmedRestAbove30Sec": 0,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 0,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "6": {
+      "matchedEvents": 0,
+      "medianEntryDelaySec": null,
+      "meanEntryDelaySec": null,
+      "pinAfterConfirmedRestAbove30Sec": 0,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 0,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "8": {
+      "matchedEvents": 174,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 18.329758620689656,
+      "pinAfterConfirmedRestAbove30Sec": 11,
+      "pinAfterConfirmedRestAbove120Sec": 9,
+      "totalOmittedRestSecAbove30": 2973.331,
+      "labelPassDespitePhysicalRest": 3
+    },
+    "9": {
+      "matchedEvents": 229,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 10.496288209606988,
+      "pinAfterConfirmedRestAbove30Sec": 13,
+      "pinAfterConfirmedRestAbove120Sec": 6,
+      "totalOmittedRestSecAbove30": 2222.936,
+      "labelPassDespitePhysicalRest": 4
+    },
+    "10": {
+      "matchedEvents": 230,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 5.569221739130435,
+      "pinAfterConfirmedRestAbove30Sec": 12,
+      "pinAfterConfirmedRestAbove120Sec": 3,
+      "totalOmittedRestSecAbove30": 1145.661,
+      "labelPassDespitePhysicalRest": 7
+    },
+    "13": {
+      "matchedEvents": 131,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 2.441412213740458,
+      "pinAfterConfirmedRestAbove30Sec": 1,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 50.067,
+      "labelPassDespitePhysicalRest": 4
+    },
+    "14": {
+      "matchedEvents": 197,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 0.38558375634517766,
+      "pinAfterConfirmedRestAbove30Sec": 1,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 71.008,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "15": {
+      "matchedEvents": 78,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 38.35332051282051,
+      "pinAfterConfirmedRestAbove30Sec": 7,
+      "pinAfterConfirmedRestAbove120Sec": 5,
+      "totalOmittedRestSecAbove30": 2911.503,
+      "labelPassDespitePhysicalRest": 3
+    },
+    "16": {
+      "matchedEvents": 38,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 0.0,
+      "pinAfterConfirmedRestAbove30Sec": 0,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 0,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "17": {
+      "matchedEvents": 60,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 1.0830499999999998,
+      "pinAfterConfirmedRestAbove30Sec": 1,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 45.056,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "18": {
+      "matchedEvents": 0,
+      "medianEntryDelaySec": null,
+      "meanEntryDelaySec": null,
+      "pinAfterConfirmedRestAbove30Sec": 0,
+      "pinAfterConfirmedRestAbove120Sec": 0,
+      "totalOmittedRestSecAbove30": 0,
+      "labelPassDespitePhysicalRest": 0
+    },
+    "19": {
+      "matchedEvents": 59,
+      "medianEntryDelaySec": 0.0,
+      "meanEntryDelaySec": 99.4375593220339,
+      "pinAfterConfirmedRestAbove30Sec": 11,
+      "pinAfterConfirmedRestAbove120Sec": 9,
+      "totalOmittedRestSecAbove30": 5681.59,
+      "labelPassDespitePhysicalRest": 0
+    }
+  },
+  "scriptSha256": "e674e120e1ffbbb92ad2f470f2c2c20dce7d2237b4471203c966cde0140c7b81",
+  "sourceArtifactSha256": "fa89d80d74fafea77dd6adb9e6fc67bf864b89c4fd156c88e6693900528b08be"
+}

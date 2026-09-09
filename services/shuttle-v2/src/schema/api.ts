@@ -90,6 +90,26 @@ export const BusPositionSchema = z.object({
 });
 export type BusPosition = z.infer<typeof BusPositionSchema>;
 
+/** Optional /api/buses stop prior; the current visit's outcome is never served. */
+export const StandingForecastPriorSchema = z.object({
+  route_id: z.number().int(), route_pattern_id: z.string(),
+  canonical_stop_ids: z.array(z.number().int()).min(2),
+  stop_id: z.number().int(), stop_index: z.number().int().nonnegative(),
+  observed_visit_start_at: EpochMsSchema, previous_departed_at: EpochMsSchema,
+  history_available_at: EpochMsSchema, phase_slot_at: z.number().finite(),
+  phase_error_q: z.array(z.number().finite()).min(3), phase_weight: z.number().finite().min(0).max(1),
+  duration_dist: z.object({ xs: z.array(z.number().finite().nonnegative()).min(1),
+    ps: z.array(z.number().finite().min(0).lt(1)).min(1), tail_hazard: z.number().finite().positive() }),
+  fitted_at: EpochMsSchema, valid_until: EpochMsSchema,
+}).refine(v => v.canonical_stop_ids[v.stop_index] === v.stop_id &&
+  v.previous_departed_at < v.observed_visit_start_at && v.history_available_at <= v.observed_visit_start_at &&
+  v.fitted_at <= v.observed_visit_start_at && v.valid_until > v.observed_visit_start_at &&
+  v.phase_error_q.every((x, i, q) => i === 0 || x >= q[i - 1]!) &&
+  v.duration_dist.xs.length === v.duration_dist.ps.length &&
+  v.duration_dist.xs.every((x, i, q) => i === 0 || x > q[i - 1]!) &&
+  v.duration_dist.ps.every((p, i, q) => i === 0 || p >= q[i - 1]!), "inconsistent standing forecast");
+export type StandingForecastPrior = z.infer<typeof StandingForecastPriorSchema>;
+
 // /api/buses response: live snapshot plus everything a client needs to render
 // the map without a second round-trip.
 export const LiveSnapshotSchema = z.object({

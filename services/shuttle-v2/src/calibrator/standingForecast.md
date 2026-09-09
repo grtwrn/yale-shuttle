@@ -1,0 +1,26 @@
+The server supplies a general standing-time prior through `bus.standing_forecasts`. It uses the selected analytic phase mixture for every matching route occurrence with learned evidence; it contains no Red/Winchester dispatch. The distribution's initial total and conditional remainder come from one law. Source extraction provenance is recorded in `analytic/origins.json`, and an explicit parity test compares both fitting and inference with the frozen study implementation.
+
+The collector records each new visit's actual availability timestamp and canonical route pattern in a small side table. Pattern sequences are deduplicated, and observation metadata is deleted with its visit. A visit that began before the current topology version was observed is unresolved. The runtime requires an exact canonical sequence/index match, a globally unique current fleet name, and prior departures whose confirmation timestamps precede the observed visit start. `history_available_at` lets the client enforce the same rule when its retained rest clock is earlier than the server's current clock. A completed current departure cannot become the previous departure for the lingering old rest.
+
+Legacy rows do not receive invented insertion timestamps. Training uses the study's explicitly approximate two-subsequent-anchors-plus-120-seconds availability rule, rejecting a proxy before the visit's physical end. A legacy route/date with any incompatible stop index remains unresolved as a whole. Live history first discovered at startup is available at startup, so a running visit can temporarily use the existing duration prior after a restart. New exact metadata removes that limitation prospectively.
+
+The operational window is the last two completed observed service dates **per route**, searched within 30 ET calendar days. This preserves weekday history over weekends and holidays. A date needs a completed/passed observation known before the fit snapshot; no partial-day count threshold is added. The exact selected route/date set is stored beside every fit. The training date boundary is ET midnight, while `fittedAt` is the actual snapshot cutoff: a previous-day visit confirmed after midnight may be used if it was known before fitting. Contexts require that fit to predate the visit start.
+
+This rolling selection policy is an operational extrapolation. The study fitted fixed September 3–4 history and held that fit fixed through later confirmation days; it did not validate every daily rolling replacement or establish that a tiny partial service date is sufficient. `runtime-policy-lock.json` records the decision before prospective scoring. Do not describe the live rolling policy as independently confirmed from those same later outcomes.
+
+Fitting runs in one Node worker and reads SQLite through its own read-only connection. The worker selects dates before fetching complete rows and rejects inputs exceeding 20,000 rows; it does not silently truncate. A route/bus/time index supports the historical confirmation lookups. No fitting or SQL runs when `/api/buses` requests contexts. The last successful fit is cached in SQLite and identified by the exact math sources, weight objective, availability policy and training-window policy. A fit remains usable for at most 48 hours while replacement fails; contexts expire at the current ET day boundary. An already-served current visit keeps its initial law if a background replacement finishes during that wait.
+
+The worker has a 384 MiB old-generation limit, 32 MiB young-generation limit, 30-minute wall timeout and at most three attempts per ET date, separated by at least 15 minutes. Timeout/error leaves the existing prior available. These are execution controls, not changes to the fitted model. JavaScript heap limits do not bound every native allocation, so measured process memory remains relevant. [Node worker resource limits](https://nodejs.org/docs/latest-v20.x/api/worker_threads.html#new-workerfilename-options). The read-only production probe on September 9 measured approximately 207 MB for the existing wrapper and main process combined, against the unchanged 1 GB machine; the previous two-day fit peaked near 227 MiB in its isolated evaluation process. These observations support the resource budget, without guaranteeing a peak under every future workload.
+
+Collector logs and the authenticated `GET /api/stats/standing-forecast` report fitting state, failures, attempts, exact training dates, accepted/excluded input counts, read time, fit time and process peak RSS. `processPeakRssBytes` is process-wide, not the worker's isolated memory. [Node resource usage](https://nodejs.org/docs/latest-v20.x/api/process.html#processresourceusage).
+
+To reproduce the production job without publishing it:
+
+```sh
+node --import tsx src/calibrator/standingForecast.fit.ts \
+  --db /absolute/path/to/read-only-snapshot.db \
+  --at 2026-09-09T04:47:00Z \
+  --out /absolute/path/to/new-fit.json
+```
+
+The CLI preserves its input database and refuses to overwrite an existing output. Older captures without metadata tables use the declared legacy adapter. For performance experiments, add the new index only to a disposable copy; never mutate the captured original. Production applies migration `0017_standing_forecasts.sql` before starting the collector.

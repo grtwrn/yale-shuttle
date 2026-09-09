@@ -177,10 +177,36 @@ export const stopVisits = sqliteTable(
   },
   (t) => ({
     routeStopTimeIdx: index("stop_visits_route_stop_time_idx").on(t.routeId, t.stopId, t.anchoredAt),
+    routeBusTimeIdx: index("stop_visits_route_bus_time_idx").on(t.routeId, t.busName, t.anchoredAt, t.id),
     // Time-leading, for the retention sweep.
     timeIdx: index("stop_visits_time_idx").on(t.anchoredAt),
   }),
 );
+
+/** Versioned canonical sequences and actual collector availability, kept apart
+ * from backfilled visit rows whose original insertion clock is unknown. */
+export const standingForecastPatterns = sqliteTable("standing_forecast_patterns", {
+  id: text("id").primaryKey(),
+  routeId: integer("route_id").notNull(),
+  stopIds: text("stop_ids").notNull(),
+});
+
+export const standingForecastObservations = sqliteTable("standing_forecast_observations", {
+  visitId: integer("visit_id").primaryKey().references(() => stopVisits.id, { onDelete: "cascade" }),
+  knownAt: integer("known_at", { mode: "timestamp_ms" }).notNull(),
+  patternId: text("pattern_id"),
+  identityAmbiguous: integer("identity_ambiguous", { mode: "boolean" }).notNull().default(false),
+});
+
+/** One successful, cached fit. Fitting runs in a worker, never during a request. */
+export const standingForecastModels = sqliteTable("standing_forecast_models", {
+  id: integer("id").primaryKey(),
+  algorithm: text("algorithm").notNull(),
+  fittedAt: integer("fitted_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  model: text("model").notNull(),
+  diagnostics: text("diagnostics").notNull(),
+});
 
 /**
  * One row per hop, kerb to kerb: from the departure at `from_stop_id` to the

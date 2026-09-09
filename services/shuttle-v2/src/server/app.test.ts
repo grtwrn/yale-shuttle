@@ -112,6 +112,7 @@ describe("GET /healthz", () => {
     expect(body).toHaveProperty("droppedObservations");
     expect(body.pollSkipped).toBe(0);
     expect(body.droppedObservations).toBe(0);
+    expect(body.standingForecast).toEqual({ fitting: false, fittedAt: null, lastError: null });
   });
 
   it("returns 503 when the poll loop is wedged", async () => {

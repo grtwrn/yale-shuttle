@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily local Yale standing forecast fit at 00:30 Eastern
+
+[Timer]
+OnCalendar=*-*-* 00:30:00 America/New_York
+Persistent=true
+AccuracySec=1min
+Unit=standing-forecast-nightly.service
+
+[Install]
+WantedBy=timers.target

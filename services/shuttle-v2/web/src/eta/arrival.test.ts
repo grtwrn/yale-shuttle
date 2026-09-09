@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
+import { cdf, fromQuantiles, point, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
 import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
 import { K, priceRoute, type Floors } from "./arrival";
 import type { LatLon } from "../geo";
+import type { StandingForecasts } from "./standingForecast";
 
 // The same rectangular loop as filter.test.ts.
 const LAT0 = 41.31, LON0 = -72.93;
@@ -62,6 +63,48 @@ function convolve(ds: Dist[], maxSec = 4000): (p: number) => number {
 }
 
 describe("arrival: the sum of the chain", () => {
+  it("prices each vehicle's terminal departure without changing shared tables or retaining an old ceiling", () => {
+    const { ring, tables } = setup();
+    const now = 300_000;
+    let b = stepBelief(undefined, ring, standAt1(0), now - 30_000, STOPS);
+    for (let t = 1; t <= 6; t++) b = stepBelief(b, ring, standAt1(0), now - 30_000 + t * 5000, STOPS);
+    const context = (remaining: number): StandingForecasts => new Map([[0, {
+      prior: { history_available_at: -1, route_id: 1, route_pattern_id: "fixture", canonical_stop_ids: STOPS,
+        stop_id: 1, stop_index: 0, observed_visit_start_at: 0,
+        previous_departed_at: -3_600_000, fitted_at: -86_400_000, valid_until: 86_400_000,
+        phase_slot_at: now + remaining * 1000, phase_error_q: Array(10).fill(0), phase_weight: 1,
+        duration_dist: { xs: [0, 60], ps: [0, 0.95], tail_hazard: 0.05 } },
+      duration: point(60),
+    }]]);
+    const tablesBefore = JSON.stringify(tables);
+    const baseline = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5);
+    const floors: Floors = { map: new Map([[2, { eta: 20, standingAt: 0, since: 0 }]]) };
+    const slow = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors, context(600));
+    const fast = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, undefined, context(120));
+    // The learned quantile law retains 5% mass before its release-time atom.
+    expect(Math.abs(slow[0]!.eta - fast[0]!.eta - 480)).toBeLessThan(2);
+    expect(slow[0]!.eta).toBeGreaterThan(700);
+    expect(floors.map.size).toBe(0);
+    expect(JSON.stringify(tables)).toBe(tablesBefore);
+    expect(priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors)).toEqual(baseline);
+  });
+
+  it("does not charge the next departure prior to the rest that just ended", () => {
+    const { ring, tables } = setup();
+    const now = 300_000;
+    const b = stepBelief(undefined, ring, standAt1(0), now, STOPS);
+    const nextVisit: StandingForecasts = new Map([[0, {
+      prior: { history_available_at: -1, route_id: 1, route_pattern_id: "fixture", canonical_stop_ids: STOPS,
+        stop_id: 1, stop_index: 0, observed_visit_start_at: now,
+        previous_departed_at: now - 5000, fitted_at: 0, valid_until: 86_400_000,
+        phase_slot_at: now + 3_600_000, phase_error_q: Array(10).fill(0), phase_weight: 1,
+        duration_dist: { xs: [0, 60], ps: [0, 0.95], tail_hazard: 0.05 } },
+      duration: point(60),
+    }]]);
+    expect(priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, undefined, nextVisit))
+      .toEqual(priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5));
+  });
+
   it("matches exact convolution at every quantile for a moving bus", () => {
     const { ring, tables } = setup();
     // Moving on leg 0 at fraction 0 (just left stop 1), stop 3 two hops on:

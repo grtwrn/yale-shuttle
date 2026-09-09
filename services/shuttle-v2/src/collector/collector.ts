@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { StandingForecastModel, type StandingForecastContext } from "../calibrator/standingForecast.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
   arrivals,
@@ -392,6 +393,8 @@ export interface CollectorOptions {
    * `SHUTTLE_ETA_SAMPLE=0` turns it off in production.
    */
   etaSampler?: boolean;
+  /** Background fit of general standing forecasts; disabled by default in injected-upstream tests. */
+  standingForecast?: boolean;
 }
 
 /**
@@ -413,6 +416,7 @@ export class Collector {
 
   private readonly db: DB;
   private readonly sqlite: Database.Database;
+  private readonly standingForecastModel: StandingForecastModel;
   private readonly upstream: UpstreamClient;
   private readonly logger: Logger;
   /**
@@ -545,6 +549,12 @@ export class Collector {
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
+    this.standingForecastModel = new StandingForecastModel(this.sqlite, {
+      autoFit: opts.standingForecast ?? (opts.upstream === undefined && process.env.SHUTTLE_STANDING_FORECAST !== "0"),
+      onUpdate: () => { this.version++; },
+      log: (event, details) => this.logger.info(`collector.${event}`, details),
+    });
+    this.standingForecastModel.setPatterns(this.standingPatterns(), Date.now());
     // A SEPARATE timer with its own in-flight guard, deliberately: the whole
     // point is that the operator's ETAs are a bonus measurement and the buses
     // poll never waits on, or fails because of, anything here.
@@ -743,6 +753,7 @@ export class Collector {
     }
     this.upstreamEta?.stop();
     this.etaSampler?.stop();
+    this.standingForecastModel.stop();
     this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
@@ -830,7 +841,7 @@ export class Collector {
           (obs, anchorStop) => this.seedStationary(obs, anchorStop),
         );
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
-        if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
+        if (stepped.visits.length > 0) this.persistVisits(stepped.visits, now, plan.contendedNames);
         this.updateLivePositions(observations, plan);
       } catch (err) {
         this.logger.error("collector.poll_process_failed", {
@@ -965,6 +976,19 @@ export class Collector {
       if (b.collectedAt >= cutoff) out.push(b);
     }
     return out;
+  }
+
+  /** Cached learned stop contexts; no fitting or database work on a request. */
+  standingForecasts(bus: BusPosition): StandingForecastContext[] {
+    return this.standingForecastModel.contexts(bus, Date.now());
+  }
+
+  standingForecastStats(): Record<string, unknown> {
+    return this.standingForecastModel.status();
+  }
+
+  private standingPatterns() {
+    return [...this.ref.get().routes.values()].map(route => ({ routeId: route.id, stopIds: [...route.stops] }));
   }
 
   /**
@@ -1141,6 +1165,7 @@ export class Collector {
   private runCalibrate(): void {
     try {
       const stats = calibrate(this.db, this.ref.get());
+      this.standingForecastModel.refresh(Date.now(), this.standingPatterns());
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
@@ -1629,9 +1654,17 @@ export class Collector {
    * convention as `arrivals`/`segments` (process TZ), keyed on the instant a
    * consumer groups by: the arrival for a visit, the departure for a leg.
    */
-  private persistVisits(events: readonly VisitEvent[]): void {
+  private persistVisits(events: readonly VisitEvent[], observedAt = Date.now(), ambiguousNames: ReadonlySet<string> = new Set()): void {
     const { visitRows, legRows } = visitRowsOf(events);
-    if (visitRows.length > 0) this.db.insert(stopVisits).values(visitRows).run();
+    if (visitRows.length > 0) {
+      const inserted = this.db.insert(stopVisits).values(visitRows).returning().all();
+      try {
+        this.standingForecastModel.recordVisits(inserted, Math.max(observedAt, Date.now()), this.standingPatterns(), ambiguousNames);
+      } catch (error) {
+        // Optional forecasting metadata must not cost a captured visit/leg.
+        this.logger.error("collector.standing_forecast.observation_failed", { error: (error as Error).message });
+      }
+    }
     if (legRows.length > 0) this.db.insert(legs).values(legRows).run();
   }
 

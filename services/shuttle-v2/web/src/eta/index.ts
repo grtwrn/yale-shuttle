@@ -30,6 +30,7 @@ import { routePathFor } from "../anchor";
 import type { LatLon } from "../geo";
 import type { BusData } from "../map-data";
 import { priceRoute, type Floors, type StopArrival } from "./arrival";
+import { standingForecastsFor } from "./standingForecast";
 import { stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
@@ -109,9 +110,10 @@ export function beliefFor(
   now: number,
 ): Belief {
   const seq = ring.stops.length === ring.N ? ring.stops : stops;
-  if (!store) return stepBelief(undefined, ring, bus, now, seq);
+  const forecasts = standingForecastsFor({ route_id: bus.route_id ?? ring.routeId, standing_forecasts: bus.standing_forecasts }, ring, now);
+  if (!store) return stepBelief(undefined, ring, bus, now, seq, forecasts);
   const e = entryFor(store, key);
-  const b = stepBelief(e.belief, ring, bus, now, seq);
+  const b = stepBelief(e.belief, ring, bus, now, seq, forecasts);
   e.belief = b;
   return b;
 }
@@ -145,7 +147,7 @@ export function arrivalsForBus(
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors);
+  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, standingForecastsFor(bus, ring, now));
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only

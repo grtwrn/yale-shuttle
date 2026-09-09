@@ -35,6 +35,7 @@
  */
 
 import { quantile, residual, type Dist } from "./dist";
+import { forecastForStand, standingRemaining, type StandingForecasts } from "./standingForecast";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyRouteScale, routeScale, widenBand } from "./params";
 import type { Ring } from "./ring";
@@ -201,12 +202,15 @@ interface Chain {
   measured: boolean;
   /** Stop index the situation stands at, else -1. */
   standingAt: number;
+  /** This visit is priced by its predicted departure rather than the pooled stand. */
+  contextualStand: boolean;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, now: number, forecasts: StandingForecasts | null): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
+  let contextualStand = false;
   let leg = sit.leg;
   // A bus MOVING inside the rest radius of its own layover, on the leg into
   // the layover stop, is repositioning — it has not left (the collector's
@@ -225,7 +229,17 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     leg = j;
     const hop = tables.hops[j]!;
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
-    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j);
+    if (!hop.includesStand) {
+      const currentForecast = forecastForStand(forecasts, j, now - r * 1000);
+      if (currentForecast) {
+        const remaining = standingRemaining(currentForecast, now);
+        const perm = permFor(6 * tables.hops.length + j);
+        for (let k = 0; k < K; k++) samples[k] = remaining(STRATA[perm[k]!]!);
+        contextualStand = true;
+      } else {
+        addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j);
+      }
+    }
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
   } else if (sit.standing && sit.zoneStop < 0 && tables.hops[leg]!.hidden) {
@@ -248,7 +262,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     addTerm(samples, hop0.drive, 2 * leg + 1, Math.max(0, 1 - sit.frac));
     measured = hop0.measured;
   }
-  return { sit, start: samples, leg, measured, standingAt };
+  return { sit, start: samples, leg, measured, standingAt, contextualStand };
 }
 
 /** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
@@ -315,6 +329,7 @@ export function priceRoute(
   now: number,
   tau: number,
   floors?: Floors,
+  standingForecasts: StandingForecasts | null = null,
 ): StopArrival[] {
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
@@ -322,7 +337,7 @@ export function priceRoute(
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
-  const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
+  const chains = sits.map((s) => startChain(s, tables, r, restStop, N, now, standingForecasts));
   // The lead chain: the heaviest situation on the lead leg (chains are in mass order).
   const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
   const out: StopArrival[] = [];
@@ -408,7 +423,13 @@ export function priceRoute(
       low = Math.min(low, f10); high = Math.max(high, f90);
     }
     const key = chainKey(cur, o);
-    if (floors && clampAt >= 0) {
+    if (floors && lead.contextualStand) {
+      // A transient departure hypothesis must not cap a later, well-supported
+      // wait. The contextual forecast conditions its learned duration and
+      // departure phase together. Remove its old ceiling as well, so fallback
+      // after stale data cannot resurrect an optimistic number.
+      floors.map.delete(key);
+    } else if (floors && clampAt >= 0) {
       const prev = floors.map.get(key);
       if (prev && prev.standingAt === clampAt && prev.since === clockSince) {
         const shown = Math.min(prev.eta, eta);

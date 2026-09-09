@@ -9,6 +9,8 @@ primary_region = 'ewr'
   SHUTTLE_V2_DB = '/data/shuttle-v2.db'
   SHUTTLE_V2_DB_DIR = '/data'
   SHUTTLE_V2_STATIC_DIR = '/app/web/dist'
+  # Serve cached standing models; fitting must run off the shared web CPU.
+  SHUTTLE_STANDING_FORECAST = '0'
 
 [[mounts]]
   source = 'shuttle_data'

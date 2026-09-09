@@ -43,6 +43,7 @@
 
 import { haversineMeters, type LatLon } from "../geo";
 import { hazard } from "./dist";
+import { forecastForStand, standingDepartureProbability, type StandingForecasts, type StandingForecastPrior } from "./standingForecast";
 import { MP } from "./params";
 import { distancesTo, NEAR_STOP_M, type Ring } from "./ring";
 
@@ -201,6 +202,8 @@ export interface Belief {
 export interface FilterBus {
   lat: number;
   lon: number;
+  route_id?: number | string | undefined;
+  standing_forecasts?: StandingForecastPrior[] | undefined;
   last_stop_id?: number | null | undefined;
   at_stop_since?: string | null | undefined;
   stationary_since?: string | null | undefined;
@@ -632,6 +635,7 @@ export function stepBelief(
   bus: FilterBus,
   now: number,
   stops: readonly number[],
+  standingForecasts: StandingForecasts | null = null,
 ): Belief {
   if (!bus.lat || !bus.lon) return prev && prev.ringKey === ring.key ? prev : initBelief(ring, bus, now, stops);
   if (!prev || prev.ringKey !== ring.key || now - prev.seenAt > BELIEF_STALE_MS) {
@@ -679,7 +683,8 @@ export function stepBelief(
           const z = standZone(prev, ring, c);
           const table = z.stop >= 0 ? ring.stand[z.stop] : null;
           if (table) {
-            const hd = hazard(table, stood) * dt;
+            const forecast = forecastForStand(standingForecasts, z.stop, clockOrigin(prev));
+            const hd = forecast ? standingDepartureProbability(forecast, prev.seenAt, dt) : hazard(table, stood) * dt;
             pDepart = hd / (hd + shufflePoll);
           } else {
             pDepart = MP.P_DEPART_ON_FRESH;

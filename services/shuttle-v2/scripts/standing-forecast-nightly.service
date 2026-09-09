@@ -1,0 +1,15 @@
+[Unit]
+Description=Fit Yale standing forecasts locally and publish verified cache
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/yale-shuttle/services/shuttle-v2
+ExecStart=/usr/bin/python3 %h/yale-shuttle/services/shuttle-v2/scripts/standing-forecast-nightly.py --run
+UMask=0077
+Nice=10
+TimeoutStartSec=90min
+TimeoutStopSec=10min
+# Login credentials remain in the user's existing Fly configuration.
+# A failed run leaves the old cached fit; next day's timer tries again.

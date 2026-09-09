@@ -866,6 +866,12 @@ export function buildApp(opts: AppOptions): Hono {
     });
   });
 
+  // Background timing fit status and exact training dates; no vehicle/rider history.
+  app.get("/api/stats/standing-forecast", requireStatsAuth, (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json(opts.collector.standingForecastStats());
+  });
+
   app.post("/api/model-params", requireAdmin, bodyLimit({
     maxSize: MODEL_PARAMS_BODY_LIMIT,
     onError: (c) => c.json({ error: "payload_too_large" }, 413),
@@ -1330,6 +1336,7 @@ export function buildApp(opts: AppOptions): Hono {
     // `droppedObservations` counts malformed buses filtered out of a payload.
     // Both stay flat in normal operation, so any non-zero value is a signal.
     const poll = opts.collector.pollStats();
+    const standing = opts.collector.standingForecastStats?.();
     return c.json(
       {
         ok: healthy,
@@ -1338,7 +1345,10 @@ export function buildApp(opts: AppOptions): Hono {
         knownBuses: buses.length,
         pollSkipped: poll.skipped,
         droppedObservations: poll.droppedObservations,
-        // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by
+        // Optional timing-model failure does not stop healthy baseline tracking.
+        standingForecast: standing ? { fitting: standing.fitting, fittedAt: standing.fittedAt,
+          lastError: standing.lastError } : null,
+        // The source identifier this server was built from (SHUTTLE_BUILD_SHA, stamped by
         // the Dockerfile; "dev" otherwise). The scorecard versions its rows by
         // it, and "which build is live?" should not need a Fly console.
         build: resolveEstimatorVersion(),

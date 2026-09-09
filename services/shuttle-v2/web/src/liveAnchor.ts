@@ -130,6 +130,8 @@ export function anchorIndexOnList(
  * replay or a pure test behaves as it always did.
  */
 export interface StandingAnswer {
+  /** Canonical occurrence, including repeated physical stop IDs. */
+  stopIndex: number;
   /** The stop the bus is standing at — a canonical-sequence stop id. */
   stopId: number;
   /** Seconds it has been standing, on the same clock the price bills. */
@@ -153,10 +155,11 @@ export function resolveStandingStop(
   if (!ring) return null;
   const b = beliefFor(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, now);
   if (!b.rested || b.restStop < 0) return null;
-  const stopId = stops[b.restStop];
+  const stopId = ring.stops[b.restStop];
   if (stopId === undefined) return null;
   return {
     stopId,
+    stopIndex: b.restStop,
     standingSec: standingSec(b, now),
     approach: !(bus.at_stop_id != null && bus.at_stop_id === stopId),
   };

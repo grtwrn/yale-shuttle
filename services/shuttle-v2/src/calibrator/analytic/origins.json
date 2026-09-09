@@ -1,0 +1,10 @@
+{
+  "note": "Production extraction of frozen selected algorithm; imports localized and standing-only helpers retained. No fitted settings changed.",
+  "sourceSha256": {
+    "scripts/eta-replay/general-eval/models/analytic.ts": "7178deb1c73049897a53d35af3663807b88020e8431993573e376d53c81cb024",
+    "scripts/eta-replay/general-eval/models/analytic-distribution.ts": "df47fb89b780bcd6b5141ff4e3ef6f9d03b758ecfe33dcf9de413a24874b7ae8",
+    "scripts/eta-replay/general-eval/models/analytic-runtime.ts": "d55357bef7605ea7710731620a608e90eea9f0b031efc7c297f24a4394e7d578",
+    "web/src/eta/dist.ts": "983e7e0dbcd08d8bb36dd18e9128e3a199d5bfe4821e976156f73352fa8bb80d",
+    "web/src/eta/tables.ts": "45d886acd0760e372022a01c133a2622bbea61a96780c41140c3d17432952c41"
+  }
+}

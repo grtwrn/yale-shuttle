@@ -1,5 +1,8 @@
 node_modules
 web/node_modules
+web/dist
+# Offline captures and evaluation tools are not runtime inputs.
+scripts
 store
 .git
 *.db

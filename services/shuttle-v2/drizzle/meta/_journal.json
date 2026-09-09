@@ -120,6 +120,13 @@
       "when": 1788784800000,
       "tag": "0016_model_params",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1788928156810,
+      "tag": "0017_standing_forecasts",
+      "breakpoints": true
     }
   ]
 }

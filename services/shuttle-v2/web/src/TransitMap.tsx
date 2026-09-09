@@ -8,7 +8,8 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
-import { liveAnchorStore } from "./eta";
+import { liveAnchorStore, ringForBus } from "./eta";
+import { standingForecastsFor } from "./eta/standingForecast";
 import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
@@ -4344,12 +4345,15 @@ const TripPlanner: FC<{
                    * shown must be the hold billed, and now the STOP shown is
                    * the stop billed too.
                    */
+                  const standNow = Date.now();
                   const standing = busMatch
                     ? resolveStandingStop(
-                        busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                        busMatch, cfg, routeStops, stopCoords, standNow, liveAnchorStore,
                       )
                     : null;
                   const liveElapsedSec = standing ? standing.standingSec : null;
+                  const standRing = busMatch ? ringForBus(busMatch, mergedRouteStops(cfg, routeStops), stopCoords) : null;
+                  const standForecasts = busMatch && standRing ? standingForecastsFor(busMatch, standRing, standNow) : null;
                   /**
                    * The hold to show at `sid`. `elapsed` is passed only for the
                    * stop the bus is actually standing at — everywhere else
@@ -4359,8 +4363,8 @@ const TripPlanner: FC<{
                    */
                   const standAt = (sid: number, elapsed: number | null) => {
                     const stat = routeDwells[String(sid)];
-                    if (!stat || stat.n < 3) return null;
-                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
+                    if (!stat || (stat.qn ?? stat.n) < 3) return null;
+                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined, { forecasts: standForecasts, stopId: sid, stopIndex: standing?.stopIndex, now: standNow });
                   };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
@@ -4418,25 +4422,13 @@ const TripPlanner: FC<{
                                     // rider read "3 of 10", subtracted, expected
                                     // seven more minutes, and the app said four.
                                     //
-                                    // So Y is now the stop's TYPICAL hold, taken
-                                    // from the same quantile table the ETA
-                                    // prices from — not from `dwell.med`.
-                                    //
-                                    // Unconditional, so it does not move while
-                                    // the bus sits. The conditional total does
-                                    // move, and correctly (inspection paradox:
-                                    // a bus still standing at five minutes is
-                                    // drawn from the longer-hold population).
-                                    // Both were put in front of the operator;
-                                    // their call was "well actually, stable
-                                    // makes more sense" — the figure reads as a
-                                    // fact about the STOP, and a number creeping
-                                    // upward while nothing happens invites the
-                                    // reader to hunt a cause that is not there.
-                                    //
-                                    // The cost: Y - X is NOT what is left. The
-                                    // countdown beside it is. Elsewhere the old
-                                    // figure stands, since there it IS billed.
+                                    // Y is the total forecast made at arrival:
+                                    // the bus's learned departure phase when
+                                    // available, otherwise the stop's typical
+                                    // hold. It stays stable as requested. The
+                                    // live remainder conditions the SAME model
+                                    // on still waiting, so Y - X need not equal
+                                    // the countdown once a departure runs late.
                                     <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                           title={(standing?.approach
                                             ? "Waiting for this stop, holding just short of the marker. "

@@ -34,6 +34,8 @@ export interface Route {
   dashed?: boolean;
 }
 
+import type { StandingForecastPrior } from "./eta/standingForecast";
+
 export interface BusData {
   bus_id: number;
   bus_name: string;
@@ -75,6 +77,7 @@ export interface BusData {
    * `movedOnLastPoll()` in eta/filter.ts.
    */
   seen_at?: string;
+  standing_forecasts?: StandingForecastPrior[];
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────

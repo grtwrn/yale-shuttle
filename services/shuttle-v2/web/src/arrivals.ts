@@ -16,6 +16,7 @@ import { isBusOnRoute } from "./anchor";
 import { anchorKeyFor } from "./liveAnchor";
 import { arrivalsForBus, globalPoolsFor, ringForBus, type AnchorStore } from "./eta";
 import { residualMedian } from "./eta/dist";
+import { forecastForStand, standingRemaining, standingTotalAtArrival, type StandingForecasts } from "./eta/standingForecast";
 import { classPools, poolsWithFallback, stopModel } from "./eta/tables";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -56,10 +57,11 @@ export interface ShownStand {
    */
   remaining: boolean;
   /**
-   * The stop's TYPICAL hold — what the same table says a bus that has only
-   * just arrived still has to stand. Present only when `remaining` is true.
+   * Total forecast at arrival. With a departure prior this is specific to
+   * this bus's visit; otherwise it is the stop's typical hold. Present only
+   * when `remaining` is true.
    *
-   * Deliberately unconditional, so it does not move while a bus sits. The
+   * Frozen at arrival, so it does not move while a bus sits. The
    * conditional total does move, and correctly: a bus five minutes into a
    * hold is drawn from the longer-hold population, so its expected total is
    * genuinely larger than a bus two minutes in (339 s vs 478 s at stop 11).
@@ -88,6 +90,8 @@ export interface ShownStand {
  * conditional standing quantiles — "⏸ 3 min / ~10 min" beside "5 min"
  * (2026-09-04). Displaying one number while billing another is a bug
  * whichever number is right, so there is only one source.
+ * A learned occurrence-specific departure prior supplies both this display and the
+ * current-stand term in ETA pricing, using the same visit-start clock.
  *
  * With `elapsedSec` the answer is what is LEFT (report #73: a rider handed
  * "3 of 10" subtracts against the wrong total); without it, the typical
@@ -99,8 +103,19 @@ export function shownStandSec(
   routeDwells: Record<string, DwellStat>,
   /** Every route's tables, for the network-level pools (omit: the route's own only). */
   dwellsByRoute?: DwellTimes,
+  visit?: { forecasts: StandingForecasts | null; stopId: number; stopIndex?: number; now: number },
 ): ShownStand | null {
   if (!stat || !stat.q || stat.q.length < 3) return null;
+  if (elapsedSec !== null && visit?.forecasts) {
+    // Repeated physical stops need an occurrence; never choose the first match.
+    const matches = [...visit.forecasts].filter(([, c]) => c.prior.stop_id === visit.stopId);
+    const index = visit.stopIndex ?? (matches.length === 1 ? matches[0]![0] : -1);
+    const forecast = forecastForStand(visit.forecasts, index, visit.now - elapsedSec * 1000);
+    if (forecast) return {
+      sec: standingRemaining(forecast, visit.now)(0.5), remaining: true,
+      typicalSec: standingTotalAtArrival(forecast),
+    };
+  }
   const pools = poolsWithFallback(classPools(routeDwells), dwellsByRoute ? globalPoolsFor(dwellsByRoute).pools : undefined);
   const m = stopModel(stat, pools);
   if (elapsedSec !== null) {

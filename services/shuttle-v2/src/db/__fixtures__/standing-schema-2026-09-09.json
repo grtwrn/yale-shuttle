@@ -1,0 +1,125 @@
+{
+  "observedAt": "2026-09-09T12:28:22.670Z",
+  "build": "93aa45d8153493065bf1178f988adc458a2daada",
+  "sourceAuditSha256": "69078fe34f27787c87ff0b40cf8fae99458faca30e4004142defc77b493a6baf",
+  "databaseOpenedReadOnly": true,
+  "queryOnly": true,
+  "objects": [
+    {
+      "type": "table",
+      "name": "standing_forecast_models",
+      "tbl_name": "standing_forecast_models",
+      "sql": "CREATE TABLE `standing_forecast_models` (\n  `id` integer PRIMARY KEY NOT NULL,\n  `algorithm` text NOT NULL,\n  `fitted_at` integer NOT NULL,\n  `created_at` integer NOT NULL,\n  `model` text NOT NULL,\n  `diagnostics` text NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "standing_forecast_observations",
+      "tbl_name": "standing_forecast_observations",
+      "sql": "CREATE TABLE `standing_forecast_observations` (\n  `visit_id` integer PRIMARY KEY NOT NULL REFERENCES `stop_visits`(`id`) ON DELETE CASCADE,\n  `known_at` integer NOT NULL,\n  `pattern_id` text,\n  `identity_ambiguous` integer NOT NULL DEFAULT 0\n)"
+    },
+    {
+      "type": "table",
+      "name": "standing_forecast_patterns",
+      "tbl_name": "standing_forecast_patterns",
+      "sql": "CREATE TABLE `standing_forecast_patterns` (\n  `id` text PRIMARY KEY NOT NULL,\n  `route_id` integer NOT NULL,\n  `stop_ids` text NOT NULL\n)"
+    },
+    {
+      "type": "index",
+      "name": "stop_visits_route_bus_time_idx",
+      "tbl_name": "stop_visits",
+      "sql": "CREATE INDEX `stop_visits_route_bus_time_idx` ON `stop_visits` (`route_id`, `bus_name`, `anchored_at`, `id`)"
+    }
+  ],
+  "ledger": [
+    {
+      "id": null,
+      "hash": "efcfd57587ac75c5c7411f17a3b1b3af39569d87f85fa2f312474a400f4b9f21",
+      "created_at": 1779412170994
+    },
+    {
+      "id": null,
+      "hash": "190acb33b3f5bf9ad6ab1a10ce26f4d3e34b645f1d79c96f779401f065c0834d",
+      "created_at": 1788190720375
+    },
+    {
+      "id": null,
+      "hash": "3a4a0bc17a7fa2fc3d4c9bec66b80c22ccb0bc7ad1afa1b59e94757ca513045f",
+      "created_at": 1788206940844
+    },
+    {
+      "id": null,
+      "hash": "99c9c885f710dd74c6b2eda956035b3c782c73fd1cc943920bb054c3a94b2aa4",
+      "created_at": 1788218896539
+    },
+    {
+      "id": null,
+      "hash": "a318fea5afb0b376d3513f2cbc264c73d4733802d8ee1b6398f1b956fe7da18b",
+      "created_at": 1788226062495
+    },
+    {
+      "id": null,
+      "hash": "bed95be095096bf12bb4ddcacd9c8ff6842a4f174824bf223966c952279d15fb",
+      "created_at": 1788229051090
+    },
+    {
+      "id": null,
+      "hash": "e3a0876c4055750e9526400175bd64b153bdf69197c1ebcd5acbb23901f6c9f5",
+      "created_at": 1788275672109
+    },
+    {
+      "id": null,
+      "hash": "49dfc1088bc3067463783fb06d293ec5ce1d71d8bbe7229ec48cd113f3b92982",
+      "created_at": 1788281063147
+    },
+    {
+      "id": null,
+      "hash": "d3514356250cbeab8ad0066fdbbb2bd7c426bab29b1e0dcfddacdcea89319f7c",
+      "created_at": 1788440074799
+    },
+    {
+      "id": null,
+      "hash": "e2bbbaf9b496c87e0db338df5521dc7dba003b2f4f02677d0adbe566787df2af",
+      "created_at": 1788465508896
+    },
+    {
+      "id": null,
+      "hash": "e5f345b94441b391bf68fe183689c24ead79a4c8b876dcb91234ef05f8fe270e",
+      "created_at": 1788487372946
+    },
+    {
+      "id": null,
+      "hash": "3bf0f44d857b8264c7c2f99df1a66c55b86be0075c43c17c93338a2df4f642b1",
+      "created_at": 1788525294843
+    },
+    {
+      "id": null,
+      "hash": "53ffafe4ee172234fdf28bd1e718ddbc4c1bcc54243bc4a73ce5a7bf38523726",
+      "created_at": 1788529532870
+    },
+    {
+      "id": null,
+      "hash": "cb6b3509151bbb08b9f943fb7bcbbe5213c1f892ae7fd15b12c4ec2c36e43aa5",
+      "created_at": 1788531127440
+    },
+    {
+      "id": null,
+      "hash": "9911f479dae6a78d39157af4464773cda26e63a86872e61165e6a167feacf87f",
+      "created_at": 1788707471819
+    },
+    {
+      "id": null,
+      "hash": "c73a47e2c8eeaa63ec95c6701a463ca95065d0a717561b199d588f3b7d5cb132",
+      "created_at": 1788712267135
+    },
+    {
+      "id": null,
+      "hash": "5adfcbae096465af59c5c3946d911ddd6eb7cb3eb02e2b32e5b0259b554ee5fe",
+      "created_at": 1788784800000
+    },
+    {
+      "id": null,
+      "hash": "40eb2caa507b060f8aceacfd7b0d8e660bfc22dbddefd11cad22d0b51b667767",
+      "created_at": 1788928156810
+    }
+  ]
+}

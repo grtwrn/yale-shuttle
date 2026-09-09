@@ -1,0 +1,1104 @@
+{
+  "counts": {
+    "raw": 20157,
+    "rows": 20157,
+    "samePredictionCount": 18024
+  },
+  "allFuture30": {
+    "n": 9506,
+    "base": {
+      "mae": 147.249526515892,
+      "medianAbs": 116.22532666336906,
+      "p90Abs": 286.70553151258235,
+      "bias": -37.11862194404241,
+      "positive120pct": 16.536924047969702,
+      "negative120pct": 32.29539238375763
+    },
+    "candidate": {
+      "mae": 132.5316454599135,
+      "medianAbs": 100.00658020055926,
+      "p90Abs": 261.128324046688,
+      "bias": -13.967447528875619,
+      "positive120pct": 16.694719124763306,
+      "negative120pct": 25.573322112350095
+    }
+  },
+  "atTerminal": {
+    "n": 1657,
+    "base": {
+      "mae": 148.0471536598862,
+      "medianAbs": 108.3999785800354,
+      "p90Abs": 348.7891787641888,
+      "bias": -127.98183189918822,
+      "positive120pct": 1.7501508750754375,
+      "negative120pct": 44.77972238986119
+    },
+    "candidate": {
+      "mae": 64.26211936189004,
+      "medianAbs": 52.24210835602456,
+      "p90Abs": 121.27051603214153,
+      "bias": 0.5563564835667569,
+      "positive120pct": 3.7417018708509353,
+      "negative120pct": 6.698853349426675
+    }
+  },
+  "elsewhere": {
+    "n": 7849,
+    "base": {
+      "mae": 147.08113969239878,
+      "medianAbs": 117.74365102078218,
+      "p90Abs": 273.0426268133665,
+      "bias": -17.936517358021693,
+      "positive120pct": 19.6585552299656,
+      "negative120pct": 29.659829277614982
+    },
+    "candidate": {
+      "mae": 146.94400432657483,
+      "medianAbs": 116.72352007683867,
+      "p90Abs": 269.83602439571905,
+      "bias": -17.033563371481943,
+      "positive120pct": 19.429226653076825,
+      "negative120pct": 29.557905465664415
+    }
+  },
+  "morningTerminal": {
+    "n": 1153,
+    "base": {
+      "mae": 158.60492490184367,
+      "medianAbs": 125.52244130014634,
+      "p90Abs": 367.4306736457092,
+      "bias": -151.96150480443347,
+      "positive120pct": 0.0,
+      "negative120pct": 51.60450997398092
+    },
+    "candidate": {
+      "mae": 62.866442810517,
+      "medianAbs": 46.89693149943575,
+      "p90Abs": 121.57063019408128,
+      "bias": -16.82162358889974,
+      "positive120pct": 2.0815264527320037,
+      "negative120pct": 8.412836079791848
+    }
+  },
+  "afternoonTerminal": {
+    "n": 504,
+    "base": {
+      "mae": 123.89415714802709,
+      "medianAbs": 80.14175146555179,
+      "p90Abs": 309.5241885536825,
+      "bias": -73.1235722568315,
+      "positive120pct": 5.753968253968254,
+      "negative120pct": 29.166666666666668
+    },
+    "candidate": {
+      "mae": 67.45500639310654,
+      "medianAbs": 69.8583419616985,
+      "p90Abs": 120.86804223764695,
+      "bias": 40.31193391125301,
+      "positive120pct": 7.5396825396825395,
+      "negative120pct": 2.7777777777777777
+    }
+  },
+  "byVisit": [
+    {
+      "key": "#307|1788866987637",
+      "bus": "#307",
+      "pinned": 1788867002437,
+      "departed": 1788867257423,
+      "duration": 254.986,
+      "eta": {
+        "n": 52,
+        "base": {
+          "mae": 63.866492558903325,
+          "medianAbs": 43.89470438427071,
+          "p90Abs": 138.88470438427072,
+          "bias": -51.0272168387539,
+          "positive120pct": 0.0,
+          "negative120pct": 19.23076923076923
+        },
+        "candidate": {
+          "mae": 63.866492558903325,
+          "medianAbs": 43.89470438427071,
+          "p90Abs": 138.88470438427072,
+          "bias": -51.0272168387539,
+          "positive120pct": 0.0,
+          "negative120pct": 19.23076923076923
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788867007422,
+        "elapsed": 4.985,
+        "actual": 254.986,
+        "base": 278.4171168046184,
+        "candidate": 278.4171168046184,
+        "eligible": false
+      }
+    },
+    {
+      "key": "#306|1788867737468",
+      "bus": "#306",
+      "pinned": 1788867752464,
+      "departed": 1788868017482,
+      "duration": 265.018,
+      "eta": {
+        "n": 54,
+        "base": {
+          "mae": 53.54357670453956,
+          "medianAbs": 34.02386130425519,
+          "p90Abs": 120.99913869574479,
+          "bias": -34.52279484836215,
+          "positive120pct": 0.0,
+          "negative120pct": 12.962962962962964
+        },
+        "candidate": {
+          "mae": 53.54357670453956,
+          "medianAbs": 34.02386130425519,
+          "p90Abs": 120.99913869574479,
+          "bias": -34.52279484836215,
+          "positive120pct": 0.0,
+          "negative120pct": 12.962962962962964
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788867757470,
+        "elapsed": 5.006,
+        "actual": 265.018,
+        "base": 278.4171168046184,
+        "candidate": 278.4171168046184,
+        "eligible": false
+      }
+    },
+    {
+      "key": "#304|1788868467527",
+      "bus": "#304",
+      "pinned": 1788868487533,
+      "departed": 1788868752589,
+      "duration": 265.056,
+      "eta": {
+        "n": 54,
+        "base": {
+          "mae": 74.34241569203596,
+          "medianAbs": 62.60272358652597,
+          "p90Abs": 154.38011497071113,
+          "bias": -71.54320647480571,
+          "positive120pct": 0.0,
+          "negative120pct": 29.62962962962963
+        },
+        "candidate": {
+          "mae": 74.34241569203596,
+          "medianAbs": 62.60272358652597,
+          "p90Abs": 154.38011497071113,
+          "bias": -71.54320647480571,
+          "positive120pct": 0.0,
+          "negative120pct": 29.62962962962963
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788868492540,
+        "elapsed": 5.007,
+        "actual": 265.056,
+        "base": 278.4171168046184,
+        "candidate": 278.4171168046184,
+        "eligible": false
+      }
+    },
+    {
+      "key": "#307|1788870287732",
+      "bus": "#307",
+      "pinned": 1788870302807,
+      "departed": 1788870887872,
+      "duration": 585.065,
+      "eta": {
+        "n": 118,
+        "base": {
+          "mae": 215.30106049613568,
+          "medianAbs": 207.95287543477525,
+          "p90Abs": 412.83787543477524,
+          "bias": -214.7367691777094,
+          "positive120pct": 0.0,
+          "negative120pct": 65.2542372881356
+        },
+        "candidate": {
+          "mae": 58.403133493397696,
+          "medianAbs": 60.146884931730995,
+          "p90Abs": 67.21000633818255,
+          "bias": -52.907603928870294,
+          "positive120pct": 0.0,
+          "negative120pct": 2.542372881355932
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788870312687,
+        "elapsed": 9.88,
+        "actual": 585.065,
+        "base": 278.4171168046184,
+        "candidate": 553.8999712339669,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#306|1788871212750",
+      "bus": "#306",
+      "pinned": 1788871232785,
+      "departed": 1788871567777,
+      "duration": 334.992,
+      "eta": {
+        "n": 68,
+        "base": {
+          "mae": 101.95613644529925,
+          "medianAbs": 80.74477895432432,
+          "p90Abs": 204.9395562820946,
+          "bias": -93.8283458306828,
+          "positive120pct": 0.0,
+          "negative120pct": 38.23529411764706
+        },
+        "candidate": {
+          "mae": 40.25417970287496,
+          "medianAbs": 37.377596741196385,
+          "p90Abs": 72.02862339063905,
+          "bias": 34.95064751351153,
+          "positive120pct": 0.0,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788871237731,
+        "elapsed": 4.946,
+        "actual": 334.992,
+        "base": 278.4171168046184,
+        "candidate": 384.2542819330147,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788872052798",
+      "bus": "#304",
+      "pinned": 1788872062858,
+      "departed": 1788872397954,
+      "duration": 335.096,
+      "eta": {
+        "n": 68,
+        "base": {
+          "mae": 101.90191895729647,
+          "medianAbs": 77.58273753684244,
+          "p90Abs": 201.03866514946276,
+          "bias": -97.99211472336235,
+          "positive120pct": 0.0,
+          "negative120pct": 38.23529411764706
+        },
+        "candidate": {
+          "mae": 63.4951972251327,
+          "medianAbs": 63.63899060771456,
+          "p90Abs": 87.31741884549933,
+          "bias": -55.81886094189457,
+          "positive120pct": 0.0,
+          "negative120pct": 2.9411764705882355
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788872067785,
+        "elapsed": 4.927,
+        "actual": 335.096,
+        "base": 278.4171168046184,
+        "candidate": 279.5037015606026,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788873667901",
+      "bus": "#307",
+      "pinned": 1788873682886,
+      "departed": 1788874343963,
+      "duration": 661.077,
+      "eta": {
+        "n": 131,
+        "base": {
+          "mae": 273.231849952549,
+          "medianAbs": 283.84717876418887,
+          "p90Abs": 503.89817876418886,
+          "bias": -268.6671776839395,
+          "positive120pct": 0.0,
+          "negative120pct": 73.2824427480916
+        },
+        "candidate": {
+          "mae": 117.11615198725457,
+          "medianAbs": 114.6755660662044,
+          "p90Abs": 124.58883811950972,
+          "bias": 111.27961711904105,
+          "positive120pct": 18.3206106870229,
+          "negative120pct": 0.7633587786259542
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788873687913,
+        "elapsed": 5.027,
+        "actual": 661.077,
+        "base": 278.4171168046184,
+        "candidate": 779.967604478024,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#306|1788874689697",
+      "bus": "#306",
+      "pinned": 1788874704759,
+      "departed": 1788875144751,
+      "duration": 439.992,
+      "eta": {
+        "n": 89,
+        "base": {
+          "mae": 160.88102583672472,
+          "medianAbs": 151.6120574663833,
+          "p90Abs": 300.9973628653337,
+          "bias": -157.00531579004314,
+          "positive120pct": 0.0,
+          "negative120pct": 64.04494382022472
+        },
+        "candidate": {
+          "mae": 41.55395364400876,
+          "medianAbs": 31.08570711289468,
+          "p90Abs": 69.58296700066086,
+          "bias": 23.756348680760986,
+          "positive120pct": 0.0,
+          "negative120pct": 3.3707865168539324
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788874709884,
+        "elapsed": 5.125,
+        "actual": 439.992,
+        "base": 278.4171168046184,
+        "candidate": 473.75059935824083,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788875434783",
+      "bus": "#304",
+      "pinned": 1788875454843,
+      "departed": 1788876009837,
+      "duration": 554.994,
+      "eta": {
+        "n": 112,
+        "base": {
+          "mae": 224.2134295201531,
+          "medianAbs": 235.56044130014635,
+          "p90Abs": 405.43744130014636,
+          "bias": -221.0699389916026,
+          "positive120pct": 0.0,
+          "negative120pct": 71.42857142857143
+        },
+        "candidate": {
+          "mae": 60.952261698712704,
+          "medianAbs": 59.03424139270902,
+          "p90Abs": 71.64593500805051,
+          "bias": -53.91092605738648,
+          "positive120pct": 0.0,
+          "negative120pct": 2.6785714285714284
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788875459824,
+        "elapsed": 4.981,
+        "actual": 554.994,
+        "base": 278.4171168046184,
+        "candidate": 506.2310913934166,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788877600009",
+      "bus": "#307",
+      "pinned": 1788877614985,
+      "departed": 1788878030032,
+      "duration": 415.047,
+      "eta": {
+        "n": 84,
+        "base": {
+          "mae": 113.57171116630198,
+          "medianAbs": 113.3999785800354,
+          "p90Abs": 233.45597858003538,
+          "bias": -105.17435442117083,
+          "positive120pct": 0.0,
+          "negative120pct": 47.61904761904762
+        },
+        "candidate": {
+          "mae": 20.113419962719185,
+          "medianAbs": 10.288886484227021,
+          "p90Abs": 50.4678770096498,
+          "bias": 8.633850117395806,
+          "positive120pct": 0.0,
+          "negative120pct": 2.380952380952381
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788877625029,
+        "elapsed": 10.044,
+        "actual": 415.047,
+        "base": 278.4171168046184,
+        "candidate": 418.02449307844836,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#306|1788878500064",
+      "bus": "#306",
+      "pinned": 1788878515061,
+      "departed": 1788878750145,
+      "duration": 235.084,
+      "eta": {
+        "n": 48,
+        "base": {
+          "mae": 50.73817930376846,
+          "medianAbs": 46.03659489979444,
+          "p90Abs": 100.98059489979443,
+          "bias": -18.0987008888792,
+          "positive120pct": 0.0,
+          "negative120pct": 4.166666666666667
+        },
+        "candidate": {
+          "mae": 30.297588204843375,
+          "medianAbs": 25.337306508293068,
+          "p90Abs": 60.912450921040445,
+          "bias": 22.088173484648358,
+          "positive120pct": 0.0,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788878515061,
+        "elapsed": 0,
+        "actual": 235.084,
+        "base": 278.4171168046184,
+        "candidate": 261.54279566797004,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788879430162",
+      "bus": "#304",
+      "pinned": 1788879445189,
+      "departed": 1788879865363,
+      "duration": 420.174,
+      "eta": {
+        "n": 85,
+        "base": {
+          "mae": 132.52478550943428,
+          "medianAbs": 143.41240542163803,
+          "p90Abs": 248.45540542163803,
+          "bias": -132.2026890294696,
+          "positive120pct": 0.0,
+          "negative120pct": 55.294117647058826
+        },
+        "candidate": {
+          "mae": 156.80386030937916,
+          "medianAbs": 141.97342867974055,
+          "p90Abs": 286.9352794106955,
+          "bias": -141.57524659560463,
+          "positive120pct": 0.0,
+          "negative120pct": 54.11764705882353
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788879445189,
+        "elapsed": 0,
+        "actual": 420.174,
+        "base": 278.4171168046184,
+        "candidate": 161.36186874012628,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788881030386",
+      "bus": "#307",
+      "pinned": 1788881050318,
+      "departed": 1788881625385,
+      "duration": 575.067,
+      "eta": {
+        "n": 116,
+        "base": {
+          "mae": 231.4741011251165,
+          "medianAbs": 232.40867364570914,
+          "p90Abs": 432.4266736457091,
+          "bias": -226.23462543723377,
+          "positive120pct": 0.0,
+          "negative120pct": 69.82758620689656
+        },
+        "candidate": {
+          "mae": 32.27991356910745,
+          "medianAbs": 27.286455184825286,
+          "p90Abs": 39.733407290469756,
+          "bias": -23.29241776554045,
+          "positive120pct": 0.0,
+          "negative120pct": 2.586206896551724
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788881055319,
+        "elapsed": 5.001,
+        "actual": 575.067,
+        "base": 278.4171168046184,
+        "candidate": 582.0467866842009,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#306|1788881995474",
+      "bus": "#306",
+      "pinned": 1788882005539,
+      "departed": 1788882370501,
+      "duration": 364.962,
+      "eta": {
+        "n": 74,
+        "base": {
+          "mae": 108.94537446691797,
+          "medianAbs": 87.24870083378497,
+          "p90Abs": 217.24670083378498,
+          "bias": -99.12662879138877,
+          "positive120pct": 0.0,
+          "negative120pct": 40.54054054054054
+        },
+        "candidate": {
+          "mae": 30.10539552439281,
+          "medianAbs": 25.736211514113677,
+          "p90Abs": 55.14921993247211,
+          "bias": -14.267531711466125,
+          "positive120pct": 0.0,
+          "negative120pct": 1.3513513513513513
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788882015478,
+        "elapsed": 9.939,
+        "actual": 364.962,
+        "base": 278.4171168046184,
+        "candidate": 336.1243587167869,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788883195568",
+      "bus": "#304",
+      "pinned": 1788883215606,
+      "departed": 1788883355577,
+      "duration": 139.971,
+      "eta": {
+        "n": 29,
+        "base": {
+          "mae": 92.26520797894176,
+          "medianAbs": 81.7259413423443,
+          "p90Abs": 158.25025559154017,
+          "bias": 85.81615921502058,
+          "positive120pct": 27.586206896551722,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 61.42957058467088,
+          "medianAbs": 58.07696155079887,
+          "p90Abs": 110.9200422376474,
+          "bias": 25.816695109638953,
+          "positive120pct": 6.896551724137931,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788883220592,
+        "elapsed": 4.986,
+        "actual": 139.971,
+        "base": 278.4171168046184,
+        "candidate": 60.794984639544055,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788884585692",
+      "bus": "#307",
+      "pinned": 1788884600691,
+      "departed": 1788885180961,
+      "duration": 580.27,
+      "eta": {
+        "n": 71,
+        "base": {
+          "mae": 344.9829568491606,
+          "medianAbs": 337.61864536323003,
+          "p90Abs": 466.6715315125823,
+          "bias": -344.9829568491606,
+          "positive120pct": 0.0,
+          "negative120pct": 100.0
+        },
+        "candidate": {
+          "mae": 18.176941042263692,
+          "medianAbs": 14.121664898704864,
+          "p90Abs": 14.818769388285546,
+          "bias": 7.856951773600668,
+          "positive120pct": 0.0,
+          "negative120pct": 1.408450704225352
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788884605688,
+        "elapsed": 4.997,
+        "actual": 580.27,
+        "base": 278.4171168046184,
+        "candidate": 613.7410527511793,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#306|1788886166056",
+      "bus": "#306",
+      "pinned": 1788886180982,
+      "departed": 1788886296062,
+      "duration": 115.08,
+      "eta": {
+        "n": 24,
+        "base": {
+          "mae": 91.21129041513466,
+          "medianAbs": 54.24063819259372,
+          "p90Abs": 184.29950854097723,
+          "bias": 87.19822570720893,
+          "positive120pct": 33.333333333333336,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 61.972221319251425,
+          "medianAbs": 43.510746824272516,
+          "p90Abs": 110.87604223764694,
+          "bias": 46.938695633884365,
+          "positive120pct": 8.333333333333334,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788886186043,
+        "elapsed": 5.061,
+        "actual": 115.08,
+        "base": 278.4171168046184,
+        "candidate": 106.0306079533423,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788888856522",
+      "bus": "#307",
+      "pinned": 1788888926365,
+      "departed": 1788889046574,
+      "duration": 120.209,
+      "eta": {
+        "n": 25,
+        "base": {
+          "mae": 60.70230549872077,
+          "medianAbs": 59.88513728227392,
+          "p90Abs": 117.36310253122386,
+          "bias": 36.061580279603014,
+          "positive120pct": 4.0,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 39.64179014596289,
+          "medianAbs": 30.125613087023538,
+          "p90Abs": 81.06804223764694,
+          "bias": 9.82221653743686,
+          "positive120pct": 0.0,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788888926365,
+        "elapsed": 0,
+        "actual": 120.209,
+        "base": 278.4171168046184,
+        "candidate": 81.27213059861333,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788889691470",
+      "bus": "#304",
+      "pinned": 1788889831629,
+      "departed": 1788890352584,
+      "duration": 520.955,
+      "eta": {
+        "n": 100,
+        "base": {
+          "mae": 168.39421945416004,
+          "medianAbs": 172.83452625976713,
+          "p90Abs": 305.4811532425885,
+          "bias": -163.90249153527995,
+          "positive120pct": 0.0,
+          "negative120pct": 62.0
+        },
+        "candidate": {
+          "mae": 96.0380326564681,
+          "medianAbs": 94.40579818632847,
+          "p90Abs": 107.70272185813428,
+          "bias": 96.0380326564681,
+          "positive120pct": 7.0,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788889831629,
+        "elapsed": 0,
+        "actual": 520.955,
+        "base": 278.4171168046184,
+        "candidate": 769.6290815502052,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788892183118",
+      "bus": "#307",
+      "pinned": 1788892198273,
+      "departed": 1788892353129,
+      "duration": 154.856,
+      "eta": {
+        "n": 32,
+        "base": {
+          "mae": 47.39970483734408,
+          "medianAbs": 31.48422774269841,
+          "p90Abs": 104.31950854097721,
+          "bias": 1.3875492925085129,
+          "positive120pct": 0.0,
+          "negative120pct": 3.125
+        },
+        "candidate": {
+          "mae": 42.28046797444876,
+          "medianAbs": 34.076016536580596,
+          "p90Abs": 56.46595484603175,
+          "bias": 17.4449125199755,
+          "positive120pct": 0.0,
+          "negative120pct": 3.125
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788892208144,
+        "elapsed": 9.871,
+        "actual": 154.856,
+        "base": 278.4171168046184,
+        "candidate": 216.34665124956064,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788893998017",
+      "bus": "#304",
+      "pinned": 1788894018003,
+      "departed": 1788894203446,
+      "duration": 185.443,
+      "eta": {
+        "n": 38,
+        "base": {
+          "mae": 62.86910474104312,
+          "medianAbs": 60.05810761544771,
+          "p90Abs": 109.08694440123142,
+          "bias": -35.361625823599454,
+          "positive120pct": 0.0,
+          "negative120pct": 7.894736842105263
+        },
+        "candidate": {
+          "mae": 79.40386568957383,
+          "medianAbs": 77.0297466371249,
+          "p90Abs": 138.48213663746864,
+          "bias": -43.63225483154643,
+          "positive120pct": 0.0,
+          "negative120pct": 18.42105263157895
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788894018003,
+        "elapsed": 0,
+        "actual": 185.443,
+        "base": 278.4171168046184,
+        "candidate": 59.9998785533453,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788895768868",
+      "bus": "#307",
+      "pinned": 1788895788640,
+      "departed": 1788895993726,
+      "duration": 205.086,
+      "eta": {
+        "n": 42,
+        "base": {
+          "mae": 55.19336457696968,
+          "medianAbs": 48.52387129891025,
+          "p90Abs": 96.53886079060203,
+          "bias": -10.390891647563622,
+          "positive120pct": 0.0,
+          "negative120pct": 9.523809523809524
+        },
+        "candidate": {
+          "mae": 38.663962158915766,
+          "medianAbs": 29.75058040018868,
+          "p90Abs": 78.98370797995176,
+          "bias": -2.6053918643564207,
+          "positive120pct": 0.0,
+          "negative120pct": 9.523809523809524
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788895793687,
+        "elapsed": 5.047,
+        "actual": 205.086,
+        "base": 278.4171168046184,
+        "candidate": 213.1173443748603,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788897528823",
+      "bus": "#304",
+      "pinned": 1788897548849,
+      "departed": 1788897688938,
+      "duration": 140.089,
+      "eta": {
+        "n": 29,
+        "base": {
+          "mae": 63.69855256887471,
+          "medianAbs": 57.140146286548,
+          "p90Abs": 119.7313586879666,
+          "bias": 0.8295579862924212,
+          "positive120pct": 6.896551724137931,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 57.23076706597161,
+          "medianAbs": 50.89389971732376,
+          "p90Abs": 117.17543903524299,
+          "bias": -29.49151911049086,
+          "positive120pct": 0.0,
+          "negative120pct": 3.4482758620689653
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788897558888,
+        "elapsed": 10.039,
+        "actual": 140.089,
+        "base": 278.4171168046184,
+        "candidate": 116.70734652256988,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788899204062",
+      "bus": "#307",
+      "pinned": 1788899218969,
+      "departed": 1788899488971,
+      "duration": 270.002,
+      "eta": {
+        "n": 55,
+        "base": {
+          "mae": 55.05632926991574,
+          "medianAbs": 42.28602747505755,
+          "p90Abs": 117.26202747505755,
+          "bias": -33.16422604048749,
+          "positive120pct": 0.0,
+          "negative120pct": 10.909090909090908
+        },
+        "candidate": {
+          "mae": 77.96469040941187,
+          "medianAbs": 82.21630181265067,
+          "p90Abs": 103.45551935909029,
+          "bias": 74.56271787472072,
+          "positive120pct": 0.0,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788899228970,
+        "elapsed": 10.001,
+        "actual": 270.002,
+        "base": 278.4171168046184,
+        "candidate": 365.9107079763262,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788901054299",
+      "bus": "#304",
+      "pinned": 1788901074137,
+      "departed": 1788901224226,
+      "duration": 150.089,
+      "eta": {
+        "n": 31,
+        "base": {
+          "mae": 67.73788433071104,
+          "medianAbs": 45.65742619349234,
+          "p90Abs": 135.66428131499816,
+          "bias": 36.46534152082415,
+          "positive120pct": 32.25806451612903,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 64.90912300101215,
+          "medianAbs": 59.15915984856957,
+          "p90Abs": 84.74306362806271,
+          "bias": 39.944305606619785,
+          "positive120pct": 3.225806451612903,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788901079186,
+        "elapsed": 5.049,
+        "actual": 150.089,
+        "base": 278.4171168046184,
+        "candidate": 222.04386924170467,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#307|1788902761303",
+      "bus": "#307",
+      "pinned": 1788902775950,
+      "departed": 1788903176018,
+      "duration": 400.068,
+      "eta": {
+        "n": 0,
+        "base": {
+          "mae": null,
+          "medianAbs": null,
+          "p90Abs": null,
+          "bias": null,
+          "positive120pct": null,
+          "negative120pct": null
+        },
+        "candidate": {
+          "mae": null,
+          "medianAbs": null,
+          "p90Abs": null,
+          "bias": null,
+          "positive120pct": null,
+          "negative120pct": null
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788902786273,
+        "elapsed": 10.323,
+        "actual": 400.068,
+        "base": 278.4171168046184,
+        "candidate": 410.9460765351414,
+        "eligible": true
+      }
+    },
+    {
+      "key": "#304|1788904469657",
+      "bus": "#304",
+      "pinned": 1788904494554,
+      "departed": 1788904629573,
+      "duration": 135.019,
+      "eta": {
+        "n": 28,
+        "base": {
+          "mae": 54.56983165344779,
+          "medianAbs": 34.165154182025745,
+          "p90Abs": 113.32916224188949,
+          "bias": 34.00358742105719,
+          "positive120pct": 0.0,
+          "negative120pct": 0.0
+        },
+        "candidate": {
+          "mae": 174.60643634602758,
+          "medianAbs": 188.41305309691782,
+          "p90Abs": 191.31606034855093,
+          "bias": 170.0016293365101,
+          "positive120pct": 92.85714285714286,
+          "negative120pct": 0.0
+        }
+      },
+      "totalAtFirstShown": {
+        "t": 1788904494554,
+        "elapsed": 0,
+        "actual": 135.019,
+        "base": 278.4171168046184,
+        "candidate": 382.9555162616939,
+        "eligible": true
+      }
+    }
+  ],
+  "allTotal": {
+    "n": 27,
+    "base": {
+      "mae": 141.8588191409118,
+      "bias": -48.38832763982606,
+      "medianAbs": 136.62988319538164,
+      "positive120Visits": 7,
+      "negative120Visits": 10
+    },
+    "candidate": {
+      "mae": 65.40819524600413,
+      "bias": 13.618783387657022,
+      "medianAbs": 33.758599358240815,
+      "positive120Visits": 2,
+      "negative120Visits": 2
+    }
+  },
+  "morningTotal": {
+    "n": 14,
+    "base": {
+      "mae": 142.55852136944927,
+      "bias": -129.19788319538162,
+      "medianAbs": 86.5448831953816,
+      "positive120Visits": 0,
+      "negative120Visits": 7
+    },
+    "candidate": {
+      "mae": 50.8349228549182,
+      "bias": -9.617935481524771,
+      "medianAbs": 28.837641283213088,
+      "positive120Visits": 0,
+      "negative120Visits": 1
+    }
+  },
+  "eligibleTotal": {
+    "n": 24,
+    "base": {
+      "mae": 157.4998652662818,
+      "bias": -56.52817486204829,
+      "medianAbs": 138.3281168046184,
+      "positive120Visits": 7,
+      "negative120Visits": 10
+    },
+    "candidate": {
+      "mae": 71.49291338451067,
+      "bias": 13.229825043870182,
+      "medianAbs": 38.93686940138667,
+      "positive120Visits": 2,
+      "negative120Visits": 2
+    }
+  },
+  "loggedMomentReplay": {
+    "n": 150,
+    "base": {
+      "mae": 124.57900857837221,
+      "medianAbs": 96.3848185064912,
+      "p90Abs": 275.94236286533373,
+      "bias": -110.69691479816778,
+      "positive120pct": 1.3333333333333333,
+      "negative120pct": 43.333333333333336
+    },
+    "candidate": {
+      "mae": 54.5109263695831,
+      "medianAbs": 46.35627027680391,
+      "p90Abs": 96.97113946098551,
+      "bias": 21.739577655524872,
+      "positive120pct": 1.3333333333333333,
+      "negative120pct": 2.6666666666666665
+    }
+  },
+  "method": {
+    "kind": "causal retrospective paired replay; September 8 informed model selection",
+    "baselineCommit": "e6673a07527a",
+    "observations": "20,157 Red GPS polls from September 8 morning and retained afternoon captures",
+    "calibration": "same prior-night payload and dawn parameters in both arms; server phase fit uses only earlier days",
+    "currentDayHistory": "only earlier confirmed departures for that bus",
+    "totalTruth": "completed stop_visits departure minus pinned_at; UI may carry an earlier approach-rest origin",
+    "etaTruth": "stored stop48 kerb first-rest arrival; missing noon GPS is not treated as a physical arrival",
+    "positiveError": "prediction later than actual arrival",
+    "negativeError": "prediction earlier than actual arrival",
+    "scope": "current Red stop11 layover, departure hazard, and total-stand chip; fallback for first lap and invalid/stale context"
+  }
+}
