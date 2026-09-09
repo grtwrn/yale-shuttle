@@ -143,14 +143,15 @@ async function browserSmoke(base, { markAsTest }) {
 
     // Walk every tab — today's crash only fired once a specific card rendered,
     // so touching each surface matters more than staring at the home screen.
-    for (const tab of ["All", "Map", "Trip"]) {
-      const btn = page.getByRole("button", { name: tab, exact: true }).first();
-      if (await btn.count()) {
-        await btn.click().catch(() => {});
-        await page.waitForTimeout(2500);
-        const t = await page.evaluate(() => document.body.innerText);
-        if (t.includes("App crashed")) fail(`browser smoke: crash on ${tab} tab\n${t.slice(0, 500)}`);
-      }
+    for (const tab of ["trip", "map", "issues"]) {
+      const btn = page.getByRole("button", { name: new RegExp(`^${tab}$`, "i") }).first();
+      // Accessible labels are lowercase. Missing tabs or failed clicks must
+      // fail the smoke test, rather than silently claiming the tab was walked.
+      await btn.click({ timeout: 15_000 });
+      await page.waitForTimeout(2500);
+      const t = await page.evaluate(() => document.body.innerText);
+      if (t.includes("App crashed")) fail(`browser smoke: crash on ${tab} tab\n${t.slice(0, 500)}`);
+      log(`  ✓ opened ${tab} tab`);
     }
 
     const fatal = errors.filter((e) => !e.startsWith("console:"));
