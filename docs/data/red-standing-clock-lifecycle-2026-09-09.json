@@ -1,0 +1,133 @@
+{
+  "scope": "Clock lifecycle correctness; not a measured Red accuracy gain",
+  "syntheticLifecycle": {
+    "times": {
+      "clientOrigin": 1788523200000,
+      "oldFitAt": 1788436800000,
+      "newFitAt": 1788523230000,
+      "serverResetOrigin": 1788523260000,
+      "issuedAt": 1788523380000
+    },
+    "originalFirstTotalSec": 614.7495813768335,
+    "brokenAfterReset": {
+      "sec": 261.2677381096339,
+      "remaining": true,
+      "soonSec": 52.307895211544746,
+      "lateSec": 458.6349230593597,
+      "typicalSec": 309.37311619575047
+    },
+    "repairedAfterReset": {
+      "sec": 435.5567686146545,
+      "remaining": true,
+      "soonSec": 396.31734794220927,
+      "lateSec": 473.8381419441206,
+      "typicalSec": 614.7495813768335
+    },
+    "stillValidOriginalLaw": {
+      "total": 614.7495813768335,
+      "remaining": 435.5567686146545
+    },
+    "source": "actual StandingForecastModel and actual rider client on synthetic geometry"
+  },
+  "fixedFitReplay": {
+    ".jsonl.gz": {
+      "identical": true,
+      "rows": {
+        "before": 56746,
+        "after": 56746
+      },
+      "sha256": {
+        "before": "747361a03203ee4d438e0af9e8cab1b1626ed9185f637863711194d45c209dda",
+        "after": "747361a03203ee4d438e0af9e8cab1b1626ed9185f637863711194d45c209dda"
+      }
+    },
+    ".stands.jsonl.gz": {
+      "identical": true,
+      "rows": {
+        "before": 1482,
+        "after": 1482
+      },
+      "sha256": {
+        "before": "4c2d9b1c1e99c2ac77754dcfd0ccfcd14796f81359b1fbda2a08b6098ad63e40",
+        "after": "4c2d9b1c1e99c2ac77754dcfd0ccfcd14796f81359b1fbda2a08b6098ad63e40"
+      }
+    },
+    ".unlabelled-stands.jsonl.gz": {
+      "identical": true,
+      "rows": {
+        "before": 2616,
+        "after": 2616
+      },
+      "sha256": {
+        "before": "dc682805fd8330dd9810cff428802cd39bad5f02719bb0750dfca4bd1e696eea",
+        "after": "dc682805fd8330dd9810cff428802cd39bad5f02719bb0750dfca4bd1e696eea"
+      }
+    }
+  },
+  "archivedPhaseParity": {
+    "baselinePrefix": "/tmp/red-motion-dev-v2/runs/baseline",
+    "candidatePrefix": "/tmp/red-clock-replay-20260909/after",
+    "compares": "All recorded warm ETA/labelled/unlabelled stand rows in original order; no outcome rescoring or exclusions.",
+    "files": {
+      ".jsonl.gz": {
+        "baselineRows": 56746,
+        "candidateRows": 56746,
+        "baselineDecodedSha256": "747361a03203ee4d438e0af9e8cab1b1626ed9185f637863711194d45c209dda",
+        "candidateDecodedSha256": "747361a03203ee4d438e0af9e8cab1b1626ed9185f637863711194d45c209dda",
+        "decodedBytesIdentical": true
+      },
+      ".stands.jsonl.gz": {
+        "baselineRows": 1482,
+        "candidateRows": 1482,
+        "baselineDecodedSha256": "4c2d9b1c1e99c2ac77754dcfd0ccfcd14796f81359b1fbda2a08b6098ad63e40",
+        "candidateDecodedSha256": "4c2d9b1c1e99c2ac77754dcfd0ccfcd14796f81359b1fbda2a08b6098ad63e40",
+        "decodedBytesIdentical": true
+      },
+      ".unlabelled-stands.jsonl.gz": {
+        "baselineRows": 2616,
+        "candidateRows": 2616,
+        "baselineDecodedSha256": "dc682805fd8330dd9810cff428802cd39bad5f02719bb0750dfca4bd1e696eea",
+        "candidateDecodedSha256": "dc682805fd8330dd9810cff428802cd39bad5f02719bb0750dfca4bd1e696eea",
+        "decodedBytesIdentical": true
+      }
+    },
+    "allRecordedBytesIdentical": true
+  },
+  "clockCounters": {
+    "2026-09-04": {
+      "realLookupHits": 401328,
+      "winchesterOccurrenceHits": 171800,
+      "clockGuardRejections": 0
+    },
+    "2026-09-08": {
+      "realLookupHits": 257699,
+      "winchesterOccurrenceHits": 120245,
+      "clockGuardRejections": 0
+    }
+  },
+  "rejectedTrainingRefit": {
+    "adopted": false,
+    "winchesterFirstTotalMae": {
+      "2026-09-04": [
+        119.218,
+        148.113
+      ],
+      "2026-09-08": [
+        62.75,
+        128.148
+      ]
+    },
+    "winchesterRemainingMae": {
+      "2026-09-04": [
+        104.19,
+        127.888
+      ],
+      "2026-09-08": [
+        62.921,
+        125.616
+      ]
+    },
+    "newSeptember9Evaluation": false
+  },
+  "privateArchiveManifestSha256": "547d1f36ca1ae0521226a55fefaba8649033b513ce6cc0604d7474e8086ce737"
+}

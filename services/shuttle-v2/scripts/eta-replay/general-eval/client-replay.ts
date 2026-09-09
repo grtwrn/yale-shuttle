@@ -138,7 +138,7 @@ while (i < positions.length) {
       }
       const standing = resolveStandingStop(bus, cfg, payload.routes, payload.stop_coords, t, memory);
       if (standing) {
-        const shown = hook?.shownStand ? hook.shownStand(bus, ring, payload, standing, t, shownStandSec) : shownStandSec(payload.dwells[cfg.routeIds[0]]?.[standing.stopId], standing.standingSec, payload.dwells[cfg.routeIds[0]], payload.dwells);
+        const shown = hook?.shownStand ? hook.shownStand(bus, ring, payload, standing, t, shownStandSec, memory) : shownStandSec(payload.dwells[cfg.routeIds[0]]?.[standing.stopId], standing.standingSec, payload.dwells[cfg.routeIds[0]], payload.dwells);
         // Preserve every issued stand display independently of future labels.
         // A historically late pin must not erase what an early rider saw.
         unlabelledStandRows.push({ id: `${key}:${t}:${standing.stopId}`, arm, issuedAt: t, routeId: p.routeId,

@@ -23,6 +23,8 @@ const runtime = new AnalyticRuntime(fit);
 // server-observed visit start. No current episode is looked up or matched.
 runtime.replaceCompletedHistory(history, `${day}:frozen-history`);
 const { standingForecastsFor } = await import(`${source}/web/src/eta/standingForecast.ts`);
+const { standingForecastsForBelief } = await import(`${source}/web/src/eta/index.ts`);
+const { anchorKeyFor } = await import(`${source}/web/src/liveAnchor.ts`);
 const { ROUTE_LISTS } = await import(`${source}/web/src/routes.ts`);
 const routeConfigs = new Map<number, any>();
 for (const cfg of ROUTE_LISTS) for (const id of cfg.busRouteIds) routeConfigs.set(id, cfg);
@@ -59,11 +61,14 @@ export function attachContext(bus: any, t: number, options: { fitAt: number; net
   return contexts.length ? { ...bus, standing_forecasts: contexts } : bus;
 }
 
-export function shownStand(bus: any, ring: any, payload: any, standing: any, t: number, original: (...args: any[]) => any): any {
+export function shownStand(bus: any, ring: any, payload: any, standing: any, t: number,
+  original: (...args: any[]) => any, store?: any): any {
   const cfg = routeConfigs.get(Number(bus.route_id));
   const routeDwells = payload.dwells[cfg?.routeIds[0] ?? String(bus.route_id)] ?? {};
+  const forecasts = store && cfg ? standingForecastsForBelief(store, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, t)
+    : standingForecastsFor(bus, ring, t);
   return original(routeDwells[standing.stopId], standing.standingSec, routeDwells, payload.dwells,
-    { forecasts: standingForecastsFor(bus, ring, t), stopId: standing.stopId, stopIndex: standing.stopIndex, now: t });
+    { forecasts, stopId: standing.stopId, stopIndex: standing.stopIndex, now: t });
 }
 
 export const analyticHookManifest = {

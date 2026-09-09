@@ -30,8 +30,8 @@ import { routePathFor } from "../anchor";
 import type { LatLon } from "../geo";
 import type { BusData } from "../map-data";
 import { priceRoute, type Floors, type StopArrival } from "./arrival";
-import { standingForecastsFor } from "./standingForecast";
-import { stepBelief, type Belief, type FilterBus } from "./filter";
+import { standingForecastsFor, type StandingForecasts } from "./standingForecast";
+import { BELIEF_STALE_MS, stepBelief, type Belief, type FilterBus } from "./filter";
 import { ringFor, setRingProfile, type Ring } from "./ring";
 import { buildTables, globalClassPools, type ClassPools, type DwellLike, type SegmentLike } from "./tables";
 
@@ -50,7 +50,12 @@ export const DISPLAY_TAU = 0.5;
  * Keyed by `anchorKeyFor(routeLabel, busName)` (liveAnchor.ts) — the bus
  * NAME, never `bus_id`, which TransLoc reissues per service block.
  */
-export interface ModelEntry { belief?: Belief | undefined; floors?: Floors | undefined }
+export interface ModelEntry {
+  belief?: Belief | undefined;
+  floors?: Floors | undefined;
+  /** Validated priors retained for the observed rest, shared by every consumer. */
+  standingForecasts?: StandingForecasts | undefined;
+}
 export type AnchorStore = Map<string, ModelEntry>;
 
 /**
@@ -97,6 +102,44 @@ function entryFor(store: AnchorStore, key: string): ModelEntry {
   return e;
 }
 
+/** A server clock reset or a new fit must not rewrite an ongoing rest's law. */
+function retainStandingForecasts(
+  incoming: StandingForecasts, retained: StandingForecasts | undefined,
+  belief: Belief | undefined, now: number,
+): StandingForecasts {
+  if (!belief?.rested || !retained?.size || now - belief.seenAt > BELIEF_STALE_MS) return incoming;
+  const out = new Map(incoming);
+  for (const [index, previous] of retained) {
+    const replacement = incoming.get(index);
+    // Absence can mean identity contention or withdrawn/stale context. It is
+    // not permission to keep using an old forecast. A confirmed departure
+    // since this rest began also consumes the old visit's context.
+    if (!replacement || replacement.prior.route_pattern_id !== previous.prior.route_pattern_id
+      || replacement.prior.route_id !== previous.prior.route_id
+      || replacement.prior.canonical_stop_ids.length !== previous.prior.canonical_stop_ids.length
+      || !replacement.prior.canonical_stop_ids.every((id, i) => id === previous.prior.canonical_stop_ids[i])
+      || replacement.prior.previous_departed_at >= belief.restSince
+      || previous.prior.valid_until <= now
+      // Mirror the arrival-availability guards without constructing a law or
+      // counting cache maintenance as a real forecast lookup. Every consumer
+      // still passes forecastForStand's own guards before using this prior.
+      || !Number.isFinite(belief.restSince)
+      || previous.prior.previous_departed_at >= belief.restSince
+      || previous.prior.history_available_at > belief.restSince
+      || previous.prior.fitted_at > belief.restSince) continue;
+    out.set(index, previous);
+  }
+  return out;
+}
+
+function sameRest(before: Belief | undefined, after: Belief): boolean {
+  return !!before?.rested && after.rested && before.ringKey === after.ringKey
+    && after.seenAt - before.seenAt <= BELIEF_STALE_MS
+    && after.restSince <= before.restSince && after.restStop === before.restStop
+    && (after.restPoint === before.restPoint
+      || before.restApproach && !after.restApproach && after.restStop >= 0);
+}
+
 /**
  * Step the bus's belief for this poll (idempotent within a poll) and return
  * it. With no store, a fresh belief from the fix alone.
@@ -113,9 +156,26 @@ export function beliefFor(
   const forecasts = standingForecastsFor({ route_id: bus.route_id ?? ring.routeId, standing_forecasts: bus.standing_forecasts }, ring, now);
   if (!store) return stepBelief(undefined, ring, bus, now, seq, forecasts);
   const e = entryFor(store, key);
-  const b = stepBelief(e.belief, ring, bus, now, seq, forecasts);
+  const before = e.belief;
+  const transitionForecasts = before?.ringKey === ring.key
+    ? retainStandingForecasts(forecasts, e.standingForecasts, before, now) : forecasts;
+  const b = stepBelief(before, ring, bus, now, seq, transitionForecasts);
+  e.standingForecasts = retainStandingForecasts(forecasts,
+    sameRest(before, b) ? transitionForecasts : undefined, b, now);
   e.belief = b;
   return b;
+}
+
+/** Read the same visit-bound priors used by the filter and downstream price. */
+export function standingForecastsForBelief(
+  store: AnchorStore | undefined, key: string, bus: FilterBus, ring: Ring, now: number,
+): StandingForecasts {
+  if (store) {
+    beliefFor(store, key, bus, ring, ring.stops, now);
+    return store.get(key)!.standingForecasts!;
+  }
+  return standingForecastsFor({ route_id: bus.route_id ?? ring.routeId,
+    standing_forecasts: bus.standing_forecasts }, ring, now);
 }
 
 export interface ModelArrival extends StopArrival { busName: string }
@@ -147,7 +207,8 @@ export function arrivalsForBus(
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, standingForecastsFor(bus, ring, now));
+  const forecasts = store ? store.get(key)!.standingForecasts! : standingForecastsFor(bus, ring, now);
+  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, forecasts);
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only

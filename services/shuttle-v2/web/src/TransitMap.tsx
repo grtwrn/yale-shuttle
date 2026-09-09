@@ -8,9 +8,8 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
-import { liveAnchorStore, ringForBus } from "./eta";
-import { standingForecastsFor } from "./eta/standingForecast";
-import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
+import { liveAnchorStore, ringForBus, standingForecastsForBelief } from "./eta";
+import { anchorIndexOnList, anchorKeyFor, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
 import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
 import {
@@ -3680,7 +3679,8 @@ const TripPlanner: FC<{
               const standing = resolveStandingStop(busMatch, cfg, routeStops, stopCoords, now, liveAnchorStore);
               if (!standing) return null;
               const ring = ringForBus(busMatch, mergedRouteStops(cfg, routeStops), stopCoords);
-              const forecasts = ring ? standingForecastsFor(busMatch, ring, now) : null;
+              const forecasts = ring ? standingForecastsForBelief(liveAnchorStore,
+                anchorKeyFor(cfg.label, busMatch.bus_name), busMatch, ring, now) : null;
               // The range and running-long cue read the same visit law as
               // the ETA, including its occurrence and earliest rest clock.
               return standWaitFor(
@@ -4389,7 +4389,8 @@ const TripPlanner: FC<{
                     : null;
                   const liveElapsedSec = standing ? standing.standingSec : null;
                   const standRing = busMatch ? ringForBus(busMatch, mergedRouteStops(cfg, routeStops), stopCoords) : null;
-                  const standForecasts = busMatch && standRing ? standingForecastsFor(busMatch, standRing, standNow) : null;
+                  const standForecasts = busMatch && standRing ? standingForecastsForBelief(liveAnchorStore,
+                    anchorKeyFor(cfg.label, busMatch.bus_name), busMatch, standRing, standNow) : null;
                   /**
                    * The hold to show at `sid`. `elapsed` is passed only for the
                    * stop the bus is actually standing at — everywhere else

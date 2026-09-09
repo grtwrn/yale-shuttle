@@ -6,8 +6,8 @@ import { anchorKeyFor, resolveStandingStop } from "../liveAnchor";
 import type { BusData } from "../map-data";
 import { ROUTE_LISTS } from "../routes";
 import { fromQuantiles } from "./dist";
-import type { Belief } from "./filter";
-import { ringForBus, type AnchorStore } from "./index";
+import { BELIEF_STALE_MS, type Belief } from "./filter";
+import { ringForBus, standingForecastsForBelief, type AnchorStore } from "./index";
 import * as forecastModule from "./standingForecast";
 import type { StandingForecastPrior } from "./standingForecast";
 import { buildTables } from "./tables";
@@ -79,11 +79,11 @@ function poll(
   const arrivals = computeUpcomingArrivals([11, 48], [payload], ROUTE_STOPS, COORDS, segments, now, dwells, store);
   const standing = resolveStandingStop(payload, ROUTE, ROUTE_STOPS, COORDS, now, store);
   const ring = ringForBus(payload, STOPS, COORDS)!;
-  const forecasts = forecastModule.standingForecastsFor(payload, ring, now);
+  const forecasts = standingForecastsForBelief(store, KEY, payload, ring, now);
   const shown = standing ? shownStandSec(dwells["3"]!["11"], standing.standingSec, dwells["3"]!, dwells, {
     forecasts, stopId: standing.stopId, stopIndex: standing.stopIndex, now,
   }) : null;
-  return { arrivals, standing, shown, belief: store.get(KEY)!.belief!, ring };
+  return { arrivals, standing, shown, belief: store.get(KEY)!.belief!, ring, forecasts };
 }
 
 function movingMass(belief: Belief): number {
@@ -246,4 +246,95 @@ describe("standing forecasts through the actual rider client", () => {
       expect(candidate.shown).toEqual(baseline.shown);
     }
   });
+  describe("visit-bound forecast invalidation", () => {
+    function warm(context = prior()) {
+      const store: AnchorStore = new Map();
+      let result = poll(store, context, 30);
+      for (let elapsed = 35; elapsed <= 60; elapsed += 5) result = poll(store, context, elapsed);
+      expect(result.shown!.typicalSec).toBeCloseTo(600, 4);
+      return store;
+    }
+
+    function expectPooledPause(result: ReturnType<typeof poll>, elapsedSec: number) {
+      expect(result.standing).toMatchObject({ stopId: 11, standingSec: elapsedSec });
+      expect(result.shown).toEqual(shownStandSec(
+        DWELLS["3"]!["11"], elapsedSec, DWELLS["3"]!, DWELLS,
+      ));
+      expect(forecastModule.forecastForStand(result.forecasts, 0, result.belief.restSince)).toBeNull();
+    }
+
+    it("withdraws the retained law when the payload omits identity-safe context", () => {
+      const store = warm();
+      // Omission also represents a contended fleet name; it must revoke reuse.
+      const result = poll(store, undefined, 65);
+      expect(result.forecasts.size).toBe(0);
+      expectPooledPause(result, 65);
+    });
+
+    it("does not reuse a consumed prior after the server confirms this departure", () => {
+      const store = warm();
+      const consumed = prior(900, {
+        observed_visit_start_at: START + 60_000,
+        previous_departed_at: START + 1_000,
+        history_available_at: START + 2_000,
+      });
+      const result = poll(store, consumed, 65, 0, { serverStart: START + 60_000 });
+      // The payload is valid now, but its next-cycle history is not this visit's prior.
+      expect(result.forecasts.get(0)!.prior).toEqual(consumed);
+      expectPooledPause(result, 65);
+    });
+
+    it("expires the retained law even when its replacement is too new for this visit", () => {
+      const store = warm(prior(600, { valid_until: START + 65_000 }));
+      const replacement = prior(900, {
+        observed_visit_start_at: START + 60_000,
+        fitted_at: START + 62_000,
+      });
+      const result = poll(store, replacement, 65, 0, { serverStart: START + 60_000 });
+      expect(result.forecasts.get(0)!.prior).toEqual(replacement);
+      expectPooledPause(result, 65);
+    });
+
+    it("replaces a cached law when its route pattern identity changes", () => {
+      const store = warm();
+      const replacement = prior(900, { route_pattern_id: "replacement-pattern" });
+      const result = poll(store, replacement, 65);
+      expect(result.forecasts.get(0)!.prior).toEqual(replacement);
+      expect(result.shown!.typicalSec).toBeCloseTo(900, 4);
+      expect(result.shown!.sec).toBeCloseTo(835, 4);
+    });
+
+    it("releases the retained law when the bus leaves the rest radius", () => {
+      const store = warm();
+      const serverStart = START + 65_000;
+      const replacement = prior(900, {
+        observed_visit_start_at: serverStart,
+        fitted_at: START + 62_000,
+      });
+      // Two hundred metres exceeds the real filter's rest radius; this is a
+      // new physical rest identity, even with the same bus and stop metadata.
+      const result = poll(store, replacement, 65, 200, { serverStart });
+      expect(result.belief.restSince).toBe(serverStart);
+      expect(result.forecasts.get(0)!.prior).toEqual(replacement);
+      const law = forecastModule.forecastForStand(result.forecasts, 0, result.belief.restSince)!;
+      expect(forecastModule.standingTotalAtArrival(law)).toBeCloseTo(835, 4);
+    });
+
+    it("does not carry a visit law across a stale-belief restart", () => {
+      const store = warm();
+      const elapsed = 60 + BELIEF_STALE_MS / 1000 + 5;
+      const serverStart = START + (elapsed - 30) * 1000;
+      const replacement = prior(1_500, {
+        observed_visit_start_at: serverStart,
+        fitted_at: serverStart - 10_000,
+      });
+      const result = poll(store, replacement, elapsed, 0, { serverStart });
+      expect(result.belief.restSince).toBe(serverStart);
+      expect(result.forecasts.get(0)!.prior).toEqual(replacement);
+      expect(result.standing).toMatchObject({ stopId: 11, standingSec: 30 });
+      expect(result.shown!.typicalSec).toBeCloseTo(1_500 - elapsed + 30, 4);
+      expect(result.shown!.sec).toBeCloseTo(1_500 - elapsed, 4);
+    });
+  });
+
 });
