@@ -1863,6 +1863,22 @@ replay, not the emission rate. See docs/closed-loop.md.
   4.02 m/s — the deadband is ±3 m/s at 5 s), and the best window gains under
   3 m a poll against a 20 m emission. Not in the tree; do not rebuild it for
   this feed.
+- `docs/horizon-bias.md` — a per-horizon CENTRE correction, the companion the
+  conformal widening never had (the operator's "I just want a narrower range").
+  **The mechanism ships inert and the values are refused.** Fitted on 9/3
+  (606,242 pairs) and held out on 9/4 (226,057), the residual conditioned on
+  the number ON SCREEN has a median of −1.2 / +6.0 / +15.8 / −3.4 s in the four
+  scorecard buckets — real, correctly signed, worth 0.8 s of pooled median
+  |error| — and it **cannot narrow the band, because an offset moves both edges
+  of a quantile band by the same amount**. At a fixed 80% coverage the shown
+  band comes out 1–4 s WIDER. The width the operator is looking at is
+  elsewhere: on Red, 9/4, 1,466 scored rider first sights, the band is 1:35 /
+  3:01 / 4:28 / 4:59 wide and centred within a minute at every horizon **for
+  the 86% of waits where the bus the app pinned is the bus that turns up**, and
+  all of the one-sidedness lives in the 14% where another bus of the line
+  arrives first (over-20: 30% of waits, median −15:30). The lever is the
+  plan-time pin, not the number. Do not fit a per-horizon offset to a rider
+  band without splitting it that way first.
 - `docs/eta-error-budget.md` — where the ETA error actually lives, and why the
   rider-visible problem is **stability, not accuracy**. Decomposes a hop into
   dwell / hold / drive (standing is 95% of the within-segment variance,

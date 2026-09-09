@@ -63,8 +63,8 @@ import { createRequire } from "node:module";
 
 import {
   COMPILED, HORIZONS, SCALAR_KEYS, assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
-  estimateVisitRates, fitRouteScales, pooled, promotionDecision, sameParams, scaleEffect, scoreRows,
-  tracksByName, zoneTester,
+  estimateVisitRates, fitHorizonBias, fitRouteScales, horizonBiasEffect, pooled, promotionDecision,
+  sameParams, scaleEffect, scoreRows, tracksByName, zoneTester,
 } from "./reestimate-lib.mjs";
 
 const require = createRequire(import.meta.url);
@@ -343,6 +343,8 @@ async function main() {
   let decision = null;
   let routeScaleFit = null;
   let routeScaleHeldOut = null;
+  let horizonBiasFit = null;
+  let horizonBiasHeldOut = null;
   let candidate = assembleCandidate(fits, null, champ, { allowDrift: ALLOW_DRIFT });
 
   if (!NO_REPLAY) {
@@ -381,10 +383,31 @@ async function main() {
       log(`  ${r.padStart(5)} ${String(f.value).padStart(9)} ${String(f.raw).padStart(6)} ${String(f.n).padStart(8)} ${String(Math.round(f.pooledShare * 100)).padStart(8)}   ${h ? `${h.before.medianAbsSec} -> ${h.after.medianAbsSec} s (bias ${h.before.medianSignedSec} -> ${h.after.medianSignedSec})` : "-"}`);
     }
 
-    candidate = assembleCandidate(fits, conformal, champ, { allowDrift: ALLOW_DRIFT, routeScales: rawScales, heldOut: heldOutEffect });
+    // The per-horizon centre correction, fitted and held out on exactly the
+    // same days as the widening beside it: CONFORMAL says how wide the band
+    // must be, HORIZON_BIAS says where its middle belongs.
+    const rawBias = horizonBiasFit = fitHorizonBias(readAllPairs(replayDays.slice(0, -1).map((d) => champFile[d])));
+    const biasHeldOut = horizonBiasHeldOut = { day: heldOut, ...horizonBiasEffect(readPairs(champFile[heldOut]), rawBias) };
+    log("");
+    log("horizon bias (median truth - promise, raw; the client shrinks by n/(n+k)):");
+    log("  bucket    raw b      n       sd    held-out |err| before -> after   coverage");
+    for (const h of HORIZONS) {
+      const f = rawBias[h];
+      const e = biasHeldOut[h];
+      log(`  ${h.padEnd(8)} ${String(f.b ?? "-").padStart(7)} ${String(f.n).padStart(8)} ${String(f.sd ?? "-").padStart(8)}    ${e ? `${e.before.medianAbsSec} -> ${e.after.medianAbsSec} s (bias ${e.before.medianSignedSec} -> ${e.after.medianSignedSec}, cover ${e.before.coveragePct} -> ${e.after.coveragePct}%)` : "-"}`);
+    }
+
+    candidate = assembleCandidate(fits, conformal, champ, { allowDrift: ALLOW_DRIFT, routeScales: rawScales, heldOut: heldOutEffect, horizonBias: rawBias, horizonHeldOut: biasHeldOut });
     const scalarsMoved = SCALAR_KEYS.some((k) => candidate.params[k] !== champ[k])
       || Object.keys({ ...(champ.ROUTE_SCALE ?? {}), ...candidate.params.ROUTE_SCALE })
-        .some((r) => (champ.ROUTE_SCALE?.[r] ?? 1) !== (candidate.params.ROUTE_SCALE[r] ?? 1));
+        .some((r) => (champ.ROUTE_SCALE?.[r] ?? 1) !== (candidate.params.ROUTE_SCALE[r] ?? 1))
+      // A moved centre changes every priced row, so the challenger must be
+      // replayed rather than re-banded: HORIZON_BIAS is not a band key.
+      || HORIZONS.some((h) => {
+        const a = champ.HORIZON_BIAS?.[h] ?? { b: 0, n: 0 };
+        const b = candidate.params.HORIZON_BIAS?.[h] ?? { b: 0, n: 0 };
+        return a.b !== b.b || a.n !== b.n;
+      });
     const challFile = {};
     for (const d of replayDays) {
       challFile[d] = scalarsMoved ? replayFile(d, prepared[d], "challenger", candidate.params) : champFile[d];
@@ -452,6 +475,7 @@ async function main() {
       fits: Object.fromEntries(SCALAR_KEYS.map((k) => [k, { value: fits[k]?.value === null || fits[k]?.value === undefined ? null : round5(fits[k].value), n: fits[k]?.n ?? 0 }])),
       conformal,
       routeScales: routeScaleFit,
+      horizonBias: horizonBiasFit,
       // Trimmed to the two numbers the decision turns on: the stored blob is
       // capped at 16 KB by the server and a full effect table for fifteen
       // routes would crowd out the promotion's own record.
@@ -461,6 +485,10 @@ async function main() {
           .map(([r, v]) => [r, { absBefore: v.before.medianAbsSec, absAfter: v.after.medianAbsSec, biasBefore: v.before.medianSignedSec, biasAfter: v.after.medianSignedSec }]),
       ),
       routeScaleHeldOutDay: routeScaleHeldOut?.day ?? null,
+      horizonBiasHeldOut: horizonBiasHeldOut && Object.fromEntries(
+        Object.entries(horizonBiasHeldOut).filter(([k]) => k !== "day"),
+      ),
+      horizonBiasHeldOutDay: horizonBiasHeldOut?.day ?? null,
       issues: candidate.issues,
       promotion: decision,
     },
