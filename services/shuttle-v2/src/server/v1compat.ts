@@ -183,15 +183,6 @@ export function buildBusesPayload(
     ...(b.lastMovedAt != null
       ? { last_moved_at: new Date(b.lastMovedAt).toISOString().replace(/Z$/, "") }
       : {}),
-    // The poll THIS fix was reported on. `last_moved_at` alone only says how
-    // long ago the fix changed by the reader's clock, and the reader is a
-    // phone: the payload is seconds old before it arrives and the device clock
-    // can be minutes out, which is the entire margin the answer turns on —
-    // "the fix changed on the newest poll" (the bus is moving) against "it
-    // changed one poll ago" (the bus has just pulled in). Both timestamps are
-    // the server's, so their difference is polls, and it is exact. Same
-    // naive-UTC spelling; the client appends the "Z".
-    seen_at: new Date(b.collectedAt).toISOString().replace(/Z$/, ""),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".

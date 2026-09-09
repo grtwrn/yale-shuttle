@@ -94,39 +94,6 @@ stop in the simulator — invisible to a script trace that never fed the
 at-stop clock. The stand tables are arrival-to-departure at the stop, so the
 time since the rest began is the clock they were measured with.
 
-**THE COLD START HAS TO DECIDE A TENSE.** Every rider's first render is a
-cold belief: one frame, no history. `initBelief` reads the served clock, and
-that clock is pinned to a stop by design (the collector anchors it within
-75 m and carries it to 125 m, so a yard shuffle cannot restart a layover),
-which means it runs straight through a bus that is only DRIVING PAST — Red
-#307 at Division / Prospect, 2026-09-08, "stationary for 30 s" while 67 m
-past the stop at 6.6 m/s, priced `eta 0`. Replayed cold over a production
-day, one "now" row in four was for a bus that had already gone.
-
-The cold belief settles it with the two things it has, and neither is a
-threshold. WHETHER THE BUS IS MOVING: `seen_at` and `last_moved_at` are both
-the server's clocks — the poll the fix was reported on and the poll it last
-changed on — so their difference is polls, exactly, with no device clock in
-it. A bus at rest repeats its coordinate, and one repeat is already 5.8 : 1
-for a stand (the deadband emissions above), so the bus that pulled in a poll
-ago keeps its stand while the one still driving does not. WHICH SIDE OF THE
-STOP IT IS ON: the ring's cells are in travel order, so the share of the
-emission lying past the stop's own cell says whether the bus has passed it or
-is about to reach it — 85.8% against 3.5% over 222,479 in-zone frames scored
-against the trajectory's own closest approach (`last_stop_id`, the field that
-literally names the last stop passed, reads the same two classes 47.3% and
-12.4%: it lags a median 34 m and often never fires while the bus is still in
-the zone). A bus still approaching is never refused its stand — that is the
-half of the coin the first attempt (#173, a radius around the marker plus
-`last_stop_id`) could not spend, and refusing an arriving bus prices it a LAP
-away, which is worse than the ghost it removes.
-
-What is left is intrinsic to one frame: at the poll a bus pulls in and at the
-poll it drives on, the payload says the same thing, and only the next poll
-separates them. The residue is one poll long — 85% of the misses are within
-30 s of the bus pulling in — and it is why this is a decision rule at the
-cold start and nothing at all once the belief is warm.
-
 **One observation per poll.** A step is taken only for a new payload object at
 least 2.5 s after the last; every other call — the map, the cards, the chip,
 each with its own clock — is a query of the stored belief. (Stepping on each
@@ -1004,3 +971,35 @@ feed. It would be worth re-testing only if upstream ever sends a velocity
 field, the deadband narrows below 30 m, or the poll cadence rises — the
 switch was one property read and a per-fix haversine, cheap to restore from
 this section. V2 was not built.
+
+## WITHDRAWN 2026-09-09: the directional cold start (#176)
+
+Shipped 2026-09-08 23:07Z, **reverted the next morning on live evidence.**
+
+The offline case for it was real and still stands — the ring's travel order
+tells "has passed" from "still approaching" at LR 25 against `last_stop_id`'s
+3.8, and both ghost tails fell on both replay days. What the replays did not
+measure is what the rider canary then saw on the warm path:
+
+| window (leader ETA jumps per watched hour) | rate |
+|---|---|
+| baseline nights, 663 min | **0.36** |
+| the night this shipped, 313 min | **1.34** |
+| baseline mornings 7–11am ET, 669 min | **0.00** (0 events) |
+| the morning after, same window | 3 events in 116 min |
+
+The lines that moved are the tell: **Blue West went 1 jump in 153 min to 4 in
+84 min**, with Orange Night picking one up. Neither is a fold route, so #175
+cannot reach them — but #176 changed the standing decision on EVERY route.
+
+The mechanism is the one this PR's own docstring named as the risk it was
+spending: a bus wrongly refused its stand does not read as "arriving", it
+reads as A LAP AWAY. The observed jumps were **+8.3, +9.3 and +9.3 min in a
+single poll**, which is a lap.
+
+`scripts/eta-replay/last-stop-direction.ts` is KEPT — the discrimination
+measurement is sound and is the starting point for any second attempt. What a
+retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
+scores the cold tail only, and gps-replay's beliefs warm after one poll, so
+NEITHER instrument can see a stand refused mid-ride. Measure that first.
+
