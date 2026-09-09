@@ -177,6 +177,8 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
+  { label: "Arwa Yemeni Coffee", lat: 41.30969, lon: -72.920192, aliases: ["arwa", "arwa cafe", "arwa coffee", "yemeni coffee", "arwa yemeni", "335 orange"], poi: "cafe", anchorStop: "Orange / Grove" }, // OSM N9021774207 — the 335 Orange St address node: the cafe itself is not mapped in OSM yet,
+  // which is exactly why neither Photon nor Nominatim could answer "arwa cafe" and the app showed nothing.
   { label: "Ashley's Ice Cream", lat: 41.311033, lon: -72.929949, aliases: ["ashleys", "ashley's", "ice cream", "280 york"], poi: "ice_cream", anchorStop: "Broadway / York" }, // OSM N2719756863
   { label: "Atticus Bookstore Cafe", lat: 41.307953, lon: -72.930644, aliases: ["atticus", "atticus cafe", "1082 chapel"], poi: "cafe", anchorStop: "Chapel / York" }, // OSM N2373828306
   { label: "BAR (Crown St)", lat: 41.306176, lon: -72.930261, aliases: ["bar", "bar pizza", "mashed potato pizza", "254 crown"], poi: "pizza", anchorStop: "College / Crown" }, // OSM N430030530
