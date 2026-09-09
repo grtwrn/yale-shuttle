@@ -23,5 +23,11 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        rider: path.resolve(__dirname, "index.html"),
+        stops: path.resolve(__dirname, "stop-data.html"),
+      },
+    },
   },
 });
