@@ -87,14 +87,53 @@ export interface StopVisit {
   exit: number | null;
   busName: string;
   routeId: number;
+  /**
+   * How this arrival is known. `curb` — the bus came inside 45 m AND the feed
+   * marked the stop served; `feed` — the feed marked it served and the 45 m
+   * radius never fired, which is how the two mis-sited Red stops are
+   * recovered; `curb-only` — geometry alone, because the bus publishes no
+   * `last_stop_id` at all and there is nothing to corroborate against.
+   */
+  source: "curb" | "feed" | "curb-only";
 }
 
 export type LatLon = { lat: number; lon: number };
 
 /**
- * Every (bus, stop) approach in the data, as an interval inside the 45 m
- * radius, keyed by stop. Only stops on the bus's own route are watched, so a
- * Red bus passing a Blue-only stop is not a Blue arrival.
+ * How far apart the curb sample and the feed's own "served" flip may be and
+ * still describe one arrival. Measured on Red, 2026-09-04: the flip follows
+ * the 45 m entry by 24 s at the median, 88 s at p90, 300 s at the tail, and
+ * can precede it when the entry sample is late.
+ */
+export const SERVED_BEFORE_MS = 120_000;
+export const SERVED_AFTER_MS = 300_000;
+
+/**
+ * Every (bus, stop) arrival in the data, keyed by stop. Only stops on the
+ * bus's own route are watched, so a Red bus passing a Blue-only stop is not a
+ * Blue arrival.
+ *
+ * THE 45 m RADIUS ALONE IS NOT AN ARRIVAL, and believing it was cost a whole
+ * day of analysis. `CLAUDE.md`'s own invariant — "stops that are metres apart
+ * can be many stops apart in sequence" — bites here: 130 Prospect Street (N)
+ * and (S) are ~10 m across one road at sequence positions 11 and 20, and every
+ * southbound bus serving (S) drives inside 45 m of (N). On Red, 2026-09-04,
+ * **304 of 1,051 curb visits (29%) were such drive-bys**, concentrated on the
+ * (N)/(S) twins on College and Prospect; scored as arrivals they made the app
+ * look as though it had counted down the wrong bus. So each curb visit must be
+ * corroborated by the FEED's own statement that the stop was served —
+ * `last_stop_id` becoming it — which is the operator's assertion and cannot be
+ * fooled by the far side of a street.
+ *
+ * The correction runs both ways. At Trumbull / Hillhouse and 130 Prospect
+ * Street (N) the published coordinate sits ~100 m from where the bus actually
+ * stands (measured: p50 130 m and 93 m from the stop when the feed says it was
+ * served: inside 45 m on only 10 of 27 and 10 of 25 service events), so the
+ * radius misses genuine arrivals; a served flip with no curb
+ * visit becomes an arrival at the closest approach preceding it.
+ *
+ * A bus that publishes no `last_stop_id` anywhere has no feed opinion to
+ * corroborate against, and its geometry is kept as-is.
  */
 export function stopVisits(
   rows: readonly PosRow[],
@@ -108,9 +147,33 @@ export function stopVisits(
     l.push(r);
   }
   const out = new Map<number, StopVisit[]>();
+  const add = (sid: number, v: StopVisit) => {
+    let l = out.get(sid);
+    if (!l) out.set(sid, (l = []));
+    l.push(v);
+  };
   for (const [busName, track] of byBus) {
-    // near-state per (route, stop) — a bus can change route mid-day
-    const open = new Map<string, StopVisit>();
+    // The feed's own service events: `last_stop_id` becoming a stop.
+    const flips: Array<{ t: number; stop: number; routeId: number; i: number }> = [];
+    let hasFeed = false;
+    let prev: number | null = null;
+    for (let i = 0; i < track.length; i++) {
+      const p = track[i]!;
+      if (p.l == null) continue;
+      // The FIRST value is not a transition: the bus served that stop at an
+      // unknown time before the capture starts, and dating it here would
+      // invent an arrival at 04:00 for every bus.
+      if (hasFeed && p.l !== prev) flips.push({ t: p.t, stop: p.l, routeId: p.r, i });
+      hasFeed = true;
+      prev = p.l;
+    }
+    const servedAt = (sid: number, at: number) =>
+      flips.some((f) => f.stop === sid && f.t >= at - SERVED_BEFORE_MS && f.t <= at + SERVED_AFTER_MS);
+
+    // Geometry: every approach inside 45 m, re-arming past 120 m.
+    const candidates: StopVisit[] = [];
+    const stopOf = new Map<StopVisit, number>();
+    const open = new Map<string, StopVisit>(); // per (route, stop) — a bus can change route mid-day
     for (const p of track) {
       const stops = stopsForRoute(p.r);
       const seen = new Set<number>();
@@ -123,16 +186,48 @@ export function stopVisits(
         const key = `${p.r}|${sid}`;
         const cur = open.get(key);
         if (!cur && d <= ARRIVAL_M) {
-          const v: StopVisit = { enter: p.t, exit: null, busName, routeId: p.r };
+          const v: StopVisit = { enter: p.t, exit: null, busName, routeId: p.r, source: "curb" };
           open.set(key, v);
-          let l = out.get(sid);
-          if (!l) out.set(sid, (l = []));
-          l.push(v);
+          candidates.push(v);
+          stopOf.set(v, sid);
         } else if (cur && d > REARM_M) {
           cur.exit = p.t;
           open.delete(key);
         }
       }
+    }
+    const kept: StopVisit[] = [];
+    for (const v of candidates) {
+      const sid = stopOf.get(v)!;
+      if (!hasFeed) { v.source = "curb-only"; kept.push(v); add(sid, v); continue; }
+      if (!servedAt(sid, v.enter)) continue; // a drive-by on the far side of the road
+      kept.push(v);
+      add(sid, v);
+    }
+    if (!hasFeed) continue;
+
+    // A served flip the radius never saw: the stop's published coordinate is
+    // not where the bus stands. Date it at the closest approach before it.
+    for (const f of flips) {
+      if (!stopsForRoute(f.routeId).includes(f.stop)) continue;
+      const c = stopCoords[f.stop];
+      if (!c) continue;
+      if (kept.some((v) => stopOf.get(v) === f.stop && v.enter >= f.t - SERVED_AFTER_MS && v.enter <= f.t + SERVED_BEFORE_MS)) continue;
+      let bestT = f.t;
+      let best = Infinity;
+      for (let i = f.i; i >= 0 && track[i]!.t > f.t - SERVED_AFTER_MS; i--) {
+        const d = haversineM(track[i]!, c);
+        if (d < best) { best = d; bestT = track[i]!.t; }
+      }
+      let exit: number | null = null;
+      for (let i = f.i; i < track.length; i++) {
+        if (track[i]!.t <= bestT) continue;
+        if (haversineM(track[i]!, c) > REARM_M) { exit = track[i]!.t; break; }
+      }
+      const v: StopVisit = { enter: bestT, exit, busName, routeId: f.routeId, source: "feed" };
+      kept.push(v);
+      stopOf.set(v, f.stop);
+      add(f.stop, v);
     }
   }
   for (const l of out.values()) l.sort((a, b) => a.enter - b.enter);
@@ -358,6 +453,19 @@ export interface WaitResult {
   worst: Transition | null;
   /** Vehicles the row followed, in order of first appearance. */
   pins: string[];
+  /**
+   * Did the FIRST bus the countdown named turn out to be the bus that arrived?
+   * null when there is nothing to judge — no countdown, or no arrival.
+   *
+   * Armed waits (`busAtStopOnArrival`) are excluded from the summary share,
+   * and must be: the app says "arriving now" about the bus at the curb, which
+   * is right, and the wait scored here is for the NEXT one, so the pin is
+   * "wrong" by construction. Computed by hand off `pins[0]` on 2026-09-04 that
+   * artefact alone accounted for 96 of the 129 apparently-wrong pins under
+   * five minutes — the whole of that bucket's excess. It lives here so the
+   * question is never answered by hand again.
+   */
+  pinCorrect: boolean | null;
   pinChanged: boolean;
   /** Countdown episodes that ended in Departed / no countdown / no option. */
   vanished: number;
@@ -637,6 +745,7 @@ export function scoreWait(
     transitions, reversals: seq.reversals, notableReversals: seq.notableReversals, catastrophic: seq.catastrophic,
     worstDriftSec, worst,
     pins, pinChanged: pins.length > 1,
+    pinCorrect: pins.length && arrivedBus ? pins[0]!.replace(/^#/, "") === arrivedBus.replace(/^#/, "") : null,
     vanished, returned, lapRepriced, strand, overshoot,
     neverShown: !sawCountdown,
     droppedApproaching, droppedDeclined, droppedRepriced, droppedDetail,
@@ -666,6 +775,8 @@ export interface GroupSummary {
   pctStrand: number;
   pctOvershoot: number;
   pctPinChanged: number;
+  /** Share of judgeable waits whose first-named bus is the one that arrived. */
+  pctPinRight: number | null;
   pctVanished: number;
   pctLapRepriced: number;
   pctNeverShown: number;
@@ -731,6 +842,10 @@ export function summarise(waits: readonly WaitResult[]): GroupSummary {
     pctStrand: share(scored.filter((w) => w.strand).length, scored.length),
     pctOvershoot: share(scored.filter((w) => w.overshoot).length, scored.length),
     pctPinChanged: share(scored.filter((w) => w.pinChanged).length, scored.length),
+    pctPinRight: (() => {
+      const j = scored.filter((w) => w.pinCorrect !== null);
+      return j.length ? share(j.filter((w) => w.pinCorrect).length, j.length) : null;
+    })(),
     pctVanished: share(scored.filter((w) => w.vanished > 0).length, scored.length),
     pctLapRepriced: share(scored.filter((w) => w.lapRepriced).length, scored.length),
     pctNeverShown: share(arrived.filter((w) => w.neverShown).length, arrived.length),
@@ -847,6 +962,8 @@ export interface Compare {
   strand: { both: number; onlyA: number; onlyB: number; neither: number };
   reversal60: { both: number; onlyA: number; onlyB: number; neither: number };
   dropped: { both: number; onlyA: number; onlyB: number; neither: number };
+  /** The first bus named was NOT the bus that came (so onlyB = newly wrong). */
+  pinWrong: { both: number; onlyA: number; onlyB: number; neither: number };
   /** Total drops on each side of the pairing, and the cause split. */
   dropCounts: { a: number; b: number; aDeclined: number; bDeclined: number; aRepriced: number; bRepriced: number };
   /** b.worstDrift - a.worstDrift over paired scored waits */
@@ -881,6 +998,7 @@ export function compareRuns(a: readonly WaitResult[], b: readonly WaitResult[]):
     strand: quad((w) => w.strand),
     reversal60: quad((w) => w.notableReversals > 0),
     dropped: quad((w) => w.droppedApproaching > 0),
+    pinWrong: quad((w) => w.pinCorrect === false),
     dropCounts: {
       a: scored.reduce((n, id) => n + ma.get(id)!.droppedApproaching, 0),
       b: scored.reduce((n, id) => n + mb.get(id)!.droppedApproaching, 0),
@@ -910,12 +1028,13 @@ export function renderSummary(title: string, s: Summary): string {
   out.push(`  waits ${g.waits}: arrived ${g.arrived}, gave up ${g.gaveUp}, data ended ${g.dataEnded}, boarded on arrival ${g.boardedOnArrival}; scored ${g.scored}`);
   out.push(`  wait median ${g.medianWaitMin} min, p90 ${g.p90WaitMin} min; first promise |miss| median ${g.firstSight.medianAbsSec} s, p90 ${g.firstSight.p90AbsSec} s (early>60 s ${g.firstSight.earlyOver60Pct}%, late>60 s ${g.firstSight.lateOver60Pct}%)`);
   if (g.interval.n) out.push(`  estimator interval at first sight (n ${g.interval.n}, median width ${g.interval.medianWidthSec} s): inside ${g.interval.insidePct}%, bus earlier ${g.interval.earlyPct}%, later ${g.interval.latePct}%`);
+  out.push(`  the first bus named is the bus that came: ${g.pctPinRight ?? "-"}%`);
   out.push(`  riders who saw: jump>=180 s ${g.pctJump180}% | jump>=300 s ${g.pctJump300}% | reversal>=60 s ${g.pctReversal60}% | STRAND ${g.pctStrand}% | overshoot ${g.pctOvershoot}% | pin changed ${g.pctPinChanged}% | countdown vanished ${g.pctVanished}% | lap re-priced ${g.pctLapRepriced}% | never shown ${g.pctNeverShown}%`);
   out.push(`  worst drift per wait: p50 ${g.worstDrift.p50} s, p90 ${g.worstDrift.p90} s, max ${g.worstDrift.max} s`);
   out.push(`  DROPPED while still approaching: ${g.pctDropped}% of riders, ${g.drops} drops (${g.dropsDeclined} the card declined a live arrival, ${g.dropsRepriced} the estimator withdrew it)`);
-  out.push(`  ${padR("route", 14)}${padL("scored", 7)}${padL("wait", 6)}${padL("miss", 6)}${padL("j180", 6)}${padL("j300", 6)}${padL("rev", 6)}${padL("strand", 7)}${padL("pin", 6)}${padL("vanish", 7)}${padL("lap", 6)}${padL("drop%", 7)}${padL("p90dr", 7)}`);
+  out.push(`  ${padR("route", 14)}${padL("scored", 7)}${padL("wait", 6)}${padL("miss", 6)}${padL("j180", 6)}${padL("j300", 6)}${padL("rev", 6)}${padL("strand", 7)}${padL("pin", 6)}${padL("pinOK", 7)}${padL("vanish", 7)}${padL("lap", 6)}${padL("drop%", 7)}${padL("p90dr", 7)}`);
   for (const [label, r] of Object.entries(s.byRoute)) {
-    out.push(`  ${padR(label, 14)}${padL(r.scored, 7)}${padL(r.medianWaitMin ?? "-", 6)}${padL(r.firstSight.medianAbsSec ?? "-", 6)}${padL(r.pctJump180, 6)}${padL(r.pctJump300, 6)}${padL(r.pctReversal60, 6)}${padL(r.pctStrand, 7)}${padL(r.pctPinChanged, 6)}${padL(r.pctVanished, 7)}${padL(r.pctLapRepriced, 6)}${padL(r.pctDropped, 7)}${padL(r.worstDrift.p90 ?? "-", 7)}`);
+    out.push(`  ${padR(label, 14)}${padL(r.scored, 7)}${padL(r.medianWaitMin ?? "-", 6)}${padL(r.firstSight.medianAbsSec ?? "-", 6)}${padL(r.pctJump180, 6)}${padL(r.pctJump300, 6)}${padL(r.pctReversal60, 6)}${padL(r.pctStrand, 7)}${padL(r.pctPinChanged, 6)}${padL(r.pctPinRight ?? "-", 7)}${padL(r.pctVanished, 7)}${padL(r.pctLapRepriced, 6)}${padL(r.pctDropped, 7)}${padL(r.worstDrift.p90 ?? "-", 7)}`);
   }
   if (s.worstStops.length) {
     out.push(`  worst stops (>=3 scored waits): ` + s.worstStops.slice(0, 8).map((x) => `${x.label}@${x.stopId} ${x.pctJump180}%/${x.pctStrand}% (${x.waits})`).join("; "));
@@ -930,6 +1049,7 @@ export function renderCompare(c: Compare, nameA: string, nameB: string): string 
     `paired waits ${c.paired} (only ${nameA} ${c.onlyA}, only ${nameB} ${c.onlyB})`,
     `  jump>=180 s: ${q(c.jump180)}`,
     `  strand:      ${q(c.strand)}`,
+    `  pin wrong:   ${q(c.pinWrong)}`,
     `  reversal>=60 s: ${q(c.reversal60)}`,
     `  DROPPED while approaching: ${q(c.dropped)}`,
     `    drops ${nameA} ${c.dropCounts.a} (${c.dropCounts.aDeclined} declined / ${c.dropCounts.aRepriced} repriced) -> ${nameB} ${c.dropCounts.b} (${c.dropCounts.bDeclined} declined / ${c.dropCounts.bRepriced} repriced)`,

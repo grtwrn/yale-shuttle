@@ -81,6 +81,54 @@ describe("truth: the curb rule", () => {
     expect(truthFor(visits.get(10), [99], T0, 60 * 60_000)).toEqual({ kind: "none" });
     expect(truthFor(visits.get(10), [3], T0, 5000)).toEqual({ kind: "none" });
   });
+
+  it("a bus that publishes no last_stop_id is judged on geometry alone", () => {
+    expect(visits.get(10)!.every((v) => v.source === "curb-only")).toBe(true);
+  });
+});
+
+describe("truth: 45 m is not an arrival unless the feed says the stop was served", () => {
+  // Two stops 20 m apart across one road, many stops apart in sequence — the
+  // CLAUDE.md invariant, and the (N)/(S) twins on Red's College and Prospect.
+  const stopCoords = { 10: { lat: 41.32, lon: -72.92 }, 11: { lat: 41.32 + 20 / 111_000, lon: -72.92 } };
+  const stopsFor = () => [10, 11];
+  const m = 1 / 111_000;
+
+  it("drops the drive-by and keeps the stop the feed marks served", () => {
+    // The bus drives past both, and the feed says it served 11, not 10.
+    const track = [
+      row({ t: T0, lat: 41.32 - 300 * m, l: 9 }),
+      row({ t: T0 + 5000, lat: 41.32 + 5 * m, l: 9 }),
+      row({ t: T0 + 10000, lat: 41.32 + 20 * m, l: 11 }),
+      row({ t: T0 + 15000, lat: 41.32 + 300 * m, l: 11 }),
+    ];
+    const v = stopVisits(track, stopsFor, stopCoords);
+    expect(v.get(11)!.map((x) => x.source)).toEqual(["curb"]);
+    expect(v.get(10)).toBeUndefined();
+  });
+
+  it("recovers a served stop whose published coordinate the bus never comes within 45 m of", () => {
+    // Trumbull / Hillhouse and 130 Prospect (N): the feed marks them served
+    // from ~100 m away, so geometry alone loses the arrival entirely.
+    const track = [
+      row({ t: T0, lat: 41.32 - 300 * m, l: 9 }),
+      row({ t: T0 + 5000, lat: 41.32 + 100 * m, l: 9 }),
+      row({ t: T0 + 10000, lat: 41.32 + 90 * m, l: 10 }),
+      row({ t: T0 + 15000, lat: 41.32 + 400 * m, l: 10 }),
+    ];
+    const v = stopVisits(track, stopsFor, stopCoords);
+    expect(v.get(10)!.map((x) => [x.source, x.enter - T0])).toEqual([["feed", 10000]]);
+  });
+
+  it("a served stop is not double-counted when the curb rule already saw it", () => {
+    const track = [
+      row({ t: T0, lat: 41.32 - 300 * m, l: 9 }),
+      row({ t: T0 + 5000, lat: 41.32 + 5 * m, l: 9 }),
+      row({ t: T0 + 10000, lat: 41.32 + 5 * m, l: 10 }),
+      row({ t: T0 + 15000, lat: 41.32 + 400 * m, l: 10 }),
+    ];
+    expect(stopVisits(track, stopsFor, stopCoords).get(10)!.map((x) => [x.source, x.enter - T0])).toEqual([["curb", 5000]]);
+  });
 });
 
 describe("riders", () => {
