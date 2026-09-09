@@ -196,8 +196,9 @@ export function computeUpcomingArrivals(
     );
     if (routeBuses.length === 0) continue;
 
-    const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
-    const routeDwells = dwellTimes[cfg.routeIds[0]] ?? {};
+    const primary = cfg.routeIds[0]!;
+    const routeSegs = segmentTimes[primary] ?? {};
+    const routeDwells = dwellTimes[primary] ?? {};
 
     // Every route is priced from a distribution on the ring: no point anchor,
     // no stall credit, no approach zone, no chord proration — those are gone
