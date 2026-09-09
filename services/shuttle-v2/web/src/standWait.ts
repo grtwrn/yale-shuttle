@@ -110,14 +110,31 @@ function bare(s: string): string {
 
 /**
  * What is left of the stand, in words a rider cannot read as a promise of
- * lateness. Below `IMMINENT_SEC` the low end stops being quoted at all: the
- * bus is free to go, and a ceiling is the only honest shape left.
+ * lateness.
+ *
+ * BOTH ENDS ARE QUOTED, INCLUDING A LOW END UNDER A MINUTE. An earlier draft
+ * suppressed the low end below `IMMINENT_SEC` and printed a bare ceiling —
+ * "up to 5 min left" — on the reasoning that a bus free to leave has no
+ * meaningful floor. The operator rejected it twice on the live app
+ * (2026-09-09): "I liked having the estimated wait in there", and then, of the
+ * chip specifically, "this part should show the range of wait time actually".
+ *
+ * The ceiling alone answers "how bad could this get" and never answers "how
+ * long is this likely to be", which is the question being asked. And "<1" is
+ * not noise: on the same morning the operator watched a `<1-6` countdown and
+ * reported that the bus did arrive inside the minute. A low end that reads
+ * "any moment now" is information, not an absence of it.
+ *
+ * Only when the WHOLE range is imminent does the range collapse — there the
+ * two ends say the same thing and the words are better.
  */
 export function standLeftText(soonSec: number, lateSec: number): string {
   const high = fmtMin(lateSec);
   if (lateSec < IMMINENT_SEC) return "leaving any moment";
-  if (soonSec < IMMINENT_SEC) return `up to ${high} left`;
-  const low = fmtMin(soonSec);
+  // "now" is the countdown's word for an arrival, not a duration — as the low
+  // end of a WAIT it reads as nonsense ("now-1 min left"). The same quantity
+  // spelled as a duration is "<1".
+  const low = fmtMin(soonSec).replace(/^now$/, "<1 min");
   if (low === high) return `~${high} left`;
   return `${bare(low)}-${high} left`;
 }
