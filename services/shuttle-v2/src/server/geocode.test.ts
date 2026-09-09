@@ -612,3 +612,35 @@ describe("the real list against every live stop", () => {
     }
   });
 });
+
+/**
+ * ARWA YEMENI COFFEE — the place OSM does not know.
+ *
+ * Reported by the operator, 2026-09-09: "arwa cafe is not shown". It was not a
+ * matcher bug and not a reach-filter bug — the app had nothing to show. The
+ * cafe opened on Orange Street in late 2025 and **is still absent from
+ * OpenStreetMap**, so both external providers answer it with nothing near New
+ * Haven (Photon offers cafes in Sarawak and Texas; Nominatim offers none), and
+ * the reach filter correctly drops those. A curated entry is the only way a
+ * rider can reach it.
+ *
+ * Its coordinate is therefore the OSM ADDRESS node for 335 Orange St
+ * (N9021774207), not a node for the business — the one place in the list where
+ * that is true, and the reason it is spelled out in the entry's comment. If
+ * someone later maps the cafe itself, move the coordinate to it.
+ *
+ * This test exists because the entry looks removable to anyone who assumes the
+ * external tier would cover a real cafe. It would not.
+ */
+describe("Arwa Yemeni Coffee", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  for (const q of ["arwa", "arwa cafe", "arwa coffee", "yemeni coffee", "335 orange"]) {
+    it(`answers "${q}" from the curated list`, () => {
+      expect(geocode(live, q)[0]?.label).toBe("Arwa Yemeni Coffee");
+    });
+  }
+  it("tolerates the typos the fuzzy tier is for", () => {
+    expect(geocode(live, "arwa cafee")[0]?.label).toBe("Arwa Yemeni Coffee");
+    expect(geocode(live, "arwa yemini")[0]?.label).toBe("Arwa Yemeni Coffee");
+  });
+});
