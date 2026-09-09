@@ -125,7 +125,11 @@ describe("landmark coordinates", () => {
   // shared on purpose ("science hill" spans two buildings, "pharmacy" is
   // three shops) — list them here so an accidental clash still fails.
   it("does not reuse an alias across entries, except the deliberate ones", () => {
-    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket"]);
+    // "yemeni coffee" is a category, not a name: Arwa (335 Orange) and M2
+    // Mocha (100 Ashmun) both answer to it, and two more — Jabal on Chapel
+    // and Qahwah House on Elm — were announced for late 2026. A rider typing
+    // it wants whichever is nearest, so both must stay reachable by it.
+    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket", "yemeni coffee"]);
     const owner = new Map<string, string>();
     for (const l of LANDMARKS) {
       for (const a of l.aliases ?? []) {
@@ -642,5 +646,50 @@ describe("Arwa Yemeni Coffee", () => {
   it("tolerates the typos the fuzzy tier is for", () => {
     expect(geocode(live, "arwa cafee")[0]?.label).toBe("Arwa Yemeni Coffee");
     expect(geocode(live, "arwa yemini")[0]?.label).toBe("Arwa Yemeni Coffee");
+  });
+});
+
+/**
+ * THE PLACES OPENSTREETMAP DOES NOT KNOW, AND THE ONE IT KNOWS BY ITS OLD NAME.
+ *
+ * Swept 2026-09-09 after the operator asked "are there other cafes we missed?".
+ * The lookup has three layers and ALL THREE read OpenStreetMap — the curated
+ * list was built by auditing it, and Photon and Nominatim are both OSM-backed.
+ * So a place OSM has never heard of is invisible to every layer at once, and a
+ * place whose name changed answers only to the name OSM still carries. These
+ * are the two failure modes; each entry below is one of them.
+ *
+ *   Arwa Yemeni Coffee   335 Orange St    opened 2025, absent from OSM
+ *   M2 Mocha Cafe        100 Ashmun St    opened Apr 2026, absent from OSM
+ *   Olmo                 93 Whitney Ave   absent from OSM (496 Yelp reviews)
+ *   Maison B Cafe        304 Elm St       IN OSM as "Maison Mathis", its former name
+ *
+ * Deliberately NOT added, and why — a lookup that answers with a closed door
+ * or an unopened one is worse than a lookup that says nothing:
+ *   Bru Cafe          141 Orange St   CLOSED (Yelp, Dec 2025)
+ *   Jabal Coffee      808 Chapel St   announced for autumn 2026, not confirmed open
+ *   Qahwah House      19 Elm St       announced mid-2026, not confirmed open
+ * Re-check the last two before adding them.
+ */
+describe("places the external tier cannot supply", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const first = (q: string) => geocode(live, q)[0]?.label;
+
+  it("answers the cafes OSM has never been told about", () => {
+    expect(first("arwa")).toBe("Arwa Yemeni Coffee");
+    expect(first("m2")).toBe("M2 Mocha Cafe");
+    expect(first("m2 cafe")).toBe("M2 Mocha Cafe");
+    expect(first("olmo")).toBe("Olmo");
+  });
+
+  it("answers a renamed place by BOTH names", () => {
+    expect(first("maison b")).toBe("Maison B Cafe");
+    expect(first("maison mathis")).toBe("Maison B Cafe");
+  });
+
+  it("keeps the shared category reaching every place that answers to it", () => {
+    const labels = geocode(live, "yemeni coffee").map((h) => h.label);
+    expect(labels).toContain("Arwa Yemeni Coffee");
+    expect(labels).toContain("M2 Mocha Cafe");
   });
 });
