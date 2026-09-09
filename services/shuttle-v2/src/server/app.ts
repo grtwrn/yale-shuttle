@@ -45,6 +45,7 @@ import {
   parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
+import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
@@ -211,6 +212,13 @@ export interface AppOptions {
    * feature off, server and fleet both — the response tells clients to stop.
    */
   predictionSampleRate?: number;
+  /**
+   * The server-side ETA belief (src/server/serverEta.ts). Injected by tests;
+   * production reads SHUTTLE_SERVER_ETA. Pass `null` to force it off even when
+   * the environment sets the flag — which is how the payload-identity test
+   * builds the "flag off" arm without touching process.env.
+   */
+  serverEta?: ServerEta | null;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -278,7 +286,23 @@ export function buildApp(opts: AppOptions): Hono {
   // docs/closed-loop.md). Null until a fit is accepted, and then the payload
   // carries `model_params`.
   const modelParams = createModelParamsSource(opts.bundle.sqlite);
-  const busesJson = createBusesPayloadCache(opts.collector, modelParams);
+  // The server-side belief (src/server/serverEta.ts). Null unless
+  // SHUTTLE_SERVER_ETA=1 — and null is the default, which leaves `/api/buses`
+  // byte-for-byte what it is today.
+  const serverEta = opts.serverEta !== undefined
+    ? opts.serverEta
+    : serverEtaFromEnv(process.env, (msg, fields) =>
+      console.error(JSON.stringify({ level: "error", msg, ...fields })));
+  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta);
+  if (serverEta) {
+    // Priming the cache on the collector's own poll is what steps the belief:
+    // it must advance on every observation, not only when a rider happens to
+    // ask, or it would be exactly as cold as the browser copy it replaces.
+    // The build it forces is the one the next five seconds of requests share,
+    // so this costs a stringify per poll on an idle machine and nothing at all
+    // on a busy one.
+    opts.collector.setPollObserver(() => { busesJson(); });
+  }
 
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a

@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMPILED, CONFORMAL_RANGE, DRIFT, GAP_MS, HORIZONS, MIN_COVERAGE_BOUND_PCT, MIN_MEDIAN_BOUND_SEC,
+  HORIZON_BIAS_K, HORIZON_BIAS_KNOT_SEC, HORIZON_BIAS_RANGE,
   N_FLOORS, RANGES, ROUTE_SCALE_FLOOR_SEC, ROUTE_SCALE_MAX_POOLED, ROUTE_SCALE_RANGE, ROUTE_SCALE_SHRINK_K, SCALAR_KEYS,
-  assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
-  estimateVisitRates, fitRouteScales, hinge, horizonOf, pooled, promotionDecision, sameParams,
-  scaleEffect, scoreRows, stillRuns, tracksByName, widen, zoneTester,
+  applyHorizonBias, assembleCandidate, conformalFit, distanceMeters, estimateEmissions,
+  estimateVisitRates, fitHorizonBias, fitRouteScales, hinge, horizonBiasEffect, horizonCurve, horizonOf,
+  pooled, promotionDecision, sameParams, scaleEffect, scoreRows, stillRuns, tracksByName, widen, zoneTester,
 } from "./reestimate-lib.mjs";
 import {
   PARAM_RANGES, CONFORMAL_RANGE as CLIENT_CONFORMAL_RANGE, COMPILED_MODEL_PARAMS,
   ROUTE_SCALE_RANGE as CLIENT_ROUTE_SCALE_RANGE, ROUTE_SCALE_FLOOR_SEC as CLIENT_FLOOR,
-  applyRouteScale,
+  HORIZON_BIAS_K as CLIENT_HB_K, HORIZON_BIAS_KNOT_SEC as CLIENT_HB_KNOTS,
+  HORIZON_BIAS_RANGE as CLIENT_HB_RANGE,
+  applyHorizonBias as clientApplyHorizonBias, applyModelParams, applyRouteScale, resetModelParams,
 } from "../web/src/eta/params";
 
 // A synthetic feed with the answers known by construction. One degree of
@@ -399,5 +402,106 @@ describe("the three copies of the ranges agree", () => {
       const d = DRIFT[k];
       expect(d.abs !== undefined || d.factor !== undefined).toBe(true);
     }
+  });
+});
+
+describe("the per-horizon centre correction", () => {
+  // Pairs whose truth is the promise plus a bucket-specific offset, so the
+  // fit must recover that offset — and nothing else about them matters.
+  const pairsAt = (eta, offset, n) =>
+    Array.from({ length: n }, (_, i) => ({
+      r: "3", k: 1, eta,
+      low: eta * 0.7, high: eta * 1.4,
+      // a spread that is symmetric about the offset, so the MEDIAN is exact
+      prox: eta + offset + ((i % 21) - 10) * 3,
+      det: eta + offset - 12,
+    }));
+
+  it("recovers each bucket's median residual, raw, with the sample beside it", () => {
+    const fit = fitHorizonBias([
+      ...pairsAt(60, 5, 600), ...pairsAt(240, -30, 800),
+      ...pairsAt(420, 45, 900), ...pairsAt(1000, -150, 1200),
+    ]);
+    expect(fit["0-2"]).toMatchObject({ b: 5, n: 600 });
+    expect(fit["2-5"]).toMatchObject({ b: -30, n: 800 });
+    expect(fit["5-10"]).toMatchObject({ b: 45, n: 900 });
+    expect(fit["10-30"]).toMatchObject({ b: -150, n: 1200 });
+    // a bucket nobody promised is no estimate, not a zero
+    expect(fitHorizonBias(pairsAt(1000, 10, 50))["0-2"]).toEqual({ b: null, n: 0, sd: null });
+    // and a promise past the cap is outside every bucket
+    expect(fitHorizonBias(pairsAt(2400, 10, 50))["10-30"].n).toBe(0);
+  });
+
+  it("fits the rider's truth where the pairs carry it, the detector's only where they do not", () => {
+    const p = pairsAt(600, 60, 400);
+    expect(fitHorizonBias(p)["10-30"].b).toBe(60);
+    expect(fitHorizonBias(p.map(({ prox: _drop, ...q }) => q))["10-30"].b).toBe(48);
+    // a pair whose bus never came within 45 m has a NULL prox and is skipped
+    // rather than falling back to the detector for that row alone
+    expect(fitHorizonBias(p.map((q) => ({ ...q, prox: null })))["10-30"].n).toBe(0);
+  });
+
+  it("is the client's own map, knot for knot", () => {
+    expect(HORIZON_BIAS_K).toBe(CLIENT_HB_K);
+    expect(HORIZON_BIAS_RANGE).toEqual([...CLIENT_HB_RANGE]);
+    expect(HORIZON_BIAS_KNOT_SEC).toEqual({ ...CLIENT_HB_KNOTS });
+    const bias = { "0-2": { b: 20, n: 4000 }, "2-5": { b: -40, n: 4000 }, "5-10": { b: 70, n: 4000 }, "10-30": { b: -200, n: 4000 } };
+    applyModelParams({ version: "t", publishedAt: 1, params: { ...COMPILED_MODEL_PARAMS, HORIZON_BIAS: bias } });
+    const curve = horizonCurve(bias);
+    try {
+      for (const sec of [0, 1, 59, 60, 61, 120, 209, 210, 300, 449, 450, 600, 1199, 1200, 1201, 1800, 3600]) {
+        expect(applyHorizonBias(sec, curve)).toBeCloseTo(clientApplyHorizonBias(sec), 9);
+      }
+    } finally {
+      resetModelParams();
+    }
+  });
+
+  it("prices a held-out day by arithmetic, because the correction feeds nothing back", () => {
+    const pairs = [...pairsAt(240, -30, 500), ...pairsAt(1000, -150, 500)];
+    const bias = { "2-5": { b: -30, n: 100_000 }, "10-30": { b: -150, n: 100_000 } };
+    const eff = horizonBiasEffect(pairs, bias);
+    // the bias it was fitted to is the bias it removes
+    expect(Math.abs(eff["2-5"].after.medianSignedSec)).toBeLessThan(Math.abs(eff["2-5"].before.medianSignedSec));
+    expect(Math.abs(eff["10-30"].after.medianSignedSec)).toBeLessThan(Math.abs(eff["10-30"].before.medianSignedSec));
+    expect(eff.all.after.medianAbsSec).toBeLessThan(eff.all.before.medianAbsSec);
+  });
+
+  it("is published only when the sample, the range and the held-out day all agree", () => {
+    const champ = { ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL }, ROUTE_SCALE: {}, HORIZON_BIAS: { ...COMPILED.HORIZON_BIAS } };
+    const goodFits = () => Object.fromEntries(SCALAR_KEYS.map((k) => [k, { value: COMPILED[k], n: N_FLOORS[k] }]));
+    const goodConf = () => Object.fromEntries(HORIZONS.map((h) => [h, { w: 1, n: N_FLOORS.CONFORMAL }]));
+    const better = { before: { medianAbsSec: 60 }, after: { medianAbsSec: 50 } };
+    const worse = { before: { medianAbsSec: 60 }, after: { medianAbsSec: 61 } };
+    const run = (bias, held) => assembleCandidate(goodFits(), goodConf(), champ, { horizonBias: bias, horizonHeldOut: held });
+
+    const ok = run({ "10-30": { b: -90, n: N_FLOORS.HORIZON_BIAS } }, { day: "2026-09-04", "10-30": better });
+    expect(ok.params.HORIZON_BIAS["10-30"]).toEqual({ b: -90, n: N_FLOORS.HORIZON_BIAS });
+
+    const thin = run({ "10-30": { b: -90, n: N_FLOORS.HORIZON_BIAS - 1 } }, { day: "d", "10-30": better });
+    expect(thin.params.HORIZON_BIAS["10-30"]).toEqual({ b: 0, n: 0 });
+    expect(thin.issues.some((i) => i.key === "HORIZON_BIAS.10-30" && /under the floor/.test(i.reason))).toBe(true);
+
+    const wild = run({ "10-30": { b: HORIZON_BIAS_RANGE[0] - 1, n: 100_000 } }, { day: "d", "10-30": better });
+    expect(wild.params.HORIZON_BIAS["10-30"]).toEqual({ b: 0, n: 0 });
+
+    const regressed = run({ "10-30": { b: -90, n: 100_000 } }, { day: "2026-09-04", "10-30": worse });
+    expect(regressed.params.HORIZON_BIAS["10-30"]).toEqual({ b: 0, n: 0 });
+    expect(regressed.issues.some((i) => i.key === "HORIZON_BIAS.10-30" && /held out/.test(i.reason))).toBe(true);
+
+    // one bucket's refusal never touches another's
+    const mixed = run(
+      { "5-10": { b: 40, n: 100_000 }, "10-30": { b: -90, n: 100_000 } },
+      { day: "d", "5-10": better, "10-30": worse },
+    );
+    expect(mixed.params.HORIZON_BIAS["5-10"]).toEqual({ b: 40, n: 100_000 });
+    expect(mixed.params.HORIZON_BIAS["10-30"]).toEqual({ b: 0, n: 0 });
+  });
+
+  it("counts as a change for sameParams, so a moved centre forces a challenger replay", () => {
+    const a = { ...COMPILED, CONFORMAL: { ...COMPILED.CONFORMAL }, ROUTE_SCALE: {}, HORIZON_BIAS: { ...COMPILED.HORIZON_BIAS } };
+    const b = { ...a, HORIZON_BIAS: { ...a.HORIZON_BIAS, "10-30": { b: -60, n: 9000 } } };
+    expect(sameParams(a, a)).toBe(true);
+    expect(sameParams(a, b)).toBe(false);
   });
 });

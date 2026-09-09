@@ -37,7 +37,7 @@
 import { quantile, residual, type Dist } from "./dist";
 import { forecastForStand, standingRemaining, type StandingForecasts } from "./standingForecast";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
-import { applyRouteScale, routeScale, widenBand } from "./params";
+import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
 import type { Ring } from "./ring";
 import type { RouteTables } from "./tables";
 
@@ -461,6 +461,19 @@ export function priceRoute(
       low = applyRouteScale(low, scale);
       high = applyRouteScale(high, scale);
     }
+    // The learned per-HORIZON centre correction (params.ts,
+    // docs/horizon-bias.md). Where the route scale asks "is this line's lap
+    // short", this asks "when the screen says ten minutes, when does the bus
+    // actually come" — the residual conditioned on the number the rider is
+    // reading, which is the only conditioning a rider can act on. It is a
+    // monotone piecewise-linear map through the bucket midpoints, so it moves
+    // `low`, `eta` and `high` without reordering them, it is time-invariant,
+    // and — like the hinge — it runs AFTER the clamp so the floor keeps
+    // storing the uncorrected number. Every bucket zero (the default, and any
+    // payload without the key) returns the seconds unchanged.
+    eta = applyHorizonBias(eta);
+    low = applyHorizonBias(low);
+    high = applyHorizonBias(high);
     // The learned per-horizon widening (params.ts, docs/closed-loop.md stage 3)
     // is the LAST thing applied: it is fitted against the number a rider was
     // actually shown, so it must scale the band about that number, after the

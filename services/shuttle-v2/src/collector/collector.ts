@@ -487,6 +487,10 @@ export class Collector {
   /** The verbatim census of the same endpoint into upstream_etas. Null when disabled. */
   readonly etaSampler: UpstreamEtaSampler | null;
 
+  /** See {@link setPollObserver}. */
+  private pollObserver: (() => void) | null = null;
+  private pollObserverFailures = 0;
+
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
   private staticHandle?: NodeJS.Timeout;
@@ -843,6 +847,7 @@ export class Collector {
         if (stepped.events.length > 0) this.persistEvents(stepped.events);
         if (stepped.visits.length > 0) this.persistVisits(stepped.visits, now, plan.contendedNames);
         this.updateLivePositions(observations, plan);
+        this.notifyPollObserver();
       } catch (err) {
         this.logger.error("collector.poll_process_failed", {
           error: (err as Error).message,
@@ -959,6 +964,43 @@ export class Collector {
    */
   dataVersion(): number {
     return this.version;
+  }
+
+  /**
+   * One slot for something that must run on every poll that produced new
+   * positions — today only the server-side ETA belief (`src/server/serverEta.ts`),
+   * which has to be stepped whether or not a rider is asking, because a belief
+   * only stays warm by never stopping.
+   *
+   * A SLOT rather than a list: `buildApp` registers it, and the tests build
+   * several apps over one collector, so a growing array would leak an observer
+   * per app and step the same belief several times per poll. The last app wins,
+   * which is the only one that is ever serving.
+   *
+   * It runs AFTER `updateLivePositions`, so `dataVersion()` has already moved
+   * and `getLiveBuses()` already reports this poll's fixes.
+   */
+  setPollObserver(fn: (() => void) | null): void {
+    this.pollObserver = fn;
+  }
+
+  /**
+   * Never lets an observer break the poll. The collector's own work is done by
+   * the time this runs; an estimator exception must cost the served ETA field
+   * and nothing else.
+   */
+  private notifyPollObserver(): void {
+    const fn = this.pollObserver;
+    if (!fn) return;
+    try {
+      fn();
+    } catch (err) {
+      this.pollObserverFailures++;
+      this.logger.error("collector.poll_observer_failed", {
+        error: (err as Error).message,
+        failures: this.pollObserverFailures,
+      });
+    }
   }
 
   /**

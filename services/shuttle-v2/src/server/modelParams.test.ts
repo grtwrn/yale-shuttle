@@ -9,6 +9,7 @@ import { openDb, type DbBundle } from "../db/client.js";
 import {
   CONFORMAL_HORIZONS,
   CONFORMAL_RANGE,
+  HORIZON_BIAS_RANGE,
   MAX_ROUTE_SCALE_KEYS,
   PARAM_RANGES,
   ROUTE_SCALE_RANGE,
@@ -30,6 +31,7 @@ function goodParams(): ModelParamSet {
   for (const k of SCALAR_PARAM_KEYS) out[k] = mid(PARAM_RANGES[k]);
   out["CONFORMAL"] = Object.fromEntries(CONFORMAL_HORIZONS.map((h) => [h, mid(CONFORMAL_RANGE)]));
   out["ROUTE_SCALE"] = {};
+  out["HORIZON_BIAS"] = Object.fromEntries(CONFORMAL_HORIZONS.map((h) => [h, { b: 0, n: 0 }]));
   return out as ModelParamSet;
 }
 
@@ -139,6 +141,33 @@ describe("the ranges match the client's", () => {
     const cap = /export const MAX_ROUTE_SCALE_KEYS = (\d+);/.exec(src);
     expect(cap, "MAX_ROUTE_SCALE_KEYS in web/src/eta/params.ts").toBeTruthy();
     expect(Number(cap![1])).toBe(MAX_ROUTE_SCALE_KEYS);
+  });
+
+  it("HORIZON_BIAS_RANGE", () => {
+    const m = /export const HORIZON_BIAS_RANGE[^=]*= \[(-?[0-9.]+), (-?[0-9.]+)\];/.exec(src);
+    expect(m, "HORIZON_BIAS_RANGE in web/src/eta/params.ts").toBeTruthy();
+    expect([Number(m![1]), Number(m![2])]).toEqual([...HORIZON_BIAS_RANGE]);
+  });
+});
+
+describe("HORIZON_BIAS on the wire", () => {
+  it("is optional — a set published before the key existed still parses", () => {
+    const { HORIZON_BIAS: _gone, ...older } = goodParams();
+    const r = parseParamSet(older);
+    expect(r.ok && r.value.HORIZON_BIAS["10-30"]).toEqual({ b: 0, n: 0 });
+  });
+
+  it("takes an offset in range with its sample, and refuses anything else, whole", () => {
+    expect(parseParamSet({ ...goodParams(), HORIZON_BIAS: { "10-30": { b: -90.5, n: 12_000 } } }))
+      .toMatchObject({ ok: true });
+    expect(parseParamSet({ ...goodParams(), HORIZON_BIAS: { "10-30": { b: HORIZON_BIAS_RANGE[0] - 1, n: 10 } } }))
+      .toMatchObject({ ok: false, error: "out_of_range:HORIZON_BIAS.10-30" });
+    expect(parseParamSet({ ...goodParams(), HORIZON_BIAS: { "10-30": { b: -10, n: -1 } } }))
+      .toMatchObject({ ok: false, error: "horizon_bias_n:10-30" });
+    expect(parseParamSet({ ...goodParams(), HORIZON_BIAS: { "10-30": 5 } }))
+      .toMatchObject({ ok: false, error: "horizon_bias_cell:10-30" });
+    expect(parseParamSet({ ...goodParams(), HORIZON_BIAS: 5 }))
+      .toMatchObject({ ok: false, error: "horizon_bias_not_object" });
   });
 });
 

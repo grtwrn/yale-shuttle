@@ -48,12 +48,24 @@ export const CONFORMAL_RANGE: readonly [number, number] = [0.5, 4];
 /** Mirrors web/src/eta/params.ts ROUTE_SCALE_RANGE / MAX_ROUTE_SCALE_KEYS. */
 export const ROUTE_SCALE_RANGE: readonly [number, number] = [0.75, 1.25];
 export const MAX_ROUTE_SCALE_KEYS = 64;
+/** Mirrors web/src/eta/params.ts HORIZON_BIAS_RANGE. */
+export const HORIZON_BIAS_RANGE: readonly [number, number] = [-600, 600];
 const ROUTE_KEY_RE = /^[0-9]{1,6}$/;
+
+/** The RAW per-horizon residual and its sample; the client does the shrinking. */
+export interface HorizonBiasCell { b: number; n: number }
 
 export type ModelParamSet = Record<ScalarParamKey, number> & {
   CONFORMAL: Record<ConformalHorizon, number>;
   /** Per bus route id, the multiplicative correction on the priced arrival. */
   ROUTE_SCALE: Record<string, number>;
+  /**
+   * Per promised-minutes bucket, the median residual (truth − promise) and
+   * the pairs behind it, RAW: the client damps it by n/(n+k) exactly as it
+   * damps the diurnal profile, so the estimate that is published and the
+   * estimate that is applied cannot drift apart.
+   */
+  HORIZON_BIAS: Record<ConformalHorizon, HorizonBiasCell>;
 };
 
 export interface ModelParamsSubmission {
@@ -109,7 +121,30 @@ export function parseParamSet(raw: unknown): { ok: true; value: ModelParamSet } 
       scales[k] = v as number;
     }
   }
-  return { ok: true, value: { ...(out as Record<ScalarParamKey, number>), CONFORMAL: conformal, ROUTE_SCALE: scales } };
+  // HORIZON_BIAS, like ROUTE_SCALE, is optional on the way in so a row
+  // published before it existed keeps parsing.
+  const bias: Record<ConformalHorizon, HorizonBiasCell> = {
+    "0-2": { b: 0, n: 0 }, "2-5": { b: 0, n: 0 }, "5-10": { b: 0, n: 0 }, "10-30": { b: 0, n: 0 },
+  };
+  const hb = o["HORIZON_BIAS"];
+  if (hb !== undefined && hb !== null) {
+    if (typeof hb !== "object") return { ok: false, error: "horizon_bias_not_object" };
+    const h = hb as Record<string, unknown>;
+    for (const k of CONFORMAL_HORIZONS) {
+      const cell = h[k];
+      if (cell === undefined || cell === null) continue;
+      if (typeof cell !== "object") return { ok: false, error: `horizon_bias_cell:${k}` };
+      const c = cell as Record<string, unknown>;
+      if (!inRange(c["b"], HORIZON_BIAS_RANGE)) return { ok: false, error: `out_of_range:HORIZON_BIAS.${k}` };
+      const n = c["n"];
+      if (typeof n !== "number" || !Number.isFinite(n) || n < 0) return { ok: false, error: `horizon_bias_n:${k}` };
+      bias[k] = { b: c["b"] as number, n };
+    }
+  }
+  return {
+    ok: true,
+    value: { ...(out as Record<ScalarParamKey, number>), CONFORMAL: conformal, ROUTE_SCALE: scales, HORIZON_BIAS: bias },
+  };
 }
 
 /** The whole POST body, validated. */

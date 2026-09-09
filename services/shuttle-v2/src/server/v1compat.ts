@@ -20,6 +20,7 @@ import { distanceMeters } from "../network/geo.js";
 import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
 import { geocode, normalizeName, relevanceOf } from "./geocode.js";
 import type { ModelParamsSource } from "./modelParams.js";
+import type { EtaPayloadView, ServerEta } from "./serverEta.js";
 import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
@@ -363,6 +364,18 @@ const BUSES_CACHE_MAX_AGE_MS = 1_000;
 export function createBusesPayloadCache(
   collector: Collector,
   modelParams?: ModelParamsSource | null,
+  /**
+   * The server-side belief, when `SHUTTLE_SERVER_ETA=1` built one. Omitted —
+   * the default — nothing below runs and the serialized bytes are exactly what
+   * they were; `serverEta.test.ts` asserts that byte-for-byte.
+   *
+   * It is attached HERE rather than inside `buildBusesPayload` because the
+   * estimator's input IS this payload: it reads the very topology, tables and
+   * positions the rider gets, so there is no second marshalling to drift from
+   * the client's. Building it and then appending the answer is the only
+   * ordering that keeps that true.
+   */
+  serverEta?: ServerEta | null,
 ): () => string {
   let cachedVersion = -1;
   let cachedParamsVersion = -1;
@@ -383,7 +396,14 @@ export function createBusesPayloadCache(
     }
     cachedVersion = collector.dataVersion();
     cachedParamsVersion = paramsVersion;
-    cachedJson = JSON.stringify(buildBusesPayload(collector, modelParams));
+    const payload = buildBusesPayload(collector, modelParams);
+    if (serverEta) {
+      // Non-throwing by contract (see serverEta.ts): the worst case is an
+      // absent field, never a failed /api/buses.
+      const wire = serverEta.contribute(payload as unknown as EtaPayloadView, cachedVersion, nowMs);
+      if (wire) payload["server_eta"] = wire;
+    }
+    cachedJson = JSON.stringify(payload);
     cachedAt = nowMs;
     return cachedJson;
   };
