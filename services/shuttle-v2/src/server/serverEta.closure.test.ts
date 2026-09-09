@@ -19,23 +19,27 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(new URL("../..", import.meta.url).pathname);
 const ENTRY = path.join(ROOT, "src/server/serverEta.ts");
 
-/** Every relative import in a TS source, value and type alike. */
-function importsOf(file: string): string[] {
-  const src = fs.readFileSync(file, "utf8");
+/** Relative static imports/re-exports, including multiline and type-only declarations. */
+function importsFromSource(src: string, file = "source.ts"): string[] {
+  const source = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const out: string[] = [];
-  const re = /(?:^|\n)\s*(?:import|export)\b[^;\n]*?from\s*["']([^"']+)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(src)) !== null) {
-    const spec = m[1]!;
-    if (spec.startsWith(".")) out.push(spec);
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
+    const spec = statement.moduleSpecifier;
+    if (spec && ts.isStringLiteral(spec) && spec.text.startsWith(".")) out.push(spec.text);
   }
   return out;
+}
+
+function importsOf(file: string): string[] {
+  return importsFromSource(fs.readFileSync(file, "utf8"), file);
 }
 
 function resolveSpec(fromFile: string, spec: string): string | null {
@@ -61,6 +65,29 @@ function closure(entry: string): Set<string> {
   }
   return seen;
 }
+
+describe("static dependency extraction", () => {
+  it("follows multiline imports, re-exports, type-only and side-effect imports", () => {
+    const source = `
+      import { analyticMixture, analyticResidual,
+        atomQuantiles } from "./standingDistribution";
+      export {
+        atomQuantiles
+      } from "./reexport";
+      import type {
+        Ring
+      } from "./ring";
+      export type { Dist } from "./dist";
+      import "./register";
+      import { external } from "external-package";
+      // import { ignored } from "./comment";
+      const text = 'export { ignored } from "./string"';
+    `;
+    expect(importsFromSource(source)).toEqual([
+      "./standingDistribution", "./reexport", "./ring", "./dist", "./register",
+    ]);
+  });
+});
 
 describe("the estimator the server imports reaches the runtime image", () => {
   const files = [...closure(ENTRY)].map((f) => path.relative(ROOT, f)).sort();
@@ -88,6 +115,18 @@ describe("the estimator the server imports reaches the runtime image", () => {
         expect(src.includes(bad), `${f} touches ${bad}`).toBe(false);
       }
     }
+  });
+
+  it("includes the standing distribution behind the actual multiline import", () => {
+    expect(importsOf(path.join(ROOT, "web/src/eta/standingForecast.ts"))).toContain("./standingDistribution");
+    expect(web).toContain("web/src/eta/standingDistribution.ts");
+  });
+
+  it("detects an omitted transitive module even when its importer is copied", () => {
+    const omitted = "web/src/eta/standingDistribution.ts";
+    const incomplete = backendStage.replaceAll(omitted, "");
+    expect(incomplete).toContain("web/src/eta/standingForecast.ts");
+    expect(web.filter((file) => !incomplete.includes(file))).toEqual([omitted]);
   });
 
   it.each(web)("Dockerfile copies %s into the backend stage", (f) => {

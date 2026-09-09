@@ -45,6 +45,7 @@ COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts 
      web/src/map-data.ts web/src/routes.ts ./web/src/
 COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
      web/src/eta/index.ts web/src/eta/params.ts web/src/eta/ring.ts \
+     web/src/eta/standingForecast.ts web/src/eta/standingDistribution.ts \
      web/src/eta/tables.ts ./web/src/eta/
 
 # ---- Runtime ---------------------------------------------------------------
