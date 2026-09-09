@@ -1,0 +1,1076 @@
+{
+  "schemaVersion": 1,
+  "scope": "Red route 3; Winchester stop 11 occurrence 14; Division/Prospect stop 48 occurrence 17",
+  "interpretation": "The unchanged phase fit improves eight-hold average errors with fresh causal history; archive-history results are much weaker. Both comparisons and every eligible baseline key are retained. Causal history is reconstructed availability, not proof of contexts served live.",
+  "artifactRoot": "services/shuttle-v2/store/red-validation-20260909/phase-0955-1359",
+  "rawArtifactsIgnored": true,
+  "window": {
+    "afterExclusive": 1788962153271,
+    "afterExclusiveET": "2026-09-09T09:55:53.271000-04:00",
+    "throughInclusive": 1788976795364,
+    "throughInclusiveET": "2026-09-09T13:59:55.364000-04:00"
+  },
+  "frozenSource": {
+    "head": "e332cbaa9cfc4911bc97776d8103b64cb5437084",
+    "checkout": "/home/gwarren/wt/pr184-feedback/services/shuttle-v2",
+    "sourceDiffersFromCurrentPrTree": true,
+    "sourceAndInputHashesVerified": 168
+  },
+  "launchManifestSha256": "60cfc4203d2890b0c76f25a07e6c85e296fb2a3cf94f3bf9c97b4b0309713d99",
+  "registrationSha256": "e6d64dbb798229e275d8abee3599314009f503a540d0ad77962a9a295bc21c0d",
+  "fit": {
+    "fittedAt": 1788929220000,
+    "cutoffUtc": "2026-09-09T04:47:00Z",
+    "cutoffET": "2026-09-09T00:47:00-04:00",
+    "sha256": "207a38440ecea00d54409365ce29999df2d43869c08de63d2b4aa15aca9d1de8",
+    "noSeptember9ServiceDayTraining": true,
+    "noRefitOrTuning": true
+  },
+  "sourceDbSha256": "3497051dda04ab85d46949573b96605dcb5e1f9fe708450fddc926a544e773fa",
+  "modelParamsSha256": "13dfdd9743d91f0f4c7eac675578ec0f6c34da31bb2db1aa418a74b521639ff9",
+  "rawSourceSha256": "9b9089e57355545fc9aa4df74a7f08ad086a6773797d219dafe7f90a3c809952",
+  "coverage": {
+    "positions": {
+      "newWindowRows": 5720,
+      "newWindowPolls": 2892,
+      "wholeCaptureRows": 9539,
+      "identicalOverlappingRowsDeduplicated": 3817,
+      "sourceArchiveRedRows": 9537
+    },
+    "buses": [
+      {
+        "busKey": "#119",
+        "busId": 66115,
+        "rows": 4872,
+        "newWindowRows": 2869,
+        "firstET": "2026-09-09T07:08:24.270000-04:00",
+        "lastET": "2026-09-09T13:56:00.474000-04:00",
+        "newWindowFirstET": "2026-09-09T09:55:58.508000-04:00",
+        "newWindowLastET": "2026-09-09T13:56:00.474000-04:00",
+        "newWindowGapsOver30Sec": [],
+        "wholeCaptureGapsOver30Sec": []
+      },
+      {
+        "busKey": "#119",
+        "busId": 66136,
+        "rows": 23,
+        "newWindowRows": 23,
+        "firstET": "2026-09-09T13:58:05.353000-04:00",
+        "lastET": "2026-09-09T13:59:55.364000-04:00",
+        "newWindowFirstET": "2026-09-09T13:58:05.353000-04:00",
+        "newWindowLastET": "2026-09-09T13:59:55.364000-04:00",
+        "newWindowGapsOver30Sec": [],
+        "wholeCaptureGapsOver30Sec": []
+      },
+      {
+        "busKey": "#306",
+        "busId": 66110,
+        "rows": 2,
+        "newWindowRows": 0,
+        "firstET": "2026-09-09T06:45:29.144000-04:00",
+        "lastET": "2026-09-09T06:45:34.155000-04:00",
+        "newWindowFirstET": null,
+        "newWindowLastET": null,
+        "newWindowGapsOver30Sec": [],
+        "wholeCaptureGapsOver30Sec": []
+      },
+      {
+        "busKey": "#306",
+        "busId": 66117,
+        "rows": 4642,
+        "newWindowRows": 2828,
+        "firstET": "2026-09-09T07:24:09.375000-04:00",
+        "lastET": "2026-09-09T13:52:34.642000-04:00",
+        "newWindowFirstET": "2026-09-09T09:55:58.508000-04:00",
+        "newWindowLastET": "2026-09-09T13:52:34.642000-04:00",
+        "newWindowGapsOver30Sec": [],
+        "wholeCaptureGapsOver30Sec": []
+      }
+    ],
+    "routePatternId": "3:643d62cc87a5f1be71b3cfef",
+    "geometryMatchesPrior": true,
+    "geometryCaveat": "Prior 09:55 and latest 14:00 payload geometry match. No continuous per-GPS topology version; intervening changes cannot be independently excluded."
+  },
+  "archiveHistory": {
+    "policy": "Keep earliest completed archived server version and archive observedBy knownAt. New 14:00-only completions cannot become features during this window. No history reconstructed from raw GPS.",
+    "retainedPriorRows": 158,
+    "newRows": 228,
+    "newRowsAvailableWithinWindow": 0,
+    "newObservedBy": 1788976803145,
+    "newObservedByET": "2026-09-09T14:00:03.145000-04:00",
+    "historySha256": "588f56f0625601407e9f086f87d5b8b8fdf7c4a01279965b0a98179c39600c2b"
+  },
+  "causalHistory": {
+    "dataset": "causal-client-dataset-v2",
+    "policy": "knownAt = emittedAt = actual processing poll clock; departedAt may precede emission and is never substituted for availability.",
+    "runtimeGate": "Unchanged AnalyticRuntime requires completed history known before the observed server rest origin, and prior departure before that origin. Client independently validates sources against browser origin.",
+    "historySha256": "3c9c916083028e7a50bbb770e5df0aa04500b967d4582042e342e76c0454ad07",
+    "completeEmissionRows": 386,
+    "censoredRowsExcluded": 8,
+    "featureFieldWhitelist": [
+      "id",
+      "routeId",
+      "routePatternId",
+      "stopId",
+      "stopIndex",
+      "busKey",
+      "busId",
+      "day",
+      "anchoredAt",
+      "pinnedAt",
+      "arrivedAt",
+      "departedAt",
+      "knownAt",
+      "outcome",
+      "patternResolved",
+      "emittedAt",
+      "trackId",
+      "availabilityKind",
+      "observedBy"
+    ],
+    "prefixProofSha256": "2967755f5c7b6274354dd4c09d5e41e3d0c6a32f97e39777245fbc30b42b2986",
+    "prefixChecks": {
+      "synthetic": 62,
+      "previouslyExaminedWarmup": 5,
+      "passed": true
+    }
+  },
+  "sameEligibleBaselinePopulation": {
+    "winchester-pinnedTotal": {
+      "sameBaselineKeys": true,
+      "archiveOnlyCount": 0,
+      "causalOnlyCount": 0
+    },
+    "winchester-remaining": {
+      "sameBaselineKeys": true,
+      "archiveOnlyCount": 0,
+      "causalOnlyCount": 0
+    },
+    "primary-hold-to-division": {
+      "sameBaselineKeys": true,
+      "archiveOnlyCount": 0,
+      "causalOnlyCount": 0
+    }
+  },
+  "comparisons": {
+    "archive": {
+      "arms": [
+        "baseline",
+        "candidate"
+      ],
+      "historyPolicy": "Same unchanged operational phase fit with first-archive-observed completed server history; new 14:00-only history remains unavailable within window.",
+      "sourceReportSha256": "ea05ae8ad71a65b35d200b9434c047e6e397b0d061ebd241d0c5e61be2ec0d24",
+      "firstTotal": {
+        "forecasts": 8,
+        "episodes": 8,
+        "baseline": {
+          "mae": 205.02370383797114,
+          "bias": -161.25218845062818,
+          "over120": 0.125,
+          "under120": 0.625,
+          "anyOver120Episodes": 1,
+          "anyUnder120Episodes": 5
+        },
+        "candidate": {
+          "mae": 195.28615988959922,
+          "bias": -96.27099225815846,
+          "over120": 0.25,
+          "under120": 0.5,
+          "anyOver120Episodes": 2,
+          "anyUnder120Episodes": 4
+        },
+        "delta": {
+          "mae": -9.737543948371929,
+          "bias": 64.98119619246972,
+          "over120": 0.125,
+          "under120": -0.125
+        },
+        "delta95": {
+          "mae": [
+            -78.20751830109768,
+            32.663257637321266
+          ],
+          "bias": [
+            -29.274583267577952,
+            230.29781988371866
+          ],
+          "over120": [
+            0.0,
+            0.375
+          ],
+          "under120": [
+            -0.375,
+            0.0
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -52.138345534065124,
+            32.663257637321266
+          ],
+          "bias": [
+            -6.079648038731563,
+            136.04204042367098
+          ],
+          "over120": [
+            0.0,
+            0.25
+          ],
+          "under120": [
+            -0.25,
+            0.0
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 2,
+          "unchanged": 0,
+          "worsen": 6
+        }
+      },
+      "remaining": {
+        "forecasts": 118,
+        "episodes": 8,
+        "baseline": {
+          "mae": 123.43110322521554,
+          "bias": -41.274301948590825,
+          "over120": 0.1388888888888889,
+          "under120": 0.27973488308366823,
+          "anyOver120Episodes": 2,
+          "anyUnder120Episodes": 5
+        },
+        "candidate": {
+          "mae": 125.60240688549545,
+          "bias": 12.405905897979098,
+          "over120": 0.25,
+          "under120": 0.19854615759347216,
+          "anyOver120Episodes": 2,
+          "anyUnder120Episodes": 4
+        },
+        "delta": {
+          "mae": 2.171303660279926,
+          "bias": 53.680207846569914,
+          "over120": 0.1111111111111111,
+          "under120": -0.0811887254901961
+        },
+        "delta95": {
+          "mae": [
+            -3.5407834176527286,
+            7.212360434543051
+          ],
+          "bias": [
+            -2.6925403992023416,
+            164.07669504311824
+          ],
+          "over120": [
+            -0.041666666666666664,
+            0.375
+          ],
+          "under120": [
+            -0.265625,
+            0.02205882352941175
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -0.3654781470332882,
+            4.70808546759314
+          ],
+          "bias": [
+            -1.7699230584881451,
+            109.13033875162797
+          ],
+          "over120": [
+            -0.027777777777777776,
+            0.25
+          ],
+          "under120": [
+            -0.17708333333333334,
+            0.014705882352941166
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 4,
+          "unchanged": 0,
+          "worsen": 4
+        }
+      },
+      "divisionEta": {
+        "forecasts": 120,
+        "episodes": 8,
+        "baseline": {
+          "mae": 159.234042227286,
+          "bias": -132.69631712302237,
+          "coverage80": 0.8981884057971015,
+          "width80": 587.146535082833,
+          "over120": 0.03125,
+          "under120": 0.46245666382495026,
+          "anyOver120Episodes": 1,
+          "anyUnder120Episodes": 7
+        },
+        "candidate": {
+          "mae": 130.20515835823005,
+          "bias": -11.550600928781085,
+          "coverage80": 0.971231884057971,
+          "width80": 669.4388272641348,
+          "over120": 0.21375,
+          "under120": 0.2165089514066496,
+          "anyOver120Episodes": 2,
+          "anyUnder120Episodes": 5
+        },
+        "delta": {
+          "mae": -29.028883869055946,
+          "bias": 121.14571619424127,
+          "coverage80": 0.07304347826086957,
+          "width80": 82.29229218130189,
+          "over120": 0.1825,
+          "under120": -0.24594771241830063
+        },
+        "delta95": {
+          "mae": [
+            -53.72481190510885,
+            1.5837216519341033
+          ],
+          "bias": [
+            64.65398829672428,
+            218.79491862818367
+          ],
+          "coverage80": [
+            0.0,
+            0.17804347826086958
+          ],
+          "width80": [
+            17.138750715709136,
+            176.77137752419864
+          ],
+          "over120": [
+            0.0,
+            0.4275
+          ],
+          "under120": [
+            -0.39388888888888884,
+            -0.11102941176470632
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -30.957377477466032,
+            -27.100390260645856
+          ],
+          "bias": [
+            77.41816051923873,
+            164.8732718692438
+          ],
+          "coverage80": [
+            0.0,
+            0.14608695652173914
+          ],
+          "width80": [
+            27.314688437838726,
+            137.26989592476505
+          ],
+          "over120": [
+            0.0,
+            0.365
+          ],
+          "under120": [
+            -0.2533333333333333,
+            -0.23856209150326796
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 6,
+          "unchanged": 0,
+          "worsen": 2
+        }
+      },
+      "allRedEtaSecondary": {
+        "forecasts": 4644,
+        "episodes": 228,
+        "baseline": {
+          "mae": 75.53267683865903,
+          "bias": -17.61876028643311,
+          "coverage80": 0.8940562038503064,
+          "width80": 334.39171473801775,
+          "over120": 0.04339953788624715,
+          "under120": 0.13165129248584556,
+          "anyOver120Episodes": 38,
+          "anyUnder120Episodes": 69
+        },
+        "candidate": {
+          "mae": 73.08541223295106,
+          "bias": -3.550225317429952,
+          "coverage80": 0.9015933939367202,
+          "width80": 350.03294319271055,
+          "over120": 0.06366502791140316,
+          "under120": 0.1046804415147877,
+          "anyOver120Episodes": 57,
+          "anyUnder120Episodes": 59
+        },
+        "delta": {
+          "mae": -2.447264605707971,
+          "bias": 14.068534969003156,
+          "coverage80": 0.007537190086413936,
+          "width80": 15.64122845469281,
+          "over120": 0.020265490025156013,
+          "under120": -0.026970850971057878
+        },
+        "delta95": {
+          "mae": [
+            -3.8072628558113286,
+            -1.133442403182977
+          ],
+          "bias": [
+            7.901629137830681,
+            21.61310568812376
+          ],
+          "coverage80": [
+            0.0018584299796543901,
+            0.01410050801234715
+          ],
+          "width80": [
+            8.35204700508206,
+            24.460344906895525
+          ],
+          "over120": [
+            0.007734267049514106,
+            0.036344698753445225
+          ],
+          "under120": [
+            -0.039176909110077415,
+            -0.016163501843885156
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -2.6459258704354625,
+            -2.258791098145992
+          ],
+          "bias": [
+            9.706878756396614,
+            18.20651650404013
+          ],
+          "coverage80": [
+            -0.0011675504876201826,
+            0.015795533707933483
+          ],
+          "width80": [
+            9.880954442451289,
+            21.106103799639893
+          ],
+          "over120": [
+            0.0063727665377427255,
+            0.033445766154240414
+          ],
+          "under120": [
+            -0.028179166525587197,
+            -0.025824500316760826
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 103,
+          "unchanged": 1,
+          "worsen": 124
+        }
+      },
+      "standingCoverage": {
+        "baseline": {
+          "recordedRowsWholeCapture": 194,
+          "recordedRowsAfterCutoff": 140,
+          "associationWholeCapture": {
+            "outsideCompletePhysicalStand": 33,
+            "occurrenceAgrees": 161
+          },
+          "associationAfterCutoff": {
+            "occurrenceAgrees": 118,
+            "outsideCompletePhysicalStand": 22
+          },
+          "missingValidDisplayAfterCutoff": 0,
+          "eligibleMoments": 118,
+          "eligibleVisits": 8,
+          "originalFirstDisplaysWholeCapture": 13,
+          "originalFirstDisplaysAfterCutoff": 8,
+          "earlierOriginalFirstDisplaysNotPromoted": 5,
+          "originalFirstAfterCutoffNotPaired": 0,
+          "unmatchedEligibleMoments": 0
+        },
+        "candidate": {
+          "recordedRowsWholeCapture": 194,
+          "recordedRowsAfterCutoff": 140,
+          "associationWholeCapture": {
+            "outsideCompletePhysicalStand": 33,
+            "occurrenceAgrees": 161
+          },
+          "associationAfterCutoff": {
+            "occurrenceAgrees": 118,
+            "outsideCompletePhysicalStand": 22
+          },
+          "missingValidDisplayAfterCutoff": 0,
+          "eligibleMoments": 118,
+          "eligibleVisits": 8,
+          "originalFirstDisplaysWholeCapture": 13,
+          "originalFirstDisplaysAfterCutoff": 8,
+          "earlierOriginalFirstDisplaysNotPromoted": 5,
+          "originalFirstAfterCutoffNotPaired": 0,
+          "unmatchedEligibleMoments": 0
+        }
+      },
+      "unpairedOriginalFirsts": {
+        "baseline": [],
+        "candidate": []
+      },
+      "changedFirstTotals": 8,
+      "changedPrimaryEtaVectors": 120,
+      "activation": {
+        "baseline": {
+          "successfulWindowCalls": 0,
+          "successfulWinchesterWindowCalls": 0,
+          "passed": true
+        },
+        "candidate": {
+          "successfulWindowCalls": 7464,
+          "successfulWinchesterWindowCalls": 2141,
+          "passed": true
+        }
+      }
+    },
+    "causal": {
+      "arms": [
+        "baseline",
+        "causal"
+      ],
+      "historyPolicy": "Same unchanged operational phase fit, but feature history consists only of complete immutable reducer emissions with knownAt=emission poll. Separately reconstructed availability, not logged production availability.",
+      "sourceReportSha256": "85deb2ee67ee4a7808bc21ba3f3cfd767e9a81fa5ad20edffc0dbb8ba0d7c4c6",
+      "firstTotal": {
+        "forecasts": 8,
+        "episodes": 8,
+        "baseline": {
+          "mae": 205.02370383797114,
+          "bias": -161.25218845062818,
+          "over120": 0.125,
+          "under120": 0.625,
+          "anyOver120Episodes": 1,
+          "anyUnder120Episodes": 5
+        },
+        "candidate": {
+          "mae": 67.53581712339556,
+          "bias": 60.21443508184564,
+          "over120": 0.125,
+          "under120": 0.0,
+          "anyOver120Episodes": 1,
+          "anyUnder120Episodes": 0
+        },
+        "delta": {
+          "mae": -137.48788671457558,
+          "bias": 221.46662353247382,
+          "over120": 0.0,
+          "under120": -0.625
+        },
+        "delta95": {
+          "mae": [
+            -220.91496866269702,
+            -59.670838195598606
+          ],
+          "bias": [
+            73.22908961214873,
+            381.9246733074919
+          ],
+          "over120": [
+            -0.375,
+            0.375
+          ],
+          "under120": [
+            -0.875,
+            -0.25
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -186.19576941719103,
+            -88.78000401196013
+          ],
+          "bias": [
+            121.61410880619641,
+            321.31913825875125
+          ],
+          "over120": [
+            0.0,
+            0.0
+          ],
+          "under120": [
+            -0.75,
+            -0.5
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 7,
+          "unchanged": 0,
+          "worsen": 1
+        }
+      },
+      "remaining": {
+        "forecasts": 118,
+        "episodes": 8,
+        "baseline": {
+          "mae": 123.43110322521554,
+          "bias": -41.274301948590825,
+          "over120": 0.1388888888888889,
+          "under120": 0.27973488308366823,
+          "anyOver120Episodes": 2,
+          "anyUnder120Episodes": 5
+        },
+        "candidate": {
+          "mae": 81.36129977490218,
+          "bias": 76.8730865776054,
+          "over120": 0.1855072463768116,
+          "under120": 0.0,
+          "anyOver120Episodes": 3,
+          "anyUnder120Episodes": 0
+        },
+        "delta": {
+          "mae": -42.06980345031336,
+          "bias": 118.14738852619624,
+          "over120": 0.0466183574879227,
+          "under120": -0.27973488308366823
+        },
+        "delta95": {
+          "mae": [
+            -77.562462480921,
+            -7.1429113689172326
+          ],
+          "bias": [
+            8.15199568857726,
+            238.92056279141113
+          ],
+          "over120": [
+            -0.3285356280193237,
+            0.38055555555555554
+          ],
+          "under120": [
+            -0.471286231884058,
+            -0.0976890756302521
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -43.507831578120445,
+            -40.63177532250627
+          ],
+          "bias": [
+            35.6155478203105,
+            200.67922923208195
+          ],
+          "over120": [
+            -0.027777777777777776,
+            0.12101449275362319
+          ],
+          "under120": [
+            -0.4176630434782609,
+            -0.14180672268907563
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 6,
+          "unchanged": 0,
+          "worsen": 2
+        }
+      },
+      "divisionEta": {
+        "forecasts": 120,
+        "episodes": 8,
+        "baseline": {
+          "mae": 159.234042227286,
+          "bias": -132.69631712302237,
+          "coverage80": 0.8981884057971015,
+          "width80": 587.146535082833,
+          "over120": 0.03125,
+          "under120": 0.46245666382495026,
+          "anyOver120Episodes": 1,
+          "anyUnder120Episodes": 7
+        },
+        "candidate": {
+          "mae": 83.87784231309436,
+          "bias": 56.70619078804174,
+          "coverage80": 0.985,
+          "width80": 668.4128331937335,
+          "over120": 0.13920289855072462,
+          "under120": 0.021666666666666667,
+          "anyOver120Episodes": 3,
+          "anyUnder120Episodes": 2
+        },
+        "delta": {
+          "mae": -75.35619991419165,
+          "bias": 189.4025079110641,
+          "coverage80": 0.08681159420289855,
+          "width80": 81.26629811090052,
+          "over120": 0.10795289855072464,
+          "under120": -0.4407899971582836
+        },
+        "delta95": {
+          "mae": [
+            -111.66902536157993,
+            -39.829473970474574
+          ],
+          "bias": [
+            94.06377612392497,
+            294.2369765358783
+          ],
+          "coverage80": [
+            0.008333333333333331,
+            0.18365217391304253
+          ],
+          "width80": [
+            -13.432497809942637,
+            192.75581667809465
+          ],
+          "over120": [
+            -0.07207427536231883,
+            0.36833333333333335
+          ],
+          "under120": [
+            -0.6023754262574595,
+            -0.2562620772946861
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -82.17470384842528,
+            -68.53769597995802
+          ],
+          "bias": [
+            116.25851936930101,
+            262.54649645282717
+          ],
+          "coverage80": [
+            0.016666666666666663,
+            0.15695652173913044
+          ],
+          "width80": [
+            -6.287996472322504,
+            168.82059269412355
+          ],
+          "over120": [
+            0.0,
+            0.21590579710144928
+          ],
+          "under120": [
+            -0.5047826086956522,
+            -0.376797385620915
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 7,
+          "unchanged": 0,
+          "worsen": 1
+        }
+      },
+      "allRedEtaSecondary": {
+        "forecasts": 4644,
+        "episodes": 228,
+        "baseline": {
+          "mae": 75.53267683865903,
+          "bias": -17.61876028643311,
+          "coverage80": 0.8940562038503064,
+          "width80": 334.39171473801775,
+          "over120": 0.04339953788624715,
+          "under120": 0.13165129248584556,
+          "anyOver120Episodes": 38,
+          "anyUnder120Episodes": 69
+        },
+        "candidate": {
+          "mae": 67.7865259768516,
+          "bias": 7.8204760186962545,
+          "coverage80": 0.9026655973885982,
+          "width80": 358.20668130128024,
+          "over120": 0.06575826622918093,
+          "under120": 0.07483915207692636,
+          "anyOver120Episodes": 57,
+          "anyUnder120Episodes": 55
+        },
+        "delta": {
+          "mae": -7.746150861807412,
+          "bias": 25.439236305129363,
+          "coverage80": 0.008609393538291904,
+          "width80": 23.81496656326251,
+          "over120": 0.022358728342933783,
+          "under120": -0.056812140408919215
+        },
+        "delta95": {
+          "mae": [
+            -10.604947495224298,
+            -5.0750554159513666
+          ],
+          "bias": [
+            17.425789255167953,
+            34.09481555236341
+          ],
+          "coverage80": [
+            0.002438046106335763,
+            0.015495766004068394
+          ],
+          "width80": [
+            15.366833106310283,
+            33.14316184832742
+          ],
+          "over120": [
+            0.008534733150252952,
+            0.0388025210481032
+          ],
+          "under120": [
+            -0.0731500156627427,
+            -0.04134746450396338
+          ]
+        },
+        "busDayBlocks": 2,
+        "delta95BusDay": {
+          "mae": [
+            -8.007456527703482,
+            -7.470720565322367
+          ],
+          "bias": [
+            15.759785049435942,
+            34.622305445146196
+          ],
+          "coverage80": [
+            -0.0008004266069827886,
+            0.017536658804321738
+          ],
+          "width80": [
+            13.589503310428999,
+            33.51604708518148
+          ],
+          "over120": [
+            0.0014698128878950568,
+            0.04217641736438079
+          ],
+          "under120": [
+            -0.06493412451916122,
+            -0.04825113013055602
+          ]
+        },
+        "visitMaeChanges": {
+          "improve": 133,
+          "unchanged": 1,
+          "worsen": 94
+        }
+      },
+      "standingCoverage": {
+        "baseline": {
+          "recordedRowsWholeCapture": 194,
+          "recordedRowsAfterCutoff": 140,
+          "associationWholeCapture": {
+            "outsideCompletePhysicalStand": 33,
+            "occurrenceAgrees": 161
+          },
+          "associationAfterCutoff": {
+            "occurrenceAgrees": 118,
+            "outsideCompletePhysicalStand": 22
+          },
+          "missingValidDisplayAfterCutoff": 0,
+          "eligibleMoments": 118,
+          "eligibleVisits": 8,
+          "originalFirstDisplaysWholeCapture": 13,
+          "originalFirstDisplaysAfterCutoff": 8,
+          "earlierOriginalFirstDisplaysNotPromoted": 5,
+          "originalFirstAfterCutoffNotPaired": 0,
+          "unmatchedEligibleMoments": 0
+        },
+        "causal": {
+          "recordedRowsWholeCapture": 194,
+          "recordedRowsAfterCutoff": 140,
+          "associationWholeCapture": {
+            "outsideCompletePhysicalStand": 33,
+            "occurrenceAgrees": 161
+          },
+          "associationAfterCutoff": {
+            "occurrenceAgrees": 118,
+            "outsideCompletePhysicalStand": 22
+          },
+          "missingValidDisplayAfterCutoff": 0,
+          "eligibleMoments": 118,
+          "eligibleVisits": 8,
+          "originalFirstDisplaysWholeCapture": 13,
+          "originalFirstDisplaysAfterCutoff": 8,
+          "earlierOriginalFirstDisplaysNotPromoted": 5,
+          "originalFirstAfterCutoffNotPaired": 0,
+          "unmatchedEligibleMoments": 0
+        }
+      },
+      "unpairedOriginalFirsts": {
+        "baseline": [],
+        "causal": []
+      },
+      "changedFirstTotals": 8,
+      "changedPrimaryEtaVectors": 120,
+      "activation": {
+        "baseline": {
+          "successfulWindowCalls": 0,
+          "successfulWinchesterWindowCalls": 0,
+          "passed": true
+        },
+        "causal": {
+          "successfulWindowCalls": 6971,
+          "successfulWinchesterWindowCalls": 2030,
+          "passed": true
+        }
+      }
+    }
+  },
+  "perHoldFirstTotals": [
+    {
+      "episodeId": "7d553bafdc428d776eb6f1c6",
+      "busKey": "#306",
+      "firstRecordedAt": 1788962183365,
+      "firstRecordedET": "2026-09-09T09:56:23.365000-04:00",
+      "pinnedAt": 1788962163282,
+      "departedAt": 1788962463601,
+      "actualPinnedTotalSec": 300.319,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 353.4862191971794,
+      "causalPhaseTotalEstimateSec": 353.4862191971794,
+      "baselineElapsedSec": 45.026,
+      "archiveElapsedSec": 45.026,
+      "causalElapsedSec": 45.026
+    },
+    {
+      "episodeId": "cdf9ae48bcc80766b244d0d8",
+      "busKey": "#119",
+      "firstRecordedAt": 1788963707666,
+      "firstRecordedET": "2026-09-09T10:21:47.666000-04:00",
+      "pinnedAt": 1788963677746,
+      "departedAt": 1788964402637,
+      "actualPinnedTotalSec": 724.891,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 921.9729730467897,
+      "causalPhaseTotalEstimateSec": 921.9729730467897,
+      "baselineElapsedSec": 29.92,
+      "archiveElapsedSec": 29.92,
+      "causalElapsedSec": 29.92
+    },
+    {
+      "episodeId": "755fb511045347c3b7bac54c",
+      "busKey": "#306",
+      "firstRecordedAt": 1788965537794,
+      "firstRecordedET": "2026-09-09T10:52:17.794000-04:00",
+      "pinnedAt": 1788965512772,
+      "departedAt": 1788966032866,
+      "actualPinnedTotalSec": 520.094,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 520.1180990542935,
+      "baselineElapsedSec": 25.022,
+      "archiveElapsedSec": 25.022,
+      "causalElapsedSec": 25.022
+    },
+    {
+      "episodeId": "d684966d49af517d2c783ae3",
+      "busKey": "#119",
+      "firstRecordedAt": 1788967638140,
+      "firstRecordedET": "2026-09-09T11:27:18.140000-04:00",
+      "pinnedAt": 1788967613102,
+      "departedAt": 1788968063111,
+      "actualPinnedTotalSec": 450.009,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 542.8462779123101,
+      "baselineElapsedSec": 25.038,
+      "archiveElapsedSec": 25.038,
+      "causalElapsedSec": 25.038
+    },
+    {
+      "episodeId": "18ba4b43ddd03d4c2d382281",
+      "busKey": "#306",
+      "firstRecordedAt": 1788969258289,
+      "firstRecordedET": "2026-09-09T11:54:18.289000-04:00",
+      "pinnedAt": 1788969228337,
+      "departedAt": 1788969667909,
+      "actualPinnedTotalSec": 439.572,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 410.2864718338003,
+      "baselineElapsedSec": 40.028,
+      "archiveElapsedSec": 40.028,
+      "causalElapsedSec": 40.028
+    },
+    {
+      "episodeId": "29e783e89523cf9d0b490955",
+      "busKey": "#119",
+      "firstRecordedAt": 1788970923222,
+      "firstRecordedET": "2026-09-09T12:22:03.222000-04:00",
+      "pinnedAt": 1788970898269,
+      "departedAt": 1788971608342,
+      "actualPinnedTotalSec": 710.073,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 786.1917757398221,
+      "baselineElapsedSec": 30.005,
+      "archiveElapsedSec": 30.005,
+      "causalElapsedSec": 30.005
+    },
+    {
+      "episodeId": "258092f9123416538b7bd4dc",
+      "busKey": "#306",
+      "firstRecordedAt": 1788972903513,
+      "firstRecordedET": "2026-09-09T12:55:03.513000-04:00",
+      "pinnedAt": 1788972903513,
+      "departedAt": 1788973253526,
+      "actualPinnedTotalSec": 350.013,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 362.48989133699973,
+      "baselineElapsedSec": 25.101,
+      "archiveElapsedSec": 25.101,
+      "causalElapsedSec": 25.101
+    },
+    {
+      "episodeId": "822e5b17e0f5c311093126aa",
+      "busKey": "#119",
+      "firstRecordedAt": 1788975144539,
+      "firstRecordedET": "2026-09-09T13:32:24.539000-04:00",
+      "pinnedAt": 1788975124667,
+      "departedAt": 1788975239562,
+      "actualPinnedTotalSec": 114.895,
+      "baselineTotalEstimateSec": 289.9810615493718,
+      "archivePhaseTotalEstimateSec": 260.70647828179386,
+      "causalPhaseTotalEstimateSec": 194.1897725335703,
+      "baselineElapsedSec": 29.935,
+      "archiveElapsedSec": 29.935,
+      "causalElapsedSec": 29.935
+    }
+  ],
+  "metricDefinitions": {
+    "total": "shown.typicalSec against reconstructed complete pinned hold, not current literal UI text",
+    "remaining": "Predicted remaining seconds versus departure minus issue time",
+    "eta": "Median point forecast versus first corroborated served 50-metre Division crossing while in a unique complete Winchester hold",
+    "weights": "Equal physical targets or visits, equal query moments within each",
+    "over120": "Predicted value exceeds actual by strictly more than 120 seconds; rate is target-weighted, anyOver120Episodes counts targets with at least one such issue",
+    "intervals": "delta95 is paired target/visit bootstrap 2000; delta95BusDay is vehicle/day sensitivity with two blocks; coverage80/width80 describe ETA quantile intervals"
+  },
+  "limitations": [
+    "Newly scored raw-data replay; not logged prospective rider forecasts or evidence that these contexts were actually served.",
+    "Same model source, fit, calibration, parameters and targets across arms; only history availability changes between phase arms.",
+    "The archive policy cannot recover live server availability after the last morning snapshot. New 14:00 rows are never backdated.",
+    "Causal history uses complete immutable reducer emissions and retained emission clocks; no original-label matching, later revisions or future target fields enter features.",
+    "Eight holds from two buses on one day cannot establish general reliability across service days.",
+    "The phase model fit has no September 9 service-day training, but source/UI decisions may reflect previously seen operator examples.",
+    "Causal-history errors are smaller on average but mean bias becomes positive and more Division targets have overestimates above two minutes.",
+    "Original first estimates are selected across the full recorded capture before window and pairing exclusions; no later row replaces an earlier first.",
+    "A late bus-ID change is separated by a 124.879-second gap; physical target matching must remain within a continuous track.",
+    "Generic persistent-client replay does not validate the full Trip/rider-simulator sequence. Total estimates are not transcriptions of the current interval UI.",
+    "The causal arm changes both availability clocks and the representation of completed visits; receipt latency alone was not isolated."
+  ],
+  "independentAudit": {
+    "file": "services/shuttle-v2/store/red-validation-20260909/phase-0955-1359/later-red-score-audit.json",
+    "sha256": "216df64261c4e4d4b965de39860f90cac8a1e2ff5c2467d14f6465847bf9ffa1",
+    "primaryArithmetic": true,
+    "originalFirstSelection": true,
+    "physicalTargetAssociations": 120,
+    "frozenHashesVerified": 168
+  }
+}

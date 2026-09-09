@@ -100,3 +100,5 @@ CONTEXT_HOOK="$phase_source/scripts/eta-replay/general-eval/models/analytic-clie
 ```
 
 These replay commands write fresh outputs; the scoring-only helper above deliberately verifies and scores the preserved original outputs. Original launch instructions and SHA manifests are in `later/launch-manifest-v2.json`; the complete original scoring report is `later/scored-v2/report.json`, and the early recorded report is `early/report.json` within the archive. Older immutable artifacts may use stronger “held-out” or “display” wording; the interpretation and estimate terminology in this report supersede that wording.
+
+A subsequent, separately frozen [09:55–13:59 Red comparison](red-phase-validation-later-2026-09-09.md) retains both archive-observed and causal reducer-history policies across eight additional Winchester holds. It reports the stronger fresh-history result alongside its overestimation tradeoff.

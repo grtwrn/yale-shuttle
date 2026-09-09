@@ -1,0 +1,1055 @@
+{
+  "sourceReportSha256": "aeea50598fabcc79b0894bd07e64cab5c3de83b484658043ee912eb3080aa4bc",
+  "scoringLockSha256": "bafa436b1d3f5022f034ae9fd31937cbd7a0ae9ce0eb94eb4fc53990390c15d0",
+  "recordingQualificationSha256": "c749c6a424844e0db7c8623666e968925724c0b1b73589b1324f81a31ef4713b",
+  "scope": "Frozen phase versus baseline Red rider comparisons, development September4 and regression September8; legacy point diagnostics are not current range UI outcomes.",
+  "days": {
+    "2026-09-04": {
+      "originalUniform": 1972,
+      "originalTargeted48": 156,
+      "overlap": 0,
+      "cohorts": {
+        "uniform": {
+          "coverage": {
+            "baseline": {
+              "originalRiders": 1972,
+              "waitRecords": 1449,
+              "skipped": 523,
+              "skipReasons": {
+                "boardElsewhere:120": 20,
+                "boardElsewhere:11": 108,
+                "boardElsewhere:27": 22,
+                "boardElsewhere:147": 17,
+                "boardElsewhere:41": 18,
+                "boardElsewhere:31": 45,
+                "boardElsewhere:30": 31,
+                "boardElsewhere:117": 35,
+                "boardElsewhere:126": 3,
+                "boardElsewhere:3": 19,
+                "boardElsewhere:39": 20,
+                "boardElsewhere:115": 34,
+                "boardElsewhere:98": 25,
+                "boardElsewhere:4": 42,
+                "boardElsewhere:42": 25,
+                "boardElsewhere:104": 6,
+                "boardElsewhere:75": 13,
+                "boardElsewhere:121": 6,
+                "boardElsewhere:45": 13,
+                "boardElsewhere:128": 3,
+                "boardElsewhere:113": 7,
+                "boardElsewhere:72": 3,
+                "boardElsewhere:38": 3,
+                "boardElsewhere:36": 1,
+                "boardElsewhere:14": 1,
+                "noOption": 3
+              },
+              "outcomes": {
+                "arrived": 1373,
+                "gaveUp": 76
+              },
+              "missingUnexplainedIds": []
+            },
+            "candidate": {
+              "originalRiders": 1972,
+              "waitRecords": 1440,
+              "skipped": 532,
+              "skipReasons": {
+                "boardElsewhere:120": 19,
+                "boardElsewhere:11": 109,
+                "boardElsewhere:27": 22,
+                "boardElsewhere:147": 17,
+                "boardElsewhere:41": 17,
+                "boardElsewhere:31": 49,
+                "boardElsewhere:30": 21,
+                "boardElsewhere:117": 37,
+                "boardElsewhere:126": 3,
+                "boardElsewhere:3": 19,
+                "boardElsewhere:39": 18,
+                "boardElsewhere:115": 44,
+                "boardElsewhere:98": 24,
+                "boardElsewhere:4": 43,
+                "boardElsewhere:42": 31,
+                "boardElsewhere:45": 15,
+                "boardElsewhere:128": 3,
+                "boardElsewhere:104": 7,
+                "boardElsewhere:75": 13,
+                "boardElsewhere:121": 6,
+                "boardElsewhere:113": 4,
+                "boardElsewhere:38": 4,
+                "boardElsewhere:14": 1,
+                "boardElsewhere:72": 2,
+                "boardElsewhere:146": 1,
+                "noOption": 3
+              },
+              "outcomes": {
+                "arrived": 1367,
+                "gaveUp": 73
+              },
+              "missingUnexplainedIds": []
+            },
+            "pairedWaits": 1434,
+            "baselineOnlyIds": [
+              "Red|120|2026-09-04T12:00:06.000Z",
+              "Red|128|2026-09-04T12:00:06.000Z",
+              "Red|146|2026-09-04T21:50:02.829Z",
+              "Red|14|2026-09-04T19:10:02.569Z",
+              "Red|30|2026-09-04T16:10:05.340Z",
+              "Red|31|2026-09-04T12:00:06.000Z",
+              "Red|31|2026-09-04T22:00:02.867Z",
+              "Red|36|2026-09-04T17:20:03.099Z",
+              "Red|39|2026-09-04T21:00:02.911Z",
+              "Red|39|2026-09-04T22:00:02.867Z",
+              "Red|41|2026-09-04T12:00:06.000Z",
+              "Red|41|2026-09-04T13:00:03.874Z",
+              "Red|41|2026-09-04T22:00:02.867Z",
+              "Red|72|2026-09-04T21:00:02.911Z",
+              "Red|72|2026-09-04T22:00:02.867Z"
+            ],
+            "candidateOnlyIds": [
+              "Red|126|2026-09-04T18:00:02.337Z",
+              "Red|147|2026-09-04T13:30:02.187Z",
+              "Red|14|2026-09-04T16:10:05.340Z",
+              "Red|27|2026-09-04T17:00:05.416Z",
+              "Red|30|2026-09-04T16:00:04.398Z",
+              "Red|30|2026-09-04T18:00:02.337Z"
+            ]
+          },
+          "eligibleBoth": 1213,
+          "firstIssuedTimingAllBothShown": {
+            "bothShown": 1434,
+            "sameIssue": 1434,
+            "candidateLater": 0,
+            "candidateEarlier": 0,
+            "meanCandidateDelaySeconds": 0.0,
+            "minimumDelaySeconds": 0.0,
+            "maximumDelaySeconds": 0.0
+          },
+          "servedClassificationCounts": {
+            "corroborated_next1to5_served": 635,
+            "beyondNextFiveServedOccurrences": 380,
+            "not_first_eligible": 221,
+            "not_uniquely_corroborated_within30s": 185,
+            "beyond_served30min_horizon": 13
+          },
+          "legacyPointDiagnosticsAllPaired": {
+            "jump180": {
+              "pairs": 1434,
+              "FIXED": 24,
+              "INTRODUCED": 77,
+              "remaining": 61,
+              "neither": 1272,
+              "baselineCases": 85,
+              "candidateCases": 138
+            },
+            "jump300": {
+              "pairs": 1434,
+              "FIXED": 10,
+              "INTRODUCED": 19,
+              "remaining": 24,
+              "neither": 1381,
+              "baselineCases": 34,
+              "candidateCases": 43
+            },
+            "reversal": {
+              "pairs": 1434,
+              "FIXED": 1,
+              "INTRODUCED": 143,
+              "remaining": 959,
+              "neither": 331,
+              "baselineCases": 960,
+              "candidateCases": 1102
+            },
+            "drop": {
+              "pairs": 1434,
+              "FIXED": 0,
+              "INTRODUCED": 21,
+              "remaining": 21,
+              "neither": 1392,
+              "baselineCases": 21,
+              "candidateCases": 42
+            },
+            "strand": {
+              "pairs": 1434,
+              "FIXED": 2,
+              "INTRODUCED": 18,
+              "remaining": 14,
+              "neither": 1400,
+              "baselineCases": 16,
+              "candidateCases": 32
+            },
+            "pinChanged": {
+              "pairs": 1434,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 235,
+              "neither": 1199,
+              "baselineCases": 235,
+              "candidateCases": 235
+            },
+            "vanished": {
+              "pairs": 1434,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 40,
+              "neither": 1394,
+              "baselineCases": 40,
+              "candidateCases": 40
+            }
+          },
+          "primary": {
+            "firstPointMae": {
+              "n": 1213,
+              "baseline": 134.881962906413,
+              "candidate": 132.36183322143734,
+              "delta": -2.5201296849756876,
+              "arrivalBootstrap": {
+                "blocks": 788,
+                "delta95": [
+                  -3.9987749473454928,
+                  -1.084012402444061
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -6.148818762036616,
+                  0.7858959658795653
+                ]
+              }
+            },
+            "firstPointBias": {
+              "n": 1213,
+              "baseline": -15.26883629077736,
+              "candidate": -14.111811585775703,
+              "delta": 1.157024705001657
+            },
+            "firstOver120": {
+              "n": 1213,
+              "baseline": 0.1615828524319868,
+              "candidate": 0.15169002473206925,
+              "delta": -0.00989282769991756
+            },
+            "firstUnder120": {
+              "n": 1213,
+              "baseline": 0.14674361088211046,
+              "candidate": 0.13849958779884583,
+              "delta": -0.008244023083264633
+            },
+            "allPointMae": {
+              "n": 1213,
+              "baseline": 85.78262579401361,
+              "candidate": 88.13738396973385,
+              "delta": 2.3547581757202263,
+              "arrivalBootstrap": {
+                "blocks": 788,
+                "delta95": [
+                  1.2420160931979287,
+                  3.444081344519664
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  1.602093558062347,
+                  3.1328327537115612
+                ]
+              }
+            },
+            "firstIntervalCoverage": {
+              "n": 1213,
+              "baseline": 0.7724649629018961,
+              "candidate": 0.7782357790601814,
+              "delta": 0.005770816158285243
+            },
+            "allIntervalCoverage": {
+              "n": 1213,
+              "baseline": 0.7208071001391838,
+              "candidate": 0.7091811809328452,
+              "delta": -0.011625919206338558
+            }
+          }
+        },
+        "winchesterTo48": {
+          "coverage": {
+            "baseline": {
+              "originalRiders": 156,
+              "waitRecords": 156,
+              "skipped": 0,
+              "skipReasons": {},
+              "outcomes": {
+                "arrived": 147,
+                "gaveUp": 9
+              },
+              "missingUnexplainedIds": []
+            },
+            "candidate": {
+              "originalRiders": 156,
+              "waitRecords": 156,
+              "skipped": 0,
+              "skipReasons": {},
+              "outcomes": {
+                "arrived": 147,
+                "gaveUp": 9
+              },
+              "missingUnexplainedIds": []
+            },
+            "pairedWaits": 156,
+            "baselineOnlyIds": [],
+            "candidateOnlyIds": []
+          },
+          "eligibleBoth": 146,
+          "firstIssuedTimingAllBothShown": {
+            "bothShown": 156,
+            "sameIssue": 156,
+            "candidateLater": 0,
+            "candidateEarlier": 0,
+            "meanCandidateDelaySeconds": 0.0,
+            "minimumDelaySeconds": 0.0,
+            "maximumDelaySeconds": 0.0
+          },
+          "servedClassificationCounts": {
+            "corroborated_next1to5_served": 137,
+            "not_first_eligible": 10,
+            "not_uniquely_corroborated_within30s": 9
+          },
+          "legacyPointDiagnosticsAllPaired": {
+            "jump180": {
+              "pairs": 156,
+              "FIXED": 5,
+              "INTRODUCED": 6,
+              "remaining": 9,
+              "neither": 136,
+              "baselineCases": 14,
+              "candidateCases": 15
+            },
+            "jump300": {
+              "pairs": 156,
+              "FIXED": 0,
+              "INTRODUCED": 4,
+              "remaining": 2,
+              "neither": 150,
+              "baselineCases": 2,
+              "candidateCases": 6
+            },
+            "reversal": {
+              "pairs": 156,
+              "FIXED": 0,
+              "INTRODUCED": 36,
+              "remaining": 86,
+              "neither": 34,
+              "baselineCases": 86,
+              "candidateCases": 122
+            },
+            "drop": {
+              "pairs": 156,
+              "FIXED": 0,
+              "INTRODUCED": 5,
+              "remaining": 0,
+              "neither": 151,
+              "baselineCases": 0,
+              "candidateCases": 5
+            },
+            "strand": {
+              "pairs": 156,
+              "FIXED": 4,
+              "INTRODUCED": 18,
+              "remaining": 6,
+              "neither": 128,
+              "baselineCases": 10,
+              "candidateCases": 24
+            },
+            "pinChanged": {
+              "pairs": 156,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 10,
+              "neither": 146,
+              "baselineCases": 10,
+              "candidateCases": 10
+            },
+            "vanished": {
+              "pairs": 156,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 9,
+              "neither": 147,
+              "baselineCases": 9,
+              "candidateCases": 9
+            }
+          },
+          "primary": {
+            "firstPointMae": {
+              "n": 146,
+              "baseline": 112.92690487629697,
+              "candidate": 95.31250306965931,
+              "delta": -17.614401806637655,
+              "arrivalBootstrap": {
+                "blocks": 30,
+                "delta95": [
+                  -23.304115762818487,
+                  -12.231090081522785
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -21.005418165831315,
+                  -14.657657653707865
+                ]
+              }
+            },
+            "firstPointBias": {
+              "n": 146,
+              "baseline": 19.40921300393854,
+              "candidate": 24.85784780343608,
+              "delta": 5.44863479949754
+            },
+            "firstOver120": {
+              "n": 146,
+              "baseline": 0.2534246575342466,
+              "candidate": 0.21232876712328766,
+              "delta": -0.0410958904109589
+            },
+            "firstUnder120": {
+              "n": 146,
+              "baseline": 0.15753424657534246,
+              "candidate": 0.10273972602739725,
+              "delta": -0.0547945205479452
+            },
+            "allPointMae": {
+              "n": 146,
+              "baseline": 52.08966513216821,
+              "candidate": 59.10421243287018,
+              "delta": 7.014547300701975,
+              "arrivalBootstrap": {
+                "blocks": 30,
+                "delta95": [
+                  1.5776105929073376,
+                  13.680314460026846
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  5.4736039180400695,
+                  8.672534210428577
+                ]
+              }
+            },
+            "firstIntervalCoverage": {
+              "n": 146,
+              "baseline": 0.8082191780821918,
+              "candidate": 0.8493150684931506,
+              "delta": 0.0410958904109589
+            },
+            "allIntervalCoverage": {
+              "n": 146,
+              "baseline": 0.9076833585250447,
+              "candidate": 0.8537025972966807,
+              "delta": -0.053980761228363955
+            }
+          }
+        }
+      }
+    },
+    "2026-09-08": {
+      "originalUniform": 2001,
+      "originalTargeted48": 131,
+      "overlap": 0,
+      "cohorts": {
+        "uniform": {
+          "coverage": {
+            "baseline": {
+              "originalRiders": 2001,
+              "waitRecords": 1501,
+              "skipped": 500,
+              "skipReasons": {
+                "boardElsewhere:117": 12,
+                "boardElsewhere:120": 25,
+                "boardElsewhere:11": 122,
+                "boardElsewhere:27": 27,
+                "boardElsewhere:147": 24,
+                "boardElsewhere:41": 10,
+                "boardElsewhere:31": 22,
+                "boardElsewhere:98": 24,
+                "boardElsewhere:3": 25,
+                "boardElsewhere:39": 13,
+                "boardElsewhere:4": 40,
+                "boardElsewhere:104": 8,
+                "boardElsewhere:30": 27,
+                "boardElsewhere:121": 3,
+                "boardElsewhere:42": 15,
+                "boardElsewhere:115": 52,
+                "boardElsewhere:14": 5,
+                "boardElsewhere:128": 5,
+                "boardElsewhere:126": 2,
+                "boardElsewhere:36": 2,
+                "boardElsewhere:113": 6,
+                "boardElsewhere:45": 15,
+                "boardElsewhere:75": 11,
+                "boardElsewhere:72": 4,
+                "boardElsewhere:13": 1
+              },
+              "outcomes": {
+                "arrived": 1470,
+                "gaveUp": 31
+              },
+              "missingUnexplainedIds": []
+            },
+            "candidate": {
+              "originalRiders": 2001,
+              "waitRecords": 1507,
+              "skipped": 494,
+              "skipReasons": {
+                "boardElsewhere:117": 16,
+                "boardElsewhere:120": 24,
+                "boardElsewhere:11": 123,
+                "boardElsewhere:27": 27,
+                "boardElsewhere:147": 24,
+                "boardElsewhere:41": 8,
+                "boardElsewhere:31": 19,
+                "boardElsewhere:98": 24,
+                "boardElsewhere:3": 25,
+                "boardElsewhere:39": 13,
+                "boardElsewhere:4": 39,
+                "boardElsewhere:104": 7,
+                "boardElsewhere:30": 16,
+                "boardElsewhere:121": 3,
+                "boardElsewhere:42": 15,
+                "boardElsewhere:115": 59,
+                "boardElsewhere:45": 20,
+                "boardElsewhere:14": 5,
+                "boardElsewhere:128": 3,
+                "boardElsewhere:126": 2,
+                "boardElsewhere:36": 2,
+                "boardElsewhere:146": 1,
+                "boardElsewhere:75": 11,
+                "boardElsewhere:72": 2,
+                "boardElsewhere:113": 4,
+                "boardElsewhere:38": 1,
+                "noOption": 1
+              },
+              "outcomes": {
+                "arrived": 1478,
+                "gaveUp": 29
+              },
+              "missingUnexplainedIds": []
+            },
+            "pairedWaits": 1479,
+            "baselineOnlyIds": [
+              "Red|11|2026-09-08T11:59:32.831Z",
+              "Red|120|2026-09-08T11:59:32.831Z",
+              "Red|126|2026-09-08T11:59:32.831Z",
+              "Red|128|2026-09-08T11:59:32.831Z",
+              "Red|13|2026-09-08T17:29:36.385Z",
+              "Red|13|2026-09-08T22:19:34.668Z",
+              "Red|146|2026-09-08T13:39:34.720Z",
+              "Red|14|2026-09-08T12:29:32.728Z",
+              "Red|14|2026-09-08T13:29:33.733Z",
+              "Red|27|2026-09-08T12:29:32.728Z",
+              "Red|27|2026-09-08T15:29:35.352Z",
+              "Red|30|2026-09-08T11:59:32.831Z",
+              "Red|30|2026-09-08T13:09:32.861Z",
+              "Red|31|2026-09-08T11:59:32.831Z",
+              "Red|31|2026-09-08T13:09:32.861Z",
+              "Red|31|2026-09-08T22:19:34.668Z",
+              "Red|36|2026-09-08T11:59:32.831Z",
+              "Red|39|2026-09-08T13:29:33.733Z",
+              "Red|41|2026-09-08T11:59:32.831Z",
+              "Red|41|2026-09-08T22:19:34.668Z",
+              "Red|42|2026-09-08T17:49:36.452Z",
+              "Red|72|2026-09-08T17:49:36.452Z"
+            ],
+            "candidateOnlyIds": [
+              "Red|11|2026-09-08T17:59:32.482Z",
+              "Red|120|2026-09-08T17:59:32.482Z",
+              "Red|120|2026-09-08T19:29:33.643Z",
+              "Red|126|2026-09-08T13:59:34.931Z",
+              "Red|126|2026-09-08T17:59:32.482Z",
+              "Red|126|2026-09-08T19:29:33.643Z",
+              "Red|128|2026-09-08T12:59:32.832Z",
+              "Red|128|2026-09-08T17:59:32.482Z",
+              "Red|128|2026-09-08T19:29:33.643Z",
+              "Red|13|2026-09-08T17:49:36.452Z",
+              "Red|13|2026-09-08T19:59:33.800Z",
+              "Red|147|2026-09-08T13:29:33.733Z",
+              "Red|147|2026-09-08T17:49:36.452Z",
+              "Red|14|2026-09-08T13:09:32.861Z",
+              "Red|27|2026-09-08T14:59:35.223Z",
+              "Red|27|2026-09-08T16:59:36.267Z",
+              "Red|27|2026-09-08T17:49:36.452Z",
+              "Red|27|2026-09-08T19:59:33.800Z",
+              "Red|30|2026-09-08T13:59:34.931Z",
+              "Red|30|2026-09-08T15:29:35.352Z",
+              "Red|30|2026-09-08T17:59:32.482Z",
+              "Red|30|2026-09-08T18:29:33.119Z",
+              "Red|30|2026-09-08T18:59:32.985Z",
+              "Red|30|2026-09-08T19:29:33.643Z",
+              "Red|30|2026-09-08T19:59:33.800Z",
+              "Red|36|2026-09-08T13:59:34.931Z",
+              "Red|36|2026-09-08T17:59:32.482Z",
+              "Red|36|2026-09-08T19:29:33.643Z"
+            ]
+          },
+          "eligibleBoth": 1296,
+          "firstIssuedTimingAllBothShown": {
+            "bothShown": 1479,
+            "sameIssue": 1479,
+            "candidateLater": 0,
+            "candidateEarlier": 0,
+            "meanCandidateDelaySeconds": 0.0,
+            "minimumDelaySeconds": 0.0,
+            "maximumDelaySeconds": 0.0
+          },
+          "servedClassificationCounts": {
+            "corroborated_next1to5_served": 641,
+            "not_uniquely_corroborated_within30s": 171,
+            "beyondNextFiveServedOccurrences": 473,
+            "not_first_eligible": 183,
+            "beyond_served30min_horizon": 11
+          },
+          "legacyPointDiagnosticsAllPaired": {
+            "jump180": {
+              "pairs": 1479,
+              "FIXED": 3,
+              "INTRODUCED": 155,
+              "remaining": 77,
+              "neither": 1244,
+              "baselineCases": 80,
+              "candidateCases": 232
+            },
+            "jump300": {
+              "pairs": 1479,
+              "FIXED": 0,
+              "INTRODUCED": 78,
+              "remaining": 30,
+              "neither": 1371,
+              "baselineCases": 30,
+              "candidateCases": 108
+            },
+            "reversal": {
+              "pairs": 1479,
+              "FIXED": 1,
+              "INTRODUCED": 158,
+              "remaining": 916,
+              "neither": 404,
+              "baselineCases": 917,
+              "candidateCases": 1074
+            },
+            "drop": {
+              "pairs": 1479,
+              "FIXED": 0,
+              "INTRODUCED": 24,
+              "remaining": 38,
+              "neither": 1417,
+              "baselineCases": 38,
+              "candidateCases": 62
+            },
+            "strand": {
+              "pairs": 1479,
+              "FIXED": 8,
+              "INTRODUCED": 12,
+              "remaining": 31,
+              "neither": 1428,
+              "baselineCases": 39,
+              "candidateCases": 43
+            },
+            "pinChanged": {
+              "pairs": 1479,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 145,
+              "neither": 1334,
+              "baselineCases": 145,
+              "candidateCases": 145
+            },
+            "vanished": {
+              "pairs": 1479,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 29,
+              "neither": 1450,
+              "baselineCases": 29,
+              "candidateCases": 29
+            }
+          },
+          "primary": {
+            "firstPointMae": {
+              "n": 1296,
+              "baseline": 115.63125607669996,
+              "candidate": 117.7617072849666,
+              "delta": 2.130451208266636,
+              "arrivalBootstrap": {
+                "blocks": 796,
+                "delta95": [
+                  -1.0741150767988181,
+                  5.480058599564807
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -0.12591527286686946,
+                  4.2067024278023375
+                ]
+              }
+            },
+            "firstPointBias": {
+              "n": 1296,
+              "baseline": -15.349068745911545,
+              "candidate": -12.212380380958072,
+              "delta": 3.1366883649534723
+            },
+            "firstOver120": {
+              "n": 1296,
+              "baseline": 0.11728395061728394,
+              "candidate": 0.11265432098765432,
+              "delta": -0.004629629629629629
+            },
+            "firstUnder120": {
+              "n": 1296,
+              "baseline": 0.1712962962962963,
+              "candidate": 0.16666666666666666,
+              "delta": -0.004629629629629629
+            },
+            "allPointMae": {
+              "n": 1296,
+              "baseline": 78.39039117845776,
+              "candidate": 80.229464140256,
+              "delta": 1.8390729617982413,
+              "arrivalBootstrap": {
+                "blocks": 796,
+                "delta95": [
+                  0.033776331774833364,
+                  3.547052266772808
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -1.647550207322807,
+                  8.465088075655613
+                ]
+              }
+            },
+            "firstIntervalCoverage": {
+              "n": 1296,
+              "baseline": 0.875,
+              "candidate": 0.8649691358024691,
+              "delta": -0.010030864197530864
+            },
+            "allIntervalCoverage": {
+              "n": 1296,
+              "baseline": 0.8155810209378442,
+              "candidate": 0.809868814466601,
+              "delta": -0.005712206471243358
+            }
+          }
+        },
+        "winchesterTo48": {
+          "coverage": {
+            "baseline": {
+              "originalRiders": 131,
+              "waitRecords": 127,
+              "skipped": 4,
+              "skipReasons": {
+                "boardElsewhere:11": 4
+              },
+              "outcomes": {
+                "arrived": 127
+              },
+              "missingUnexplainedIds": []
+            },
+            "candidate": {
+              "originalRiders": 131,
+              "waitRecords": 127,
+              "skipped": 4,
+              "skipReasons": {
+                "boardElsewhere:11": 4
+              },
+              "outcomes": {
+                "arrived": 127
+              },
+              "missingUnexplainedIds": []
+            },
+            "pairedWaits": 127,
+            "baselineOnlyIds": [],
+            "candidateOnlyIds": []
+          },
+          "eligibleBoth": 124,
+          "firstIssuedTimingAllBothShown": {
+            "bothShown": 127,
+            "sameIssue": 127,
+            "candidateLater": 0,
+            "candidateEarlier": 0,
+            "meanCandidateDelaySeconds": 0.0,
+            "minimumDelaySeconds": 0.0,
+            "maximumDelaySeconds": 0.0
+          },
+          "servedClassificationCounts": {
+            "corroborated_next1to5_served": 124,
+            "not_first_eligible": 3
+          },
+          "legacyPointDiagnosticsAllPaired": {
+            "jump180": {
+              "pairs": 127,
+              "FIXED": 5,
+              "INTRODUCED": 7,
+              "remaining": 1,
+              "neither": 114,
+              "baselineCases": 6,
+              "candidateCases": 8
+            },
+            "jump300": {
+              "pairs": 127,
+              "FIXED": 0,
+              "INTRODUCED": 4,
+              "remaining": 0,
+              "neither": 123,
+              "baselineCases": 0,
+              "candidateCases": 4
+            },
+            "reversal": {
+              "pairs": 127,
+              "FIXED": 0,
+              "INTRODUCED": 29,
+              "remaining": 50,
+              "neither": 48,
+              "baselineCases": 50,
+              "candidateCases": 79
+            },
+            "drop": {
+              "pairs": 127,
+              "FIXED": 0,
+              "INTRODUCED": 5,
+              "remaining": 0,
+              "neither": 122,
+              "baselineCases": 0,
+              "candidateCases": 5
+            },
+            "strand": {
+              "pairs": 127,
+              "FIXED": 3,
+              "INTRODUCED": 2,
+              "remaining": 2,
+              "neither": 120,
+              "baselineCases": 5,
+              "candidateCases": 4
+            },
+            "pinChanged": {
+              "pairs": 127,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 0,
+              "neither": 127,
+              "baselineCases": 0,
+              "candidateCases": 0
+            },
+            "vanished": {
+              "pairs": 127,
+              "FIXED": 0,
+              "INTRODUCED": 0,
+              "remaining": 0,
+              "neither": 127,
+              "baselineCases": 0,
+              "candidateCases": 0
+            }
+          },
+          "primary": {
+            "firstPointMae": {
+              "n": 124,
+              "baseline": 105.92305959782975,
+              "candidate": 63.71741083544249,
+              "delta": -42.205648762387256,
+              "arrivalBootstrap": {
+                "blocks": 26,
+                "delta95": [
+                  -61.0077192810563,
+                  -23.475634603486
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -57.49593687187542,
+                  -21.873071456750786
+                ]
+              }
+            },
+            "firstPointBias": {
+              "n": 124,
+              "baseline": 16.831687557913387,
+              "candidate": 32.93154862125127,
+              "delta": 16.099861063337883
+            },
+            "firstOver120": {
+              "n": 124,
+              "baseline": 0.20161290322580644,
+              "candidate": 0.10483870967741936,
+              "delta": -0.0967741935483871
+            },
+            "firstUnder120": {
+              "n": 124,
+              "baseline": 0.16129032258064516,
+              "candidate": 0.016129032258064516,
+              "delta": -0.14516129032258066
+            },
+            "allPointMae": {
+              "n": 124,
+              "baseline": 47.52863809935615,
+              "candidate": 40.641714499582314,
+              "delta": -6.886923599773837,
+              "arrivalBootstrap": {
+                "blocks": 26,
+                "delta95": [
+                  -15.085649599220037,
+                  1.6361755274886274
+                ]
+              },
+              "vehicleDayBootstrap": {
+                "blocks": 3,
+                "delta95": [
+                  -15.296121462587564,
+                  1.990468597301658
+                ]
+              }
+            },
+            "firstIntervalCoverage": {
+              "n": 124,
+              "baseline": 1.0,
+              "candidate": 1.0,
+              "delta": 0.0
+            },
+            "allIntervalCoverage": {
+              "n": 124,
+              "baseline": 0.9952355538410915,
+              "candidate": 0.9896673955957109,
+              "delta": -0.005568158245380543
+            }
+          }
+        }
+      }
+    }
+  },
+  "firstErrorTransitions": {
+    "scope": "Exact existing eligible first-issued pairs, predeclared120s threshold; format-independent decomposition, not a new score/cohort",
+    "days": {
+      "2026-09-04": {
+        "uniform": {
+          "firstOver120": {
+            "n": 1213,
+            "FIXED": 25,
+            "INTRODUCED": 13,
+            "remaining": 171,
+            "baselineCases": 196,
+            "candidateCases": 184
+          },
+          "firstUnder120": {
+            "n": 1213,
+            "FIXED": 16,
+            "INTRODUCED": 6,
+            "remaining": 162,
+            "baselineCases": 178,
+            "candidateCases": 168
+          },
+          "firstPointMae": {
+            "n": 1213,
+            "FIXED": 38,
+            "INTRODUCED": 16,
+            "remaining": 336,
+            "baselineCases": 374,
+            "candidateCases": 352
+          }
+        },
+        "winchesterTo48": {
+          "firstOver120": {
+            "n": 146,
+            "FIXED": 8,
+            "INTRODUCED": 2,
+            "remaining": 29,
+            "baselineCases": 37,
+            "candidateCases": 31
+          },
+          "firstUnder120": {
+            "n": 146,
+            "FIXED": 8,
+            "INTRODUCED": 0,
+            "remaining": 15,
+            "baselineCases": 23,
+            "candidateCases": 15
+          },
+          "firstPointMae": {
+            "n": 146,
+            "FIXED": 16,
+            "INTRODUCED": 2,
+            "remaining": 44,
+            "baselineCases": 60,
+            "candidateCases": 46
+          }
+        }
+      },
+      "2026-09-08": {
+        "uniform": {
+          "firstOver120": {
+            "n": 1296,
+            "FIXED": 17,
+            "INTRODUCED": 11,
+            "remaining": 135,
+            "baselineCases": 152,
+            "candidateCases": 146
+          },
+          "firstUnder120": {
+            "n": 1296,
+            "FIXED": 33,
+            "INTRODUCED": 27,
+            "remaining": 189,
+            "baselineCases": 222,
+            "candidateCases": 216
+          },
+          "firstPointMae": {
+            "n": 1296,
+            "FIXED": 45,
+            "INTRODUCED": 33,
+            "remaining": 329,
+            "baselineCases": 374,
+            "candidateCases": 362
+          }
+        },
+        "winchesterTo48": {
+          "firstOver120": {
+            "n": 124,
+            "FIXED": 19,
+            "INTRODUCED": 7,
+            "remaining": 6,
+            "baselineCases": 25,
+            "candidateCases": 13
+          },
+          "firstUnder120": {
+            "n": 124,
+            "FIXED": 19,
+            "INTRODUCED": 1,
+            "remaining": 1,
+            "baselineCases": 20,
+            "candidateCases": 2
+          },
+          "firstPointMae": {
+            "n": 124,
+            "FIXED": 38,
+            "INTRODUCED": 8,
+            "remaining": 7,
+            "baselineCases": 45,
+            "candidateCases": 15
+          }
+        }
+      }
+    }
+  },
+  "caveats": [
+    "These are the original frozen phase-versus-baseline rider replays, not the rejected held-motion experiment.",
+    "Both days were already examined: September4 development and September8 regression, not new holdout evidence.",
+    "Primary ETA target is the first available Red bus at the curb, which can differ from the displayed pin.",
+    "Original45m curb truth is retained; served50m occurrence corroboration is a separate sensitivity.",
+    "First-issued-time differences remain explicit; same-original-first sensitivity is reported separately.",
+    "FIXED/INTRODUCED jump/reversal/drop/strand/pin diagnostics use the legacy point-format simulator; they are not literal current fmtBusRange presentation outcomes."
+  ]
+}
