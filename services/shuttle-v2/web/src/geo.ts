@@ -50,7 +50,7 @@ export function distanceToSegmentM(p: LatLon, a: LatLon, b: LatLon): number {
 export function nearestPathIdx(path: [number, number][], t: LatLon): number {
   let bestIdx = 0, best = Infinity;
   for (let i = 0; i < path.length; i++) {
-    const d = (path[i][0] - t.lat) ** 2 + (path[i][1] - t.lon) ** 2;
+    const d = (path[i]![0] - t.lat) ** 2 + (path[i]![1] - t.lon) ** 2;
     if (d < best) { best = d; bestIdx = i; }
   }
   return bestIdx;
@@ -68,7 +68,7 @@ function forwardNearestIdx(path: [number, number][], t: LatLon, startIdx: number
   let arrived = false;
   for (let step = 1; step <= n; step++) {
     const i = (startIdx + step) % n;
-    const m = haversineMeters({ lat: path[i][0], lon: path[i][1] }, t);
+    const m = haversineMeters({ lat: path[i]![0], lon: path[i]![1] }, t);
     if (m < bestM) { bestM = m; bestIdx = i; }
     if (m <= 60) arrived = true;
     // Once we've made our closest approach on this pass and started pulling
@@ -167,9 +167,9 @@ export function traceStopLegs(
   if (!path || path.length < 2 || !stops || stops.length < 2) return [];
   const legs: TracedLeg[] = [];
   const loopM = polylineMeters(path);
-  let cursor = forwardProject(path, stops[0], 0);
+  let cursor = forwardProject(path, stops[0]!, 0);
   for (let s = 1; s < stops.length; s++) {
-    const next = forwardProject(path, stops[s], cursor.seg);
+    const next = forwardProject(path, stops[s]!, cursor.seg);
     let slice = sliceBetween(path, cursor, next);
     let bridged = false;
 
@@ -188,8 +188,8 @@ export function traceStopLegs(
     // tuned ratio — no leg between two consecutive stops covers half the loop.
     if (slice.length < 2 || polylineMeters(slice) > loopM * MAX_LEG_LOOP_FRACTION) {
       slice = [
-        [stops[s - 1].lat, stops[s - 1].lon],
-        [stops[s].lat, stops[s].lon],
+        [stops[s - 1]!.lat, stops[s - 1]!.lon],
+        [stops[s]!.lat, stops[s]!.lon],
       ];
       bridged = true;
     }
@@ -271,8 +271,8 @@ export function polylineMeters(pts: readonly [number, number][]): number {
   let m = 0;
   for (let i = 1; i < pts.length; i++) {
     m += haversineMeters(
-      { lat: pts[i - 1][0], lon: pts[i - 1][1] },
-      { lat: pts[i][0], lon: pts[i][1] },
+      { lat: pts[i - 1]![0], lon: pts[i - 1]![1] },
+      { lat: pts[i]![0], lon: pts[i]![1] },
     );
   }
   return m;

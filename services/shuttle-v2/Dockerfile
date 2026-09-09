@@ -30,6 +30,22 @@ RUN npm install --omit=dev
 COPY src/ ./src/
 COPY drizzle/ ./drizzle/
 COPY drizzle.config.ts tsconfig.json ./
+# The ring estimator, imported by the server rather than reimplemented
+# (src/server/serverEta.ts). These files live under web/ only because the
+# frontend was a fork of v1's and the estimator was extracted out of it; they
+# import nothing browser-only, and running the SAME module on both sides is
+# the whole point of the server-side belief. Only web/dist reaches the runtime
+# image otherwise, so the sources have to be copied explicitly.
+#
+# The list is the import closure of `src/server/serverEta.ts`, and
+# `serverEta.closure.test.ts` recomputes it and fails if this COPY has fallen
+# behind — an import added here and forgotten here would pass every gate and
+# then crash the production process on boot.
+COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts \
+     web/src/map-data.ts web/src/routes.ts ./web/src/
+COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
+     web/src/eta/index.ts web/src/eta/params.ts web/src/eta/ring.ts \
+     web/src/eta/tables.ts ./web/src/eta/
 
 # ---- Runtime ---------------------------------------------------------------
 FROM node:20-slim
