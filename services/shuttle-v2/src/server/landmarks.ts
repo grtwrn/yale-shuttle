@@ -194,6 +194,9 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Junzi Kitchen", lat: 41.311129, lon: -72.93034, aliases: ["junzi", "21 broadway"], poi: "restaurant", anchorStop: "Broadway / York" }, // OSM N8910620396
   { label: "Koffee?", lat: 41.31155, lon: -72.92192, aliases: ["koffee", "koffee on audubon", "104 audubon"], poi: "cafe", anchorStop: "Whitney / Audubon" }, // OSM N470632969
   { label: "Louis' Lunch", lat: 41.306474, lon: -72.930408, aliases: ["louis lunch", "louis", "hamburger", "261 crown"], poi: "fast_food", anchorStop: "College / Crown" }, // OSM N2122108492
+  { label: "M2 Mocha Cafe", lat: 41.315647, lon: -72.929289, aliases: ["m2", "m2 mocha", "m2 cafe", "mocha cafe", "yemeni coffee", "100 ashmun"], poi: "cafe", anchorStop: "Ashmun / Lock" }, // OSM W340518188 — the 100 Ashmun St building: the cafe is not mapped in OSM either (see Arwa).
+  { label: "Maison B Cafe", lat: 41.311074, lon: -72.931398, aliases: ["maison b", "maison", "maison mathis", "304 elm"], poi: "cafe", anchorStop: "Elm / York (TYCO)" }, // OSM N2719815433 — still tagged "Maison Mathis", the name it traded under until 2025.
+  { label: "Olmo", lat: 41.313181, lon: -72.921492, aliases: ["olmo bagels", "bagels", "93 whitney"], poi: "bakery", anchorStop: "Whitney / Trumbull" }, // OSM N9021776924 — the 93 Whitney Ave address node; the shop is not mapped (see Arwa).
   { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery"], poi: "bakery", anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
   { label: "Mamoun's Falafel", lat: 41.310327, lon: -72.934555, aliases: ["mamouns", "falafel", "85 howe"], poi: "restaurant", anchorStop: "Howe / Edgewood" }, // OSM N2191968199
   { label: "Modern Apizza", lat: 41.313825, lon: -72.912834, aliases: ["modern", "modern pizza", "874 state"], poi: "pizza", anchorStop: "Nicoll / Edwards" }, // OSM N470623969
