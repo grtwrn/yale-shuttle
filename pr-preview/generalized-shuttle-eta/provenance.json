@@ -1,0 +1,58 @@
+{
+  "scope": "Local UI preview from one previously issued public payload, not new accuracy scoring. No future outcomes inspected.",
+  "observedAt": 1788953650764,
+  "observedAtUtc": "2026-09-09T11:34:10.764000+00:00",
+  "busName": "#119",
+  "busId": 66115,
+  "routeId": 3,
+  "currentStopId": 11,
+  "destinationStopId": 48,
+  "storedIssuedDisplay": {
+    "sec": 276.3646189004125,
+    "remaining": true,
+    "typicalSec": 287.9847302450276
+  },
+  "selectedForecastId": "actual-served-context:3:#119:1788953650764:11",
+  "sourceTableSha256": "6026b55c772a94b657f9a6309383f0080b39dc0f8e1ced5a60bccc1edee9e963",
+  "fixtureSha256": "21d4e56cee29289e43dc6ed722b7669fad35c9eb3bf4c45d36bbaeb0044a2df4",
+  "selectionRule": "Earliest captured first observed actual-served-context Red stop11 display with a displayed estimate.",
+  "standingContextCaveat": "No valid current-stop11 context is present in the available first morning visits; this screenshot honestly demonstrates duration fallback. Separate historical validation figure demonstrates the measured model comparison.",
+  "mockedPayloadFields": [
+    "routes",
+    "route_paths",
+    "stop_coords",
+    "stop_names",
+    "segments",
+    "dwells",
+    "model_params",
+    "route_active",
+    "buses",
+    "pace",
+    "dwells_by_bus",
+    "route_peaks",
+    "route_hours",
+    "bus_pace"
+  ],
+  "captureSource": "prospective/shadow-2026-09-09-0530",
+  "futureOutcomesRead": false,
+  "visualInspection": {
+    "mapPauseBadge": "8\u201311 min; historical pause range, not the archived internal standing forecast",
+    "tripDestination": "Division/Prospect (stop 48), rendered as 41.324769,-72.923522",
+    "basemap": "Tiles are not visible; overlays and navigation rendered. Cause not established.",
+    "trackingCaveat": "Archived issued forecast and newly opened preview browser have different tracking histories; this is not an exact prediction replay.",
+    "tabsVerified": [
+      "trip",
+      "map",
+      "issues"
+    ],
+    "pageErrors": 0,
+    "failedRequests": 0
+  },
+  "historicalFigure": {
+    "file": "historical-validation.png",
+    "source": "docs/data/red-first-display-repaired-2026-09-08.png",
+    "date": "2026-09-08",
+    "interpretation": "Previously examined retrospective regression, separate from this UI preview; no prospective claim."
+  },
+  "isolatedServerStopped": true
+}

@@ -1,0 +1,28 @@
+{
+  "caption": "Recorded Red bus at 344 Winchester, with the browser clock fixed to September 9 at 07:34 ET. This first-visit example uses the normal duration fallback. The map's 8\u201311 min badge is a historical pause range; the trip destination coordinates identify Division/Prospect. Historical validation is shown separately.",
+  "base": "http://127.0.0.1:8097",
+  "observedAt": 1788953650764,
+  "boardStopId": 11,
+  "destinationStopId": 48,
+  "clickedTabs": [
+    "trip",
+    "map",
+    "issues"
+  ],
+  "expectedTabs": [
+    "trip",
+    "map",
+    "issues"
+  ],
+  "pageErrors": [],
+  "failedRequests": [],
+  "captures": [
+    "trip.png",
+    "map.png",
+    "issues.png"
+  ],
+  "allThreeTabsClicked": true,
+  "upstreamCallsFromServer": false,
+  "productionWrites": false,
+  "futureOutcomesRead": false
+}

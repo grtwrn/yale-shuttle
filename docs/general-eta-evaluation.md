@@ -198,6 +198,22 @@ A read-only recorder preserves the existing server’s positions and visits befo
 
 ## Reproducibility and acceptance
 
+The submission branch includes master through `93aa45d81534`, retaining its
+reversion of the directional cold-start change. On the merged branch, backend
+and frontend typechecks, all **2,195 tests in 85 files**, twenty focused Python
+checks, and the frontend build passed. An isolated browser preview clicked
+Trip, Map and Issues without page errors or failed requests. Its recorded first
+morning visit has no usable current-stop departure context and illustrates the
+duration fallback, not an accuracy gain; map tiles were not visible. The
+[preview and provenance](../pr-preview/generalized-shuttle-eta/README.md) make
+these limits explicit. Six migration tests cover the observed production ledger
+and schema, fresh upgrades, preserved synthetic data, and orphan-object failures.
+
+Because master changed the tracker after the overnight evaluation, the merged
+client is being replayed in both arms against the same frozen fit and scoring
+cohorts under `integration-master-93aa45d`. The results above retain their
+original source provenance and are not silently attributed to that newer run.
+
 The source protocol and evaluation tools live in `services/shuttle-v2/scripts/eta-replay/general-eval/`; large inputs, predictions, fitted artifacts, and archived experiments live under `scripts/.eta-replay/overnight-2026-09-08/`. The earlier Red-specific code is preserved as an undeployed research baseline.
 
 A replacement must improve held-out distribution accuracy and the actual rider-facing ETA replay, improve the reported Red failure, and avoid a material supported route-level regression. First displayed total waits, long holds, cold starts, fallback coverage, and errors over two minutes are reported alongside aggregate means. An unsuccessful candidate is retained in the experiment record rather than patched with route exceptions.
