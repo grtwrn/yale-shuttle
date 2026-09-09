@@ -4,6 +4,14 @@
 First findings from one day (2026-09-03) below.** Scripts:
 `services/shuttle-v2/scripts/eta-replay/rider-sim/` (`run.ts`, `lib.ts`,
 `lib.test.ts`); usage in `scripts/eta-replay/README.md`.
+`scripts/eta-replay/curb-vs-feed.mjs` audits the truth rule itself on a line.
+
+**Numbers published from runs before 2026-09-09 were scored against a truth
+rule that counted a bus driving past the far side of the road as an arrival.**
+Shares that depend on `arrivedAt` — first-promise miss, strand, drop% — are
+overstated by an unknown amount on any line with (N)/(S) twins; sequences,
+drifts and reversals are unaffected. Re-run rather than compare across that
+boundary.
 
 The operator's ask, verbatim:
 
@@ -59,9 +67,13 @@ reads `buses`. Calibration is time-travelled per ET hour from a DB snapshot
 Scoring is the canary's own (`canary-metrics.mjs`, imported): display
 buckets, the smallest movement two consecutive readings permit, the 180 s bar.
 Truth is the canary's 45 m curb rule from the same positions (re-armed past
-120 m); the detector's arrival event rides alongside. A rider arriving with a
-bus already inside 45 m is armed like the canary (that bus does not count)
-and reported separately — the app is right to say "arriving now" to them.
+120 m) **corroborated by the feed's own `last_stop_id`** — geometry alone
+counted a bus serving the twin across the road as an arrival, which is 29% of
+Red's curb visits and invented a wrong-bus problem four times its real size
+(see "45 m is not an arrival", below). The detector's arrival event rides
+alongside. A rider arriving with a bus already inside 45 m is armed like the
+canary (that bus does not count) and reported separately — the app is right to
+say "arriving now" to them, and every summary share excludes those waits.
 
 Every run stamps the tree it scored: path, HEAD, branch, dirty flag, whether
 `anchorGate.ts` exists, which "next in" rule it found.
@@ -639,6 +651,212 @@ list before the card is consulted. The next step is the 127-degree direction
 filter in `anchor.ts` / `noteFix`, on a route the fold work never considered.
 It is deliberately NOT bundled with bug 1 — a speculative anchor change would
 put Green and Purple at risk in a change that otherwise measures clean.
+
+## 45 m is not an arrival: the truth rule was wrong, and it invented a wrong-bus problem (2026-09-04 data, found 2026-09-09)
+
+The question that started this: **the arrival window is wide mostly because we
+count down the WRONG BUS.** Measured by hand off `red-base.waits.jsonl` (Red,
+ET day 2026-09-04, 1,631 scored waits, capture `cap-et-0904.jsonl`, snapshot
+`snap-0904-2205.db`), comparing `pins[0]` with `arrivedBus`:
+
+| what we displayed at first sight | central-60% width of (actual − promise) | same, pin correct |
+|---|---|---|
+| under 5 min | 10:16 | 1:40 |
+| 5–10 min | 5:18 | 4:26 |
+| 10–20 min | 8:04 | 7:32 |
+| over 20 min | 13:48 | 7:36 |
+
+with the pin wrong on 30% of the under-five-minute waits and 81% right overall.
+Six times narrower when the pin is right looks like the whole ETA problem in
+one line.
+
+**Three quarters of it was the instrument.** 227 of the 308 wrong pins are
+artefacts of how `stopVisits` and the wait scoring decide a bus arrived.
+
+| | n | of 308 | where |
+|---|---|---|---|
+| **artefact** — a bus of the line was at the curb when the rider walked up, and the app rightly said "now" | 101 | 33% | 96 of them in the under-5 bucket |
+| **artefact** — the "arriving" bus never served the stop; it drove past on the far side of the road | 117 | 38% | 47 of them in the 20–27 min bucket |
+| **artefact** — the pinned bus's own arrival was there, but 45 m from a mis-sited coordinate | 9 | 3% | |
+| real — the pinned bus never served the stop (feed dropout, end of run, short-turn) | 53 | 17% | |
+| real — another bus was genuinely ahead at the promise (ranking) | 15 | 5% | |
+| real — the pin was ahead yet arrived second (a long stand) | 10 | 3% | |
+| unclassified | 3 | 1% | |
+
+### Artefact 1: the rider who is told "now" and scored against the next bus
+
+`truthFor` deliberately arms past a bus already inside 45 m (the canary cannot
+board, so neither can a simulated rider) and records it as
+`busAtStopOnArrival`. `summarise` has always excluded those waits. The
+by-hand pin analysis did not, and that single omission is the whole under-5
+anomaly: 96 of its 129 wrong pins are a rider who walked up to a bus at the
+curb, was correctly told **"now, then 50 min"**, and was then scored against the
+bus 945 s later.
+
+```
+Red|121  2026-09-04T11:10:05Z  Union Station (N)
+  a Red bus (#316) is at the curb; the card says "now, then 50 min"
+  scored arrival: #304, 955 s later.  miss +945 s, pin "wrong"
+```
+
+Strip the armed waits and the under-5 wrong-pin rate falls from **30% to 10%**
+— the same as the 5–10 and 10–20 buckets. `pinCorrect` is now a field on every
+wait and `pctPinRight` a line in every summary, computed on the same
+armed-excluded population as every other share, so this cannot be recomputed
+by hand and get it wrong again.
+
+### Artefact 2: the 45 m radius catches the bus on the other side of the street
+
+`CLAUDE.md`'s own invariant — *stops that are metres apart can be many stops
+apart in sequence* — applies to the truth rule and nobody had applied it.
+130 Prospect Street (N) and (S) are ~10 m apart across one road at sequence
+positions 11 and 20 of Red's 29; College / Wall (N) and (S), and Phelps Gate
+against the northbound leg of College, are the same shape. Every bus serving
+one drives inside 45 m of the other.
+
+**304 of 1,051 Red curb visits on 2026-09-04 (29%) are such drive-bys**, and
+they are concentrated exactly where you would predict: College / Wall (N) 35 of
+62, Chapel / College 34 of 62, 130 Prospect (N) 32 of 41, College / Wall (S) 32
+of 61, Phelps Gate 32 of 61, State St Station 30 of 66.
+`scripts/eta-replay/curb-vs-feed.mjs` prints that table for any line and any
+capture, and is how it should be re-checked before trusting the truth rule on
+a route nobody has audited.
+
+Worked example — `Red|98|2026-09-04T11:20:05Z`, a rider at Phelps Gate told
+`in 27, 34 min` on #310:
+
+```
+11:20  #310 at Chapel / College, 267 m away but 17 stops back — 27 min is right
+11:20  #316 at Union Station (N), 728 m away and 22 stops back
+11:26  #316 passes 83 m from Phelps Gate, NORTHBOUND up College, last_stop_id
+       still 121 — it is driving the idx 5 -> 6 leg, not serving idx 22.
+       Scored as "the bus that arrived": wait 360 s, miss -1,260 s, pin wrong
+11:46:56  #310 reaches Phelps Gate and serves it
+```
+
+**The promise was 40 seconds out and the instrument scored it 21 minutes
+early.**
+
+The fix is to ask the operator, not the geometry: an arrival counts when the
+feed's own `last_stop_id` becomes that stop within ±[120 s, 300 s] of the curb
+sample (measured: the flip follows the entry by 24 s at the median, 88 s at
+p90). `last_stop_id → S` is a trustworthy marker — at 27 of Red's 29 stops the
+bus is inside 45 m of S when the feed says it served S.
+
+The correction runs both ways. The two stops where it does not hold are
+**Trumbull / Hillhouse (p50 130 m, inside 45 m on 10 of its 27 service events)
+and 130 Prospect Street (N) (p50 92 m, 10 of 25)**:
+their published coordinate is not where the bus stands, so the radius misses
+genuine arrivals there. A served flip with no curb visit therefore becomes an
+arrival dated at the closest approach before it — 86 arrivals recovered on this
+day. A bus that publishes no `last_stop_id` at all keeps its geometry, since
+there is nothing to corroborate against.
+
+### What the corrected truth says
+
+The wrong-bus problem is a fifth of what it looked like, and it is flat across
+the display buckets rather than concentrated where riders act:
+
+| bucket | pin wrong, as scored | pin wrong, corrected |
+|---|---|---|
+| under 5 min | 21% | **13%** |
+| 5–10 min | 11% | 9% |
+| 10–20 min | 10% | 8% |
+| 20–27 min | 27% | **8%** |
+| over 27 min | 29% | 17% |
+
+(armed waits excluded from both columns; 1,503 waits.) Overall the pin names
+the arriving bus on **90%** of waits, not 81%. The band table that opened this
+section moves with it — the under-5 central-60% width is 4:50, not 10:16, and
+1:55 when the pin is also right; over-27 is 9:06, not 23:14.
+
+### The paired run: same client, same riders, only the truth rule
+
+`rider-sim` on master (`43c7e0c`), `ROUTES=Red POP=uniform CHAIN=none
+EVERY_MIN=10 DETECTOR_FROM=2026-09-04T04:00:02.090Z`, capture
+`cap-et-0904.jsonl`, snapshot `snap-0904-2205.db`. Arm A reproduces
+`red-base.waits.jsonl` **byte for byte** (md5 `cbb4eb90…`), so the only thing
+that moved is the rule; arm B is `f3ac0616…`.
+
+| | 45 m alone | corroborated |
+|---|---|---|
+| arrived / gave up / a bus already at the curb | 1482 / 113 / 160 | 1516 / 134 / 100 |
+| median wait | 9.1 min | 10.4 min |
+| first promise \|miss\| p50 / p90 | 119.5 s / 639.5 s | **115 s / 573 s** |
+| **bus came >60 s EARLY / >60 s LATE** | **43.9% / 16.0%** | **37.4% / 22.8%** |
+| interval: inside / bus earlier / later | 46.8 / 41.5 / 11.7 | 48.0 / 33.8 / 18.2 |
+| the first bus named is the bus that came | — | **91.4%** |
+| jump ≥180 s / ≥300 s | 34.6% / 15.2% | 36.5% / 16.7% |
+| strand | 10.1% | 9.9% |
+| dropped while approaching | 8.8%, 135 drops | 10.6%, 175 drops |
+
+**The app's apparent optimism was partly the instrument.** A drive-by ends a
+wait early, so it books an arrival before the promise: "the bus beat the number
+by more than a minute" falls from 43.9% of riders to 37.4%, and "arrived later
+than the number" rises 16.0% → 22.8%. Sixty of the 160 "a bus was already at
+the curb when the rider walked up" were a bus on the far side of the road, and
+21 waits that used to be ended by a drive-by now correctly run past the 45 min
+give-up — those are the service holes in the section below.
+
+Jumps, drops and worst drift **rise**, and that is right: those waits are now
+scored over the whole real wait instead of being truncated at a bus that never
+came. **Strand is flat (7 fixed, 7 introduced)** — the gate a client change has
+to clear is undisturbed.
+
+`--compare` also prints a `pin wrong` row now; against a file written before
+this change every wait reads "newly wrong", because the field did not exist.
+
+### The two candidate fixes this refutes
+
+- **Capping the displayed promise at the observed headway would lie to nine
+  riders in ten.** With the corrected truth a promise beyond 20 minutes names
+  the right bus **90%** of the time (320 of 357), and the bus arrives 115 s
+  SOONER than promised at the median (p10 −484 s, p90 +190 s). The premise it rested on — "~54 min lap, two buses, so ~27 min
+  headway" — is not this day: **three** Red buses ran (#310, #316, #304, all on
+  route 3 from ~11:25 to 21:25), and the observed gap between consecutive
+  arrivals at a Red stop is p50 **1,065 s (17.8 min)**, p90 2,079 s. Only past
+  30 minutes does the wrong-pin rate reach 31%, on 35 waits.
+  The "81% of promises beyond 20 min were beaten inside one headway" figure is
+  also not evidence: with a 27 min headway, *any* promise under 27 minutes is
+  beaten inside one headway by construction.
+- **Preferring the soonest bus over the pinned one** would be aimed at 15 waits
+  — 5% of the wrong pins, 1% of all waits. Report #49's `PIN_SWITCH_MARGIN_SEC`
+  loyalty rule is not what is costing riders here.
+
+### What is genuinely left, and it is not an estimation problem
+
+Of the 80 real wrong pins, **53 are "the pinned vehicle never served the stop
+at all"**:
+
+- **31 the pin left the feed or ended its run.** Red had exactly two dropouts
+  that day — **#316 dark 16:21:10 → 17:41:33 (80 min)** and #304 dark 17:47:51
+  → 18:06:15 — and the end-of-service tail at 21:00 ET accounts for the rest.
+  A rider at Chapel / Church at 16:20:05 was told `in 2, 18 min` on #316; #316
+  stopped reporting 65 s later and #304 served the stop 17 minutes on.
+- **22 the pin short-turned or dawdled past the window**, 16 of them one
+  incident. #310 ran Canal / Munson (idx 13) at 18:31:29 and
+  Phelps Gate (idx 22) at 18:43:35, **skipping 344 Winchester and the whole
+  Winchester / Division / Prospect branch**. All sixteen riders standing at
+  those six stops at 17:50, 18:00 and 18:10 were counting down a bus that was
+  never coming; 344 Winchester went unserved from 17:36 to 18:44.
+
+Neither is predictable from the estimator at the moment of the promise. The
+lever, if one is wanted, is **how fast the pin is released once the evidence
+arrives** — a bus that has not reported for two `LIVE_BUS_TTL_MS` or has
+demonstrably passed the branch — not a better arrival time. It is a smaller
+prize than it looked: 53 waits in 1,631, 3%.
+
+**Identity churn is not a factor on this data.** Three bus names ran Red all
+day; two had their `bus_id` reissued and no id ever carried two names, and the
+instrument pins by name.
+
+### What this changes elsewhere in the instrument
+
+The drop rule (`droppedApproaching`) uses the same board-stop visit list as its
+ground truth — "did the vanished vehicle reach the stop within 10 min" — so it
+was reading drive-bys too, and its numbers move with this. `strand` and
+`firstSightMissSec` depend on `arrivedAt` and move as well. Sequences, drifts
+and reversals are display properties and do not.
 
 ## What the simulation cannot see
 

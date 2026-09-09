@@ -214,6 +214,32 @@ from `CLIENT_ROOT`, whose HEAD and dirty flag go into the output. Scoring is
 `canary-metrics.mjs`'s own (display buckets, smallest movement two readings
 permit), so a simulated wait and a browser-watched wait are judged by one rule.
 
+### curb-vs-feed.mjs — is the 45 m curb rule telling the truth on this line?
+
+rider-sim's ground truth was geometry alone until 2026-09-09: a bus inside 45 m
+of a stop had arrived. On Red that is wrong for **29% of curb visits** — 130
+Prospect Street (N) and (S) are ~10 m apart across one road at sequence
+positions 11 and 20, so every bus serving one drives inside 45 m of the other,
+and the scoring then blamed the app for counting down "the wrong bus". Truth
+now requires the feed's own `last_stop_id` to name the stop within [−120 s,
++300 s] of the curb sample; a served flip the radius never saw becomes an
+arrival too, which is how the two mis-sited Red stops (Trumbull / Hillhouse,
+130 Prospect (N) — the bus stands ~100 m from the published coordinate) keep
+their genuine arrivals.
+
+Run this before trusting the truth rule on a line nobody has audited:
+
+```bash
+ROUTE=3 CAPTURE=~/shuttle-captures/cap-et-0904.jsonl REPLAY_DB=./store/snap.db \
+  node scripts/eta-replay/curb-vs-feed.mjs
+```
+
+Per stop it prints curb visits, how many the feed does not corroborate
+(drive-bys), and how many of the feed's own service events had the bus inside
+45 m — a stop scoring low on that last column is MIS-SITED, and the curb rule
+loses its real arrivals rather than inventing fake ones. The whole finding is
+in `docs/rider-sim.md`, "45 m is not an arrival".
+
 ## card-vs-trip.ts / card-cost.ts — the app's OTHER ETA estimator
 
 The route cards on the Map tab do not call `computeUpcomingArrivals`.
