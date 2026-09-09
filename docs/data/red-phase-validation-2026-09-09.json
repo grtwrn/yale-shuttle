@@ -1,0 +1,500 @@
+{
+  "schemaVersion": 1,
+  "scope": "Red route 3, Winchester stop 11 occurrence 14, Division/Prospect stop 48 occurrence 17",
+  "conclusion": "Early recorded window lacked Winchester phase contexts. The unchanged operational fit improved all three first total estimates in a later raw-data replay newly scored here; Division ETA improved on average but one of three targets worsened and its interval crosses zero. Strict holdout independence is unproven.",
+  "artifactRoot": "services/shuttle-v2/store/red-validation-20260909/phase-0822-0955",
+  "rawArtifactsIgnored": true,
+  "earlyRecorded": {
+    "kind": "Frozen client shadow from actually received wire; not a logged rider phone",
+    "windowET": [
+      "2026-09-09T06:45:30.459-04:00",
+      "2026-09-09T08:22:09.910-04:00"
+    ],
+    "arms": [
+      "baseline-production-live",
+      "actual-served-context"
+    ],
+    "registrationSha256": "9d0ec653f2b62ac6d69faf4db7eab8ca3d31ace3f926f3f38c1502f890a135d2",
+    "snapshotManifestSha256": "6801e5692d35f9dc21aa7841f8b34b4a5616cd4974fa0a7abc004c99dcc705ba",
+    "reportSha256": "fd21bf14a1fabddb863ee314d70ac2b74587db21fdc46899181ea66620962a14",
+    "captureInputs": {
+      "queryInputs": 1578,
+      "withContext": 1044,
+      "buses": [
+        "#119",
+        "#306"
+      ],
+      "byPeriod": {
+        "beforeReplacementBuild": {
+          "queryInputs": 1172,
+          "withContext": 1042,
+          "firstET": "2026-09-09T06:45:30.459000-04:00",
+          "lastET": "2026-09-09T08:04:46.032000-04:00"
+        },
+        "afterReplacementBuild": {
+          "queryInputs": 406,
+          "withContext": 2,
+          "firstET": "2026-09-09T08:04:51.027000-04:00",
+          "lastET": "2026-09-09T08:22:09.910000-04:00"
+        }
+      }
+    },
+    "allRedEta": {
+      "moments": 1151,
+      "independentTargets": 66,
+      "baselineMaeSec": 71.43303679664459,
+      "candidateMaeSec": 71.61331113933716,
+      "maeChangeSec": 0.18027434269256704,
+      "pairedTargetBootstrap95Sec": [
+        0.0496529812934382,
+        0.3395803753270508
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -0.0009348772061753152,
+        0.29076776946009286
+      ],
+      "targetChanges": {
+        "improve": 4,
+        "unchanged": 55,
+        "worsen": 7
+      }
+    },
+    "winchesterFirstTotal": {
+      "moments": 2,
+      "independentTargets": 2,
+      "baselineMaeSec": 51.98925721228922,
+      "candidateMaeSec": 51.98925721228922,
+      "maeChangeSec": 0.0,
+      "pairedTargetBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "targetChanges": {
+        "improve": 0,
+        "unchanged": 2,
+        "worsen": 0
+      }
+    },
+    "winchesterRemaining": {
+      "moments": 16,
+      "independentTargets": 2,
+      "baselineMaeSec": 89.47131545114742,
+      "candidateMaeSec": 89.47131545114742,
+      "maeChangeSec": 0.0,
+      "pairedTargetBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "targetChanges": {
+        "improve": 0,
+        "unchanged": 2,
+        "worsen": 0
+      }
+    },
+    "winchesterToDivisionEta": {
+      "moments": 17,
+      "independentTargets": 2,
+      "baselineMaeSec": 61.96691856668017,
+      "candidateMaeSec": 61.96691856668017,
+      "maeChangeSec": 0.0,
+      "pairedTargetBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        0.0,
+        0.0
+      ],
+      "targetChanges": {
+        "improve": 0,
+        "unchanged": 2,
+        "worsen": 0
+      }
+    },
+    "winchesterWireCoverage": {
+      "recordedDisplayRows": 23,
+      "anyWireContextRows": 23,
+      "matchingWinchesterContextRows": 0,
+      "matchingPositivePhaseRows": 0
+    },
+    "firstDisplays": [
+      {
+        "busKey": "#119",
+        "issuedAt": 1788953660776,
+        "issuedAtET": "2026-09-09T07:34:20.776000-04:00",
+        "pinnedAtET": "2026-09-09T07:34:19.435000-04:00",
+        "departedAtET": "2026-09-09T07:37:39.441000-04:00",
+        "actualPinnedTotalSec": 200.006,
+        "totalEstimateSec": 287.9847302450276,
+        "wireContextCount": 8,
+        "matchingWinchesterContexts": 0,
+        "matchingPositivePhaseContexts": 0
+      },
+      {
+        "busKey": "#306",
+        "issuedAt": 1788954980945,
+        "issuedAtET": "2026-09-09T07:56:20.945000-04:00",
+        "pinnedAtET": "2026-09-09T07:55:54.524000-04:00",
+        "departedAtET": "2026-09-09T08:00:54.575000-04:00",
+        "actualPinnedTotalSec": 300.051,
+        "totalEstimateSec": 284.05121582044916,
+        "wireContextCount": 7,
+        "matchingWinchesterContexts": 0,
+        "matchingPositivePhaseContexts": 0
+      }
+    ],
+    "interpretation": "No matching Winchester context was delivered in 23 recorded displays. Both early first totals and 16 eligible moments stayed unchanged. Missing same-bus history is plausible but omission reason was not logged. Primary keeps absent/fallback contexts; synthetic arms excluded.",
+    "writerSourceHashes": {
+      "arrivals.ts": "92314e290402e465bfffdff5069a814fd5f28753f2960df0f651e0e89761f9a5",
+      "eta/index.ts": "d11fe9a9d1dc99c11e3de2778be1992e2211a1da72fbcb5c4f83e9133033de71",
+      "eta/arrival.ts": "b33551743b1aa5c9f21d06873fcbbf378bf33e79afd5e2be2720f6a73b142e6b",
+      "eta/filter.ts": "f7411db4b979cc11dd362fe4583fd536d36f263f8f511e0c50e7761cd6d8f1ce",
+      "eta/standingForecast.ts": "21e2b56a3d2d101f463b8e24634c708ce210bbf04ade573c5d3a0a79e9b08be1",
+      "eta/standingDistribution.ts": "01bffaf909b3125d4d326b3dd237ea41e45180989b27a5c9c9e1688e69aa58de"
+    },
+    "writerSha256": "dd612fb75ba45f31c589cf29c50d1239c1cdc8a36ff3c46303bdac88639eb71f"
+  },
+  "laterReplay": {
+    "kind": "Newly scored raw-data replay in this comparison; earlier global outcome awareness unresolved. Not recorded prospective rider forecasts.",
+    "head": "e332cbaa9cfc4911bc97776d8103b64cb5437084",
+    "frozenAt": "2026-09-09T18:06:16.704741+00:00",
+    "window": {
+      "issuedAfterExclusive": 1788956529910,
+      "throughInclusive": 1788962153271,
+      "warmup": "Earlier Red GPS retained for actual client belief state; never count earlier issues as unseen outcomes"
+    },
+    "rawRows": 2246,
+    "rawPolls": 1123,
+    "buses": [
+      {
+        "busId": 66115,
+        "busKey": "#119",
+        "rows": 1123,
+        "firstET": "2026-09-09T08:22:10.688000-04:00",
+        "lastET": "2026-09-09T09:55:53.271000-04:00",
+        "gapsOver30Sec": []
+      },
+      {
+        "busId": 66117,
+        "busKey": "#306",
+        "rows": 1123,
+        "firstET": "2026-09-09T08:22:10.688000-04:00",
+        "lastET": "2026-09-09T09:55:53.271000-04:00",
+        "gapsOver30Sec": []
+      }
+    ],
+    "warmupRowsTotal": 3819,
+    "launchSha256": "265dbd482076dca8a0d34fec73880cf146c1fce3a104033ddcf240752923eb9a",
+    "reportSha256": "509d8a8bf940d8b113326dea5014e0097115d5453916ff28ec0a4b2d37fd88e1",
+    "sourceAndInputHashCount": 226,
+    "sourceDb": {
+      "source": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/production-2026-09-09-0046.db",
+      "sha256": "3497051dda04ab85d46949573b96605dcb5e1f9fe708450fddc926a544e773fa",
+      "bytes": 134205440,
+      "archivedPath": "later/client-dataset-v1/artifacts/source.db"
+    },
+    "dbGeometryMatchesCapturedExactly": true,
+    "operationalFitWrapperSha256": "874642edbe48d00020fac9bec16b42017c6f49e4a4fb16df17c04ec0fb7680d6",
+    "operationalFit": {
+      "sha256": "207a38440ecea00d54409365ce29999df2d43869c08de63d2b4aa15aca9d1de8",
+      "fittedAt": 1788929220000,
+      "extraction": "Unchanged nested fit object; no refitting or coefficient modification",
+      "archivedPath": "later/client-dataset-v1/artifacts/operational-fit.json"
+    },
+    "modelParamsSha256": "13dfdd9743d91f0f4c7eac675578ec0f6c34da31bb2db1aa418a74b521639ff9",
+    "historyPolicy": "First completed captured server visit version per bus/occurrence/anchor; knownAt=first version archive observedBy; later revisions never moved earlier.",
+    "historyRows": 158,
+    "historySha256": "9c3e87db24d77540a02b7b29fc7748bfbc9538c6749e8e1269a2c25c774b5c90",
+    "scoringLabelsSha256": "655fe0536c3c7743a822e570e30bd81a11da4cac4016e668b9cb335a656d0933",
+    "validationPositionsSha256": "cdf8b2bf7ad7dc76ca4653569e687afb9937e99c798ac66f75b65b3704989db6",
+    "warmupAndValidationSha256": "472a916e80a8c65d2288137178988032cbd60c24719df2df3f0e81945d5266f3",
+    "primaryWinchesterFirstTotal": {
+      "moments": 3,
+      "independentTargets": 3,
+      "baselineMaeSec": 188.52602051645727,
+      "candidateMaeSec": 40.10367829318643,
+      "maeChangeSec": -148.42234222327085,
+      "pairedTargetBootstrap95Sec": [
+        -191.06489500747284,
+        -124.47921107832
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -157.7720530428964,
+        -129.72292058401968
+      ],
+      "targetChanges": {
+        "improve": 3,
+        "unchanged": 0,
+        "worsen": 0
+      }
+    },
+    "primaryWinchesterRemaining": {
+      "moments": 27,
+      "independentTargets": 3,
+      "baselineMaeSec": 147.41506671451253,
+      "candidateMaeSec": 79.17366365589096,
+      "maeChangeSec": -68.24140305862157,
+      "pairedTargetBootstrap95Sec": [
+        -106.29769281552039,
+        -24.648396007379986
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -73.77812035296434,
+        -65.47304441145019
+      ],
+      "targetChanges": {
+        "improve": 3,
+        "unchanged": 0,
+        "worsen": 0
+      }
+    },
+    "primaryWinchesterToDivisionEta": {
+      "moments": 27,
+      "independentTargets": 3,
+      "baselineMaeSec": 119.24197538442418,
+      "candidateMaeSec": 48.69766140576641,
+      "maeChangeSec": -70.54431397865777,
+      "pairedTargetBootstrap95Sec": [
+        -220.83613895520975,
+        13.877019437160065
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -112.75498068656668,
+        13.877019437160065
+      ],
+      "targetChanges": {
+        "improve": 2,
+        "unchanged": 0,
+        "worsen": 1
+      }
+    },
+    "secondaryAllRedEta": {
+      "moments": 1780,
+      "independentTargets": 91,
+      "baselineMaeSec": 102.92591798823109,
+      "candidateMaeSec": 97.87727954466308,
+      "maeChangeSec": -5.048638443568018,
+      "pairedTargetBootstrap95Sec": [
+        -10.976936271515479,
+        -0.7532855364870757
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -9.556971758242929,
+        -0.6383123748643013
+      ],
+      "targetChanges": {
+        "improve": 42,
+        "unchanged": 3,
+        "worsen": 46
+      }
+    },
+    "secondaryAllRedStandingFirstTotal": {
+      "moments": 56,
+      "independentTargets": 56,
+      "baselineMaeSec": 58.241924449319654,
+      "candidateMaeSec": 49.49980594706837,
+      "maeChangeSec": -8.742118502251289,
+      "pairedTargetBootstrap95Sec": [
+        -18.536672641130163,
+        -0.7607728807175641
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -12.73895149475603,
+        -5.518866088941014
+      ],
+      "targetChanges": {
+        "improve": 13,
+        "unchanged": 30,
+        "worsen": 13
+      }
+    },
+    "secondaryAllRedStandingRemaining": {
+      "moments": 157,
+      "independentTargets": 56,
+      "baselineMaeSec": 44.78721196512817,
+      "candidateMaeSec": 40.833332810270505,
+      "maeChangeSec": -3.9538791548576624,
+      "pairedTargetBootstrap95Sec": [
+        -9.429009490002374,
+        0.008090048522150431
+      ],
+      "busDayBlocks": 2,
+      "busDayBootstrap95Sec": [
+        -4.516013270070146,
+        -3.5005451909766276
+      ],
+      "targetChanges": {
+        "improve": 13,
+        "unchanged": 30,
+        "worsen": 13
+      }
+    },
+    "winchesterCoverage": {
+      "baseline": {
+        "recordedRowsWholeCapture": 54,
+        "recordedRowsAfterCutoff": 33,
+        "associationWholeCapture": {
+          "outsideCompletePhysicalStand": 11,
+          "occurrenceAgrees": 43
+        },
+        "associationAfterCutoff": {
+          "occurrenceAgrees": 27,
+          "outsideCompletePhysicalStand": 6
+        },
+        "missingValidDisplayAfterCutoff": 0,
+        "eligibleMoments": 27,
+        "eligibleVisits": 3,
+        "originalFirstDisplaysWholeCapture": 5,
+        "originalFirstDisplaysAfterCutoff": 3,
+        "earlierOriginalFirstDisplaysNotPromoted": 2,
+        "originalFirstAfterCutoffNotPaired": 0,
+        "unmatchedEligibleMoments": 0
+      },
+      "candidate": {
+        "recordedRowsWholeCapture": 54,
+        "recordedRowsAfterCutoff": 33,
+        "associationWholeCapture": {
+          "outsideCompletePhysicalStand": 11,
+          "occurrenceAgrees": 43
+        },
+        "associationAfterCutoff": {
+          "occurrenceAgrees": 27,
+          "outsideCompletePhysicalStand": 6
+        },
+        "missingValidDisplayAfterCutoff": 0,
+        "eligibleMoments": 27,
+        "eligibleVisits": 3,
+        "originalFirstDisplaysWholeCapture": 5,
+        "originalFirstDisplaysAfterCutoff": 3,
+        "earlierOriginalFirstDisplaysNotPromoted": 2,
+        "originalFirstAfterCutoffNotPaired": 0,
+        "unmatchedEligibleMoments": 0
+      }
+    },
+    "pairedFirstDisplays": [
+      {
+        "busKey": "#119",
+        "episodeId": "4c21429741bb5c36a99a726a",
+        "issuedAt": 1788956811450,
+        "issuedAtET": "2026-09-09T08:26:51.450000-04:00",
+        "pinnedAt": 1788956786468,
+        "pinnedAtET": "2026-09-09T08:26:26.468000-04:00",
+        "departedAt": 1788957342177,
+        "departedAtET": "2026-09-09T08:35:42.177000-04:00",
+        "actualPinnedTotalSec": 555.709,
+        "baselineTotalEstimateSec": 289.9810615493718,
+        "candidateTotalEstimateSec": 630.3720434431552,
+        "baselineElapsedSec": 24.982,
+        "candidateElapsedSec": 24.982
+      },
+      {
+        "busKey": "#119",
+        "episodeId": "21f9b55ac3fa2b52108d9ed7",
+        "issuedAt": 1788960953147,
+        "issuedAtET": "2026-09-09T09:35:53.147000-04:00",
+        "pinnedAt": 1788960933149,
+        "pinnedAtET": "2026-09-09T09:35:33.149000-04:00",
+        "departedAt": 1788961073158,
+        "departedAtET": "2026-09-09T09:37:53.158000-04:00",
+        "actualPinnedTotalSec": 140.009,
+        "baselineTotalEstimateSec": 289.9810615493718,
+        "candidateTotalEstimateSec": 114.51614952894815,
+        "baselineElapsedSec": 19.998,
+        "candidateElapsedSec": 19.998
+      },
+      {
+        "busKey": "#306",
+        "episodeId": "804c5818125dbe4dd142ef51",
+        "issuedAt": 1788958822967,
+        "issuedAtET": "2026-09-09T09:00:22.967000-04:00",
+        "pinnedAt": 1788958817968,
+        "pinnedAtET": "2026-09-09T09:00:17.968000-04:00",
+        "departedAt": 1788958958071,
+        "departedAtET": "2026-09-09T09:02:38.071000-04:00",
+        "actualPinnedTotalSec": 140.103,
+        "baselineTotalEstimateSec": 289.9810615493718,
+        "candidateTotalEstimateSec": 119.94785903464786,
+        "baselineElapsedSec": 39.999,
+        "candidateElapsedSec": 39.999
+      }
+    ],
+    "activation": {
+      "baseline": {
+        "postCutoffSuccessfulLookups": 0,
+        "postCutoffWinchesterSuccessfulLookups": 0,
+        "activationPassed": true,
+        "countingUnit": "function invocations, including repeated cohort/planner calls; not independent buses or visits"
+      },
+      "candidate": {
+        "postCutoffSuccessfulLookups": 2407,
+        "postCutoffWinchesterSuccessfulLookups": 643,
+        "activationPassed": true,
+        "countingUnit": "function invocations, including repeated cohort/planner calls; not independent buses or visits"
+      }
+    },
+    "changedPrimaryFirstTotals": 3,
+    "changedPrimaryEtaVectors": 27,
+    "policy": {
+      "first": "Original first valid recorded display before issue-window/pair exclusions; no replacement by a later shared row.",
+      "eta": "Unique complete Winchester source hold, next first 50 m Division crossing, current GPS outside 50 m, same continuous track, corroborated served occurrence 1..5, <=1800s.",
+      "weighting": "Equal physical targets or visits; equal issue moments within each; bootstrap 2000; bus/day sensitivity.",
+      "activation": "Require positive-weight Winchester lookup after cutoff plus changed primary estimates.",
+      "missing": "Keep fallback contexts; count missing/censored/unmatched records explicitly."
+    },
+    "limitations": [
+      "Raw-data replay newly scored by this comparison; prior global awareness of a similarly described hold is unresolved.",
+      "Feature history uses conservative archive-observed completion clocks and may differ from live server history.",
+      "Only two buses on one 94-minute window; small visit counts cannot establish broad generalization.",
+      "First display means first valid display recorded at the fixed six-poll cadence, not a logged phone presentation.",
+      "Original first displays were selected before time-window and pairing exclusions; later rows were never promoted.",
+      "Future ETA rows with absent or beyond 30 min targets are omitted by the unchanged replay writer; row-level exclusions count recorded issues, not every possible rider query.",
+      "Published conformal bounds are preserved, including negative lower bounds; no three-point CRPS claim.",
+      "Complete physical holds are required for standing/hold-source cohorts; independently observed arrival crossings do not require a completed downstream dwell.",
+      "An earlier pause-display commit ed68b30 mentioned a rounded 9m 16s hold. Its identity is unresolved, so this is not claimed as strictly held-out or globally untouched data."
+    ],
+    "keySourceHashes": {
+      "scripts/eta-replay/general-eval/client-replay.ts": "716110b2b50e2dd4c488adbd6c3c53e91d9992dd4af07fd5a3eb3f9dfce3230d",
+      "scripts/eta-replay/general-eval/models/analytic-client-hook.ts": "47eac07b11a2bf629cc7f9e0f8fec7e251c69cb127ac8db62a053cc0f266f193",
+      "web/src/arrivals.ts": "74f95bf46124b833b42d2e987a4d2e7c6a30a775443fd26984a738bb79ec3ea4",
+      "web/src/eta/filter.ts": "3087856f5ac0868cf46beeb6a7d5e8420f5b165d58da505e3def504792e76c90",
+      "web/src/eta/standingForecast.ts": "21e2b56a3d2d101f463b8e24634c708ce210bbf04ade573c5d3a0a79e9b08be1"
+    }
+  },
+  "operationalWinchesterCell": {
+    "arm": "analytic-operational-2026-09-09:874642edbe48",
+    "file": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/operational-fit-2026-09-09.json",
+    "sha256": "874642edbe48d00020fac9bec16b42017c6f49e4a4fb16df17c04ec0fb7680d6",
+    "cellKey": "3:3%3A643d62cc87a5f1be71b3cfef:11:14",
+    "weight": 0.7034269158548814,
+    "phasePresent": true,
+    "fittedAt": 1788929220000
+  },
+  "selectionCaveats": [
+    "The operational fit and model mathematics were fixed before this comparison; no model parameters were fitted or tuned using these results.",
+    "First valid recorded displays selected before issue-window and pairing exclusions; no later substitute for an excluded earlier first.",
+    "Early and later comparisons differ in client source, calibration/exposure and history provenance; the difference is not a controlled attribution experiment.",
+    "Two buses/three holds cannot establish across-day reliability. This is not evidence for subsequent motion changes or a globally optimal estimator.",
+    "The network-wide morning scorer failure was irrelevant to Red target uniqueness; early Red used original registered scorer unchanged.",
+    "Later v1 launch failed at native-loader setup; v2 changed preload order only. Original failed logs and registration remain archived.",
+    "Observations after 09:55 were excluded from this comparison.",
+    "Prior episode awareness unresolved: ed68b30 already mentioned a rounded 9m 16s hold; evidence is a new paired score, not a claim of globally untouched outcomes.",
+    "The phase fit contains no September 9 service-day training; source and UI decisions may reflect earlier operator examples. PR #185 attributes its 9m 16s example to September 7 but supplies no bus, time or report identifier to establish episode identity."
+  ]
+}
