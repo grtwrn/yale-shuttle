@@ -49,6 +49,13 @@ export function bucketOf(token) {
  * Anything else beginning with 🚌 is one of the card's SENTENCES ("You can't
  * catch #40 …", "The bus is at your stop …") and returns null, so a warning is
  * never mistaken for a countdown.
+ *
+ * DELIBERATELY NOT PARSED: the standing-bus RANGE, "🚌 in 3-7 min" /
+ * "🚌 now-7 min" / "🚌 in 3-7, then 19 min" (fmtBusRange, web/src/format.ts).
+ * A bus mid-layover has no single number to score — that is the whole reason
+ * the range exists — and scoring either end would read the switch into and out
+ * of the range as a lurch of several minutes and file a report about it. The
+ * poll is skipped instead; the lurch metric only ever spans two points.
  */
 export function parseBusEtaText(line) {
   const t = String(line).replace(/^🚌\s*/u, "").trim();

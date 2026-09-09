@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   fmtBusPair,
+  fmtBusRange,
   fmtClock,
   fmtMin,
   fmtWait,
@@ -348,5 +349,27 @@ describe("a malformed geocode result never crashes the dropdown", () => {
       expect(typeof suggIcon(g)).toBe("string");
     }
     expect(suggLabel({ display_name: undefined } as unknown as GeocodeResult)).toBe("");
+  });
+});
+
+describe("fmtBusRange — a standing bus is not a point", () => {
+  it("gives both ends, floored, so leaving on the low one is never late", () => {
+    expect(fmtBusRange(266, 734)).toBe("in 4-12 min");
+    expect(fmtBusRange(193, 473)).toBe("in 3-7 min");
+  });
+
+  it("shares the unit with the bus behind it, and names it", () => {
+    // Three bare numbers ("in 4-12, 19 min") cannot be read; "then" can.
+    expect(fmtBusRange(266, 734, 19 * 60)).toBe("in 4-12, then 19 min");
+  });
+
+  it("says the low end is now when it is", () => {
+    expect(fmtBusRange(5, 420)).toBe("now-7 min");
+    expect(fmtBusRange(45, 420)).toBe("in <1-7 min");
+  });
+
+  it("collapses to the plain pair when the ends round together", () => {
+    expect(fmtBusRange(200, 230)).toBe("in 3 min");
+    expect(fmtBusRange(200, 230, 900)).toBe("in 3, 15 min");
   });
 });

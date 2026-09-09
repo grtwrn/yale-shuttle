@@ -41,6 +41,30 @@ export function fmtBusPair(firstSec: number, secondSec?: number | null): string 
   return `in ${first.replace(" min", "")}, ${second}`;
 }
 
+/**
+ * The same line when the bus is STANDING and the wait has real spread in it:
+ * "in 3-8 min", or "in 3-8, then 19 min" with the one behind it.
+ *
+ * A standing bus's arrival is not a point. Its low end is the DRIVE FLOOR —
+ * where it would be if it pulled out this second — and its high end the q90 of
+ * the stand it is still in (standWait.ts). Floored at both ends by `fmtMin`,
+ * so "3-8 min" means at least 3 and about 8: a rider who leaves on the 3 is
+ * never late, which is the whole point (a single rising number promised 10:28
+ * on a stand that ended at 9:16).
+ *
+ * Collapses to `fmtBusPair` when the two ends round to the same minute — a
+ * range of one number is just a number wearing a dash.
+ */
+export function fmtBusRange(lowSec: number, highSec: number, secondSec?: number | null): string {
+  const low = fmtMin(lowSec), high = fmtMin(highSec);
+  if (low === high) return fmtBusPair(lowSec, secondSec);
+  const head = low === "now" ? `now-${high}` : `in ${low.replace(" min", "")}-${high}`;
+  if (secondSec == null || !Number.isFinite(secondSec)) return head;
+  // Shared unit, as fmtBusPair does it — but with "then", because three bare
+  // numbers on one line ("in 3-8, 19 min") cannot be read.
+  return `${head.replace(" min", "")}, then ${fmtMin(secondSec)}`;
+}
+
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";
