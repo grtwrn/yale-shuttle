@@ -46,6 +46,7 @@ import {
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
 import { buildLiveSnapshot } from "./snapshot.js";
+import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
   buildAccuracyV1,
@@ -810,6 +811,40 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ ok: true });
   });
 
+  // Stop evidence shares the read-only operator session. Never serves model
+  // mutations or rider records, and never caches fleet evidence in a browser.
+  app.use("/api/stats/stops/*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
+  app.get("/api/stats/stops/catalog", requireStatsAuth, (c) =>
+    c.json(readStopDataCatalog(opts.bundle.sqlite, now(), opts.collector.ref.get())));
+  app.get("/api/stats/stops/visits", requireStatsAuth, (c) => {
+    try {
+      const integer = (name: string): number => {
+        const raw = c.req.query(name) ?? "";
+        if (!/^\d{1,10}$/.test(raw)) throw new StopDataInputError(`${name} is required and must be an integer`);
+        return Number(raw);
+      };
+      return c.json(readStopDataDay(opts.bundle.sqlite, {
+        day: c.req.query("day") ?? "", routeId: integer("routeId"),
+        stopId: integer("stopId"), stopIndex: integer("stopIndex"),
+      }, now()));
+    } catch (error) {
+      if (error instanceof StopDataInputError) return c.json({ error: error.message }, 400);
+      throw error;
+    }
+  });
+  app.get("/api/stats/stops/visits/:id", requireStatsAuth, (c) => {
+    try {
+      const detail = readStopDataVisit(opts.bundle.sqlite, c.req.param("id") ?? "", now());
+      return detail ? c.json(detail) : c.json({ error: "not_found" }, 404);
+    } catch (error) {
+      if (error instanceof StopDataInputError) return c.json({ error: error.message }, 400);
+      throw error;
+    }
+  });
+
   // Rider counts. Operator-only: an audience number is competitive information,
   // and there is no reason for it to be public just because it is anonymous.
   app.get("/api/stats", requireStatsAuth, (c) => {
@@ -1294,6 +1329,18 @@ export function buildApp(opts: AppOptions): Hono {
         } catch {
           return c.notFound();
         }
+      });
+    }
+
+    // Separate Vite entry: the operator charts do not add weight to the rider
+    // bundle. The shell contains no evidence; every data request is gated above.
+    for (const route of ["/stats/stops", "/stats/stops/", "/stop-data.html"]) {
+      app.get(route, async (c) => {
+        try {
+          const html = await fs.promises.readFile(path.join(opts.staticDir!, "stop-data.html"), "utf8");
+          c.header("Cache-Control", "no-store");
+          return c.html(html);
+        } catch { return c.notFound(); }
       });
     }
 

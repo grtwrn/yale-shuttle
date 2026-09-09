@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Unauthenticated page requires operator sign-in",
+    "Existing session unlocks retained data; token input removed",
+    "No admin token stored in localStorage",
+    "Saved study imported locally; visit selection, target switch and query scrubber work",
+    "Bus and route filters work across saved observations",
+    "Malformed study is rejected without replacing the valid study",
+    "390px phone layout has no page-level horizontal overflow"
+  ],
+  "pageErrors": [],
+  "study": "study-sep8-final.json"
+}

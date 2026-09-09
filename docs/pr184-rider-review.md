@@ -1,6 +1,6 @@
 # PR 184 rider replay review
 
-This follow-up addresses [the September 9 review](https://github.com/grtwrn/yale-shuttle/pull/184#issuecomment-5604222448) from a separate worktree based on `281672a`. It changes replay coverage and regression tests. The selected model, fitted weights, production estimator, and arrival-frozen history guards remain unchanged.
+This follow-up addresses [the September 9 review](https://github.com/grtwrn/yale-shuttle/pull/184#issuecomment-5604222448) from a separate worktree based on `281672a`. It changes replay coverage and regression tests, then integrates the newer pause display to resolve PR conflicts. The selected model, fitted weights, ETA/filter mathematics, and arrival-frozen history guards remain unchanged.
 
 ## What the review established
 
@@ -63,6 +63,14 @@ This small development-day smoke test is not an accuracy acceptance cohort. At 1
 - History available after the client's visit began is rejected even if payload decoding at query time succeeds.
 
 These tests establish activation and fallback behavior, not accuracy on an independent service day.
+
+## Compatibility with the newer pause display
+
+While this review was underway, master added the remaining-wait interval and running-long indicator (#185/#186), plus the operator visualizer (#187). Master was merged into the PR branch to resolve its conflicts and allow CI to run; master itself was not changed by this work.
+
+The new shared `standWaitFor` display helper must receive the same visit context as ETA pricing. The merged code forwards that context through the helper and returns contextual q10/q50/q90 from one remaining-time distribution. It preserves the new interval and running-long presentation. Display sample counts use the standing quantiles' `qn` when supplied, with legacy `n` as fallback. Regression tests check contextual interval/ETA consistency, fallback parity and sample-count gating.
+
+On the combined source, all 2,281 tests, backend/frontend typechecks and the frontend build pass. The six recorded rider waits were rerun in both arms; each waits file is byte-identical to its pre-merge counterpart, and the candidate still records 1,067 Winchester activations. These compatibility checks do not add an independent accuracy cohort.
 
 ## Limits of the accuracy evidence
 

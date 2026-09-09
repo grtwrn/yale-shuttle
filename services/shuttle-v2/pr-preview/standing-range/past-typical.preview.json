@@ -1,0 +1,20 @@
+{
+  "caption": "Nine minutes into a 344 Winchester layover, past the ~4:43 the stop typically holds: the chip turns amber and states a ceiling, and the countdown is a range floored by the drive.",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 4,
+    "dest": 39
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/f257f79c-ae61-4a88-8421-ba9846255709/scratchpad/s1/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

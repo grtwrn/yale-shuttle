@@ -147,6 +147,26 @@ describe("standing forecasts through the actual rider client", () => {
     expect(movingMass(released.belief)).toBeGreaterThan(movingMass(stillHeld.belief) + 0.3);
   });
 
+  it("supplies the pause range from the same contextual law as its remaining median", () => {
+    const store: AnchorStore = new Map();
+    const context = prior(600, { phase_error_q: [-180, -120, -60, -30, 0, 30, 60, 120, 180, 240] });
+    const early = poll(store, context, 30);
+    let result = early;
+    for (let elapsed = 35; elapsed <= 180; elapsed += 5) result = poll(store, context, elapsed);
+    expect(result.standing).toMatchObject({ stopIndex: 0, standingSec: 180 });
+    const now = START + 180_000;
+    const contexts = forecastModule.standingForecastsFor(bus(context), result.ring, now);
+    const forecast = forecastModule.forecastForStand(contexts, 0, result.belief.restSince)!;
+    const remaining = forecastModule.standingRemaining(forecast, now);
+    expect(result.shown!.soonSec).toBeCloseTo(remaining(0.1), 8);
+    expect(result.shown!.sec).toBeCloseTo(remaining(0.5), 8);
+    expect(result.shown!.lateSec).toBeCloseTo(remaining(0.9), 8);
+    expect(result.shown!.soonSec!).toBeLessThan(result.shown!.sec);
+    expect(result.shown!.lateSec!).toBeGreaterThan(result.shown!.sec);
+    expect(result.shown!.lateSec! - result.shown!.soonSec!).toBeGreaterThan(120);
+    expect(result.shown!.typicalSec).toBeCloseTo(early.shown!.typicalSec!, 8);
+  });
+
   it("does not mistake an accepted prior for another occurrence for current-stand coverage", () => {
     const lookup = vi.spyOn(forecastModule, "forecastForStand");
     const unrelatedStore: AnchorStore = new Map();

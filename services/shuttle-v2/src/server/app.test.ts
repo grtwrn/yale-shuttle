@@ -1494,6 +1494,7 @@ describe("static routes", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-v2-static-"));
     fs.writeFileSync(path.join(dir, "index.html"), "<html>rider app</html>");
     fs.writeFileSync(path.join(dir, "stats.html"), "<html>operator dashboard</html>");
+    fs.writeFileSync(path.join(dir, "stop-data.html"), "<html>operator stop data</html>");
     return {
       dir,
       app: buildApp({
@@ -1532,6 +1533,47 @@ describe("static routes", () => {
       expect((await withDir.request("/api/stats")).status).toBe(401);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves the stop visualizer entry without caching or exposing data", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      for (const route of ["/stats/stops", "/stats/stops/", "/stop-data.html"]) {
+        const response = await withDir.request(route);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect(await response.text()).toContain("operator stop data");
+      }
+      expect((await withDir.request("/api/stats/stops/catalog")).status).toBe(401);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+describe("operator stop evidence API", () => {
+  const selection = "/api/stats/stops/visits?day=2023-11-14&routeId=10&stopId=1&stopIndex=0";
+  it("requires operator authentication on every read and accepts the existing read-only cookie", async () => {
+    for (const route of ["/api/stats/stops/catalog", selection, "/api/stats/stops/visits/1"]) {
+      const response = await app.request(route);
+      expect(response.status).toBe(401);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    const login = await app.request("/api/stats/session", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({token:TEST_ADMIN_TOKEN}),
+    });
+    const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
+    const response = await app.request("/api/stats/stops/catalog", {headers:{cookie}});
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({schemaVersion:1,source:"retained_database",days:[]});
+    expect((await app.request(selection,{headers:{cookie}})).status).toBe(200);
+    expect((await app.request("/api/stats/stops/visits/1",{headers:{cookie}})).status).toBe(404);
+    expect((await app.request("/api/stats/stops/visits",{method:"POST",headers:{cookie}})).status).toBe(404);
+  });
+  it("rejects invalid dates, missing selectors and unsafe ids before querying", async () => {
+    const headers = {"x-admin-token":TEST_ADMIN_TOKEN};
+    for (const route of [selection.replace("2023-11-14","2023-02-30"),selection.replace("&stopIndex=0",""),selection.replace("stopIndex=0","stopIndex="),selection.replace("routeId=10","routeId=1e1"),"/api/stats/stops/visits/NaN"]) {
+      expect((await app.request(route,{headers})).status).toBe(400);
     }
   });
 });

@@ -1624,3 +1624,19 @@ describe("a watch that read no countdown", () => {
     expect(scraperMissedTheCountdown({ readings: 0, anyPresent: false, arrived: false })).toBe(false);
   });
 });
+
+describe("the standing-bus range", () => {
+  it("is deliberately not scored — a layover has no single arrival", () => {
+    // fmtBusRange's three shapes (web/src/format.ts). Treating either end as
+    // THE countdown would read entering and leaving the range as a lurch of
+    // several minutes and file a report about it. Null = not a sample.
+    expect(parseBusEtaText("🚌 in 3-7 min")).toBeNull();
+    expect(parseBusEtaText("🚌 now-7 min")).toBeNull();
+    expect(parseBusEtaText("🚌 in 3-7, then 19 min")).toBeNull();
+  });
+
+  it("does not blunt the plain forms", () => {
+    expect(parseBusEtaText("🚌 in 3 min")).not.toBeNull();
+    expect(parseBusEtaText("🚌 in 3, 19 min")).not.toBeNull();
+  });
+});

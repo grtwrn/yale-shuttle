@@ -26,8 +26,12 @@ import {
 // module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
 // no effect and no dependency array to this component.
 import { noteShown } from "./shownLog";
+// What a STANDING bus is allowed to promise — the chip's words and the
+// countdown's range, both read off the stand table the countdown is billed
+// from. All the reasoning lives there; this file only places the strings.
+import { standWaitFor } from "./standWait";
 import {
-  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -3655,6 +3659,36 @@ const TripPlanner: FC<{
             const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
               ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
               : null;
+            /**
+             * THE STAND THE LEAD BUS IS IN, resolved once at ROW scope so the
+             * top line's countdown and the pause chip further down cannot
+             * disagree about it (CLAUDE.md: "the hold SHOWN must be the hold
+             * BILLED"). Same resolver the price uses, same tables, same clock.
+             *
+             * While a bus stands at a layover the countdown is not a point:
+             * #119 forbids it to rise, so it flattens and never tells the
+             * rider the wait has run long, and letting it rise instead
+             * promises a departure later than the bus may actually make
+             * (10:28 against a 9:16 truth, 2026-09-07). standWait.ts turns the
+             * model's own q10/q90 into a range floored by the drive — see the
+             * header there for the measured case.
+             */
+            const standCtx = (() => {
+              if (o.mode !== "shuttle" || o.departed || !shuttleCtx?.busMatch) return null;
+              const now = Date.now();
+              const { busMatch, cfg } = shuttleCtx;
+              const standing = resolveStandingStop(busMatch, cfg, routeStops, stopCoords, now, liveAnchorStore);
+              if (!standing) return null;
+              const ring = ringForBus(busMatch, mergedRouteStops(cfg, routeStops), stopCoords);
+              const forecasts = ring ? standingForecastsFor(busMatch, ring, now) : null;
+              // The range and running-long cue read the same visit law as
+              // the ETA, including its occurrence and earliest rest clock.
+              return standWaitFor(
+                standing, dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
+                busEtaLive, o.boardStopId,
+                { forecasts, stopId: standing.stopId, stopIndex: standing.stopIndex, now },
+              );
+            })();
             // Is this the last one, and will there be another? Judged
             // against the PUBLISHED close (the same `route_hours` the
             // "Runs …" caption shows), one headway, and the live count —
@@ -3791,12 +3825,14 @@ const TripPlanner: FC<{
                             below spells out this bus's wait; the pair is about
                             the one after it. */}
                         {busEtaLive !== null && !o.departed && (
-                          <span style={{
+                          <span title={standCtx?.rangeTitle ?? undefined} style={{
                             fontSize: 13, color: "#5f6368", fontWeight: 500,
                             minWidth: 0, overflow: "hidden",
                             textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>
-                            {fmtBusPair(busEtaLive, nextArrLive?.eta)}
+                            {standCtx?.range
+                              ? fmtBusRange(standCtx.range.lowSec, standCtx.range.highSec, nextArrLive?.eta)
+                              : fmtBusPair(busEtaLive, nextArrLive?.eta)}
                           </span>
                         )}
                       </span>
@@ -4410,37 +4446,45 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
-                                    // "2 min / ~3 min" — elapsed over EXPECTED
-                                    // TOTAL, the operator's shape: "X is current
-                                    // dwell and Y is expected dwell".
+                                    // "⏸ 3:21 · up to 6 min left" — the clock the
+                                    // rider watches tick, then WHAT IS LEFT of the
+                                    // stand, bounded.
                                     //
-                                    // The bug this fixes was never the shape; it
-                                    // was that Y came from `dwell.med`, an
-                                    // arrival-to-arrival figure containing drive
-                                    // time that the estimator stopped billing
-                                    // when the stand/drive split shipped. A
-                                    // rider read "3 of 10", subtracted, expected
-                                    // seven more minutes, and the app said four.
+                                    // It used to be "3:21 / ~4:48": elapsed over the
+                                    // stop's TYPICAL hold. Two shapes have now failed
+                                    // here for the same reason — a rider subtracts.
+                                    // First Y was `dwell.med`, an arrival-to-arrival
+                                    // figure containing drive time ("3 of 10" → they
+                                    // expected seven more minutes and the app said
+                                    // four). Then Y became the typical hold, honest
+                                    // about the STOP and still wrong about the BUS:
+                                    // at 3:21 into the operator's 2026-09-07 stand it
+                                    // implied 1:27 more when the model's own answer
+                                    // was 3:15 and the truth 5:55. The right number
+                                    // was already here — the tooltip has always said
+                                    // "about N still to go".
                                     //
-                                    // Y is the total forecast made at arrival:
-                                    // the bus's learned departure phase when
-                                    // available, otherwise the stop's typical
-                                    // hold. It stays stable as requested. The
-                                    // live remainder conditions the SAME model
-                                    // on still waiting, so Y - X need not equal
-                                    // the countdown once a departure runs late.
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
+                                    // The chip states the current remaining interval.
+                                    // The total forecast made at arrival stays in the
+                                    // tooltip as context; subtracting elapsed from
+                                    // that total would discard the model's update
+                                    // for a bus that is still waiting.
+                                    <span style={{
+                                            fontSize: 10, fontWeight: 700, marginLeft: 6,
+                                            // Amber once the stand has outlasted the stop's
+                                            // typical hold. The typical figure itself left
+                                            // the chip (it was the misleading half), so this
+                                            // is what carries "this is running long" at a
+                                            // glance; the tooltip names the figure.
+                                            color: standCtx?.overdue ? "#8a5300" : "#5f6368",
+                                          }}
                                           title={(standing?.approach
                                             ? "Waiting for this stop, holding just short of the marker. "
-                                            : "") + (stand == null
-                                            ? "Time the bus has been sitting here"
-                                            : stand.remaining
-                                              ? `Standing ${fmtShort(liveElapsedSec!)}; about ${fmtShort(stand.sec)} still to go`
-                                              : `Typically holds ~${fmtShort(stand.sec)}`)}>
+                                            : "") + (standCtx
+                                            ? standCtx.chipTitle
+                                            : "Time the bus has been sitting here")}>
                                       ⏸ {fmtMmss(liveElapsedSec!)}
-                                      {stand == null ? "" : stand.remaining
-                                        ? ` / ~${fmtMmss(stand.typicalSec ?? stand.sec)}`
-                                        : ` / ~${fmtMmss(stand.sec)}`}
+                                      {standCtx ? ` · ${standCtx.leftText}` : ""}
                                     </span>
                                   )}
                                   {showLive && standing?.approach && (
@@ -4456,7 +4500,7 @@ const TripPlanner: FC<{
                                     // Deliberately NOT a "~" prefix on the
                                     // clock, which was the first draft: this UI
                                     // already spends "~" on approximate
-                                    // DURATIONS ("/ ~5:00" right beside it), so
+                                    // DURATIONS (the hold beside it), so
                                     // the same mark for approximate PLACE reads
                                     // as fuzziness about the number instead.
                                     // A word cannot be misread that way.

@@ -561,5 +561,85 @@
     "No held-out Red observations on reserved Sep5\u20137.",
     "Sep4 was development; Sep8 was already examined regression.",
     "Sep9 prospective scorer stopped on duplicate query/target keys; no prospective validation."
-  ]
+  ],
+  "mergedCompatibility": {
+    "masterCommit": "e1435ad",
+    "validation": {
+      "vitest": 2281,
+      "files": 94,
+      "backendAndFrontendTypechecks": "passed",
+      "frontendBuild": "passed"
+    },
+    "baseline": {
+      "report": {
+        "path": "services/shuttle-v2/store/review184/named-merged-baseline.json",
+        "bytes": 66852,
+        "sha256": "469dc66b5be36bcd5160a51d88c8c90aaa6e449c13fe90118d5020d139d659f7"
+      },
+      "audit": {
+        "path": "services/shuttle-v2/store/review184/named-merged-baseline.standing-audit.json",
+        "bytes": 45124,
+        "sha256": "3cb1019744c68fed8826dd8eb1765d7fd5bd90896c7dceaee9d8b811482d216d"
+      },
+      "waits": {
+        "path": "services/shuttle-v2/store/review184/named-merged-baseline.waits.jsonl",
+        "bytes": 17522,
+        "sha256": "424b68f0e5fac6ec2fe0dcfd2538d68612c6f9a5d8c3f150cc1b20f79c29529e"
+      },
+      "byteIdenticalToPremergeWaits": true,
+      "activation": {
+        "ok": true,
+        "status": "baseline_or_diagnostic"
+      },
+      "immutableInputs": {
+        "passed": true,
+        "changedPaths": []
+      },
+      "lookupCalls": 4050,
+      "realLookupHits": 0,
+      "hitByOccurrence": {},
+      "rejectionReasons": {
+        "empty_context_map": 4050
+      }
+    },
+    "candidate": {
+      "report": {
+        "path": "services/shuttle-v2/store/review184/named-merged-candidate.json",
+        "bytes": 75269,
+        "sha256": "9ac4703623f3a4bdddfbbb819f8fb607f64d1848612d4217ef7b645d91a01709"
+      },
+      "audit": {
+        "path": "services/shuttle-v2/store/review184/named-merged-candidate.standing-audit.json",
+        "bytes": 59426,
+        "sha256": "9335ce6c3e8ab53b6c3d26e582aa20596e7ca90492a50d71f35a4c263eba5e2e"
+      },
+      "waits": {
+        "path": "services/shuttle-v2/store/review184/named-merged-candidate.waits.jsonl",
+        "bytes": 19313,
+        "sha256": "3034db43a532b56223fd770dc696b12279aa811fb3485fe587fc02b0bec63aaa"
+      },
+      "byteIdenticalToPremergeWaits": true,
+      "activation": {
+        "ok": true,
+        "status": "positive_weight_lookup_observed"
+      },
+      "immutableInputs": {
+        "passed": true,
+        "changedPaths": []
+      },
+      "lookupCalls": 4047,
+      "realLookupHits": 1724,
+      "hitByOccurrence": {
+        "3:121:0": 411,
+        "3:11:14": 1067,
+        "3:45:2": 117,
+        "3:14:28": 46,
+        "3:75:3": 83
+      },
+      "rejectionReasons": {
+        "no_context_for_occurrence": 1144,
+        "empty_context_map": 1179
+      }
+    }
+  }
 }
