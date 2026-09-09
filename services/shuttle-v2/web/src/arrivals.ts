@@ -15,7 +15,7 @@
 import { isBusOnRoute } from "./anchor";
 import { anchorKeyFor } from "./liveAnchor";
 import { arrivalsForBus, globalPoolsFor, ringForBus, type AnchorStore } from "./eta";
-import { residualMedian } from "./eta/dist";
+import { residual, residualMedian } from "./eta/dist";
 import { classPools, poolsWithFallback, stopModel } from "./eta/tables";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -74,6 +74,20 @@ export interface ShownStand {
    * hold may still have three minutes to go.
    */
   typicalSec?: number;
+  /**
+   * The q10 and q90 of the SAME remainder `sec` is the median of — what is
+   * left if this stand ends early, and if it runs on. Present only when
+   * `remaining` is true.
+   *
+   * They exist because a point estimate is the wrong shape of answer late in
+   * a long stand: the conditional median rises as a bus out-sits its table
+   * and, on the operator's 2026-09-07 case, reached 10:28 against a 9:16
+   * truth — a promise that a rider can act on and miss the bus. A pair
+   * bounded below by "it may go now" cannot mislead that way. standWait.ts
+   * turns them into the chip's words and the countdown's range.
+   */
+  soonSec?: number;
+  lateSec?: number;
 }
 
 /**
@@ -104,7 +118,12 @@ export function shownStandSec(
   const pools = poolsWithFallback(classPools(routeDwells), dwellsByRoute ? globalPoolsFor(dwellsByRoute).pools : undefined);
   const m = stopModel(stat, pools);
   if (elapsedSec !== null) {
-    return { sec: residualMedian(m.stand, elapsedSec), remaining: true, typicalSec: residualMedian(m.stand, 0) };
+    const rest = residual(m.stand, elapsedSec);
+    return {
+      sec: rest(0.5), remaining: true,
+      soonSec: rest(0.1), lateSec: rest(0.9),
+      typicalSec: residualMedian(m.stand, 0),
+    };
   }
   return { sec: residualMedian(m.stand, 0), remaining: false };
 }

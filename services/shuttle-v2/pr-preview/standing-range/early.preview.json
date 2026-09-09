@@ -1,0 +1,20 @@
+{
+  "caption": "The same stand at 3:21 — the operator’s case. The chip used to read \"3:21 / ~4:48\", which subtracts to 1:27 more; the stand in fact had 5:55 to run.",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 4,
+    "dest": 39
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/f257f79c-ae61-4a88-8421-ba9846255709/scratchpad/s2/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

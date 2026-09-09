@@ -39,8 +39,11 @@
 // so a line under the options list is captured even below the fold;
 // "fullPage": false frames the viewport instead, which is how a fullscreen
 // overlay is shot.
-// Mock values may use "${now}" / "${now+3600000}" (epoch ms) so forecasts and
-// timestamps land in the present regardless of when the preview runs. A mock
+// Mock values may use "${now}" / "${now+3600000}" (epoch ms), or
+// "${isoNow-540000}" for the collector's naive-UTC timestamp strings
+// (at_stop_since, stationary_since, last_moved_at — that one puts a bus nine
+// minutes into its stand), so forecasts, clocks and timestamps land in the
+// present regardless of when the preview runs. A mock
 // of the form { "$patch": { "buses": [] } } keeps the REAL response and
 // overrides only those top-level keys — the way to empty the fleet or drop an
 // announcement without hand-writing an 85 KB payload. A mock may also be a
@@ -63,10 +66,18 @@ const recipe = process.env.RECIPE && fs.existsSync(process.env.RECIPE)
 const views = Array.isArray(recipe.views) && recipe.views.length ? recipe.views : ["trip", "map"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// "${now+60000}" -> epoch ms; applied recursively through the mock payloads.
+// "${now+60000}" -> epoch ms, "${isoNow-540000}" -> the collector's naive-UTC
+// string ("2026-09-09T13:05:00.000", no Z); applied recursively through the
+// mock payloads. The ISO form exists because the clocks that say how long a
+// bus has been standing — `at_stop_since`, `stationary_since` — are strings,
+// so a recipe that wants a bus nine minutes into a layover has to write one,
+// and a hardcoded timestamp would make the stand grow by however long ago the
+// PR was opened.
 const NOW = Date.now();
 function materialise(v) {
   if (typeof v === "string") {
+    const iso = v.match(/^\$\{isoNow([+-]\d+)?\}$/);
+    if (iso) return new Date(NOW + (iso[1] ? Number(iso[1]) : 0)).toISOString().slice(0, -1);
     const m = v.match(/^\$\{now([+-]\d+)?\}$/);
     if (m) return NOW + (m[1] ? Number(m[1]) : 0);
     return v;

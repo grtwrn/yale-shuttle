@@ -110,6 +110,14 @@ function parsePlan(text) {
     const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && /^arrive/i.test(block[j + 1] ?? ""));
     const body = (end === -1 ? block : block.slice(0, end)).join(" | ");
     // "🚌 in 0:52 · next in 5 min"  or  "🚌 in 7 min · next in 22 min"
+    //
+    // Not matched, deliberately: the standing-bus RANGE ("in 6-10 min",
+    // fmtBusRange) — a bus mid-layover has no single number to score against
+    // an observed arrival. It reads as waitSec null, i.e. this option is not a
+    // sample. Worth knowing when reading a run: the pairs this harness scores
+    // skew AWAY from buses that were standing when the page was read, which
+    // are the hard ones. The offline replay (scripts/eta-replay/) is the
+    // measurement; this is the sanity check.
     const w = body.match(/🚌\s*in\s*(?:(\d+):(\d{2})|(\d+)\s*min)/);
     const waitSec = w ? (w[1] !== undefined ? Number(w[1]) * 60 + Number(w[2]) : Number(w[3]) * 60) : null;
     const label = body.match(/\|\s*([A-Z][A-Za-z ]+?)\s*\|/);
