@@ -1,0 +1,12 @@
+{
+  "completedAt": "2026-09-09T13:04:42.536966+00:00",
+  "scope": "Correctly distinguish all-state Red target48 diagnostic from original physical Winchester-hold\u219248 subgroup; all original outputs preserved; no source/model/prediction changes",
+  "hashes": {
+    "README.md": "9222108c9d1de51bb34d4f930a47eefa3ccbe320e3bf545a963e03d097075be1",
+    "all-summaries.json": "34b268d08ab2a184e0036731811dd63b2341774ec5660ff8044cad89dea0a7ac",
+    "report_runs.py": "6c2bd7e7afa8214228ae35af5f3abac2bf5cf4a7ff6b7c84b62b64755a729943",
+    "score_red_hold.py": "ebe862dbf2d02e9c95a6b136963bd359a6a3c5fa02a3ae7c5d1ab20ea8ba4a76",
+    "2026-09-08-paired/red11-to48-score.json": "4902a1197a7388b3a03dae298127016f3d81dc4d6f512948d93b4a653c48851b"
+  },
+  "artifactRoot": "services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/integration-master-93aa45d"
+}

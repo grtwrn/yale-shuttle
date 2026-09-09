@@ -186,9 +186,9 @@ Total standing time, conditional remaining time, and departure probability over 
 
 Inference reads a cached model on the web server. The first production worker exposed an operational issue: a worker thread shares the VM’s CPU quota with HTTP and tracking. Fly currently allows a shared CPU 6.25% sustained use, with a burst balance. Public requests slowed during fitting and several timed out; a separate forty-request localhost probe had no failures but a 2.23-second maximum. This supports CPU contention, without proving the cause of every network failure. [Fly CPU quota documentation](https://fly.io/docs/machines/cpu-performance/).
 
-The deployed execution policy therefore disables automatic web-VM fitting with `SHUTTLE_STANDING_FORECAST=0`. It uses the already validated September 9 fit, verified against the exact live algorithm fingerprint and loaded through the production cache reader before atomic installation. The fitting mathematics, historical inputs, selected dates, and 48-hour maximum fit age are unchanged. The original worker limits remain available in the code but are not the live execution path. [Cache/runtime implementation](../services/shuttle-v2/src/calibrator/standingForecast.md).
+The proposed execution policy therefore disables automatic web-VM fitting with `SHUTTLE_STANDING_FORECAST=0`. The historical overnight release used the already validated September 9 fit, verified against the exact live algorithm fingerprint and loaded through the production cache reader before atomic installation. The fitting mathematics, historical inputs, selected dates, and 48-hour maximum fit age are unchanged. The original worker limits remain available in the code but are disabled by the proposed Fly configuration. [Cache/runtime implementation](../services/shuttle-v2/src/calibrator/standingForecast.md).
 
-A local daily job uses a consistent online backup, runs the unchanged fitter, verifies source/algorithm identity and causal training cutoffs, then installs the new cache atomically and restarts the server to load it. Its prepared timer runs at 00:30 Eastern and permits publication/restart only before 04:00 with a healthy server and zero known buses. It requires this local machine and its Fly credentials to remain available. Failure preserves the previous cache; stale or incompatible fits use the normal duration fallback. New observation metadata and existing restart-persistence tests protect the full standing clock. The cache and authenticated diagnostics record training dates, exclusions, and execution provenance. No model settings are changed by the timer.
+A prepared local daily job uses a consistent online backup, runs the unchanged fitter, verifies source/algorithm identity and causal training cutoffs, then installs the new cache atomically and restarts the server to load it. Its disabled timer is configured for 00:30 Eastern and permits publication/restart only before 04:00 with a healthy server and zero known buses. Activation requires separate approval, and this local machine and its Fly credentials must remain available. Failure preserves the previous cache; stale or incompatible fits use the normal duration fallback. New observation metadata and existing restart-persistence tests protect the full standing clock. The cache and authenticated diagnostics record training dates, exclusions, and execution provenance. No model settings are changed by the timer.
 
 The complete local refresh check passed against the preserved production snapshot in 172 seconds: 11,415 training rows, unchanged source data, exact equality to the previously validated fitted statistics, and acceptance by the real production cache loader. Four JavaScript and six Python operational checks passed, and systemd validated both unit templates. The nightly timer is prepared but remains disabled while committed production integration is pending. [Operation and setup](standing-forecast-operation.md). The separate read-only morning scoring timer is enabled for 10:05 ET on September 9; it records the 08:04 deployment change and preserves missing contexts in its coverage counts.
 
@@ -209,10 +209,31 @@ duration fallback, not an accuracy gain; map tiles were not visible. The
 these limits explicit. Six migration tests cover the observed production ledger
 and schema, fresh upgrades, preserved synthetic data, and orphan-object failures.
 
-Because master changed the tracker after the overnight evaluation, the merged
-client is being replayed in both arms against the same frozen fit and scoring
-cohorts under `integration-master-93aa45d`. The results above retain their
-original source provenance and are not silently attributed to that newer run.
+The merged-client replay is complete, with the selected fit, historical inputs,
+scoring code and physical labels unchanged. All supported route guards pass for
+ETA, remaining wait and first recorded total stand. Reserved arrival MAE is
+**201.94 → 200.10 seconds** across 4,152 arrivals; September 8 arrival MAE is
+**123.93 → 122.50 seconds** across 4,937 arrivals. The vehicle/day 95% intervals
+for the changes are −5.29 to −0.07 and −3.46 to −0.26 seconds respectively.
+Overestimates greater than two minutes still rise by about 0.3 percentage points;
+underestimates and standing-wait tails improve.
+
+Red Winchester first recorded total-stand MAE remains **134.86 → 71.17 seconds**
+across 25 visits. The requested Winchester-hold → Division / Prospect ETA is
+**105.81 → 62.71 seconds**, across 269 query moments and 25 served arrivals, with
+a vehicle/day 95% change interval of −71.24 to −15.33 seconds (three bus/day
+blocks). This subgroup uses the scoring-only physical current-hold assignment,
+not the client's inferred stop. The frozen repaired assignment excludes four
+previously attributed query moments and adds none; the original 273-row subset
+and its earlier score were reproduced exactly as a control. The broader set of
+all Red queries to Division / Prospect is reported separately. These remain
+retrospective results, not new prospective confirmation.
+
+The [merged-client integration report](general-eta-integration-2026-09-09.md)
+records cohort counts, tails, scope controls and artifact provenance. Earlier
+numbers above retain their original source and attribution provenance; this
+completed integration check supports the submitted client. The interrupted
+baseline attempt was excluded and its completed retry alone was scored.
 
 The source protocol and evaluation tools live in `services/shuttle-v2/scripts/eta-replay/general-eval/`; large inputs, predictions, fitted artifacts, and archived experiments live under `scripts/.eta-replay/overnight-2026-09-08/`. The earlier Red-specific code is preserved as an undeployed research baseline.
 
