@@ -53,6 +53,68 @@ const ROUTE_KEY_RE = /^[0-9]{1,6}$/;
 export const CONFORMAL_HORIZONS = ["0-2", "2-5", "5-10", "10-30"] as const;
 export type ConformalHorizon = (typeof CONFORMAL_HORIZONS)[number];
 
+/**
+ * The per-horizon CENTRE correction (docs/horizon-bias.md), the companion of
+ * the per-horizon widening below: `CONFORMAL` says how wide the band must be
+ * to cover the truth, `HORIZON_BIAS` says where the middle of it belongs.
+ *
+ * The measurement it exists for: bucket every promise by the number that was
+ * ON SCREEN and the residual is one-sided and grows with the horizon. Most of
+ * the band's width is therefore OFFSET, not spread, and an offset is the
+ * cheap half to fix — a band re-centred on the conditional median covers the
+ * same share of arrivals from a narrower interval.
+ *
+ * RAW ON THE WIRE, SHRUNK ON THE CLIENT, exactly as the stand quantiles and
+ * the diurnal profile are: the wire carries the bucket's own median residual
+ * and the sample it was measured on, and `horizonBiasSec` damps it by
+ * n/(n+K). A bucket with no evidence is a correction of exactly zero, not a
+ * correction the fit could not measure.
+ */
+export interface HorizonBiasCell {
+  /** The bucket's RAW median residual (truth − promise), seconds. */
+  b: number;
+  /** Pairs behind it. Zero — or a payload without the key — is no correction. */
+  n: number;
+}
+
+/**
+ * k = σ²/τ², the same shape as PR #164's two shrinkages and read off the data
+ * the same way: σ is the per-pair spread of the residual inside a bucket and
+ * τ the day-to-day spread of the bucket's own offset. Measured on the 9/3 and
+ * 9/4 replays (docs/horizon-bias.md §3): σ ≈ 250 s, τ ≈ 6.7 s → k ≈ 1,390
+ * pairs.
+ *
+ * At the ~150,000 pairs a day yields this damps by under a percent, and that
+ * is the point: it exists so a bucket that a quiet window measured on a
+ * thousand pairs is pulled halfway back to no correction rather than
+ * published as if it were the day's best fact. τ is measured across a whole
+ * day and an evening, so it carries the day-part difference too and the
+ * shrinkage errs toward doing less.
+ */
+export const HORIZON_BIAS_K = 1390;
+
+/**
+ * A published raw offset must sit here. Ten minutes is far outside any honest
+ * re-measurement of this feed (the largest bucket median ever measured is
+ * −1:23) and a corrupt row cannot reach a rider through it.
+ */
+export const HORIZON_BIAS_RANGE: readonly [number, number] = [-600, 600];
+
+/**
+ * The horizon each bucket's offset is attached to, seconds: the MIDPOINT of
+ * the bucket, because that is the promise the bucket's median describes.
+ *
+ * The correction is the piecewise-linear interpolation through these knots
+ * (and through the origin, so a bus arriving now is never moved), NOT the
+ * step function the buckets suggest. A step would move a rider's number by
+ * the whole difference between two buckets the moment the promise crossed a
+ * boundary — 300 s and 301 s would be corrected differently — which is a jump
+ * the rider sees and the strand metric counts.
+ */
+export const HORIZON_BIAS_KNOT_SEC: Readonly<Record<ConformalHorizon, number>> = Object.freeze({
+  "0-2": 60, "2-5": 210, "5-10": 450, "10-30": 1200,
+});
+
 export interface ModelParams {
   /** Per-poll P(repeated fix | standing). */
   P_REPEAT_STAND: number;
@@ -96,9 +158,17 @@ export interface ModelParams {
    * the champion's 59.2) where the scale took it to 54.4.
    */
   ROUTE_SCALE: Record<string, number>;
+  /**
+   * Per promised-minutes bucket, the RAW median residual (truth − promise)
+   * and the sample behind it. `horizonBiasSec` shrinks it and
+   * `applyHorizonBias` applies it as a monotone map on the priced seconds.
+   * Every cell zero — the default, and any payload without the key — is
+   * skipped entirely, so the correction is byte-identical to not having one.
+   */
+  HORIZON_BIAS: Record<ConformalHorizon, HorizonBiasCell>;
 }
 
-export type ScalarParamKey = Exclude<keyof ModelParams, "CONFORMAL" | "ROUTE_SCALE">;
+export type ScalarParamKey = Exclude<keyof ModelParams, "CONFORMAL" | "ROUTE_SCALE" | "HORIZON_BIAS">;
 export const SCALAR_PARAM_KEYS: readonly ScalarParamKey[] = [
   "P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE",
   "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S", "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH",
@@ -131,10 +201,19 @@ export const COMPILED_MODEL_PARAMS: Readonly<ModelParams> = Object.freeze({
   P_DEPART_ON_FRESH: 0.76,
   CONFORMAL: Object.freeze({ "0-2": 1, "2-5": 1, "5-10": 1, "10-30": 1 }),
   ROUTE_SCALE: Object.freeze({}),
+  HORIZON_BIAS: Object.freeze({
+    "0-2": Object.freeze({ b: 0, n: 0 }), "2-5": Object.freeze({ b: 0, n: 0 }),
+    "5-10": Object.freeze({ b: 0, n: 0 }), "10-30": Object.freeze({ b: 0, n: 0 }),
+  }) as Record<ConformalHorizon, HorizonBiasCell>,
 });
 
 /** The live set the filter and the pricing read. Mutated only through `applyModelParams` / `resetModelParams`. */
-export const MP: ModelParams = { ...COMPILED_MODEL_PARAMS, CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL }, ROUTE_SCALE: { ...COMPILED_MODEL_PARAMS.ROUTE_SCALE } };
+export const MP: ModelParams = {
+  ...COMPILED_MODEL_PARAMS,
+  CONFORMAL: { ...COMPILED_MODEL_PARAMS.CONFORMAL },
+  ROUTE_SCALE: { ...COMPILED_MODEL_PARAMS.ROUTE_SCALE },
+  HORIZON_BIAS: { "0-2": { b: 0, n: 0 }, "2-5": { b: 0, n: 0 }, "5-10": { b: 0, n: 0 }, "10-30": { b: 0, n: 0 } },
+};
 
 /** What the server sends: `payload.model_params`. */
 export interface ModelParamsWire {
@@ -148,6 +227,66 @@ let active: { version: string; publishedAt: number } | null = null;
 /** The served set in force, or null when the compiled constants are. */
 export function activeModelParams(): { version: string; publishedAt: number } | null {
   return active;
+}
+
+
+function emptyHorizonBias(): Record<ConformalHorizon, HorizonBiasCell> {
+  return { "0-2": { b: 0, n: 0 }, "2-5": { b: 0, n: 0 }, "5-10": { b: 0, n: 0 }, "10-30": { b: 0, n: 0 } };
+}
+
+/**
+ * The applied curve: the knots (x, x + shrunk offset), forced non-decreasing.
+ *
+ * Rebuilt only when the served set changes. Monotone by construction —
+ * `m[i] = max(m[i], m[i-1])`, starting from the origin — because the map is
+ * applied to `low`, `eta` and `high` alike (the band must keep its order) and
+ * because the #119 floor stores the UNCORRECTED number: a correction that
+ * could reorder two promises could make the shown remainder climb.
+ */
+let curve: { xs: number[]; ms: number[] } | null = null;
+
+function horizonCurve(): { xs: number[]; ms: number[] } | null {
+  if (curve) return curve;
+  const xs: number[] = [0];
+  const ms: number[] = [0];
+  let any = false;
+  for (const h of CONFORMAL_HORIZONS) {
+    const cell = MP.HORIZON_BIAS[h];
+    const x = HORIZON_BIAS_KNOT_SEC[h];
+    const b = cell && cell.n > 0 ? cell.b * (cell.n / (cell.n + HORIZON_BIAS_K)) : 0;
+    if (b !== 0) any = true;
+    xs.push(x);
+    ms.push(Math.max(x + b, ms[ms.length - 1]!));
+  }
+  curve = any ? { xs, ms } : null;
+  return curve;
+}
+
+/** The shrunk offset a bucket carries, seconds. Zero when it has no evidence. */
+export function horizonBiasSec(h: ConformalHorizon): number {
+  const cell = MP.HORIZON_BIAS[h];
+  if (!cell || cell.n <= 0) return 0;
+  return cell.b * (cell.n / (cell.n + HORIZON_BIAS_K));
+}
+
+/**
+ * A priced number of seconds with the learned centre correction applied:
+ * linear interpolation of the knot map, flat past the last knot (there is no
+ * evidence beyond thirty minutes, so the offset stops growing rather than
+ * being extrapolated). Monotone and time-invariant, so `low <= eta <= high`
+ * survives it and so does the standing clamp's "never climbs".
+ */
+export function applyHorizonBias(sec: number): number {
+  const c = horizonCurve();
+  if (!c || !(sec > 0)) return sec;
+  const { xs, ms } = c;
+  const last = xs.length - 1;
+  if (sec >= xs[last]!) return Math.max(0, sec + (ms[last]! - xs[last]!));
+  let i = 1;
+  while (i < last && sec > xs[i]!) i++;
+  const x0 = xs[i - 1]!, x1 = xs[i]!;
+  const t = (sec - x0) / (x1 - x0);
+  return Math.max(0, ms[i - 1]! + (ms[i]! - ms[i - 1]!) * t);
 }
 
 function inRange(v: unknown, range: readonly [number, number]): v is number {
@@ -187,7 +326,29 @@ export function parseModelParams(raw: unknown): ModelParams | null {
       scales[k] = v as number;
     }
   }
-  return { ...(out as Omit<ModelParams, "CONFORMAL" | "ROUTE_SCALE">), CONFORMAL: conformal, ROUTE_SCALE: scales };
+  // HORIZON_BIAS is OPTIONAL for the same reason ROUTE_SCALE is: a set
+  // published before it existed must keep applying rather than being rejected
+  // whole, which would silently drop every other key with it.
+  const bias = emptyHorizonBias();
+  const hb = o["HORIZON_BIAS"];
+  if (hb !== undefined && hb !== null) {
+    if (typeof hb !== "object") return null;
+    const h = hb as Record<string, unknown>;
+    for (const k of CONFORMAL_HORIZONS) {
+      const cell = h[k];
+      if (cell === undefined || cell === null) continue;
+      if (typeof cell !== "object") return null;
+      const c = cell as Record<string, unknown>;
+      if (!inRange(c["b"], HORIZON_BIAS_RANGE)) return null;
+      const n = c["n"];
+      if (typeof n !== "number" || !Number.isFinite(n) || n < 0) return null;
+      bias[k] = { b: c["b"] as number, n };
+    }
+  }
+  return {
+    ...(out as Omit<ModelParams, "CONFORMAL" | "ROUTE_SCALE" | "HORIZON_BIAS">),
+    CONFORMAL: conformal, ROUTE_SCALE: scales, HORIZON_BIAS: bias,
+  };
 }
 
 /**
@@ -203,6 +364,8 @@ export function applyModelParams(wire: unknown): boolean {
   for (const h of CONFORMAL_HORIZONS) MP.CONFORMAL[h] = params.CONFORMAL[h];
   for (const k of Object.keys(MP.ROUTE_SCALE)) delete MP.ROUTE_SCALE[k];
   for (const [k, v] of Object.entries(params.ROUTE_SCALE)) MP.ROUTE_SCALE[k] = v;
+  for (const h of CONFORMAL_HORIZONS) MP.HORIZON_BIAS[h] = { ...params.HORIZON_BIAS[h] };
+  curve = null;
   active = {
     version: typeof w!.version === "string" ? w!.version : "?",
     publishedAt: typeof w!.publishedAt === "number" ? w!.publishedAt : 0,
@@ -214,6 +377,8 @@ export function resetModelParams(): void {
   for (const k of SCALAR_PARAM_KEYS) MP[k] = COMPILED_MODEL_PARAMS[k];
   for (const h of CONFORMAL_HORIZONS) MP.CONFORMAL[h] = COMPILED_MODEL_PARAMS.CONFORMAL[h];
   for (const k of Object.keys(MP.ROUTE_SCALE)) delete MP.ROUTE_SCALE[k];
+  for (const h of CONFORMAL_HORIZONS) MP.HORIZON_BIAS[h] = { b: 0, n: 0 };
+  curve = null;
   active = null;
 }
 

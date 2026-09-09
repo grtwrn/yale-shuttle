@@ -820,3 +820,32 @@ What the numbers say to try next, in order:
    while every other line is over 62%, the thing to fix is why.
 3. **The shadow-leg detour mode** (`docs/eta-ring-posterior.md`, § the open
    fold) is still the piece of work this keeps arriving back at.
+
+---
+
+## 11. The per-HORIZON bias, measured the same way and also refused
+
+**2026-09-09, `docs/horizon-bias.md`, branch `eta/horizon-bias`.** §9's "the
+truth" and §1's "conditioned on the promise, which selects on our own noise"
+both come back here, because the operator asked for the range around the
+number to be narrower and the obvious lever is the centre of it.
+
+Fitted per scorecard bucket on 9/3 (606,242 pairs) and held out on 9/4
+(226,057): the median residual conditioned on the DISPLAYED number is
+−1.2 / +6.0 / +15.8 / −3.4 s. Publishing it is worth 0.8 s of pooled median
+|error| and half the pooled bias (−8.0 → −3.3 s), it costs no strands on the
+paired Red rider-sim (0 fixed / 0 introduced over 1,693 waits) — and it makes
+the shown band 1–4 s **wider** at a fixed 80% coverage, because a constant
+offset moves both edges of a quantile band by the same amount.
+
+The width the ask is about is a different quantity: on 1,466 scored Red rider
+first sights the 60% band is 1:35 / 3:01 / 4:28 / 4:59 wide and centred within
+a minute at every horizon **when the pinned bus is the one that arrives**, and
+every bit of the one-sidedness is in the 14% of waits where another bus of the
+line reaches the stop first. A second fit, on the rider's own residual over a
+held-out day, fixed seven strands and introduced none — the only rider-visible
+gain either arm produced — and still left every band the width it was, while
+making the estimator's own median |error| slightly worse. The mechanism
+(`HORIZON_BIAS`, raw on the wire and shrunk on the client, `k = σ²/τ² = 1,390`
+from the two days) ships with every bucket at zero and the nightly job's guards
+in place; the values do not.

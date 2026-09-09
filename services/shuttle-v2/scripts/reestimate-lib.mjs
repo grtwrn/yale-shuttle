@@ -41,6 +41,10 @@ export const COMPILED = Object.freeze({
   P_DEPART_ON_FRESH: 0.76,
   CONFORMAL: Object.freeze({ "0-2": 1, "2-5": 1, "5-10": 1, "10-30": 1 }),
   ROUTE_SCALE: Object.freeze({}),
+  HORIZON_BIAS: Object.freeze({
+    "0-2": Object.freeze({ b: 0, n: 0 }), "2-5": Object.freeze({ b: 0, n: 0 }),
+    "5-10": Object.freeze({ b: 0, n: 0 }), "10-30": Object.freeze({ b: 0, n: 0 }),
+  }),
 });
 export const SCALAR_KEYS = ["P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE", "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S", "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH"];
 export const HORIZONS = ["0-2", "2-5", "5-10", "10-30"];
@@ -79,6 +83,17 @@ export const ROUTE_SCALE_FLOOR_SEC = 180;
 export const ROUTE_SCALE_SHRINK_K = 2000;
 
 /**
+ * HORIZON_BIAS: the per-bucket CENTRE correction (docs/horizon-bias.md).
+ * These four mirror web/src/eta/params.ts and reestimate-lib.test.mjs pins
+ * them equal, because the number that is fitted and the number that is
+ * applied must be the same number.
+ */
+export const HORIZON_BIAS_RANGE = [-600, 600];
+export const HORIZON_BIAS_KNOT_SEC = { "0-2": 60, "2-5": 210, "5-10": 450, "10-30": 1200 };
+/** k = sigma^2 / tau^2, read off the data (docs/horizon-bias.md §3), not chosen. */
+export const HORIZON_BIAS_K = 1390;
+
+/**
  * The sample a key needs before its estimate is published. Emissions are
  * counted per poll (a day is ~70k pairs, so 5,000 is an hour of fleet); the
  * hazards per transition (the original measurement had ~2,900 of each);
@@ -95,6 +110,12 @@ export const N_FLOORS = {
   P_DEPART_ON_FRESH: 200,
   CONFORMAL: 300,
   ROUTE_SCALE: 2000,
+  /**
+   * A bucket needs this many pairs before its offset is published at all.
+   * Below it the shrinkage would damp the number anyway; the floor makes the
+   * refusal explicit and auditable in the job's issue list.
+   */
+  HORIZON_BIAS: 500,
 };
 /**
  * How far a fit may move from the compiled constant without `--allow-drift`:
@@ -364,8 +385,13 @@ export function pooled(rows, horizon = "all") {
  * — within the drift bound of the compiled constant; otherwise it keeps the
  * champion's value and the reason is logged. Returns {params, n, issues}.
  */
-export function assembleCandidate(fits, conformal, champion, { allowDrift = false, routeScales = null, heldOut = null } = {}) {
-  const params = { ...champion, CONFORMAL: { ...champion.CONFORMAL }, ROUTE_SCALE: { ...(champion.ROUTE_SCALE ?? {}) } };
+export function assembleCandidate(fits, conformal, champion, { allowDrift = false, routeScales = null, heldOut = null, horizonBias = null, horizonHeldOut = null } = {}) {
+  const params = {
+    ...champion,
+    CONFORMAL: { ...champion.CONFORMAL },
+    ROUTE_SCALE: { ...(champion.ROUTE_SCALE ?? {}) },
+    HORIZON_BIAS: { ...(champion.HORIZON_BIAS ?? COMPILED.HORIZON_BIAS) },
+  };
   const n = {};
   const issues = [];
   const keep = (key, reason) => issues.push({ key, reason, kept: key.startsWith("CONFORMAL") ? champion.CONFORMAL[key.slice(10)] : champion[key] });
@@ -416,6 +442,29 @@ export function assembleCandidate(fits, conformal, champion, { allowDrift = fals
     }
     if (f.value === 1) continue; // nothing to say
     params.ROUTE_SCALE[r] = f.value;
+  }
+  // Per horizon bucket, on the same terms: four numbers fitted on four
+  // disjoint samples are four decisions, and a bucket that fails keeps the
+  // champion's cell rather than dragging the other three down with it.
+  for (const h of horizonBias ? HORIZONS : []) {
+    const f = horizonBias[h];
+    const key = `HORIZON_BIAS.${h}`;
+    n[key] = f?.n ?? 0;
+    const kept = champion.HORIZON_BIAS?.[h] ?? { b: 0, n: 0 };
+    const hold = (reason) => issues.push({ key, reason, kept });
+    if (!f || f.b === null || !Number.isFinite(f.b)) { hold("no estimate"); continue; }
+    if (f.n < N_FLOORS.HORIZON_BIAS) { hold(`n ${f.n} under the floor ${N_FLOORS.HORIZON_BIAS}`); continue; }
+    if (f.b < HORIZON_BIAS_RANGE[0] || f.b > HORIZON_BIAS_RANGE[1]) { hold(`${f.b} s outside [${HORIZON_BIAS_RANGE[0]}, ${HORIZON_BIAS_RANGE[1]}]`); continue; }
+    // The held-out day decides, per bucket: an offset that does not improve
+    // the bucket's own median |error| on a day it was not fitted on is not
+    // published. This is the guard PR #184 was blocked for wanting.
+    const ho = horizonHeldOut?.[h];
+    if (ho && ho.after.medianAbsSec > ho.before.medianAbsSec) {
+      hold(`held out ${horizonHeldOut.day ?? ""}: median |err| ${ho.before.medianAbsSec} -> ${ho.after.medianAbsSec} s`.trim());
+      continue;
+    }
+    if (f.b === 0) continue;
+    params.HORIZON_BIAS[h] = { b: f.b, n: f.n };
   }
   return { params, n, issues };
 }
@@ -540,12 +589,147 @@ export function scaleEffect(pairs, scales) {
   return out;
 }
 
+/**
+ * The client's own map (web/src/eta/params.ts `applyHorizonBias`), so the
+ * held-out check prices what a rider would be shown. Knots at the bucket
+ * midpoints plus the origin, forced non-decreasing, flat past the last knot.
+ */
+export function horizonCurve(bias, k = HORIZON_BIAS_K) {
+  const xs = [0];
+  const ms = [0];
+  let any = false;
+  for (const h of HORIZONS) {
+    const cell = bias?.[h];
+    const x = HORIZON_BIAS_KNOT_SEC[h];
+    const b = cell && cell.n > 0 ? cell.b * (cell.n / (cell.n + k)) : 0;
+    if (b !== 0) any = true;
+    xs.push(x);
+    ms.push(Math.max(x + b, ms[ms.length - 1]));
+  }
+  return any ? { xs, ms } : null;
+}
+
+export function applyHorizonBias(sec, curve) {
+  if (!curve || !(sec > 0)) return sec;
+  const { xs, ms } = curve;
+  const last = xs.length - 1;
+  if (sec >= xs[last]) return Math.max(0, sec + (ms[last] - xs[last]));
+  let i = 1;
+  while (i < last && sec > xs[i]) i++;
+  const x0 = xs[i - 1], x1 = xs[i];
+  const t = (sec - x0) / (x1 - x0);
+  return Math.max(0, ms[i - 1] + (ms[i] - ms[i - 1]) * t);
+}
+
+/**
+ * The per-horizon centre correction, fitted on the champion's own replayed
+ * pairs: for every pair, the bucket the promise fell in and the residual
+ * `truth - promise`; the bucket's offset is the MEDIAN of those residuals,
+ * raw, with the sample beside it so the client can shrink it.
+ *
+ * Conditioned on the PROMISE, not on the truth, and that is the whole point:
+ * it is the only conditioning a rider can act on. A rider reading "ten
+ * minutes" is inside the 10-30 bucket whatever the bus then does, so
+ * `E[truth | promise]` is what makes the shown number mean what it says.
+ * (The truth-conditioned bias is a different quantity with a different sign
+ * on this feed — docs/route-bias.md §1 — and correcting one does not correct
+ * the other. docs/horizon-bias.md §1 measures both side by side.)
+ *
+ * Truth is the proximity arrival wherever the pairs carry it, for the same
+ * reason `fitRouteScales` takes it: the detector's event fires 10-75 s before
+ * the bus is at the kerb and fitting to it would correct the estimator for
+ * the definition of arrival.
+ *
+ * `sd` accompanies each bucket so the shrinkage constant can be re-derived
+ * from the same run that produced the numbers rather than inherited.
+ */
+export function fitHorizonBias(pairs, { capSec = 1800 } = {}) {
+  const byBucket = new Map(HORIZONS.map((h) => [h, []]));
+  for (const p of pairs) {
+    const truth = p.prox === undefined ? p.det : p.prox;
+    if (truth === null || truth === undefined) continue;
+    const h = horizonOf(p.eta, capSec);
+    if (!h) continue;
+    byBucket.get(h).push(truth - p.eta);
+  }
+  const out = {};
+  for (const h of HORIZONS) {
+    const v = byBucket.get(h).sort((a, b) => a - b);
+    const n = v.length;
+    if (n === 0) { out[h] = { b: null, n: 0, sd: null }; continue; }
+    const med = v[Math.floor(n / 2)];
+    const mean = v.reduce((a, b) => a + b, 0) / n;
+    const s = n > 1 ? Math.sqrt(v.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (n - 1)) : null;
+    out[h] = { b: Math.round(med * 10) / 10, n, sd: s === null ? null : Math.round(s * 10) / 10 };
+  }
+  return out;
+}
+
+/**
+ * What a published set does to a held-out day, per bucket: the pairs are
+ * re-priced through the client's own map — the correction is the last step of
+ * pricing and feeds nothing back, so this is exact — and scored against the
+ * same truth. `coverage` counts the shown 10-90 band, since re-centring the
+ * number moves the band with it.
+ */
+export function horizonBiasEffect(pairs, bias, { capSec = 1800, k = HORIZON_BIAS_K } = {}) {
+  const curve = horizonCurve(bias, k);
+  const cells = new Map(HORIZONS.map((h) => [h, { before: [], after: [], coverBefore: 0, coverAfter: 0, band: 0 }]));
+  const all = { before: [], after: [], coverBefore: 0, coverAfter: 0, band: 0 };
+  for (const p of pairs) {
+    const truth = p.prox === undefined ? p.det : p.prox;
+    if (truth === null || truth === undefined) continue;
+    const h = horizonOf(p.eta, capSec);
+    if (!h) continue;
+    const c = cells.get(h);
+    const eta2 = applyHorizonBias(p.eta, curve);
+    const lo2 = applyHorizonBias(p.low, curve);
+    const hi2 = applyHorizonBias(p.high, curve);
+    for (const t of [c, all]) {
+      t.before.push(p.eta - truth);
+      t.after.push(eta2 - truth);
+      if (p.low < p.high) {
+        t.band++;
+        if (truth >= p.low && truth <= p.high) t.coverBefore++;
+        if (truth >= lo2 && truth <= hi2) t.coverAfter++;
+      }
+    }
+  }
+  const stat = (t) => {
+    const pick = (arr, q) => arr[Math.min(arr.length - 1, Math.floor(q * arr.length))];
+    const one = (errs) => {
+      const abs = errs.map(Math.abs).sort((a, b) => a - b);
+      const signed = errs.slice().sort((a, b) => a - b);
+      return {
+        n: errs.length,
+        medianAbsSec: r1(pick(abs, 0.5)),
+        p90AbsSec: r1(pick(abs, 0.9)),
+        medianSignedSec: r1(pick(signed, 0.5)),
+        pessimistic120Pct: r1((100 * errs.filter((e) => e >= 120).length) / errs.length),
+        optimistic120Pct: r1((100 * errs.filter((e) => e <= -120).length) / errs.length),
+      };
+    };
+    return {
+      before: { ...one(t.before), coveragePct: t.band ? r1((100 * t.coverBefore) / t.band) : null },
+      after: { ...one(t.after), coveragePct: t.band ? r1((100 * t.coverAfter) / t.band) : null },
+    };
+  };
+  const out = { all: stat(all) };
+  for (const h of HORIZONS) if (cells.get(h).before.length) out[h] = stat(cells.get(h));
+  return out;
+}
+
 export function sameParams(a, b) {
   for (const k of SCALAR_KEYS) if (a[k] !== b[k]) return false;
   for (const h of HORIZONS) if (a.CONFORMAL[h] !== b.CONFORMAL[h]) return false;
   const ra = a.ROUTE_SCALE ?? {}, rb = b.ROUTE_SCALE ?? {};
   const keys = new Set([...Object.keys(ra), ...Object.keys(rb)]);
   for (const k of keys) if ((ra[k] ?? 1) !== (rb[k] ?? 1)) return false;
+  const ha = a.HORIZON_BIAS ?? {}, hb = b.HORIZON_BIAS ?? {};
+  for (const h of HORIZONS) {
+    const x = ha[h] ?? { b: 0, n: 0 }, y = hb[h] ?? { b: 0, n: 0 };
+    if (x.b !== y.b || x.n !== y.n) return false;
+  }
   return true;
 }
 
