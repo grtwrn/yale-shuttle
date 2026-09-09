@@ -1,0 +1,565 @@
+{
+  "schemaVersion": 1,
+  "purpose": "PR184 activation diagnosis, not independent accuracy validation",
+  "review": "https://github.com/grtwrn/yale-shuttle/pull/184#issuecomment-5604222448",
+  "baseHead": "281672ad1c0a26ecf61b4f078ba9cda5d70fc208",
+  "runtime": {
+    "path": "services/shuttle-v2/web/src/eta/standingForecast.ts",
+    "bytes": 5271,
+    "sha256": "21e2b56a3d2d101f463b8e24634c708ce210bbf04ade573c5d3a0a79e9b08be1"
+  },
+  "inputs": {
+    "captures": [
+      {
+        "path": "/home/gwarren/shuttle-captures/cap-midday-0904.jsonl",
+        "sha256": "10182d45e70e2924e3c7dd3ddf34a5f3b0641d22deba242459bc8ee01cbfe27f"
+      }
+    ],
+    "snapshot": {
+      "path": "/home/gwarren/yale-shuttle-wt/cleanup/services/shuttle-v2/store/snap-0904-2205.db",
+      "sha256": "ce3c017e9d726f01ca7fa250359f9ef7b2fdddbf7b03ae72d56885842d7f4d50"
+    },
+    "payloadPatch": null,
+    "modelParams": null
+  },
+  "fit": {
+    "fitPath": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/analytic/remaining-objective-corrected/fit.json",
+    "fitAt": 1788494400000,
+    "fitSha256": "977c4cbb248954368dd11f35ce340d37eab44216ba79b4158241c393bbb46394",
+    "dataset": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/dataset-v2",
+    "day": "2026-09-04",
+    "currentClock": "minimum valid server at_stop_since, stationary_since, and query clock; decoded again at browser rest origin",
+    "currentLabelFeatures": false,
+    "historyAvailability": "knownAt <= observed server visit start; exact canonical route pattern and occurrence",
+    "source": {
+      "path": "/home/gwarren/wt/pr184-feedback/services/shuttle-v2/scripts/eta-replay/general-eval/models/analytic-client-hook.ts",
+      "sha256": "47eac07b11a2bf629cc7f9e0f8fec7e251c69cb127ac8db62a053cc0f266f193"
+    },
+    "fitSource": {
+      "path": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/analytic/remaining-objective-corrected/fit.json",
+      "sha256": "977c4cbb248954368dd11f35ce340d37eab44216ba79b4158241c393bbb46394"
+    },
+    "historySource": {
+      "path": "/home/gwarren/yale-shuttle/services/shuttle-v2/scripts/.eta-replay/overnight-2026-09-08/dataset-v2/2026-09-04/episodes.jsonl.gz",
+      "sha256": "d8d24491de07d4b7aa6582dd48640d2ceed23343bc4b617b4e43d994d7d9db3b"
+    },
+    "routes": [
+      3
+    ]
+  },
+  "legacyReproduction": {
+    "reviewerWaits": {
+      "path": "/home/gwarren/wt/pr184-gate/services/shuttle-v2/scripts/.eta-replay/sim/red-mid-cand.waits.jsonl",
+      "bytes": 1869124,
+      "sha256": "41fe768c2e0b3e19a08c4cb3ccfe9a71fc5d206e8fa81dc6505f3d607212a4b3"
+    },
+    "reproducedWaits": {
+      "path": "services/shuttle-v2/store/review184/reviewer-mid-candidate.waits.jsonl",
+      "bytes": 1869124,
+      "sha256": "41fe768c2e0b3e19a08c4cb3ccfe9a71fc5d206e8fa81dc6505f3d607212a4b3"
+    },
+    "byteIdentical": true,
+    "audit": {
+      "path": "services/shuttle-v2/store/review184/reviewer-mid-audit.json",
+      "bytes": 6797,
+      "sha256": "6600696e1ab76129ed2e0dc5a416504886331ee2c09bb65693e6095e40ddd487"
+    },
+    "counts": {
+      "acceptedContexts": 1129800,
+      "lookupCalls": 8731,
+      "realLookupHits": 0,
+      "hitByOccurrence": {},
+      "rejectionReasons": {
+        "no_contexts": 8731
+      },
+      "hitAccountingMatches": true
+    }
+  },
+  "calibrationOnlyAblation": {
+    "change": "Only PAYLOAD_PATCH replaced with frozen production split tables; same model, client, hook, old wire clocks and rider population",
+    "tableProvenance": {
+      "file": "/tmp/review184/production-tables-2026-09-04.json",
+      "sha256": "e6e50f439eb2732e96279394614e2c8910cf0c692f087d4c2d455eef2c492fad",
+      "snapshot": "/home/gwarren/yale-shuttle-wt/cleanup/services/shuttle-v2/store/snap-0904-2205.db",
+      "snapshotSha256": "ce3c017e9d726f01ca7fa250359f9ef7b2fdddbf7b03ae72d56885842d7f4d50",
+      "cutoff": 1788494400000,
+      "cutoffIso": "2026-09-04T04:00:00.000Z",
+      "availability": "two subsequent same-bus same-route anchors after physical completion plus 120 seconds; legacy samples completed before cutoff",
+      "source": "/home/gwarren/wt/pr184-feedback/services/shuttle-v2/scripts/eta-replay/general-eval/production-tables.ts",
+      "sourceSha256": "1c1c92ced1449eeaa90a5135d56fd615e43613dcf51dc9d151680b2c66bc8563",
+      "routeCount": 15
+    },
+    "audit": {
+      "path": "services/shuttle-v2/store/review184/reviewer-mid-split-audit.json",
+      "bytes": 45801,
+      "sha256": "f5cb44a17558e4d6ce12274d2885dac69bca35668c5fade3e9d0830221ee376d"
+    },
+    "counts": {
+      "acceptedContexts": 1099440,
+      "lookupCalls": 433676,
+      "realLookupHits": 70400,
+      "hitByOccurrence": {
+        "3:0": 35199,
+        "3:14": 21528,
+        "3:18": 5071,
+        "3:28": 2774,
+        "3:2": 1211,
+        "3:3": 4617
+      },
+      "rejectionReasons": {
+        "no_context_for_occurrence": 104672,
+        "no_contexts": 258604
+      },
+      "hitAccountingMatches": true
+    },
+    "accuracyComparison": false
+  },
+  "namedProductionCheck": {
+    "baseline": {
+      "report": {
+        "path": "services/shuttle-v2/store/review184/named-production-baseline-final.json",
+        "bytes": 65384,
+        "sha256": "2c8e266cabe7990cda48717ffd0d1b73039bcb74441f37c7edb6f91391c052b8"
+      },
+      "waits": {
+        "path": "services/shuttle-v2/store/review184/named-production-baseline-final.waits.jsonl",
+        "bytes": 17522,
+        "sha256": "424b68f0e5fac6ec2fe0dcfd2538d68612c6f9a5d8c3f150cc1b20f79c29529e"
+      },
+      "audit": {
+        "path": "services/shuttle-v2/store/review184/named-production-baseline-final.standing-audit.json",
+        "bytes": 45124,
+        "sha256": "3cb1019744c68fed8826dd8eb1765d7fd5bd90896c7dceaee9d8b811482d216d"
+      },
+      "counts": {
+        "acceptedContexts": 0,
+        "lookupCalls": 4050,
+        "realLookupHits": 0,
+        "hitByOccurrence": {},
+        "rejectionReasons": {
+          "empty_context_map": 4050
+        },
+        "hitAccountingMatches": true
+      },
+      "activation": {
+        "ok": true,
+        "status": "baseline_or_diagnostic"
+      },
+      "immutableInputs": {
+        "passed": true,
+        "changedPaths": []
+      },
+      "calibration": {
+        "mode": "production",
+        "cutoff": "2026-09-04T04:00:00.000Z",
+        "availability": "two subsequent same-bus same-route anchors after physical completion plus 120 seconds; legacy samples completed before cutoff",
+        "topologySha256": "f2205ca5f133db4edf9d949d565152dea7c2ce1848b48da0e381342db8f19be2",
+        "payloadSha256": "e6e50f439eb2732e96279394614e2c8910cf0c692f087d4c2d455eef2c492fad"
+      },
+      "primary": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 97.5,
+          "p90AbsSec": 262,
+          "earlyOver60Pct": 66.7,
+          "lateOver60Pct": 16.7
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 83.3,
+          "earlyPct": 16.7,
+          "latePct": 0,
+          "medianWidthSec": 393.3
+        },
+        "pctJump180": 16.7,
+        "pctJump300": 0,
+        "pctReversal60": 0,
+        "pctStrand": 0,
+        "pctOvershoot": 0,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 0,
+        "drops": 0,
+        "dropsDeclined": 0,
+        "dropsRepriced": 0,
+        "worstDrift": {
+          "p50": 50,
+          "p90": 142.5,
+          "max": 230
+        }
+      },
+      "canaryCadence": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 97.5,
+          "p90AbsSec": 262,
+          "earlyOver60Pct": 66.7,
+          "lateOver60Pct": 16.7
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 83.3,
+          "earlyPct": 16.7,
+          "latePct": 0,
+          "medianWidthSec": 393.3
+        },
+        "pctJump180": 16.7,
+        "pctJump300": 0,
+        "pctReversal60": 0,
+        "pctStrand": 16.7,
+        "pctOvershoot": 0,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 0,
+        "drops": 0,
+        "dropsDeclined": 0,
+        "dropsRepriced": 0,
+        "worstDrift": {
+          "p50": 45,
+          "p90": 192.5,
+          "max": 285
+        }
+      }
+    },
+    "candidate": {
+      "report": {
+        "path": "services/shuttle-v2/store/review184/named-production-candidate-final.json",
+        "bytes": 73801,
+        "sha256": "54e7f8d62970548cf4cdee2dedfefd746d20b695f50406299b917a8549e29b37"
+      },
+      "waits": {
+        "path": "services/shuttle-v2/store/review184/named-production-candidate-final.waits.jsonl",
+        "bytes": 19313,
+        "sha256": "3034db43a532b56223fd770dc696b12279aa811fb3485fe587fc02b0bec63aaa"
+      },
+      "audit": {
+        "path": "services/shuttle-v2/store/review184/named-production-candidate-final.standing-audit.json",
+        "bytes": 59426,
+        "sha256": "9335ce6c3e8ab53b6c3d26e582aa20596e7ca90492a50d71f35a4c263eba5e2e"
+      },
+      "counts": {
+        "acceptedContexts": 12468,
+        "lookupCalls": 4047,
+        "realLookupHits": 1724,
+        "hitByOccurrence": {
+          "3:121:0": 411,
+          "3:11:14": 1067,
+          "3:45:2": 117,
+          "3:14:28": 46,
+          "3:75:3": 83
+        },
+        "rejectionReasons": {
+          "no_context_for_occurrence": 1144,
+          "empty_context_map": 1179
+        },
+        "hitAccountingMatches": true
+      },
+      "activation": {
+        "ok": true,
+        "status": "positive_weight_lookup_observed"
+      },
+      "immutableInputs": {
+        "passed": true,
+        "changedPaths": []
+      },
+      "calibration": {
+        "mode": "production",
+        "cutoff": "2026-09-04T04:00:00.000Z",
+        "availability": "two subsequent same-bus same-route anchors after physical completion plus 120 seconds; legacy samples completed before cutoff",
+        "topologySha256": "f2205ca5f133db4edf9d949d565152dea7c2ce1848b48da0e381342db8f19be2",
+        "payloadSha256": "e6e50f439eb2732e96279394614e2c8910cf0c692f087d4c2d455eef2c492fad"
+      },
+      "primary": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 67.5,
+          "p90AbsSec": 262,
+          "earlyOver60Pct": 33.3,
+          "lateOver60Pct": 16.7
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 83.3,
+          "earlyPct": 16.7,
+          "latePct": 0,
+          "medianWidthSec": 377.8
+        },
+        "pctJump180": 16.7,
+        "pctJump300": 0,
+        "pctReversal60": 33.3,
+        "pctStrand": 0,
+        "pctOvershoot": 33.3,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 16.7,
+        "drops": 1,
+        "dropsDeclined": 0,
+        "dropsRepriced": 1,
+        "worstDrift": {
+          "p50": 60,
+          "p90": 157.5,
+          "max": 190
+        }
+      },
+      "canaryCadence": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 67.5,
+          "p90AbsSec": 262,
+          "earlyOver60Pct": 33.3,
+          "lateOver60Pct": 16.7
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 83.3,
+          "earlyPct": 16.7,
+          "latePct": 0,
+          "medianWidthSec": 377.8
+        },
+        "pctJump180": 16.7,
+        "pctJump300": 0,
+        "pctReversal60": 33.3,
+        "pctStrand": 33.3,
+        "pctOvershoot": 33.3,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 0,
+        "drops": 0,
+        "dropsDeclined": 0,
+        "dropsRepriced": 0,
+        "worstDrift": {
+          "p50": 72.5,
+          "p90": 192.5,
+          "max": 225
+        }
+      }
+    },
+    "pairedWaits": 6,
+    "differentWaits": 6,
+    "riderIds": [
+      "Red|48|2026-09-04T15:00:01.000Z",
+      "Red|48|2026-09-04T15:30:00.000Z",
+      "Red|48|2026-09-04T16:00:00.000Z",
+      "Red|48|2026-09-04T16:30:00.000Z",
+      "Red|48|2026-09-04T17:00:00.000Z",
+      "Red|48|2026-09-04T17:30:00.000Z"
+    ],
+    "winchesterServerAtStopExample": [
+      {
+        "bus": "#304",
+        "routeId": "3",
+        "now": 1788534075696,
+        "sharedEmpty": false,
+        "payloadObservedAt": 1788534075696,
+        "payload": {
+          "bus_id": 65960,
+          "bus_name": "#304",
+          "route_id": 3,
+          "at_stop_id": 11,
+          "at_stop_since": "2026-09-04T15:01:15.696",
+          "stationary_since": "2026-09-04T15:01:15.696",
+          "last_moved_at": "2026-09-04T15:01:15.696",
+          "lat": 41.324092,
+          "lon": -72.928208
+        },
+        "stopIndex": 14,
+        "visitStartMs": 1788534070538,
+        "availableIndices": [
+          0,
+          2,
+          3,
+          14,
+          18,
+          28
+        ],
+        "context": {
+          "stop_id": 11,
+          "phase_weight": 0.30816713806141954,
+          "observed_visit_start_at": 1788534075696,
+          "previous_departed_at": 1788530505740,
+          "history_available_at": 1788530655764,
+          "fitted_at": 1788494400000,
+          "valid_until": 1788580800000
+        },
+        "caller": [
+          "at forecastForStand (/home/gwarren/wt/pr184-feedback/services/shuttle-v2/web/src/eta/standingForecast.ts:86:33)",
+          "at stepBelief (/home/gwarren/wt/pr184-feedback/services/shuttle-v2/web/src/eta/filter.ts:644:30)",
+          "at beliefFor (/home/gwarren/wt/pr184-feedback/services/shuttle-v2/web/src/eta/index.ts:116:13)"
+        ]
+      }
+    ],
+    "notes": [
+      "Six development-day waits chosen at half-hour starts; first start is one second after11:00ET to be inside capture.",
+      "Different forecasts prove wiring only; at15-second sampling strand flags increased from1to2.",
+      "All six baseline and candidate waits are byte-identical to the earlier v2 instrumented runs; later change only diversifies audit samples."
+    ]
+  },
+  "negativeGate": {
+    "run": {
+      "report": {
+        "path": "services/shuttle-v2/store/review184/named-legacy-rejected.json",
+        "bytes": 79068,
+        "sha256": "08846234374e5f4df3e663340a9b4b691556e455d11fbc1ff79d1318c598ad86"
+      },
+      "waits": {
+        "path": "services/shuttle-v2/store/review184/named-legacy-rejected.waits.jsonl",
+        "bytes": 22977,
+        "sha256": "32a1e73439f5f33b6499383193efc40bc7fd0ee0689163e53f973360b19b3f23"
+      },
+      "audit": {
+        "path": "services/shuttle-v2/store/review184/named-legacy-rejected.standing-audit.json",
+        "bytes": 2122,
+        "sha256": "5c8114beba63d639d3d050fc6e15e28202c6f21150668b8080f7adaf58870127"
+      },
+      "counts": {
+        "acceptedContexts": 12468,
+        "lookupCalls": 21,
+        "realLookupHits": 0,
+        "hitByOccurrence": {},
+        "rejectionReasons": {
+          "empty_context_map": 21
+        },
+        "hitAccountingMatches": true
+      },
+      "activation": {
+        "ok": false,
+        "status": "candidate_unused"
+      },
+      "immutableInputs": {
+        "passed": true,
+        "changedPaths": []
+      },
+      "calibration": {
+        "mode": "legacy",
+        "cutoff": null,
+        "availability": "legacy hourly anchor-to-anchor calibration",
+        "topologySha256": "f2205ca5f133db4edf9d949d565152dea7c2ce1848b48da0e381342db8f19be2",
+        "payloadSha256": null
+      },
+      "primary": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 265,
+          "p90AbsSec": 372,
+          "earlyOver60Pct": 83.3,
+          "lateOver60Pct": 0
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 16.7,
+          "earlyPct": 83.3,
+          "latePct": 0,
+          "medianWidthSec": 407.1
+        },
+        "pctJump180": 66.7,
+        "pctJump300": 0,
+        "pctReversal60": 83.3,
+        "pctStrand": 66.7,
+        "pctOvershoot": 16.7,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 50,
+        "drops": 3,
+        "dropsDeclined": 0,
+        "dropsRepriced": 3,
+        "worstDrift": {
+          "p50": 290,
+          "p90": 292.5,
+          "max": 295
+        }
+      },
+      "canaryCadence": {
+        "waits": 6,
+        "arrived": 6,
+        "gaveUp": 0,
+        "dataEnded": 0,
+        "boardedOnArrival": 0,
+        "scored": 6,
+        "medianWaitMin": 4.4,
+        "p90WaitMin": 6.8,
+        "firstSight": {
+          "medianAbsSec": 265,
+          "p90AbsSec": 372,
+          "earlyOver60Pct": 83.3,
+          "lateOver60Pct": 0
+        },
+        "interval": {
+          "n": 6,
+          "insidePct": 16.7,
+          "earlyPct": 83.3,
+          "latePct": 0,
+          "medianWidthSec": 407.1
+        },
+        "pctJump180": 100,
+        "pctJump300": 66.7,
+        "pctReversal60": 83.3,
+        "pctStrand": 100,
+        "pctOvershoot": 16.7,
+        "pctPinChanged": 0,
+        "pctVanished": 0,
+        "pctLapRepriced": 0,
+        "pctNeverShown": 0,
+        "pctDropped": 33.3,
+        "drops": 2,
+        "dropsDeclined": 0,
+        "dropsRepriced": 2,
+        "worstDrift": {
+          "p50": 370,
+          "p90": 460,
+          "max": 460
+        }
+      }
+    },
+    "observedExitCode": 2
+  },
+  "evidenceLimits": [
+    "No held-out Red observations on reserved Sep5\u20137.",
+    "Sep4 was development; Sep8 was already examined regression.",
+    "Sep9 prospective scorer stopped on duplicate query/target keys; no prospective validation."
+  ]
+}

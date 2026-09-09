@@ -61,6 +61,8 @@ Overprediction >120s: 5.20%→6.05%; underprediction >120s: 27.21%→5.16%. `202
 
 ## Provenance and limits
 
+**There is no held-out Red validation in these results.** September 8 supplied the Red regression measurements; September 5–7 contain no Red observations. The separately registered September 9 prospective scorer stopped on duplicate query/target keys without producing a validation result.
+
 - `run-manifest.json` freezes dependencies, model and corpus before emission; `source-controls.json` proves selected analytic body and label geometry equality.
 - `replay-commands.json` contains exact replay argv/environment; `commands.jsonl` and `reserved-paired/commands.json` record unchanged scorer invocations.
 - Sep8 uses its published model parameters. Reserved Sep5–7 uses the original compiled defaults and cutoff Sep5 04:00Z. All candidate runs load the same frozen Sep3+4 fit. Sep8 remains a previously examined regression day; it is not new holdout evidence.

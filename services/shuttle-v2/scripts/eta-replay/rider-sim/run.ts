@@ -31,7 +31,9 @@
  * The payload comes from the real detector (`stepMany`) and the collector's
  * own at-stop rule — `stationarySince`, 15 s, 75 m — not a reconstruction,
  * and a bus that misses a poll stays on the payload for LIVE_BUS_TTL_MS as in
- * production. Calibration is time-travelled per ET hour from a DB snapshot.
+ * production. Legacy calibration uses hourly anchor-to-anchor tables. The
+ * explicit production mode freezes the actual split stand/drive serializer at
+ * one causal cutoff; a standing hook must use that same fitted-at timestamp.
  *
  * SCORING is the canary's (`canary-metrics.mjs`): display buckets, the
  * smallest movement two readings permit. Truth is the canary's 45 m curb rule
@@ -58,6 +60,20 @@
  *      at the six stops downstream while a Red bus is parked there or leaving;
  *      reported as its own section with the departure moment scored),
  *      CALIB_LAG_MIN, TRACE=1,
+ *      REPLAY_CALIBRATION=legacy|production (default legacy), REPLAY_FIT_AT=ISO
+ *      for fixed production tables; cutoff must precede the capture, and
+ *      PAYLOAD_PATCH/CALIB_LAG_MIN cannot be combined with production mode.
+ *      STANDING_HOOK=module exporting attachContext and analyticHookManifest;
+ *      STANDING_HOOK_ROUTES=3 limits only the attachment (empty = all routes).
+ *      A hook automatically enables the source-pinned offline lookup audit.
+ *      STANDING_REQUIRE_CELLS=3:11:14 optionally requires specific fitted cells;
+ *      zero successful positive-weight lookups fail the run (exit 2), unless
+ *      STANDING_ALLOW_UNUSED=1 explicitly marks an unused-model diagnostic.
+ *      STANDING_AUDIT=1 also instruments a baseline without a hook.
+ *      LEGACY_BUS_CLOCKS=1 omits last_moved_at to reproduce older harness runs;
+ *      default feed matches the current production wire (which has no seen_at).
+ *      Run with Node >=22.15 and `node --import tsx .../run.ts` when auditing.
+ *
  *      PAYLOAD_PATCH=file.json — extra calibration fields a candidate tree
  *      reads that the snapshot's calibrator does not serve yet, merged into
  *      the time-travelled tables after they are built: e.g. PR #81's
@@ -71,12 +87,14 @@
  *      A tree that ignores the fields is byte-identical with or without it.
  */
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   OUT_DIR,
+  openDb,
   SEGMENT_WINDOW_MS,
   fmtEt,
   loadNet,
@@ -89,7 +107,6 @@ import {
   type AdjEntry,
 } from "../common.js";
 import { distanceMeters } from "../../../src/network/geo.js";
-import { applyModelParams, activeModelParams } from "../../../web/src/eta/params.js";
 import { PACE_KEY, paceCarrier, type PaceEntry } from "../../../src/server/v1compat.js";
 import {
   aggregate,
@@ -114,7 +131,13 @@ import {
   type WaitResult,
 } from "./lib.js";
 
+import { productionTables } from "../general-eval/production-tables.js";
+import { replayConfig, validateHookFit } from "./replay-config.js";
+import { installStandingAudit } from "./context-audit.mjs";
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const sourceFile = (file: string) => ({ path: path.resolve(file), sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") });
+const jsonHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
 
@@ -191,6 +214,39 @@ type BusData = import("../../../web/src/map-data").BusData;
 type UpcomingArrival = import("../../../web/src/arrivals").UpcomingArrival;
 type TripOption = import("../../../web/src/planner").TripOption;
 
+// Install before importing ANY client module, so every real lookup is observed.
+// Config's data-dependent cutoff validation runs after loading the capture below.
+for (const suffix of [".json", ".waits.jsonl", ".standing-audit.json"]) {
+  const destination = path.join(OUT_DIR, `${OUT_NAME}${suffix}`);
+  if (fs.existsSync(destination)) throw new Error(`Replay output already exists; choose a fresh OUT_NAME: ${destination}`);
+}
+const listSourceFiles = (dir: string): string[] => fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+  const file = path.join(dir, entry.name);
+  return entry.isDirectory() ? listSourceFiles(file) : /\.(ts|tsx|mjs|json)$/.test(entry.name) && !/\.test\./.test(entry.name) ? [file] : [];
+}) : [];
+const harnessRoot = path.resolve(HERE, "../../..");
+const sourcePaths = [fileURLToPath(import.meta.url), path.join(HERE, "lib.ts"), path.join(HERE, "replay-config.ts"), path.join(HERE, "context-audit.mjs"),
+  path.join(HERE, "../common.ts"), path.join(HERE, "../../canary-metrics.mjs"), path.join(HERE, "../general-eval/production-tables.ts"),
+  ...listSourceFiles(path.join(harnessRoot, "src")), ...listSourceFiles(path.join(CLIENT_ROOT, "src")),
+  ...listSourceFiles(path.join(CLIENT_ROOT, "web/src")),
+  path.join(harnessRoot, "package.json"), path.join(harnessRoot, "package-lock.json"),
+  ...["package.json", "package-lock.json"].map(file => path.join(CLIENT_ROOT, file)).filter(file => fs.existsSync(file)),
+  ...(process.env.STANDING_HOOK ? [path.resolve(process.env.STANDING_HOOK), ...listSourceFiles(path.dirname(path.resolve(process.env.STANDING_HOOK)))] : [])];
+const sourceFiles = [...new Set(sourcePaths)].map(sourceFile);
+const snapshotPath = process.env.REPLAY_DB ?? "./store/snap.db";
+function assertStandaloneSnapshot() {
+  for (const file of new Set([path.resolve(snapshotPath), fs.realpathSync(snapshotPath)])) {
+    if (fs.existsSync(`${file}-wal`) && fs.statSync(`${file}-wal`).size > 0) {
+      throw new Error(`Replay requires a standalone immutable SQLite backup without a nonempty WAL: ${file}`);
+    }
+  }
+}
+assertStandaloneSnapshot();
+const snapshotSource = sourceFile(snapshotPath);
+const patchSource = process.env.PAYLOAD_PATCH ? sourceFile(process.env.PAYLOAD_PATCH) : null;
+const paramsSource = process.env.MODEL_PARAMS ? sourceFile(process.env.MODEL_PARAMS) : null;
+const audit = process.env.STANDING_HOOK || process.env.STANDING_AUDIT === "1"
+  ? installStandingAudit(CLIENT_ROOT, path.join(OUT_DIR, `${OUT_NAME}.standing-audit.json`)) : null;
 const arrivalsMod = await fromClient<ArrivalsMod>("web/src/arrivals.ts");
 const anchorMod = await fromClient<AnchorMod>("web/src/anchor.ts");
 const plannerMod = await fromClient<PlannerMod>("web/src/planner.ts");
@@ -200,6 +256,8 @@ const scheduleMod = await fromClient<ScheduleMod>("web/src/schedule.ts");
 const walkMod = await fromClient<WalkMod>("web/src/walk.ts");
 const geoMod = await fromClient<GeoMod>("web/src/geo.ts");
 const det = await fromClient<DetMod>("src/collector/detector.ts");
+const paramsMod = process.env.MODEL_PARAMS
+  ? await fromClient<typeof import("../../../web/src/eta/params")>("web/src/eta/params.ts") : null;
 // The tree's per-vehicle store: the ring estimator's (web/src/eta, every
 // tree since 2026-09-06) or the retired anchor gate's (web/src/anchorGate,
 // trees before it). Either way a cohort gets one Map, and this only names
@@ -227,10 +285,13 @@ const captureFiles = (process.env.CAPTURE
   ? process.env.CAPTURE.split(",")
   : fs.readdirSync(`${process.env.HOME}/shuttle-captures`).filter((f) => /^positions-\d{8}\.jsonl$/.test(f)).sort().map((f) => `${process.env.HOME}/shuttle-captures/${f}`)
 ).map((f) => f.trim()).filter(Boolean);
+const captureSources: ReturnType<typeof sourceFile>[] = [];
 let raw: PosRow[] = [];
 for (const f of captureFiles) {
   const before = raw.length;
-  for (const line of fs.readFileSync(f, "utf8").split("\n")) {
+  const bytes = fs.readFileSync(f);
+  captureSources.push({ path: path.resolve(f), sha256: createHash("sha256").update(bytes).digest("hex") });
+  for (const line of bytes.toString("utf8").split("\n")) {
     const r = parseCaptureLine(line);
     if (r) raw.push(r);
   }
@@ -239,13 +300,58 @@ for (const f of captureFiles) {
 const rows = dedupeAndSort(raw);
 raw = [];
 const polls = groupPolls(rows);
+if (!rows.length) throw new Error("Capture contains no usable positions");
 const dataStart = rows[0]!.t;
 const dataEnd = rows[rows.length - 1]!.t;
 log(`${rows.length} positions after de-dup, ${polls.length} polls, ${new Date(dataStart).toISOString()} .. ${new Date(dataEnd).toISOString()}`);
 const DETECTOR_FROM = process.env.DETECTOR_FROM ? Date.parse(process.env.DETECTOR_FROM) : dataStart;
+const replay = replayConfig(process.env, dataStart);
 
 const net = loadNet();
 const { network } = net;
+let standingHook: any = null;
+let standingHookManifest: any = null;
+let hookFitAt: number | null = null;
+const hookCounts = { calls: 0, busesWithContexts: 0, contexts: 0 };
+if (process.env.STANDING_HOOK) {
+  if (process.env.SOURCE_ROOT && path.resolve(process.env.SOURCE_ROOT) !== CLIENT_ROOT) {
+    throw new Error("SOURCE_ROOT must match CLIENT_ROOT for the standing hook");
+  }
+  process.env.SOURCE_ROOT = CLIENT_ROOT;
+  const hookPath = path.resolve(process.env.STANDING_HOOK);
+  standingHook = await import(pathToFileURL(hookPath).href);
+  if (typeof standingHook.attachContext !== "function" || !standingHook.analyticHookManifest) {
+    throw new Error("STANDING_HOOK must export attachContext and analyticHookManifest");
+  }
+  hookFitAt = validateHookFit(replay, standingHook.analyticHookManifest, dataStart);
+  const manifest = standingHook.analyticHookManifest;
+  if (typeof manifest.fitPath !== "string" || typeof manifest.fitSha256 !== "string") {
+    throw new Error("Standing hook must declare its immutable fitPath and fitSha256");
+  }
+  const fitSource = sourceFile(manifest.fitPath);
+  if (fitSource.sha256 !== manifest.fitSha256) throw new Error("Standing hook fit hash differs from the loaded fit artifact");
+  const fit = JSON.parse(fs.readFileSync(fitSource.path, "utf8"));
+  if (fit.fittedAt !== hookFitAt) throw new Error("Standing hook fitAt differs from its immutable fit artifact");
+  const historyFile = typeof manifest.dataset === "string" && typeof manifest.day === "string"
+    ? path.join(manifest.dataset, manifest.day, "episodes.jsonl.gz") : null;
+  standingHookManifest = { ...manifest, source: sourceFile(hookPath), fitSource,
+    historySource: historyFile ? sourceFile(historyFile) : null, routes: replay.hookRoutes };
+  log(`standing hook ${hookPath}, fit ${new Date(hookFitAt).toISOString()}, ${replay.calibration} calibration`);
+  if (replay.calibration === "legacy") log("WARNING: legacy anchor-to-anchor tables can bypass standing forecasts; activation audit is required, and this is not a production table replay");
+}
+let fixedTables: ReturnType<typeof productionTables> | null = null;
+if (replay.calibration === "production") {
+  // Its TEMP views are isolated from the legacy loader, and the snapshot is
+  // opened read-only. Calibration runs once, never against future query hours.
+  const calibrationDb = openDb();
+  try { fixedTables = productionTables(calibrationDb, replay.fitAt!); }
+  finally { calibrationDb.close(); }
+  const topology = (n: typeof network) => [...n.routes.values()].map(route => [route.id, route.stops]);
+  if (jsonHash(topology(network)) !== jsonHash(topology(fixedTables.network))) {
+    throw new Error("Fixed production calibration topology differs from the detector/hook network");
+  }
+  log(`fixed production tables at ${new Date(replay.fitAt!).toISOString()}: ${fixedTables.availability}`);
+}
 anchorMod.registerRoutePaths(net.routePaths);
 const { ROUTE_LISTS, mergedRouteStops } = routesMod;
 const cfgByLabel = new Map(ROUTE_LISTS.map((c) => [c.label, c]));
@@ -282,6 +388,7 @@ const adjByRoute = new Map<number, AdjEntry[]>();
 for (const r of net.routes) adjByRoute.set(r.id, routeAdjacency(net, samples, r.id));
 const segCache = new Map<number, ArrivalsMod extends { SegmentTimes: infer S } ? S : any>();
 function segmentsAt(t: number) {
+  if (fixedTables) return fixedTables.payload.segments;
   const bs = calibCache.bucketStart(t);
   let p = segCache.get(bs);
   if (!p) {
@@ -309,11 +416,11 @@ interface PayloadPatch { segments?: Record<string, Record<string, Record<string,
 // level either. Absent = the compiled constants, i.e. the champion.
 if (process.env.MODEL_PARAMS) {
   const wire = JSON.parse(fs.readFileSync(process.env.MODEL_PARAMS, "utf8")) as unknown;
-  if (!applyModelParams(wire)) {
+  if (!paramsMod!.applyModelParams(wire)) {
     console.error(`MODEL_PARAMS=${process.env.MODEL_PARAMS} was rejected by the client's own validation — refusing to score a set no rider could receive.`);
     process.exit(2);
   }
-  log(`MODEL_PARAMS ${activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
+  log(`MODEL_PARAMS ${paramsMod!.activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
 }
 const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
 const patched = new WeakSet<object>();
@@ -328,7 +435,7 @@ function applyPatch<T extends PatchTable>(table: T, extra: PayloadPatch["segment
   patched.add(table);
   return table;
 }
-const dwellsAt = (t: number) => applyPatch(dwellsAt0(t), patch?.dwells);
+const dwellsAt = (t: number) => fixedTables ? fixedTables.payload.dwells : applyPatch(dwellsAt0(t), patch?.dwells);
 if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 {
   const segMax = (net.db.prepare("SELECT max(started_at) m FROM segments").get() as { m: number }).m;
@@ -348,7 +455,7 @@ const countDrops: CountDrop[] = [];
 /** detector arrival events: `${busName}|${stopId}` -> times */
 const detArrivals = new Map<string, number[]>();
 
-type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null };
+type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null; lastMovedAt: number | null };
 
 function makeFeed() {
   const states = new Map<string, import("../../../src/collector/detector.js").BusState>();
@@ -390,6 +497,7 @@ function makeFeed() {
           // that does not read the field is byte-identical with or without it,
           // which is the same contract PAYLOAD_PATCH keeps.
           stationarySince: st ? st.stationarySince : null,
+          lastMovedAt: st ? st.lastMovedAt : null,
         });
       }
       for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
@@ -399,9 +507,22 @@ function makeFeed() {
         ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
         ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
         ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
+        ...(!replay.legacyBusClocks && v.lastMovedAt != null ? { last_moved_at: new Date(v.lastMovedAt).toISOString().replace(/Z$/, "") } : {}),
       }));
       // The client drops out-of-service ghosts before anything reads `buses`.
-      return all.filter((b) => scheduleMod.isBusInService(b, t));
+      const inService = all.filter((b) => scheduleMod.isBusInService(b, t));
+      if (record || !standingHook) return inService;
+      return inService.map(bus => {
+        if (replay.hookRoutes.length && !replay.hookRoutes.includes(Number(bus.route_id))) return bus;
+        hookCounts.calls++;
+        const contextual = standingHook.attachContext(bus, t, { fitAt: hookFitAt!, network,
+          contendedNames: plan.contendedNames });
+        const count = Array.isArray(contextual.standing_forecasts) ? contextual.standing_forecasts.length : 0;
+        if (count) hookCounts.busesWithContexts++;
+        hookCounts.contexts += count;
+        audit?.observeBus(contextual, t);
+        return contextual;
+      });
     },
   };
 }
@@ -751,10 +872,35 @@ const chain = CHAIN ? chainSummary(results.filter((r) => r.source === "chain"), 
 const skippedReasons: Record<string, number> = {};
 for (const s of skipped) { const k = s.reason.split(":")[0]!; skippedReasons[k] = (skippedReasons[k] ?? 0) + 1; }
 
+const activation = audit?.finish({ expected: !!standingHook, allowUnused: replay.allowUnused, requiredCells: replay.requiredCells }) ?? null;
+if (activation && !activation.ok) {
+  process.exitCode = 2;
+  log(`STANDING ACTIVATION FAILED: ${activation.status}. Results are a diagnostic, not evidence that the candidate was exercised.`);
+}
+const inputSources = { captures: captureSources, snapshot: snapshotSource, payloadPatch: patchSource, modelParams: paramsSource };
+// A mutable capture or source tree invalidates attribution. Hashes describe the
+// bytes loaded before the replay, and any later edit is an explicit failure.
+const immutableSources = [...sourceFiles, ...captureSources, snapshotSource, patchSource, paramsSource,
+  standingHookManifest?.fitSource, standingHookManifest?.historySource].filter(Boolean) as ReturnType<typeof sourceFile>[];
+assertStandaloneSnapshot();
+const changedInputs = immutableSources.filter(item => !fs.existsSync(item.path) || sourceFile(item.path).sha256 !== item.sha256).map(item => item.path);
+if (changedInputs.length) { process.exitCode = 2; log(`IMMUTABLE INPUT CHECK FAILED: ${changedInputs.join(", ")}`); }
 const out = {
   generatedAt: new Date().toISOString(),
   config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
   tree,
+  fidelity: {
+    calibration: { mode: replay.calibration, cutoff: fixedTables ? new Date(fixedTables.cutoff).toISOString() : null,
+      availability: fixedTables?.availability ?? "legacy hourly anchor-to-anchor calibration",
+      topologySha256: jsonHash([...network.routes.values()].map(route => [route.id, route.stops])),
+      payloadSha256: fixedTables ? jsonHash({ segments: fixedTables.payload.segments, dwells: fixedTables.payload.dwells }) : null },
+    busClocks: replay.legacyBusClocks ? "legacy: at_stop_since + stationary_since" : "current production: at_stop_since + stationary_since + last_moved_at; no seen_at",
+    standingHook: standingHookManifest, hookCounts, activation,
+    auditFile: audit ? path.join(OUT_DIR, `${OUT_NAME}.standing-audit.json`) : null,
+    requiredCells: replay.requiredCells, allowUnused: replay.allowUnused,
+    inputSources, sourceFiles, immutableInputs: { passed: changedInputs.length === 0, changedPaths: changedInputs },
+    appliedModelParams: paramsMod?.activeModelParams() ?? null,
+  },
   data: { positions: rows.length, polls: polls.length, start: new Date(dataStart).toISOString(), end: new Date(dataEnd).toISOString() },
   population: { focus: [...FOCUS], holdout: [...HOLDOUT], chain: CHAIN ? { ...CHAIN, stops: chainStops } : null, riders: specs.length, bySource: { uniform: specs.filter((s) => s.source === "uniform").length, targeted: specs.filter((s) => s.source === "targeted").length, chain: specs.filter((s) => s.source === "chain").length, named: specs.filter((s) => s.source === "named").length }, skipped: skippedReasons },
   summary: primary,
