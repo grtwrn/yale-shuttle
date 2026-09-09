@@ -40,10 +40,10 @@ describe("standWait — the 344 Winchester stand, poll by poll", () => {
   // perfect countdown would have shown at that instant.
   const rows: { elapsed: number; chip: string; range: string; truth: string; overdue: boolean }[] = [
     { elapsed: 0,   chip: "1-9 min left",     range: "in 4-12 min", truth: "12 min", overdue: false },
-    { elapsed: 201, chip: "up to 6 min left", range: "in 3-9 min",  truth: "8 min",  overdue: false },
-    { elapsed: 300, chip: "up to 5 min left", range: "in 3-8 min",  truth: "7 min",  overdue: true },
-    { elapsed: 480, chip: "up to 4 min left", range: "in 3-7 min",  truth: "4 min",  overdue: true },
-    { elapsed: 540, chip: "up to 4 min left", range: "in 3-7 min",  truth: "3 min",  overdue: true },
+    { elapsed: 201, chip: "<1-6 min left", range: "in 3-9 min",  truth: "8 min",  overdue: false },
+    { elapsed: 300, chip: "<1-5 min left", range: "in 3-8 min",  truth: "7 min",  overdue: true },
+    { elapsed: 480, chip: "<1-4 min left", range: "in 3-7 min",  truth: "4 min",  overdue: true },
+    { elapsed: 540, chip: "<1-4 min left", range: "in 3-7 min",  truth: "3 min",  overdue: true },
   ];
 
   for (const row of rows) {
@@ -117,7 +117,7 @@ describe("standWait — when NOT to draw a range", () => {
     expect(kerb.lateSec - kerb.soonSec).toBeLessThan(RANGE_MIN_SPREAD_SEC);
     expect(v.range).toBeNull();
     // Still an honest ceiling, just a short one — and no range beside it.
-    expect(v.leftText).toBe("up to 1 min left");
+    expect(v.leftText).toBe("<1-1 min left");
   });
 
   it("leaves the board stop alone — the bus is there, the rider should board", () => {
@@ -128,7 +128,7 @@ describe("standWait — when NOT to draw a range", () => {
     const v = standWaitView({ elapsedSec: 540, stand: standAt(540), etaSec: null, atBoardStop: false })!;
     expect(v.range).toBeNull();
     expect(v.departNowSec).toBeNull();
-    expect(v.leftText).toBe("up to 4 min left");
+    expect(v.leftText).toBe("<1-4 min left");
   });
 
   it("writes the tooltip as a sentence, not the chip's shorthand", () => {
@@ -150,8 +150,8 @@ describe("standLeftText — a ceiling once the bus is free to go", () => {
   it("quotes both ends while the shortest plausible stand is still a wait", () => {
     expect(standLeftText(90, 400)).toBe("1-6 min left");
   });
-  it("drops the low end the moment it is inside a minute", () => {
-    expect(standLeftText(13, 293)).toBe("up to 4 min left");
+  it("quotes both ends, including a low end inside a minute", () => {
+    expect(standLeftText(13, 293)).toBe("<1-4 min left");
   });
   it("collapses to one figure when the ends round together", () => {
     expect(standLeftText(130, 170)).toBe("~2 min left");
