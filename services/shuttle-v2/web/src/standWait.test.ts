@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { fromQuantiles, residual, residualMedian } from "./eta/dist";
 import { fmtBusPair, fmtBusRange, fmtMin } from "./format";
-import { standLeftText, standWaitFor, standWaitView, RANGE_MIN_SPREAD_SEC, chipCountdownText, type StandWaitView} from "./standWait";
+import { standLeftText, standWaitFor, standWaitView, RANGE_MIN_SPREAD_SEC, chipCountdownText, waitLegText, type StandWaitView} from "./standWait";
 import { shownStandSec, type DwellStat } from "./arrivals";
 
 /**
@@ -235,5 +235,24 @@ describe("the one adjacent pair that reads wrong", () => {
 
   it("still says 'leaving any moment' when even the high end is inside a minute", () => {
     expect(standLeftText(5, 40)).toBe("leaving any moment");
+  });
+});
+
+describe("the detailed wait leg", () => {
+  const view = { range: { lowSec: 120, highSec: 600 } } as StandWaitView;
+  it("keeps the pickup range when the rider is already at the stop", () => {
+    expect(waitLegText(view, 0, 300)).toBe("2-10 min");
+  });
+  it("subtracts the walk from both bounds instead of counting it twice", () => {
+    expect(waitLegText(view, 120, 180)).toBe("now-8 min");
+    expect(waitLegText(view, 90, 210)).toBe("<1-8 min");
+    expect(waitLegText(view, 600, 0)).toBeNull();
+  });
+  it("shows uncertainty even when the point wait is under a minute", () => {
+    expect(waitLegText(view, 0, 0)).toBe("2-10 min");
+  });
+  it("preserves moving-bus point waits and hides negligible waits", () => {
+    expect(waitLegText(null, 120, 300)).toBe("5 min");
+    expect(waitLegText(null, 0, 20)).toBeNull();
   });
 });
