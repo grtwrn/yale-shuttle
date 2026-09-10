@@ -37,6 +37,16 @@ export type TripOption = {
   // stuck "1:49"). Undefined for walk options and future-mode plans, where no
   // live bus exists to count down.
   busEtaSec?: number;
+  /**
+   * The same pinned arrival's DRIVE FLOOR (arrivals.ts `UpcomingArrival.
+   * departNow`): where that bus reaches the board stop if the rest it is in
+   * right now ends this second. Carried on the pin beside `busEtaSec` so the
+   * two can only ever come from one row of one estimator pass — the standing
+   * card's range is floored by it (standWait.ts), and reconstructing it there
+   * by subtraction is what printed "in <1 min" for a bus three hops out.
+   * Equal to `busEtaSec` for a bus that is not resting.
+   */
+  busDepartNowSec?: number;
   computedAtMs?: number;
 };
 
@@ -362,6 +372,7 @@ export function planTrip(
         // exists yet to time against.
         let waitSec: number; let busName: string;
         let busEtaSec: number | undefined;
+        let busDepartNowSec: number | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
@@ -377,6 +388,7 @@ export function planTrip(
           if (hereBus && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
+            busDepartNowSec = 0;
             busName = hereBus.bus_name.replace(/^#/, "");
           } else if (arrivals.length === 0) {
             continue;
@@ -393,6 +405,7 @@ export function planTrip(
             const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
             waitSec = Math.max(0, next.eta - walkToSec);
             busEtaSec = next.eta;
+            busDepartNowSec = next.departNow;
             busName = next.busName;
           }
         }
@@ -419,6 +432,7 @@ export function planTrip(
           totalSec, busName,
           directWalkSec,
           busEtaSec,
+          busDepartNowSec,
           computedAtMs: busEtaSec !== undefined ? now : undefined,
         });
       }

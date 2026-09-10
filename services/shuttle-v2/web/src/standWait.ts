@@ -43,6 +43,16 @@
 //     now). On the table above every one of those statements contains the
 //     9:16 truth, at every elapsed time, which no point estimate did.
 //
+// THE DRIVE FLOOR IS MEASURED, NOT RECONSTRUCTED (2026-09-10). It arrives as
+// `driveFloorSec` — the model's own `departNow` for the very arrival the row
+// is pinned to (eta/arrival.ts), the same chain with the stand ended this
+// second — and nothing here walks a hop or reads a segment table. The
+// subtraction it replaced (`etaSec - remainingSec`) survives only as a lower
+// bound that may RAISE it; on its own it collapsed to zero exactly where this
+// module is needed, and the card printed `Red in <1-8, then 14 min` for a bus
+// 472 m and three hops from the rider. See `departNowSec` below for why the
+// two terms of that subtraction were never two readings of one number.
+//
 // The quantiles are the model's own — `shownStandSec` reads the same stand
 // table, through the same pools, at the same clock the countdown is billed
 // under (arrivals.ts). Nothing here estimates anything; it decides wording.
@@ -73,6 +83,14 @@ export interface StandWaitInput {
   etaSec: number | null;
   /** The bus is standing at the rider's own board stop (no drive left to bound). */
   atBoardStop: boolean;
+  /**
+   * THE MEASURED DRIVE FLOOR — the model's own `departNow` for this very
+   * arrival (eta/arrival.ts): the chain from the stand to the board stop with
+   * the stand ended this second. Undefined only where a caller has no pinned
+   * arrival row to read it off, and then the reconstruction below is all there
+   * is.
+   */
+  driveFloorSec?: number | undefined;
 }
 
 export interface StandWaitView {
@@ -84,10 +102,26 @@ export interface StandWaitView {
   soonSec: number;
   lateSec: number;
   /**
-   * Arrival at the board stop if the bus pulled out this second — the
-   * countdown less the stand it is still carrying. THE FLOOR: nothing shown
-   * may be earlier, because the drive is the one part of the wait no
-   * departure can skip.
+   * Arrival at the board stop if the bus pulled out this second. THE FLOOR:
+   * nothing shown may be earlier, because the drive is the one part of the
+   * wait no departure can skip.
+   *
+   * It is the model's own `departNow` (`driveFloorSec`), raised — never
+   * lowered — by the countdown less the stand it is still carrying.
+   *
+   * IT USED TO BE THAT SUBTRACTION ALONE, and the subtraction has no floor in
+   * it. `etaSec` and `remainingSec` are not two readings of one computation:
+   * the countdown is decayed by wall clock (report #48), carries the learned
+   * route and horizon corrections, and is held down by #119's clamp while the
+   * conditional stand underneath it climbs; `remainingSec` is `shownStandSec`'s
+   * fresh pass at the current elapsed clock with none of that applied. Once
+   * the remainder reaches the countdown the difference floors at zero and the
+   * low end becomes a STAND quantile with no drive in it — which late in a
+   * long stand is itself near zero. The card then printed `Red in <1-8, then
+   * 14 min` for a bus standing at 344 Winchester, three hops and 472 m from
+   * the rider's stop, where the measured drive is 60 s at q10 and 83 s at the
+   * median (operator, 2026-09-10). "<1 min" was not a slightly optimistic
+   * number; it was the drive term going missing.
    */
   departNowSec: number | null;
   /** The countdown's range, or null to leave the point number alone. */
@@ -150,16 +184,26 @@ export function standLeftText(soonSec: number, lateSec: number): string {
  * Returns null for anything that is not a live remainder.
  */
 export function standWaitView(input: StandWaitInput): StandWaitView | null {
-  const { stand, elapsedSec, etaSec, atBoardStop } = input;
+  const { stand, elapsedSec, etaSec, atBoardStop, driveFloorSec } = input;
   if (!stand.remaining) return null;
   const remainingSec = Math.max(0, stand.sec);
   const soonSec = Math.max(0, stand.soonSec ?? remainingSec);
   const lateSec = Math.max(soonSec, stand.lateSec ?? remainingSec);
   const typicalSec = stand.typicalSec;
   const overdue = typicalSec !== undefined && elapsedSec >= typicalSec;
+  // The measured floor, raised by the reconstruction where the reconstruction
+  // is the larger of the two. Raising is safe in the direction that matters —
+  // a rider is stranded by a number too EARLY — and it keeps every case where
+  // the old arithmetic was right (a short kerb stop, a bus whose countdown
+  // already exceeds the model's own drive) byte-identical.
+  const measuredFloor = driveFloorSec != null && Number.isFinite(driveFloorSec)
+    ? Math.max(0, driveFloorSec)
+    : null;
+  // Still null without a countdown: the range's HIGH end is `etaSec`-bounded,
+  // so a floor with nothing to bound is not half an answer, it is a NaN.
   const departNowSec = etaSec == null || !Number.isFinite(etaSec)
     ? null
-    : Math.max(0, etaSec - remainingSec);
+    : Math.max(measuredFloor ?? 0, etaSec - remainingSec, 0);
 
   const leftText = standLeftText(soonSec, lateSec);
   const typicalPart = typicalSec === undefined
@@ -213,6 +257,8 @@ export function standWaitFor(
   dwellsByRoute: DwellTimes | undefined,
   etaSec: number | null,
   boardStopId: number,
+  /** The pinned arrival's own `departNow` (planner.ts `busDepartNowSec`). */
+  driveFloorSec?: number | undefined,
 ): StandWaitView | null {
   if (!standing) return null;
   const stat = routeDwells[String(standing.stopId)];
@@ -224,6 +270,7 @@ export function standWaitFor(
     stand,
     etaSec,
     atBoardStop: standing.stopId === boardStopId,
+    driveFloorSec,
   });
 }
 

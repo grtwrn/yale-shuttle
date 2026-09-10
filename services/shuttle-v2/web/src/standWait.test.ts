@@ -256,3 +256,73 @@ describe("the detailed wait leg", () => {
     expect(waitLegText(null, 0, 20)).toBeNull();
   });
 });
+
+describe("the drive floor is measured, not reconstructed (operator, 2026-09-10)", () => {
+  /**
+   * `Red  in <1-8, then 14 min`, off the operator's own card. The bus was
+   * standing at 344 Winchester (stop 11), three hops and ~500 m from the board
+   * stop Division / Prospect (48). "<1 min" is not a number a bus can make.
+   *
+   * The mechanism, isolated: `departNowSec` was `etaSec - remainingSec`, and
+   * those are not two readings of one quantity. `etaSec` is decayed by wall
+   * clock, carries the route and horizon corrections and is held DOWN by
+   * #119's clamp; `remainingSec` is `shownStandSec`'s fresh pass at the
+   * current elapsed clock with none of that. On a stand that has run past its
+   * table the second overtakes the first, `Math.max(0, ...)` floors the
+   * difference at zero, and the low end becomes `soonSec` alone — a stand
+   * quantile with no drive in it, which late in a long stand is itself ~0.
+   */
+  const DEGENERATE = {
+    elapsedSec: 540,
+    // A remainder that EXCEEDS the countdown beside it. This is the input the
+    // regression must never survive again, pinned directly rather than
+    // conjured out of a clock.
+    stand: { sec: 300, remaining: true as const, soonSec: 20, lateSec: 420, typicalSec: 283 },
+    etaSec: 200,
+    atBoardStop: false,
+  };
+  /** The model's own `departNow` for that chain (eta/arrival.ts). */
+  const FLOOR = 83;
+
+  it("collapsed to a bare stand quantile — the drive term went missing", () => {
+    const v = standWaitView(DEGENERATE)!;
+    expect(v.departNowSec).toBe(0);           // 200 - 300, floored
+    expect(v.range!.lowSec).toBe(20);         // soonSec alone
+    expect(fmtBusRange(v.range!.lowSec, v.range!.highSec)).toBe("in <1-7 min");
+  });
+
+  it("takes the model's own drive instead, and prints a minute the bus can make", () => {
+    const v = standWaitView({ ...DEGENERATE, driveFloorSec: FLOOR })!;
+    expect(v.departNowSec).toBe(FLOOR);
+    expect(v.range!.lowSec).toBe(FLOOR + 20);
+    expect(fmtBusRange(v.range!.lowSec, v.range!.highSec)).toBe("in 1-8 min");
+  });
+
+  it("never prints a low end below the drive, at any second of a long stand", () => {
+    for (let e = 0; e <= 1200; e += 5) {
+      const v = standWaitView({ elapsedSec: e, stand: standAt(e), etaSec: etaAt(e) - 120, atBoardStop: false, driveFloorSec: FLOOR })!;
+      expect(v.departNowSec).toBeGreaterThanOrEqual(FLOOR);
+      if (v.range) expect(v.range.lowSec).toBeGreaterThanOrEqual(FLOOR);
+    }
+  });
+
+  it("only ever RAISES: where the subtraction was already larger it wins", () => {
+    // A bus 10 minutes out with 60 s of stand left — the drive really is 540 s
+    // and the model's floor for the same chain would be about that. The
+    // reconstruction is the honest bound here and must not be thrown away.
+    const far = { elapsedSec: 30, stand: { sec: 60, remaining: true as const, soonSec: 10, lateSec: 400, typicalSec: 90 }, etaSec: 600, atBoardStop: false };
+    expect(standWaitView({ ...far, driveFloorSec: 83 })!.departNowSec).toBe(540);
+    expect(standWaitView(far)!.departNowSec).toBe(540);
+  });
+
+  it("is byte-identical to the old arithmetic when no floor is served", () => {
+    // An un-plumbed caller — a test, a hypothetical, an option with no pinned
+    // arrival row — prices exactly as before, so nothing degrades silently.
+    for (let e = 0; e <= 900; e += 15) {
+      const a = standWaitView({ elapsedSec: e, stand: standAt(e), etaSec: etaAt(e), atBoardStop: false });
+      const b = standWaitView({ elapsedSec: e, stand: standAt(e), etaSec: etaAt(e), atBoardStop: false, driveFloorSec: undefined });
+      expect(b).toEqual(a);
+      expect(a!.departNowSec).toBeCloseTo(DRIVE_SEC, 6);
+    }
+  });
+});

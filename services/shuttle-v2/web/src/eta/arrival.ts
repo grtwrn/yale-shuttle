@@ -58,6 +58,31 @@ export interface StopArrival {
   eta: number;
   low: number;
   high: number;
+  /**
+   * THE DRIVE FLOOR: the same chain with the stand ALREADY IN PROGRESS ended
+   * this second — quantile tau of (drive out of the stand + every stand and
+   * drive between there and here). It is what no departure can skip.
+   *
+   * Equal to `eta` whenever the lead is not resting, because there is then no
+   * current stand to remove; below the RAW `eta` while the lead rests, by the
+   * residual of that rest. It may exceed the SHOWN `eta`, and on a long stand
+   * it should: #119 holds the shown number down while the conditional median
+   * climbs, and the drive underneath it does not move.
+   *
+   * It exists because the DISPLAY needs a floor and had been RECONSTRUCTING
+   * one by subtraction — `eta - remainingStand`, with the stand read from a
+   * second computation (arrivals.ts `shownStandSec`) at a second clock, and
+   * the difference floored at zero. On a stand that has run past its table
+   * that subtraction collapses, and the card printed a low end of "<1 min"
+   * for a bus three hops and 472 m from the rider's stop (operator,
+   * 2026-09-10: `Red in <1-8, then 14 min`). The floor is a quantity the
+   * model already holds; it is served here rather than guessed there, so
+   * there is still exactly one arithmetic.
+   *
+   * NOT clamped by #119's floors: the clamp is a rule about the number a
+   * standing bus shows, and a drive is not standing time.
+   */
+  departNow: number;
   /** Mass of the lead cluster (1 on a plain loop). */
   leadMass: number;
   /** No served table backed any hop of the lead chain. */
@@ -345,12 +370,22 @@ interface Chain {
   measured: boolean;
   /** Stop index the situation stands at, else -1. */
   standingAt: number;
+  /** A rest ALREADY IN PROGRESS was billed into `start` (the residual term). */
+  restsNow: boolean;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null): Chain {
+/**
+ * `skipRest` builds the SAME chain with the rest already in progress ended:
+ * every term identical, the residual term simply not added. That is the only
+ * honest way to ask "where would this bus be if it pulled out now" — the same
+ * legs, the same tables, the same permutations, one term short — and it is
+ * why the drive floor is not a second walk over the hops.
+ */
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
+  let restsNow = false;
   let leg = sit.leg;
   // A bus MOVING inside the rest radius of its own layover, on the leg into
   // the layover stop, is repositioning — it has not left (the collector's
@@ -369,7 +404,10 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     leg = j;
     const hop = tables.hops[j]!;
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
-    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+    if (!hop.includesStand) {
+      restsNow = true;
+      if (!skipRest) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+    }
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
   } else if (sit.standing && sit.zoneStop < 0 && tables.hops[leg]!.hidden) {
@@ -379,7 +417,8 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     // left. Priced as a fraction of the leg's "drive", a bus twelve minutes
     // into a yard rest read as eight minutes of driving left.
     const hop0 = tables.hops[leg]!;
-    addResidual(samples, hop0.hidden!, r, 7 * tables.hops.length + leg);
+    restsNow = true;
+    if (!skipRest) addResidual(samples, hop0.hidden!, r, 7 * tables.hops.length + leg);
     addTerm(samples, hop0.free!, 2 * leg + 1, Math.max(0, 1 - sit.frac));
     measured = hop0.measured;
   } else {
@@ -392,7 +431,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     addTerm(samples, hop0.drive, 2 * leg + 1, Math.max(0, 1 - sit.frac));
     measured = hop0.measured;
   }
-  return { sit, start: samples, leg, measured, standingAt };
+  return { sit, start: samples, leg, measured, standingAt, restsNow: restsNow && !skipRest };
 }
 
 /** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
@@ -486,6 +525,13 @@ export function priceRoute(
     : null;
   const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
   const lead = pick(chains);
+  // The drive floor's chain (`departNow` on every row): the lead's own chain
+  // with the rest in progress ended this second. Built only when there IS one
+  // — otherwise `departNow` is `eta` by definition and no second sort is paid
+  // for. One extra chain, not a second estimator.
+  const leadNow = lead.restsNow
+    ? startChain(lead.sit, tables, r, restStop, N, lap, true)
+    : null;
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
@@ -500,6 +546,7 @@ export function priceRoute(
   const scale = routeScale(ring.routeId);
   const bufs = chains.map(() => new Float64Array(K));
   const leadBuf = new Float64Array(K);
+  const nowBuf = new Float64Array(K);
   const anyMeasured = tables.hops.some((x) => x.measured);
   // Walk the lead chain stop by stop; every other chain is read at the same
   // physical stop and occurrence, which may be a different number of hops on.
@@ -512,7 +559,7 @@ export function priceRoute(
     const sid = stops[lead.standingAt]!;
     occ.set(lead.standingAt, 1);
     if (targetStopIds.has(sid)) {
-      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
     }
   }
   for (let h = 1; h <= 2 * N; h++) {
@@ -564,6 +611,15 @@ export function priceRoute(
     // 50/50 fold does not read as "17 s [13-23]" (the review's finding 7).
     const [q10, qt, q90] = mixedQuantiles(parts, [0.1, tau, 0.9]) as [number, number, number];
     let eta = qt, low = q10, high = q90;
+    // The lead cluster's own chain, minus the rest in progress. It follows the
+    // LEAD only — an alternative situation on another leg is not what the rider
+    // is watching pull out — and it is deliberately outside the clamp below.
+    let departNow = qt;
+    if (leadNow) {
+      chainAt(leadNow, pre, h, nowBuf, lap);
+      nowBuf.sort();
+      departNow = nowBuf[Math.min(K - 1, Math.floor(tau * K))]!;
+    }
     if (mass < LEAD_SWITCH_MASS && all.length > parts.length) {
       const [f10, f90] = mixedQuantiles(all, [0.1, 0.9]) as [number, number];
       low = Math.min(low, f10); high = Math.max(high, f90);
@@ -600,6 +656,7 @@ export function priceRoute(
       eta = applyRouteScale(eta, scale);
       low = applyRouteScale(low, scale);
       high = applyRouteScale(high, scale);
+      departNow = applyRouteScale(departNow, scale);
     }
     // The learned per-HORIZON centre correction (params.ts,
     // docs/horizon-bias.md). Where the route scale asks "is this line's lap
@@ -614,6 +671,10 @@ export function priceRoute(
     eta = applyHorizonBias(eta);
     low = applyHorizonBias(low);
     high = applyHorizonBias(high);
+    // Both learned corrections apply to the floor as well: they answer "when
+    // does a bus this line says is N seconds away actually come", which is as
+    // true of a drive with no stand in front of it as of one with.
+    departNow = applyHorizonBias(departNow);
     // The learned per-horizon widening (params.ts, docs/closed-loop.md stage 3)
     // is the LAST thing applied: it is fitted against the number a rider was
     // actually shown, so it must scale the band about that number, after the
@@ -625,6 +686,7 @@ export function priceRoute(
       occurrence: o,
       stopsAhead: h,
       eta, low: Math.min(wLow, eta), high: Math.max(wHigh, eta),
+      departNow,
       leadMass: mass,
       estimated: !lead.measured && !anyMeasured,
       standingAt: lead.standingAt,

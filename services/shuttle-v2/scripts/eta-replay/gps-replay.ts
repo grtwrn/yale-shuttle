@@ -565,7 +565,7 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
@@ -674,6 +674,7 @@ for (const o of observations) {
       realEta: r.eta,
       realLow: r.low,
       realHigh: r.high,
+      realDepartNow: r.departNow,
     });
   }
 }
@@ -799,10 +800,50 @@ function coverage(truth: "det" | "prox", filter: (p: Pair) => boolean) {
   const pc = (x: number) => (n ? Math.round((1000 * x) / n) / 10 : null);
   return { n, insidePct: pc(inside), earlyPct: pc(early), latePct: pc(late), medianWidthSec: widths.length ? Math.round(widths[widths.length >> 1]! * 10) / 10 : null };
 }
+/**
+ * THE DRIVE FLOOR as a claim about the world (`departNow`, arrival.ts): "this
+ * bus cannot reach the stop sooner than this, however soon it pulls out". A
+ * bus that arrives EARLIER than the floor falsifies it, so `beatsFloorPct` is
+ * the whole test — and it is measured beside the same pairs' `low`, which is
+ * the model's own q10 after #119's clamp shift and is NOT a physical floor.
+ */
+function floorCheck(truth: "det" | "prox", filter: (p: Pair) => boolean) {
+  let n = 0, beatsFloor = 0, beatsLow = 0, floorZero = 0, lowZero = 0;
+  const slack: number[] = [];
+  for (const p of pairs) {
+    const a = p[truth];
+    if (a === null || !filter(p)) continue;
+    n++;
+    if (a < p.realDepartNow) beatsFloor++;
+    if (a < p.realLow) beatsLow++;
+    if (p.realDepartNow < 10) floorZero++;
+    if (p.realLow < 10) lowZero++;
+    slack.push(a - p.realDepartNow);
+  }
+  slack.sort((x, y) => x - y);
+  const pc = (x: number) => (n ? Math.round((1000 * x) / n) / 10 : null);
+  return {
+    n,
+    beatsFloorPct: pc(beatsFloor),
+    beatsLowPct: pc(beatsLow),
+    floorUnder10sPct: pc(floorZero),
+    lowUnder10sPct: pc(lowZero),
+    medianSlackSec: slack.length ? Math.round(slack[slack.length >> 1]! * 10) / 10 : null,
+  };
+}
 for (const truth of ["prox", "det"] as const) {
   const t: any = {};
+  t.driveFloor = {
+    overall: floorCheck(truth, () => true),
+    atStop: floorCheck(truth, (p) => p.atStop),
+    standing300sPlus: floorCheck(truth, (p) => p.dwellBin === "300s+"),
+    moving: floorCheck(truth, (p) => !p.atStop),
+    byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, floorCheck(truth, (p) => p.k === k)])),
+  };
   t.clientCoverage = {
     overall: coverage(truth, () => true),
+    atStop: coverage(truth, (p) => p.atStop),
+    standing300sPlus: coverage(truth, (p) => p.dwellBin === "300s+"),
     byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, coverage(truth, (p) => p.k === k)])),
     byRoute: Object.fromEntries(routesSeen.map((r) => [routeName(r), coverage(truth, (p) => p.routeId === r)])),
   };
