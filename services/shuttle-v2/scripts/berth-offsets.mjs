@@ -91,6 +91,18 @@ const WINDOW_SHARE = 0.75;   // of the observations that must fall inside it
 const MIN_BERTH_M = 35;      // above the feed's 30 m deadband, so the sensor alone cannot trip it
 const RIVAL_MARGIN = 1.5;    // the berth must be this much nearer its own stop than any other
 const MAX_AHEAD_SHARE = 0.10; // visits ending PAST the berth: the one shape we cannot explain
+/**
+ * A MAJORITY of all visits must end at the berth, however harmless the rest are.
+ *
+ * "Behind the window does not count against it" is right about the mechanisms
+ * — a queue on the way in, a no-demand roll-through and the deadband all land
+ * behind — but it has no floor, and without one it will assert a berth off a
+ * minority of the evidence. Scoping the rival guard to the route on 2026-09-10
+ * exposed that: 8 of the 23 cells it admitted had the window holding 47-57% of
+ * all visits (333 Cedar on Orange Night: 44 of 86, with 42 behind). We print
+ * "buses stop here", so it has to be true of more than half of them.
+ */
+const MIN_PLAIN_SHARE = 0.5;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARCHIVE = join(process.env.HOME, "shuttle-archive");
@@ -143,6 +155,10 @@ const dayList = arg("days", "") ? arg("days").split(",")
   : execSync(`ls -d ${ARCHIVE}/2026-* 2>/dev/null || true`).toString().trim().split("\n").filter(Boolean).map((p) => p.split("/").pop());
 
 const stopById = new Map(STOPS.map((x) => [x.id, x]));
+/** route id -> the stops that route serves, from the payload's own list. */
+const routeStops = new Map(
+  Object.entries(payload.routes ?? {}).map(([rid, list]) => [Number(rid), (list ?? []).map(Number)]),
+);
 const obs = new Map();                       // "stop:route" -> observations
 let visits = 0, stopped = 0, placed = 0;
 for (const day of dayList) {
@@ -230,22 +246,61 @@ for (const [key, ss] of obs) {
   // the berth is the front of the in-window cloud (the deadband only ever lags)
   const berthOff = quant(inWin.map((p) => p.off), 0.9);
   const berthPt = path.at(s0.s + berthOff);
+  // THE RIVAL IS ANY STOP IN THE NETWORK, and scoping it to the route was tried
+  // on 2026-09-10 and REVERTED the same hour. Both are recorded because the
+  // argument for scoping is still sound and the measurement still refused it.
+  //
+  // The argument: the guard exists for attribution (a visit can only be booked
+  // against a stop this route's sequence was choosing between) and for
+  // visibility ("there is a dot there already" is only true if the rider can
+  // see it, and the map filters to their line). Blue Day's Chemistry /
+  // 225 Prospect berths on the SCL kerb 63 m short of its own sign, and SCL is
+  // a RED stop that a Blue Day rider never sees.
+  //
+  // The measurement: scoping it took 10 qualifying cells to 33, and the 23 it
+  // admitted are dominated by a shape that is indistinguishable from a signal
+  // past the stop — Phelps Gate on SIX routes at 98-107 m, 333 Cedar on five at
+  // 73-98 m, Union Station, York / Cedar, Becton, all ~100 m, all at busy
+  // downtown stops whose next junction is about that far along. A majority
+  // floor removes only five of them.
+  //
+  // And `aheadOfWindow` cannot catch these, which is the part worth keeping in
+  // mind: it counts visits ending PAST the window, so it only sees a signal
+  // when the BERTH dominates. Where the signal dominates, the signal IS the
+  // window and nothing lies beyond it. The metric is silent exactly where the
+  // failure is worst.
+  //
+  // So the unscoped guard suppresses these by accident, and that accident is
+  // load-bearing until there is a real discriminator. Position alone is not
+  // one: at Division / Prospect the signal comes BEFORE the kerb and at Phelps
+  // Gate it appears to come after, and the last-stand rule takes the last
+  // either way. The operator's own knowledge settled Division / Prospect;
+  // nothing in this data would have.
   let rival = null;
+  let rivalOnRoute = null;
+  const onRoute = new Set(routeStops.get(routeId) ?? []);
   for (const other of STOPS) {
     if (other.id === stopId) continue;
     const d = Math.hypot((other.lon - berthPt.lon) * MX, (other.lat - berthPt.lat) * MY);
     if (!rival || d < rival.d) rival = { d, name: other.name, id: other.id };
+    if (onRoute.has(other.id) && (!rivalOnRoute || d < rivalOnRoute.d)) {
+      rivalOnRoute = { d, name: other.name, id: other.id };
+    }
   }
   const ownD = Math.abs(berthOff);
   const clearOfRivals = !rival || rival.d > ownD * RIVAL_MARGIN;
   const qualifies = pts.length >= MIN_N && inWin.length >= MIN_N
-    && share >= WINDOW_SHARE && ahead <= MAX_AHEAD_SHARE * pts.length
+    && share >= WINDOW_SHARE && inWin.length / sorted.length >= MIN_PLAIN_SHARE
+    && ahead <= MAX_AHEAD_SHARE * pts.length
     && ownD >= MIN_BERTH_M && clearOfRivals;
   rows.push({
     stopId, routeId, name: stop.name, n: pts.length,
     published: { lat: stop.lat, lon: stop.lon },
     berth: berthPt,
     rival: rival ? { id: rival.id, name: rival.name, m: +rival.d.toFixed(0) } : null,
+    // The nearest rival THIS ROUTE serves — what a route-scoped guard would
+    // have used. Recorded, not applied. See the note above.
+    rivalOnRoute: rivalOnRoute ? { id: rivalOnRoute.id, name: rivalOnRoute.name, m: +rivalOnRoute.d.toFixed(0) } : null,
     clearOfRivals,
     berthOffM: +berthOff.toFixed(1),
     windowShare: +share.toFixed(2),
