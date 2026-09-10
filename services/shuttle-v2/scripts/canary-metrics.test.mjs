@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, busOnRoute, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
-  departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, liveBusesOf, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
+  departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, isTransportNoise, liveBusesOf, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
   pinnedVehicleAt, scraperMissedTheCountdown, standEndedFor, standPollsBefore, unexplainedJumps,
   OFF_ROUTE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
@@ -1715,5 +1715,24 @@ describe("flapping", () => {
     const slow = scoreSequence(mk(["🚌 in 4 min", "🚌 in 1 min", "🚌 in 3 min",
       "🚌 in 1 min"], 200));
     expect(slow.flapping).toBe(0);
+  });
+});
+
+describe("a browser network log is not a page error", () => {
+  // 2026-09-10: a Red run failed `page-error` on six copies of
+  // ERR_CONNECTION_CLOSED and nothing else — the canary's own link, which the
+  // operator already ruled on for `feed-error` on 2026-09-04.
+  it("exempts what the browser's network stack logs", () => {
+    expect(isTransportNoise("console: Failed to load resource: net::ERR_CONNECTION_CLOSED")).toBe(true);
+    expect(isTransportNoise("console: Failed to load resource: the server responded with a status of 502")).toBe(true);
+  });
+
+  it("does not exempt anything the app can do", () => {
+    // The blank-screen class this listener exists for.
+    expect(isTransportNoise("ReferenceError: Cannot access 'x' before initialization")).toBe(false);
+    expect(isTransportNoise("console: TypeError: Cannot read properties of undefined")).toBe(false);
+    // An uncaught fetch failure arrives as a pageerror, not a console message,
+    // so it carries no `console: ` prefix and stays a finding.
+    expect(isTransportNoise("TypeError: Failed to fetch")).toBe(false);
   });
 });

@@ -40,28 +40,56 @@
 <script>
 const P = new URLSearchParams(location.search);
 const WANT_STOP = Number(P.get("stop") || 48), WANT_ROUTE = Number(P.get("route") || 3);
+// "ship" draws what a RIDER would see — ONE dot, where the bus actually stops.
+// "evidence" (the default) draws every observed visit: the measurement.
+const VIEW = P.get("view") || "evidence";
 const COLORS = {3:"#C62828",1:"#1565C0",4:"#42A5F5",13:"#1E88E5",16:"#00838F",2:"#E65100",14:"#ED7D31",17:"#E8836A",19:"#795548",8:"#AD1457",9:"#43A047",10:"#7B1FA2"};
 const LABELS = {3:"Red",1:"Blue Day",4:"Blue Weekend",13:"Blue Night",16:"Blue West",2:"Orange Day",14:"Orange Night",17:"Orange East",19:"Brown",8:"Pink",9:"Green",10:"Purple"};
 
 Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").then(r=>r.json())]).then(([rows, payload]) => {
   const r = rows.find(x => x.stopId === WANT_STOP && x.routeId === WANT_ROUTE);
-  const color = COLORS[WANT_ROUTE] || "#444";
   if (!r) { document.getElementById("ttl").textContent = "no observations for that stop"; return; }
+  const color = COLORS[r.routeId] || "#444";
 
   document.getElementById("ttl").textContent = r.name;
-  document.getElementById("sub").textContent =
-    `${LABELS[r.routeId] || "route " + r.routeId} · ${r.n} times a bus was observed serving this stop, 3–8 Sep`;
+  document.getElementById("sub").textContent = VIEW === "ship"
+    ? `${LABELS[r.routeId] || "route " + r.routeId} · how the stop would be drawn`
+    : `${LABELS[r.routeId] || "route " + r.routeId} · ${r.n} times a bus was observed serving this stop, 3–9 Sep`;
 
   const map = L.map("map", { zoomControl: true, attributionControl: true })
     .setView([r.published.lat, r.published.lon], 18);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
-
   const path = payload.route_paths[String(r.routeId)];
   if (path) L.polyline(path, { color, weight: 5, opacity: .55 }).addTo(map);
 
-  // one small dot per observed visit: filled where the bus made its last stop
-  // inside the berth window, hollow where it stopped short of it (a queue at a
-  // signal on the way in, or a visit where nobody boarded and it rolled through)
+  const fit = (pts) => map.fitBounds(L.latLngBounds(pts).pad(0.45), { maxZoom: 18 });
+  const lbl = (lat, lon, html, anchor) => L.marker([lat, lon],
+    { icon: L.divIcon({ className: "", html, iconAnchor: anchor }) }).addTo(map);
+
+  if (VIEW === "ship") {
+    document.querySelector(".legend").innerHTML =
+      '<span><i style="background:#fff;border:3px solid #9aa0a6"></i>where the map puts the stop today</span>' +
+      `<span><i style="background:${color}"></i>where the bus actually stops</span>`;
+    // the published coordinate, drawn quietly — it is still the stop's own
+    L.circleMarker([r.published.lat, r.published.lon],
+      { radius: 6, color: "#9aa0a6", weight: 2.5, fillColor: "#fff", fillOpacity: 1 }).addTo(map);
+    L.polyline([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]],
+      { color: "#9aa0a6", weight: 2, dashArray: "3 5", opacity: .8 }).addTo(map);
+    // THE dot: one, where the bus stops
+    L.circleMarker([r.berth.lat, r.berth.lon],
+      { radius: 9, color: "#fff", weight: 3, fillColor: color, fillOpacity: 1 }).addTo(map);
+    lbl(r.berth.lat, r.berth.lon, `<span class="lbl" style="color:${color}">🚏 ${r.name}</span>`, [-14, 8]);
+    lbl(r.published.lat, r.published.lon, '<span class="lbl" style="color:#80868b;font-weight:500">stop sign here</span>', [-11, 6]);
+    fit([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]]);
+    const dir = r.berthOffM > 0 ? "further along the route" : "back down the route";
+    document.getElementById("card").innerHTML =
+      `<div class="verdict" style="color:${color}">🚏 Wait about ${Math.round(Math.abs(r.berthOffM))} m ${dir}</div>
+       <div class="note" style="margin-top:2px;font-size:13.5px;color:#3c4043">
+       ${LABELS[r.routeId]} buses pull up here, not at the sign — measured on
+       ${r.windowCount} of the last ${r.n - r.behindWindow} times one served this stop.</div>`;
+    return;
+  }
+
   for (const o of r.observations) {
     const inWin = o.off >= r.windowLoM && o.off <= r.windowHiM;
     L.circleMarker([o.lat, o.lon], inWin
@@ -69,68 +97,29 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
       : { radius: 3.4, weight: 1.4, color: "#b0762a", fillColor: "#fff", fillOpacity: .85 })
       .addTo(map).bindTooltip(`${o.bus} · ${o.day} · ${o.off > 0 ? "+" : ""}${o.off} m${inWin ? "" : " — short of the berth"}`);
   }
-
-  // the published stop, drawn the way the app draws a stop
   L.circleMarker([r.published.lat, r.published.lon],
     { radius: 8, color: "#444", weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(map);
-  L.marker([r.published.lat, r.published.lon], {
-    icon: L.divIcon({ className: "", html: '<span class="lbl">published stop</span>', iconAnchor: [-12, 8] }),
-  }).addTo(map);
-
-  if (r.qualifies || (!r.clearOfRivals && r.windowShare >= 0.75 && Math.abs(r.berthOffM) >= 35)) {
+  lbl(r.published.lat, r.published.lon, '<span class="lbl">published stop</span>', [-12, 8]);
+  if (r.qualifies) {
     L.polyline([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]],
       { color: "#111", weight: 2, dashArray: "4 5", opacity: .7 }).addTo(map);
-    L.marker([r.berth.lat, r.berth.lon], {
-      icon: L.divIcon({ className: "", html: '<div class="berth-pin">🚏</div>', iconSize: [22, 22], iconAnchor: [11, 20] }),
-    }).addTo(map);
-    L.marker([r.berth.lat, r.berth.lon], {
-      icon: L.divIcon({ className: "", html: `<span class="lbl" style="color:${r.qualifies ? color : "#8a5a00"}">${r.qualifies ? "buses stop here" : "berth — but it is " + r.rival.name}</span>`, iconAnchor: [-14, 30] }),
-    }).addTo(map);
+    lbl(r.berth.lat, r.berth.lon, '<div class="berth-pin">🚏</div>', [11, 20]);
+    lbl(r.berth.lat, r.berth.lon, `<span class="lbl" style="color:${color}">buses stop here</span>`, [-14, 30]);
   }
-
-  const pts = r.observations.map(o => [o.lat, o.lon]).concat([[r.published.lat, r.published.lon]]);
-  map.fitBounds(L.latLngBounds(pts).pad(0.45), { maxZoom: 18 });
-
-  const rivalBlocked = !r.clearOfRivals && r.windowShare >= 0.75 && Math.abs(r.berthOffM) >= 35;
+  fit(r.observations.map(o => [o.lat, o.lon]).concat([[r.published.lat, r.published.lon]]));
   document.getElementById("card").innerHTML = r.qualifies
     ? `<div class="verdict yes">✓ we would draw a second dot here</div>
        <table>
          <tr><td>berth, along the route from the sign</td><td>${r.berthOffM > 0 ? "+" : ""}${r.berthOffM} m</td></tr>
          <tr><td>berthed inside one 40 m window</td><td>${r.windowCount} of ${r.n - r.behindWindow} (${Math.round(r.windowShare * 100)}%)</td></tr>
-         <tr><td>that window</td><td>${r.windowLoM} m … ${r.windowHiM} m</td></tr>
          <tr><td>stopped short of it</td><td>${r.behindWindow}</td></tr>
          <tr><td>stopped past it</td><td>${r.aheadOfWindow}</td></tr>
-         <tr><td>visits observed</td><td>${r.n}</td></tr>
-       </table>
-       <div class="note">One dot per visit: where the bus made its <em>last</em> stop before
-       driving on. Hollow dots are visits that ended short of the berth — a queue at the signal
-       on the way in, or nobody boarding so the bus rolled through. Those cannot argue against
-       the berth's position, since every one of them lies behind it; a stop <em>past</em> it
-       could, which is why they are counted separately.
-       The feed only sends a new coordinate once a bus has moved about 30 m, so each dot sits up
-       to 30 m behind where it really stood — which is why the berth is placed at the front of
-       the cloud rather than its middle.</div>`
-    : rivalBlocked
-    ? `<div class="verdict no">✗ no second dot — the berth is another stop</div>
+       </table>`
+    : `<div class="verdict no">✗ no second dot here</div>
        <table>
-         <tr><td>berth, along the route from the sign</td><td>${r.berthOffM > 0 ? "+" : ""}${r.berthOffM} m</td></tr>
-         <tr><td>which is</td><td>${r.rival.m} m from ${r.rival.name}</td></tr>
-         <tr><td>observations inside one 40 m window</td><td>${Math.round(r.windowShare * 100)}%</td></tr>
-         <tr><td>visits observed</td><td>${r.n}</td></tr>
-       </table>
-       <div class="note">The cloud is tight, but it sits on a stop the map already draws.
-       We cannot tell "the bus berths over there" from "this visit was booked against the
-       wrong one of two stops a few metres apart" — and either way a rider standing at
-       ${r.rival.name} is standing in the right place. So we say nothing.</div>`
-    : `<div class="verdict no">✗ no second dot — the bus does not stop in one place here</div>
-       <table>
-         <tr><td>densest 40 m window holds</td><td>${Math.round(r.windowShare * 100)}% of visits</td></tr>
-         <tr><td>that window</td><td>${r.windowLoM} m … ${r.windowHiM} m</td></tr>
+         <tr><td>densest 40 m window holds</td><td>${Math.round(r.windowShare * 100)}%</td></tr>
          <tr><td>10th–90th percentile spread</td><td>${r.spanM} m</td></tr>
          <tr><td>visits observed</td><td>${r.n}</td></tr>
-       </table>
-       <div class="note">The rule needs ${"≥"}75% of visits inside one 40 m window and a berth at least
-       35 m from the sign. Here the dots run the length of the block, so there is no
-       "actually stops here" to tell a rider — the honest answer is the published dot.</div>`;
+       </table>`;
 });
 </script>

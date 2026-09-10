@@ -61,7 +61,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as METRICS from "./canary-metrics.mjs";
 import {
   ARRIVAL_CLOCK_RE, brokenPromise, CANARY_LINES, deadlineForPromise, fleetOffAir, haversineM,
-  isAtBoardStop, liveBusesOf, parseOptions, runVerdict, scoreSequence,
+  isAtBoardStop, isTransportNoise, liveBusesOf, parseOptions, runVerdict, scoreSequence,
   scraperMissedTheCountdown, THRESHOLDS, tripForLine, unexplainedJumps,
 } from "./canary-metrics.mjs";
 import { DEDICATED_LINE, nextInRotation, randomTripForLine } from "./canary-rotation.mjs";
@@ -661,7 +661,12 @@ async function runOnce(line, rider) {
     })) {
       fail("no-countdown", `${line.label} was on the plan but only ${record.sequence.readings} countdown reading(s) could be parsed in ${record.watchedMin} min — the scraper, not the app, is the likely fault`);
     }
-    if (record.pageErrors.length) fail("page-error", record.pageErrors.slice(0, 3).join(" | "));
+    // A browser network log is not a page error. See `isTransportNoise`: the
+    // canary's own link drops requests, no rider saw it, and the operator made
+    // this exact ruling for `feed-error`. Counted on the record, never failed.
+    const realErrors = record.pageErrors.filter((e) => !isTransportNoise(e));
+    record.transportNoiseCount = record.pageErrors.length - realErrors.length;
+    if (realErrors.length) fail("page-error", realErrors.slice(0, 3).join(" | "));
     // One decision point, shared with the loop's status. An unreachable run is
     // NOT ok — there was nothing to judge — but it is not a finding either.
     record.ok = runVerdict(record) === "ok";
