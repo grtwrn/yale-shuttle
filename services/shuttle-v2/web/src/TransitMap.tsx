@@ -55,6 +55,7 @@ import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
 import { RideFinish } from "./RideFinish";
+import { isUnambiguousRideArrival } from "./rideArrival";
 import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -1489,6 +1490,19 @@ const AllRoutesMap: FC<{
   }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
+  //
+  // `hiddenRoutes` MUST be in the dependency array below, and its absence was
+  // a five-second stall a rider could see (operator, 2026-09-10: "why does it
+  // take like 5 seconds for bus locations to render on the map page when I
+  // change filters?").
+  //
+  // Toggling a line re-runs the map effect above — `hiddenRoutes` is in ITS
+  // deps — which rebuilds the map and with it a fresh, EMPTY `busLayerRef`.
+  // This effect then did not re-run, because `buses` had not changed, so the
+  // map carried no bus markers at all until the next `/api/buses` poll
+  // happened to land. That is a wait of up to the 5 s poll interval, and
+  // measured on the live site it was 0.6 s, 3.0 s and 4 s on three toggles —
+  // the spread being nothing but where in the poll cycle the tap fell.
   useEffect(() => {
     const grp = busLayerRef.current;
     if (!grp) return;
@@ -1522,7 +1536,10 @@ const AllRoutesMap: FC<{
         padding: [48, 48], maxZoom: 15,
       });
     }
-  }, [buses]);
+  // Same stable key the map effect uses: a Set is a new object every render,
+  // so depending on it directly would redraw the fleet on every poll for
+  // nothing.
+  }, [buses, [...hiddenRoutes].sort().join("|")]);
 
   // "You are here" — same pulsing blue dot as the trip mini-map. Created
   // lazily on the first fix, then moved in place per watchPosition update
@@ -6070,7 +6087,11 @@ const RideStopList: FC<{
   const n = allStops.length;
 
   let etaSec: number | null = null;
-  if (bus) {
+  // Once this ride reaches its exit, the next arrival is another lap, not
+  // the time remaining for the passenger who is getting off here.
+  if (bus && isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
+    etaSec = 0;
+  } else if (bus) {
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
@@ -6129,7 +6150,7 @@ const RideStopList: FC<{
           const isBoard = idx === boardIdx;
 
           const icon = isBusCur ? "🚌" : isAlight ? "🚏" : passed ? "✓" : "·";
-          const dimmed = passed && !isBoard;
+          const dimmed = passed && !isBoard && !isAlight;
           const highlighted = isBusCur || isAlight;
 
           return (
@@ -6243,6 +6264,13 @@ const OnBusBanner: FC<{
   // don't re-fire.
   const getOffAlertRef = useRef<string | null>(null);
   const [getOffPopup, setGetOffPopup] = useState<string | null>(null);
+  const getOffButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!getOffPopup) return;
+    const previous = document.activeElement as HTMLElement | null;
+    getOffButtonRef.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, [getOffPopup]);
   useEffect(() => {
     if (stopsRemaining === null || stopsRemaining > 2) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
@@ -6282,6 +6310,20 @@ const OnBusBanner: FC<{
         mid-doomscroll; tap anywhere to dismiss. */}
     {getOffPopup && (
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="get-off-prompt-title"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setGetOffPopup(null);
+          } else if (e.key === "Tab") {
+            // Got it is the only control in this modal.
+            e.preventDefault();
+            getOffButtonRef.current?.focus();
+          }
+        }}
         onClick={() => setGetOffPopup(null)}
         style={{
           position: "fixed", inset: 0, zIndex: 10000,
@@ -6296,13 +6338,14 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+          <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
             {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
           </div>
           <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel} → {alightName}
           </div>
           <button
+            ref={getOffButtonRef}
             onClick={() => setGetOffPopup(null)}
             style={{
               marginTop: 14, width: "100%", minHeight: 44,
