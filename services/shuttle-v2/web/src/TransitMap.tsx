@@ -29,6 +29,7 @@ import { noteShown } from "./shownLog";
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
+import { clusterChips } from "./chipCluster";
 import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -972,22 +973,13 @@ const CombinedTripMap: FC<{
       }
     }
     // Union-find over overlapping label rectangles.
-    const parent = chips.map((_, i) => i);
-    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-    for (let i = 0; i < chips.length; i++) {
-      for (let j = i + 1; j < chips.length; j++) {
-        if (
-          Math.abs(chips[i].x - chips[j].x) < (chips[i].w + chips[j].w) / 2 + 4 &&
-          Math.abs(chips[i].y - chips[j].y) < 18
-        ) {
-          parent[find(i)] = find(j);
-        }
-      }
-    }
-    const clusters: Record<number, Chip[]> = {};
-    chips.forEach((c, i) => { (clusters[find(i)] ??= []).push(c); });
+    // Which chips share a box: pure geometry, and it lives in chipCluster.ts
+    // so the arrangement that broke it can be written down. It could not be
+    // reproduced by driving the live site — six trips, no overlap — because it
+    // needs a particular spread of board and alight stops.
+    const groups = clusterChips(chips);
     const seen = new Set<string>();
-    for (const members of Object.values(clusters)) {
+    for (const members of groups.map((idx) => idx.map((i) => chips[i]))) {
       const boards = members.filter((m) => m.kind === "board");
       const alights = members.filter((m) => m.kind === "alight");
       // Merged times stack VERTICALLY (user request 2026-07-17), emoji on
