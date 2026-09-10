@@ -3795,22 +3795,6 @@ const TripPlanner: FC<{
                   o.boardStopId,
                 )
               : null;
-            // Is this the last one, and will there be another? Judged
-            // against the PUBLISHED close (the same `route_hours` the
-            // "Runs …" caption shows), one headway, and the live count —
-            // see lastBus.ts. Plain render-time arithmetic, no hook, so it
-            // cannot trip the TDZ hazard this component is known for. It
-            // only ever ADDS a line: the option is never hidden or moved.
-            const lastBus = shuttleCtx
-              ? lastBusVerdict({
-                  label: o.routeLabel,
-                  published: publishedWindowFor(shuttleCtx.cfg, routeHours),
-                  now: new Date(),
-                  busEtaSec: busEtaLive,
-                  liveCount: shuttleCtx.liveCount,
-                  future: isFuture,
-                })
-              : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
             // than the pinned arrival so an earlier, uncatchable bus never
@@ -3826,6 +3810,29 @@ const TripPlanner: FC<{
                   o.busName,
                   busEtaLive,
                 )
+              : null;
+            // Is this the last one, and will there be another? Judged
+            // against the PUBLISHED close (the same `route_hours` the
+            // "Runs …" caption shows), the second bus above when the card
+            // can see it — one headway when it cannot — and the live count;
+            // see lastBus.ts. It is computed AFTER `nextArrLive` for exactly
+            // that reason: the countdown's own second slot is the evidence,
+            // and reading the headway prior instead printed a warning under
+            // Blue Day while withholding it from a Red card whose "then 14
+            // min" said the same thing. Plain render-time arithmetic, no
+            // hook, so it cannot trip the TDZ hazard this component is known
+            // for. It only ever ADDS a line: the option is never hidden or
+            // moved.
+            const lastBus = shuttleCtx
+              ? lastBusVerdict({
+                  label: o.routeLabel,
+                  published: publishedWindowFor(shuttleCtx.cfg, routeHours),
+                  now: new Date(),
+                  busEtaSec: busEtaLive,
+                  nextBusEtaSec: nextArrLive?.eta ?? null,
+                  liveCount: shuttleCtx.liveCount,
+                  future: isFuture,
+                })
               : null;
             // Whether line 2's left column draws the trip's legs. EVERY
             // collapsed shuttle row has one: the ride. This used to also

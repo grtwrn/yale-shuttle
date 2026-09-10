@@ -23,8 +23,9 @@
 //     the same precedence as `routeHoursCaption`, so the warning can never
 //     name a close the card's own "Runs …" line disagrees with.
 //
-// What it says, and what it refuses to say. We know the published close, the
-// headway, and how many buses are live on the line. We do NOT know the
+// What it says, and what it refuses to say. We know the published close, when
+// the bus after the offered one is due (the card's own second slot, or one
+// headway when nothing is on the board), and how many buses are live. We do NOT know the
 // operator's true last departure, so nothing here prints "last bus at 6:42".
 // The verdict is "could be the last" once the bus AFTER the offered one
 // (offered ETA + one headway) would be due past the close, "maybe the last
@@ -157,6 +158,13 @@ export type LastBusInput = {
   /** Buses live on this line (on-route, ghost-filtered), as the card counts them. */
   liveCount: number;
   /**
+   * Seconds until the bus AFTER the offered one reaches the board stop, when
+   * the card can see it — the "then 14 min" half of its own countdown
+   * (`nextArrivalAfterPinned`). Null/absent when there is no second arrival
+   * to see, and only then does the headway prior below stand in.
+   */
+  nextBusEtaSec?: number | null;
+  /**
    * A plan for a chosen future departure has no live bus to be the last of;
    * the schedule already gates those ("Next: …"). Nothing to say.
    */
@@ -189,12 +197,32 @@ export function lastBusVerdict(input: LastBusInput): LastBusVerdict | null {
       detail: detailLine("after-close", liveCount),
     };
   }
-  // Open. The bus after the offered one is due about one headway later; if
-  // that lands past the close, the offered one could be the last.
+  // Open. Could the offered bus be the last? That is a question about the
+  // bus AFTER it, and there are two ways to answer it. When the card can SEE
+  // that bus it is not a question at all — the countdown's own second slot
+  // says when it is due. The headway is the PRIOR, for the case where no
+  // second arrival is on the board.
+  //
+  // Reading the prior over the observation contradicted the card in front of
+  // the operator (2026-09-10, 17:48 ET, both lines closing at 6pm): Red read
+  // "in <1-8, then 14 min" — its second bus visibly due 6:02p, past the
+  // close — and printed nothing, because eta + Red's 8 min headway landed at
+  // 5:57p; Blue Day's "in 7, 21 min" warned off the identical rule. A
+  // warning whose absence is refuted by the numbers printed beside it is
+  // worse than no warning, because it is the one a rider learns to discount.
+  //
+  // The observation cuts both ways on purpose. A second bus due before the
+  // close is direct evidence that the offered one is NOT the last, and the
+  // module's caution (see the header) is about what we cannot see, not a
+  // licence to override what we can.
   const { mins } = etDayAndMinutes(input.now);
   const headway = HEADWAY_MIN[input.label] ?? DEFAULT_HEADWAY_MIN;
   const arrivalMin = mins + Math.max(0, input.busEtaSec ?? 0) / 60;
-  if (arrivalMin + headway < pos.closeMin) return null;
+  const seen = input.nextBusEtaSec;
+  const nextDueMin = seen != null && Number.isFinite(seen)
+    ? mins + Math.max(0, seen) / 60
+    : arrivalMin + headway;
+  if (nextDueMin < pos.closeMin) return null;
   return {
     kind: "closing", closeMin, liveCount,
     headline: `⚠️ Could be the last bus — hours end ${fmtHourAmPm(closeMin)}`,

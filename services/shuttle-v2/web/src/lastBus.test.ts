@@ -13,6 +13,7 @@ const THU_NOON   = new Date("2026-09-03T16:00:00Z"); // Thu 12:00 ET
 const THU_0630   = new Date("2026-09-03T10:30:00Z"); // Thu 06:30 ET
 const THU_1740   = new Date("2026-09-03T21:40:00Z"); // Thu 17:40 ET
 const THU_1753   = new Date("2026-09-03T21:53:00Z"); // Thu 17:53 ET
+const THU_1748   = new Date("2026-09-03T21:48:00Z"); // Thu 17:48 ET — the two-card screenshot
 const THU_1758   = new Date("2026-09-03T21:58:00Z"); // Thu 17:58 ET
 const THU_1815   = new Date("2026-09-03T22:15:00Z"); // Thu 18:15 ET — the operator's report
 const THU_1855   = new Date("2026-09-03T22:55:00Z"); // Thu 18:55 ET
@@ -165,6 +166,63 @@ describe("lastBusVerdict — Red, the operator's report", () => {
 
   it("a negative ETA (already there) clamps rather than pulling the arrival earlier", () => {
     expect(red(THU_1753, { busEtaSec: -600 })?.kind).toBe("closing");
+  });
+});
+
+// The card shows the bus after the offered one ("in <1-8, then 14 min"). When
+// it does, that IS the answer to "will there be another before the close" and
+// the headway prior must not overrule it. Operator, 2026-09-10 17:48 ET: two
+// cards, one 6pm close, and the warning appeared under only one of them.
+describe("lastBusVerdict — the second bus on the card outranks the headway", () => {
+  const at1748 = (label: string, eta: number, next: number | null) =>
+    lastBusVerdict({
+      label, published: RED_PUBLISHED, now: THU_1748,
+      busEtaSec: eta, nextBusEtaSec: next, liveCount: 2,
+    });
+
+  it("Red's own 'then 14 min' is past the close, so Red warns", () => {
+    // 17:48 + 14 min = 18:02 ≥ 18:00. The headway prior said 17:48.5 + 8 =
+    // 17:56.5 and printed nothing — the defect.
+    expect(at1748("Red", 30, 14 * 60)?.kind).toBe("closing");
+    expect(at1748("Red", 30, null)).toBeNull();
+  });
+
+  it("Blue Day's card reads the same and warns the same way", () => {
+    // "in 7, 21 min" → 18:09. It warned before this change too; the point is
+    // that the two cards now agree for the same reason.
+    expect(at1748("Blue Day", 7 * 60, 21 * 60)?.kind).toBe("closing");
+  });
+
+  it("a second bus due BEFORE the close is evidence, and it silences the warning", () => {
+    // The prior would warn here (17:53 + 2 + 8 = 18:03); the board says the
+    // next one is due 17:57, so this is not the last bus.
+    expect(lastBusVerdict({
+      label: "Red", published: RED_PUBLISHED, now: THU_1753,
+      busEtaSec: 120, liveCount: 2,
+    })?.kind).toBe("closing");
+    expect(lastBusVerdict({
+      label: "Red", published: RED_PUBLISHED, now: THU_1753,
+      busEtaSec: 120, nextBusEtaSec: 240, liveCount: 2,
+    })).toBeNull();
+  });
+
+  it("after the close the second bus changes nothing — 'maybe the last loop' either way", () => {
+    for (const next of [null, 60, 40 * 60]) {
+      expect(lastBusVerdict({
+        label: "Red", published: RED_PUBLISHED, now: THU_1815,
+        busEtaSec: 120, nextBusEtaSec: next, liveCount: 1,
+      })?.kind).toBe("after-close");
+    }
+  });
+
+  it("a nonsense value falls back to the headway rather than deciding on it", () => {
+    for (const next of [NaN, Infinity]) {
+      expect(at1748("Red", 30, next)).toBeNull();
+      expect(lastBusVerdict({
+        label: "Red", published: RED_PUBLISHED, now: THU_1753,
+        busEtaSec: 120, nextBusEtaSec: next, liveCount: 1,
+      })?.kind).toBe("closing");
+    }
   });
 });
 
