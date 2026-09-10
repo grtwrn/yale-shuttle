@@ -185,6 +185,80 @@ A run sliced with `FROM`/`TO` still pays for the whole day unless
 `BELIEF_STALE_MS` (10 min) is reset on read, so beyond that a warm-up is
 indistinguishable from having run since dawn.
 
+**The refactor that made the chunking possible is a no-op, proved not argued.**
+Same harness, same capture, same population, `WARM_STORE=0` both sides, only
+`CLIENT_ROOT` differing — `dbc23ed` (the plain loop) against this tree (the
+drained generator). The two `waits.jsonl` files are byte-identical
+(`md5 c230bdad835d5d9fd1e3263b8427746d`). Here identical files are the PASS,
+which is the inverse of every other comparison in this directory.
+
+### What the migrated instrument then said: THE GATE REFUSES THE SWITCH
+
+2026-09-10. ET day 2026-09-04 (11,269 polls, 153,135 positions), snapshot
+`snap-0904-2205.db`, 5,476 riders — Red focus, Green and Purple holdout, plus
+the 344 Winchester chain block. One tree, one capture, one population; the two
+arms differ in `WARM_STORE` and nothing else, and their `waits.jsonl` md5s
+differ (`0a12317e…` / `95914db2…`), so the harness did exercise the change.
+
+**`pair-by-route.mjs`, fixed/introduced, 4,256 paired waits:**
+
+| route | n | strand | jump≥180 | reversal | dropped |
+|---|---|---|---|---|---|
+| Green | 869 | 2/3 | 21/30 | 28/18 | 1/1 |
+| Purple | 707 | 0/0 | 25/7 | 18/7 | 5/0 |
+| **Red** | **2680** | **15/67** | **150/190** | **114/222** | **53/160** |
+| ALL | 4256 | 17/70 | 196/227 | 160/247 | 59/161 |
+
+Red — the founding complaint and the line riders use — is negative on all four
+flags, and **strand 15 fixed against 67 introduced** is the one that matters:
+that is a rider still being told three minutes as the bus pulls in. Purple is
+positive on all four; Green is mixed. The trade is per route, exactly as the
+anchor work's was, and a per-route switch is not the answer here either.
+
+**AND THE TOTALS WOULD HAVE SAID YES.** This is the whole reason the instrument
+had to be migrated first:
+
+| Red focus, 5 s cadence, 1,516 scored | cold (browser) | warm (server) |
+|---|---|---|
+| first promise \|miss\| median | 115 s | **105 s** |
+| first promise \|miss\| p90 | 573 s | **546 s** |
+| the first bus named is the bus that came | 91.4% | **92.5%** |
+| worst drift per wait, p50 | 102 s | **65 s** |
+| estimator interval width at first sight | 410.8 s | **374.1 s** (coverage 48 → 47.9%) |
+| STRAND | **9.5%** | 10.0% |
+| reversal ≥60 s | **31.7%** | 33.7% |
+| jump ≥300 s | **17.5%** | 19.7% |
+
+The chain block says the same thing more sharply. First-promise miss improves
+at every one of the six stops downstream of a parked bus — 370 → 292, 355 →
+284, 321 → 264, 312 → 242, 308 → 240, 275 → 195 s — and the departure moment,
+the thing the whole layover model exists for, goes from p50 +55 s over the
+clock to **+5 s**. Over the same riders, reversals go 40 → 56, 39 → 45, 37 →
+50, 36 → 49, 32 → 51, 29 → 49 %, and the strand share at Division / Prospect
+goes 43.7 → 60.6%.
+
+**Read together: an always-warm belief is more ACCURATE and less STABLE.** It
+commits sooner because it has history to commit on — which is why the first
+promise and the departure both improve — and when it commits to the wrong lead
+it holds that longer, which is what a withdrawn arrival (`dropped`, 53/160 on
+Red) and a strand are. That is a real property of the model, not of the
+harness: the `floors` clamp cannot be the cause, because a floor is keyed on
+the rest's own `standingAt`/`since` and is discarded the moment either moves,
+so it never accumulates across the day.
+
+**So stage 4 does not proceed.** The move is not refuted — the cold-start
+class of defect it was built to remove is real, and #176 is still the proof —
+but "one warm belief" as it stands trades Red's stability for Red's accuracy,
+and the operator's standing instruction on that trade is that a bus promised
+later than it comes is the expensive direction.
+
+The next experiment, and it is cheap because the instrument now exists: the
+lead-leg hysteresis in `eta/filter.ts` is tuned against a belief that is
+usually young. Re-measure it against a belief that is always old — the
+switching threshold, not a new rule — and run this same pair. If Red's
+`dropped` and `strand` columns turn without giving back the accuracy above,
+the switch is back on the table.
+
 ## Stage 3 — the dual run
 
 `serverEtaShadow.ts`. The server records its own answer into `predictions_log`
@@ -230,10 +304,15 @@ query, not a dashboard.
 
 ## What has to follow
 
-- **Stage 4, the client switch** — read `server_eta` instead of computing.
-  Route by route on the allowlist, as the ring estimator itself went out.
-  Client-side a bug is bounded by the allowlist; server-side it reaches every
-  rider at once.
+- **Stage 4, the client switch — BLOCKED by the gate above.** It would read
+  `server_eta` instead of computing, route by route on the allowlist, as the
+  ring estimator itself went out. Client-side a bug is bounded by the
+  allowlist; server-side it reaches every rider at once. Do not start it until
+  a paired run turns Red's `strand` and `dropped` columns.
+- **The dual run is the way to keep measuring in the meantime**: turn
+  `SHUTTLE_SERVER_ETA=1` on and read `surface = "server"` against the rider
+  arm on real traffic, which costs riders nothing because nothing is served to
+  them.
 - **CLAUDE.md** gets the section when the client actually switches. Nothing a
   rider sees has changed yet.
 
