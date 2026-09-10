@@ -4242,7 +4242,10 @@ const TripPlanner: FC<{
                               (routePaths[String(berth.routeId)] ?? []).map(
                                 ([lat, lon]) => ({ lat, lon }),
                               ),
-                              { width: 200, height: 110 },
+                              // Sized to the card rather than 100%-scaled: an SVG fits its viewBox with
+                              // preserveAspectRatio, so a 200-wide box in a ~304 px card was
+                              // drawn 200 wide with white either side.
+                              { width: 300, height: 116 },
                             )
                           : null;
                         return (
@@ -4252,8 +4255,22 @@ const TripPlanner: FC<{
                           }}>
                             {th && (
                               <svg viewBox={th.viewBox} width="100%" height={th.height}
-                                role="img" style={{ display: "block", marginBottom: 6 }}
+                                role="img" style={{ display: "block", marginBottom: 6, borderRadius: 6, overflow: "hidden" }}
                                 aria-label={`${o.routeLabel} pulls up about ${m} metres ${berth.offsetM > 0 ? "past" : "before"} the ${boardName} sign`}>
+                                {/* The same tiles Leaflet would draw, as plain images —
+                                    a map object per expanded card is what routeThumb.ts
+                                    exists to avoid. Streets behind the dots are what
+                                    make them mean anything (operator, 2026-09-10). */}
+                                <clipPath id={`bt-${o.boardStopId}-${berth.routeId}`}>
+                                  <rect x={0} y={0} width={th.width} height={th.height} />
+                                </clipPath>
+                                <g clipPath={`url(#bt-${o.boardStopId}-${berth.routeId})`}>
+                                  {th.tiles.map((t) => (
+                                    <image key={`${t.z}/${t.x}/${t.y}`}
+                                      href={`https://tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`}
+                                      x={t.px} y={t.py} width={t.size} height={t.size} opacity={0.85} />
+                                  ))}
+                                </g>
                                 {th.road.length > 1 && (
                                   <polyline points={th.road.map((p) => `${p.x},${p.y}`).join(" ")}
                                     fill="none" stroke={o.color} strokeWidth={3} opacity={0.35} />
@@ -4264,10 +4281,16 @@ const TripPlanner: FC<{
                                   fill="#fff" stroke="#9aa0a6" strokeWidth={2.5} />
                                 <circle cx={th.berth.x} cy={th.berth.y} r={6}
                                   fill={o.color} stroke="#fff" strokeWidth={2.5} />
-                                <text x={th.sign.x + (th.signAnchor === "start" ? 9 : -9)} y={th.sign.y + 4}
-                                  textAnchor={th.signAnchor} fontSize={10} fill="#80868b">stop sign</text>
-                                <text x={th.berth.x + (th.berthAnchor === "start" ? 10 : -10)} y={th.berth.y + 4}
-                                  textAnchor={th.berthAnchor} fontSize={10.5} fontWeight={650} fill={o.color}>wait here</text>
+                                {/* Painted twice: a white stroke under the fill, so the
+                                    words stay readable over whatever the tile shows. */}
+                                {[{ stroke: true }, { stroke: false }].map((pass, i) => (
+                                  <g key={i} {...(pass.stroke ? { stroke: "#fff", strokeWidth: 3, strokeLinejoin: "round" as const } : {})}>
+                                    <text x={th.sign.x + (th.signAnchor === "start" ? 9 : -9)} y={th.sign.y + 4}
+                                      textAnchor={th.signAnchor} fontSize={10} fill="#5f6368">stop sign</text>
+                                    <text x={th.berth.x + (th.berthAnchor === "start" ? 10 : -10)} y={th.berth.y + 4}
+                                      textAnchor={th.berthAnchor} fontSize={10.5} fontWeight={650} fill={o.color}>wait here</text>
+                                  </g>
+                                ))}
                               </svg>
                             )}
                             <span style={{ fontWeight: 650 }}>

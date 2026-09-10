@@ -37,6 +37,37 @@ describe("the berth inset", () => {
     }
   });
 
+  it("puts tiles behind the dots, positioned in the same coordinates", () => {
+    for (const b of BERTHS) {
+      const s = byId.get(b.stopId)!;
+      const t = buildBerthThumb(s, { lat: b.lat, lon: b.lon });
+      expect(t.tiles.length, s.name).toBeGreaterThanOrEqual(1);
+      expect(t.tiles.length, s.name).toBeLessThanOrEqual(6);
+      for (const tile of t.tiles) {
+        expect(tile.z).toBe(t.zoom);
+        expect(tile.x).toBeGreaterThanOrEqual(0);
+        expect(tile.y).toBeGreaterThanOrEqual(0);
+        // a tile must actually overlap the box, or it is a wasted request
+        expect(tile.px).toBeLessThan(t.width);
+        expect(tile.py).toBeLessThan(t.height);
+        expect(tile.px + tile.size).toBeGreaterThan(0);
+        expect(tile.py + tile.size).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("zooms deep enough to be legible and shallow enough to fit", () => {
+    for (const b of BERTHS) {
+      const s = byId.get(b.stopId)!;
+      const t = buildBerthThumb(s, { lat: b.lat, lon: b.lon });
+      expect(t.zoom, s.name).toBeGreaterThanOrEqual(15);
+      expect(t.zoom, s.name).toBeLessThanOrEqual(19);
+      // the span it claims should match the metres the offset really is
+      expect(t.spanM, s.name).toBeGreaterThan(Math.abs(b.offsetM));
+      expect(t.spanM, s.name).toBeLessThan(Math.abs(b.offsetM) * 12 + 200);
+    }
+  });
+
   it("keeps the walk undistorted WITHIN one picture", () => {
     // The guarantee is one scale on both axes, not one scale across thumbs:
     // each inset is fitted to its own box, which is what makes 55 m readable
