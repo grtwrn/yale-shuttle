@@ -227,7 +227,9 @@ for (const [key, ss] of obs) {
     let x = o.s - s0.s; while (x > half) x -= path.total; while (x < -half) x += path.total;
     return { off: x, lat: o.lat, lon: o.lon, bus: o.bus, day: o.day };
   }).filter((p) => Math.abs(p.off) < 250);
-  if (pts.length < 10) continue;
+  // Cells thinner than this are not reported. `MIN_OBS` lowers it for
+  // INSPECTING a thin cell by hand; the qualification gates are unaffected.
+  if (pts.length < (Number(process.env.MIN_OBS) || 10)) continue;
 
   // the densest WINDOW_M stretch: slide the window over the sorted offsets
   const sorted = [...pts].sort((a, b) => a.off - b.off);
