@@ -218,6 +218,16 @@ A belief more than three collector polls from the reading is refused rather
 than filed: a poll or two apart is like-for-like, minutes apart is two
 different moments dressed as one.
 
+**Read it with `GET /api/predictions?surface=server`** (admin HEADER only,
+never the stats cookie), against `?surface=` omitted for the rider arm. The
+scorecard scores it under the same rule as every other arm and pools it into
+nothing — `isShown` is false for it, so it can never reach `ours`.
+
+`/stats` is deliberately NOT changed. Its scorecard chart is two lines on the
+two colours that were run through the dataviz palette validator in both
+themes; a third would have to be re-picked, and the dual run's reader is a
+query, not a dashboard.
+
 ## What has to follow
 
 - **Stage 4, the client switch** — read `server_eta` instead of computing.
