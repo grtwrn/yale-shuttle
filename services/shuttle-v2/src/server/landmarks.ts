@@ -177,6 +177,11 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
+  { label: "Chef Jiang", lat: 41.312258, lon: -72.921739, aliases: ["chef jiang", "jiang", "chef jiang new haven", "67 whitney"], poi: "restaurant", anchorStop: "Whitney / Audubon" }, // NOT in OSM under any name — Photon answers a Hong Kong restaurant and Nominatim nothing, so the
+  // coordinate is the geocoded street address, 67 Whitney Ave (Nominatim, node "67;69 Whitney Avenue"). Riders searched it 3 times in 30 days and got nothing every time.
+  { label: "City Crossing", lat: 41.301511, lon: -72.930319, aliases: ["city crossing", "the mason", "mason at city crossing", "the maddox", "188 lafayette"], poi: "apartments", anchorStop: "Amistad CSS Weekend Blue" }, // Also absent from OSM as a name; the coordinate is 188 Lafayette St, which
+  // Nominatim returns as "Mason, 188, Lafayette Street". Searched 5 times, empty 5 times — the joint top of the not-found list with the Chaplain's Office.
+  { label: "Whitehall Apartments", lat: 41.326073, lon: -72.922248, aliases: ["whitehall", "whitehall apartments", "whitehall apts"], poi: "apartments", anchorStop: "Prospect / Canner" }, // OSM way; a rider typing "whitehall appa" got nothing.
   { label: "Arwa Yemeni Coffee", lat: 41.30969, lon: -72.920192, aliases: ["arwa", "arwa cafe", "arwa coffee", "yemeni coffee", "arwa yemeni", "335 orange"], poi: "cafe", anchorStop: "Orange / Grove" }, // OSM N9021774207 — the 335 Orange St address node: the cafe itself is not mapped in OSM yet,
   // which is exactly why neither Photon nor Nominatim could answer "arwa cafe" and the app showed nothing.
   { label: "Ashley's Ice Cream", lat: 41.311033, lon: -72.929949, aliases: ["ashleys", "ashley's", "ice cream", "280 york"], poi: "ice_cream", anchorStop: "Broadway / York" }, // OSM N2719756863
@@ -204,7 +209,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Pataka", lat: 41.312649, lon: -72.933259, aliases: ["pataka indian"], poi: "restaurant", anchorStop: "Elm / Lynwood" }, // OSM N2637704331
   { label: "Rubamba", lat: 41.306923, lon: -72.930973, aliases: ["arepas", "25 high"], poi: "restaurant", anchorStop: "York / Crown" }, // OSM N11606236058
   { label: "Sally's Apizza", lat: 41.303057, lon: -72.920077, aliases: ["sallys", "sally's", "wooster street pizza", "237 wooster"], poi: "pizza", anchorStop: "Olive / Wooster" }, // OSM N2567417097
-  { label: "Shake Shack", lat: 41.307009, lon: -72.928393, aliases: ["986 chapel"], poi: "fast_food", anchorStop: "Chapel / College" }, // OSM N2760039198
+  { label: "Shake Shack", lat: 41.307009, lon: -72.928393, aliases: ["986 chapel", "shakeshack", "shake shack"], poi: "fast_food", anchorStop: "Chapel / College" }, // OSM N2760039198 — "shakeshack" as ONE word scored zero and was searched 3 times; the label's own two words never matched it.
   { label: "Sherkaan", lat: 41.312009, lon: -72.930715, aliases: ["65 broadway"], poi: "restaurant", anchorStop: "Broadway / Park" }, // OSM N2719765603
   { label: "Tomatillo", lat: 41.311191, lon: -72.931701, aliases: ["taco joint", "320 elm"], poi: "fast_food", anchorStop: "Broadway / Park" }, // OSM N2657096153
   { label: "Willoughby's Coffee (Church St)", lat: 41.310424, lon: -72.922827, aliases: ["willoughbys church", "willoughby's church street"], poi: "cafe", anchorStop: "Church / Grove" }, // OSM N2373871290
