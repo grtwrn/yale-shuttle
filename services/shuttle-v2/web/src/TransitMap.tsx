@@ -53,6 +53,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { isUnambiguousRideArrival } from "./rideArrival";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -5988,7 +5989,7 @@ const RideStopList: FC<{
   let etaSec: number | null = null;
   // Once this ride reaches its exit, the next arrival is another lap, not
   // the time remaining for the passenger who is getting off here.
-  if (bus && alightIdx >= 0 && busIdx === alightIdx) {
+  if (bus && isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
     etaSec = 0;
   } else if (bus) {
     const arr = computeUpcomingArrivals(
