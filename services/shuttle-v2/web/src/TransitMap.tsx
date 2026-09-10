@@ -6159,6 +6159,13 @@ const OnBusBanner: FC<{
   // don't re-fire.
   const getOffAlertRef = useRef<string | null>(null);
   const [getOffPopup, setGetOffPopup] = useState<string | null>(null);
+  const getOffButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!getOffPopup) return;
+    const previous = document.activeElement as HTMLElement | null;
+    getOffButtonRef.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, [getOffPopup]);
   useEffect(() => {
     if (stopsRemaining === null || stopsRemaining > 2) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
@@ -6198,6 +6205,20 @@ const OnBusBanner: FC<{
         mid-doomscroll; tap anywhere to dismiss. */}
     {getOffPopup && (
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="get-off-prompt-title"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setGetOffPopup(null);
+          } else if (e.key === "Tab") {
+            // Got it is the only control in this modal.
+            e.preventDefault();
+            getOffButtonRef.current?.focus();
+          }
+        }}
         onClick={() => setGetOffPopup(null)}
         style={{
           position: "fixed", inset: 0, zIndex: 10000,
@@ -6212,13 +6233,14 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+          <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
             {getOffPopup}
           </div>
           <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel} → {alightName}
           </div>
           <button
+            ref={getOffButtonRef}
             onClick={() => setGetOffPopup(null)}
             style={{
               marginTop: 14, width: "100%", minHeight: 44,
