@@ -146,6 +146,44 @@ Weekend. Measured on Red, SCL's own berth is **+2.5 m**: that dot is already
 right. If Blue Day genuinely uses the SCL kerb the honest fix is to record that
 those are one stop, not to invent a berth beside them.
 
+## The stop can be different per line, and it is not a direction artefact
+
+The operator's correction, 2026-09-10, to a bad suggestion of mine: I proposed
+pooling the per-route cells at a shared stop, on the grounds that a berth is a
+property of the kerb. He said the stop may be different per line. Measured over
+the 53 stops served by ≥2 routes with ≥10 observations each, he is right.
+
+Compare the **physical** distance between the berth coordinates two lines imply
+(the signed along-route offsets are NOT comparable across routes — each is
+measured on its own polyline, so Red passing Phelps Gate the other way reads
+172 m of "disagreement" for berths physically 44 m apart; that is the only such
+case in 53):
+
+```
+physical disagreement, worst pair per stop:  median 10 m, p90 107 m, max 151 m
+lines physically berthing >40 m apart:       14 of 53 stops
+```
+
+**Direction explains some of it and not most of it.** Grouping pairs by whether
+the two routes' bearing through the stop agrees within 45°:
+
+```
+same direction        n=48   median  7 m   >40 m apart: 10
+opposite / different  n= 9   median 40 m   >40 m apart:  5
+```
+
+So **10 of the 14 big disagreements are between lines travelling the same way**.
+
+**And the (N)/(S) suffix does not encode it.** 4 of 15 suffixed stops disagree
+by >40 m against 10 of 38 unsuffixed — 27% against 26%, the same rate. Where
+the operator has split a stop by direction that is real, but it is not the
+thing that separates these.
+
+Two consequences. Cells stay per (stop, route); pooling is out. And cross-route
+agreement becomes *informative* rather than assumed: at Chemistry / 225 Prospect
+three lines land within 11 m of each other, which is worth something precisely
+because agreement is not the default.
+
 ## What qualifies
 
 ```
