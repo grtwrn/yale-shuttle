@@ -241,7 +241,11 @@ export class ServerEta {
     const job: Job = { payload, version, now };
     if (onSlice) job.onSlice = onSlice;
     this.queued = job;
-    if (!this.runner) this.runner = this.drain();
+    // `.finally` on the OUTER promise, not inside `drain`: the assignment then
+    // happens synchronously, before any callback can fire. Clearing the field
+    // from inside `drain` would leave a settled promise pinned here if a drain
+    // ever completed without suspending — and no pass would start again.
+    if (!this.runner) this.runner = this.drain().finally(() => { this.runner = null; });
     await this.runner;
   }
 
@@ -304,18 +308,14 @@ export class ServerEta {
   }
 
   private async drain(): Promise<void> {
-    try {
-      while (this.queued) {
-        const job = this.queued;
-        this.queued = null;
-        if (job.version === this.lastVersion) continue;
-        // Claimed BEFORE the pass rather than after, so a `step` call arriving
-        // mid-pass for this same version is a no-op rather than a re-run.
-        this.lastVersion = job.version;
-        await this.pass(job);
-      }
-    } finally {
-      this.runner = null;
+    while (this.queued) {
+      const job = this.queued;
+      this.queued = null;
+      if (job.version === this.lastVersion) continue;
+      // Claimed BEFORE the pass rather than after, so a `step` call arriving
+      // mid-pass for this same version is a no-op rather than a re-run.
+      this.lastVersion = job.version;
+      await this.pass(job);
     }
   }
 
