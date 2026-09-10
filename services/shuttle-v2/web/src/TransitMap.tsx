@@ -1488,6 +1488,19 @@ const AllRoutesMap: FC<{
   }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
+  //
+  // `hiddenRoutes` MUST be in the dependency array below, and its absence was
+  // a five-second stall a rider could see (operator, 2026-09-10: "why does it
+  // take like 5 seconds for bus locations to render on the map page when I
+  // change filters?").
+  //
+  // Toggling a line re-runs the map effect above — `hiddenRoutes` is in ITS
+  // deps — which rebuilds the map and with it a fresh, EMPTY `busLayerRef`.
+  // This effect then did not re-run, because `buses` had not changed, so the
+  // map carried no bus markers at all until the next `/api/buses` poll
+  // happened to land. That is a wait of up to the 5 s poll interval, and
+  // measured on the live site it was 0.6 s, 3.0 s and 4 s on three toggles —
+  // the spread being nothing but where in the poll cycle the tap fell.
   useEffect(() => {
     const grp = busLayerRef.current;
     if (!grp) return;
@@ -1521,7 +1534,10 @@ const AllRoutesMap: FC<{
         padding: [48, 48], maxZoom: 15,
       });
     }
-  }, [buses]);
+  // Same stable key the map effect uses: a Set is a new object every render,
+  // so depending on it directly would redraw the fleet on every poll for
+  // nothing.
+  }, [buses, [...hiddenRoutes].sort().join("|")]);
 
   // "You are here" — same pulsing blue dot as the trip mini-map. Created
   // lazily on the first fix, then moved in place per watchPosition update
