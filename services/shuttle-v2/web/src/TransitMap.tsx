@@ -54,6 +54,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -1644,10 +1645,11 @@ const TripPlanner: FC<{
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
 }> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
-  const [fromText, setFromText] = useState("");
-  const [toText, setToText] = useState("");
-  const [fromLL, setFromLL] = useState<LatLon | null>(null);
-  const [toLL, setToLL] = useState<LatLon | null>(null);
+  const [initialDraft] = useState(loadTripDraft);
+  const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
+  const [toText, setToText] = useState(initialDraft?.toText ?? "");
+  const [fromLL, setFromLL] = useState<LatLon | null>(initialDraft?.fromLL ?? null);
+  const [toLL, setToLL] = useState<LatLon | null>(initialDraft?.toLL ?? null);
   const [fromSugg, setFromSugg] = useState<GeocodeResult[]>([]);
   const [toSugg, setToSugg] = useState<GeocodeResult[]>([]);
   // Keyboard-navigation index into each suggestion list. -1 = nothing
@@ -1671,7 +1673,7 @@ const TripPlanner: FC<{
   // the walk option), not list position — the list re-sorts live (departed
   // options sink), and a positional index made the open card silently jump
   // to whichever option landed on that index mid-watch.
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(initialDraft?.expandedKey ?? null);
   // ── Leave-time reminder ──────────────────────────────────────────────
   // At most ONE armed reminder at a time (arming another option replaces
   // it). Deliberately NOT persisted: an in-page timer cannot fire after
@@ -1739,7 +1741,12 @@ const TripPlanner: FC<{
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
-  const [tripTime, setTripTime] = useState<string>("");
+  const [tripTime, setTripTime] = useState<string>(initialDraft?.tripTime ?? "");
+  useEffect(() => {
+    // Preserve the last committed selection while either field is being edited.
+    if (fromExpanded || toExpanded) return;
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, expandedKey } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, expandedKey, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
@@ -2515,8 +2522,8 @@ const TripPlanner: FC<{
   // state pattern: setState-during-render is legal when gated on a
   // prop/state change, and React reschedules the render with the new
   // state before paint.
-  const tripKeyRef = useRef<string>("");
   const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
+  const tripKeyRef = useRef<string>(tripKey);
   if (tripKeyRef.current !== tripKey) {
     tripKeyRef.current = tripKey;
     if (expandedKey !== null) setExpandedKey(null);
@@ -7477,7 +7484,7 @@ const TransitMap: FC = () => {
           announcements={announcements}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { setBoardedRide(ride); }}
+          onBoard={(ride) => { saveTripDraft(null); setBoardedRide(ride); }}
         />
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored
