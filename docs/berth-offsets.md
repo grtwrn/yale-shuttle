@@ -62,7 +62,8 @@ A second dot is drawn only when the berth is a fact rather than a spread:
 |---|---|---|
 | observations | ≥ 20 | a berth read off a handful of visits |
 | mode window | ≥ 75% of the visits **not behind it**, and ≥ 20 outright | stops where buses genuinely stop in two places |
-| past the berth | ≤ 10% of visits end **ahead** of the window | a signal *past* the stop, the one shape we cannot explain |
+| majority | the window holds > 50% of **all** visits | a berth asserted off a minority of the evidence |
+| past the berth | ≤ 10% of visits end **ahead** of the window | a signal *past* the stop — but see the blind spot below |
 | distance | ≥ 35 m from the published dot | anything the 30 m deadband alone could produce |
 | **rival stop** | **berth ≥ 1.5× nearer its own stop than any other** | **a visit booked against the wrong half of a stop pair** |
 
@@ -84,6 +85,66 @@ apart can be many stops apart in sequence — showing up in a new place, and it 
 the same class of error PR #190 fixed in the rider simulator. We cannot tell "the
 bus berths over there" from "this visit was attributed to the neighbouring stop",
 and either way the map already draws a dot there. So we say nothing.
+
+## `aheadOfWindow` is blind exactly where the failure is worst
+
+This is the most important thing learned on 2026-09-10 and it limits everything
+above. The gate counts visits ending PAST the window, so **it only sees a signal
+when the BERTH dominates.** Where the signal dominates, the signal *is* the
+window and nothing lies beyond it — the count is zero and the gate passes.
+
+It surfaced by accident. The rival guard was scoped to the route (see below),
+which took qualifying cells 10 → 33, and the 23 admitted were dominated by
+~100 m berths at busy downtown stops: **Phelps Gate on SIX routes at 98–107 m,
+333 Cedar on five at 73–98 m**, Union Station (both), York / Cedar, Becton,
+300 George St. Every one of them had `aheadOfWindow` at 0–3. A stop whose next
+junction is about 100 m on, measured from six independent routes, is what a
+signal looks like when the last-stand rule books it as the kerb.
+
+**Position alone cannot separate the two, and this keeps being rediscovered.**
+At Division / Prospect the signal comes BEFORE the kerb; at Phelps Gate it
+appears to come after. The last-stand rule takes the last either way. The
+operator's own knowledge settled Division / Prospect — nothing in this data
+would have.
+
+## The route-scoped rival guard: tried, measured, reverted
+
+The argument is sound and is still recorded in the code as `rivalOnRoute`. The
+guard exists for attribution (a visit can only be booked against a stop this
+route's sequence was choosing between) and for visibility ("there is a dot there
+already" is only true if the rider can see it, and the map filters to their
+line). Blue Day's Chemistry / 225 Prospect berths on the **SCL** kerb 63 m short
+of its own sign — and SCL is a **Red** stop a Blue Day rider never sees.
+
+It was reverted within the hour: it is what admitted the 23 cells above. The
+unscoped guard suppresses them **by accident**, and the accident is load-bearing
+until there is a real discriminator.
+
+## Chemistry / 225 Prospect, scored gate by gate
+
+The operator asked for this one specifically. It fails five of eight, and the
+rival guard is the least of them:
+
+```
+FAIL  >=20 observed visits                     18 of 20
+FAIL  >=20 of them in one 40 m window          13 of 20
+FAIL  window holds >=75% of the not-behind     72%
+PASS  window holds >50% of ALL visits          72%
+FAIL  <=10% of visits end PAST the berth       5 of 18 = 28%
+PASS  berth >=35 m from the sign               -62.9 m
+FAIL  clear of ANY nearby stop                 27 m from SCL
+PASS  clear of a stop ON THIS ROUTE            238 m to Prospect / Edwards
+```
+
+**28% ending past the berth** is the real verdict: Blue Day appears to use both
+the SCL kerb and its own sign. And the sample is thinner than n = 18 looks —
+11 of the 18 visits are from 2026-09-03 alone, then 4, 1, 2.
+
+**Chemistry / 225 Prospect and SCL are 39 m apart and are plausibly one kerb
+under two ids** — SCL served by Red, Chemistry by Blue Day, Orange Day and Blue
+Weekend. Measured on Red, SCL's own berth is **+2.5 m**: that dot is already
+right. If Blue Day genuinely uses the SCL kerb the honest fix is to record that
+those are one stop, not to invent a berth beside them.
 
 ## What qualifies
 
