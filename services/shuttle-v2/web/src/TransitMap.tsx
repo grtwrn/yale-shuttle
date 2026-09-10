@@ -29,7 +29,9 @@ import { noteShown } from "./shownLog";
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
-import { chipCountdownText, standWaitFor } from "./standWait";
+import { buildBerthThumb } from "./berthThumb";
+import { clusterChips } from "./chipCluster";
+import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -55,6 +57,8 @@ import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
 import { planningTimeError } from "./planningTime";
+import { rideMapStopSequence } from "./rideMapFocus";
+import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
 import { getOffAlertTitle } from "./rideAlert";
@@ -973,22 +977,13 @@ const CombinedTripMap: FC<{
       }
     }
     // Union-find over overlapping label rectangles.
-    const parent = chips.map((_, i) => i);
-    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-    for (let i = 0; i < chips.length; i++) {
-      for (let j = i + 1; j < chips.length; j++) {
-        if (
-          Math.abs(chips[i].x - chips[j].x) < (chips[i].w + chips[j].w) / 2 + 4 &&
-          Math.abs(chips[i].y - chips[j].y) < 18
-        ) {
-          parent[find(i)] = find(j);
-        }
-      }
-    }
-    const clusters: Record<number, Chip[]> = {};
-    chips.forEach((c, i) => { (clusters[find(i)] ??= []).push(c); });
+    // Which chips share a box: pure geometry, and it lives in chipCluster.ts
+    // so the arrangement that broke it can be written down. It could not be
+    // reproduced by driving the live site — six trips, no overlap — because it
+    // needs a particular spread of board and alight stops.
+    const groups = clusterChips(chips);
     const seen = new Set<string>();
-    for (const members of Object.values(clusters)) {
+    for (const members of groups.map((idx) => idx.map((i) => chips[i]))) {
       const boards = members.filter((m) => m.kind === "board");
       const alights = members.filter((m) => m.kind === "alight");
       // Merged times stack VERTICALLY (user request 2026-07-17), emoji on
@@ -1663,10 +1658,11 @@ const TripPlanner: FC<{
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
 }> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
-  const [fromText, setFromText] = useState("");
-  const [toText, setToText] = useState("");
-  const [fromLL, setFromLL] = useState<LatLon | null>(null);
-  const [toLL, setToLL] = useState<LatLon | null>(null);
+  const [initialDraft] = useState(loadTripDraft);
+  const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
+  const [toText, setToText] = useState(initialDraft?.toText ?? "");
+  const [fromLL, setFromLL] = useState<LatLon | null>(initialDraft?.fromLL ?? null);
+  const [toLL, setToLL] = useState<LatLon | null>(initialDraft?.toLL ?? null);
   const [fromSugg, setFromSugg] = useState<GeocodeResult[]>([]);
   const [toSugg, setToSugg] = useState<GeocodeResult[]>([]);
   // Keyboard-navigation index into each suggestion list. -1 = nothing
@@ -1690,7 +1686,7 @@ const TripPlanner: FC<{
   // the walk option), not list position — the list re-sorts live (departed
   // options sink), and a positional index made the open card silently jump
   // to whichever option landed on that index mid-watch.
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(initialDraft?.expandedKey ?? null);
   // ── Leave-time reminder ──────────────────────────────────────────────
   // At most ONE armed reminder at a time (arming another option replaces
   // it). Deliberately NOT persisted: an in-page timer cannot fire after
@@ -1758,9 +1754,21 @@ const TripPlanner: FC<{
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
-  const [tripTime, setTripTime] = useState<string>("");
+  const [tripTime, setTripTimeValue] = useState<string>(initialDraft?.tripTime ?? "");
+  const [tripTimeSetAt, setTripTimeSetAt] = useState(() => initialDraft?.tripTimeSetAt
+    // Legacy drafts already flowed into live mode as they aged; retain that.
+    ?? (initialDraft?.tripTime ? Math.min(Date.now(), Date.parse(initialDraft.tripTime)) : Date.now()));
+  const setTripTime = (value: string) => {
+    setTripTimeValue(value);
+    setTripTimeSetAt(Date.now());
+  };
+  useEffect(() => {
+    // Preserve the last committed selection while either field is being edited.
+    if (fromExpanded || toExpanded) return;
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
-  const tripTimeError = planningTimeError(tripTime);
+  const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
@@ -2535,8 +2543,8 @@ const TripPlanner: FC<{
   // state pattern: setState-during-render is legal when gated on a
   // prop/state change, and React reschedules the render with the new
   // state before paint.
-  const tripKeyRef = useRef<string>("");
   const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
+  const tripKeyRef = useRef<string>(tripKey);
   if (tripKeyRef.current !== tripKey) {
     tripKeyRef.current = tripKey;
     if (expandedKey !== null) setExpandedKey(null);
@@ -4204,6 +4212,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
+                        const waitText = waitLegText(standCtx, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -4211,8 +4220,8 @@ const TripPlanner: FC<{
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
                               {sep}
                             </>)}
-                            {o.waitSec >= 60 && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>⏳ {fmtWait(o.waitSec)}</span>
+                            {waitText && (<>
+                              <span style={{ whiteSpace: "nowrap" }}>⏳ {waitText}</span>
                               {sep}
                             </>)}
                             <span style={{
@@ -4237,11 +4246,70 @@ const TripPlanner: FC<{
                         const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
                         if (!berth) return null;
                         const m = Math.round(Math.abs(berth.offsetM));
+                        const signLL = stopCoords[o.boardStopId];
+                        // The picture, not the sentence, is what makes this
+                        // land: on the trip map above, framed for the whole
+                        // journey, the sign and the kerb are two dots a few
+                        // pixels apart (operator, 2026-09-10: "this message
+                        // doesn't make sense until i zoom into map"). An SVG
+                        // rather than a second Leaflet — see berthThumb.ts.
+                        const th = signLL
+                          ? buildBerthThumb(
+                              signLL, { lat: berth.lat, lon: berth.lon },
+                              (routePaths[String(berth.routeId)] ?? []).map(
+                                ([lat, lon]) => ({ lat, lon }),
+                              ),
+                              // Sized to the card rather than 100%-scaled: an SVG fits its viewBox with
+                              // preserveAspectRatio, so a 200-wide box in a ~304 px card was
+                              // drawn 200 wide with white either side.
+                              { width: 300, height: 116 },
+                            )
+                          : null;
                         return (
                           <div style={{
                             marginTop: 10, padding: "8px 10px", borderRadius: 8,
                             background: "#f8f9fa", fontSize: 13, lineHeight: 1.45, color: "#3c4043",
                           }}>
+                            {th && (
+                              <svg viewBox={th.viewBox} width="100%" height={th.height}
+                                role="img" style={{ display: "block", marginBottom: 6, borderRadius: 6, overflow: "hidden" }}
+                                aria-label={`${o.routeLabel} pulls up about ${m} metres ${berth.offsetM > 0 ? "past" : "before"} the ${boardName} sign`}>
+                                {/* The same tiles Leaflet would draw, as plain images —
+                                    a map object per expanded card is what routeThumb.ts
+                                    exists to avoid. Streets behind the dots are what
+                                    make them mean anything (operator, 2026-09-10). */}
+                                <clipPath id={`bt-${o.boardStopId}-${berth.routeId}`}>
+                                  <rect x={0} y={0} width={th.width} height={th.height} />
+                                </clipPath>
+                                <g clipPath={`url(#bt-${o.boardStopId}-${berth.routeId})`}>
+                                  {th.tiles.map((t) => (
+                                    <image key={`${t.z}/${t.x}/${t.y}`}
+                                      href={`https://tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`}
+                                      x={t.px} y={t.py} width={t.size} height={t.size} opacity={0.85} />
+                                  ))}
+                                </g>
+                                {th.road.length > 1 && (
+                                  <polyline points={th.road.map((p) => `${p.x},${p.y}`).join(" ")}
+                                    fill="none" stroke={o.color} strokeWidth={3} opacity={0.35} />
+                                )}
+                                <line x1={th.sign.x} y1={th.sign.y} x2={th.berth.x} y2={th.berth.y}
+                                  stroke="#9aa0a6" strokeWidth={1.5} strokeDasharray="2 4" />
+                                <circle cx={th.sign.x} cy={th.sign.y} r={5}
+                                  fill="#fff" stroke="#9aa0a6" strokeWidth={2.5} />
+                                <circle cx={th.berth.x} cy={th.berth.y} r={6}
+                                  fill={o.color} stroke="#fff" strokeWidth={2.5} />
+                                {/* Painted twice: a white stroke under the fill, so the
+                                    words stay readable over whatever the tile shows. */}
+                                {[{ stroke: true }, { stroke: false }].map((pass, i) => (
+                                  <g key={i} {...(pass.stroke ? { stroke: "#fff", strokeWidth: 3, strokeLinejoin: "round" as const } : {})}>
+                                    <text x={th.sign.x + (th.signAnchor === "start" ? 9 : -9)} y={th.sign.y + 4}
+                                      textAnchor={th.signAnchor} fontSize={10} fill="#5f6368">stop sign</text>
+                                    <text x={th.berth.x + (th.berthAnchor === "start" ? 10 : -10)} y={th.berth.y + 4}
+                                      textAnchor={th.berthAnchor} fontSize={10.5} fontWeight={650} fill={o.color}>wait here</text>
+                                  </g>
+                                ))}
+                              </svg>
+                            )}
                             <span style={{ fontWeight: 650 }}>
                               🚏 Wait about {m} m {berth.offsetM > 0 ? "past" : "before"} the stop sign
                             </span>
@@ -5928,7 +5996,7 @@ const RideRouteMap: FC<{
   };
 
   // Mount-once (rebuilds when route path data lands): tiles, the boarded route's
-  // polyline, its stops with board emphasised + alight as 🚏, fit to the route.
+  // polyline, its stops with board emphasised + alight as 🚏, fit to the ride leg.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
     const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
@@ -5995,8 +6063,20 @@ const RideRouteMap: FC<{
       pts.push([dest.lat, dest.lon]);
     }
 
+    // Keep the full route available for panning, but frame this rider's leg.
+    // A local Green ride must not start zoomed out to all of West Campus.
+    const trackedBus = buses.find((b) => cfg.busRouteIds.includes(b.route_id) && normBus(b.bus_name) === normBus(ride.busName));
+    const focusRouteId = trackedBus ? String(trackedBus.route_id) : routeIds[0];
+    const legIds = rideMapStopSequence(focusRouteId ? routeStops[focusRouteId] : undefined, ride.boardStopId, ride.alightStopId);
+    const legStops = legIds?.map((id) => stopCoords[id]);
+    let focusPts = pts;
+    if (legStops && legStops.every((p): p is LatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon))) {
+      focusPts = buildStopSequencePolyline(focusRouteId ? routePaths[focusRouteId] : undefined, legStops)
+        ?? legStops.map((p) => [p.lat, p.lon] as [number, number]);
+      if (dest) focusPts.push([dest.lat, dest.lon]);
+    }
     busLayerRef.current = L.layerGroup().addTo(map);
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [28, 28] });
+    if (focusPts.length) map.fitBounds(L.latLngBounds(focusPts), { padding: [28, 28], maxZoom: 16 });
     const t1 = setTimeout(() => map.invalidateSize(), 60);
     const t2 = setTimeout(() => map.invalidateSize(), 300);
     return () => {
@@ -7536,7 +7616,7 @@ const TransitMap: FC = () => {
           announcements={announcements}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { setFinishedRide(null); setBoardedRide(ride); }}
+          onBoard={(ride) => { saveTripDraft(null); setFinishedRide(null); setBoardedRide(ride); }}
         />
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored

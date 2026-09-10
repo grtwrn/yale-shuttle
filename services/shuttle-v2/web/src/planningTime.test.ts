@@ -11,7 +11,7 @@ describe("planning time validation", () => {
       expect(planningTimeError(value, now)).toBeNull();
     }
   });
-  it("flags a once-future selection when time has passed it", () => {
+  it("rejects a value already in the past when selected", () => {
     expect(planningTimeError("2026-09-10T10:00", now + 90_000)).not.toBeNull();
   });
   it("rejects malformed restored values", () => {

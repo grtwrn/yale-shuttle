@@ -47,7 +47,7 @@
 // table, through the same pools, at the same clock the countdown is billed
 // under (arrivals.ts). Nothing here estimates anything; it decides wording.
 
-import { fmtBusRange, fmtMin } from "./format";
+import { fmtBusRange, fmtMin, fmtWait } from "./format";
 import { shownStandSec, type DwellStat, type DwellTimes, type ShownStand } from "./arrivals";
 
 /**
@@ -259,4 +259,14 @@ export function chipCountdownText(view: StandWaitView | null, etaSec: number | n
   // this way ("4 min", "now"), so the non-standing case stays byte-identical
   // to what the map drew before the range existed.
   return fmtMin(etaSec);
+}
+
+/** Wait after reaching the pickup: retain the same uncertainty as the bus ETA. */
+export function waitLegText(view: StandWaitView | null, walkSec: number, waitSec: number): string | null {
+  if (view?.range) {
+    const low = Math.max(0, view.range.lowSec - walkSec);
+    const high = Math.max(0, view.range.highSec - walkSec);
+    return high < 60 ? null : fmtBusRange(low, high).replace(/^in /, "");
+  }
+  return waitSec < 60 ? null : fmtWait(waitSec);
 }
