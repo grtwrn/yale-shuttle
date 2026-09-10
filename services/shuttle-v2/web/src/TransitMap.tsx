@@ -57,6 +57,7 @@ import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
+import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
@@ -1754,13 +1755,21 @@ const TripPlanner: FC<{
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
-  const [tripTime, setTripTime] = useState<string>(initialDraft?.tripTime ?? "");
+  const [tripTime, setTripTimeValue] = useState<string>(initialDraft?.tripTime ?? "");
+  const [tripTimeSetAt, setTripTimeSetAt] = useState(() => initialDraft?.tripTimeSetAt
+    // Legacy drafts already flowed into live mode as they aged; retain that.
+    ?? (initialDraft?.tripTime ? Math.min(Date.now(), Date.parse(initialDraft.tripTime)) : Date.now()));
+  const setTripTime = (value: string) => {
+    setTripTimeValue(value);
+    setTripTimeSetAt(Date.now());
+  };
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
-    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, expandedKey } : null);
-  }, [fromText, fromLL, toText, toLL, tripTime, expandedKey, fromExpanded, toExpanded]);
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
+  const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
@@ -2070,7 +2079,7 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
   const options: TripOption[] | null = useMemo(() => {
-    if (!stableOptions) return null;
+    if (tripTimeError || !stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -2184,7 +2193,7 @@ const TripPlanner: FC<{
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, tripTimeError, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -3072,6 +3081,9 @@ const TripPlanner: FC<{
             <>
               <input
                 type="datetime-local"
+                aria-label="Departure time"
+                aria-invalid={!!tripTimeError}
+                aria-describedby={tripTimeError ? "trip-time-error" : undefined}
                 value={tripTime}
                 onChange={(e) => setTripTime(e.target.value)}
                 style={{
@@ -3103,6 +3115,11 @@ const TripPlanner: FC<{
               }}>Plan for later…</button>
             </>
           )}
+        </div>
+      )}
+      {tripTimeError && (
+        <div id="trip-time-error" role="alert" style={{ fontSize: 13, color: "#C62828", marginBottom: 10 }}>
+          {tripTimeError}
         </div>
       )}
       {isFuture && targetDate && (

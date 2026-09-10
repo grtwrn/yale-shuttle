@@ -6,6 +6,13 @@ const makeStore = () => { let value: string | null = null; return {
 const trip: TripDraft = { fromText: "", fromLL: null, toText: "Yale Public Health",
   toLL: { lat: 41.303735, lon: -72.932155 }, tripTime: "", expandedKey: "Red" };
 describe("waiting trip restoration", () => {
+  it("preserves the selection time across later saves and reloads", () => {
+    const draft = { ...trip, tripTime: "2026-09-10T17:00", tripTimeSetAt: 1000 };
+    const store = makeStore(); saveTripDraft(draft, store, 50_000);
+    expect(loadTripDraft(store, 60_000)).toEqual(draft);
+    saveTripDraft({ ...draft, tripTimeSetAt: 70_000 }, store, 50_000);
+    expect(loadTripDraft(store, 60_000)?.tripTimeSetAt).toBeUndefined();
+  });
   it("restores the destination and route without freezing a live GPS origin", () => {
     const store = makeStore(); saveTripDraft(trip, store, 1000);
     expect(loadTripDraft(store, 2000)).toEqual(trip);
