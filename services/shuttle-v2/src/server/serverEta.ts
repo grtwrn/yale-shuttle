@@ -42,8 +42,8 @@
  *     an estimator exception is counted and logged and the served field simply
  *     goes absent, exactly as if the flag were off. And the step is CHUNKED:
  *     it drains `upcomingArrivalUnits` a few milliseconds at a time, yielding
- *     to the event loop between slices, so a poll that costs ~33 ms of CPU no
- *     longer holds `/api/buses` for 33 ms in one go. There is no second
+ *     to the event loop between slices, so a poll that costs ~35 ms of CPU no
+ *     longer holds `/api/buses` for 35 ms in one go. There is no second
  *     implementation — the generator IS the loop `computeUpcomingArrivals`
  *     drains, and the parity suite proves the two drivers agree.
  *  2. **One step per observation.** The belief is stepped once per collector
@@ -95,8 +95,8 @@ export const BELIEF_EVICT_MS = BELIEF_STALE_MS;
  * The longest the chunked step runs before handing the event loop back.
  *
  * This is the dial the whole head-of-line problem turns on, and it is chosen
- * against a measurement rather than a feeling. A poll costs ~33 ms of CPU
- * (`scripts/server-eta-bench.ts`, Pi 5); run in one go that is 33 ms every
+ * against a measurement rather than a feeling. A poll costs ~35 ms of CPU
+ * (`scripts/server-eta-bench.ts`, Pi 5); run in one go that is 35 ms every
  * request behind it waits. Chunked at 4 ms the worst synchronous stretch is
  * this budget plus whatever single bus was mid-price when it expired — the
  * generator's unit is one bus, so nothing bigger than one bus can straddle a
@@ -228,7 +228,7 @@ export class ServerEta {
    * If a pass is already running, this one is QUEUED rather than interleaved:
    * two passes advancing the same beliefs over different fixes would corrupt
    * every belief in the store. Only the newest queued job survives — at 5 s
-   * between polls against a ~33 ms pass a queue is already a 140x anomaly, and
+   * between polls against a ~35 ms pass a queue is already a 140x anomaly, and
    * if the machine ever stalls long enough to build one, the belief wants the
    * freshest fix, not a backlog of stale ones.
    *
