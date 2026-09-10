@@ -2699,6 +2699,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
@@ -2859,6 +2867,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
