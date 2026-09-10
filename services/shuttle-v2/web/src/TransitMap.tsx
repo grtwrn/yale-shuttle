@@ -54,6 +54,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { planningTimeError } from "./planningTime";
 import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -1741,6 +1742,7 @@ const TripPlanner: FC<{
   // instead of the live bus fleet.
   const [tripTime, setTripTime] = useState<string>("");
   const targetDate = tripTime ? new Date(tripTime) : null;
+  const tripTimeError = planningTimeError(tripTime);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
@@ -2050,7 +2052,7 @@ const TripPlanner: FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
   const options: TripOption[] | null = useMemo(() => {
-    if (!stableOptions) return null;
+    if (tripTimeError || !stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -2164,7 +2166,7 @@ const TripPlanner: FC<{
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, tripTimeError, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -3052,6 +3054,9 @@ const TripPlanner: FC<{
             <>
               <input
                 type="datetime-local"
+                aria-label="Departure time"
+                aria-invalid={!!tripTimeError}
+                aria-describedby={tripTimeError ? "trip-time-error" : undefined}
                 value={tripTime}
                 onChange={(e) => setTripTime(e.target.value)}
                 style={{
@@ -3083,6 +3088,11 @@ const TripPlanner: FC<{
               }}>Plan for later…</button>
             </>
           )}
+        </div>
+      )}
+      {tripTimeError && (
+        <div id="trip-time-error" role="alert" style={{ fontSize: 13, color: "#C62828", marginBottom: 10 }}>
+          {tripTimeError}
         </div>
       )}
       {isFuture && targetDate && (
