@@ -53,6 +53,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { RideFinish } from "./RideFinish";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -6290,6 +6291,7 @@ const TransitMap: FC = () => {
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
+  const [finishedRide, setFinishedRide] = useState<BoardedRide | null>(null);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -7079,7 +7081,7 @@ const TransitMap: FC = () => {
           stopCoords={stopCoords}
           routeStops={routeStops}
           segmentTimes={segmentTimes}          dwellTimes={dwellTimes}
-          onEnd={() => setBoardedRide(null)}
+          onEnd={() => { setFinishedRide(boardedRide); setBoardedRide(null); }}
         />
       )}
       {/* Header */}
@@ -7193,6 +7195,10 @@ const TransitMap: FC = () => {
             >✕</button>
           </div>
         </div>
+      )}
+
+      {!boardedRide && finishedRide && (
+        <RideFinish ride={finishedRide} onDismiss={() => setFinishedRide(null)} />
       )}
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
@@ -7394,7 +7400,7 @@ const TransitMap: FC = () => {
           announcements={announcements}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { setBoardedRide(ride); }}
+          onBoard={(ride) => { setFinishedRide(null); setBoardedRide(ride); }}
         />
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored
