@@ -1626,17 +1626,94 @@ describe("a watch that read no countdown", () => {
 });
 
 describe("the standing-bus range", () => {
-  it("is deliberately not scored — a layover has no single arrival", () => {
-    // fmtBusRange's three shapes (web/src/format.ts). Treating either end as
-    // THE countdown would read entering and leaving the range as a lurch of
-    // several minutes and file a report about it. Null = not a sample.
-    expect(parseBusEtaText("🚌 in 3-7 min")).toBeNull();
-    expect(parseBusEtaText("🚌 now-7 min")).toBeNull();
-    expect(parseBusEtaText("🚌 in 3-7, then 19 min")).toBeNull();
+  // REVERSED on 2026-09-09. The block that stood here asserted the range was
+  // deliberately NOT scored, on the reasoning that reading either END of it
+  // would see entering and leaving the range as a lurch of minutes. The first
+  // half of that (a layover has no single arrival) is true; the second is not.
+  // Every reading in this file is already an INTERVAL and `conservativeDrift`
+  // reports the smallest movement two intervals permit, so a wide interval
+  // yields drift 0 — the false lurch the old decision feared cannot occur.
+  //
+  // What the old decision cost: on the morning of 2026-09-09 the canary filed
+  // three clean Red runs while the app billed ~4:45 at 344 Winchester against
+  // real stands of 9:16, 2:20 and 2:15 and the countdown flapped between 1:57
+  // and 3:09. Standing polls were the whole of that window and every one was
+  // dropped on the floor.
+  it("reads a range as the interval it is", () => {
+    expect(parseBusEtaText("🚌 in 3-7 min")).toEqual({
+      first: [180, 480], second: null, raw: "in 3-7 min", spread: true,
+    });
+    expect(parseBusEtaText("🚌 now-7 min").first).toEqual([0, 480]);
+    expect(parseBusEtaText("🚌 in <1-7, then 19 min")).toEqual({
+      first: [10, 480], second: [1140, 1200], raw: "in <1-7, then 19 min", spread: true,
+    });
   });
 
-  it("does not blunt the plain forms", () => {
+  it("marks it, so a before/after over the archive can split on the boundary", () => {
+    expect(parseBusEtaText("🚌 in 3-7 min").spread).toBe(true);
+    expect(parseBusEtaText("🚌 in 3 min").spread).toBe(false);
+  });
+
+  it("cannot manufacture a lurch out of entering or leaving the range", () => {
+    // The old decision's stated fear, tested rather than argued. "in 3 min"
+    // ([180,240)) widening to "in 3-7 min" ([180,480]) is 15 s later: the
+    // intervals overlap everywhere the clock allows, so the drift is zero.
+    const plain = parseBusEtaText("🚌 in 3 min"), range = parseBusEtaText("🚌 in 3-7 min");
+    expect(conservativeDrift(plain.first, range.first, 15)).toBe(0);
+    expect(conservativeDrift(range.first, plain.first, 15)).toBe(0);
+  });
+
+  it("does not blunt the plain forms, or the ride bar", () => {
     expect(parseBusEtaText("🚌 in 3 min")).not.toBeNull();
     expect(parseBusEtaText("🚌 in 3, 19 min")).not.toBeNull();
+    // `🚌 12 min` is the collapsed card's RIDE duration, not a countdown, and
+    // `parseBusEtaText` is the arbiter that keeps the two apart.
+    expect(parseBusEtaText("🚌 12 min")).toBeNull();
+    expect(parseBusEtaText("🚌 3-7 min")).toBeNull();
+  });
+});
+
+describe("flapping", () => {
+  const mk = (lines, stepSec = 15) => lines.map((line, i) => ({
+    present: true, atMs: Date.parse("2026-09-09T13:36:00Z") + i * stepSec * 1000,
+    eta: parseBusEtaText(line),
+  }));
+
+  it("catches the sequence the operator watched on Red, which no jump metric sees", () => {
+    // 09:36:00 4:36, :15 1:57, :30 3:09, :45 3:09, 09:37:00 1:57, :30 2:46 —
+    // two states about 72 s apart, visited alternately. Every consecutive pair
+    // is under `catastrophicSec`, so the jump loop passes it clean.
+    const r = scoreSequence(mk(["🚌 in 4 min", "🚌 in 1 min", "🚌 in 3 min",
+      "🚌 in 3 min", "🚌 in 1 min", "🚌 in 2 min"]));
+    expect(r.catastrophic).toBe(0);
+    expect(r.flapping).toBe(1);
+    expect(r.flaps[0].moves).toBeGreaterThanOrEqual(THRESHOLDS.flapMinMoves);
+    expect(r.flaps[0].leader).toBe(true);
+  });
+
+  it("says nothing about a healthy countdown", () => {
+    const r = scoreSequence(mk(["🚌 in 8 min", "🚌 in 8 min", "🚌 in 7 min",
+      "🚌 in 7 min", "🚌 in 6 min", "🚌 in 6 min"]));
+    expect(r.flapping).toBe(0);
+  });
+
+  it("says nothing about one big move, however large", () => {
+    // A 5 -> 1 on a departure is the app being right, and it must arrive
+    // instantly (operator, 2026-09-03). One move is not an alternation.
+    const r = scoreSequence(mk(["🚌 in 9 min", "🚌 in 9 min", "🚌 in 1 min",
+      "🚌 in 1 min", "🚌 now, then 19 min"]));
+    expect(r.flapping).toBe(0);
+  });
+
+  it("needs the moves to alternate, not merely to be large", () => {
+    const r = scoreSequence(mk(["🚌 in 9 min", "🚌 in 7 min", "🚌 in 5 min",
+      "🚌 in 3 min", "🚌 in 1 min"]));
+    expect(r.flapping).toBe(0);
+  });
+
+  it("does not count a chain that took longer than a rider would stand for it", () => {
+    const slow = scoreSequence(mk(["🚌 in 4 min", "🚌 in 1 min", "🚌 in 3 min",
+      "🚌 in 1 min"], 200));
+    expect(slow.flapping).toBe(0);
   });
 });

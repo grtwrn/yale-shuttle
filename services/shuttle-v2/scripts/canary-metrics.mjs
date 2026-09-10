@@ -50,19 +50,42 @@ export function bucketOf(token) {
  * catch #40 …", "The bus is at your stop …") and returns null, so a warning is
  * never mistaken for a countdown.
  *
- * DELIBERATELY NOT PARSED: the standing-bus RANGE, "🚌 in 3-7 min" /
- * "🚌 now-7 min" / "🚌 in 3-7, then 19 min" (fmtBusRange, web/src/format.ts).
- * A bus mid-layover has no single number to score — that is the whole reason
- * the range exists — and scoring either end would read the switch into and out
- * of the range as a lurch of several minutes and file a report about it. The
- * poll is skipped instead; the lurch metric only ever spans two points.
+ * The standing-bus RANGE is parsed too, as an INTERVAL (`spread: true`):
+ *
+ *   "🚌 now-7 min"           [0 s, 480 s]
+ *   "🚌 in 3-7 min"          [180 s, 480 s]
+ *   "🚌 in <1-7, then 19 min" [10 s, 480 s], second bus 19 min
+ *
+ * It was deliberately UNPARSED until 2026-09-09, on the reasoning that a bus
+ * mid-layover has no single number to score and that reading either END of the
+ * range would see the switch into and out of it as a lurch of minutes. The
+ * first half is true and the second is not: every reading in this file is
+ * ALREADY an interval and `conservativeDrift` reports the smallest movement two
+ * intervals permit, so a wide interval yields drift 0 rather than a false
+ * lurch. Feeding it the true interval is strictly more information and cannot
+ * manufacture a jump — while skipping the poll left the canary blind in exactly
+ * the regime where the defects live. On the morning of 2026-09-09 it reported
+ * three clean Red runs (first-sight miss 0 s / 18 s / 0 s) while the app was
+ * billing ~4:45 at 344 Winchester against real stands of 9:16, 2:20 and 2:15
+ * and the countdown was flapping between 1:57 and 3:09 poll to poll. None of
+ * that is visible if the standing polls are dropped on the floor.
+ *
+ * `readings` therefore counts more polls than it did before 2026-09-09.
+ * `spreadReadings` is how many of them are ranges, so any before/after over
+ * `runs.jsonl` can be split at the boundary rather than compared across it.
  */
 export function parseBusEtaText(line) {
   const t = String(line).replace(/^🚌\s*/u, "").trim();
   const mk = (a, b, raw) => {
     const first = bucketOf(a);
     const second = b == null ? null : bucketOf(b);
-    return first ? { first, second, raw } : null;
+    return first ? { first, second, raw, spread: false } : null;
+  };
+  // A range spans from the low bucket's floor to the high bucket's ceiling.
+  const range = (lo, hi, b, raw) => {
+    const a = bucketOf(lo), z = bucketOf(hi);
+    if (!a || !z || z[1] < a[0]) return null;
+    return { first: [a[0], z[1]], second: b == null ? null : bucketOf(b), raw, spread: true };
   };
   if (t === "arriving now") return mk("now", null, t);
   let m = t.match(/^now, then (<1|\d+)\s*min$/);
@@ -71,6 +94,15 @@ export function parseBusEtaText(line) {
   if (m) return mk(m[1], m[2], t);
   m = t.match(/^in (<1|\d+)\s*min$/);
   if (m) return mk(m[1], null, t);
+  // fmtBusRange: "now-7 min", "in 3-7 min", each optionally ", then N min".
+  m = t.match(/^now-(<1|\d+),\s*then (<1|\d+)\s*min$/);
+  if (m) return range("now", m[1], m[2], t);
+  m = t.match(/^now-(<1|\d+)\s*min$/);
+  if (m) return range("now", m[1], null, t);
+  m = t.match(/^in (<1|\d+)-(<1|\d+),\s*then (<1|\d+)\s*min$/);
+  if (m) return range(m[1], m[2], m[3], t);
+  m = t.match(/^in (<1|\d+)-(<1|\d+)\s*min$/);
+  if (m) return range(m[1], m[2], null, t);
   return null;
 }
 
@@ -156,6 +188,24 @@ export const THRESHOLDS = {
   pinSampleSec: 120,
   /** A UI reading older than this is not comparable to the next one. */
   maxGapSec: 120,
+
+  /**
+   * FLAPPING: the countdown oscillating between two states rather than
+   * counting down. Added 2026-09-09, when the operator watched Red's board
+   * read 4:36, 1:57, 3:09, 3:09, 1:57, 2:46 over ninety seconds — two states
+   * about 72 s apart, visited alternately. Every consecutive pair there is
+   * under `catastrophicSec`, so the jump metric sees nothing; the defect is
+   * only visible in the SHAPE of the run.
+   *
+   * A flap is a maximal run of unexplained drifts whose signs alternate:
+   * at least `flapMinMoves` of them, each at least `flapMinSec`, inside
+   * `flapWindowSec`. The floor is deliberately below `notableReversalSec` —
+   * a rider cannot tell whether to run when the number moves 45 s each way,
+   * however small each move is on its own.
+   */
+  flapMinSec: 45,
+  flapMinMoves: 3,
+  flapWindowSec: 240,
   /**
    * The widest |drift| still read as ONE vehicle's countdown moving, rather
    * than as one bus leaving the list while another joins it. See
@@ -407,6 +457,13 @@ export function parseOptions(bodyText) {
     // arbiter, so there is one place to teach and it cannot half-learn again.
     // It cannot collide with the ride bar ("🚌 12 min"), which has no "in".
     const busLine = body.find((l) => parseBusEtaText(l) !== null);
+    // Every 🚌 line in the card, parsed or not. The countdown is whichever one
+    // `parseBusEtaText` accepts; this is the RECORD of what was on screen when
+    // it accepts none. Without it a parser that has not learned a new wording
+    // leaves no evidence at all: 770 present-but-unparsed samples in the
+    // archive to 2026-09-09 have no text against them, so the standing-range
+    // gap could not be back-tested even after the parser learned the form.
+    const busLines = body.filter((l) => l.startsWith("🚌"));
     const waitLine = body.find((l) => l.startsWith("⏳"));
     const missed = body.map((l) => l.match(/^🚌 You can't catch #(\S+)/)).find(Boolean);
     const walks = body.filter((l) => /^🚶\s*\d+\s*min$/.test(l))
@@ -416,6 +473,7 @@ export function parseOptions(bodyText) {
     // cannot be mistaken for that card's line.
     const label = post.find(isLabelish) ?? pre.find(isLabelish) ?? null;
     cards.push({
+      busLines,
       routeLabel: body.includes("🚶 Walk") ? "Walk" : label,
       mode: body.includes("🚶 Walk") ? "walk" : "shuttle",
       departed: lines[h] === "Departed",
@@ -549,10 +607,19 @@ export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null } 
     prev = s;
   }
   creditCardReprice(transitions);
+  const flaps = scoreFlaps(transitions, thresholds);
+  for (const f of flaps) events.push(f);
   events.sort((a, b) => a.atMs - b.atMs);
   const abs = transitions.map((t) => Math.abs(t.driftSec)).sort((a, b) => a - b);
   return {
     readings: samples.filter((s) => s.present && s.eta).length,
+    // How many of those readings were a standing bus's RANGE. Before
+    // 2026-09-09 the range was unparsed and those polls were dropped, so a
+    // before/after over `runs.jsonl` must split on this rather than compare
+    // `readings` across the boundary.
+    spreadReadings: samples.filter((s) => s.present && s.eta?.spread).length,
+    flaps,
+    flapping: flaps.length,
     transitions,
     reversals: transitions.filter((t) => t.reversal).length,
     notableReversals: transitions.filter((t) => t.notable).length,
@@ -823,6 +890,63 @@ export function pinnedVehicleAt(pins, atMs, tolMs = PIN_TOL_MS) {
     if (d <= tolMs && d < bestD) { best = p; bestD = d; }
   }
   return best ? norm(best.busName) : null;
+}
+
+/**
+ * Flapping: the countdown oscillating between two states instead of counting
+ * down. A DIFFERENT defect from a jump, and invisible to a rule that inspects
+ * consecutive pairs — the operator's 2026-09-09 Red sequence (4:36, 1:57,
+ * 3:09, 3:09, 1:57, 2:46) has no single pair over `catastrophicSec`, yet a
+ * rider watching it cannot tell whether to run.
+ *
+ * A flap is a maximal run of drifts on ONE vehicle whose signs alternate, each
+ * at least `flapMinSec`, at least `flapMinMoves` of them, inside
+ * `flapWindowSec`. Transitions with a real-world event behind them are not
+ * members: a departure is information arriving, and — the reason this is safe
+ * — an event can only make a bus SOONER, so it can never supply the upward
+ * half of an alternation anyway.
+ *
+ * Scored per vehicle slot, because two buses on one row moving independently
+ * is not one number oscillating.
+ */
+export function scoreFlaps(transitions, thresholds = THRESHOLDS) {
+  const out = [];
+  const bySlot = new Map();
+  for (const t of transitions) {
+    if (t.eventful) continue;
+    if (Math.abs(t.driftSec) < thresholds.flapMinSec) continue;
+    const k = t.leader ? "leader" : `slot${t.fromSlot}`;
+    if (!bySlot.has(k)) bySlot.set(k, []);
+    bySlot.get(k).push(t);
+  }
+  for (const [slot, moves] of bySlot) {
+    let run = [];
+    const flush = () => {
+      if (run.length >= thresholds.flapMinMoves) {
+        const span = (run[run.length - 1].atMs - run[0].atMs) / 1000;
+        if (span <= thresholds.flapWindowSec) {
+          out.push({
+            kind: "flap", slot, leader: run[0].leader,
+            atMs: run[0].atMs, endedAtMs: run[run.length - 1].atMs,
+            spanSec: Math.round(span), moves: run.length,
+            swingSec: Math.max(...run.map((t) => Math.abs(t.driftSec))),
+            pinnedBus: run[0].pinnedBus ?? null,
+            shown: [run[0].from, ...run.map((t) => t.to)],
+          });
+        }
+      }
+      run = [];
+    };
+    for (const t of moves) {
+      const last = run[run.length - 1];
+      const alternates = last && Math.sign(t.driftSec) !== Math.sign(last.driftSec);
+      const close = last && (t.atMs - last.atMs) / 1000 <= thresholds.flapWindowSec;
+      if (alternates && close) run.push(t);
+      else { flush(); run = [t]; }
+    }
+    flush();
+  }
+  return out.sort((a, b) => a.atMs - b.atMs);
 }
 
 /**
