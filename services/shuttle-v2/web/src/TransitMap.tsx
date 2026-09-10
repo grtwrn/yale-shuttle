@@ -3768,6 +3768,15 @@ const TripPlanner: FC<{
                 cursor: isExpanded ? "default" : "pointer",
                 opacity: o.departed ? 0.7 : 1,
               }}
+              role={isExpanded ? undefined : "button"}
+              tabIndex={isExpanded ? undefined : 0}
+              aria-label={isExpanded ? undefined : `View ${o.routeLabel} trip details`}
+              onKeyDown={isExpanded ? undefined : (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setExpandedKey(oKey);
+                }
+              }}
               onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
                 {/* The back control lives at the TOP of the details page
                     (above the map) — see the detailOpen bar. */}
