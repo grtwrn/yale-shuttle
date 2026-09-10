@@ -28,7 +28,7 @@ import { noteShown } from "./shownLog";
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
-import { chipCountdownText, standWaitFor } from "./standWait";
+import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -4118,6 +4118,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
+                        const waitText = waitLegText(standCtx, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -4125,8 +4126,8 @@ const TripPlanner: FC<{
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
                               {sep}
                             </>)}
-                            {o.waitSec >= 60 && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>⏳ {fmtWait(o.waitSec)}</span>
+                            {waitText && (<>
+                              <span style={{ whiteSpace: "nowrap" }}>⏳ {waitText}</span>
                               {sep}
                             </>)}
                             <span style={{
