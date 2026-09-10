@@ -74,6 +74,14 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
       html: `<span style="position:absolute;left:50%;transform:translateX(-50%);top:${dy}px;white-space:nowrap">${html}</span>` }),
   }).addTo(map);
 
+  const why = [];
+  if (r.n < 20) why.push(`only ${r.n} observed visits (needs 20)`);
+  if (r.windowCount < 20) why.push(`only ${r.windowCount} of them in one 40 m window (needs 20)`);
+  if (r.windowShare < 0.75) why.push(`the window holds ${Math.round(r.windowShare * 100)}% of the visits that are not short of it (needs 75%)`);
+  if (r.aheadOfWindow > 0.10 * r.n) why.push(`${r.aheadOfWindow} of ${r.n} visits ended PAST the berth — that is the shape a signal beyond the stop makes`);
+  if (Math.abs(r.berthOffM) < 35) why.push(`the berth is only ${Math.abs(r.berthOffM)} m from the sign, inside what the feed's 30 m deadband alone can produce`);
+  if (!r.clearOfRivals && r.rival) why.push(`the berth is ${r.rival.m} m from ${r.rival.name}, a stop the map already draws`);
+
   if (VIEW === "ship") {
     document.querySelector(".legend").innerHTML =
       '<span><i style="background:#fff;border:3px solid #9aa0a6"></i>(published) — the operator\'s coordinate</span>' +
@@ -98,11 +106,14 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
     // extra padding so the stacked labels have room above and below
     map.fitBounds(L.latLngBounds([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]]).pad(1.1), { maxZoom: 18 });
     const dir = r.berthOffM > 0 ? "further along the route" : "back down the route";
-    document.getElementById("card").innerHTML =
-      `<div class="verdict" style="color:${color}">🚏 Wait about ${Math.round(Math.abs(r.berthOffM))} m ${dir}</div>
-       <div class="note" style="margin-top:2px;font-size:13.5px;color:#3c4043">
-       ${LABELS[r.routeId]} buses pull up here, not at the sign — measured on
-       ${r.windowCount} of the last ${r.n - r.behindWindow} times one served this stop.</div>`;
+    document.getElementById("card").innerHTML = r.qualifies
+      ? `<div class="verdict" style="color:${color}">🚏 Wait about ${Math.round(Math.abs(r.berthOffM))} m ${dir}</div>
+         <div class="note" style="margin-top:2px;font-size:13.5px;color:#3c4043">
+         ${LABELS[r.routeId]} buses pull up here, not at the sign — measured on
+         ${r.windowCount} of the last ${r.n - r.behindWindow} times one served this stop.</div>`
+      : `<div class="verdict no">✗ NOT drawn — this is only what the measurement points at</div>
+         <div class="note" style="margin-top:2px;font-size:13.5px;color:#3c4043">
+         ${why.map((w) => "· " + w).join("<br>")}</div>`;
     return;
   }
 
@@ -133,9 +144,12 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
        </table>`
     : `<div class="verdict no">✗ no second dot here</div>
        <table>
-         <tr><td>densest 40 m window holds</td><td>${Math.round(r.windowShare * 100)}%</td></tr>
+         <tr><td>berth the cloud points at</td><td>${r.berthOffM > 0 ? "+" : ""}${r.berthOffM} m</td></tr>
+         <tr><td>densest 40 m window holds</td><td>${r.windowCount} of ${r.n - r.behindWindow} (${Math.round(r.windowShare * 100)}%)</td></tr>
+         <tr><td>ended past the berth</td><td>${r.aheadOfWindow}</td></tr>
          <tr><td>10th–90th percentile spread</td><td>${r.spanM} m</td></tr>
          <tr><td>visits observed</td><td>${r.n}</td></tr>
-       </table>`;
+       </table>
+       <div class="note">${why.map((w) => "· " + w).join("<br>")}</div>`;
 });
 </script>
