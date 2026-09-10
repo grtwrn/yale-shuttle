@@ -417,3 +417,43 @@ countdown is built from.
 And the 30-day row is a warning, not an improvement: a THIRD Red cell appears
 there, which is the day-blocked gate qualifying a cell on thinner evidence —
 the very failure the per-cell bootstrap exists to refuse.
+
+### Is the six-hourly refresh worth taking off the loop? Measured: no, and here is what is
+
+`loadLapFits` is synchronous on the loop that serves `/api/buses`. At boot that
+costs nothing — nothing is being served yet — but `LapFitCache` also refreshes
+every six hours, and that lands in steady state. Measured on production
+2026-09-10 rather than argued:
+
+| | |
+|---|---|
+| steady-state `pollStalenessMs` (40 samples over ~60 s) | min 90, p50 2,500, p90 4,441, max 4,860 ms |
+| poll interval | 5,000 ms |
+| `pollSkipped` / `droppedObservations` | 0 / 0 |
+| `collector.calibrated` `durationMs`, every 5 min | 996, 991, 1,068, 1,057 ms |
+| `loadLapFits` after the `etDay` fix (Pi, 90 d) | 2,435 ms |
+| deploy-to-deploy gap, 39 gaps over three days | p25 0.10 h, **p50 0.28 h**, p75 1.10 h, max 12.8 h |
+| process lifetimes that ever reach the 6 h timer | **3 of 39, 8%** |
+
+Three numbers settle it.
+
+1. **The refresh almost never fires.** The median process lives 17 minutes; only
+   8% of them reach six hours. What actually runs is the BOOT fit, and that is
+   free.
+2. **When it does fire it delays one poll, it does not skip one.** The interval
+   is 5 s and staleness already runs to 4.9 s, so one delayed poll takes a
+   single reading to about 7.3 s and `pollSkipped` stays 0.
+3. **It is not the dominant term and it is not close.** `calibrate` itself
+   stalls the loop **~1.0 s every 5 minutes** — a 0.33% duty cycle — against
+   the fit's 2.4 s every 6 hours at most, 0.011%. **The fit is thirty times
+   less of the loop than the calibration it rides on.** If anything here should
+   be chunked it is `calibrate`, and that is a separate piece of work with a
+   thirty-fold better payoff.
+
+**The defect worth fixing is that none of this was visible.**
+`CalibrationStats.durationMs` times `calibrate()` and EXCLUDES
+`lapFitsCache.get()` — which is precisely where the 21 s lived, in a log line
+that reported 996 ms while the loop had been held for twenty-one seconds. The
+next change here should be to log the fit's own duration and its cell counts
+beside `lapFitCount`, so the cost is legible before it is a problem. Cheap, and
+not done tonight.
