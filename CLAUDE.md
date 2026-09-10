@@ -1247,6 +1247,88 @@ own tables from 2026-09-03) and a store open — the first block is storeless
 and had no way to see any of this. It pins the defect as a fixture (unclamped,
 the board climbs 55 s while the bus stands) as well as the fix.
 
+### The stand at a layover is conditioned on the bus's OWN LAP (2026-09-10)
+
+`web/src/eta/lap.ts` + `src/calibrator/lapFit.ts`, written up in
+`docs/stand-lap-covariate.md`. The seconds from a bus's previous DEPARTURE
+from a stop to its next arrival there predict how long it will stand: a bus
+back early carries slack and discharges it. Fitted per cell over 90 days of
+`arrivals`, the slope is about **-0.5 s of stand per second of lap** (-0.50 at
+344 Winchester, -0.77 at Union Station (N) on Red), and held out it takes the
+stand MAE **127.8 -> 113.5 s** over 39 cells.
+
+Five rules, each of which cost a measurement:
+
+- **A lap is not any gap.** Five overnight or depot gaps in ninety flip the
+  correlation at 344 Winchester from **-0.64 to -0.05**. Outside
+  `[LAP_BAND_LO, LAP_BAND_HI]` the factor is exactly 1.
+- **The band is a multiple of the CELL'S OWN LOOP, never minutes.** An
+  absolute 40-80 min window fits Red's 59.8 min loop and keeps 74 of York /
+  Cedar's 2,376 gaps (loop 40.3 min), flipping its correlation to **+0.478**.
+  0.65-1.65 is the held-out MAE optimum of a flat region (116.1 s against
+  116.6 at 0.60-1.80 and 116.3 at 0.70-1.50); **the correlation keeps rising
+  as the band narrows and the MAE does not** — a tighter band keeps a more
+  linear subset, which is not a better estimate.
+- **Apply it to EVERY stand in the chain, continuously.** A bus's previous
+  departure is known 53-56 min before the stand it predicts, so the client
+  prices `lap = (seconds since it left the stop) + (nominal seconds until it
+  gets back)`; both halves move at a second per second in opposite directions
+  and the factor is near-constant through the approach. **PR #184 read the
+  same covariate in one place — the stop the bus stands at NOW — so the whole
+  correction (median 95 s at Winchester, 138 s at Union Station) landed in one
+  poll: 3 jumps fixed, 43 introduced.** The gain and the lurch were the same
+  number.
+- **It buys STABILITY, not accuracy.** Paired on Red over a held-out day, 1,664
+  waits: strand **11 fixed / 5 introduced**, reversal >= 60 s **43 / 7**,
+  jump >= 180 s 25 / 21, drops and pin untouched, worst drift improved 592 /
+  worsened 101 — and first-promise |miss| improved 254 / worsened 256, a dead
+  wash. **The DANGEROUS tail falls with it**: rider-sim's `early > 60 s` is
+  `firstSightMissSec < -60`, i.e. the bus arrived BEFORE the promised window
+  (predicted > actual — the bus beat the promise, the rider strolls down and it
+  has gone), and it goes **22.6 -> 14.8%**. What rises is the mild half, riders
+  waiting longer than told, 26.8 -> 32.4%. Do not read that pair the other way
+  round; the sign convention is `lib.ts`'s own test, `-339 // promised >= 420
+  s, came after 81`.
+- **A fit is SERVED only where it beats what it replaces, per CELL.**
+  `gateCell` cross-validates inside the cell on day-blocked folds and
+  bootstraps the paired absolute-error difference BY DAY; the cell is served
+  only when the upper end of the one-sided 90% interval is below zero.
+  **66 candidates -> 22 served.** Both cells whose ungated fit was worse than
+  pooled drop out (100 Church Street South +4.5 s, 333 Cedar on Blue Day whose
+  interval crosses zero), and so does 300 George St. Red's two cells pass
+  unchanged. **Do not replace this with a route allowlist** — that is the
+  fragile version, and serving a correction at a cell where it is measurably
+  worse is exactly how the split stand tables took Pink 280 -> 431 strands. The
+  gate is agnostic about the SIGN: three survivors fit a positive slope and are
+  served on evidence, not mechanism.
+- **And served only on a ROUTE whose rider table has been watched.**
+  `LAP_SERVED_ROUTE_IDS` = `{3}` (Red). The cell gate proves the fit beats
+  pooled on held-out stand MAE, which is necessary and NOT sufficient — the
+  split stand tables improved Pink's stand estimate and took it 280 -> 431
+  strands, because an unbiased estimate strands the half of riders whose bus
+  leaves before the median. **A better point estimate can be worse for a
+  rider.** So this is a rollout LEDGER, not a per-route tuning knob: the
+  arithmetic is identical everywhere, and adding an id means running the pair
+  and pasting its numbers beside it (a test fails if an id has no evidence line
+  in the source). 66 candidates -> 22 pass the cell gate -> **2 served**; the
+  20 held back are held for want of rider evidence, not merit, and **333 Cedar
+  on Blue Night (13:10, delta -120.9 s held out) is the largest effect on the
+  network** and the next one to unlock.
+- **The stop's own lap wins; a regulator stop does not.** Swept over every
+  upstream stop at nine cells, the stop's own lap ranks first at eight, and the
+  ninth loses by 0.027 to a stop three minutes upstream on the same run. 333
+  Cedar is not on Red at all.
+
+Wire cost at the rollout-gated set: **+172 B a poll, +0.13%**. At the 22 cells
+the cell gate passes it would be +1,337 B / +0.98%; ungated, +2,770 B / +2.02%.
+
+**Headway — the gap to the bus in front — is measured and NOT served.**
+Conditioned on lap it is real at the regulated cells (partial -0.30 at Union
+Station (N)/13, -0.21 at 344 Winchester over 1,635 stands, 14 of 27 cells with
+a CI excluding zero) and it REVERSES at seven others; the n-weighted mean
+partial is -0.033 and adding it moves the held-out stand MAE by **0.9 s of
+111.8**. Do not re-add it without a cell-level gate.
+
 ### The layover taken SHORT of the marker (2026-09-04)
 
 `at_stop_id` is published only within 75 m of a stop, so a bus that takes its

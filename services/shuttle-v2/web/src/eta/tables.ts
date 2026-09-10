@@ -62,6 +62,7 @@
 import { haversineMeters, type LatLon } from "../geo";
 import { BUS_SPEED_M_S } from "../routes";
 import { cdf, fromQuantiles, lognormalMeanSd, mixture, quantile, shrinkToward, type Dist } from "./dist";
+import { lapFitOf, type LapFit } from "./lap";
 import { DEFAULT_DRIVE_M_S, DEFAULT_P_STOP, type Ring } from "./ring";
 
 /** Shrinkage weight for drives, as in calibrator/shrinkage.ts: the pace prior is the same shape scaled. */
@@ -93,6 +94,8 @@ export interface StopModel {
   pStop: number;
   /** True when a served table (any n) backed this. */
   measured: boolean;
+  /** The cell's lap fit, when it has one (eta/lap.ts). Null everywhere else. */
+  lap: LapFit | null;
 }
 
 export interface HopModel {
@@ -134,7 +137,19 @@ export interface RouteTables {
 }
 
 export interface SegmentLike { avg: number; sd?: number | undefined; n: number; drive?: number | undefined; driveN?: number | undefined; dq?: number[] | undefined; dqn?: number | undefined; spm?: number[] | undefined; spmN?: number | undefined; spmPooled?: boolean | undefined; legM?: number | undefined }
-export interface DwellLike { med: number; n: number; q?: number[] | undefined; qn?: number | undefined; pstop?: number | undefined }
+export interface DwellLike {
+  med: number;
+  n: number;
+  q?: number[] | undefined;
+  qn?: number | undefined;
+  pstop?: number | undefined;
+  /** The lap fit (eta/lap.ts): slope as a fraction of the median stand per second of lap. */
+  lapB?: number | undefined;
+  /** The lap fit's reference lap, seconds. */
+  lapM?: number | undefined;
+  /** Stands the lap fit was taken over. */
+  lapN?: number | undefined;
+}
 
 export const PACE_KEY = "__pace";
 
@@ -189,7 +204,7 @@ export function poolsWithFallback(route: ClassPools, global: ClassPools | undefi
 export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): StopModel {
   const ordinaryPrior = pools.ordinary ?? DEFAULT_STAND;
   if (!dwell || !ascending(dwell.q)) {
-    return { stand: ordinaryPrior, layover: false, pStop: DEFAULT_P_STOP, measured: false };
+    return { stand: ordinaryPrior, layover: false, pStop: DEFAULT_P_STOP, measured: false, lap: null };
   }
   const n = Math.max(0, dwell.qn ?? dwell.n);
   const emp = fromQuantiles(dwell.q);
@@ -199,7 +214,7 @@ export function stopModel(dwell: DwellLike | undefined, pools: ClassPools): Stop
   const pStop = dwell.pstop !== undefined && Number.isFinite(dwell.pstop)
     ? Math.min(1, Math.max(0, dwell.pstop))
     : 1 - cdf(stand, 0);
-  return { stand, layover: quantile(stand, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true };
+  return { stand, layover: quantile(stand, 0.5) >= LAYOVER_MIN_SEC, pStop, measured: true, lap: lapFitOf(dwell) };
 }
 
 export function hopModel(seg: SegmentLike | undefined, roadM: number, pace: readonly number[] | undefined): HopModel {

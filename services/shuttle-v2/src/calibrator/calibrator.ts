@@ -10,6 +10,7 @@ import type {
 } from "../network/TransitNetwork.js";
 
 import { median, percentile, shrink } from "./shrinkage.js";
+import type { LapFit } from "./lapFit.js";
 
 // Tuning ---------------------------------------------------------------------
 
@@ -110,6 +111,8 @@ export interface CalibrationStats {
   pooledPaceMedianSpm: number | null;
   /** Per-pass stand tables (`"<stop>#<index>"`) on routes that repeat a stop. */
   occurrenceStandCount: number;
+  /** Cells carrying a lap fit (`lapB`). */
+  lapFitCount: number;
   /** Stopped visits + one-hop legs behind them. */
   splitSampleCount: number;
   durationMs: number;
@@ -124,6 +127,8 @@ export function calibrate(
   db: DB,
   network: TransitNetwork,
   now: Date = new Date(),
+  /** The lap fits (src/calibrator/lapFit.ts), refreshed on their own slow cadence by the caller. */
+  lapFits: ReadonlyMap<string, LapFit> = new Map(),
 ): CalibrationStats {
   const t0 = Date.now();
   const nowMs = now.getTime();
@@ -152,6 +157,7 @@ export function calibrate(
     loadStandOccurrenceGroups(db, SPLIT_WINDOW_DAYS, nowMs),
     loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
   );
+  const lapFitCount = attachLapFits(dwellStats, lapFits);
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
   const ownPace = computePace(legGroups, network);
@@ -176,6 +182,7 @@ export function calibrate(
     pooledPaceN: pooledPace ? pooledPace.n : 0,
     pooledPaceMedianSpm: pooledPace ? Math.round(pooledPace.spm[pooledPace.spm.length >> 1]! * 1e4) / 1e4 : null,
     occurrenceStandCount,
+    lapFitCount,
     splitSampleCount: countSamples(standGroups) + countSamples(driveGroups),
     durationMs: Date.now() - t0,
   };
@@ -603,6 +610,27 @@ export function splitWithheldRoutes(network: TransitNetwork): ReadonlySet<number
 }
 
 const routeOf = (key: string): number => Number(key.slice(0, key.indexOf(":")));
+
+/**
+ * Put the lap fit on every cell that has one. Keyed exactly like the dwell
+ * table (`"<route>:<stop>"`), so a per-PASS entry inherits nothing — the fit
+ * is pooled over the stop, which is what `computeLapFits` measured.
+ */
+export function attachLapFits(
+  dwells: Map<string, DwellStats>,
+  fits: ReadonlyMap<string, LapFit>,
+): number {
+  let count = 0;
+  for (const [key, f] of fits) {
+    const cur = dwells.get(key);
+    // Only a cell that already has a table: the fit SCALES a table, so on its
+    // own it would scale the class prior, which was never measured here.
+    if (!cur || cur.q === undefined) continue;
+    dwells.set(key, { ...cur, lapB: f.b, lapM: f.m, lapN: f.n });
+    count++;
+  }
+  return count;
+}
 
 /**
  * Put a stand table on every stop that has one. A stop with visits but no
