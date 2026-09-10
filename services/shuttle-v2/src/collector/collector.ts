@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { LapFitCache } from "../calibrator/lapFit.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
   arrivals,
@@ -49,6 +50,13 @@ import {
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
 import { UpstreamEtaPoller } from "./upstreamEta.js";
 import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, MIN_INTERVAL_MS as ETA_SAMPLE_MIN_MS, UpstreamEtaSampler } from "./upstreamEtaSampler.js";
+
+/**
+ * How long a departure stays on the lap clock. The correction is off outside
+ * 1.65 x a cell's loop (`LAP_BAND_HI`), and the longest loop on the network is
+ * an hour, so anything past two is already ignored — this only bounds memory.
+ */
+const LAP_CLOCK_TTL_MS = 2 * 60 * 60 * 1000;
 
 // Cadences --------------------------------------------------------------------
 
@@ -1180,9 +1188,51 @@ export class Collector {
     this.version++;
   }
 
+  /**
+   * When each bus last DEPARTED each stop — the lap covariate's clock
+   * (src/calibrator/lapFit.ts). Keyed by bus NAME, the identity invariant:
+   * upstream reissues `bus_id` per service block, and a lap that spans a
+   * reissue is exactly the lap this exists to measure. Fed by the detector's
+   * own dwell events, so nothing queries on the request path; entries older
+   * than {@link LAP_CLOCK_TTL_MS} are dropped, since a gap that long is past
+   * every cell's band and would be ignored anyway.
+   */
+  private readonly lapClock = new Map<string, Map<number, number>>();
+  private lapFitsCache: LapFitCache | null = null;
+
+  /** Seconds since this bus last departed each stop it has a record for. */
+  lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
+    const m = this.lapClock.get(busName);
+    if (!m || m.size === 0) return undefined;
+    const out: Record<string, number> = {};
+    let any = false;
+    for (const [stopId, at] of m) {
+      const age = Math.round((nowMs - at) / 1000);
+      if (age < 0 || age * 1000 > LAP_CLOCK_TTL_MS) continue;
+      out[String(stopId)] = age;
+      any = true;
+    }
+    return any ? out : undefined;
+  }
+
+  private noteDeparture(busName: string, stopId: number, leftAt: number): void {
+    let m = this.lapClock.get(busName);
+    if (!m) this.lapClock.set(busName, (m = new Map()));
+    m.set(stopId, leftAt);
+    if (this.lapClock.size > 400) {
+      // A fleet is ~50 names; anything past this is dead ids accumulating.
+      for (const [k, v] of this.lapClock) {
+        let live = false;
+        for (const at of v.values()) if (leftAt - at <= LAP_CLOCK_TTL_MS) { live = true; break; }
+        if (!live) this.lapClock.delete(k);
+      }
+    }
+  }
+
   private runCalibrate(): void {
     try {
-      const stats = calibrate(this.db, this.ref.get());
+      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+      const stats = calibrate(this.db, this.ref.get(), new Date(), this.lapFitsCache.get());
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
@@ -1655,6 +1705,7 @@ export class Collector {
 
     for (const e of events) {
       if (e.kind !== "dwell") continue;
+      this.noteDeparture(e.busName, e.stopId, e.leftAt);
       this.patchDwellStmt.run({
         leftAt: e.leftAt,
         dwellSec: e.dwellSec,

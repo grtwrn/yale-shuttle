@@ -63,6 +63,15 @@ export interface BusData {
    * "now". See `stillSec()` in eta/filter.ts.
    */
   last_moved_at?: string;
+  /**
+   * Seconds since this bus last DEPARTED each stop that carries a lap fit,
+   * keyed by stop id — the covariate the stand at a regulated layover turns
+   * on (eta/lap.ts). The client cannot compute it: it sees only live
+   * positions, and the previous departure lives in the server's
+   * `stop_visits`. Absent from a server older than 2026-09-10, and then every
+   * stand prices exactly as before.
+   */
+  lap?: Record<string, number>;
 }
 
 // ── Stations ───────────────────────────────────────────────────────────────

@@ -350,9 +350,27 @@ const detArrivals = new Map<string, number[]>();
 
 type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null };
 
+/**
+ * The stops that carry a lap fit in the payload patch — the only ones
+ * `buses[].lap` has to name. The server derives this from `stop_visits`; here
+ * the replayed detector's own departures do, which is causal by construction
+ * (a departure is known only once it has been observed).
+ */
+const LAP_STOPS = new Set<number>();
+for (const byKey of Object.values(patch?.dwells ?? {})) {
+  for (const [k, fields] of Object.entries(byKey)) {
+    if ((fields as Record<string, unknown>).lapB === undefined) continue;
+    const id = Number(k.split("#")[0]);
+    if (Number.isFinite(id)) LAP_STOPS.add(id);
+  }
+}
+if (LAP_STOPS.size) log(`lap ages served for ${LAP_STOPS.size} stops: ${[...LAP_STOPS].join(",")}`);
+
 function makeFeed() {
   const states = new Map<string, import("../../../src/collector/detector.js").BusState>();
   const livePositions = new Map<string, LivePos>();
+  /** bus NAME (the identity invariant) -> stop -> when it last departed. */
+  const lastDep = new Map<string, Map<number, number>>();
   return {
     /** Run one poll through the detector and the collector's at-stop rule; return the payload as the client sees it. */
     step(poll: PosRow[], record: boolean): BusData[] {
@@ -376,8 +394,13 @@ function makeFeed() {
         const cand = st && dwellingForMs >= AT_STOP_MIN_DWELL_MS ? net.stopById.get(st.nearestStopId) : undefined;
         const at = st && cand && distanceMeters(o, cand) <= AT_STOP_MAX_M ? { id: st.nearestStopId, since: st.stationarySince } : null;
         const prev = livePositions.get(key);
-        if (record && prev && prev.atStopId !== null && at === null) {
-          departEvents.push({ t, busName: o.busName, routeId: o.routeId, stopId: prev.atStopId, stoodMs: prev.atStopSince !== null ? t - prev.atStopSince : 0, since: prev.atStopSince });
+        if (prev && prev.atStopId !== null && at === null) {
+          if (record) departEvents.push({ t, busName: o.busName, routeId: o.routeId, stopId: prev.atStopId, stoodMs: prev.atStopSince !== null ? t - prev.atStopSince : 0, since: prev.atStopSince });
+          if (LAP_STOPS.has(prev.atStopId)) {
+            let m = lastDep.get(o.busName);
+            if (!m) lastDep.set(o.busName, (m = new Map()));
+            m.set(prev.atStopId, t);
+          }
         }
         livePositions.set(key, {
           o,
@@ -393,8 +416,16 @@ function makeFeed() {
         });
       }
       for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
+      const lapOf = (busName: string): Record<string, number> | undefined => {
+        const m = lastDep.get(busName);
+        if (!m || !m.size) return undefined;
+        const out: Record<string, number> = {};
+        for (const [sid, dep] of m) out[String(sid)] = Math.max(0, Math.round((t - dep) / 1000));
+        return out;
+      };
       const all: BusData[] = [...livePositions.values()].map((v) => ({
         bus_id: v.o.busId, bus_name: v.o.busName, route_id: v.o.routeId, lat: v.o.lat, lon: v.o.lon, heading: v.o.heading,
+        ...(lapOf(v.o.busName) ? { lap: lapOf(v.o.busName) } : {}),
         last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
         ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
         ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),

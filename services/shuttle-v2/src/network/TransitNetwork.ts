@@ -156,6 +156,18 @@ export interface DwellStats {
    * counts every pass. Absent wherever `q` is.
    */
   pstop?: number;
+  /**
+   * The lap fit for this cell (src/calibrator/lapFit.ts, web/src/eta/lap.ts):
+   * how much longer this stop's stand runs when the bus comes back EARLY.
+   * `lapB` is seconds of stand per second of lap AS A FRACTION of the cell's
+   * own median — a relative sensitivity, not a number of seconds — `lapM` is
+   * the reference lap it pivots on, and `lapN` is an effective count carrying
+   * the shrinkage. All three or none; absent on every cell with no fit, and
+   * then the client prices exactly as it did before.
+   */
+  lapB?: number;
+  lapM?: number;
+  lapN?: number;
 }
 
 export interface WalkTransfer {

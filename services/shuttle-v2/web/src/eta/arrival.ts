@@ -34,7 +34,8 @@
  * the moment the lead situation is no longer standing at that stop.
  */
 
-import { quantile, residual, type Dist } from "./dist";
+import { quantile, residual, residualMedian, type Dist } from "./dist";
+import { lapAt, lapFactor } from "./lap";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
 import type { Ring } from "./ring";
@@ -150,14 +151,24 @@ function residualDraws(d: Dist, r: number, term: number): Float64Array {
   return out;
 }
 
-function addResidual(samples: Float64Array, d: Dist, r: number, term: number): void {
-  const draws = residualDraws(d, r, term);
-  for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
+function addResidual(samples: Float64Array, d: Dist, r: number, term: number, f = 1): void {
+  // A stand scaled by f is the variable f x X, so its residual given r seconds
+  // already stood is f x (X's residual given r / f) — exactly, with no new
+  // distribution to build and no new entry in the draw cache.
+  if (f === 1) {
+    const draws = residualDraws(d, r, term);
+    for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
+    return;
+  }
+  const draws = residualDraws(d, r / f, term);
+  for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]! * f;
 }
 
 // -- the route's chain, precomputed -------------------------------------------
 
 function chainKey(stopIdx: number, occ: number): number { return stopIdx * MAX_OCCURRENCES + occ; }
+
+// -- the route's chain, precomputed -------------------------------------------
 
 /**
  * The K-sample prefix sums of (S_s + D_s) along the ring, three laps deep, so
@@ -169,7 +180,13 @@ function chainKey(stopIdx: number, occ: number): number { return stopIdx * MAX_O
  * per rider per poll — the first version summed every hop for every rider
  * and cost a second per poll on the simulator.
  */
-interface ChainPrefix { prefix: Float64Array[] }
+interface ChainPrefix {
+  prefix: Float64Array[];
+  /** Median of each ring position's stand term (0 where the hop already holds it) and drive term.
+   *  Scalars, for the cheap nominal walk that decides each stand's LAP (lap.ts). */
+  nomStand: Float64Array;
+  nomDrive: Float64Array;
+}
 const prefixCache = new WeakMap<RouteTables, ChainPrefix>();
 
 function chainPrefix(tables: RouteTables): ChainPrefix {
@@ -177,6 +194,13 @@ function chainPrefix(tables: RouteTables): ChainPrefix {
   if (hit) return hit;
   const N = tables.hops.length;
   const prefix: Float64Array[] = [new Float64Array(K)];
+  const nomStand = new Float64Array(N);
+  const nomDrive = new Float64Array(N);
+  for (let s = 0; s < N; s++) {
+    const hop = tables.hops[s]!;
+    nomStand[s] = hop.includesStand ? 0 : quantile(tables.stops[s]!.stand, 0.5);
+    nomDrive[s] = quantile(hop.drive, 0.5);
+  }
   for (let k = 0; k < 3 * N; k++) {
     const s = k % N;
     const acc = Float64Array.from(prefix[k]!);
@@ -185,9 +209,129 @@ function chainPrefix(tables: RouteTables): ChainPrefix {
     addTerm(acc, hop.drive, 2 * s + 1);
     prefix.push(acc);
   }
-  const out = { prefix };
+  const out = { prefix, nomStand, nomDrive };
   prefixCache.set(tables, out);
   return out;
+}
+
+// -- the lap correction (lap.ts), applied to EVERY stand in the chain ---------
+
+/**
+ * Seconds since this bus last DEPARTED each stop, as the payload serves it
+ * (`buses[].lap`, from the server's `stop_visits`). Keyed by stop id.
+ */
+export type LapAges = Readonly<Record<number, number>>;
+
+/**
+ * The per-bus stand scaling for this poll, as a sparse correction to the
+ * shared prefix sums.
+ *
+ * Scaling a stand by f multiplies its quantile function by f, so the draws of
+ * the scaled table under a fixed permutation are exactly f x the draws of the
+ * unscaled one: a corrected chain is the shared chain plus a running sum of
+ * `(f - 1) x standDraws`, and nothing has to be rebuilt per bus. `cum[i]` is
+ * that running sum up to breakpoint `bounds[i]`; between breakpoints it does
+ * not change, and with at most a handful of lap-fitted stops on a route there
+ * are at most a handful of breakpoints.
+ */
+interface LapCorrection {
+  /** Ascending absolute prefix positions at which a correction is added. */
+  bounds: number[];
+  /** cum[i] = the summed delta of every correction at a position < bounds[i]; cum[0] is zero. */
+  cum: Float64Array[];
+  /**
+   * Per ring index: the factor on a stand ALREADY IN PROGRESS there
+   * (startChain's residual). 1 everywhere the cell has no fit or the bus has
+   * no lap. Kept per index rather than per lead because the mixture prices a
+   * standing variant and a moving one on the same leg, and only one of them
+   * is the lead.
+   */
+  fStand: Float64Array;
+  /** Any of `fStand` differs from 1. */
+  anyStand: boolean;
+}
+
+const ZERO = new Float64Array(K);
+
+function accAt(c: LapCorrection | null, k: number): Float64Array {
+  if (!c) return ZERO;
+  let i = 0;
+  while (i < c.bounds.length && c.bounds[i]! < k) i++;
+  return c.cum[i]!;
+}
+
+/**
+ * Walk the ring from the lead's leg, pricing each stand's LAP as "however
+ * long ago this bus left that stop, plus however long it is from getting back"
+ * — the nominal medians, which cost one scalar per hop. Both halves move at
+ * about one second per second in opposite directions, so the lap a stop is
+ * priced under is near-constant as the bus approaches it, and the correction
+ * does not step when the bus arrives. That is the whole difference from PR
+ * #184, which read the covariate once, at the stop the bus already stood at.
+ */
+function lapCorrection(
+  tables: RouteTables, pre: ChainPrefix, stops: readonly number[], ages: LapAges,
+  leadLeg: number, standingAt: number, frac: number, r: number,
+): LapCorrection | null {
+  const N = tables.hops.length;
+  // A stand already in progress: its lap ENDED when the bus arrived, r seconds
+  // ago. Reading `age` alone would let the lap grow while the bus sits and
+  // shrink its own predicted stand poll by poll.
+  const fStand = new Float64Array(N).fill(1);
+  let anyStand = false;
+  for (let i = 0; i < N; i++) {
+    const fit = tables.stops[i]!.lap;
+    if (!fit) continue;
+    const age = ages[stops[i]!];
+    if (age === undefined || !Number.isFinite(age)) continue;
+    const f = lapFactor(fit, age - r);
+    if (f !== 1) { fStand[i] = f; anyStand = true; }
+  }
+  const bounds: number[] = [];
+  const cum: Float64Array[] = [ZERO];
+  let acc: Float64Array | null = null;
+  // The nominal walk. `t` is seconds from now to the stop reached at this
+  // offset; `depT[s]` is when the bus is nominally due to LEAVE ring index s,
+  // which is what the NEXT visit's lap is measured from — `age` only answers
+  // for the first visit, because the departure it counts from is about to be
+  // superseded by this lap's own.
+  const depT = new Float64Array(N).fill(NaN);
+  let t: number;
+  if (standingAt >= 0) {
+    const f0 = fStand[standingAt]!;
+    const rem = tables.hops[standingAt]!.includesStand ? 0
+      : f0 * residualMedian(tables.stops[standingAt]!.stand, r / f0);
+    depT[standingAt] = rem;
+    t = rem + pre.nomDrive[standingAt]!;
+  } else {
+    t = pre.nomDrive[leadLeg]! * Math.max(0, 1 - frac);
+  }
+  for (let h = 1; h <= 3 * N - 1; h++) {
+    const k = leadLeg + h;
+    if (k >= 3 * N) break;
+    const s = k % N;
+    const hop = tables.hops[s]!;
+    const model = tables.stops[s]!;
+    let f = 1;
+    if (!hop.includesStand && model.lap) {
+      const prevDep = depT[s]!;
+      const lap = Number.isFinite(prevDep) ? t - prevDep : lapAt(ages[stops[s]!], t);
+      f = lapFactor(model.lap, lap);
+    }
+    if (f !== 1) {
+      const draws = termDraws(model.stand, 2 * s);
+      const next: Float64Array = acc ? Float64Array.from(acc) : new Float64Array(K);
+      for (let i = 0; i < K; i++) next[i] = next[i]! + draws[i]! * (f - 1);
+      acc = next;
+      bounds.push(k);
+      cum.push(next);
+    }
+    const standSec = hop.includesStand ? 0 : pre.nomStand[s]! * f;
+    depT[s] = t + standSec;
+    t += standSec + pre.nomDrive[s]!;
+  }
+  if (!bounds.length && !anyStand) return null;
+  return { bounds, cum, fStand, anyStand };
 }
 
 // -- one situation's chain ----------------------------------------------------
@@ -203,7 +347,7 @@ interface Chain {
   standingAt: number;
 }
 
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
@@ -225,7 +369,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     leg = j;
     const hop = tables.hops[j]!;
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
-    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j);
+    if (!hop.includesStand) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
   } else if (sit.standing && sit.zoneStop < 0 && tables.hops[leg]!.hidden) {
@@ -252,10 +396,15 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
 }
 
 /** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
-function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array): void {
+function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: LapCorrection | null): void {
   const a = pre.prefix[c.leg + h]!, b = pre.prefix[c.leg + 1]!;
   const s = c.start;
-  for (let k = 0; k < K; k++) out[k] = s[k]! + a[k]! - b[k]!;
+  if (!lap || !lap.bounds.length) {
+    for (let k = 0; k < K; k++) out[k] = s[k]! + a[k]! - b[k]!;
+    return;
+  }
+  const da = accAt(lap, c.leg + h), db = accAt(lap, c.leg + 1);
+  for (let k = 0; k < K; k++) out[k] = s[k]! + a[k]! - b[k]! + da[k]! - db[k]!;
 }
 
 // -- mixing and the clamp -----------------------------------------------------
@@ -315,6 +464,8 @@ export function priceRoute(
   now: number,
   tau: number,
   floors?: Floors,
+  /** Seconds since this bus last departed each stop (`buses[].lap`); the lap correction is off without it. */
+  lapAges?: LapAges | undefined,
 ): StopArrival[] {
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
@@ -322,9 +473,19 @@ export function priceRoute(
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
-  const chains = sits.map((s) => startChain(s, tables, r, restStop, N));
-  // The lead chain: the heaviest situation on the lead leg (chains are in mass order).
-  const lead = chains.find((c) => c.sit.leg === belief.lead) ?? chains[0]!;
+  // The lead chain is found first WITHOUT the lap correction, because the
+  // correction is a walk forward from the lead's own leg; then every chain is
+  // built again with it. `startChain` is scalar work, so the second pass costs
+  // nothing measurable, and with no lap fit or no served ages the second pass
+  // IS the first — `lapCorrection` returns null and every draw is unchanged.
+  const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === belief.lead) ?? cs[0]!;
+  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null));
+  const lead0 = pick(plain);
+  const lap = lapAges && tables.stops.some((st) => st.lap)
+    ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r)
+    : null;
+  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
+  const lead = pick(chains);
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
@@ -361,7 +522,7 @@ export function priceRoute(
     occ.set(cur, o + 1);
     const sid = stops[cur]!;
     if (!targetStopIds.has(sid)) continue;
-    chainAt(lead, pre, h, leadBuf);
+    chainAt(lead, pre, h, leadBuf, lap);
     leadBuf.sort();
     const leadMedian = leadBuf[K >> 1]!;
     if (leadMedian > MAX_ETA_SEC) break;
@@ -376,7 +537,7 @@ export function priceRoute(
       const first = ((cur - c.leg) % N + N) % N || N;
       const hc = first + o * N;
       if (hc > 2 * N) continue;
-      chainAt(c, pre, hc, bufs[i]!);
+      chainAt(c, pre, hc, bufs[i]!, lap);
       bufs[i]!.sort();
       all.push({ s: bufs[i]!, w: c.sit.mass });
       // The lead cluster is the lead LEG: its standing and moving variants

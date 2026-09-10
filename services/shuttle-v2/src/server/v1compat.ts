@@ -56,7 +56,18 @@ export type SegmentEntry = {
  * `med`/`sd`/`n` are that pass's stand summary (median, p90 − median, count)
  * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
  */
-export type DwellEntry = { med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number };
+export type DwellEntry = {
+  med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number;
+  /**
+   * The lap fit (src/calibrator/lapFit.ts, web/src/eta/lap.ts). `lapB` is a
+   * FRACTION of this cell's own median stand per second of lap, so it scales
+   * whatever table `q` holds; `lapM` is the reference lap in seconds and
+   * `lapN` an effective count carrying the shrinkage. All three or none, and
+   * absent wherever the cell has no fit — a client that ignores them, or a
+   * payload without them, prices every stand exactly as before.
+   */
+  lapB?: number; lapM?: number; lapN?: number;
+};
 /**
  * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
  * quantiles at (i + 0.5) / spm.length, 4 decimals. `pooled: true` when the
@@ -93,6 +104,12 @@ export function legMetersField(net: TransitNetwork, routeId: number, fromStopId:
 }
 
 /** The split fields of one stop, as they go on the wire (see {@link segmentSplitFields}). */
+/** The lap fit, all three fields or none. */
+export function dwellLapFields(d: DwellStats): Pick<DwellEntry, "lapB" | "lapM" | "lapN"> {
+  if (d.lapB === undefined || d.lapM === undefined || d.lapN === undefined) return {};
+  return { lapB: d.lapB, lapM: d.lapM, lapN: d.lapN };
+}
+
 export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop"> {
   return {
     // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
@@ -133,11 +150,40 @@ export function paceCarrier(p: PaceEntry): SegmentEntry {
 
 // -- /api/buses ---------------------------------------------------------------
 
+/**
+ * `lap` for one bus: the ages the collector's clock holds, narrowed to stops
+ * its own route has a fit for. Empty — the field absent — for every bus on a
+ * route with no fitted cell, and for a bus the clock has not seen depart yet
+ * (a fresh process, a bus just come on).
+ */
+function lapField(
+  collector: Collector,
+  net: TransitNetwork,
+  b: { busName: string; routeId: number },
+  nowMs: number,
+): { lap?: Record<string, number> } {
+  const ages = collector.lapAges(b.busName, nowMs);
+  if (!ages) return {};
+  const route = net.routes.get(b.routeId);
+  if (!route) return {};
+  const out: Record<string, number> = {};
+  let any = false;
+  for (const sid of new Set(route.stops)) {
+    const age = ages[String(sid)];
+    if (age === undefined) continue;
+    if (net.getDwellStats(b.routeId, sid).lapB === undefined) continue;
+    out[String(sid)] = age;
+    any = true;
+  }
+  return any ? { lap: out } : {};
+}
+
 export function buildBusesPayload(
   collector: Collector,
   modelParams?: ModelParamsSource | null,
 ): Record<string, unknown> {
   const net = collector.ref.get();
+  const nowMs = Date.now();
   const live = collector.getLiveBuses();
   const mp = modelParams?.wire() ?? null;
   // Geometry derived from where buses actually drove, best-so-far per route.
@@ -184,6 +230,12 @@ export function buildBusesPayload(
     ...(b.lastMovedAt != null
       ? { last_moved_at: new Date(b.lastMovedAt).toISOString().replace(/Z$/, "") }
       : {}),
+    // Seconds since this bus last DEPARTED each stop on its route that carries
+    // a lap fit — the covariate the stand at a regulated layover turns on
+    // (web/src/eta/lap.ts). The client cannot compute it: it sees only live
+    // positions, and the previous departure lives in `stop_visits`. Only
+    // fitted stops are named, so this is a couple of numbers a bus.
+    ...lapField(collector, net, b, nowMs),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".
@@ -267,6 +319,7 @@ export function buildBusesPayload(
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
         ...dwellSplitFields(d),
+        ...dwellLapFields(d),
       };
     }
     // A stop the route lists more than once (the West Campus out-and-backs)

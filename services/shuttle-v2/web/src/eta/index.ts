@@ -87,6 +87,25 @@ function chordPath(stops: readonly number[], stopCoords: Record<number, LatLon>)
   return pts;
 }
 
+/**
+ * `buses[].lap` as the estimator wants it: numeric stop ids, seconds, and
+ * nothing that is not a finite non-negative number. Undefined when the server
+ * serves none, which is what turns the whole correction off.
+ */
+function lapAgesOf(bus: BusData): Record<number, number> | undefined {
+  const raw = bus.lap;
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<number, number> = {};
+  let any = false;
+  for (const k in raw) {
+    const id = Number(k), v = raw[k];
+    if (!Number.isFinite(id) || typeof v !== "number" || !Number.isFinite(v) || v < 0) continue;
+    out[id] = v;
+    any = true;
+  }
+  return any ? out : undefined;
+}
+
 function entryFor(store: AnchorStore, key: string): ModelEntry {
   let e = store.get(key);
   if (!e) {
@@ -145,7 +164,7 @@ export function arrivalsForBus(
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors);
+  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus));
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
@@ -162,6 +181,9 @@ function mixInto(h: number, routeDwells: Record<string, DwellLike>): number {
     for (let i = 0; i < k.length; i++) mix(k.charCodeAt(i));
     mix(d.qn ?? d.n);
     mix(Math.round((d.pstop ?? -1) * 1000));
+    mix(Math.round((d.lapB ?? 0) * 1e7));
+    mix(Math.round(d.lapM ?? -1));
+    mix(d.lapN ?? -1);
     if (d.q) for (const x of d.q) mix(Math.round(x));
   }
   return h;
