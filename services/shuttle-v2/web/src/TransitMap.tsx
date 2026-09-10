@@ -28,7 +28,7 @@ import { noteShown } from "./shownLog";
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
-import { standWaitFor } from "./standWait";
+import { chipCountdownText, standWaitFor } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -3418,6 +3418,20 @@ const TripPlanner: FC<{
                 normBus(b.bus_name) === normBus(o.busName) &&
                 cfg.busRouteIds.includes(b.route_id)
               );
+              // The stand the lead bus is in — the same resolver, the same
+              // tables and the same clock the row below uses, so the chip and
+              // the row cannot disagree about a bus they are both describing.
+              const standView = o.departed || !busMatch
+                ? null
+                : standWaitFor(
+                    resolveStandingStop(
+                      busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                    ),
+                    dwellTimes?.[cfg.routeIds[0]] ?? {},
+                    dwellTimes ?? undefined,
+                    remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                    o.boardStopId,
+                  );
               const passedMatch = o.missedBus
                 ? buses.find((b) =>
                     isBusOnRoute(b, allStops, stopCoords) &&
@@ -3462,7 +3476,19 @@ const TripPlanner: FC<{
                 // waitSec clamps at 0 when the bus beats the rider there, so
                 // the sum froze at the walk time — report #48. Rider steps
                 // off at total minus the trailing walk.
-                boardEta: o.departed ? null : fmtMin(
+                // The SAME answer the card's countdown gives, in the chip's
+                // shorter words. It used to be `fmtMin` of the point number
+                // alone, so a bus mid-layover read `<1-9 min` on its row and a
+                // definitive `1 min` on the map (operator, 2026-09-10). That
+                // point is the median of a standing bus's departure
+                // distribution — it legitimately moves while the bus sits,
+                // which is why the card stopped showing one — and the chip was
+                // watched going 5 -> 1 -> 2 min with nothing happening.
+                // `chipCountdownText` picks the range when there is one and
+                // deliberately does not decay it by wall clock; the point
+                // number still is, for report #48's reason.
+                boardEta: o.departed ? null : chipCountdownText(
+                  standView,
                   remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),

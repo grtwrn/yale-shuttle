@@ -47,7 +47,7 @@
 // table, through the same pools, at the same clock the countdown is billed
 // under (arrivals.ts). Nothing here estimates anything; it decides wording.
 
-import { fmtMin } from "./format";
+import { fmtBusRange, fmtMin } from "./format";
 import { shownStandSec, type DwellStat, type DwellTimes, type ShownStand } from "./arrivals";
 
 /**
@@ -136,6 +136,12 @@ export function standLeftText(soonSec: number, lateSec: number): string {
   // spelled as a duration is "<1".
   const low = fmtMin(soonSec).replace(/^now$/, "<1 min");
   if (low === high) return `~${high} left`;
+  // "<1-1 min left" is not a range, it is two spellings of about a minute
+  // (operator, 2026-09-10: "reads a little funny"). It is the one adjacent
+  // pair that breaks, because the two tokens differ only by the "<" — every
+  // other neighbouring pair reads correctly ("3-4 min left"). Both ends are
+  // inside two minutes here, so the existing collapse is the honest wording.
+  if (low === "<1 min" && high === "1 min") return "~1 min left";
   return `${bare(low)}-${high} left`;
 }
 
@@ -219,4 +225,38 @@ export function standWaitFor(
     etaSec,
     atBoardStop: standing.stopId === boardStopId,
   });
+}
+
+/**
+ * The countdown for the MAP's board chip — the same answer as the card's, in
+ * the map's shorter vocabulary.
+ *
+ * The chip and the card are the same quantity at the same instant: the lead
+ * bus's arrival at the board stop, one drawn at the stop and one on the row.
+ * Until 2026-09-10 only the card knew about the standing range, so a bus
+ * mid-layover got `<1-9 min` on the row and a bare `1 min` on the map (the
+ * operator: "its a little weird showing a definitive answer in map and a range
+ * in the stop list"). The point number is the MEDIAN of a standing bus's
+ * departure distribution, which legitimately moves while the bus sits — that
+ * is the whole reason the card stopped showing one — so the chip was observed
+ * going 5 -> 1 -> 2 min while nothing happened.
+ *
+ * The map's chip says "4 min", not "in 4 min", so the head word is dropped;
+ * everything else is `fmtBusRange`, one formatter for both surfaces.
+ *
+ * THE RANGE IS NOT DECAYED between polls, and the point number still is.
+ * `remainingSec` exists because a moving bus's countdown must keep ticking
+ * while no poll lands (report #48). A standing bus's remaining stand does not
+ * tick down that way — subtracting wall clock slid the chip toward "now" and
+ * snapped it back when the poll arrived, which is a second, independent source
+ * of the same flapping. Callers pass the already-decayed point and the
+ * undecayed range, and this picks.
+ */
+export function chipCountdownText(view: StandWaitView | null, etaSec: number | null): string | null {
+  if (view?.range) return fmtBusRange(view.range.lowSec, view.range.highSec).replace(/^in /, "");
+  if (etaSec == null || !Number.isFinite(etaSec)) return null;
+  // `fmtMin`, not `fmtBusPair`: the chip has always spelled the point number
+  // this way ("4 min", "now"), so the non-standing case stays byte-identical
+  // to what the map drew before the range existed.
+  return fmtMin(etaSec);
 }

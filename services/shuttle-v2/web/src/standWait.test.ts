@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { fromQuantiles, residual, residualMedian } from "./eta/dist";
 import { fmtBusPair, fmtBusRange, fmtMin } from "./format";
-import { standLeftText, standWaitFor, standWaitView, RANGE_MIN_SPREAD_SEC } from "./standWait";
+import { standLeftText, standWaitFor, standWaitView, RANGE_MIN_SPREAD_SEC, chipCountdownText, type StandWaitView} from "./standWait";
 import { shownStandSec, type DwellStat } from "./arrivals";
 
 /**
@@ -117,7 +117,10 @@ describe("standWait — when NOT to draw a range", () => {
     expect(kerb.lateSec - kerb.soonSec).toBeLessThan(RANGE_MIN_SPREAD_SEC);
     expect(v.range).toBeNull();
     // Still an honest ceiling, just a short one — and no range beside it.
-    expect(v.leftText).toBe("<1-1 min left");
+    // Was "<1-1 min left" until 2026-09-10, when the operator read that on a
+    // live Blue Day card ("reads a little funny") — the two tokens differ only
+    // by the "<", so it is two spellings of about a minute rather than a range.
+    expect(v.leftText).toBe("~1 min left");
   });
 
   it("leaves the board stop alone — the bus is there, the rider should board", () => {
@@ -180,5 +183,57 @@ describe("standWaitFor — composed from what a render site already holds", () =
   it("is silent where there is no bus standing, and where the stop has no table", () => {
     expect(standWaitFor(null, ROUTE, undefined, 400, 27)).toBeNull();
     expect(standWaitFor({ stopId: 99, standingSec: 60 }, ROUTE, undefined, 400, 27)).toBeNull();
+  });
+});
+
+describe("the map chip and the card agree", () => {
+  // 2026-09-10, operator: "its a little weird showing a definitive answer in
+  // map and a range in the stop list". The chip had been observed going
+  // 5 -> 1 -> 2 min on a bus that was standing still the whole time.
+  const view = (low: number, high: number) =>
+    ({ range: { lowSec: low, highSec: high } }) as unknown as StandWaitView;
+
+  it("prints the range the card prints, without the head word", () => {
+    // 30 s is inside the `<1` bucket; 60 s is already "1 min" — the boundary
+    // that made a drive floor of exactly 60 s print as "1", not "<1".
+    expect(chipCountdownText(view(30, 540), 200)).toBe("<1-9 min");
+    expect(chipCountdownText(view(60, 540), 200)).toBe("1-9 min");
+    expect(chipCountdownText(view(180, 420), 300)).toBe("3-7 min");
+  });
+
+  it("falls back to the point number when the bus is not standing", () => {
+    expect(chipCountdownText(null, 240)).toBe("4 min");
+    expect(chipCountdownText(null, 30)).toBe("<1 min");
+    expect(chipCountdownText(null, 5)).toBe("now");   // fmtMin, as the chip always spelled it
+  });
+
+  it("says nothing when there is nothing to say", () => {
+    expect(chipCountdownText(null, null)).toBeNull();
+  });
+
+  it("prefers the range over the point, so the two surfaces cannot differ", () => {
+    // The point is what the map used to show on its own; with a range in hand
+    // it must never win.
+    expect(chipCountdownText(view(30, 540), 60)).toBe("<1-9 min");
+  });
+});
+
+describe("the one adjacent pair that reads wrong", () => {
+  // Operator, 2026-09-10, on a Blue Day bus standing 1:28 at Prospect/Edwards:
+  // "<1-1min reads a little funny". The two tokens differ only by the "<", so
+  // the line says "less than a minute to a minute" — not a range, two
+  // spellings of the same thing.
+  it("collapses <1 .. 1 rather than printing both", () => {
+    expect(standLeftText(20, 75)).toBe("~1 min left");
+    expect(standLeftText(59, 119)).toBe("~1 min left");
+  });
+
+  it("leaves every other neighbouring pair alone", () => {
+    expect(standLeftText(180, 240)).toBe("3-4 min left");
+    expect(standLeftText(30, 150)).toBe("<1-2 min left");
+  });
+
+  it("still says 'leaving any moment' when even the high end is inside a minute", () => {
+    expect(standLeftText(5, 40)).toBe("leaving any moment");
   });
 });
