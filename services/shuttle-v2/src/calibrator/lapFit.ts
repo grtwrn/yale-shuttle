@@ -256,8 +256,32 @@ export function gateCell(
   return { pass: upper < 0, pooled: poolErr / scored, lap: lapErr / scored, upper, days: diffByDay.size, n: scored };
 }
 
+/**
+ * The ET calendar day, and it is worth the two lines of cache.
+ *
+ * `new Date(ms).toLocaleDateString("en-CA", { timeZone })` builds a fresh
+ * `Intl.DateTimeFormat` on every call: **166 us each**, measured on this Pi.
+ * The fitter asks it once per in-band sample — ~130,000 of them over 90 days —
+ * so the naive spelling put **21 seconds** on the collector's boot path and on
+ * the six-hourly refresh, synchronous on the event loop that serves
+ * `/api/buses`. One shared formatter and an hour-bucket memo take the same
+ * work to under 200 ms.
+ */
+const ET_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+});
+const etDayCache = new Map<number, string>();
+
 export function etDay(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  // Rows arrive in time order, so an hour bucket is hit thousands of times
+  // before it is missed once.
+  const bucket = Math.floor(ms / 3_600_000);
+  const hit = etDayCache.get(bucket);
+  if (hit !== undefined) return hit;
+  if (etDayCache.size > 4096) etDayCache.clear();
+  const day = ET_FORMAT.format(new Date(ms));
+  etDayCache.set(bucket, day);
+  return day;
 }
 
 /**
@@ -375,15 +399,25 @@ export function computeLapFits(
 // -- loading, and how often ---------------------------------------------------
 
 /**
- * How far back the fit reads. `arrivals` is retained 90 days and every day of
- * it is usable: a cell's slope is stable per quarter (measured), so the window
- * is bounded by retention rather than by drift.
+ * How far back the fit reads, and it is a COST decision, not a data one.
+ *
+ * A cell's slope is stable per quarter, so the whole 90-day retention window is
+ * usable — but this runs synchronously on the collector's loop, and measured
+ * on the Pi against a real snapshot:
+ *
+ *     90 d   query 2,192 ms + fit 860 ms   187,499 rows   served {3:11, 3:121}
+ *     45 d   query   674 ms + fit 321 ms    95,672 rows   served {3:11, 3:121}
+ *     30 d   query   460 ms + fit 205 ms    64,810 rows   served {3:11, 3:121, 3:30}
+ *
+ * 45 days is a third of the cost for the IDENTICAL served set. 30 is not:
+ * a third Red cell appears there, which is the window being short enough for a
+ * cell to qualify on thin evidence — exactly what the gate exists to refuse.
  */
-export const LAP_FIT_WINDOW_DAYS = 90;
+export const LAP_FIT_WINDOW_DAYS = 45;
 /**
  * How often it is recomputed. The fit is a property of the timetable, not of
- * the hour — nothing in it moves between two calibrator ticks — and the query
- * reads ~90k rows, so it does not belong on the 5-minute cadence.
+ * the hour — nothing in it moves between two calibrator ticks — and it costs
+ * about a second, so it does not belong on the 5-minute cadence.
  */
 export const LAP_FIT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 

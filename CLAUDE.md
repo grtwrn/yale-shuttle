@@ -1319,6 +1319,20 @@ Five rules, each of which cost a measurement:
   ninth loses by 0.027 to a stop three minutes upstream on the same run. 333
   Cedar is not on Red at all.
 
+**The lap clock is warm-started, and it has to be.** `Collector.lapClock` is
+in-memory and fed only by dwell events, so without a seed a bus carries no
+`lap` until it completes a loop AND departs a fitted stop — up to an hour on
+Red, after every deploy. Measured minutes after #206 shipped: `lapB` on both
+Red cells, `lap` on **0 of 13** live buses. `seedLapClock` reads the last
+`departed_at` per (bus name, stop) inside the TTL at boot, after the first
+calibration. It is the only in-memory piece of this feature; the fit cache,
+the network's tables and the client's factor all rebuild themselves.
+**`etDay` is not `toLocaleDateString`** — that spelling is 166 us a call and
+put 21 s of `loadLapFits` on the boot path and the six-hourly refresh, both
+synchronous on the loop serving `/api/buses`. A shared `Intl.DateTimeFormat`
+plus an hour-bucket memo, and a 45-day window (a third of 90's cost for the
+identical served set; 30 is NOT identical), take it to 1.0 s.
+
 Wire cost at the rollout-gated set: **+172 B a poll, +0.13%**. At the 22 cells
 the cell gate passes it would be +1,337 B / +0.98%; ungated, +2,770 B / +2.02%.
 
