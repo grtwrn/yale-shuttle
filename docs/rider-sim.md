@@ -50,11 +50,45 @@ browser's arguments, imported from the tree under test (`CLIENT_ROOT`):
 | step | function | note |
 |---|---|---|
 | when the rider reaches the stop | `planTrip(origin, alight, …)` | the option, its board stop, its pinned bus. A rider whose plan boards elsewhere is recorded as skipped, not simulated at the wrong stop |
-| every poll | `computeUpcomingArrivals(targets, buses, …, now, dwells, anchorStore)` | one `AnchorStore` per rider, opened when they opened the app (PR #72). Riders arriving on the same poll share one store and one call — exact, because `gateAnchor` is idempotent within a poll (checked, not assumed) |
+| every poll | `computeUpcomingArrivals(targets, buses, …, now, dwells, anchorStore)` | one `AnchorStore` per rider, opened when they opened the app (PR #72). Riders arriving on the same poll share one store and one call — exact, because `gateAnchor` is idempotent within a poll (checked, not assumed). **`WARM_STORE=1` is the server arm** — see below |
 | | the `options` memo: `hereBus` / `departed` / `pickLiveArrival(live, o.busName, walk)` | **`o.busName` is the plan-time pin, every poll** — that is what `stableOptions` holds. A tidier simulator would have silently fixed this |
 | | `shuttleCtx` + `remainingSec` | decide whether a countdown is rendered at all |
 | | `nextArrivalAfterPinned` | or the pre-#74 `eta > shown + 30` filter on a tree that predates it |
 | | `fmtBusPair` | the text on the row |
+
+### `WARM_STORE=1` — the belief a SERVER would have, not the one a browser has
+
+The store-per-rider above is not an implementation detail, it is the model of
+where the estimator runs. A browser's HMM belief opens cold the moment the
+rider opens the app; the server-side move (`docs/server-side-eta.md`) replaces
+that with ONE belief that has been tracking all day, and gives every rider the
+same answer for the same bus at the same instant.
+
+So the switch cannot be gated by this instrument until the instrument can
+express it. `WARM_STORE=1` steps ONE store over every poll of the day,
+targeting every stop on every route exactly as `ServerEta` does, and hands
+every rider rows out of it. Nothing about `computeUpcomingArrivals`' contract
+changes — the same call, the same arguments, a different store and a wider
+target list — which is why the migration is a flag rather than a rewrite.
+
+Two details that make it faithful rather than approximate:
+
+- **Every stop, not just the ones riders are at.** `computeUpcomingArrivals`
+  skips a whole route when no target sits on it, so a narrower list would
+  leave that route's beliefs unstepped and cold for the next rider on it.
+- **The warm arm does NOT re-call per cohort.** Stepping every belief a second
+  time on one fix is a repeat observation the model reads as evidence the bus
+  is standing. The server calls this "one step per observation"; the simulator
+  obeys it too.
+
+Run it as a paired A/B on the SAME tree — two runs, same capture, same
+snapshot, same population, `--compare` — and read it the way every other gate
+here is read: FIXED/INTRODUCED per route, never a total. A run sliced with
+`FROM`/`TO` still pays for the whole day unless `DETECTOR_FROM` moves with it;
+give it ≥15 min of lead, since a belief unseen for `BELIEF_STALE_MS` (10 min)
+is reset on read and beyond that a warm-up is indistinguishable from having run
+since dawn. The arm is stamped into the run's own `config.belief`, so two
+`--compare` files cannot be mixed up after the fact.
 
 The payload comes from the real detector (`planTracks` + `stepMany`, from the
 same tree) and the collector's own at-stop rule (`stationarySince`, 15 s,
