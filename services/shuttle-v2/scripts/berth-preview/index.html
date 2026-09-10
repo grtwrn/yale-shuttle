@@ -63,13 +63,21 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
   if (path) L.polyline(path, { color, weight: 5, opacity: .55 }).addTo(map);
 
   const fit = (pts) => map.fitBounds(L.latLngBounds(pts).pad(0.45), { maxZoom: 18 });
+  const WIDE = 999;
   const lbl = (lat, lon, html, anchor) => L.marker([lat, lon],
     { icon: L.divIcon({ className: "", html, iconAnchor: anchor }) }).addTo(map);
+  // A label CENTRED over or under its dot. Two stop names side by side need
+  // ~620 px and the map is 390 px wide, so they cannot sit left and right of
+  // dots 55 m apart at any zoom — stacking is what makes both readable.
+  const stacked = (lat, lon, html, dy) => L.marker([lat, lon], {
+    icon: L.divIcon({ className: "", iconSize: [0, 0], iconAnchor: [0, 0],
+      html: `<span style="position:absolute;left:50%;transform:translateX(-50%);top:${dy}px;white-space:nowrap">${html}</span>` }),
+  }).addTo(map);
 
   if (VIEW === "ship") {
     document.querySelector(".legend").innerHTML =
-      '<span><i style="background:#fff;border:3px solid #9aa0a6"></i>where the map puts the stop today</span>' +
-      `<span><i style="background:${color}"></i>where the bus actually stops</span>`;
+      '<span><i style="background:#fff;border:3px solid #9aa0a6"></i>(published) — the operator\'s coordinate</span>' +
+      `<span><i style="background:${color}"></i>(GPS data) — where buses actually stop</span>`;
     // the published coordinate, drawn quietly — it is still the stop's own
     L.circleMarker([r.published.lat, r.published.lon],
       { radius: 6, color: "#9aa0a6", weight: 2.5, fillColor: "#fff", fillOpacity: 1 }).addTo(map);
@@ -78,9 +86,17 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
     // THE dot: one, where the bus stops
     L.circleMarker([r.berth.lat, r.berth.lon],
       { radius: 9, color: "#fff", weight: 3, fillColor: color, fillOpacity: 1 }).addTo(map);
-    lbl(r.berth.lat, r.berth.lon, `<span class="lbl" style="color:${color}">🚏 ${r.name}</span>`, [-14, 8]);
-    lbl(r.published.lat, r.published.lon, '<span class="lbl" style="color:#80868b;font-weight:500">stop sign here</span>', [-11, 6]);
-    fit([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]]);
+    // Both dots carry the SAME stop name, differing only in the qualifier —
+    // they are one stop, and a label that named only one of them would read as
+    // two stops (operator, 2026-09-10: "label them differently stop name
+    // (published) and stop name (gps data) or something clear").
+    // Anchored on opposite sides so two long labels 55 m apart do not collide.
+    stacked(r.published.lat, r.published.lon,
+      `<span class="lbl" style="color:#80868b;font-weight:500">${r.name} (published)</span>`, -26);
+    stacked(r.berth.lat, r.berth.lon,
+      `<span class="lbl" style="color:${color}">🚏 ${r.name} (GPS data)</span>`, 14);
+    // extra padding so the stacked labels have room above and below
+    map.fitBounds(L.latLngBounds([[r.published.lat, r.published.lon], [r.berth.lat, r.berth.lon]]).pad(1.1), { maxZoom: 18 });
     const dir = r.berthOffM > 0 ? "further along the route" : "back down the route";
     document.getElementById("card").innerHTML =
       `<div class="verdict" style="color:${color}">🚏 Wait about ${Math.round(Math.abs(r.berthOffM))} m ${dir}</div>
