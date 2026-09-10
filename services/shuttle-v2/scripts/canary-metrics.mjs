@@ -189,6 +189,7 @@ export const THRESHOLDS = {
   /** A UI reading older than this is not comparable to the next one. */
   maxGapSec: 120,
 
+
   /**
    * FLAPPING: the countdown oscillating between two states rather than
    * counting down. Added 2026-09-09, when the operator watched Red's board
@@ -510,7 +511,7 @@ export function parseOptions(bodyText) {
  * `events` is all three in time order; `transitions`, `drops` and `appearances`
  * are the same events split by kind.
  */
-export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null } = {}) {
+export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null, boardStopId = null } = {}) {
   const transitions = [], drops = [], appearances = [], events = [];
   let prev = null;
   for (let idx = 0; idx < samples.length; idx++) {
@@ -528,6 +529,11 @@ export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null } 
         // catastrophic drops have one — so every event carries the verdict
         // and the counters below split on it. Readings with no `buses` list
         // (the rider simulator's) answer "unknown" and nothing changes.
+        // A bus reaching the board stop explains a drop as surely as one
+        // leaving it does — see `reachedBoardStop`. Checked on this frame and
+        // the one before, because the scrape and the feed poll are a tick apart.
+        const arrived = reachedBoardStop(s.buses, boardStopId)
+          || reachedBoardStop(prev.buses, boardStopId);
         const event = departureBetween(prev.buses, s.buses);
         const ctx = {
           atMs: s.atMs, dtSec, from: prev.eta.raw, to: s.eta.raw,
@@ -589,6 +595,8 @@ export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null } 
         for (const d of paired.dropped) {
           const e = {
             kind: "dropped", ...ctx,
+            event: arrived && ctx.event !== "departure" ? "arrival" : ctx.event,
+            eventful: ctx.eventful || arrived,
             lastShownEtaSec: d.bucket[0], leader: d.leader,
             severe: d.bucket[0] <= thresholds.droppedSevereSec,
             pinAnnouncedChange: announced,
@@ -969,6 +977,34 @@ export function scoreFlaps(transitions, thresholds = THRESHOLDS) {
 export function isTransportNoise(text) {
   return /^console: /.test(String(text))
     && /(Failed to load resource|net::ERR_)/.test(String(text));
+}
+
+/**
+ * Did the bus REACH the board stop on this reading?
+ *
+ * An arrival is not an upcoming arrival, so a bus that has just pulled in
+ * correctly leaves the row — and the canary was calling that a defect. Green,
+ * 2026-09-10 17:23: #325 closed 351 -> 323 -> 189 -> 130 m under "in <1, 8
+ * min", then appeared at 47 m with `at_stop 25`, the board stop. The card moved
+ * to the next bus and announced the swap; the canary filed `bus-vanished` and
+ * `eta-jump`, and `departureBetween` could not help because the distance had
+ * DECREASED, so it answered "closing".
+ *
+ * THE FEED'S OWN `at_stop_id` ONLY, never the distance — and the suite is what
+ * forced that. `ARRIVAL_M` is how the canary credits an arrival, so crediting a
+ * drop the same way looked symmetrical; it is not. A bus CLOSING through 60 m
+ * and being dropped is the defect this metric exists to catch, named exactly in
+ * "still blames it for a bus that vanished while it was closing" (110 m -> 60 m,
+ * which must stay a finding). Distance says where a bus is; only `at_stop`
+ * says it got there.
+ *
+ * Measured over the 400 archived runs on THIS rule: 6 of 38 severe drops that
+ * currently fail a run (16%) are a bus reaching the stop. A distance-based
+ * version scored 9 of 38, and the extra three were the defect.
+ */
+export function reachedBoardStop(buses, boardStopId) {
+  if (!Array.isArray(buses) || boardStopId == null) return false;
+  return buses.some((b) => b && b.atStop != null && b.atStop === boardStopId);
 }
 
 /**

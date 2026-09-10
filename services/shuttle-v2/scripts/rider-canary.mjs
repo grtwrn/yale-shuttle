@@ -538,7 +538,7 @@ async function runOnce(line, rider) {
           if (beat) record.pins.push({ atMs: Date.now(), ...beat, why: "heartbeat" });
         }
 
-        const seq = scoreSequence(record.samples, THRESH, { pins: record.pins });
+        const seq = scoreSequence(record.samples, THRESH, { pins: record.pins, boardStopId: record.boardStopId });
         const last = seq.transitions[seq.transitions.length - 1];
         if (last && last.atMs === now && Math.abs(last.driftSec) >= THRESH.pinSampleSec) {
           (record.rawAtJump ??= []).push({
@@ -571,7 +571,7 @@ async function runOnce(line, rider) {
     // feed failure that changes the verdict, and it changes it to a THIRD
     // one — `unreachable`, which the --loop already knows how to sleep on.
     record.feedUnreachable = runVerdict(record) === "unreachable";
-    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins });
+    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins, boardStopId: record.boardStopId });
 
     // ── did the first thing the rider was told survive contact with reality?
     if (firstSight && arrived) {
@@ -678,7 +678,7 @@ async function runOnce(line, rider) {
     record.pageAtFailure = page
       ? await page.evaluate(() => document.body.innerText).catch((x) => `unreadable: ${x.message}`)
       : "no page";
-    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins });
+    record.sequence = scoreSequence(record.samples, THRESH, { pins: record.pins, boardStopId: record.boardStopId });
     return record;
   } finally {
     await browser.close().catch(() => {});

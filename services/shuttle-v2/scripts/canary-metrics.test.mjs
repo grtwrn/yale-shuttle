@@ -6,7 +6,7 @@ import {
   ARRIVAL_CLOCK_RE, ARRIVAL_M, brokenPromise, bucketOf, busOnRoute, CANARY_LINES, CANONICAL_MAX_WALK_M,
   CANONICAL_TRIP, conservativeDrift, deadlineForPromise, DEPARTURE_M,
   departureBetween, fleetOffAir, hasArrivalClock, haversineM, isAtBoardStop, isTransportNoise, liveBusesOf, MAX_WALK_M, MIN_RIDE_M, NEAR_STOP_M,
-  pinnedVehicleAt, scraperMissedTheCountdown, standEndedFor, standPollsBefore, unexplainedJumps,
+  pinnedVehicleAt, reachedBoardStop, scraperMissedTheCountdown, standEndedFor, standPollsBefore, unexplainedJumps,
   OFF_ROUTE_M, pairBuses, parseBusEtaText, parseOptions, parseWaitFallback, runVerdict,
   scoreSequence, THRESHOLDS, tripForLine,
 } from "./canary-metrics.mjs";
@@ -1734,5 +1734,52 @@ describe("a browser network log is not a page error", () => {
     // An uncaught fetch failure arrives as a pageerror, not a console message,
     // so it carries no `console: ` prefix and stays a finding.
     expect(isTransportNoise("TypeError: Failed to fetch")).toBe(false);
+  });
+});
+
+describe("a bus that reaches the stop has not vanished", () => {
+  // Green, 2026-09-10 17:23. #325 closed 351 -> 323 -> 189 -> 130 m under
+  // "in <1, 8 min", then appeared at 47 m with `at_stop 25` — the board stop.
+  // The card moved to the next bus and said so. The canary filed `bus-vanished`
+  // AND `eta-jump`, because `departureBetween` sees a decreasing distance and
+  // answers "closing", never "it got there".
+  const BOARD = 25;
+  const at = (ms, raw, buses) => ({ present: true, atMs: ms, eta: parseBusEtaText("🚌 " + raw), buses });
+  const t0 = Date.parse("2026-09-10T21:23:16Z");
+  const samples = [
+    at(t0, "in <1, 8 min", [{ name: "325", distM: 130 }, { name: "332", distM: 6588 }]),
+    at(t0 + 15000, "in 12, 21 min", [{ name: "325", distM: 47, atStop: BOARD }, { name: "332", distM: 6532 }]),
+  ];
+
+  it("credits the arrival, so the drop is not a finding", () => {
+    const r = scoreSequence(samples, THRESHOLDS, { boardStopId: BOARD });
+    const drop = r.drops.find((d) => d.severe);
+    expect(drop, "the drop is still detected").toBeTruthy();
+    expect(drop.eventful).toBe(true);
+    expect(drop.event).toBe("arrival");
+  });
+
+  it("still fails the run when the bus is nowhere near the stop", () => {
+    const far = [
+      at(t0, "in <1, 8 min", [{ name: "325", distM: 400 }]),
+      at(t0 + 15000, "in 12, 21 min", [{ name: "325", distM: 480 }]),
+    ];
+    const r = scoreSequence(far, THRESHOLDS, { boardStopId: BOARD });
+    const drop = r.drops.find((d) => d.severe);
+    expect(drop.eventful).toBe(false);
+  });
+
+  it("takes the feed's own at_stop and NOT the distance", () => {
+    // 90 m out, but upstream says it is AT the board stop — ARRIVAL_M would
+    // refuse this and the feed's own reckoning should not be second-guessed.
+    expect(reachedBoardStop([{ name: "325", distM: 90, atStop: BOARD }], BOARD)).toBe(true);
+    expect(reachedBoardStop([{ name: "325", distM: 90, atStop: 999 }], BOARD)).toBe(false);
+    // Distance alone must NOT count: a bus closing through 60 m and being
+    // dropped is the defect, not an arrival.
+    expect(reachedBoardStop([{ name: "325", distM: 55 }], BOARD)).toBe(false);
+  });
+
+  it("says nothing without a board stop, so an old record scores as before", () => {
+    expect(reachedBoardStop([{ name: "325", distM: 90, atStop: 25 }], null)).toBe(false);
   });
 });
