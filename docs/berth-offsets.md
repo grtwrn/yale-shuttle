@@ -231,6 +231,36 @@ data can check agrees —
 Berth: **+55.4 m, 41.324475, −72.923216**, from 37 of the 40 visits that berthed
 at all, in a 22.6–59 m window. 15 visits stopped short of it, 3 past it.
 
+## The measurement has already paid for itself, on the canary
+
+2026-09-10 12:40 ET. The rider canary watched Purple at **Union Station (S)**
+for 25 minutes and filed `no-arrival` — "no Purple bus reached the board stop".
+It is a false positive, and this measurement is what explains it:
+
+- the closest any Purple bus came, by the canary's own reckoning, was
+  **#300 at 184 m, 12:43:49**;
+- the detector logged **#300 arriving at stop 122 at 12:43:40**, nine seconds
+  earlier, with 285 s of anchor residence;
+- the measured berth for Purple at that stop is **+103.6 m** (n = 48);
+- `ARRIVAL_M` is **60 m**.
+
+A bus cannot come within 60 m of a published coordinate that is 104 m from
+where it stops. The canary is structurally blind there — and so is the feed,
+whose own `at_stop_id` never named 122 either (upstream's radius is 75 m). Three
+instruments, three answers, and the detector's anchor is the only one that saw
+it.
+
+**Scope: 56 of 184 cells (30%), across 30 distinct stops**, have a measured
+berth further than 60 m from the published coordinate. Fifteen are stops the
+canary boards at or rides through — including **Prospect / Canner at +64 m,
+which is the canary's own dedicated Red board stop**, just past the bound.
+
+So the fix for `ARRIVAL_M` is not a bigger constant, which would credit a bus
+merely driving past a stop it never served. It is the stop's OWN berth: the
+canary should ask "did the bus reach where this line actually stops", and this
+table is that answer. That is a use for the measurement that needs no rider to
+ever see a second dot.
+
 ## Before this ships
 
 - **A signal PAST the stop is still not separable from a berth.** The last-stand
