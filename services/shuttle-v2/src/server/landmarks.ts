@@ -146,7 +146,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
   { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709
-  { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
+  { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs", "va ct", "va connecticut", "va connecticut healthcare", "va health center", "va healthcare"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
   { label: "Yale Health Center", lat: 41.315731, lon: -72.927521, aliases: ["yale health", "health center", "student health", "yuhs", "55 lock", "pharmacy", "acute care"], poi: "hospital", anchorStop: "Winchester / Sachem" }, // OSM W217340232
   { label: "Yale New Haven Hospital Saint Raphael Campus", lat: 41.310144, lon: -72.942931, aliases: ["st raphael", "saint raphael", "st raphaels", "srh", "1450 chapel"], poi: "hospital", anchorStop: "Chapel / Dwight" }, // OSM W442001687
   { label: "Yale Physicians Building", lat: 41.302563, lon: -72.936326, aliases: ["ypb", "physicians building", "800 howard"], poi: "hospital", anchorStop: "Davenport / Howard" }, // OSM W232595708
@@ -177,6 +177,10 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
+  { label: "Miller Hall", lat: 41.323144, lon: -72.923783, aliases: ["miller hall", "institute of sacred music", "sacred music", "ism", "406 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // Yale's Institute of Sacred Music, 406 Prospect St; the coordinate is the geocoded address, OSM has no
+  // building of that name here. Searched 3 times, empty 3 times.
+  { label: "Tropical Smoothie Cafe", lat: 41.313524, lon: -72.932287, aliases: ["tropical smoothie", "smoothie", "15 dixwell"], poi: "cafe", anchorStop: "Payne Whitney Gym" }, // 15 Dixwell Ave, geocoded. Added on its own merit rather than as an answer to
+  // "tropical zone", which matches nothing that exists in New Haven — see the note in the commit.
   { label: "Chef Jiang", lat: 41.312258, lon: -72.921739, aliases: ["chef jiang", "jiang", "chef jiang new haven", "67 whitney"], poi: "restaurant", anchorStop: "Whitney / Audubon" }, // NOT in OSM under any name — Photon answers a Hong Kong restaurant and Nominatim nothing, so the
   // coordinate is the geocoded street address, 67 Whitney Ave (Nominatim, node "67;69 Whitney Avenue"). Riders searched it 3 times in 30 days and got nothing every time.
   { label: "City Crossing", lat: 41.301511, lon: -72.930319, aliases: ["city crossing", "the mason", "mason at city crossing", "the maddox", "188 lafayette"], poi: "apartments", anchorStop: "Amistad CSS Weekend Blue" }, // Also absent from OSM as a name; the coordinate is 188 Lafayette St, which
