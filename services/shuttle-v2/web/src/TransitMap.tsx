@@ -28,6 +28,7 @@ import { noteShown } from "./shownLog";
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
+import { berthFor, type Berth } from "./berths";
 import { chipCountdownText, standWaitFor } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -53,6 +54,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -897,6 +899,17 @@ type OverviewOption = {
   // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
   boardEta?: string | null;
   arriveAt?: string | null;
+  /**
+   * Detail view only: where this line actually pulls up at the PICKUP stop,
+   * when that is measurably not where the stop is drawn (berths.ts).
+   *
+   * The overview is deliberately untouched — one dot per stop, as now
+   * (operator, 2026-09-10: "I don't want the map to be clogged, that should
+   * probably show published locations but once user clicks a route it could
+   * show difference in berth at pickup"). A second marker is only worth its
+   * clutter once there is one rider, one line and one stop to say it about.
+   */
+  berth?: Berth | null;
 };
 const CombinedTripMap: FC<{
   from: LatLon;
@@ -1057,6 +1070,19 @@ const CombinedTripMap: FC<{
       L.circleMarker([board.lat, board.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Board ${o.label}`, { direction: "top" });
+      // Where the bus really pulls up, when that is not the board dot. Detail
+      // view only (`options.length === 1`), pickup stop only, and drawn AFTER
+      // the board ring so it reads as the answer to it: a dashed tie for the
+      // walk and a filled dot for the kerb.
+      if (options.length === 1 && o.berth) {
+        L.polyline([[board.lat, board.lon], [o.berth.lat, o.berth.lon]], {
+          color: "#5f6368", weight: 2.5, dashArray: "2 6", opacity: 0.9,
+        }).addTo(map);
+        L.circleMarker([o.berth.lat, o.berth.lon], {
+          radius: 7, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 3,
+        }).addTo(map).bindTooltip(`${o.label} pulls up here`, { direction: "top" });
+        points.push([o.berth.lat, o.berth.lon]);
+      }
       L.circleMarker([alight.lat, alight.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Get off ${o.label}`, { direction: "top" });
@@ -1462,6 +1488,19 @@ const AllRoutesMap: FC<{
   }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
+  //
+  // `hiddenRoutes` MUST be in the dependency array below, and its absence was
+  // a five-second stall a rider could see (operator, 2026-09-10: "why does it
+  // take like 5 seconds for bus locations to render on the map page when I
+  // change filters?").
+  //
+  // Toggling a line re-runs the map effect above — `hiddenRoutes` is in ITS
+  // deps — which rebuilds the map and with it a fresh, EMPTY `busLayerRef`.
+  // This effect then did not re-run, because `buses` had not changed, so the
+  // map carried no bus markers at all until the next `/api/buses` poll
+  // happened to land. That is a wait of up to the 5 s poll interval, and
+  // measured on the live site it was 0.6 s, 3.0 s and 4 s on three toggles —
+  // the spread being nothing but where in the poll cycle the tap fell.
   useEffect(() => {
     const grp = busLayerRef.current;
     if (!grp) return;
@@ -1495,7 +1534,10 @@ const AllRoutesMap: FC<{
         padding: [48, 48], maxZoom: 15,
       });
     }
-  }, [buses]);
+  // Same stable key the map effect uses: a Set is a new object every render,
+  // so depending on it directly would redraw the fleet on every poll for
+  // nothing.
+  }, [buses, [...hiddenRoutes].sort().join("|")]);
 
   // "You are here" — same pulsing blue dot as the trip mini-map. Created
   // lazily on the first fix, then moved in place per watchPosition update
@@ -1810,6 +1852,7 @@ const TripPlanner: FC<{
         headers: anonIdHeader(),
         cache: "no-store", signal: controller.signal,
       });
+      if (!r.ok) throw new Error(`Search returned ${r.status}`);
       const d = await r.json();
       // If a newer request (or a pick) has superseded us, bail quietly.
       if (abortRef.current !== controller) return;
@@ -1827,7 +1870,7 @@ const TripPlanner: FC<{
       if (results.length === 0) results = raw.slice(0, 8);
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
-        if (autoPick) setError("No matches found");
+        setError("No matches found — try another name or address.");
         return;
       }
       // Auto-pick when confidence is high (explicit search only): a Yale
@@ -1846,7 +1889,9 @@ const TripPlanner: FC<{
       }
     } catch (e) {
       if ((e as DOMException)?.name === "AbortError") return;
-      if (autoPick) setError("Geocode request failed");
+      if (abortRef.current !== controller) return;
+      if (which === "from") setFromSugg([]); else setToSugg([]);
+      setError("Search is unavailable — please try again.");
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -2699,6 +2744,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
@@ -2859,6 +2912,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
@@ -3221,7 +3282,7 @@ const TripPlanner: FC<{
         // Not while that end is mid-lookup: the "Looking up…" banner above
         // is already saying so, and two messages about one box is one too
         // many.
-        if (!pending || searching === pending) return null;
+        if (!pending || searching === pending || error) return null;
         return (
           <div style={{ fontSize: 13, color: "#78909c", padding: "14px 8px", textAlign: "center" }}>
             {unresolvedEndpointHint(pending)}
@@ -3487,6 +3548,10 @@ const TripPlanner: FC<{
                 // `chipCountdownText` picks the range when there is one and
                 // deliberately does not decay it by wall clock; the point
                 // number still is, for report #48's reason.
+                // Only where the rider is actually boarding, and only for the
+                // line they picked: `berthFor` answers null for all but ten
+                // stop/route cells and the map is unchanged wherever it does.
+                berth: berthFor(o.boardStopId, cfg.busRouteIds),
                 boardEta: o.departed ? null : chipCountdownText(
                   standView,
                   remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
@@ -3767,6 +3832,15 @@ const TripPlanner: FC<{
                 borderBottom: !isExpanded && i < _visible.length - 1 ? "1px solid #f1f3f4" : "none",
                 cursor: isExpanded ? "default" : "pointer",
                 opacity: o.departed ? 0.7 : 1,
+              }}
+              role={isExpanded ? undefined : "button"}
+              tabIndex={isExpanded ? undefined : 0}
+              aria-label={isExpanded ? undefined : `View ${o.routeLabel} trip details`}
+              onKeyDown={isExpanded ? undefined : (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setExpandedKey(oKey);
+                }
               }}
               onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
                 {/* The back control lives at the TOP of the details page
@@ -4137,6 +4211,31 @@ const TripPlanner: FC<{
                               {sep}
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                             </>)}
+                          </div>
+                        );
+                      })()}
+                      {/* Where the bus really pulls up, when that is not the
+                          stop's own dot. The sentence, not the marker, is what
+                          makes this usable: a second dot on its own reads as
+                          the map being wrong, and the count is what turns it
+                          into advice. Sits directly above Directions because
+                          that is the thing it corrects. */}
+                      {(() => {
+                        const cfgB = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                        const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
+                        if (!berth) return null;
+                        const m = Math.round(Math.abs(berth.offsetM));
+                        return (
+                          <div style={{
+                            marginTop: 10, padding: "8px 10px", borderRadius: 8,
+                            background: "#f8f9fa", fontSize: 13, lineHeight: 1.45, color: "#3c4043",
+                          }}>
+                            <span style={{ fontWeight: 650 }}>
+                              🚏 Wait about {m} m {berth.offsetM > 0 ? "past" : "before"} the stop sign
+                            </span>
+                            <br />
+                            {o.routeLabel} buses pull up there, not at the sign — seen {berth.seen} of
+                            the last {berth.of} times one served this stop.
                           </div>
                         );
                       })()}
@@ -6171,7 +6270,7 @@ const OnBusBanner: FC<{
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
-    const title = stopsRemaining <= 1 ? "Get off at the next stop" : "Get off in 2 stops";
+    const title = getOffAlertTitle(stopsRemaining)!;
     try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
@@ -6233,8 +6332,13 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
+<<<<<<< HEAD
           <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
             {getOffPopup}
+=======
+          <div style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+            {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
+>>>>>>> origin/master
           </div>
           <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel} → {alightName}
