@@ -57,6 +57,13 @@ import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, MIN_INTERVAL_MS as ETA_SA
  * an hour, so anything past two is already ignored — this only bounds memory.
  */
 const LAP_CLOCK_TTL_MS = 2 * 60 * 60 * 1000;
+/**
+ * How far before the TTL floor the seed's `arrived_at` bound reaches. A stand
+ * cannot exceed `MAX_STAND_SEC` in the fitter, so a departure inside the TTL
+ * arrived at most one stand earlier; the bound is what lets the query use
+ * `arrivals_route_stop_time_idx`, whose leading time column is `arrived_at`.
+ */
+const MAX_SEEDABLE_STAND_MS = 60 * 60 * 1000;
 
 // Cadences --------------------------------------------------------------------
 
@@ -707,6 +714,10 @@ export class Collector {
     // Warm calibration from existing samples before the first poll, so
     // day-zero predictions aren't pure distance-based priors.
     this.runCalibrate();
+    // ...and warm the lap clock from history, for the same reason. It has to
+    // come AFTER the first calibration, because the fitted cells are what say
+    // which stops are worth seeding.
+    this.seedLapClock();
 
     this.pollHandle = setInterval(() => void this.runPoll(), POLL_INTERVAL_MS);
     this.calibrateHandle = setInterval(() => this.runCalibrate(), CALIBRATE_INTERVAL_MS);
@@ -1213,6 +1224,62 @@ export class Collector {
       any = true;
     }
     return any ? out : undefined;
+  }
+
+  /**
+   * WARM-START THE LAP CLOCK FROM HISTORY.
+   *
+   * `lapClock` is in-memory and fed only by the detector's dwell events, so a
+   * fresh process knows nothing: a bus carries no lap until it completes a
+   * loop AND departs a fitted stop again — on Red up to an hour, and only at
+   * 344 Winchester or Union Station (N). This app deploys several times a
+   * day, so without this the correction is INERT for a lap after every
+   * restart, which is exactly the window a rider is most likely to be looking
+   * at. It is the same failure as report #100 (a restart zeroing a standing
+   * bus's clock, fixed by `seedStationaryFromHistory`) and the same failure as
+   * PR #81 (served, live and inert because the payload lacked what the client
+   * needed), and it is fixed the same way: the data is already on disk.
+   *
+   * `arrivals.departed_at` is the very column `lapFit` reads for the 90-day
+   * fit, so this needs no new table and no new write. One indexed query per
+   * FITTED cell — two on today's rollout — bounded by {@link LAP_CLOCK_TTL_MS},
+   * because a gap longer than that is outside every cell's band and the client
+   * would ignore it anyway.
+   *
+   * Non-throwing, exactly like the seed it is modelled on: a failed warm start
+   * costs the feature a lap, never the collector.
+   */
+  private seedLapClock(): void {
+    try {
+      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+      const cells = this.lapFitsCache.get();
+      if (cells.size === 0) return;
+      const now = Date.now();
+      const floor = now - LAP_CLOCK_TTL_MS;
+      const stmt = this.sqlite.prepare(
+        "SELECT bus_name AS busName, MAX(departed_at) AS departedAt FROM arrivals " +
+          "WHERE route_id = ? AND stop_id = ? AND arrived_at >= ? AND departed_at IS NOT NULL " +
+          "AND departed_at >= ? GROUP BY bus_name",
+      );
+      let seeded = 0;
+      for (const key of cells.keys()) {
+        const i = key.indexOf(":");
+        const routeId = Number(key.slice(0, i)), stopId = Number(key.slice(i + 1));
+        if (!Number.isFinite(routeId) || !Number.isFinite(stopId)) continue;
+        // `arrived_at` leads the index; the stand itself is bounded, so a
+        // departure inside the TTL cannot have arrived more than one stand
+        // before it.
+        const rows = stmt.all(routeId, stopId, floor - MAX_SEEDABLE_STAND_MS, floor) as Array<{ busName: string; departedAt: number }>;
+        for (const r of rows) {
+          if (!r.busName || !(r.departedAt > 0)) continue;
+          this.noteDeparture(r.busName, stopId, r.departedAt);
+          seeded++;
+        }
+      }
+      if (seeded > 0) this.logger.info("collector.lap_clock_seeded", { cells: cells.size, entries: seeded, buses: this.lapClock.size });
+    } catch (err) {
+      this.logger.warn("collector.lap_clock_seed_failed", { error: (err as Error).message });
+    }
   }
 
   private noteDeparture(busName: string, stopId: number, leftAt: number): void {

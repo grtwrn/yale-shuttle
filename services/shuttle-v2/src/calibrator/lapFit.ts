@@ -256,8 +256,32 @@ export function gateCell(
   return { pass: upper < 0, pooled: poolErr / scored, lap: lapErr / scored, upper, days: diffByDay.size, n: scored };
 }
 
+/**
+ * The ET calendar day, and it is worth the two lines of cache.
+ *
+ * `new Date(ms).toLocaleDateString("en-CA", { timeZone })` builds a fresh
+ * `Intl.DateTimeFormat` on every call: **166 us each**, measured on this Pi.
+ * The fitter asks it once per in-band sample — ~130,000 of them over 90 days —
+ * so the naive spelling put **21 seconds** on the collector's boot path and on
+ * the six-hourly refresh, synchronous on the event loop that serves
+ * `/api/buses`. One shared formatter and an hour-bucket memo take the same
+ * work to under 200 ms.
+ */
+const ET_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+});
+const etDayCache = new Map<number, string>();
+
 export function etDay(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  // Rows arrive in time order, so an hour bucket is hit thousands of times
+  // before it is missed once.
+  const bucket = Math.floor(ms / 3_600_000);
+  const hit = etDayCache.get(bucket);
+  if (hit !== undefined) return hit;
+  if (etDayCache.size > 4096) etDayCache.clear();
+  const day = ET_FORMAT.format(new Date(ms));
+  etDayCache.set(bucket, day);
+  return day;
 }
 
 /**
@@ -378,12 +402,42 @@ export function computeLapFits(
  * How far back the fit reads. `arrivals` is retained 90 days and every day of
  * it is usable: a cell's slope is stable per quarter (measured), so the window
  * is bounded by retention rather than by drift.
+ *
+ * IT WAS ALMOST SHORTENED TO 45, AND THE REASON IT WAS NOT IS THE POINT.
+ * Measured on the Pi against a real snapshot, once `etDay` stopped costing
+ * 166 us a call:
+ *
+ *     90 d   query 2,192 ms + fit 860 ms   187,499 rows   served {3:11, 3:121}
+ *     45 d   query   674 ms + fit 321 ms    95,672 rows   served {3:11, 3:121}
+ *     30 d   query   460 ms + fit 205 ms    64,810 rows   served {3:11, 3:121, 3:30}
+ *
+ * The served SET is the wrong invariant: what ships is the COEFFICIENTS, and
+ * they move. Side by side, 90 d against 45 d:
+ *
+ *     3:11    lapB -9.285e-4 / -9.740e-4,  lapM 3030 / 3055 s,  lapN 3913 / 977
+ *     3:121   lapB -10.011e-4 / -10.476e-4, lapM 2820 / 2827 s, lapN 41308 / 11937
+ *
+ * which over the laps those cells actually see is a **median 13.0 s of stand
+ * at 344 Winchester (p95 19.1, max 29.4)** and 6.3 s at Union Station (N).
+ * The paired rider-sim result the rollout gate rests on was measured with the
+ * 90-day fit, so shortening the window would put a configuration in front of
+ * riders that nothing had measured — the exact failure `predictions_log`
+ * exists to end (a family of stability numbers scored against a client that
+ * had not shipped since March). With `etDay` fixed the call is ~3.0 s against
+ * 21.2 s, which is the defect gone; a third of three seconds does not buy an
+ * unmeasured change to a coefficient a rider's countdown is built from.
+ *
+ * And read the 30-day row correctly: a THIRD Red cell appearing there is not
+ * the shorter window finding more signal. It is the day-blocked gate
+ * qualifying a cell on thinner evidence — the very failure the per-cell
+ * bootstrap exists to refuse. "Shorter window, more cells served" is a warning,
+ * not an improvement.
  */
 export const LAP_FIT_WINDOW_DAYS = 90;
 /**
  * How often it is recomputed. The fit is a property of the timetable, not of
- * the hour — nothing in it moves between two calibrator ticks — and the query
- * reads ~90k rows, so it does not belong on the 5-minute cadence.
+ * the hour — nothing in it moves between two calibrator ticks — and it costs
+ * about a second, so it does not belong on the 5-minute cadence.
  */
 export const LAP_FIT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 

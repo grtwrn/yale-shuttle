@@ -350,3 +350,70 @@ straightforward optimisation and it has not been made.
   both `eventful: false`, where a one-minute difference crossed the canary's
   600 s pairing window. That is why the full day is the number quoted: at
   n=445 this metric is two anecdotes counted eleven times.
+
+## 7. The warm start, and what else a restart loses
+
+`Collector.lapClock` is in-memory and fed only by the detector's dwell events,
+so a fresh process knows no bus's lap. Without a warm start a bus carries no
+`lap` until it completes a loop AND departs a fitted stop again — on Red up to
+an hour, and only at 344 Winchester or Union Station (N). This app deploys
+several times a day, so the correction would be INERT for a lap after every
+one of them, which is exactly the window a rider is most likely to be looking
+at. **Measured in production at 18:26 ET on 2026-09-10, minutes after #206
+shipped: `lapB` served on both Red cells and `lap` on 0 of 13 live buses.**
+
+Same class as report #100 (a restart zeroing a standing bus's clock, fixed by
+`seedStationaryFromHistory`) and as PR #81 (served, live and inert for a night
+because the payload never carried what the client needed). Same fix: the data
+is already on disk. `Collector.seedLapClock` runs once at boot, after the first
+calibration — the fitted cells are what say which stops are worth seeding — and
+takes the last `departed_at` per (bus name, stop) inside `LAP_CLOCK_TTL_MS`,
+one indexed query per served cell. Non-throwing: a failed warm start costs the
+feature a lap, never the collector.
+
+**Is `lapClock` the only in-memory piece? Yes.** Audited:
+
+| piece | across a restart |
+|---|---|
+| `Collector.lapClock` | **was lost** — now seeded |
+| `Collector.lapFitsCache` | recomputed from `arrivals` on the first `get()`; costs a query, not a lap |
+| the network's `lapB`/`lapM`/`lapN` | `start()` calibrates before the first poll, so present at boot |
+| the client's factor | recomputed per poll from the payload; nothing is carried |
+| `prefixCache` / `termCache` in `arrival.ts` | pure memoisation |
+
+### And the fit itself was 21 seconds on the boot path
+
+Found while checking the seed's cost, and it shipped in #206: `loadLapFits`
+took **21,190 ms**, synchronous on the loop that serves `/api/buses`, once at
+boot and once every six hours. Nothing to do with SQLite — the candidate query
+is 1.3 s. It was `etDay`, i.e.
+`new Date(ms).toLocaleDateString("en-CA", { timeZone })`, which builds a fresh
+`Intl.DateTimeFormat` every call: **166 us each**, and the fitter asks it once
+per in-band sample. One shared formatter plus an hour-bucket memo (rows arrive
+in time order) takes it to **0.30 us**.
+
+    loadLapFits:  21,190 ms  ->  2,435 ms
+
+**The window was NOT shortened, and the reason is the point.** Cutting 90 days
+to 45 takes the call to ~1.0 s and leaves the served SET identical — but the
+set is the wrong invariant. What ships is the COEFFICIENTS, and they move:
+
+| cell | | lapB x 1e4 | lapM (s) | lapN |
+|---|---|---:|---:|---:|
+| 3:11 | 90 d | -9.285 | 3,030 | 3,913 |
+| | 45 d | -9.740 | 3,055 | 977 |
+| 3:121 | 90 d | -10.011 | 2,820 | 41,308 |
+| | 45 d | -10.476 | 2,827 | 11,937 |
+
+Over the laps those cells actually see that is a **median 13.0 s of stand at
+344 Winchester (p95 19.1, max 29.4)** and 6.3 s at Union Station (N). The
+paired rider-sim result the rollout gate rests on was measured with the 90-day
+fit, so shortening the window would put a configuration in front of riders that
+nothing had measured — the exact failure `predictions_log` exists to end. With
+`etDay` fixed the call is ~2.4 s against 21.2 s, which is the defect gone; a
+third of that does not buy an unmeasured change to a coefficient a rider's
+countdown is built from.
+
+And the 30-day row is a warning, not an improvement: a THIRD Red cell appears
+there, which is the day-blocked gate qualifying a cell on thinner evidence —
+the very failure the per-cell bootstrap exists to refuse.
