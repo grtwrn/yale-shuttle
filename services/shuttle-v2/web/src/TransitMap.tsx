@@ -54,6 +54,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -6227,7 +6228,7 @@ const OnBusBanner: FC<{
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
-    const title = stopsRemaining <= 1 ? "Get off at the next stop" : "Get off in 2 stops";
+    const title = getOffAlertTitle(stopsRemaining)!;
     try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
@@ -6276,7 +6277,7 @@ const OnBusBanner: FC<{
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
           <div style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
-            {getOffPopup}
+            {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
           </div>
           <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel} → {alightName}
