@@ -1330,8 +1330,12 @@ the network's tables and the client's factor all rebuild themselves.
 **`etDay` is not `toLocaleDateString`** — that spelling is 166 us a call and
 put 21 s of `loadLapFits` on the boot path and the six-hourly refresh, both
 synchronous on the loop serving `/api/buses`. A shared `Intl.DateTimeFormat`
-plus an hour-bucket memo, and a 45-day window (a third of 90's cost for the
-identical served set; 30 is NOT identical), take it to 1.0 s.
+plus an hour-bucket memo take it to 2.4 s. **The 90-day window was kept**: 45
+days is a third of the cost and leaves the served SET identical, but the served
+set is the wrong invariant — the COEFFICIENTS move, by a median 13.0 s of stand
+at 344 Winchester, and the paired rider result the rollout gate rests on was
+measured at 90 d. "Shorter window, more cells served" (30 d admits a third Red
+cell) is the gate qualifying a cell on thinner evidence, not more signal.
 
 Wire cost at the rollout-gated set: **+172 B a poll, +0.13%**. At the 22 cells
 the cell gate passes it would be +1,337 B / +0.98%; ungated, +2,770 B / +2.02%.

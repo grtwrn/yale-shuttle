@@ -390,7 +390,30 @@ is 1.3 s. It was `etDay`, i.e.
 `new Date(ms).toLocaleDateString("en-CA", { timeZone })`, which builds a fresh
 `Intl.DateTimeFormat` every call: **166 us each**, and the fitter asks it once
 per in-band sample. One shared formatter plus an hour-bucket memo (rows arrive
-in time order) takes it to **0.30 us**, and the window sweep above takes the
-whole call to **1,016 ms** for the identical served set.
+in time order) takes it to **0.30 us**.
 
-    loadLapFits:  21,190 ms  ->  1,016 ms
+    loadLapFits:  21,190 ms  ->  2,435 ms
+
+**The window was NOT shortened, and the reason is the point.** Cutting 90 days
+to 45 takes the call to ~1.0 s and leaves the served SET identical — but the
+set is the wrong invariant. What ships is the COEFFICIENTS, and they move:
+
+| cell | | lapB x 1e4 | lapM (s) | lapN |
+|---|---|---:|---:|---:|
+| 3:11 | 90 d | -9.285 | 3,030 | 3,913 |
+| | 45 d | -9.740 | 3,055 | 977 |
+| 3:121 | 90 d | -10.011 | 2,820 | 41,308 |
+| | 45 d | -10.476 | 2,827 | 11,937 |
+
+Over the laps those cells actually see that is a **median 13.0 s of stand at
+344 Winchester (p95 19.1, max 29.4)** and 6.3 s at Union Station (N). The
+paired rider-sim result the rollout gate rests on was measured with the 90-day
+fit, so shortening the window would put a configuration in front of riders that
+nothing had measured — the exact failure `predictions_log` exists to end. With
+`etDay` fixed the call is ~2.4 s against 21.2 s, which is the defect gone; a
+third of that does not buy an unmeasured change to a coefficient a rider's
+countdown is built from.
+
+And the 30-day row is a warning, not an improvement: a THIRD Red cell appears
+there, which is the day-blocked gate qualifying a cell on thinner evidence —
+the very failure the per-cell bootstrap exists to refuse.

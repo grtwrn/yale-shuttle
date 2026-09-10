@@ -399,21 +399,41 @@ export function computeLapFits(
 // -- loading, and how often ---------------------------------------------------
 
 /**
- * How far back the fit reads, and it is a COST decision, not a data one.
+ * How far back the fit reads. `arrivals` is retained 90 days and every day of
+ * it is usable: a cell's slope is stable per quarter (measured), so the window
+ * is bounded by retention rather than by drift.
  *
- * A cell's slope is stable per quarter, so the whole 90-day retention window is
- * usable — but this runs synchronously on the collector's loop, and measured
- * on the Pi against a real snapshot:
+ * IT WAS ALMOST SHORTENED TO 45, AND THE REASON IT WAS NOT IS THE POINT.
+ * Measured on the Pi against a real snapshot, once `etDay` stopped costing
+ * 166 us a call:
  *
  *     90 d   query 2,192 ms + fit 860 ms   187,499 rows   served {3:11, 3:121}
  *     45 d   query   674 ms + fit 321 ms    95,672 rows   served {3:11, 3:121}
  *     30 d   query   460 ms + fit 205 ms    64,810 rows   served {3:11, 3:121, 3:30}
  *
- * 45 days is a third of the cost for the IDENTICAL served set. 30 is not:
- * a third Red cell appears there, which is the window being short enough for a
- * cell to qualify on thin evidence — exactly what the gate exists to refuse.
+ * The served SET is the wrong invariant: what ships is the COEFFICIENTS, and
+ * they move. Side by side, 90 d against 45 d:
+ *
+ *     3:11    lapB -9.285e-4 / -9.740e-4,  lapM 3030 / 3055 s,  lapN 3913 / 977
+ *     3:121   lapB -10.011e-4 / -10.476e-4, lapM 2820 / 2827 s, lapN 41308 / 11937
+ *
+ * which over the laps those cells actually see is a **median 13.0 s of stand
+ * at 344 Winchester (p95 19.1, max 29.4)** and 6.3 s at Union Station (N).
+ * The paired rider-sim result the rollout gate rests on was measured with the
+ * 90-day fit, so shortening the window would put a configuration in front of
+ * riders that nothing had measured — the exact failure `predictions_log`
+ * exists to end (a family of stability numbers scored against a client that
+ * had not shipped since March). With `etDay` fixed the call is ~3.0 s against
+ * 21.2 s, which is the defect gone; a third of three seconds does not buy an
+ * unmeasured change to a coefficient a rider's countdown is built from.
+ *
+ * And read the 30-day row correctly: a THIRD Red cell appearing there is not
+ * the shorter window finding more signal. It is the day-blocked gate
+ * qualifying a cell on thinner evidence — the very failure the per-cell
+ * bootstrap exists to refuse. "Shorter window, more cells served" is a warning,
+ * not an improvement.
  */
-export const LAP_FIT_WINDOW_DAYS = 45;
+export const LAP_FIT_WINDOW_DAYS = 90;
 /**
  * How often it is recomputed. The fit is a property of the timetable, not of
  * the hour — nothing in it moves between two calibrator ticks — and it costs
