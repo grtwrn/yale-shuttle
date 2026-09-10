@@ -5986,7 +5986,11 @@ const RideStopList: FC<{
   const n = allStops.length;
 
   let etaSec: number | null = null;
-  if (bus) {
+  // Once this ride reaches its exit, the next arrival is another lap, not
+  // the time remaining for the passenger who is getting off here.
+  if (bus && alightIdx >= 0 && busIdx === alightIdx) {
+    etaSec = 0;
+  } else if (bus) {
     const arr = computeUpcomingArrivals(
       [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
@@ -6045,7 +6049,7 @@ const RideStopList: FC<{
           const isBoard = idx === boardIdx;
 
           const icon = isBusCur ? "🚌" : isAlight ? "🚏" : passed ? "✓" : "·";
-          const dimmed = passed && !isBoard;
+          const dimmed = passed && !isBoard && !isAlight;
           const highlighted = isBusCur || isAlight;
 
           return (
