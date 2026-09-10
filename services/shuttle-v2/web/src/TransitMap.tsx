@@ -56,6 +56,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { liveUpdateMessage } from "./liveUpdates";
 import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
@@ -6504,6 +6505,9 @@ const TransitMap: FC = () => {
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
+  const busUpdatesStartedAt = useRef(Date.now());
+  const [lastBusUpdateAt, setLastBusUpdateAt] = useState<number | null>(null);
+  const [busUpdateFailed, setBusUpdateFailed] = useState(false);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
@@ -7174,10 +7178,14 @@ const TransitMap: FC = () => {
         // A failed poll must not be mistaken for an empty fleet: the server
         // answers 5xx as JSON `{error}`, and applying that as `buses ?? []`
         // flipped a live page to "No shuttles running" for one tick.
-        if (!res.ok) return;
+        if (!res.ok) throw new Error("Bus update failed");
         const data = await res.json();
-        if (stopped || mySeq <= latestApplied) return;
+        if (stopped || controller.signal.aborted || mySeq <= latestApplied) return;
+        // A malformed response is not a successfully refreshed empty fleet.
+        if (!data || !Array.isArray(data.buses)) throw new Error("Invalid bus update");
         latestApplied = mySeq;
+        setLastBusUpdateAt(Date.now());
+        setBusUpdateFailed(false);
         // The estimator's learned parameters, before anything that prices a
         // row with them (docs/closed-loop.md, stage 3). Absent, malformed or
         // out of range and this resets to the compiled constants, which is
@@ -7209,7 +7217,12 @@ const TransitMap: FC = () => {
           setRoutePaths(data.route_paths);
         }
         if (Array.isArray(data.announcements)) setAnnouncements(data.announcements as ServiceAnnouncement[]);
-      } catch { /* aborted or network error — next tick will retry */ }
+      } catch {
+        // Replaced requests and unmounts are not connection failures.
+        if (!stopped && !controller.signal.aborted && mySeq > latestApplied) {
+          setBusUpdateFailed(true);
+        }
+      }
     };
     // Adaptive cadence: 5s when the tab is visible (active riders
     // watching an ETA), 30s when hidden (battery-friendly background).
@@ -7223,7 +7236,12 @@ const TransitMap: FC = () => {
     };
     const onVisibility = () => {
       restart();
-      if (!document.hidden) poll();
+      if (!document.hidden) {
+        // A sleeping browser is not evidence of a broken connection. Start a
+        // fresh visible window without pretending a response has arrived.
+        busUpdatesStartedAt.current = Date.now();
+        poll();
+      }
     };
     document.addEventListener("visibilitychange", onVisibility);
     poll();
@@ -7271,6 +7289,7 @@ const TransitMap: FC = () => {
   // the previous attempt only edited one. It is now derived — the short chip
   // label and the toggle grouping key live beside the colour in ROUTE_LISTS.
   const legendRoutes = LEGEND_ROUTES;
+  const busUpdateNotice = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busUpdateFailed, document.hidden);
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
@@ -7381,6 +7400,16 @@ const TransitMap: FC = () => {
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
+      {busUpdateNotice && (
+        <div role="status" style={{
+          width: "calc(100% - 32px)", maxWidth: 528, margin: "6px auto 10px",
+          padding: "10px 12px", borderRadius: 10, border: "1px solid #d6a849",
+          background: "#fff4d6", color: "#634600", fontSize: 13, lineHeight: 1.4,
+        }}>
+          {busUpdateNotice}
+        </div>
+      )}
+
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
         <div style={{
           width: "100%", maxWidth: 560, padding: "0 16px", boxSizing: "border-box",
