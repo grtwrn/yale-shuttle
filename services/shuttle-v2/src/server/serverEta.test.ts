@@ -56,6 +56,17 @@ function payloadFor(i: number): EtaPayloadView {
 
 const ALL_ROUTES = ROUTE_LISTS.map((c) => c.label);
 
+/**
+ * Step, then read — the two halves of what used to be one synchronous call.
+ * The step is chunked across event-loop turns now, so every caller that wants
+ * THIS poll's answer has to await it; a caller that only wants the latest
+ * answer calls `answer()` alone and never steps a belief.
+ */
+async function stepped(eta: ServerEta, payload: EtaPayloadView, version: number, now: number) {
+  await eta.step(payload, version, now);
+  return eta.answer(payload.buses);
+}
+
 describe("the flag", () => {
   it("is off unless SHUTTLE_SERVER_ETA=1", () => {
     expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeNull();
@@ -88,9 +99,9 @@ describe("the served answer", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
 
-  it("carries only the allowlisted lines", () => {
+  it("carries only the allowlisted lines", async () => {
     const red = new ServerEta({ routes: ["Red"] });
-    const wire = red.contribute(payloadFor(0), 1, CAP.frames[0]!.t)!;
+    const wire = (await stepped(red, payloadFor(0), 1, CAP.frames[0]!.t))!;
     expect(wire).not.toBeNull();
     expect(new Set(wire.buses.map((b) => b[1]))).toEqual(new Set(["Red"]));
     // But every route was still STEPPED — warmth is not gated on the
@@ -98,22 +109,23 @@ describe("the served answer", () => {
     expect(red.stats().beliefs).toBeGreaterThan(wire.buses.length);
   });
 
-  it("names a bus that has aged off the live list nowhere", () => {
+  it("names a bus that has aged off the live list nowhere", async () => {
     // /api/buses applies its 120 s liveness TTL at READ time, so during an
     // upstream outage the bus array empties while the collector's data version
     // never moves. The field must empty with it.
     const eta = new ServerEta({ routes: ALL_ROUTES });
     const t = CAP.frames[0]!.t;
-    const full = eta.contribute(payloadFor(0), 1, t)!;
+    const full = (await stepped(eta, payloadFor(0), 1, t))!;
     expect(full.buses.length).toBeGreaterThan(5);
 
     const one = CAP.frames[0]!.buses[0]!;
-    const thinned = eta.contribute({ ...payloadFor(0), buses: [one] }, 1, t + 900)!;
+    // Same version: nothing steps, the last answer is simply filtered.
+    const thinned = eta.answer([one])!;
     expect(thinned.buses.map((b) => b[0])).toEqual([one.bus_name.replace("#", "")]);
     // Reindexed, not left with holes: `buses` is the row index space.
     for (const r of thinned.rows) expect(r[0]).toBe(0);
 
-    expect(eta.contribute({ ...payloadFor(0), buses: [] }, 1, t + 1_800)).toBeNull();
+    expect(eta.answer([])).toBeNull();
   });
 });
 
@@ -121,45 +133,45 @@ describe("beliefs", () => {
   beforeEach(() => registerRoutePaths(CAP.static.route_paths));
   afterEach(() => registerRoutePaths(null));
 
-  it("are keyed on the bus NAME, so a reissued bus_id keeps its belief", () => {
+  it("are keyed on the bus NAME, so a reissued bus_id keeps its belief", async () => {
     // `bus_id` is NOT a stable vehicle id — TransLoc reissues it per service
     // block (~1,000 ids for 50 buses in 30 days). Renumbering every id must
     // not create a second belief for the same vehicle.
     const eta = new ServerEta({ routes: ALL_ROUTES });
     const f0 = CAP.frames[0]!, f1 = CAP.frames[1]!;
-    eta.contribute(payloadFor(0), 1, f0.t);
+    await eta.step(payloadFor(0), 1, f0.t);
     const before = eta.stats().beliefs;
     const reissued = f1.buses.map((b) => ({ ...b, bus_id: b.bus_id + 500_000 }));
-    eta.contribute({ ...payloadFor(1), buses: reissued }, 2, f1.t);
+    await eta.step({ ...payloadFor(1), buses: reissued }, 2, f1.t);
     expect(eta.stats().beliefs).toBe(before);
   });
 
-  it("are evicted once a bus stops reporting", () => {
+  it("are evicted once a bus stops reporting", async () => {
     const eta = new ServerEta({ routes: ALL_ROUTES });
     const f0 = CAP.frames[0]!;
-    eta.contribute(payloadFor(0), 1, f0.t);
+    await eta.step(payloadFor(0), 1, f0.t);
     expect(eta.stats().beliefs).toBeGreaterThan(0);
     const one = f0.buses[0]!;
     // Still within the window: the rest of the fleet keeps its belief, so a
     // one-poll gap in the feed does not cost every bus its history.
-    eta.contribute({ ...payloadFor(0), buses: [one] }, 2, f0.t + BELIEF_EVICT_MS - 1_000);
+    await eta.step({ ...payloadFor(0), buses: [one] }, 2, f0.t + BELIEF_EVICT_MS - 1_000);
     expect(eta.stats().beliefs).toBeGreaterThan(1);
     // Past it: only the bus still reporting is left.
-    eta.contribute({ ...payloadFor(0), buses: [one] }, 3, f0.t + BELIEF_EVICT_MS + 1_000);
+    await eta.step({ ...payloadFor(0), buses: [one] }, 3, f0.t + BELIEF_EVICT_MS + 1_000);
     const cfgs = ROUTE_LISTS.filter((c) => c.busRouteIds.includes(one.route_id));
     expect(eta.stats().beliefs).toBe(cfgs.length);
   });
 });
 
 describe("failure containment", () => {
-  it("swallows an estimator exception and serves no field", () => {
+  it("swallows an estimator exception and serves no field", async () => {
     const logged: string[] = [];
     const eta = new ServerEta({ routes: ALL_ROUTES, log: (e) => logged.push(e) });
     // A payload the estimator cannot walk. The contract is that the poll and
     // the endpoint survive it; the field simply goes absent.
     const broken = { ...payloadFor(0), routes: null } as unknown as EtaPayloadView;
-    expect(() => eta.contribute(broken, 1, Date.now())).not.toThrow();
-    expect(eta.contribute(broken, 2, Date.now())).toBeNull();
+    await expect(eta.step(broken, 1, Date.now())).resolves.toBeUndefined();
+    expect(await stepped(eta, broken, 2, Date.now())).toBeNull();
     expect(eta.stats().failures).toBeGreaterThan(0);
     expect(logged).toContain("server_eta.step_failed");
   });
@@ -232,7 +244,7 @@ describe("/api/buses with the flag off", () => {
     c.stop();
   });
 
-  it("is byte-identical to the payload the builder produces on its own", () => {
+  it("is byte-identical to the payload the builder produces on its own", async () => {
     // The module is loaded either way — it is imported by app.ts. What must be
     // absent is its OUTPUT. A client that ignores the field must see exactly
     // the bytes it sees today, which is what makes this change additive.
@@ -240,13 +252,17 @@ describe("/api/buses with the flag off", () => {
     expect(off()).toBe(JSON.stringify(buildBusesPayload(collector, null)));
     expect(off()).not.toContain("server_eta");
     expect(createBusesPayloadCache(collector, null, null)()).toBe(off());
+    // And `prime` with no engine is the plain synchronous build — the poll
+    // observer's contract does not change when the flag is off.
+    await expect(off.prime()).resolves.toBeUndefined();
+    expect(off()).toBe(JSON.stringify(buildBusesPayload(collector, null)));
   });
 
-  it("adds the field and nothing else when it is on", () => {
+  it("adds the field and nothing else when it is on", async () => {
     const off = JSON.parse(createBusesPayloadCache(collector, null)()) as Record<string, unknown>;
-    const on = JSON.parse(
-      createBusesPayloadCache(collector, null, new ServerEta({ routes: ALL_ROUTES }))(),
-    ) as Record<string, unknown>;
+    const onCache = createBusesPayloadCache(collector, null, new ServerEta({ routes: ALL_ROUTES }));
+    await onCache.prime();
+    const on = JSON.parse(onCache()) as Record<string, unknown>;
     // The one route in this fixture is not a real line, so there is nothing to
     // price and no field — which is itself the invariant: absent, never a stub.
     delete on["server_eta"];

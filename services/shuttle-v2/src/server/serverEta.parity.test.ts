@@ -47,7 +47,7 @@ import type { AnchorStore } from "../../web/src/eta/index.js";
 import type { LatLon } from "../../web/src/geo.js";
 import type { BusData } from "../../web/src/map-data.js";
 import { ROUTE_LISTS } from "../../web/src/routes.js";
-import { ServerEta, type EtaPayloadView, type ServerEtaWire } from "./serverEta.js";
+import { ServerEta, SLICE_BUDGET_MS, type EtaPayloadView, type ServerEtaWire } from "./serverEta.js";
 
 // Read rather than `import ... from`: `resolveJsonModule` would have tsc infer
 // a literal type for a quarter-megabyte of captured JSON on every typecheck.
@@ -129,21 +129,24 @@ describe("the server's belief and the client's give the same answer", () => {
     }
   });
 
-  it("matches row for row over 40 consecutive polls, to 0.5 s", () => {
+  it("matches row for row over 40 consecutive polls, to 0.5 s", async () => {
     const clientStore: AnchorStore = new Map();
     const server = new ServerEta({ routes: ALL_ROUTES });
 
     let comparedRows = 0;
     let comparedFrames = 0;
-    CAP.frames.forEach((frame, i) => {
+    for (const [i, frame] of CAP.frames.entries()) {
       // The client's poll: one call over every stop, its own store.
       const client = clientRows(computeUpcomingArrivals(
         ALL_STOPS, frame.buses, CAP.static.routes, CAP.static.stop_coords,
         CAP.static.segments, frame.t, CAP.static.dwells, clientStore,
       ));
-      // The server's poll: a new collector data version per frame.
-      const wire = server.contribute(payloadFor(frame), i, frame.t);
-      const srv = serverRows(wire);
+      // The server's poll: a new collector data version per frame. The step is
+      // CHUNKED — it drains the same generator across `setImmediate` turns —
+      // so awaiting it is what makes this a comparison of two drivers over one
+      // implementation rather than of two implementations.
+      await server.step(payloadFor(frame), i, frame.t);
+      const srv = serverRows(server.answer(frame.buses));
 
       expect([...srv.keys()].sort(), `frame ${i} keys`).toEqual([...client.keys()].sort());
       for (const [k, want] of client) {
@@ -160,12 +163,14 @@ describe("the server's belief and the client's give the same answer", () => {
         });
       }
       if (client.size > 0) comparedFrames++;
-    });
+    }
 
     // A green run on an empty comparison would prove nothing.
     expect(comparedFrames).toBeGreaterThan(30);
     expect(comparedRows).toBeGreaterThan(5_000);
-  });
+    // 80 passes over the whole network, half of them yielding to the event
+    // loop every few milliseconds. The default 5 s is not enough on a Pi.
+  }, 120_000);
 
   it("a cold belief disagrees with a warm one — so the comparison above is about STATE", () => {
     // The whole argument for the move: a browser opened at frame 40 has a
@@ -202,20 +207,72 @@ describe("the server's belief and the client's give the same answer", () => {
     expect(differing, "cold and warm beliefs answered identically").toBeGreaterThan(0);
   });
 
-  it("a second call at the same collector version steps nothing", () => {
+  it("a second call at the same collector version steps nothing", async () => {
     // Constraint 2 in serverEta.ts. The /api/buses cache also rebuilds on a
     // one-second wall clock during an upstream outage; stepping the filter
     // again on the same fix would hand it a repeat observation upstream never
     // sent, which this model reads as evidence the bus is standing.
     const server = new ServerEta({ routes: ALL_ROUTES });
     const f0 = CAP.frames[0]!, f1 = CAP.frames[1]!;
-    const a = server.contribute(payloadFor(f0), 7, f0.t);
-    const b = server.contribute(payloadFor(f0), 7, f0.t + 900);
-    expect(serverRows(b)).toEqual(serverRows(a));
+    await server.step(payloadFor(f0), 7, f0.t);
+    const a = serverRows(server.answer(f0.buses));
+    await server.step(payloadFor(f0), 7, f0.t + 900);
+    expect(serverRows(server.answer(f0.buses))).toEqual(a);
     expect(server.stats().steps).toBe(1);
     // A new version does step, and the answer moves.
-    const c = server.contribute(payloadFor(f1), 8, f1.t);
+    await server.step(payloadFor(f1), 8, f1.t);
     expect(server.stats().steps).toBe(2);
-    expect(serverRows(c)).not.toEqual(serverRows(a));
+    expect(serverRows(server.answer(f1.buses))).not.toEqual(a);
+  });
+
+  it("one step per observation SURVIVES the chunking — a poll mid-pass is queued, never interleaved", async () => {
+    // The chunked pass spans several event-loop turns, which is exactly the
+    // window in which a second `step` can land. Two passes advancing the same
+    // beliefs over different fixes would corrupt every belief in the store, so
+    // a pass runs to completion and the newer version waits behind it.
+    const server = new ServerEta({ routes: ALL_ROUTES });
+    const f0 = CAP.frames[0]!, f1 = CAP.frames[1]!, f2 = CAP.frames[2]!;
+    // Fire three versions without awaiting: v9 starts, v10 and v11 land during
+    // its pass. v11 is the newest and is the one that runs next.
+    const a = server.step(payloadFor(f0), 9, f0.t);
+    const b = server.step(payloadFor(f1), 10, f1.t);
+    const c = server.step(payloadFor(f2), 11, f2.t);
+    await Promise.all([a, b, c]);
+    // Two passes, not three: the middle version was superseded before it ran.
+    // Never four, and never one — the freshest fix is always stepped.
+    expect(server.stats().steps).toBe(2);
+
+    // And the same version arriving twice mid-pass steps once, full stop.
+    const solo = new ServerEta({ routes: ALL_ROUTES });
+    await Promise.all([
+      solo.step(payloadFor(f0), 3, f0.t),
+      solo.step(payloadFor(f0), 3, f0.t),
+      solo.step(payloadFor(f0), 3, f0.t),
+    ]);
+    expect(solo.stats().steps).toBe(1);
+  });
+
+  it("no single synchronous slice runs long enough to block a request", async () => {
+    // The whole point of chunking. 35 ms per poll of CPU is 0.7% of a core; 35
+    // ms in ONE stretch is 35 ms of head-of-line blocking on the loop that
+    // serves /api/buses at ~40 req/s. `scripts/server-eta-bench.ts` is the
+    // measurement; this is the guard that keeps a future change from quietly
+    // making the pass indivisible again.
+    //
+    // The bound is deliberately loose (5x the budget): a CI box under load
+    // measures wall clock, and the failure this catches is a slice of tens of
+    // milliseconds, not one of nine.
+    const server = new ServerEta({ routes: ALL_ROUTES });
+    const slices: number[] = [];
+    // Frame 0 builds every ring and stand table from scratch — a one-time cost
+    // per process that no chunking of the per-bus loop can divide below one
+    // ring — so the steady-state polls are what is measured.
+    await server.step(payloadFor(CAP.frames[0]!), 100, CAP.frames[0]!.t);
+    for (let i = 1; i < 6; i++) {
+      const f = CAP.frames[i]!;
+      await server.step(payloadFor(f), 100 + i, f.t, (_wall, cpu) => slices.push(cpu));
+    }
+    expect(slices.length).toBeGreaterThan(20);
+    expect(Math.max(...slices)).toBeLessThan(SLICE_BUDGET_MS * 5);
   });
 });

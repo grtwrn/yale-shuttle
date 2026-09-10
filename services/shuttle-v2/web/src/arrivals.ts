@@ -167,7 +167,30 @@ export type UpcomingArrival = {
   estimated: boolean;
 };
 
-export function computeUpcomingArrivals(
+/**
+ * The estimator's per-poll work, expressed as RESUMABLE UNITS — one `yield`
+ * per bus priced.
+ *
+ * This is the ONE implementation. `computeUpcomingArrivals` below drains it in
+ * a tight loop and is byte-for-byte what every caller and every replay has
+ * always had; the server drains it across `setImmediate` boundaries instead
+ * (`src/server/serverEta.ts`), so a poll that costs ~35 ms of CPU no longer
+ * blocks the event loop that serves `/api/buses` for 35 ms in one go.
+ *
+ * WHY A GENERATOR RATHER THAN A SECOND, CHUNKED COPY. Two implementations of
+ * the estimator is the exact failure the server-side move exists to remove —
+ * `serverEta.parity.test.ts` is there because a fork of this arithmetic would
+ * be invisible until riders saw two different numbers. A generator keeps one
+ * body and lets the caller decide how much of it to run at a time; the yield
+ * points are the only thing the two drivers disagree about, and a yield point
+ * changes nothing about the answer, because each unit's state lives in
+ * `anchorStore` and in `result`, never on the stack between buses.
+ *
+ * The unit is a BUS, not a route: most of the cost is per-bus belief stepping
+ * (dropping 118 of 172 target stops saved only 8 ms of 35), so a per-route
+ * unit would leave a five-bus line as one indivisible block.
+ */
+export function* upcomingArrivalUnits(
   targetStopIds: number[],
   buses: BusData[],
   routeStops: Record<string, number[]>,
@@ -183,7 +206,7 @@ export function computeUpcomingArrivals(
    * what the existing tests assert.
    */
   anchorStore?: AnchorStore,
-): UpcomingArrival[] {
+): Generator<void, UpcomingArrival[], void> {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
   for (const cfg of ROUTE_LISTS) {
@@ -215,6 +238,11 @@ export function computeUpcomingArrivals(
     // below this line; #160's repaired ring took Green off it.
     const ring = ringForBus(routeBuses[0]!, stops, stopCoords);
     if (!ring) continue;
+    // A unit boundary of its own: on the FIRST poll of a process the ring is
+    // built here rather than read from cache, which is the single most
+    // expensive thing this function ever does. Splitting it off keeps the
+    // build out of the same slice as the first bus's pricing.
+    yield;
     for (const bus of routeBuses) {
       const rows = arrivalsForBus(
         anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
@@ -228,10 +256,40 @@ export function computeUpcomingArrivals(
           stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,
         });
       }
+      // One bus priced. Everything needed to resume is in `result` and in
+      // `anchorStore`; nothing on the stack is time-sensitive, and `now` was
+      // fixed by the caller before the first unit, so a pass spread over
+      // several event-loop turns prices the same instant throughout.
+      yield;
     }
   }
   result.sort((a, b) => a.eta - b.eta);
   return result;
+}
+
+/**
+ * The synchronous driver, and the signature every caller and every replay
+ * depends on (`docs/rider-sim.md` treats it as the instrument's contract).
+ * It drains {@link upcomingArrivalUnits} without pausing, so it is exactly the
+ * loop that used to live here.
+ */
+export function computeUpcomingArrivals(
+  targetStopIds: number[],
+  buses: BusData[],
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  segmentTimes: SegmentTimes,
+  now = Date.now(),
+  dwellTimes: DwellTimes = {},
+  anchorStore?: AnchorStore,
+): UpcomingArrival[] {
+  const units = upcomingArrivalUnits(
+    targetStopIds, buses, routeStops, stopCoords, segmentTimes, now, dwellTimes, anchorStore,
+  );
+  for (;;) {
+    const step = units.next();
+    if (step.done) return step.value;
+  }
 }
 
 /**

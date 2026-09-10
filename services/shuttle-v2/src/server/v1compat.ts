@@ -365,12 +365,33 @@ export function createBusesPayloadCache(
    * ordering that keeps that true.
    */
   serverEta?: ServerEta | null,
-): () => string {
+): BusesPayloadCache {
   let cachedVersion = -1;
   let cachedParamsVersion = -1;
+  let cachedEtaVersion = -1;
   let cachedAt = 0;
   let cachedJson = "";
-  return () => {
+  let priming: Promise<void> | null = null;
+
+  const build = (nowMs: number, version: number, paramsVersion: number): Record<string, unknown> => {
+    cachedVersion = version;
+    cachedParamsVersion = paramsVersion;
+    cachedEtaVersion = serverEta?.answerVersion() ?? 0;
+    cachedAt = nowMs;
+    return buildBusesPayload(collector, modelParams);
+  };
+  const finish = (payload: Record<string, unknown>): string => {
+    if (serverEta) {
+      // Pure read of the last completed pass — a REQUEST never steps a belief.
+      const wire = serverEta.answer(payload["buses"] as EtaPayloadView["buses"]);
+      if (wire) payload["server_eta"] = wire;
+      cachedEtaVersion = serverEta.answerVersion();
+    }
+    cachedJson = JSON.stringify(payload);
+    return cachedJson;
+  };
+
+  const read = (): string => {
     const nowMs = Date.now();
     // The parameter set is its own version because a publish must reach riders
     // on their next poll and does NOT move the collector's data version: the
@@ -379,23 +400,65 @@ export function createBusesPayloadCache(
     if (
       cachedVersion === collector.dataVersion()
       && cachedParamsVersion === paramsVersion
+      // A pass that finished after this string was built must reach the next
+      // reader; without this the cache would serve one poll's rows for the
+      // whole five seconds until the version moved again.
+      && cachedEtaVersion === (serverEta?.answerVersion() ?? 0)
       && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS
     ) {
       return cachedJson;
     }
-    cachedVersion = collector.dataVersion();
-    cachedParamsVersion = paramsVersion;
-    const payload = buildBusesPayload(collector, modelParams);
-    if (serverEta) {
-      // Non-throwing by contract (see serverEta.ts): the worst case is an
-      // absent field, never a failed /api/buses.
-      const wire = serverEta.contribute(payload as unknown as EtaPayloadView, cachedVersion, nowMs);
-      if (wire) payload["server_eta"] = wire;
-    }
-    cachedJson = JSON.stringify(payload);
-    cachedAt = nowMs;
-    return cachedJson;
+    return finish(build(nowMs, collector.dataVersion(), paramsVersion));
   };
+
+  /**
+   * The collector's own poll: step the belief, THEN build the string every
+   * request for the next five seconds will share.
+   *
+   * Stepping here rather than inside `read` is what keeps the estimator off
+   * the request path entirely — and it is why the belief is always warm: it
+   * advances on every observation, not only when a rider happens to ask.
+   *
+   * The order matters. Building first and stepping after would leave the
+   * cached payload one whole poll behind the belief that produced it, since
+   * nothing would rebuild it until the next version.
+   */
+  read.prime = async (): Promise<void> => {
+    if (!serverEta) { read(); return; }
+    // Serialised: two overlapping primes would race to install a payload and
+    // the loser's could be the newer one. At 5 s between polls this never
+    // happens; it costs one comparison to make it impossible.
+    while (priming) await priming.catch(() => {});
+    const version = collector.dataVersion();
+    priming = (async () => {
+      const nowMs = Date.now();
+      const payload = build(nowMs, version, modelParams?.version() ?? 0);
+      await serverEta.step(payload as unknown as EtaPayloadView, version, nowMs);
+      finish(payload);
+    })();
+    try {
+      await priming;
+    } catch {
+      // `build` claimed the cache key before the string existed, so a failure
+      // here would leave the PREVIOUS poll's body pinned until the version
+      // moved. Un-claim it and let the next reader rebuild synchronously.
+      cachedVersion = -1;
+    } finally {
+      priming = null;
+    }
+  };
+  return read as BusesPayloadCache;
+}
+
+/**
+ * The `/api/buses` body, cached.
+ *
+ * Call it to READ — synchronous, never steps anything. Call `prime()` from the
+ * collector's poll observer, which is where the server-side belief advances.
+ */
+export interface BusesPayloadCache {
+  (): string;
+  prime(): Promise<void>;
 }
 
 // -- /api/geocode (v1 shape) --------------------------------------------------

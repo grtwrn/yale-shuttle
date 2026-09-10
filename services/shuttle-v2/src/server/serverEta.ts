@@ -40,14 +40,25 @@
  *
  *  1. **The poll must never stall.** Every entry point here is non-throwing:
  *     an estimator exception is counted and logged and the served field simply
- *     goes absent, exactly as if the flag were off.
+ *     goes absent, exactly as if the flag were off. And the step is CHUNKED:
+ *     it drains `upcomingArrivalUnits` a few milliseconds at a time, yielding
+ *     to the event loop between slices, so a poll that costs ~33 ms of CPU no
+ *     longer holds `/api/buses` for 33 ms in one go. There is no second
+ *     implementation — the generator IS the loop `computeUpcomingArrivals`
+ *     drains, and the parity suite proves the two drivers agree.
  *  2. **One step per observation.** The belief is stepped once per collector
  *     `dataVersion()` — the counter `updateLivePositions` bumps once per poll.
  *     The `/api/buses` cache also rebuilds on a one-second wall clock during an
  *     upstream outage, and stepping the filter again on the SAME fix would feed
  *     it a repeat observation upstream never sent, which this model reads as
- *     evidence the bus is standing. So a same-version call re-serves the rows
- *     it already has (minus buses that have since aged out) and steps nothing.
+ *     evidence the bus is standing. So {@link ServerEta.step} on a version it
+ *     has already stepped does nothing at all, and {@link ServerEta.answer}
+ *     re-serves the rows it already has (minus buses that have since aged
+ *     out). Chunking makes that constraint sharper, not looser: a step now
+ *     spans several event-loop turns, so a second poll can arrive mid-pass.
+ *     The pass runs to completion and the newer version is queued behind it —
+ *     one pass at a time, one pass per version, never two beliefs advancing
+ *     over the same fix. `serverEta.test.ts` drives that case directly.
  *  3. **A route allowlist.** Client-side a bug is bounded by which routes the
  *     bundle prices; server-side it would reach every rider at once. Beliefs
  *     are stepped for EVERY route — warmth is the point, and a widened
@@ -56,7 +67,7 @@
  */
 
 import { anchorKeyFor } from "../../web/src/liveAnchor.js";
-import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals.js";
+import { upcomingArrivalUnits, type DwellTimes, type SegmentTimes, type UpcomingArrival } from "../../web/src/arrivals.js";
 import { registerRoutePaths } from "../../web/src/anchor.js";
 import { BELIEF_STALE_MS } from "../../web/src/eta/filter.js";
 import { applyModelParams } from "../../web/src/eta/params.js";
@@ -79,6 +90,25 @@ export const DEFAULT_SERVER_ETA_ROUTES: readonly string[] = ["Red", "Blue Day"];
 
 /** How long a bus may be absent before its belief is dropped. */
 export const BELIEF_EVICT_MS = BELIEF_STALE_MS;
+
+/**
+ * The longest the chunked step runs before handing the event loop back.
+ *
+ * This is the dial the whole head-of-line problem turns on, and it is chosen
+ * against a measurement rather than a feeling. A poll costs ~33 ms of CPU
+ * (`scripts/server-eta-bench.ts`, Pi 5); run in one go that is 33 ms every
+ * request behind it waits. Chunked at 4 ms the worst synchronous stretch is
+ * this budget plus whatever single bus was mid-price when it expired — the
+ * generator's unit is one bus, so nothing bigger than one bus can straddle a
+ * yield.
+ *
+ * It is not free: each yield is a `setImmediate` turn, so a smaller budget
+ * means more turns and a longer wall-clock pass. At 5 s between polls the pass
+ * has a ~140x margin, so wall clock is the cheap side of the trade and the
+ * block is the expensive one. Do not raise this without re-running the bench:
+ * the number to look at is `BLOCK max`, not `total`.
+ */
+export const SLICE_BUDGET_MS = 4;
 
 /** The `/api/buses` fields the estimator reads. Structurally what the client gets. */
 export interface EtaPayloadView {
@@ -121,13 +151,23 @@ export interface ServerEtaStats {
   steps: number;
   /** Exceptions swallowed. Non-zero means the field is absent, never that the poll broke. */
   failures: number;
-  /** Wall-clock of the last full step, ms. */
+  /** Wall-clock of the last full step, ms — INCLUDING the time yielded away. */
   lastStepMs: number;
+  /** The longest single synchronous slice of the last step, ms. The head-of-line number. */
+  lastBlockMs: number;
   /** Rows in the last served answer. */
   rows: number;
 }
 
 type Log = (event: string, fields: Record<string, unknown>) => void;
+
+/** One queued pass: the payload to price, the version it belongs to, its instant. */
+interface Job {
+  payload: EtaPayloadView;
+  version: number;
+  now: number;
+  onSlice?: (wallMs: number, cpuMs: number) => void;
+}
 
 /**
  * Reads the flag. `null` — the default — means the machinery is not
@@ -153,41 +193,73 @@ export class ServerEta {
   private readonly seenAt = new Map<string, number>();
   private readonly served: ReadonlySet<string>;
   private readonly log: Log;
+  /** {@link SLICE_BUDGET_MS}; `Infinity` reproduces the un-chunked pass for the bench. */
+  private readonly sliceBudgetMs: number;
 
   private lastVersion = -1;
   private wire: ServerEtaWire | null = null;
   private steps = 0;
   private failures = 0;
   private lastStepMs = 0;
+  private lastBlockMs = 0;
+  /** Bumped every time a pass completes. The `/api/buses` cache keys on it. */
+  private answerV = 0;
+  /** The drain in flight, if any. One pass at a time — see constraint 2. */
+  private runner: Promise<void> | null = null;
+  /** The newest version waiting for a pass. Latest wins; see {@link step}. */
+  private queued: Job | null = null;
 
-  constructor(opts: { routes: readonly string[]; log?: Log }) {
+  constructor(opts: { routes: readonly string[]; log?: Log; sliceBudgetMs?: number }) {
     this.served = new Set(opts.routes);
     this.log = opts.log ?? (() => {});
+    this.sliceBudgetMs = opts.sliceBudgetMs ?? SLICE_BUDGET_MS;
   }
 
   /**
-   * Step the beliefs for this collector data version and return the field to
-   * attach to `/api/buses`, or null when there is nothing to say.
+   * Advance every belief to this collector data version, a few milliseconds of
+   * work at a time. Resolves when the pass this call is responsible for has
+   * finished. Never throws.
    *
-   * Never throws. A same-`version` call re-serves the rows already computed,
-   * filtered to buses still in the payload — see constraint 2 in the header.
+   * A version already stepped returns immediately and touches nothing — that
+   * is constraint 2, and it is what stops the one-second wall-clock rebuild of
+   * the `/api/buses` cache from feeding the filter a repeat observation
+   * upstream never sent.
+   *
+   * If a pass is already running, this one is QUEUED rather than interleaved:
+   * two passes advancing the same beliefs over different fixes would corrupt
+   * every belief in the store. Only the newest queued job survives — at 5 s
+   * between polls against a ~33 ms pass a queue is already a 140x anomaly, and
+   * if the machine ever stalls long enough to build one, the belief wants the
+   * freshest fix, not a backlog of stale ones.
+   *
+   * @param onSlice called with each synchronous slice's wall and CPU time —
+   *   the bench's instrument (`scripts/server-eta-bench.ts`); absent in
+   *   production, which is also what keeps `process.cpuUsage()` off the path.
    */
-  contribute(payload: EtaPayloadView, version: number, now: number): ServerEtaWire | null {
-    try {
-      if (version !== this.lastVersion) {
-        this.lastVersion = version;
-        this.wire = this.recompute(payload, now);
-      }
-      return this.filterToLive(this.wire, payload.buses);
-    } catch (err) {
-      this.failures++;
-      this.wire = null;
-      this.log("server_eta.step_failed", {
-        error: err instanceof Error ? err.message : String(err),
-        failures: this.failures,
-      });
-      return null;
-    }
+  async step(payload: EtaPayloadView, version: number, now: number, onSlice?: (wallMs: number, cpuMs: number) => void): Promise<void> {
+    if (version === this.lastVersion) return;
+    const job: Job = { payload, version, now };
+    if (onSlice) job.onSlice = onSlice;
+    this.queued = job;
+    if (!this.runner) this.runner = this.drain();
+    await this.runner;
+  }
+
+  /**
+   * The last completed answer, minus buses that have since aged off the live
+   * list. Pure: it never steps anything, so a request may call it freely.
+   */
+  answer(live: readonly BusData[]): ServerEtaWire | null {
+    return this.filterToLive(this.wire, live);
+  }
+
+  /**
+   * Bumped once per completed pass. `createBusesPayloadCache` folds it into
+   * its key so a payload built before a pass finished is rebuilt after it —
+   * without it the cache would happily serve one poll's rows for five seconds.
+   */
+  answerVersion(): number {
+    return this.answerV;
   }
 
   stats(): ServerEtaStats {
@@ -196,6 +268,7 @@ export class ServerEta {
       steps: this.steps,
       failures: this.failures,
       lastStepMs: this.lastStepMs,
+      lastBlockMs: this.lastBlockMs,
       rows: this.wire?.rows.length ?? 0,
     };
   }
@@ -205,8 +278,69 @@ export class ServerEta {
     return [...this.served];
   }
 
-  private recompute(payload: EtaPayloadView, now: number): ServerEtaWire | null {
+  private async drain(): Promise<void> {
+    try {
+      while (this.queued) {
+        const job = this.queued;
+        this.queued = null;
+        if (job.version === this.lastVersion) continue;
+        // Claimed BEFORE the pass rather than after, so a `step` call arriving
+        // mid-pass for this same version is a no-op rather than a re-run.
+        this.lastVersion = job.version;
+        await this.pass(job);
+      }
+    } finally {
+      this.runner = null;
+    }
+  }
+
+  /** One full pass over every belief, yielded to the loop every {@link SLICE_BUDGET_MS}. */
+  private async pass(job: Job): Promise<void> {
     const t0 = Date.now();
+    let block = 0;
+    try {
+      const units = this.units(job.payload, job.now);
+      let arrivals: UpcomingArrival[];
+      for (;;) {
+        const cpu0 = job.onSlice ? process.cpuUsage() : null;
+        const sliceStart = performance.now();
+        let step = units.next();
+        while (!step.done && performance.now() - sliceStart < this.sliceBudgetMs) step = units.next();
+        const slice = performance.now() - sliceStart;
+        if (slice > block) block = slice;
+        if (job.onSlice) {
+          const d = process.cpuUsage(cpu0!);
+          job.onSlice(slice, (d.user + d.system) / 1000);
+        }
+        if (step.done) { arrivals = step.value; break; }
+        // `setImmediate`, not a microtask: it runs in the check phase, AFTER
+        // the poll phase, so a request that arrived during the slice is served
+        // before the next one starts. A promise tick would drain before any
+        // I/O and yield nothing at all.
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+      this.markSeen(job.payload.buses, job.now);
+      this.evict(job.now);
+      this.wire = this.toWire(arrivals, job.now);
+      this.steps++;
+    } catch (err) {
+      this.failures++;
+      this.wire = null;
+      this.log("server_eta.step_failed", {
+        error: err instanceof Error ? err.message : String(err),
+        failures: this.failures,
+      });
+    }
+    this.lastStepMs = Date.now() - t0;
+    this.lastBlockMs = block;
+    this.answerV++;
+  }
+
+  /**
+   * The pass's work, not yet run: the generator plus the registrations that
+   * have to happen before its first unit.
+   */
+  private units(payload: EtaPayloadView, now: number): Generator<void, UpcomingArrival[], void> {
     // The published polylines are a module-level registration on the client
     // (the shell calls this once per poll before anything reads a bus); the
     // server has one process and does the same, before anything is priced.
@@ -227,16 +361,14 @@ export class ServerEta {
       }
     }
 
-    const arrivals = computeUpcomingArrivals(
+    return upcomingArrivalUnits(
       targets, payload.buses, payload.routes, payload.stop_coords,
       payload.segments, now, payload.dwells, this.store,
     );
+  }
 
-    this.markSeen(payload.buses, now);
-    this.evict(now);
-    this.steps++;
-    this.lastStepMs = Date.now() - t0;
-
+  /** The served rows: allowlisted routes only, as a compact index table. */
+  private toWire(arrivals: readonly UpcomingArrival[], now: number): ServerEtaWire | null {
     const index = new Map<string, number>();
     const buses: (readonly [string, string])[] = [];
     const rows: ServerEtaRow[] = [];

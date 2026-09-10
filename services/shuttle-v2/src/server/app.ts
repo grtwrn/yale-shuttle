@@ -301,7 +301,12 @@ export function buildApp(opts: AppOptions): Hono {
     // The build it forces is the one the next five seconds of requests share,
     // so this costs a stringify per poll on an idle machine and nothing at all
     // on a busy one.
-    opts.collector.setPollObserver(() => { busesJson(); });
+    //
+    // It is deliberately fire-and-forget: `prime` is non-throwing and the
+    // collector's poll must not wait on the estimator. Requests arriving
+    // during the pass are served the previous poll's body, which is what they
+    // were being served a millisecond earlier anyway.
+    opts.collector.setPollObserver(() => { void busesJson.prime(); });
   }
 
   app.get("/api/buses", (c) => {
