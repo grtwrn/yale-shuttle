@@ -130,6 +130,22 @@ export function shownStandSec(
 
 export type UpcomingArrival = {
   eta: number; low: number; high: number;
+  /**
+   * The DRIVE FLOOR (eta/arrival.ts `departNow`): this same arrival with the
+   * rest the bus is in right now ended this second. Equal to `eta` for a bus
+   * that is not resting.
+   *
+   * It is here so the standing card's range can be floored by a number the
+   * model measured rather than one the display reconstructs. standWait.ts used
+   * to take `eta - remainingStand`, with the stand read from `shownStandSec`'s
+   * separate pass at a separate clock: two arithmetics differing by decay, by
+   * the route/horizon corrections and by which clock the stand was billed
+   * under, subtracted from one another and floored at zero. On a stand past
+   * its table the difference collapses and the low end degenerates to a stand
+   * quantile with no drive in it at all — "in <1 min" for a bus three hops and
+   * 472 m away (operator, 2026-09-10).
+   */
+  departNow: number;
   routeLabel: string; color: string; busName: string; stopId: number;
   /**
    * Hops from the bus's anchor to this stop, 1-based — the loop walks twice,
@@ -222,7 +238,7 @@ export function computeUpcomingArrivals(
       );
       for (const row of rows) {
         result.push({
-          eta: row.eta, low: row.low, high: row.high,
+          eta: row.eta, low: row.low, high: row.high, departNow: row.departNow,
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),
           stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,

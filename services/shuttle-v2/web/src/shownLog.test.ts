@@ -27,6 +27,7 @@ const arrival = (over: Partial<UpcomingArrival> = {}): UpcomingArrival => ({
   eta: 300,
   low: 240,
   high: 360,
+  departNow: 300,
   routeLabel: "Red",
   color: "#C62828",
   busName: "40",

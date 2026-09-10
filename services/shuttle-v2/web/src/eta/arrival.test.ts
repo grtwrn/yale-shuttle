@@ -221,3 +221,58 @@ describe("arrival: a rest hidden inside a hop", () => {
     expect(Math.abs(row.eta - asDriveFraction)).toBeGreaterThan(60);
   });
 });
+
+describe("departNow — the drive floor the display had been reconstructing", () => {
+  it("is the same chain with the stand in progress ended, and equals eta for a moving bus", () => {
+    const { ring, tables } = setup();
+    let b = stepBelief(undefined, ring, { lat: at(35, 0).lat, lon: at(35, 0).lon }, 0, STOPS);
+    b = stepBelief(b, ring, { lat: at(70, 0).lat, lon: at(70, 0).lon }, 5000, STOPS);
+    b = stepBelief(b, ring, { lat: at(105, 0).lat, lon: at(105, 0).lon }, 10_000, STOPS);
+    const row = priceRoute(b, ring, tables, STOPS, new Set([3]), 10_000, 0.5)
+      .find((r) => r.stopId === 3 && r.occurrence === 0)!;
+    // Nothing is resting, so there is no rest to end: the floor IS the number.
+    expect(row.standingAt).toBe(-1);
+    expect(row.departNow).toBe(row.eta);
+  });
+
+  it("drops exactly the residual stand, and is the drive alone at the next stop", () => {
+    const { ring, tables } = setup();
+    const now = 300_000; // 300 s into stop 1's 400-ish second layover
+    let b = stepBelief(undefined, ring, standAt1(0), now - 30_000, STOPS);
+    for (let t = 1; t <= 6; t++) b = stepBelief(b, ring, standAt1(0), now - 30_000 + t * 5000, STOPS);
+    const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5)
+      .find((r) => r.stopId === 2 && r.occurrence === 0)!;
+    expect(row.standingAt).toBe(0);
+    // One hop on, the chain past the stand is the drive out of stop 1 and
+    // nothing else, so the floor is that drive's own median.
+    const drive = quantile(tables.hops[0]!.drive, 0.5);
+    expect(Math.abs(row.departNow - drive)).toBeLessThan(12);
+    // And it is what the price is MISSING once the stand ends: the residual.
+    const rest = residual(tables.stops[0]!.stand, 300);
+    expect(Math.abs((row.eta - row.departNow) - rest(0.5))).toBeLessThan(15);
+  });
+
+  it("does not fall with the clamp — a drive is not standing time", () => {
+    // #119 holds the shown number down while the conditional stand climbs.
+    // The drive underneath does not move, and the floor must not move with it:
+    // that is precisely how the display's subtraction lost the drive term.
+    const { ring, tables } = setup();
+    const floors: Floors = { map: new Map() };
+    let b: Belief | undefined;
+    const seen: { eta: number; departNow: number }[] = [];
+    for (let r = 30; r <= 700; r += 5) {
+      const now = r * 1000;
+      b = stepBelief(b, ring, standAt1(0), now, STOPS);
+      const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors)
+        .find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (row) seen.push({ eta: row.eta, departNow: row.departNow });
+    }
+    expect(seen.length).toBeGreaterThan(50);
+    const floor = seen.map((s) => s.departNow);
+    const drive = quantile(tables.hops[0]!.drive, 0.5);
+    // Flat, at the drive, for the whole stand — while `eta` is clamped and
+    // walks downward around it.
+    for (const f of floor) expect(Math.abs(f - drive)).toBeLessThan(15);
+    expect(Math.min(...seen.map((s) => s.eta))).toBeLessThan(Math.max(...floor) + 200);
+  });
+});

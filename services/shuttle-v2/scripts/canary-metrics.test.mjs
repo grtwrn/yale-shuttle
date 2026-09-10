@@ -1649,6 +1649,25 @@ describe("the standing-bus range", () => {
     });
   });
 
+  it("survives the measured drive floor unchanged — only the low end's VALUE moves", () => {
+    // 2026-09-10: `standWait.ts` stopped RECONSTRUCTING the drive floor by
+    // subtraction and took the model's own `departNow` instead, which is what
+    // the operator's own card needed — it read `Red in <1-8, then 14 min` for
+    // a bus standing at 344 Winchester, three hops and ~500 m from the board
+    // stop. `fmtBusRange` is untouched, so this is not a layout change: every
+    // string the countdown can produce is a form the parser already accepted,
+    // and both spellings sit in this file above. Pinned so the claim is a test
+    // rather than an argument.
+    const before = parseBusEtaText("🚌 in <1-8, then 14 min");
+    const after = parseBusEtaText("🚌 in 1-8, then 14 min");
+    expect(before).toEqual({ first: [10, 540], second: [840, 900], raw: "in <1-8, then 14 min", spread: true });
+    expect(after).toEqual({ first: [60, 540], second: [840, 900], raw: "in 1-8, then 14 min", spread: true });
+    // The high end and the second bus are untouched, so a run spanning the
+    // change reads as the low end tightening and nothing else.
+    expect(after.first[1]).toBe(before.first[1]);
+    expect(after.second).toEqual(before.second);
+  });
+
   it("marks it, so a before/after over the archive can split on the boundary", () => {
     expect(parseBusEtaText("🚌 in 3-7 min").spread).toBe(true);
     expect(parseBusEtaText("🚌 in 3 min").spread).toBe(false);

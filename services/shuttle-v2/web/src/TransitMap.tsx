@@ -2157,7 +2157,7 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, computedAtMs: nowMs,
+          busEtaSec: 0, busDepartNowSec: 0, computedAtMs: nowMs,
         };
       }
 
@@ -2189,7 +2189,9 @@ const TripPlanner: FC<{
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
-        busEtaSec: match.eta, computedAtMs: nowMs,
+        // The floor rides with the pin: one row of one estimator pass, so the
+        // range's low end cannot be built from a different bus's drive.
+        busEtaSec: match.eta, busDepartNowSec: match.departNow, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3513,6 +3515,10 @@ const TripPlanner: FC<{
                     dwellTimes ?? undefined,
                     remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
                     o.boardStopId,
+                    // NOT decayed by wall clock: it is the drive AFTER the
+                    // stand ends, and none of it has been served while the bus
+                    // sits. The point number above still is (report #48).
+                    o.busDepartNowSec,
                   );
               const passedMatch = o.missedBus
                 ? buses.find((b) =>
@@ -3793,6 +3799,7 @@ const TripPlanner: FC<{
                   dwellTimes ?? undefined,
                   busEtaLive,
                   o.boardStopId,
+                  o.busDepartNowSec,
                 )
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
