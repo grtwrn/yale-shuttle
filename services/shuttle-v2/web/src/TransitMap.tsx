@@ -1836,6 +1836,7 @@ const TripPlanner: FC<{
         headers: anonIdHeader(),
         cache: "no-store", signal: controller.signal,
       });
+      if (!r.ok) throw new Error(`Search returned ${r.status}`);
       const d = await r.json();
       // If a newer request (or a pick) has superseded us, bail quietly.
       if (abortRef.current !== controller) return;
@@ -1853,7 +1854,7 @@ const TripPlanner: FC<{
       if (results.length === 0) results = raw.slice(0, 8);
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
-        if (autoPick) setError("No matches found");
+        setError("No matches found — try another name or address.");
         return;
       }
       // Auto-pick when confidence is high (explicit search only): a Yale
@@ -1872,7 +1873,9 @@ const TripPlanner: FC<{
       }
     } catch (e) {
       if ((e as DOMException)?.name === "AbortError") return;
-      if (autoPick) setError("Geocode request failed");
+      if (abortRef.current !== controller) return;
+      if (which === "from") setFromSugg([]); else setToSugg([]);
+      setError("Search is unavailable — please try again.");
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -3247,7 +3250,7 @@ const TripPlanner: FC<{
         // Not while that end is mid-lookup: the "Looking up…" banner above
         // is already saying so, and two messages about one box is one too
         // many.
-        if (!pending || searching === pending) return null;
+        if (!pending || searching === pending || error) return null;
         return (
           <div style={{ fontSize: 13, color: "#78909c", padding: "14px 8px", textAlign: "center" }}>
             {unresolvedEndpointHint(pending)}
