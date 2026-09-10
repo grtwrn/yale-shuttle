@@ -56,6 +56,7 @@ import { topVisibleOptions,
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 import { rideEndDecision } from "./rideEnd";
+import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
@@ -5955,7 +5956,7 @@ const RideRouteMap: FC<{
   };
 
   // Mount-once (rebuilds when route path data lands): tiles, the boarded route's
-  // polyline, its stops with board emphasised + alight as 🚏, fit to the route.
+  // polyline, its stops with board emphasised + alight as 🚏, fit to the ride leg.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
     const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
@@ -6022,8 +6023,20 @@ const RideRouteMap: FC<{
       pts.push([dest.lat, dest.lon]);
     }
 
+    // Keep the full route available for panning, but frame this rider's leg.
+    // A local Green ride must not start zoomed out to all of West Campus.
+    const trackedBus = buses.find((b) => cfg.busRouteIds.includes(b.route_id) && normBus(b.bus_name) === normBus(ride.busName));
+    const focusRouteId = trackedBus ? String(trackedBus.route_id) : routeIds[0];
+    const legIds = rideMapStopSequence(focusRouteId ? routeStops[focusRouteId] : undefined, ride.boardStopId, ride.alightStopId);
+    const legStops = legIds?.map((id) => stopCoords[id]);
+    let focusPts = pts;
+    if (legStops && legStops.every((p): p is LatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon))) {
+      focusPts = buildStopSequencePolyline(focusRouteId ? routePaths[focusRouteId] : undefined, legStops)
+        ?? legStops.map((p) => [p.lat, p.lon] as [number, number]);
+      if (dest) focusPts.push([dest.lat, dest.lon]);
+    }
     busLayerRef.current = L.layerGroup().addTo(map);
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [28, 28] });
+    if (focusPts.length) map.fitBounds(L.latLngBounds(focusPts), { padding: [28, 28], maxZoom: 16 });
     const t1 = setTimeout(() => map.invalidateSize(), 60);
     const t2 = setTimeout(() => map.invalidateSize(), 300);
     return () => {
