@@ -950,6 +950,28 @@ export function scoreFlaps(transitions, thresholds = THRESHOLDS) {
 }
 
 /**
+ * A console error the BROWSER emitted about a failed network request, rather
+ * than anything the app did.
+ *
+ * The canary listens to `console` as well as `pageerror`, because a caught-but-
+ * logged exception is still a defect. But Chromium also logs "Failed to load
+ * resource: net::ERR_..." for any request that does not complete, and on this
+ * Pi's link that happens: on 2026-09-10 a Red run failed `page-error` on six
+ * copies of ERR_CONNECTION_CLOSED and nothing else. That is the canary's own
+ * network, no rider saw it, and the operator already ruled on this exact class
+ * for `feed-error` (2026-09-04) — it is counted, not failed.
+ *
+ * Deliberately narrow: these two shapes are emitted by the browser's network
+ * stack and never by application code, so nothing the app can do is excused.
+ * An uncaught "Failed to fetch" still arrives as a `pageerror`, which is not
+ * a console message and is not exempt.
+ */
+export function isTransportNoise(text) {
+  return /^console: /.test(String(text))
+    && /(Failed to load resource|net::ERR_)/.test(String(text));
+}
+
+/**
  * Did the bus at the stop LEAVE between these two readings?
  *
  * WHY THIS EXISTS. `docs/eta-lurch-classification.md` (#71) measured that
