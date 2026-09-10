@@ -495,6 +495,9 @@ async function runOnce(line, rider) {
         record.samples.push({
           atMs: now, present: !!mine, eta: mine?.eta ?? null,
           etaRaw: mine?.eta?.raw ?? null, totalMin: mine?.totalMin ?? null,
+          // Only when nothing parsed — that is the case worth the bytes, and
+          // it is the one the archive had no record of.
+          ...(mine && !mine.eta && mine.busLines?.length ? { etaUnparsed: mine.busLines } : {}),
           arriveText: mine?.arriveText ?? null, departed: mine?.departed ?? false,
           missedBus: mine?.missedBus ?? null, walkToMin: mine?.walkToMin ?? null,
           waitFallback: mine?.waitFallback ?? null,
@@ -596,6 +599,16 @@ async function runOnce(line, rider) {
       const who = t.leader ? "the bus it is counting down" : "the bus after the pinned one";
       fail("eta-jump", `${who}: "${t.from}" → "${t.to}" in ${t.dtSec} s — ${t.driftSec > 0 ? "+" : ""}${(t.driftSec / 60).toFixed(1)} min beyond what the clock explains${t.pinAnnouncedChange ? " (the app announced a vehicle swap)" : ""}`);
     }
+    // FLAPPING is its own defect and this loop is the only thing that sees it.
+    // The jump loop above inspects consecutive pairs, so a countdown swinging
+    // between two states 72 s apart — 4:36, 1:57, 3:09, 3:09, 1:57, 2:46 on Red
+    // on the morning of 2026-09-09 — passes it clean while a rider standing
+    // there cannot tell whether to run. Events are already excluded from a flap
+    // chain, so what is left is the number arguing with itself.
+    for (const f of record.sequence.flaps ?? []) {
+      const who = f.leader ? "the bus it is counting down" : "the bus after the pinned one";
+      fail("eta-flap", `${who}: ${f.shown.join(" → ")} — ${f.moves} alternating moves in ${f.spanSec} s, swinging ${(f.swingSec / 60).toFixed(1)} min, none of them an event`);
+    }
     // A bus the rider was about to board leaving the list is its OWN defect,
     // not a drift, and the positional metric used to bill it as one. Only the
     // severe case fails a run: a trailing bus dropping out of the second slot
@@ -685,7 +698,7 @@ function describeFailure(record) {
   const out = [`🐤 ${who}: ${record.line}, ${record.trip.from} → ${record.trip.to} (${record.startedAtEt} ET)${record.dryRun ? " [dry run]" : ""}`];
   for (const f of record.failures) out.push(`   ✗ ${f.kind}: ${f.detail}`);
   const s = record.sequence;
-  if (s) out.push(`   sequence: ${s.readings} readings, ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
+  if (s) out.push(`   sequence: ${s.readings} readings (${s.spreadReadings ?? 0} standing), ${s.reversals} reversal(s), ${s.catastrophic} catastrophic (${s.leaderCatastrophic ?? 0} on the pinned bus), ${s.flapping ?? 0} flap(s), worst drift ${(s.worstDriftSec / 60).toFixed(1)} min`);
   if (s?.dropped) out.push(`   vehicles: ${s.dropped} dropped out of the list (${s.droppedSevere} within ${THRESH.droppedSevereSec / 60} min, ${s.droppedSevereEventful ?? 0} of those explained by the bus pulling away), ${s.appeared} took over the head of it`);
   if (record.feedErrorCount) out.push(`   the canary's own feed refused ${record.feedErrorCount} of ${record.feedPolls} polls (not counted against the app)`);
   if (s?.catastrophicEventful) out.push(`   not counted against the app: ${s.catastrophicEventful} catastrophic jump(s) had the bus visibly leaving the stop`);
@@ -706,9 +719,14 @@ function summary(days = 7) {
   if (!runs.length) { console.log(`no canary runs in the last ${days} d`); return; }
   const byLine = new Map();
   for (const r of runs) {
-    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, rev: 0, cat: 0, drop: 0, sev: 0, unfin: 0, feed: 0, drifts: [], miss: [] };
+    const e = byLine.get(r.line) ?? { runs: 0, ok: 0, arrived: 0, readings: 0, standing: 0, flaps: 0, rev: 0, cat: 0, drop: 0, sev: 0, unfin: 0, feed: 0, drifts: [], miss: [] };
     e.runs++; if (r.ok) e.ok++; if (r.arrived) e.arrived++;
     e.readings += r.sequence?.readings ?? 0;
+    // Standing-bus polls were unparsed before 2026-09-09 and simply skipped;
+    // `standing` is how many of `readings` are that kind, so a before/after
+    // over the archive can split on it instead of comparing across it.
+    e.standing += r.sequence?.spreadReadings ?? 0;
+    e.flaps += r.sequence?.flapping ?? 0;
     e.rev += r.sequence?.reversals ?? 0;
     // Re-graded against the CURRENT bar rather than the one each run was
     // written with, so moving the threshold re-reads the whole history
@@ -739,11 +757,11 @@ function summary(days = 7) {
   const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
   console.log(`\n🐤 RIDER CANARY — last ${days} d, ${runs.length} run(s)\n`);
   console.log(`(catastrophic = |drift| >= ${THRESH.catastrophicSec}s; a drop is severe within ${THRESH.droppedSevereSec}s; first-sight miss > ${THRESH.firstSightMissSec}s)\n`);
-  console.log("line           runs    ok  arrived  unfin  feed  readings  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
+  console.log("line           runs    ok  arrived  unfin  feed  readings  standing  flaps  reversals  catastr  dropped  severe  p90 drift  worst  1st-sight med");
   for (const [line, e] of byLine) {
     console.log(
       `${line.padEnd(13)} ${String(e.runs).padStart(5)} ${String(e.ok).padStart(5)} ${String(e.arrived).padStart(8)} ` +
-      `${String(e.unfin).padStart(6)} ${String(e.feed).padStart(5)} ${String(e.readings).padStart(9)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
+      `${String(e.unfin).padStart(6)} ${String(e.feed).padStart(5)} ${String(e.readings).padStart(9)} ${String(e.standing).padStart(9)} ${String(e.flaps).padStart(6)} ${String(e.rev).padStart(10)} ${String(e.cat).padStart(8)} ` +
       `${String(e.drop).padStart(8)} ${String(e.sev).padStart(7)} ` +
       `${String(pct(e.drifts, 90) ?? "-").padStart(9)}s ${String(pct(e.drifts, 100) ?? "-").padStart(5)}s ` +
       `${String(pct(e.miss, 50) ?? "-").padStart(12)}s`);

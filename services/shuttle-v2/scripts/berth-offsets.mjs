@@ -7,6 +7,24 @@
 // rider watches it go by. This measures the berth from evidence and decides, per
 // stop, whether we know it well enough to draw a second dot.
 //
+// THE OBSERVATION: the LAST stand of the visit, not the only one.
+//
+// A bus can be stationary near a stop for two reasons, and only one of them is
+// a berth. At Division / Prospect on Red the operator named both: the northern
+// cluster is Red waiting to turn off Division onto Prospect at the signal, the
+// southern one 55 m down Prospect is where it opens its doors. The data agrees
+// and says which is which without being told — in all 24 visits that show both,
+// the corner stand comes FIRST. A bus queues to enter the block, then berths.
+//
+// So one observation per visit: the last frozen run of at least STAND_MIN_SEC.
+// Duration cannot do this job — the median hold is ~25 s at BOTH clusters — and
+// neither can position alone, which is what the first draft of this script
+// tried.
+//
+// This leaves one failure mode named and unfixed: a signal PAST the stop, where
+// the last stand is the light. `aheadOfWindow` counts the visits that would
+// indicate it, and no qualifying cell has any.
+//
 // THE ESTIMATOR, and why it is not the mean of the fixes.
 //
 // The feed has a ~30 m deadband: a new coordinate is sent only once the bus has
@@ -28,8 +46,23 @@
 // THE DECISION RULE. A second dot is drawn only when the berth is a fact rather
 // than a spread:
 //   - >= MIN_N observations of the stop being served;
-//   - a MODE WINDOW (the densest 40 m stretch) holding >= 75% of them, which is
-//     what fails at a stop where buses genuinely stop in two places;
+//   - a MODE WINDOW (the densest 40 m stretch) holding >= 75% of the visits that
+//     are NOT BEHIND it, and at least MIN_N of them outright.
+//
+//     The asymmetry is the operator's finding, not a fitted constant. Every
+//     mechanism that puts a spurious stand somewhere puts it BEHIND the berth:
+//     the feed's deadband lags, a queue at a signal is on the way in, and a
+//     visit where nobody boards leaves no stand at the kerb at all, so its last
+//     stand is whatever came before. None of those is evidence against the
+//     berth's position. A stand AHEAD of the window is the one shape that is —
+//     a signal PAST the stop, which the last-stand rule would mistake for the
+//     kerb — so `aheadOfWindow` is capped instead, at MAX_AHEAD_SHARE.
+//
+//     Division / Prospect on Red is the case that taught this. 15 of its 55
+//     visits end at the corner where Red waits to turn off Division onto
+//     Prospect; 37 end 55 m down Prospect, which the operator confirms is the
+//     kerb. Counting the corner as evidence put the window at 67% and refused
+//     a berth we can see;
 //   - the berth >= 35 m from the published dot — above everything the deadband
 //     alone can produce, so we never redraw a stop on the strength of the sensor;
 //   - and the berth is at least RIVAL_MARGIN times nearer its own stop than any
@@ -51,10 +84,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const MIN_N = 20;            // visits before we claim to know a berth
+const STAND_MIN_SEC = 10;    // a frozen run shorter than this is not a stand
+const NEAR_M = 120;          // a stand further out than this belongs to another stop
 const WINDOW_M = 40;         // the mode window: a bus length plus a little
 const WINDOW_SHARE = 0.75;   // of the observations that must fall inside it
 const MIN_BERTH_M = 35;      // above the feed's 30 m deadband, so the sensor alone cannot trip it
 const RIVAL_MARGIN = 1.5;    // the berth must be this much nearer its own stop than any other
+const MAX_AHEAD_SHARE = 0.10; // visits ending PAST the berth: the one shape we cannot explain
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARCHIVE = join(process.env.HOME, "shuttle-archive");
@@ -106,6 +142,7 @@ for (const [r, p] of Object.entries(payload.route_paths || {})) if (Array.isArra
 const dayList = arg("days", "") ? arg("days").split(",")
   : execSync(`ls -d ${ARCHIVE}/2026-* 2>/dev/null || true`).toString().trim().split("\n").filter(Boolean).map((p) => p.split("/").pop());
 
+const stopById = new Map(STOPS.map((x) => [x.id, x]));
 const obs = new Map();                       // "stop:route" -> observations
 let visits = 0, stopped = 0, placed = 0;
 for (const day of dayList) {
@@ -119,27 +156,49 @@ for (const day of dayList) {
     if (v.outcome !== "stopped" || !v.pinned_at || !v.departed_at) continue;
     stopped++;
     const path = paths.get(v.route_id), arr = byBus.get(v.bus_name);
-    if (!path || !arr) continue;
-    const win = arr.filter((p) => p.collected_at >= v.pinned_at - 6000 && p.collected_at <= v.departed_at + 1000);
+    const stop = stopById.get(v.stop_id);
+    if (!path || !arr || !stop) continue;
+    // Wide enough to hold a queue BEFORE the pin and a berth AFTER the
+    // detector calls the visit over — both happen at Division / Prospect.
+    const from = (v.pinned_at ?? v.anchored_at) - 90_000;
+    const to = (v.departed_at ?? v.first_moved_at ?? v.anchored_at) + 120_000;
+    const win = arr.filter((p) => p.collected_at >= from && p.collected_at <= to);
     if (win.length < 2) continue;
-    // the coordinate the bus was frozen at just before it pulled away: its berth
-    let cur = null, last = null;
+    const runs = [];
+    let cur = null;
     for (const p of win) {
       const k = `${p.lat},${p.lon}`;
       if (cur && cur.k === k) cur.end = p.collected_at;
-      else { cur = { k, lat: p.lat, lon: p.lon, start: p.collected_at, end: p.collected_at }; last = cur; }
+      else { cur = { k, lat: p.lat, lon: p.lon, start: p.collected_at, end: p.collected_at }; runs.push(cur); }
     }
-    if (!last) continue;
-    const pr = path.project(last.lat, last.lon);
-    if (pr.d > 60) continue;                 // off this route's line: a yard, a detour
+    const home = path.project(stop.lat, stop.lon);
+    const half = path.total / 2;
+    const stands = [];
+    for (const r of runs) {
+      if ((r.end - r.start) / 1000 < STAND_MIN_SEC) continue;
+      const pr = path.project(r.lat, r.lon);
+      if (pr.d > 60) continue;               // off this route's line: a yard, a detour
+      if (Math.hypot((r.lon - stop.lon) * MX, (r.lat - stop.lat) * MY) > NEAR_M) continue;
+      // BOTH distances, because they fail differently. The straight line keeps
+      // the next stop out; the along-path one keeps out a stand whose nearest
+      // point on the loop is on a leg the bus is not on — Red passes within
+      // 60 m of itself either side of the 344 Winchester layover, and without
+      // this that lot projects 215 m along the ring onto the return leg.
+      let along = pr.s - home.s;
+      while (along > half) along -= path.total;
+      while (along < -half) along += path.total;
+      if (Math.abs(along) > NEAR_M) continue;
+      stands.push({ s: pr.s, lat: r.lat, lon: r.lon });
+    }
+    if (!stands.length) continue;
+    const last = stands[stands.length - 1];
     const key = `${v.stop_id}:${v.route_id}`;
     if (!obs.has(key)) obs.set(key, []);
-    obs.get(key).push({ s: pr.s, lat: last.lat, lon: last.lon, bus: v.bus_name, day });
+    obs.get(key).push({ s: last.s, lat: last.lat, lon: last.lon, bus: v.bus_name, day, stands: stands.length });
     placed++;
   }
 }
 
-const stopById = new Map(STOPS.map((s) => [s.id, s]));
 const rows = [];
 for (const [key, ss] of obs) {
   const [stopId, routeId] = key.split(":").map(Number);
@@ -162,7 +221,12 @@ for (const [key, ss] of obs) {
     if (j - i > bj - bi) { bi = i; bj = j; }
   }
   const inWin = sorted.slice(bi, bj);
-  const share = inWin.length / sorted.length;
+  const behind = sorted.filter((p) => p.off < inWin[0].off).length;
+  const ahead = sorted.filter((p) => p.off > inWin[inWin.length - 1].off).length;
+  // Scored against the visits that are not behind the window — see the note on
+  // the mode window above. `windowShare` keeps the plain fraction for reading.
+  const notBehind = sorted.length - behind;
+  const share = notBehind ? inWin.length / notBehind : 0;
   // the berth is the front of the in-window cloud (the deadband only ever lags)
   const berthOff = quant(inWin.map((p) => p.off), 0.9);
   const berthPt = path.at(s0.s + berthOff);
@@ -174,7 +238,8 @@ for (const [key, ss] of obs) {
   }
   const ownD = Math.abs(berthOff);
   const clearOfRivals = !rival || rival.d > ownD * RIVAL_MARGIN;
-  const qualifies = pts.length >= MIN_N && share >= WINDOW_SHARE
+  const qualifies = pts.length >= MIN_N && inWin.length >= MIN_N
+    && share >= WINDOW_SHARE && ahead <= MAX_AHEAD_SHARE * pts.length
     && ownD >= MIN_BERTH_M && clearOfRivals;
   rows.push({
     stopId, routeId, name: stop.name, n: pts.length,
@@ -184,6 +249,10 @@ for (const [key, ss] of obs) {
     clearOfRivals,
     berthOffM: +berthOff.toFixed(1),
     windowShare: +share.toFixed(2),
+    windowCount: inWin.length,
+    plainShare: +(inWin.length / sorted.length).toFixed(2),
+    behindWindow: behind,
+    aheadOfWindow: ahead,
     windowLoM: +inWin[0].off.toFixed(1),
     windowHiM: +inWin[inWin.length - 1].off.toFixed(1),
     spanM: +(quant(pts.map((p) => p.off), 0.9) - quant(pts.map((p) => p.off), 0.1)).toFixed(1),
@@ -197,10 +266,10 @@ const only = arg("stop", "");
 const shown = only ? rows.filter((r) => String(r.stopId) === only) : rows;
 console.log(`days ${dayList.join(",")} | visits ${visits} | served ${stopped} | berth observed ${placed}`);
 console.log(`cells with >=10 observations: ${rows.length}   QUALIFYING: ${rows.filter((r) => r.qualifies).length}\n`);
-console.log("  berth  window(share)      span    n   stop / nearest rival stop");
+console.log("  berth  window       in/notBehind  behind ahead    n   stop / nearest rival stop");
 for (const r of shown.slice(0, 40))
   console.log(
-    `${(r.qualifies ? "* " : "  ") + String(r.berthOffM).padStart(6)}m  ${String(r.windowLoM).padStart(6)}..${String(r.windowHiM).padEnd(6)} ${String(r.windowShare).padStart(4)}  ${String(r.spanM).padStart(6)}m ${String(r.n).padStart(4)}   ${r.name} [${r.stopId}] r${r.routeId}` +
+    `${(r.qualifies ? "* " : "  ") + String(r.berthOffM).padStart(6)}m  ${String(r.windowLoM).padStart(6)}..${String(r.windowHiM).padEnd(6)} ${String(r.windowCount + "/" + (r.n - r.behindWindow)).padStart(8)} ${String(r.windowShare).padStart(5)} ${String(r.behindWindow).padStart(6)} ${String(r.aheadOfWindow).padStart(5)} ${String(r.n).padStart(4)}   ${r.name} [${r.stopId}] r${r.routeId}` +
     (r.rival && !r.clearOfRivals ? `   << ${r.rival.m} m from ${r.rival.name}` : "")
   );
 const all = rows.map((r) => r.berthOffM);

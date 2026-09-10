@@ -31,7 +31,8 @@
 </header>
 <div class="legend">
   <span><i style="background:#fff;border:3px solid #444"></i>published stop</span>
-  <span><i style="background:#111"></i>where it actually stopped (one dot per visit)</span>
+  <span><i style="background:#111"></i>last stop of the visit — the berth</span>
+  <span><i style="background:#fff;border:2px solid #b0762a"></i>stopped short (signal / nobody boarding)</span>
   <span>🚏 the berth we would draw</span>
 </div>
 <div id="map"></div>
@@ -58,10 +59,16 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
   const path = payload.route_paths[String(r.routeId)];
   if (path) L.polyline(path, { color, weight: 5, opacity: .55 }).addTo(map);
 
-  // one small dot per observed visit
-  for (const o of r.observations)
-    L.circleMarker([o.lat, o.lon], { radius: 3.2, color: "#111", weight: 0, fillColor: "#111", fillOpacity: .40 })
-      .addTo(map).bindTooltip(`${o.bus} · ${o.day} · ${o.off > 0 ? "+" : ""}${o.off} m`);
+  // one small dot per observed visit: filled where the bus made its last stop
+  // inside the berth window, hollow where it stopped short of it (a queue at a
+  // signal on the way in, or a visit where nobody boarded and it rolled through)
+  for (const o of r.observations) {
+    const inWin = o.off >= r.windowLoM && o.off <= r.windowHiM;
+    L.circleMarker([o.lat, o.lon], inWin
+      ? { radius: 3.4, weight: 0, fillColor: "#111", fillOpacity: .45 }
+      : { radius: 3.4, weight: 1.4, color: "#b0762a", fillColor: "#fff", fillOpacity: .85 })
+      .addTo(map).bindTooltip(`${o.bus} · ${o.day} · ${o.off > 0 ? "+" : ""}${o.off} m${inWin ? "" : " — short of the berth"}`);
+  }
 
   // the published stop, drawn the way the app draws a stop
   L.circleMarker([r.published.lat, r.published.lon],
@@ -89,13 +96,19 @@ Promise.all([fetch("./berths.json").then(r=>r.json()), fetch("./buses.json").the
     ? `<div class="verdict yes">✓ we would draw a second dot here</div>
        <table>
          <tr><td>berth, along the route from the sign</td><td>${r.berthOffM > 0 ? "+" : ""}${r.berthOffM} m</td></tr>
-         <tr><td>observations inside one 40 m window</td><td>${Math.round(r.windowShare * 100)}%</td></tr>
+         <tr><td>berthed inside one 40 m window</td><td>${r.windowCount} of ${r.n - r.behindWindow} (${Math.round(r.windowShare * 100)}%)</td></tr>
          <tr><td>that window</td><td>${r.windowLoM} m … ${r.windowHiM} m</td></tr>
+         <tr><td>stopped short of it</td><td>${r.behindWindow}</td></tr>
+         <tr><td>stopped past it</td><td>${r.aheadOfWindow}</td></tr>
          <tr><td>visits observed</td><td>${r.n}</td></tr>
        </table>
-       <div class="note">Every dot is one bus, frozen where it stood just before pulling away.
+       <div class="note">One dot per visit: where the bus made its <em>last</em> stop before
+       driving on. Hollow dots are visits that ended short of the berth — a queue at the signal
+       on the way in, or nobody boarding so the bus rolled through. Those cannot argue against
+       the berth's position, since every one of them lies behind it; a stop <em>past</em> it
+       could, which is why they are counted separately.
        The feed only sends a new coordinate once a bus has moved about 30 m, so each dot sits up
-       to 30 m <em>behind</em> the real berth — which is why the berth is placed at the front of
+       to 30 m behind where it really stood — which is why the berth is placed at the front of
        the cloud rather than its middle.</div>`
     : rivalBlocked
     ? `<div class="verdict no">✗ no second dot — the berth is another stop</div>
