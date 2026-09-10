@@ -178,6 +178,21 @@
   .hours path { fill: none; stroke-linejoin: round; stroke-linecap: round; }
   .hours .past { stroke: var(--ink-2); stroke-width: 1.5; }
   .hours .today { stroke: var(--series-new); stroke-width: 2.5; }
+  /* Weekday filter above the hourly chart. Buttons, not a <select>: seven
+     one-tap targets beat a picker on a phone, and the state is visible without
+     opening anything. */
+  /* Eight chips on ONE line at 390 px: All plus seven days wrapped "Sun" onto
+     a second row at 12px/9px, which reads as a separate control. */
+  .dow { display: flex; gap: 3px; margin: 0 0 8px; }
+  .dow button {
+    font: inherit; font-size: 11.5px; line-height: 1; flex: 1 1 0; min-width: 0;
+    padding: 7px 4px; min-height: 32px; border-radius: 999px;
+    border: 1px solid var(--rule); background: var(--card); color: var(--muted);
+    cursor: pointer;
+  }
+  .dow button[aria-pressed="true"] {
+    background: var(--series-returning); border-color: var(--series-returning); color: #fff;
+  }
   .hours-legend {
     display: flex; flex-wrap: wrap; gap: 10px;
     font-size: 12px; color: var(--ink-2); margin-top: 6px;
@@ -402,6 +417,7 @@
         <h2>Riders by hour</h2>
         <div class="legend"><span id="hours-note"></span></div>
       </div>
+      <div class="dow" id="dow" role="group" aria-label="Filter riders by hour to one weekday"></div>
       <svg id="hours" class="hours" role="img" aria-label="Riders by hour of day, one line per day"></svg>
       <div id="hours-legend" class="hours-legend"></div>
       <div id="hours-empty" class="empty" hidden>No hourly data yet.</div>
@@ -514,7 +530,12 @@
   var HISTORY_DAYS = 30;
   // Seven lines is the most this chart stays readable with — past that the
   // older days are a smudge and the legend outgrows the phone.
-  var HOURLY_DAYS = 7;
+  // Four weeks, so picking a weekday leaves four lines to compare rather than
+  // one. The unfiltered view still draws only the most recent HOURLY_SHOWN of
+  // them — a month of overlapping lines is a smear, and the default view is
+  // what it always was.
+  var HOURLY_DAYS = 28;
+  var HOURLY_SHOWN = 7;
   // A day of riding. The canary gets through ~11 lines in that time, which is
   // the span over which "which lines were watched" has a true answer.
   var CANARY_HOURS = 24;
@@ -681,6 +702,7 @@
       renderEtaVs(both[0] && both[0].etaVsOfficial);
       renderMail(both[2]);
       renderHours(both[3] && both[3].hourly);
+      renderDow();
       renderTerms(both[4]);
       renderCanary(both[5]);
       renderScorecard(both[6]);
@@ -748,13 +770,62 @@
    * this page loads no libraries and makes no external request — the whole
    * point of it working when the bundle does not.
    */
+  // Every day the API returned, kept so the weekday filter can re-cut it
+  // without another request.
+  var hoursAll = [];
+  // null = every day; 0..6 = a weekday, Sunday first, matching Date.getUTCDay.
+  var dowFilter = null;
+  var DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function dowOf(day) {
+    var ms = Date.parse(day + "T12:00:00Z");
+    return isFinite(ms) ? new Date(ms).getUTCDay() : null;
+  }
+
+  /**
+   * The weekday buttons. A day with no data in the window is disabled rather
+   * than hidden: a missing Sunday is information ("we have not seen one yet"),
+   * and a row that changes width as days accrue is harder to aim at.
+   */
+  function renderDow() {
+    var box = document.getElementById("dow");
+    if (!box) return;
+    box.textContent = "";
+    var have = {};
+    for (var i = 0; i < hoursAll.length; i++) {
+      var d = dowOf(hoursAll[i].day);
+      if (d !== null) have[d] = (have[d] || 0) + 1;
+    }
+    var opts = [{ v: null, label: "All" }];
+    for (var k = 1; k <= 7; k++) opts.push({ v: k % 7, label: DOW_LABEL[k % 7] });  // Mon-first
+    opts.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = o.label;
+      var n = o.v === null ? hoursAll.length : (have[o.v] || 0);
+      b.setAttribute("aria-pressed", String(dowFilter === o.v));
+      if (n === 0) { b.disabled = true; b.style.opacity = "0.4"; }
+      b.title = o.v === null
+        ? hoursAll.length + " day(s)"
+        : n + " " + o.label + (n === 1 ? "" : "s") + " in the last " + hoursAll.length + " day(s)";
+      b.onclick = function () { dowFilter = o.v; renderHours(); renderDow(); };
+      box.appendChild(b);
+    });
+  }
+
   function renderHours(days) {
-    var list = days || [];
+    if (days) hoursAll = days;
+    var list = hoursAll;
+    if (dowFilter === null) list = list.slice(Math.max(0, list.length - HOURLY_SHOWN));
+    else list = list.filter(function (d) { return dowOf(d.day) === dowFilter; });
     var svg = el.hours;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     el.hoursLegend.textContent = "";
     el.hoursEmpty.hidden = list.length > 0;
-    el.hoursNote.textContent = list.length ? "each line is a day" : "";
+    el.hoursNote.textContent = !list.length ? ""
+      : dowFilter === null
+        ? "each line is a day"
+        : list.length + " " + DOW_LABEL[dowFilter] + (list.length === 1 ? "" : "s") + ", newest darkest";
     if (!list.length) { svg.setAttribute("viewBox", "0 0 340 190"); return; }
 
     var W = 340, H = 190, padL = 26, padR = 8, padT = 10, padB = 10 + 16;
@@ -796,8 +867,10 @@
     // Oldest first so today is drawn last and sits on top of the others.
     for (var d = 0; d < list.length; d++) {
       var hours = list[d].hours || [];
-      var isToday = d === list.length - 1;
-      var lastHour = isToday && list[d].day === etNow ? etHourNow : 23;
+      // Positional before the weekday filter existed, and wrong the moment it
+      // did: the newest Monday is the last line drawn but is not today.
+      var isToday = list[d].day === etNow;
+      var lastHour = isToday ? etHourNow : 23;
       var parts = [];
       for (var hh = 0; hh <= lastHour; hh++) {
         parts.push((hh === 0 ? "M" : "L") + x(hh).toFixed(1) + " " + y(hours[hh] || 0).toFixed(1));
@@ -816,7 +889,7 @@
       var parts2 = dayParts(list[L].day);
       var item = document.createElement("span");
       var swatch = document.createElement("i");
-      var isTodayL = L === list.length - 1;
+      var isTodayL = list[L].day === etNow;
       if (isTodayL) swatch.className = "today";
       else swatch.style.opacity = String(Math.max(0.18, 0.5 - (list.length - 1 - L) * 0.06));
       item.appendChild(swatch);
