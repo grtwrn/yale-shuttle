@@ -6,6 +6,7 @@ export type TripDraft = {
   toText: string;
   toLL: LatLon;
   tripTime: string;
+  tripTimeSetAt?: number;
   expandedKey: string | null;
 };
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -29,7 +30,8 @@ export function loadTripDraft(store?: Store | null, now = Date.now()): TripDraft
       || typeof d.tripTime !== "string" || (d.tripTime && !Number.isFinite(Date.parse(d.tripTime)))
       || (d.expandedKey !== null && typeof d.expandedKey !== "string")) return null;
     return { fromText: d.fromText, fromLL: d.fromLL, toText: d.toText, toLL: d.toLL,
-      tripTime: d.tripTime, expandedKey: d.expandedKey };
+      tripTime: d.tripTime, ...(Number.isFinite(d.tripTimeSetAt) && d.tripTimeSetAt >= 0 && d.tripTimeSetAt <= d.savedAt
+        ? { tripTimeSetAt: d.tripTimeSetAt } : {}), expandedKey: d.expandedKey };
   } catch { return null; }
 }
 
