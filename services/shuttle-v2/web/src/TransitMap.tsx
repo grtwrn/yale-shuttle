@@ -28,6 +28,7 @@ import { noteShown } from "./shownLog";
 // What a STANDING bus is allowed to promise — the chip's words and the
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
+import { berthFor, type Berth } from "./berths";
 import { chipCountdownText, standWaitFor } from "./standWait";
 import {
   fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -897,6 +898,17 @@ type OverviewOption = {
   // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
   boardEta?: string | null;
   arriveAt?: string | null;
+  /**
+   * Detail view only: where this line actually pulls up at the PICKUP stop,
+   * when that is measurably not where the stop is drawn (berths.ts).
+   *
+   * The overview is deliberately untouched — one dot per stop, as now
+   * (operator, 2026-09-10: "I don't want the map to be clogged, that should
+   * probably show published locations but once user clicks a route it could
+   * show difference in berth at pickup"). A second marker is only worth its
+   * clutter once there is one rider, one line and one stop to say it about.
+   */
+  berth?: Berth | null;
 };
 const CombinedTripMap: FC<{
   from: LatLon;
@@ -1057,6 +1069,19 @@ const CombinedTripMap: FC<{
       L.circleMarker([board.lat, board.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Board ${o.label}`, { direction: "top" });
+      // Where the bus really pulls up, when that is not the board dot. Detail
+      // view only (`options.length === 1`), pickup stop only, and drawn AFTER
+      // the board ring so it reads as the answer to it: a dashed tie for the
+      // walk and a filled dot for the kerb.
+      if (options.length === 1 && o.berth) {
+        L.polyline([[board.lat, board.lon], [o.berth.lat, o.berth.lon]], {
+          color: "#5f6368", weight: 2.5, dashArray: "2 6", opacity: 0.9,
+        }).addTo(map);
+        L.circleMarker([o.berth.lat, o.berth.lon], {
+          radius: 7, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 3,
+        }).addTo(map).bindTooltip(`${o.label} pulls up here`, { direction: "top" });
+        points.push([o.berth.lat, o.berth.lon]);
+      }
       L.circleMarker([alight.lat, alight.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Get off ${o.label}`, { direction: "top" });
@@ -3487,6 +3512,10 @@ const TripPlanner: FC<{
                 // `chipCountdownText` picks the range when there is one and
                 // deliberately does not decay it by wall clock; the point
                 // number still is, for report #48's reason.
+                // Only where the rider is actually boarding, and only for the
+                // line they picked: `berthFor` answers null for all but ten
+                // stop/route cells and the map is unchanged wherever it does.
+                berth: berthFor(o.boardStopId, cfg.busRouteIds),
                 boardEta: o.departed ? null : chipCountdownText(
                   standView,
                   remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
@@ -4146,6 +4175,31 @@ const TripPlanner: FC<{
                               {sep}
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                             </>)}
+                          </div>
+                        );
+                      })()}
+                      {/* Where the bus really pulls up, when that is not the
+                          stop's own dot. The sentence, not the marker, is what
+                          makes this usable: a second dot on its own reads as
+                          the map being wrong, and the count is what turns it
+                          into advice. Sits directly above Directions because
+                          that is the thing it corrects. */}
+                      {(() => {
+                        const cfgB = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                        const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
+                        if (!berth) return null;
+                        const m = Math.round(Math.abs(berth.offsetM));
+                        return (
+                          <div style={{
+                            marginTop: 10, padding: "8px 10px", borderRadius: 8,
+                            background: "#f8f9fa", fontSize: 13, lineHeight: 1.45, color: "#3c4043",
+                          }}>
+                            <span style={{ fontWeight: 650 }}>
+                              🚏 Wait about {m} m {berth.offsetM > 0 ? "past" : "before"} the stop sign
+                            </span>
+                            <br />
+                            {o.routeLabel} buses pull up there, not at the sign — seen {berth.seen} of
+                            the last {berth.of} times one served this stop.
                           </div>
                         );
                       })()}
