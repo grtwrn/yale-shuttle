@@ -20,8 +20,12 @@ import {
   COMPARE_MATCH_WINDOW_MS,
   MIN_COMPARE_PAIRS,
   PREDICTION_BUCKET_MS,
+  PREDICTION_SURFACES,
   RIDER_SURFACES_SQL,
+  SERVER_SURFACE,
+  SHOWN_SURFACES,
   UPSTREAM_SURFACE,
+  isShownSurface,
   type ShownReading,
 } from "./predictions.js";
 
@@ -618,8 +622,51 @@ describe("the operator's arm must never be counted as ours", () => {
       const src = fs.readFileSync(file, "utf8");
       expect(src, `${file} must filter by surface`).toContain("RIDER_SURFACES_SQL");
     }
-    // And the fragment must actually name the arm it excludes.
-    expect(RIDER_SURFACES_SQL).toContain(UPSTREAM_SURFACE);
+    // And the fragment must name EVERY arm that is not a rider's screen. This
+    // shipped wrong once for an hour — /api/predictions reported n=3056 of
+    // which 1586 were the operator's rows — so a new shadow arm has to argue
+    // with this test rather than be silently pooled into "ours".
+    for (const s of PREDICTION_SURFACES) {
+      if (isShownSurface(s)) continue;
+      expect(RIDER_SURFACES_SQL, `${s} is not a rider surface and must be excluded`).toContain(s);
+    }
+  });
+
+  it("a shadow arm may not impersonate a screen", () => {
+    // SHOWN_SURFACES is the WIRE allowlist; PREDICTION_SURFACES is what the
+    // column may hold. Keeping them separate is what stops anyone posting
+    // into the arm a rider-facing switch is judged against.
+    expect(SHOWN_SURFACES as readonly string[]).not.toContain(SERVER_SURFACE);
+    expect(SHOWN_SURFACES as readonly string[]).not.toContain(UPSTREAM_SURFACE);
+    expect(PREDICTION_SURFACES as readonly string[]).toContain(SERVER_SURFACE);
+    expect(isShownSurface(SERVER_SURFACE)).toBe(false);
+
+    // And the recorder refuses one at run time, not only in the type system.
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    expect(rec.shadow([reading({ surface: "trip" })], "trip" as never, ctx())).toBe(0);
+    rec.flush();
+    expect(bundle.sqlite.prepare("SELECT COUNT(*) AS n FROM predictions_log").get())
+      .toEqual({ n: 0 });
+    rec.stop();
+  });
+
+  it("files a shadow row under its own surface, in the same bucket shape", () => {
+    const rec = createPredictionRecorder(bundle, { sampleRate: 1 });
+    const shown = reading();
+    expect(rec.record([shown], ctx())).toBe(1);
+    expect(rec.shadow([{ ...shown, etaSec: shown.etaSec + 111 }], SERVER_SURFACE, ctx())).toBe(1);
+    rec.flush();
+    const rows = bundle.sqlite
+      .prepare("SELECT surface, predicted_sec, predicted_at FROM predictions_log ORDER BY surface")
+      .all() as { surface: string; predicted_sec: number; predicted_at: number }[];
+    expect(rows.map((r) => r.surface)).toEqual([SERVER_SURFACE, "trip"]);
+    // Same (bus, stop, bucket) — the surface is part of the dedup key, so the
+    // two arms coexist rather than one shadowing the other out.
+    expect(rows[0]!.predicted_at).toBe(rows[1]!.predicted_at);
+    expect(rows[0]!.predicted_sec).toBe(rows[1]!.predicted_sec + 111);
+    // And the rider readers do not see it.
+    expect(rec.paired({ now: ctx().now }).rows.every((r) => r.predictedSec !== shown.etaSec + 111)).toBe(true);
+    rec.stop();
   });
 });
 

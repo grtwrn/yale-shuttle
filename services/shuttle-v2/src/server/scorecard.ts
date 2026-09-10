@@ -54,6 +54,7 @@ import { etDay, etDayStartMs } from "./actives.js";
 import {
   COMPARE_HORIZON_SEC,
   COMPARE_MATCH_WINDOW_MS,
+  SERVER_SURFACE,
   SHOWN_SURFACES,
   STANDING_LOOKBACK_MS,
   UPSTREAM_SURFACE,
@@ -79,6 +80,11 @@ export const SCORECARD_SURFACES = [
   OURS_SURFACE,
   UPSTREAM_SURFACE,
   CENSUS_SURFACE,
+  // The dual run (serverEtaShadow.ts): what the always-warm server belief
+  // would have said for the very rows riders were shown. Scored under the same
+  // rule as every other arm and pooled into NOTHING — `isShown` is false for
+  // it, so it never reaches `ours`.
+  SERVER_SURFACE,
 ] as const;
 export type ScorecardSurface = (typeof SCORECARD_SURFACES)[number];
 
@@ -461,7 +467,9 @@ export class DayScorer {
         )
         .all(from, to) as PredRow[];
       for (const r of rows) {
-        const surface = r.surface === UPSTREAM_SURFACE || isShown(r.surface) ? r.surface : null;
+        const surface = r.surface === UPSTREAM_SURFACE || r.surface === SERVER_SURFACE || isShown(r.surface)
+          ? r.surface
+          : null;
         if (surface === null) continue;
         out.push({
           bus: normBusName(r.bus_name),

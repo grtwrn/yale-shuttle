@@ -161,8 +161,32 @@ export function isShownSurface(x: unknown): x is ShownSurface {
  */
 export const UPSTREAM_SURFACE = "upstream";
 
+/**
+ * What the SERVER-SIDE belief would have said, recorded beside what the
+ * browser actually showed (docs/server-side-eta.md). The dual run.
+ *
+ * The two are the same function over the same payload; they differ only in
+ * how WARM the belief behind them is — the browser's opens when the rider
+ * opens the app, the server's has been tracking all day. So a divergence
+ * here is precisely the effect of the switch, on the very (bus, stop,
+ * instant) a rider was looking at, scored against the same `arrivals` rows by
+ * the same `truthAt` rule. A comparison is a query rather than an argument.
+ *
+ * Like {@link UPSTREAM_SURFACE} it is deliberately NOT a member of
+ * {@link SHOWN_SURFACES} — that list is the WIRE allowlist, what a browser
+ * may claim it displayed. If a client could post `server`, anyone could write
+ * into the arm we are about to judge a rider-facing switch on. Only the
+ * in-process engine writes this value.
+ *
+ * And it is NOT a rider surface either: nothing under it was ever on a screen.
+ * {@link RIDER_SURFACES_SQL} excludes it for the same reason it excludes
+ * `upstream`, and for a sharper one — pooling a shadow arm into "how accurate
+ * are WE" would let a candidate flatter its own measurement.
+ */
+export const SERVER_SURFACE = "server";
+
 /** Every value the `surface` COLUMN may hold. A superset of the wire list. */
-export const PREDICTION_SURFACES = [...SHOWN_SURFACES, UPSTREAM_SURFACE] as const;
+export const PREDICTION_SURFACES = [...SHOWN_SURFACES, UPSTREAM_SURFACE, SERVER_SURFACE] as const;
 export type PredictionSurface = (typeof PREDICTION_SURFACES)[number];
 /**
  * Guards a READ, not a write. `/api/predictions?surface=…` names which arm to
@@ -183,9 +207,13 @@ export function isPredictionSurface(x: unknown): x is PredictionSurface {
  * precisely the inference error the `surface` column exists to prevent, so the
  * fragment lives in one place and every reader spells it the same way.
  *
- * A reader that genuinely wants the operator's arm asks for it explicitly.
+ * A reader that genuinely wants the operator's arm — or the server-side
+ * shadow — asks for it explicitly. The list grows with every arm that is not
+ * a rider's screen; `predictions.test.ts` fails if a member of
+ * {@link PREDICTION_SURFACES} that is not a {@link SHOWN_SURFACES} member goes
+ * unnamed here.
  */
-export const RIDER_SURFACES_SQL = "surface <> 'upstream'";
+export const RIDER_SURFACES_SQL = "surface NOT IN ('upstream', 'server')";
 
 export interface ShownReading {
   /** As displayed, `#` optional. Resolved against the live fleet server-side. */
@@ -355,6 +383,21 @@ export interface PredictionRecorder {
    * tests, not for the rider.
    */
   record(readings: readonly ShownReading[], ctx: RecordContext): number;
+  /**
+   * What a SHADOW arm would have said for the same (bus, stop) pairs a rider
+   * just reported — {@link SERVER_SURFACE}, the dual run.
+   *
+   * It is deliberately driven by a rider's post rather than by a timer. A
+   * shadow row is only worth writing where a rider row exists to compare it
+   * against, and pinning the volume to the rider surface's own is what keeps
+   * this off the disk arithmetic that gave `upstream` its separate 7-day
+   * sweep (120k rows a day against the surfaces' 3k).
+   *
+   * Same validation, same dedup key, same 60 s flush, same non-throwing
+   * contract. The caller supplies the surface, and it must not be a
+   * {@link SHOWN_SURFACES} member — a shadow is not a screen.
+   */
+  shadow(readings: readonly ShownReading[], surface: PredictionSurface, ctx: RecordContext): number;
   /** Write accumulated readings through. On a timer, at shutdown, and in tests. */
   flush(now?: number): void;
   /** Logged predictions beside their outcomes. Flushes first. */
@@ -401,7 +444,12 @@ interface PendingRow {
   predictedHighSec: number;
   predictedAt: number;
   clientBuild: string | null;
-  surface: ShownSurface;
+  /**
+   * A rider's screen, or one of the shadow arms. The wire is still guarded by
+   * `isShownSurface` — this widens what the COLUMN may hold, never what a
+   * request may assert.
+   */
+  surface: PredictionSurface;
 }
 
 export function createPredictionRecorder(
@@ -449,7 +497,13 @@ export function createPredictionRecorder(
   const timer = setInterval(() => flush(), FLUSH_MS);
   timer.unref?.();
 
-  function record(readings: readonly ShownReading[], ctx: RecordContext): number {
+  /**
+   * @param as the surface to file under. `null` means "a rider's own screen",
+   *   and then `r.surface` is used and must pass `isShownSurface` — the wire
+   *   allowlist. A non-null value is a SHADOW arm and is never claimable from
+   *   outside; `record` cannot reach this parameter at all.
+   */
+  function record(readings: readonly ShownReading[], ctx: RecordContext, as: PredictionSurface | null = null): number {
     if (sample <= 0 || !insert) return 0;
     let accepted = 0;
     try {
@@ -474,7 +528,11 @@ export function createPredictionRecorder(
         if (r.lowSec < 0 || r.highSec < r.lowSec || r.highSec > MAX_ETA_SEC * 2) continue;
         if (!Number.isInteger(r.stopsAhead) || r.stopsAhead < 1 || r.stopsAhead > 200) continue;
         if (!Number.isInteger(r.stopId)) continue;
-        if (!isShownSurface(r.surface)) continue;
+        // The wire allowlist, and only for a rider's own claim. A shadow arm's
+        // surface comes from the caller, in process, and is checked once
+        // outside the loop.
+        if (as === null && !isShownSurface(r.surface)) continue;
+        const surface: PredictionSurface = as ?? r.surface;
 
         // The stop must be one this bus's route actually serves. Cheap, and it
         // is the difference between "a reading" and "an arbitrary row a
@@ -484,7 +542,7 @@ export function createPredictionRecorder(
 
         // The server owns the clock (see ShownReading.ageMs) and quantises.
         const at = Math.floor((now - r.ageMs) / PREDICTION_BUCKET_MS) * PREDICTION_BUCKET_MS;
-        const key = `${bus.busId}:${r.stopId}:${at}:${r.surface}`;
+        const key = `${bus.busId}:${r.stopId}:${at}:${surface}`;
         if (pending.has(key)) {
           // Same bucket, same vehicle, same stop, same screen: one row. First
           // writer wins here exactly as it does in SQLite, so the two layers
@@ -508,7 +566,7 @@ export function createPredictionRecorder(
           predictedHighSec: r.highSec,
           predictedAt: at,
           clientBuild: build,
-          surface: r.surface,
+          surface,
         });
         accepted++;
       }
@@ -520,7 +578,13 @@ export function createPredictionRecorder(
 
   return {
     sampleRate: () => sample,
-    record,
+    record: (readings, ctx) => record(readings, ctx),
+    shadow: (readings, surface, ctx) => (
+      // A shadow may not impersonate a screen. Enforced here rather than by
+      // the type alone, because the whole point of the two lists is that the
+      // separation survives a careless caller.
+      isShownSurface(surface) ? 0 : record(readings, ctx, surface)
+    ),
     flush,
     stop() {
       clearInterval(timer);

@@ -254,6 +254,31 @@ export class ServerEta {
   }
 
   /**
+   * The last completed answer's SOONEST row for one (bus, stop), with the
+   * instant the belief behind it was stepped.
+   *
+   * The dual run's reader (`serverEtaShadow.ts`): a rider posts what their
+   * browser showed for a (bus, stop) and this says what the always-warm
+   * belief had for the same pair. Soonest, because that is the entry a card
+   * follows — the estimator returns up to two per pair (this lap and the
+   * next) and the later one is the "next in …" half.
+   *
+   * Pure, like {@link answer}: reading it never steps a belief.
+   */
+  lookup(busName: string, stopId: number): { eta: number; low: number; high: number; stopsAhead: number; at: number } | null {
+    const wire = this.wire;
+    if (!wire) return null;
+    const want = busName.trim().replace(/^#/, "");
+    let best: ServerEtaRow | null = null;
+    for (const r of wire.rows) {
+      if (r[1] !== stopId) continue;
+      if (wire.buses[r[0]]![0] !== want) continue;
+      if (!best || r[2] < best[2]) best = r;
+    }
+    return best ? { eta: best[2], low: best[3], high: best[4], stopsAhead: best[5], at: wire.at } : null;
+  }
+
+  /**
    * Bumped once per completed pass. `createBusesPayloadCache` folds it into
    * its key so a payload built before a pass finished is rebuilt after it —
    * without it the cache would happily serve one poll's rows for five seconds.

@@ -58,6 +58,21 @@
  *      at the six stops downstream while a Red bus is parked there or leaving;
  *      reported as its own section with the departure moment scored),
  *      CALIB_LAG_MIN, TRACE=1,
+ *      WARM_STORE=1 — the SERVER-SIDE belief (docs/server-side-eta.md). One
+ *      store stepped over every poll of the day, every stop targeted, and
+ *      every rider reads out of it. Default 0 is the browser: a store per
+ *      rider cohort, opened COLD the moment those riders reach the stop.
+ *      That is the instrument for the server-side switch, and it must be
+ *      migrated BEFORE the switch — `computeUpcomingArrivals`' signature does
+ *      not change, so nothing else in this file does either.
+ *      Run it as a paired A/B against the same tree: two runs, same capture,
+ *      same snapshot, same population, `--compare`.
+ *      Slicing: the warm arm steps every poll from DETECTOR_FROM, so a run
+ *      sliced with FROM/TO still pays for the whole day unless DETECTOR_FROM
+ *      moves with it. Give it at least 15 min of lead — a belief unseen for
+ *      BELIEF_STALE_MS (10 min) is reset on read, so beyond that a warm-up is
+ *      indistinguishable from having run since dawn.
+ *
  *      PAYLOAD_PATCH=file.json — extra calibration fields a candidate tree
  *      reads that the snapshot's calibrator does not serve yet, merged into
  *      the time-travelled tables after they are built: e.g. PR #81's
@@ -207,6 +222,25 @@ const det = await fromClient<DetMod>("src/collector/detector.ts");
 let storeKind: "eta" | "anchorGate" | "none" = "none";
 try { if ((await fromClient<any>("web/src/eta/index.ts")).liveAnchorStore) storeKind = "eta"; } catch { /* older tree */ }
 if (storeKind === "none") { try { await fromClient<any>("web/src/anchorGate.ts"); storeKind = "anchorGate"; } catch { /* no store at all */ } }
+/**
+ * The SERVER-SIDE belief, modelled (docs/server-side-eta.md).
+ *
+ * The browser arm — the default, and what every rider-sim number to date was
+ * measured on — opens ONE `AnchorStore` per rider cohort, cold at the instant
+ * those riders reach the stop, because that is when a browser opens the app.
+ *
+ * The server arm steps ONE store over every poll of the day, targeting every
+ * stop on every route exactly as `ServerEta` does, and hands every rider rows
+ * out of it. That is the whole difference the switch makes to a rider, and it
+ * is why the instrument has to be migrated first: the switch's cost and its
+ * benefit both live in the WARMTH of the belief a rider reads, which a store
+ * per rider cannot express at all.
+ *
+ * Nothing about `computeUpcomingArrivals`' contract changes — the same call,
+ * the same arguments, a different store and a wider target list.
+ */
+const WARM_STORE = process.env.WARM_STORE === "1";
+
 // The stateless anchor, for the TRACE line only; gone from trees after 2026-09-06.
 const findRouteAnchor: ((b: BusData, stops: number[], coords: Record<number, { lat: number; lon: number }>) => number) | null =
   typeof (anchorMod as any).findRouteAnchor === "function" ? (anchorMod as any).findRouteAnchor : null;
@@ -588,6 +622,9 @@ interface Active {
 }
 interface Cohort { store: Map<string, any> | undefined; riders: Set<Active> }
 const cohorts = new Map<number, Cohort>();
+/** The server's single belief, and the target list it prices against. See {@link WARM_STORE}. */
+const warmStore = new Map<string, unknown>();
+const warmTargets = [...new Set(Object.values(net.routeStops).flat())];
 const results: WaitResult[] = [];
 const skipped: Array<{ id: string; reason: string }> = [];
 const active = new Set<Active>();
@@ -699,17 +736,37 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
       if (o.boardStopId !== spec.boardStopId) { skipped.push({ id: spec.id, reason: `boardElsewhere:${o.boardStopId}` }); continue; }
       let cohort = cohorts.get(t);
       if (!cohort) cohorts.set(t, (cohort = { store: storeKind === "none" ? undefined : new Map(), riders: new Set() }));
+      if (WARM_STORE && storeKind !== "none") cohort.store = warmStore as typeof cohort.store;
       const a: Active = { spec, o, cohort: t, ticks: [], truth, busAtStopOnArrival, endAt: truth.kind === "arrived" ? truth.at : spec.t0 + MAX_WAIT_MS };
       cohort.riders.add(a);
       active.add(a);
     }
     pending = specs.length - si;
 
+    // THE SERVER'S POLL. One call, every stop targeted, one store — stepped on
+    // every poll of the day whether or not a rider is watching, which is the
+    // whole of what "the belief is always warm" means. `ServerEta.step` does
+    // exactly this and no more; the rows below are what it would have served.
+    //
+    // Every stop, not just the ones riders are at: `computeUpcomingArrivals`
+    // skips a whole route when no target sits on it, so a narrower list would
+    // leave that route's beliefs unstepped and cold for the next rider on it.
+    let warmArr: UpcomingArrival[] | null = null;
+    if (WARM_STORE) {
+      warmArr = (arrivalsMod.computeUpcomingArrivals as any)(
+        warmTargets, buses, net.routeStops, net.stopCoords, segs, t, dw, warmStore,
+      ) as UpcomingArrival[];
+    }
+
     // every live cohort: one call, the rider's own anchor memory
     for (const [key, cohort] of cohorts) {
       if (cohort.riders.size === 0) { cohorts.delete(key); continue; }
       const targets = [...new Set([...cohort.riders].map((a) => a.spec.boardStopId))];
-      const arr = (arrivalsMod.computeUpcomingArrivals as any)(targets, buses, net.routeStops, net.stopCoords, segs, t, dw, cohort.store) as UpcomingArrival[];
+      // In the warm arm the answer was computed once above, for every stop —
+      // re-calling here would step every belief a SECOND time on one fix,
+      // which this model reads as evidence the bus is standing. Same
+      // constraint the server calls "one step per observation".
+      const arr = warmArr ?? (arrivalsMod.computeUpcomingArrivals as any)(targets, buses, net.routeStops, net.stopCoords, segs, t, dw, cohort.store) as UpcomingArrival[];
       for (const a of [...cohort.riders]) {
         const tick = tickFor(a, arr, buses, dw, t);
         a.ticks.push(tick);
@@ -753,7 +810,7 @@ for (const s of skipped) { const k = s.reason.split(":")[0]!; skippedReasons[k] 
 
 const out = {
   generatedAt: new Date().toISOString(),
-  config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
+  config: { captureFiles, REPLAY_DB: process.env.REPLAY_DB ?? "./store/snap.db", CLIENT_ROOT, PAYLOAD_PATCH: process.env.PAYLOAD_PATCH ?? null, belief: WARM_STORE ? "server (one warm store)" : "browser (one cold store per rider cohort)", POP, EVERY_MS, MAX_WAIT_MS, SAMPLE_MS, CANARY_MS, CALIB_LAG_MS, FROM: process.env.FROM ?? null, TO: process.env.TO ?? null, DETECTOR_FROM: new Date(DETECTOR_FROM).toISOString() },
   tree,
   data: { positions: rows.length, polls: polls.length, start: new Date(dataStart).toISOString(), end: new Date(dataEnd).toISOString() },
   population: { focus: [...FOCUS], holdout: [...HOLDOUT], chain: CHAIN ? { ...CHAIN, stops: chainStops } : null, riders: specs.length, bySource: { uniform: specs.filter((s) => s.source === "uniform").length, targeted: specs.filter((s) => s.source === "targeted").length, chain: specs.filter((s) => s.source === "chain").length, named: specs.filter((s) => s.source === "named").length }, skipped: skippedReasons },

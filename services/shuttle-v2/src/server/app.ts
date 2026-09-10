@@ -46,6 +46,7 @@ import {
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
+import { recordServerShadow } from "./serverEtaShadow.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
@@ -365,14 +366,27 @@ export function buildApp(opts: AppOptions): Hono {
     const body = await c.req.json().catch(() => null);
     const readings = parseShownBatch(body);
     if (readings.length > 0) {
-      predictions.record(readings, {
+      const ctx = {
         buses: opts.collector.getLiveBuses(),
         network: opts.collector.ref.get(),
         clientBuild: typeof (body as { b?: unknown } | null)?.b === "string"
           ? (body as { b: string }).b
           : null,
         now: now(),
-      });
+      };
+      predictions.record(readings, ctx);
+      // THE DUAL RUN (docs/server-side-eta.md). Beside what the browser showed,
+      // what the server's always-warm belief would have said for the same
+      // (bus, stop) pairs at the same instant. Same function, same payload —
+      // the only difference is the warmth of the belief, which is exactly what
+      // the switch changes, so a divergence here IS the effect of the switch,
+      // measured on the rows riders were actually looking at.
+      //
+      // Driven by the rider's post rather than by a timer, so the shadow arm
+      // costs what the rider surface costs (~3k rows a day) instead of what a
+      // census costs (`upstream` writes 40x that and needed its own sweep),
+      // and every shadow row has a rider row to be compared against.
+      if (serverEta) recordServerShadow(predictions, serverEta, readings, ctx);
     }
     // The sample rate rides back on the response the client already makes, so
     // the control channel costs no request of its own.
