@@ -1,0 +1,27 @@
+Berth map — one cell, as the card renders it
+10 cells in berths.ts · one live map at a time, as in the app
+100 Church Street South
+300 George St
+Building 900
+Canal/Munson
+Church/George
+Division/Prospect
+Wall/York
+Prospect/Canner
+Chapel/Dwight
+Elm/Orange
+Wall/York · Blue Night · offset 40 m
+Collapse card
+🧭 Directions to published stop
+⚠ 40 m past
+▴
+published stop
+expected stop
++
+−
+ Leaflet | © OpenStreetMap contributors
+⤢
+👆
+Tap the map to zoom and pan
+Wait about 40 m past the published stop
+Blue Night buses actually stop there — seen 32 of the last 32 times one served this stop.

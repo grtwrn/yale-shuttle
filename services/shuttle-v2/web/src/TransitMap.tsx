@@ -29,7 +29,7 @@ import { noteShown } from "./shownLog";
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
-import { BerthInset } from "./BerthInset";
+import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
 import { bandTitle, waitLegText } from "./etaBand";
@@ -4336,26 +4336,33 @@ const TripPlanner: FC<{
                         );
                       })()}
                       {/* Where the bus really pulls up, when that is not the
-                          stop's own dot. The sentence, not the marker, is what
-                          makes this usable: a second dot on its own reads as
-                          the map being wrong, and the count is what turns it
-                          into advice. Sits directly above Directions because
-                          that is the thing it corrects. The picture, the copy
-                          and the hooks it needs live in BerthInset.tsx. */}
-                      {berth && (
-                        <BerthInset
+                          stop's own dot — FOLDED by default since 2026-09-11
+                          (operator: "maybe we can collapse the stop location by
+                          default and put a drop-down button next to directions
+                          to published stop that has an ! alert"). The warning
+                          beside Directions is the summary; the map, the heading
+                          and the count are behind it, and are not mounted until
+                          the rider asks. BerthDisclosure.tsx owns the fold and
+                          the row; BerthInset.tsx the picture and the copy.
+
+                          A card with no berth takes the branch below and is
+                          unchanged, down to the button's own words. */}
+                      {berth ? (
+                        <BerthDisclosure
                           berth={berth}
                           published={stopCoords[o.boardStopId]}
                           routeLabel={o.routeLabel}
                           color={o.color}
                           stopName={boardName}
                           path={routePaths[String(berth.routeId)] ?? []}
+                          navHref={navHref}
+                          boardName={boardName}
                         />
-                      )}
-                      {/* Directions is the card's one prominent action
-                          (user request 2026-07-17: "make it more
-                          obvious"). */}
-                      {navHref && (
+                      ) : (
+                      /* Directions is the card's one prominent action
+                         (user request 2026-07-17: "make it more
+                         obvious"). */
+                      navHref && (
                         <a
                           href={navHref}
                           target="_blank"
@@ -4369,8 +4376,8 @@ const TripPlanner: FC<{
                             fontWeight: 600, fontSize: 14,
                             textDecoration: "none", fontFamily: "inherit",
                           }}
-                        >{`🧭 Directions to ${berth ? "published stop" : "stop"}`}</a>
-                      )}
+                        >🧭 Directions to stop</a>
+                      ))}
                       {/* One flat row of quiet secondary links — the old
                           nested disclosures (More ▾ → Stops ▾ → Route ▾)
                           made riders dig three levels for a stop list. The

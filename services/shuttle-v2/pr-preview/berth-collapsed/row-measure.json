@@ -1,0 +1,260 @@
+{
+  "base": "http://127.0.0.1:8101",
+  "cell": "48-3",
+  "rows": [
+    {
+      "width": 360,
+      "directionsMin": 181.6,
+      "directionsCandidateWidths": {
+        "🧭 Directions to published stop": 263.9,
+        "🧭 Directions to stop": 181.6,
+        "🧭 Directions": 120.9,
+        "Directions": 98.5
+      },
+      "row": {
+        "x": 24,
+        "y": 304,
+        "w": 312,
+        "h": 46
+      },
+      "directions": {
+        "x": 24,
+        "y": 304,
+        "w": 182.6,
+        "h": 46
+      },
+      "toggle": {
+        "x": 214.6,
+        "y": 304,
+        "w": 121.4,
+        "h": 46
+      },
+      "directionsClipped": false,
+      "toggleClipped": false,
+      "sameLine": true,
+      "toggleText": "⚠ 55 m past ▾",
+      "directionsText": "🧭 Directions to stop",
+      "candidateTextWidths": {
+        "⚠ Stops 55 m past the published stop": 276.9,
+        "⚠ Stop is 55 m past": 144,
+        "⚠ Stops 55 m past": 135,
+        "⚠ 55 m past the stop": 154.4,
+        "⚠ 55 m past": 88.9,
+        "⚠ 55 m": 52.3
+      },
+      "toggleChromePx": 27,
+      "chevronPx": 5.5,
+      "roomForToggle": 122.4,
+      "candidateFitsOneRow": {
+        "⚠ Stops 55 m past the published stop": {
+          "needs": 309.4,
+          "fits": false
+        },
+        "⚠ Stop is 55 m past": {
+          "needs": 176.5,
+          "fits": false
+        },
+        "⚠ Stops 55 m past": {
+          "needs": 167.5,
+          "fits": false
+        },
+        "⚠ 55 m past the stop": {
+          "needs": 186.9,
+          "fits": false
+        },
+        "⚠ 55 m past": {
+          "needs": 121.4,
+          "fits": true
+        },
+        "⚠ 55 m": {
+          "needs": 84.8,
+          "fits": true
+        }
+      },
+      "open": {
+        "directionsText": "🧭 Directions to published stop",
+        "toggleText": "⚠ 55 m past ▴",
+        "directionsMin": 263.9,
+        "toggle": {
+          "x": 24,
+          "y": 358,
+          "w": 312,
+          "h": 44
+        },
+        "sameLine": false,
+        "directionsClipped": false,
+        "toggleClipped": false
+      }
+    },
+    {
+      "width": 390,
+      "directionsMin": 181.6,
+      "directionsCandidateWidths": {
+        "🧭 Directions to published stop": 263.9,
+        "🧭 Directions to stop": 181.6,
+        "🧭 Directions": 120.9,
+        "Directions": 98.5
+      },
+      "row": {
+        "x": 24,
+        "y": 304,
+        "w": 342,
+        "h": 46
+      },
+      "directions": {
+        "x": 24,
+        "y": 304,
+        "w": 197.6,
+        "h": 46
+      },
+      "toggle": {
+        "x": 229.6,
+        "y": 304,
+        "w": 136.4,
+        "h": 46
+      },
+      "directionsClipped": false,
+      "toggleClipped": false,
+      "sameLine": true,
+      "toggleText": "⚠ 55 m past ▾",
+      "directionsText": "🧭 Directions to stop",
+      "candidateTextWidths": {
+        "⚠ Stops 55 m past the published stop": 276.9,
+        "⚠ Stop is 55 m past": 144,
+        "⚠ Stops 55 m past": 135,
+        "⚠ 55 m past the stop": 154.4,
+        "⚠ 55 m past": 88.9,
+        "⚠ 55 m": 52.3
+      },
+      "toggleChromePx": 27,
+      "chevronPx": 5.5,
+      "roomForToggle": 152.4,
+      "candidateFitsOneRow": {
+        "⚠ Stops 55 m past the published stop": {
+          "needs": 309.4,
+          "fits": false
+        },
+        "⚠ Stop is 55 m past": {
+          "needs": 176.5,
+          "fits": false
+        },
+        "⚠ Stops 55 m past": {
+          "needs": 167.5,
+          "fits": false
+        },
+        "⚠ 55 m past the stop": {
+          "needs": 186.9,
+          "fits": false
+        },
+        "⚠ 55 m past": {
+          "needs": 121.4,
+          "fits": true
+        },
+        "⚠ 55 m": {
+          "needs": 84.8,
+          "fits": true
+        }
+      },
+      "open": {
+        "directionsText": "🧭 Directions to published stop",
+        "toggleText": "⚠ 55 m past ▴",
+        "directionsMin": 263.9,
+        "toggle": {
+          "x": 24,
+          "y": 358,
+          "w": 342,
+          "h": 44
+        },
+        "sameLine": false,
+        "directionsClipped": false,
+        "toggleClipped": false
+      }
+    },
+    {
+      "width": 430,
+      "directionsMin": 181.6,
+      "directionsCandidateWidths": {
+        "🧭 Directions to published stop": 263.9,
+        "🧭 Directions to stop": 181.6,
+        "🧭 Directions": 120.9,
+        "Directions": 98.5
+      },
+      "row": {
+        "x": 24,
+        "y": 259,
+        "w": 382,
+        "h": 46
+      },
+      "directions": {
+        "x": 24,
+        "y": 259,
+        "w": 217.6,
+        "h": 46
+      },
+      "toggle": {
+        "x": 249.6,
+        "y": 259,
+        "w": 156.4,
+        "h": 46
+      },
+      "directionsClipped": false,
+      "toggleClipped": false,
+      "sameLine": true,
+      "toggleText": "⚠ 55 m past ▾",
+      "directionsText": "🧭 Directions to stop",
+      "candidateTextWidths": {
+        "⚠ Stops 55 m past the published stop": 276.9,
+        "⚠ Stop is 55 m past": 144,
+        "⚠ Stops 55 m past": 135,
+        "⚠ 55 m past the stop": 154.4,
+        "⚠ 55 m past": 88.9,
+        "⚠ 55 m": 52.3
+      },
+      "toggleChromePx": 27,
+      "chevronPx": 5.5,
+      "roomForToggle": 192.4,
+      "candidateFitsOneRow": {
+        "⚠ Stops 55 m past the published stop": {
+          "needs": 309.4,
+          "fits": false
+        },
+        "⚠ Stop is 55 m past": {
+          "needs": 176.5,
+          "fits": true
+        },
+        "⚠ Stops 55 m past": {
+          "needs": 167.5,
+          "fits": true
+        },
+        "⚠ 55 m past the stop": {
+          "needs": 186.9,
+          "fits": true
+        },
+        "⚠ 55 m past": {
+          "needs": 121.4,
+          "fits": true
+        },
+        "⚠ 55 m": {
+          "needs": 84.8,
+          "fits": true
+        }
+      },
+      "open": {
+        "directionsText": "🧭 Directions to published stop",
+        "toggleText": "⚠ 55 m past ▴",
+        "directionsMin": 263.9,
+        "toggle": {
+          "x": 24,
+          "y": 313,
+          "w": 382,
+          "h": 44
+        },
+        "sameLine": false,
+        "directionsClipped": false,
+        "toggleClipped": false
+      }
+    }
+  ],
+  "ok": true,
+  "failures": []
+}

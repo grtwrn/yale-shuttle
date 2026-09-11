@@ -1,0 +1,60 @@
+{
+  "base": "http://127.0.0.1:8101",
+  "cells": [
+    {
+      "cell": "48-3",
+      "files": {
+        "collapsed": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/48-3-collapsed.png",
+        "initial": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/48-3-initial.png",
+        "zoomout": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/48-3-zoomout.png",
+        "fullscreen": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/48-3-fullscreen.png"
+      },
+      "collapsedContainers": 0,
+      "inertTouchAction": "auto",
+      "inertClasses": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "fullscreenHeight": 844,
+      "back": true,
+      "escapeClosed": true
+    },
+    {
+      "cell": "67-13",
+      "files": {
+        "collapsed": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/67-13-collapsed.png",
+        "initial": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/67-13-initial.png",
+        "zoomout": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/67-13-zoomout.png",
+        "fullscreen": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/final/67-13-fullscreen.png"
+      },
+      "collapsedContainers": 0,
+      "inertTouchAction": "auto",
+      "inertClasses": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "fullscreenHeight": 844,
+      "back": true,
+      "escapeClosed": true
+    }
+  ],
+  "scroll": {
+    "inert": {
+      "touchAction": "auto",
+      "classes": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "scrollY": [
+        0,
+        290
+      ],
+      "panMoved": false
+    },
+    "armed": {
+      "touchAction": "none",
+      "classes": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+      "scrollY": [
+        0,
+        0
+      ],
+      "panMoved": true,
+      "inertTouchActionBefore": "auto"
+    },
+    "disarmedByOutsideTap": true
+  },
+  "errors": [],
+  "ok": true,
+  "failures": []
+}
