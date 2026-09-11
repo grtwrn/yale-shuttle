@@ -7434,14 +7434,13 @@ const TransitMap: FC = () => {
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
         position: "relative",
       }}>
-        {/* The product name is ours, not Yale's: "Yale Shuttle" used Yale's
-            mark as the name of a thing Yale does not publish (operator,
-            2026-09-10). The shuttles are still named descriptively wherever
-            they are described — the meta description, the route labels — and
-            the footer's "Not affiliated with or endorsed by Yale University."
-            is unchanged. */}
+        {/* "Yale Shuttle Tracker" — the operator's decision on 2026-09-11 ("since
+            we are tracking yale shuttle"), reversing the same-day "Shuttle
+            Tracker" rename: Yale is named as the thing tracked, the footer's
+            "Not affiliated with or endorsed by Yale University." is unchanged
+            and is still the legal statement. */}
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
-          Shuttle Tracker
+          Yale Shuttle Tracker
         </h1>
         {/* Just the name. The tagline ("Unofficial live tracker for the Yale
             shuttles") and the clock that sat under it were removed on

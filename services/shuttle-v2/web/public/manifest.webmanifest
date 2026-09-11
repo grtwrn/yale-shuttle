@@ -1,5 +1,5 @@
 {
-  "name": "Shuttle Tracker",
+  "name": "Yale Shuttle Tracker",
   "short_name": "Shuttle",
   "description": "Unofficial live tracker for the Yale shuttles: bus positions, stop ETAs and trip planning.",
   "start_url": "/",
