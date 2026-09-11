@@ -276,3 +276,46 @@ describe("departNow — the drive floor the display had been reconstructing", ()
     expect(Math.min(...seen.map((s) => s.eta))).toBeLessThan(Math.max(...floor) + 200);
   });
 });
+
+describe("the band's floor (lowFloor) — the rest-less chain at the band's own quantile", () => {
+  it("is the band's own low end while nothing rests", () => {
+    const { ring, tables } = setup();
+    let b = stepBelief(undefined, ring, { lat: at(35, 0).lat, lon: at(35, 0).lon }, 0, STOPS);
+    b = stepBelief(b, ring, { lat: at(70, 0).lat, lon: at(70, 0).lon }, 5000, STOPS);
+    b = stepBelief(b, ring, { lat: at(105, 0).lat, lon: at(105, 0).lon }, 10_000, STOPS);
+    const row = priceRoute(b, ring, tables, STOPS, new Set([3]), 10_000, 0.5)
+      .find((r) => r.stopId === 3 && r.occurrence === 0)!;
+    expect(row.standingAt).toBe(-1);
+    expect(row.lowFloor).toBe(row.low);
+    expect(row.low).toBeLessThanOrEqual(row.eta);
+  });
+
+  it("is the drive's own q10 one hop past a stand, under departNow, and never above the shown number", () => {
+    // The rest-less chain's q10 is a floor on a q10 IN THE MODEL: the lead
+    // chain is that chain plus a non-negative residual, sample for sample. It
+    // is served so the replay can score it against the world (arrival.ts
+    // `lowFloor` records why it is not enforced).
+    const { ring, tables } = setup();
+    const floors: Floors = { map: new Map() };
+    let b: Belief | undefined;
+    const q10 = quantile(tables.hops[0]!.drive, 0.1);
+    let rows = 0;
+    for (let r = 30; r <= 700; r += 5) {
+      const now = r * 1000;
+      b = stepBelief(b, ring, standAt1(0), now, STOPS);
+      const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors)
+        .find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (!row) continue;
+      rows++;
+      expect(row.standingAt).toBe(0);
+      expect(Math.abs(row.lowFloor - q10)).toBeLessThan(15);
+      // Reported, not applied: `low` may sit under it (the measurement in
+      // its docstring is why), but the band still contains the shown number.
+      expect(row.low).toBeLessThanOrEqual(row.eta + 1e-9);
+      expect(row.lowFloor).toBeLessThanOrEqual(row.eta + 1e-9);
+      // The floor is a q10, not the median: it sits under `departNow`.
+      expect(row.lowFloor).toBeLessThanOrEqual(row.departNow + 1e-9);
+    }
+    expect(rows).toBeGreaterThan(50);
+  });
+});

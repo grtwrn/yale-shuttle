@@ -618,7 +618,7 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number; realLowFloor: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
@@ -728,6 +728,7 @@ for (const o of observations) {
       realLow: r.low,
       realHigh: r.high,
       realDepartNow: r.departNow,
+      realLowFloor: r.lowFloor,
     });
   }
 }
@@ -777,6 +778,12 @@ if (process.env.PAIRS_OUT) {
       eta: Math.round(p.realEta * 10) / 10,
       low: Math.round(p.realLow * 10) / 10,
       high: Math.round(p.realHigh * 10) / 10,
+      // The drive floor (arrival.ts `departNow`), so a band floored at it can
+      // be scored post hoc beside the raw one.
+      dn: Math.round(p.realDepartNow * 10) / 10,
+      // The band's measured floor (arrival.ts `lowFloor`), not applied by the
+      // client: `band-coverage.mjs --floor fl` scores what applying it would do.
+      fl: Math.round(p.realLowFloor * 10) / 10,
       det: p.det === null ? null : Math.round(p.det * 10) / 10,
       // Everything below is for the DECOMPOSITION (docs/route-bias.md): the
       // rider's truth, which stop and when, whether the client's own lead leg

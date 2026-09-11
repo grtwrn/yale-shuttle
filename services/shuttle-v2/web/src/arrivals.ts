@@ -178,6 +178,8 @@ export type UpcomingArrival = {
    * 472 m away (operator, 2026-09-10).
    */
   departNow: number;
+  /** The band's measured floor (eta/arrival.ts `StopArrival.lowFloor`) — served for the replay, not enforced. */
+  lowFloor: number;
   routeLabel: string; color: string; busName: string; stopId: number;
   /**
    * Hops from the bus's anchor to this stop, 1-based — the loop walks twice,
@@ -270,7 +272,7 @@ export function computeUpcomingArrivals(
       );
       for (const row of rows) {
         result.push({
-          eta: row.eta, low: row.low, high: row.high, departNow: row.departNow,
+          eta: row.eta, low: row.low, high: row.high, departNow: row.departNow, lowFloor: row.lowFloor,
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),
           stopId: row.stopId, stopsAhead: row.stopsAhead, estimated: row.estimated,

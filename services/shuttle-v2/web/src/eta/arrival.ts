@@ -83,6 +83,30 @@ export interface StopArrival {
    * standing bus shows, and a drive is not standing time.
    */
   departNow: number;
+  /**
+   * THE BAND'S FLOOR, MEASURED AND NOT APPLIED: quantile 0.1 of `departNow`'s
+   * chain — the same rest-less chain, read at the band's own low quantile —
+   * and `low` itself when the lead is not resting. Sample for sample the
+   * lead chain is that chain plus a non-negative residual, so in the model
+   * `low` cannot honestly sit below this; it does only because #119's clamp
+   * shifts the band down with the shown number and the shift is floored at
+   * zero rather than here (0 s for twelve consecutive polls on the operator's
+   * 2026-09-10 case, "now-8 min" for a bus 595 m away).
+   *
+   * It is SERVED so the replay can score it and NOT enforced, because the
+   * measurement refused it (2026-09-11, gps-replay 9/9 and 9/10, Red and Blue
+   * Day, `scripts/eta-replay/band-coverage.mjs --floor fl`): the truth
+   * arrives before this q10 on 7-18% of pairs at 2-30 min — the rest-less
+   * chain prices the stands ahead at pooled medians and is pessimistic where
+   * a bus takes them short — so flooring at it cost 3-13 points of held-out
+   * coverage under the served widening, and the nightly fit would have to
+   * widen 5-10 min bands by ~45% to buy the coverage back. A floor at
+   * `departNow` itself (the median) is worse still: for a moving bus that IS
+   * `eta`, so it deletes the lower half of every moving band (Red 5-10 min
+   * moving coverage 77 -> 32%). The right fix is the chain's pessimism, not
+   * a floor on its band.
+   */
+  lowFloor: number;
   /** Mass of the lead cluster (1 on a plain loop). */
   leadMass: number;
   /** No served table backed any hop of the lead chain. */
@@ -559,7 +583,7 @@ export function priceRoute(
     const sid = stops[lead.standingAt]!;
     occ.set(lead.standingAt, 1);
     if (targetStopIds.has(sid)) {
-      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
     }
   }
   for (let h = 1; h <= 2 * N; h++) {
@@ -615,14 +639,23 @@ export function priceRoute(
     // LEAD only — an alternative situation on another leg is not what the rider
     // is watching pull out — and it is deliberately outside the clamp below.
     let departNow = qt;
+    // The band's floor (`lowFloor`, reported only): the rest-less chain at
+    // the band's own quantile. NaN while the lead is not resting.
+    let nowLow = NaN;
     if (leadNow) {
       chainAt(leadNow, pre, h, nowBuf, lap);
       nowBuf.sort();
       departNow = nowBuf[Math.min(K - 1, Math.floor(tau * K))]!;
+      nowLow = nowBuf[Math.min(K - 1, Math.floor(0.1 * K))]!;
     }
+    // While alternatives hold real mass the low end is the FULL mixture's, and
+    // an alternative may put the bus AHEAD of the lead's stand — its q10 can
+    // honestly sit below the lead's own drive, so the floor stands down.
+    let fullMix = false;
     if (mass < LEAD_SWITCH_MASS && all.length > parts.length) {
       const [f10, f90] = mixedQuantiles(all, [0.1, 0.9]) as [number, number];
       low = Math.min(low, f10); high = Math.max(high, f90);
+      fullMix = true;
     }
     const key = chainKey(cur, o);
     if (floors && clampAt >= 0) {
@@ -657,6 +690,7 @@ export function priceRoute(
       low = applyRouteScale(low, scale);
       high = applyRouteScale(high, scale);
       departNow = applyRouteScale(departNow, scale);
+      nowLow = applyRouteScale(nowLow, scale);
     }
     // The learned per-HORIZON centre correction (params.ts,
     // docs/horizon-bias.md). Where the route scale asks "is this line's lap
@@ -675,18 +709,26 @@ export function priceRoute(
     // does a bus this line says is N seconds away actually come", which is as
     // true of a drive with no stand in front of it as of one with.
     departNow = applyHorizonBias(departNow);
+    nowLow = applyHorizonBias(nowLow);
     // The learned per-horizon widening (params.ts, docs/closed-loop.md stage 3)
     // is the LAST thing applied: it is fitted against the number a rider was
     // actually shown, so it must scale the band about that number, after the
     // floor clamp has moved it. At the default 1.0 it returns [low, high]
     // itself, so the served defaults are byte-identical to no widening.
     const [wLow, wHigh] = widenBand(eta, low, high);
+    const lowOut = Math.min(wLow, eta);
+    // The floor is reported, never applied (see `lowFloor`); while
+    // alternatives hold real mass the band is the full mixture's and an
+    // alternative may put the bus AHEAD of the lead's stand, so there is no
+    // rest-less floor to report there either.
+    const floor = leadNow && !fullMix && Number.isFinite(nowLow) ? Math.min(nowLow, eta) : lowOut;
     out.push({
       stopId: sid,
       occurrence: o,
       stopsAhead: h,
-      eta, low: Math.min(wLow, eta), high: Math.max(wHigh, eta),
+      eta, low: lowOut, high: Math.max(wHigh, eta),
       departNow,
+      lowFloor: floor,
       leadMass: mass,
       estimated: !lead.measured && !anyMeasured,
       standingAt: lead.standingAt,
