@@ -1330,7 +1330,8 @@ Five rules, each of which cost a measurement:
   `gateCell` cross-validates inside the cell on day-blocked folds and
   bootstraps the paired absolute-error difference BY DAY; the cell is served
   only when the upper end of the one-sided 90% interval is below zero.
-  **66 candidates -> 22 served.** Both cells whose ungated fit was worse than
+  **66 candidates -> 22 pass the cell gate** (served only where the route ledger
+  below also allows). Both cells whose ungated fit was worse than
   pooled drop out (100 Church Street South +4.5 s, 333 Cedar on Blue Day whose
   interval crosses zero), and so does 300 George St. Red's two cells pass
   unchanged. **Do not replace this with a route allowlist** — that is the
@@ -1348,17 +1349,22 @@ Five rules, each of which cost a measurement:
   rider.** So this is a rollout LEDGER, not a per-route tuning knob: the
   arithmetic is identical everywhere, and adding an id means running the pair
   and pasting its numbers beside it (a test fails if an id has no evidence line
-  in the source). 66 candidates -> 22 pass the cell gate -> **2 served**; the
-  20 held back are held for want of rider evidence, not merit. **Blue Night
-  (13) was measured on 2026-09-10 and REFUSED by the rider table** even though
-  333 Cedar (13:10, delta -115.5 s held out) is the largest cell effect on the
-  network and gps-replay improved on every column: on a one-bus line the card's
-  SECOND slot is the same bus a lap later, its chain carries the full 333
-  Cedar stand as a future stand, and at the departure poll that stand is
-  priced under a lap the served clock has not yet reset — 0 strands fixed / 74
-  introduced, 0 / 555 jumps, all in slot 2, slot 1 unchanged. Fix the lap of a
-  stop the bus is LEAVING before retrying (`docs/stand-lap-covariate.md`
-  section 6b). **gps-replay could not see this covariate until 2026-09-10** —
+  in the source). 66 candidates -> 22 pass the cell gate -> **5 served** (Red's
+  two, Blue Night's three); the 17 held back are held for want of rider
+  evidence, not merit. **Blue Night (13) was measured on 2026-09-10 and REFUSED
+  by the rider table, then RESOLVED on 2026-09-11** (#217 + #218). 333 Cedar
+  (13:10, delta -115.5 s held out) is the largest cell effect on the network
+  and gps-replay improved on every column, yet the first pair showed 0 strands
+  fixed / 74 introduced and 0 / 555 jumps, all in slot 2: on a one-bus line
+  the card's SECOND slot is the same bus a lap later, its chain carries the
+  full 333 Cedar stand as a future stand, and at the departure poll that stand
+  was priced under a served lap age that was either STALE (older than the
+  rest) or ABSENT (the bus's first departure of the block — `buses[].lap`
+  names only stops already departed). `ownDeparture` now seeds both from the
+  belief's own departure of the stop being left; with it the same pair reads
+  jump 0/0 (Sat 9/6) and 34/0 (Mon 9/8) introduced, reversal 48/20 and
+  24/10, strands 0/0 under both attribution rules, Red byte-identical on
+  1,373 of 1,374 sequences (`docs/stand-lap-covariate.md` sections 6b–6d). **gps-replay could not see this covariate until 2026-09-10** —
   it built its payload without `buses[].lap`, so both arms of any lap A/B priced
   the factor as 1 and the `PAIRS_OUT` files came out byte-identical; it now
   serves the lap age from the replayed detector's own departures, the way
