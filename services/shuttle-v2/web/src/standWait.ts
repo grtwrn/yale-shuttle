@@ -1,5 +1,5 @@
 // What a rider is told while a bus is STANDING at a stop — the pause chip's
-// words and, when the wait has real spread in it, the countdown's range.
+// words, and the ONE composition every stop list reads the countdown through.
 //
 // THE CASE THIS EXISTS FOR (operator, 2026-09-07). A Red bus stood at
 // 344 Winchester for 9:16. The stop's served stand table is
@@ -38,36 +38,24 @@
 //     is ("leaves in 1-6 min"), and collapses to "leaving any moment" once the
 //     whole range is inside a minute — which is exactly when the bus can pull
 //     out at will;
-//   * the countdown becomes a RANGE whose low end is the DRIVE FLOOR: where
-//     the bus would be if it left this second. It is never earlier than that
-//     (the bus cannot teleport) and never later than the q90 (it may leave
-//     now). On the table above every one of those statements contains the
-//     9:16 truth, at every elapsed time, which no point estimate did.
-//
-// THE DRIVE FLOOR IS MEASURED, NOT RECONSTRUCTED (2026-09-10). It arrives as
-// `driveFloorSec` — the model's own `departNow` for the very arrival the row
-// is pinned to (eta/arrival.ts), the same chain with the stand ended this
-// second — and nothing here walks a hop or reads a segment table. The
-// subtraction it replaced (`etaSec - remainingSec`) survives only as a lower
-// bound that may RAISE it; on its own it collapsed to zero exactly where this
-// module is needed, and the card printed `Red in <1-8, then 14 min` for a bus
-// 472 m and three hops from the rider. See `departNowSec` below for why the
-// two terms of that subtraction were never two readings of one number.
+//   * the countdown becomes a RANGE. Until 2026-09-11 that range was built
+//     HERE from these stand quantiles plus the drive floor, and only while
+//     the bus stood. It is now the estimator's own 10-90 band, printed with
+//     its median on every row, standing or moving (etaBand.ts; the operator:
+//     "it only shows a range for red when its at the dwell stop but earlier
+//     might be helpful"). For a STANDING bus that band's low end is floored
+//     at departNow + the shortest stand still left (`standingLowFloor`) —
+//     the low end this module used to print — and `arrivalBand` below is the
+//     one place the two are put together, so the row, the minimap chip, the
+//     Map tab's stop rows and the wait leg cannot disagree.
 //
 // The quantiles are the model's own — `shownStandSec` reads the same stand
 // table, through the same pools, at the same clock the countdown is billed
 // under (arrivals.ts). Nothing here estimates anything; it decides wording.
 
-import { fmtBusRange, fmtMin, fmtWait } from "./format";
+import { fmtMin } from "./format";
+import { chipCountdownText, displayBand, standingLowFloor, type EtaBand } from "./etaBand";
 import { shownStandSec, type DwellStat, type DwellTimes, type ShownStand } from "./arrivals";
-
-/**
- * Below this q10-q90 spread a range says nothing a point does not: an ordinary
- * kerb stop is 15 s of stand and "in 4-4 min" is noise. Layovers — the stops
- * where this whole problem lives — clear it several times over (344 Winchester
- * spans 7:48 at the start of a stand and still 4:40 nine minutes in).
- */
-export const RANGE_MIN_SPREAD_SEC = 120;
 
 /**
  * A low end inside this is not a number, it is a state: the bus can pull out
@@ -88,18 +76,6 @@ export interface StandWaitInput {
   elapsedSec: number;
   /** `shownStandSec`'s answer at that clock — must be a remainder. */
   stand: ShownStand;
-  /** The countdown the rider reads for this option, seconds, or null. */
-  etaSec: number | null;
-  /** The bus is standing at the rider's own board stop (no drive left to bound). */
-  atBoardStop: boolean;
-  /**
-   * THE MEASURED DRIVE FLOOR — the model's own `departNow` for this very
-   * arrival (eta/arrival.ts): the chain from the stand to the board stop with
-   * the stand ended this second. Undefined only where a caller has no pinned
-   * arrival row to read it off, and then the reconstruction below is all there
-   * is.
-   */
-  driveFloorSec?: number | undefined;
 }
 
 export interface StandWaitView {
@@ -110,35 +86,9 @@ export interface StandWaitView {
   remainingSec: number;
   soonSec: number;
   lateSec: number;
-  /**
-   * Arrival at the board stop if the bus pulled out this second. THE FLOOR:
-   * nothing shown may be earlier, because the drive is the one part of the
-   * wait no departure can skip.
-   *
-   * It is the model's own `departNow` (`driveFloorSec`), raised — never
-   * lowered — by the countdown less the stand it is still carrying.
-   *
-   * IT USED TO BE THAT SUBTRACTION ALONE, and the subtraction has no floor in
-   * it. `etaSec` and `remainingSec` are not two readings of one computation:
-   * the countdown is decayed by wall clock (report #48), carries the learned
-   * route and horizon corrections, and is held down by #119's clamp while the
-   * conditional stand underneath it climbs; `remainingSec` is `shownStandSec`'s
-   * fresh pass at the current elapsed clock with none of that applied. Once
-   * the remainder reaches the countdown the difference floors at zero and the
-   * low end becomes a STAND quantile with no drive in it — which late in a
-   * long stand is itself near zero. The card then printed `Red in <1-8, then
-   * 14 min` for a bus standing at 344 Winchester, three hops and 472 m from
-   * the rider's stop, where the measured drive is 60 s at q10 and 83 s at the
-   * median (operator, 2026-09-10). "<1 min" was not a slightly optimistic
-   * number; it was the drive term going missing.
-   */
-  departNowSec: number | null;
-  /** The countdown's range, or null to leave the point number alone. */
-  range: { lowSec: number; highSec: number } | null;
   /** "leaves in 1-6 min" / "leaving any moment" — the chip's second half. */
   leftText: string;
   chipTitle: string;
-  rangeTitle: string | null;
 }
 
 function mmss(s: number): string {
@@ -206,26 +156,13 @@ export function standLeftText(soonSec: number, lateSec: number): string {
  * Returns null for anything that is not a live remainder.
  */
 export function standWaitView(input: StandWaitInput): StandWaitView | null {
-  const { stand, elapsedSec, etaSec, atBoardStop, driveFloorSec } = input;
+  const { stand, elapsedSec } = input;
   if (!stand.remaining) return null;
   const remainingSec = Math.max(0, stand.sec);
   const soonSec = Math.max(0, stand.soonSec ?? remainingSec);
   const lateSec = Math.max(soonSec, stand.lateSec ?? remainingSec);
   const typicalSec = stand.typicalSec;
   const overdue = typicalSec !== undefined && elapsedSec >= typicalSec;
-  // The measured floor, raised by the reconstruction where the reconstruction
-  // is the larger of the two. Raising is safe in the direction that matters —
-  // a rider is stranded by a number too EARLY — and it keeps every case where
-  // the old arithmetic was right (a short kerb stop, a bus whose countdown
-  // already exceeds the model's own drive) byte-identical.
-  const measuredFloor = driveFloorSec != null && Number.isFinite(driveFloorSec)
-    ? Math.max(0, driveFloorSec)
-    : null;
-  // Still null without a countdown: the range's HIGH end is `etaSec`-bounded,
-  // so a floor with nothing to bound is not half an answer, it is a NaN.
-  const departNowSec = etaSec == null || !Number.isFinite(etaSec)
-    ? null
-    : Math.max(measuredFloor ?? 0, etaSec - remainingSec, 0);
 
   const leftText = standLeftText(soonSec, lateSec);
   const typicalPart = typicalSec === undefined
@@ -243,27 +180,7 @@ export function standWaitView(input: StandWaitInput): StandWaitView | null {
       : `About ${bare(fmtMin(soonSec))}-${fmtMin(lateSec)} still to go, and it can pull out sooner.`;
   const chipTitle = `Standing ${mmss(elapsedSec)}${typicalPart}. ${toGo}`;
 
-  // A range is worth drawing only where the spread is real, and only where
-  // there is a drive to bound it with: a bus standing AT the board stop has
-  // arrived, its countdown is legitimately zero, and "now-5 min" beside a bus
-  // the rider can see would read as a reason not to board.
-  let range: { lowSec: number; highSec: number } | null = null;
-  let rangeTitle: string | null = null;
-  if (departNowSec !== null && !atBoardStop && lateSec - soonSec >= RANGE_MIN_SPREAD_SEC) {
-    // Low: the drive floor plus the shortest stand still plausible. High: the
-    // drive floor plus the longest. `etaSec` (the median) sits between them by
-    // construction — soonSec <= remainingSec <= lateSec — and the max() keeps
-    // that true even if #119's clamp has moved the point number underneath.
-    const lowSec = departNowSec + soonSec;
-    const highSec = Math.max(departNowSec + lateSec, etaSec as number);
-    range = { lowSec, highSec };
-    rangeTitle = `The bus is standing at its stop (${mmss(elapsedSec)} so far). ${fmtMin(lowSec)} if it pulls out now, ${fmtMin(highSec)} if this stand runs as long as the longest here do.`;
-  }
-
-  return {
-    elapsedSec, overdue, remainingSec, soonSec, lateSec,
-    departNowSec, range, leftText, chipTitle, rangeTitle,
-  };
+  return { elapsedSec, overdue, remainingSec, soonSec, lateSec, leftText, chipTitle };
 }
 
 /**
@@ -277,23 +194,13 @@ export function standWaitFor(
   standing: { stopId: number; standingSec: number } | null,
   routeDwells: Record<string, DwellStat>,
   dwellsByRoute: DwellTimes | undefined,
-  etaSec: number | null,
-  boardStopId: number,
-  /** The pinned arrival's own `departNow` (planner.ts `busDepartNowSec`). */
-  driveFloorSec?: number | undefined,
 ): StandWaitView | null {
   if (!standing) return null;
   const stat = routeDwells[String(standing.stopId)];
   if (!stat || stat.n < 3) return null;
   const stand = shownStandSec(stat, standing.standingSec, routeDwells, dwellsByRoute);
   if (!stand) return null;
-  return standWaitView({
-    elapsedSec: standing.standingSec,
-    stand,
-    etaSec,
-    atBoardStop: standing.stopId === boardStopId,
-    driveFloorSec,
-  });
+  return standWaitView({ elapsedSec: standing.standingSec, stand });
 }
 
 /**
@@ -318,11 +225,7 @@ export function standChipFor(
   dwellsByRoute: DwellTimes | undefined,
 ): { clock: string; text: string; title: string; overdue: boolean } | null {
   if (!standing) return null;
-  // No countdown and the stand's own stop as the "board" stop: this is the chip,
-  // not the row, so there is no arrival to bound and no range to draw. Every
-  // field it does return (`leftText`, `chipTitle`, `overdue`) is independent of
-  // `etaSec` by construction — a test pins that against the row's own view.
-  const view = standWaitFor(standing, routeDwells, dwellsByRoute, null, standing.stopId);
+  const view = standWaitFor(standing, routeDwells, dwellsByRoute);
   if (!view) return null;
   return {
     clock: mmss(standing.standingSec),
@@ -335,6 +238,28 @@ export function standChipFor(
 }
 
 /**
+ * THE BAND ONE ARRIVAL PRINTS — the one place the estimator's 10-90 band
+ * (`UpcomingArrival.low` / `.high`) and the stand a bus is in are put
+ * together. `displayBand` decides whether the band is wide enough to print
+ * and ticks it with the point; for a STANDING bus (`view` non-null) its low
+ * end is floored at `departNow + the shortest stand still left`
+ * (`standingLowFloor`, etaBand.ts) — the low end this module used to print on
+ * its own. Every surface — the trip row, the minimap chip (`stopEtaText`),
+ * the Map tab's stop rows (`stopEtaText`) and the expanded card's wait leg —
+ * reads the band through here, so none can disagree about one bus.
+ */
+export function arrivalBand(
+  view: StandWaitView | null,
+  arrival: { low?: number | undefined; high?: number | undefined; departNow?: number | undefined; computedAtMs?: number | undefined },
+  nowMs: number = Date.now(),
+): EtaBand | null {
+  return displayBand(
+    arrival.low, arrival.high, arrival.computedAtMs, nowMs,
+    view ? standingLowFloor(arrival.departNow, view.soonSec) : undefined,
+  );
+}
+
+/**
  * THE COUNTDOWN FOR ONE STOP, wherever it is drawn: the trip card's minimap
  * chip and the Map tab's route-card rows.
  *
@@ -344,66 +269,18 @@ export function standChipFor(
  * Map tab's own row for the same stop — below the model's own drive floor. That
  * is the operator's 2026-09-10 complaint ("its a little weird showing a
  * definitive answer in map and a range in the stop list") on the surface the
- * fix missed.
+ * fix missed. The band is `arrivalBand`'s, the words `chipCountdownText`'s
+ * (etaBand.ts): "4 (2-10) min" with a band, `fmtMin`'s point without one.
  *
  * `arrival.eta` is passed already decayed where the caller decays it (report
- * #48); the range never is, for the reason `chipCountdownText` gives.
+ * #48); the band is decayed off `arrival.computedAtMs` the same way.
  */
 export function stopEtaText(
   standing: { stopId: number; standingSec: number } | null,
-  arrival: { eta: number; departNow?: number | undefined },
-  stopId: number,
+  arrival: { eta: number; low?: number | undefined; high?: number | undefined; departNow?: number | undefined; computedAtMs?: number | undefined },
   routeDwells: Record<string, DwellStat>,
   dwellsByRoute: DwellTimes | undefined,
 ): string | null {
-  return chipCountdownText(
-    standing
-      ? standWaitFor(standing, routeDwells, dwellsByRoute, arrival.eta, stopId, arrival.departNow)
-      : null,
-    arrival.eta,
-  );
-}
-
-/**
- * The countdown for the MAP's board chip — the same answer as the card's, in
- * the map's shorter vocabulary.
- *
- * The chip and the card are the same quantity at the same instant: the lead
- * bus's arrival at the board stop, one drawn at the stop and one on the row.
- * Until 2026-09-10 only the card knew about the standing range, so a bus
- * mid-layover got `<1-9 min` on the row and a bare `1 min` on the map (the
- * operator: "its a little weird showing a definitive answer in map and a range
- * in the stop list"). The point number is the MEDIAN of a standing bus's
- * departure distribution, which legitimately moves while the bus sits — that
- * is the whole reason the card stopped showing one — so the chip was observed
- * going 5 -> 1 -> 2 min while nothing happened.
- *
- * The map's chip says "4 min", not "in 4 min", so the head word is dropped;
- * everything else is `fmtBusRange`, one formatter for both surfaces.
- *
- * THE RANGE IS NOT DECAYED between polls, and the point number still is.
- * `remainingSec` exists because a moving bus's countdown must keep ticking
- * while no poll lands (report #48). A standing bus's remaining stand does not
- * tick down that way — subtracting wall clock slid the chip toward "now" and
- * snapped it back when the poll arrived, which is a second, independent source
- * of the same flapping. Callers pass the already-decayed point and the
- * undecayed range, and this picks.
- */
-export function chipCountdownText(view: StandWaitView | null, etaSec: number | null): string | null {
-  if (view?.range) return fmtBusRange(view.range.lowSec, view.range.highSec).replace(/^in /, "");
-  if (etaSec == null || !Number.isFinite(etaSec)) return null;
-  // `fmtMin`, not `fmtBusPair`: the chip has always spelled the point number
-  // this way ("4 min", "now"), so the non-standing case stays byte-identical
-  // to what the map drew before the range existed.
-  return fmtMin(etaSec);
-}
-
-/** Wait after reaching the pickup: retain the same uncertainty as the bus ETA. */
-export function waitLegText(view: StandWaitView | null, walkSec: number, waitSec: number): string | null {
-  if (view?.range) {
-    const low = Math.max(0, view.range.lowSec - walkSec);
-    const high = Math.max(0, view.range.highSec - walkSec);
-    return high < 60 ? null : fmtBusRange(low, high).replace(/^in /, "");
-  }
-  return waitSec < 60 ? null : fmtWait(waitSec);
+  const view = standing ? standWaitFor(standing, routeDwells, dwellsByRoute) : null;
+  return chipCountdownText(arrivalBand(view, arrival), arrival.eta);
 }

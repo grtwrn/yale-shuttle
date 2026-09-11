@@ -108,12 +108,33 @@ days, same widening (coverage %, standing / moving):
 
 `lowFloor` is **served on `StopArrival` / `UpcomingArrival` and NOT
 enforced**, so the replay can keep scoring it (`band-coverage.mjs --floor
-fl`) after the stand estimate moves; the right fix for the degenerate zero is
-the chain's pessimism, not a floor on its band. The display prints the median
-beside the band, so the degenerate case now reads `in 4 (now-10) min` rather
-than a bare `now-10 min` — wrong at one end, no longer silent about the
-middle. (That is the standing screenshot in `pr-preview/eta-band/`: #304
-standing at 344 Winchester, three hops from the stop.)
+fl`) after the stand estimate moves; the right fix for the chain's low end
+is the chain's pessimism, not a floor on its band.
+
+**But a STANDING bus cannot beat its own stand, and coverage cannot see
+that.** A too-low low end never costs coverage, so neither measurement above
+could refuse `now` for a bus standing three hops out — and that is what the
+first cut of the display printed (`in 4 (now-10), 17 min` for #304 standing
+at 344 Winchester), a regression against today's card, whose `in 2-9` came
+from standWait's own low: `departNow` + the q10 of what is LEFT of the
+stand, a number the bus must at least stand and then drive. So the DISPLAY
+keeps that floor for a standing pinned bus (`etaBand.ts`
+`standingLowFloor`; the card now reads `in 4 (2-10), 17 min`) and leaves a
+moving bus's band as measured, where `departNow` is `eta` and any floor
+deletes the band. Standing-only coverage with that floor, re-measured on the
+same days (`--floor sl`):
+
+| standing pairs, 9/10 | Red 2-5 | Red 5-10 | Red 10-30 | Blue 2-5 | Blue 5-10 | Blue 10-30 |
+|---|---|---|---|---|---|---|
+| band as measured (cover % / early %) | 90.4 / 2.7 | 85.5 / 2.2 | 87.4 / 2.7 | 88.4 / 5.1 | 86.6 / 3.7 | 89.1 / 0.3 |
+| + standing floor `departNow + q10 stand left` | 46.4 / 46.8 | 51.0 / 36.7 | 59.8 / 30.2 | 41.5 / 52.0 | 52.7 / 37.7 | 70.5 / 19.0 |
+| median printed width, min | 4 → 2 | 6 → 3 | 12 → 7 | 4 → 2 | 5 → 3 | 15 → 11 |
+
+9/9 agrees (standing, cover % before → with the floor): Red 2-5 83.0 → 41.4,
+5-10 76.3 → 41.3, 10-30 92.4 → 31.4; Blue Day 2-5 93.2 → 51.1, 5-10 89.1 →
+67.0, 10-30 94.0 → 90.9.
+
+**The premise does not survive the measurement.** `departNow` is the MEDIAN of the rest-less chain, not a minimum drive: the detector's arrival comes BEFORE `departNow + stand q10` on 43-52% of standing pairs, so the floor is not "a low end no bus can beat" — it is a low end about half of them beat, and it halves standing coverage. The reason is the one §B already found: the chain prices the drive and the stands ahead at pooled medians, and a bus that just finished a stand tends to run ahead of them. The floor is shipped as reviewed (`standingLowFloor`, one call in `arrivalBand`), with this table beside it; on the numbers it should be switched off until the chain's median is a floor, and `now-10` for a standing bus is the honest low end the operator's own standWait header asked for ("bounded below by now").
 
 ## C. The display rule (`web/src/etaBand.ts`)
 
@@ -157,11 +178,47 @@ minute keeps `fmtBusRange`'s spelling (`now-6 min`). The map's board chip
 prints the same three numbers without "in", the expanded card's wait leg the
 same band less the walk, and `bunchDecision` reads the printed interval, so
 slot 2 inside it folds to `12 (6-20) min · 2 buses` exactly as #216 decided
-— note that with calibrated 6-14 min bands past 5 min this fires far more
-often than it did on standing-only ranges (measured in the rider-sim gate,
-in the PR). The canary parser reads the new forms (`median` beside `first`).
+— measured on the rider-sim below, the fold appears on 2.8% of Red first
+sights and 4.8% of Blue Day's (0.8% / 1.4% of distinct tokens), so the
+second bus keeps its number on the row 95 times in 100. The canary parser
+reads the new forms (`median` beside `first`).
 
-## D. What to measure next
+## D. Rider-sim gate
+
+`scripts/eta-replay/rider-sim/run.ts`, Red + Blue Day (Green and Purple as
+the default hold-out), 2026-09-10 12:00–13:30 ET, the served params, both
+arms from this tree's `run.ts` (which now composes the token as the client
+does): **A** = master client and `fmtBusPair` tokens, **B** = this branch.
+2,333 paired waits.
+
+| | A | B | paired fixed / introduced |
+|---|---|---|---|
+| interval coverage (first sight, 10-90) | 75.5% | 75.7% | — |
+| Red / Blue Day interval | 76.3 / 77.2 | 76.7 / 77.2 | — |
+| pin wrong | 118 | 118 | 0 / 0 |
+| dropped while approaching | 129 (0 declined / 129 repriced) | 129 | 0 / 0 |
+| strand | 79 | 41 | 43 / 0 |
+| jump ≥ 180 s | 188 | 88 | 108 / 1 |
+| reversal ≥ 60 s | 362 | 190 | 200 / 15 |
+| first sights printing a band | 0% | Red 80.4%, Blue Day 76.5% | — |
+| first sights printing the bunched fold | 0% | Red 2.8%, Blue Day 4.8% | — |
+
+Read it the right way round. **The estimator did not move**: interval
+coverage, pin-wrong and dropped-while-approaching are identical, because
+`eta`, `low` and `high` are byte-identical to master (the floor is served,
+not enforced). Every strand/jump/reversal "fixed" is the INSTRUMENT reading
+an interval: `parseBusEtaText` reports the smallest movement two intervals
+permit, so a countdown that moves inside its printed band is drift 0, and a
+bus arriving inside the printed band is not a strand. That is what a rider
+reading `in 5 (3-8) min` experiences — no lurch, no broken promise — and it
+is not an accuracy claim. The 15 introduced reversals and 1 introduced jump
+are bands appearing and disappearing across the 3-minute threshold as the
+bus approaches (a `(2-12)` head collapsing to a point), and the 43 / 0
+strands are the rider-sim scoring a band whose low end reaches the arrival.
+Per route the split is one-directional (Red 11/0, 20/0, 84/8; Blue Day
+10/0, 58/0, 89/4).
+
+## E. What to measure next
 
 The 0-2 min band, moving: 65% of arrivals come before its low end, median
 22 s early on Red. That is not width, it is a centre offset the pooled

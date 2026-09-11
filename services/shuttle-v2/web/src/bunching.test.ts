@@ -67,7 +67,7 @@ describe("bunchDecision — are these two buses one statement or two?", () => {
     expect(bunchDecision({ leadSec: M(30), leadBand: band, nextSec: M(36) + 50 }).bunched).toBe(true);
   });
 
-  it("follows fmtBusRange's own collapse: a band that prints as one number is a point", () => {
+  it("follows fmtBusBand's own collapse: a band that prints as one number is a point", () => {
     // Both ends inside the same minute — the line prints "in 4 min", so slot 2
     // is judged against that minute, not against a 40-second interval.
     const band = { lowSec: M(4) + 5, highSec: M(4) + 45 };
@@ -86,7 +86,7 @@ describe("bunchDecision — are these two buses one statement or two?", () => {
 });
 
 describe("fmtBusLine — the countdown line, all four forms", () => {
-  it("leaves every unbunched form byte-identical to fmtBusPair/fmtBusRange", () => {
+  it("leaves every unbunched form byte-identical to fmtBusPair/fmtBusBand", () => {
     expect(fmtBusLine({ leadSec: M(12), nextSec: M(21) })).toBe("in 12, 21 min");
     expect(fmtBusLine({ leadSec: M(22), nextSec: null })).toBe("in 22 min");
     expect(fmtBusLine({ leadSec: 5 })).toBe("arriving now");
@@ -94,15 +94,15 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
     expect(fmtBusLine({ leadSec: 45, nextSec: M(11) })).toBe("in <1, 11 min");
     expect(fmtBusLine({
       leadSec: M(5), leadBand: { lowSec: M(3), highSec: M(7) }, nextSec: M(21),
-    })).toBe("in 3-7, then 21 min");
+    })).toBe("in 5 (3-7), 21 min");
     expect(fmtBusLine({ leadSec: M(5), leadBand: { lowSec: M(3), highSec: M(7) } }))
-      .toBe("in 3-7 min");
+      .toBe("in 5 (3-7) min");
   });
 
   it("says the interval once plus the cause when the two have bunched", () => {
     expect(fmtBusLine({
       leadSec: M(29), leadBand: { lowSec: M(23), highSec: M(36) }, nextSec: M(35),
-    })).toBe("23-36 min · 2 buses");
+    })).toBe("29 (23-36) min · 2 buses");
     expect(fmtBusLine({ leadSec: M(25) + 10, nextSec: M(25) + 50 }))
       .toBe("25 min · 2 buses");
     expect(fmtBusLine({
@@ -114,8 +114,12 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
     // "arriving now" and "now-6 min" open with a word, not a preposition.
     expect(fmtBusLine({ leadSec: 5, nextSec: 8 })).toBe("arriving now · 2 buses");
     expect(fmtBusLine({
-      leadSec: M(3), leadBand: { lowSec: 5, highSec: M(6) }, nextSec: M(4),
+      leadSec: 8, leadBand: { lowSec: 5, highSec: M(6) }, nextSec: M(4),
     })).toBe("now-6 min · 2 buses");
+    // With a median to print, the head is the median-with-band form less its "in".
+    expect(fmtBusLine({
+      leadSec: M(3), leadBand: { lowSec: 5, highSec: M(6) }, nextSec: M(4),
+    })).toBe("3 (now-6) min · 2 buses");
     // "<1 min" keeps its "<" and loses the "in" like any other number.
     expect(fmtBusLine({ leadSec: 20, nextSec: 50 })).toBe("<1 min · 2 buses");
   });
@@ -133,7 +137,7 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
       nextSec: M(30), nextBand: { lowSec: M(30), highSec: M(44) },
     });
     // (That band overlaps nothing here — 30 > 7 — so the pair survives.)
-    expect(line).toBe("in 3-7, then 30 min");
+    expect(line).toBe("in 5 (3-7), 30 min");
     expect(line.match(/-/g)).toHaveLength(1);
   });
 });

@@ -118,8 +118,21 @@ export function parseBusEtaText(line) {
     if (!a || !z || z[1] < a[0]) return null;
     return { first: [a[0], z[1]], second: b == null ? null : bucketOf(b), raw: full, spread: true, bunched };
   };
+  // fmtBusBand (etaBand.ts, 2026-09-11): the MEDIAN with its band —
+  // "in 5 (2-9) min", "in 5 (2-9), 17 min" (no "then": measured, it does not
+  // fit beside the widest pills). The interval is the band's,
+  // exactly as the range forms below read it; `median` is the bucket of the
+  // number the rider plans on, kept beside it.
+  const band = (mid, lo, hi, b) => {
+    const r = range(lo, hi, b);
+    return r ? { ...r, median: bucketOf(mid) } : null;
+  };
+  let m = t.match(/^in (\d+) \((now|<1|\d+)-(<1|\d+)\),\s*(?:then )?(<1|\d+)\s*min$/);
+  if (m) return band(m[1], m[2], m[3], m[4]);
+  m = t.match(/^in (\d+) \((now|<1|\d+)-(<1|\d+)\)\s*min$/);
+  if (m) return band(m[1], m[2], m[3], null);
   if (t === "arriving now") return mk("now", null);
-  let m = t.match(/^now, then (<1|\d+)\s*min$/);
+  m = t.match(/^now, then (<1|\d+)\s*min$/);
   if (m) return mk("now", m[1]);
   m = t.match(/^in (<1|\d+),\s*(<1|\d+)\s*min$/);
   if (m) return mk(m[1], m[2]);

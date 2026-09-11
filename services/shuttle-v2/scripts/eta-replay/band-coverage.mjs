@@ -4,14 +4,16 @@
  * `PAIRS_OUT` file that carries `dn` (the drive floor, arrival.ts `departNow`).
  *
  *   node scripts/eta-replay/band-coverage.mjs pairs.jsonl [--w '{"0-2":1,...}']
- *        [--floor none|dn|fl] [--truth det|prox] [--routes 3,1] [--fit]
+ *        [--floor none|dn|fl|sl] [--truth det|prox] [--routes 3,1] [--fit]
  *        [--min-shown-min 3]
  *
  * The band is scored exactly as `eta/arrival.ts` builds it: widened about the
  * shown number by the per-horizon factor (`widenBand`), then — with
  * `--floor dn` / `--floor fl` — its low end floored at `departNow` / at the
  * rest-less chain's q10 (`lowFloor`), neither of which the client applies
- * (the measurement in arrival.ts `lowFloor` is why). `--fit` prints, per
+ * (the measurement in arrival.ts `lowFloor` is why) — or, with `--floor sl`,
+ * at the card's own STANDING floor (`sl`, etaBand.ts `standingLowFloor`:
+ * departNow + the shortest stand left; null for a moving bus). `--fit` prints, per
  * horizon, the factor the ceil((n+1)·0.8)-th pair needs (reestimate-lib.mjs
  * `conformalFit`), under the same floor, so a factor fitted here is one the
  * client would reproduce.
@@ -48,6 +50,7 @@ function band(p, w) {
   let low = p.eta - (p.eta - p.low) * w, high = p.eta + (p.high - p.eta) * w;
   if (FLOOR === "dn") low = Math.max(low, p.dn);
   if (FLOOR === "fl") low = Math.max(low, p.fl);
+  if (FLOOR === "sl" && p.sl != null) low = Math.max(low, p.sl);
   low = Math.min(low, p.eta); high = Math.max(high, p.eta);
   return [low, high];
 }
@@ -80,7 +83,7 @@ for await (const line of rl) {
   let need;
   if (a > p.eta) need = p.high > p.eta ? (a - p.eta) / (p.high - p.eta) : Infinity;
   else if (a < p.eta) {
-    if ((FLOOR === "dn" && a < p.dn) || (FLOOR === "fl" && a < p.fl)) need = Infinity;
+    if ((FLOOR === "dn" && a < p.dn) || (FLOOR === "fl" && a < p.fl) || (FLOOR === "sl" && p.sl != null && a < p.sl)) need = Infinity;
     else need = p.low < p.eta ? (p.eta - a) / (p.eta - p.low) : Infinity;
   } else need = 0;
   for (const r of routes) for (const m of [mode, "all"]) {
