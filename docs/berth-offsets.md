@@ -319,3 +319,46 @@ Dropping the seventh day (3–8 Sep) costs exactly one of them: Chapel / Dwight 
 Blue West crosses the n ≥ 20 floor on 9 Sep (19 → 21) and everything else is
 within 0.1–3.3 m and still qualifies. The table above is therefore the SEVEN-day
 run, which is what the corpus line at the top of this file now says.
+
+## What the rider actually sees (2026-09-10, revised 2026-09-11)
+
+The ten cells ship as an inset inside the expanded trip card: two labelled
+markers — **published stop** (what the feed says) and **expected stop** (what
+these measurements say) — the route line with an arrowhead for the direction of
+travel, the heading "Wait about N m past the published stop", and the count
+("seen 37 of the last 40 times one served this stop"). Never "stop sign":
+some stops have no sign at all (operator, 2026-09-10).
+
+It was a static SVG for a day — OSM tiles as plain `<image>` elements at one
+chosen zoom, the box rotated so the road lay along its long edge, a scale bar,
+and a white scrim under our own labels. `routeThumb.ts`'s objection was the
+reason: fifteen Leaflet instances on one page is not shippable, and one per card
+looked like the same problem in miniature.
+
+**On 2026-09-11 it became a real Leaflet map** (operator: "the berth changes are
+looking good but we might want it to be a real map area so I can see the street
+name and zoom out if needed"). Neither ask survives a picture — the street name
+is whatever OSM baked into the tile at the zoom we picked, and the scrim existed
+precisely to wash it out so our labels would win. The objection does not reach
+this map either: the inset renders only inside the ONE expanded card
+(`expandedKey` is a single key), so it is one instance, mounted on expand and
+destroyed on collapse. The route thumbnails on the All tab are still SVG.
+
+Three consequences worth recording:
+
+- **The map mounts INERT.** A pannable map inside a scrolling card steals the
+  gesture. `dragging`, `touchZoom` and `doubleClickZoom` are off until the rider
+  taps it, which is also what keeps Leaflet's `leaflet-touch-drag` /
+  `leaflet-touch-zoom` classes — and the `touch-action: none` they carry — off the
+  container. `scripts/berth-map-capture.mjs` measures it with real CDP touch
+  sequences rather than asserting it.
+- **The opening view is capped at tile z18** (0.45 m/px at this latitude), which
+  is the one scale the static inset drew all ten cells at. So the picture opens
+  at the detail it has always had and zooming OUT is the rider's to do.
+- **The rotation, the tile selection, the scale bar and the label placement went
+  away with the SVG.** A real map is north-up, its labels are the basemap's own,
+  and its scale is whatever the rider has reached. `berthThumb.ts` is now
+  `berthMap.ts` and holds only what Leaflet cannot answer: which stretch of the
+  published polyline is the road through these two markers, which way buses drive
+  along it, and whether the published coordinate is far enough off that line to
+  need tying to it.

@@ -4258,6 +4258,15 @@ const TripPlanner: FC<{
                     ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
                     : null;
                   const boardName = (stopNames[o.boardStopId] ?? "").replace(/\s*\/\s*/g, "/");
+                  // Hoisted, because TWO things below need it: the berth map,
+                  // and the Directions button's own words. With two stops on
+                  // screen "Directions to stop" no longer names which (operator,
+                  // 2026-09-11: "the directions to stop button should now say
+                  // directions to published stop since we show two") — and the
+                  // target is unchanged, because the published coordinate is the
+                  // one Google Maps can navigate to.
+                  const cfgBerth = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                  const berth = cfgBerth ? berthFor(o.boardStopId, cfgBerth.busRouteIds) : null;
                   return (
                     <div style={{
                       fontSize: 14, color: "#5f6368", lineHeight: 1.6,
@@ -4323,21 +4332,16 @@ const TripPlanner: FC<{
                           into advice. Sits directly above Directions because
                           that is the thing it corrects. The picture, the copy
                           and the hooks it needs live in BerthInset.tsx. */}
-                      {(() => {
-                        const cfgB = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
-                        const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
-                        if (!berth) return null;
-                        return (
-                          <BerthInset
-                            berth={berth}
-                            published={stopCoords[o.boardStopId]}
-                            routeLabel={o.routeLabel}
-                            color={o.color}
-                            stopName={boardName}
-                            path={routePaths[String(berth.routeId)] ?? []}
-                          />
-                        );
-                      })()}
+                      {berth && (
+                        <BerthInset
+                          berth={berth}
+                          published={stopCoords[o.boardStopId]}
+                          routeLabel={o.routeLabel}
+                          color={o.color}
+                          stopName={boardName}
+                          path={routePaths[String(berth.routeId)] ?? []}
+                        />
+                      )}
                       {/* Directions is the card's one prominent action
                           (user request 2026-07-17: "make it more
                           obvious"). */}
@@ -4355,7 +4359,7 @@ const TripPlanner: FC<{
                             fontWeight: 600, fontSize: 14,
                             textDecoration: "none", fontFamily: "inherit",
                           }}
-                        >🧭 Directions to stop</a>
+                        >{`🧭 Directions to ${berth ? "published stop" : "stop"}`}</a>
                       )}
                       {/* One flat row of quiet secondary links — the old
                           nested disclosures (More ▾ → Stops ▾ → Route ▾)
