@@ -1,0 +1,28 @@
+{
+  "errors": [],
+  "notifications": [
+    {
+      "via": "registration.showNotification",
+      "title": "Yale Shuttle Tracker",
+      "body": "Orange East reaches York / Chapel in about 2 min",
+      "tag": "stop-alert-Orange East-150",
+      "atMs": 1789166291928
+    },
+    {
+      "via": "registration.showNotification",
+      "title": "Yale Shuttle Tracker",
+      "body": "Orange East is at York / Chapel now",
+      "tag": "stop-alert-Orange East-150",
+      "atMs": 1789166514535
+    }
+  ],
+  "shots": [
+    "1-route-card-bells.png",
+    "2-lead-time-chooser.png",
+    "3-armed-strip.png",
+    "4-notifications-recorded.png"
+  ],
+  "storedAfterArm": "[{\"routeId\":\"17\",\"routeLabel\":\"Orange East\",\"stopId\":150,\"stopName\":\"York / Chapel\",\"leadMin\":5,\"createdAt\":1789166291811,\"fired\":{\"busName\":\"53\",\"lead\":true,\"arrival\":false}}]",
+  "storedAtEnd": "[]",
+  "note": "3-armed-row.png was dropped: the harness scrolled to page top for it, making it identical to the strip shot."
+}
