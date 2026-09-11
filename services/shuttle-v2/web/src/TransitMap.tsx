@@ -7305,7 +7305,6 @@ const TransitMap: FC = () => {
     return key ? stationMap.get(key) ?? null : null;
   };
 
-  const time = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   // Legend uses base labels for toggling. This USED to be a second, hand-kept
   // copy of the palette, and it drifted: three orange lines were pinned to
@@ -7358,17 +7357,11 @@ const TransitMap: FC = () => {
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
           Shuttle Tracker
         </h1>
-        {/* Yale is DESCRIBED here, never used as the name. Measured by probing
-            the rendered span at 390px: 216px of the 366px the header has, so
-            it holds one line on the narrowest phone this app is designed for.
-            It is allowed to wrap below that rather than force a horizontal
-            scroll — counting characters is how a wrapping line shipped once
-            before. The footer's disclaimer is unchanged and still the legal
-            statement; this line is orientation, not a notice. */}
-        <span style={{ fontSize: 11, color: "#8a8a9a", textAlign: "center", lineHeight: 1.35 }}>
-          Unofficial live tracker for the Yale shuttles
-        </span>
-        <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
+        {/* Just the name. The tagline ("Unofficial live tracker for the Yale
+            shuttles") and the clock that sat under it were removed on
+            2026-09-11 — operator: "I want to keep the page uncrowded". The
+            description still lives in the meta tag and the footer disclaimer
+            is unchanged. */}
       </div>
 
       {/* View tabs — the tabs themselves are hidden while on a bus, since the
