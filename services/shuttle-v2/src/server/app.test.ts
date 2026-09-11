@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TEST_ANON_ID } from "./actives.js";
 import { Collector } from "../collector/collector.js";
 import type { UpstreamClient, RawBus } from "../collector/upstream.js";
 import { openDb, type DbBundle } from "../db/client.js";
@@ -12,6 +13,7 @@ import os from "node:os";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { buildApp } from "./app.js";
+import { PACE_KEY } from "./v1compat.js";
 import { resetRateLimits } from "./reports.js";
 
 // A fake upstream that returns a fixed snapshot. The collector contract
@@ -28,7 +30,9 @@ function fakeUpstream(buses: RawBus[], stops: Stop[], routes: Route[]): Upstream
         shortName: r.shortName,
         color: r.color,
         stops: r.stops,
+        ...(r.path !== undefined ? { path: r.path } : {}),
         ...(r.description !== undefined ? { description: r.description } : {}),
+        ...(r.active !== undefined ? { active: r.active } : {}),
       })),
   } as UpstreamClient;
 }
@@ -40,10 +44,10 @@ const stops: Stop[] = [
 ];
 
 const routes: Route[] = [
-  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F" },
+  { id: 10, name: "Loop", shortName: "L", color: "#000", stops: [1, 2, 3], description: "7am - 6pm, M - F", active: true },
   // A description the parser cannot read: must be absent from route_hours,
   // never a crash or a half-parsed window.
-  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website" },
+  { id: 11, name: "Shuttle", shortName: "S", color: "#111", stops: [3, 2, 1], description: "See website", active: false },
   { id: 12, name: "Bare", shortName: "B", color: "#222", stops: [1, 3] },
 ];
 
@@ -228,6 +232,8 @@ describe("GET /api/buses", () => {
       "buses",
       "dwells",
       "dwells_by_bus",
+      "pace",
+      "route_active",
       "route_hours",
       "route_paths",
       "route_peaks",
@@ -252,6 +258,144 @@ describe("GET /api/buses", () => {
     expect(body.route_hours).toEqual({
       "10": { days: [1, 2, 3, 4, 5], startMin: 7 * 60, endMin: 18 * 60, text: "7am - 6pm, M - F" },
     });
+  });
+
+  it("publishes upstream's active flag per route as route_active, only where upstream said", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as { route_active: Record<string, boolean> };
+    // Route 12 carried no flag: absent, not false — the client then falls
+    // back to the calendar rather than reading "not running today".
+    expect(body.route_active).toEqual({ "10": true, "11": false });
+  });
+
+  // The stand/drive split the client's hopPricing.ts consumes: `q`/`qn` on the
+  // stop, `drive`/`driveN` on the hop, whole seconds, present only where the
+  // calibrator attached them and always with the true count (the client gates
+  // on it; the server never pre-filters).
+  it("carries the stand quantiles and drive beside v1's numbers, and omits them where absent", async () => {
+    const net = collector.ref.get();
+    net.setCalibration(
+      new Map([
+        ["10:1:2", { mean: 495.06, stddev: 5, n: 0, source: "route-segment" as const, drive: 15.1, driveN: 25 }],
+        ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" as const }],
+      ]),
+      new Map([
+        ["10:1", { mean: 415.3, stddev: 279.8, n: 0, q: [118.1, 136.5, 302.8, 598.1], qn: 24 }],
+        ["10:2", { mean: 20, stddev: 5, n: 2 }],
+      ]),
+    );
+    (collector as unknown as { version: number }).version++;
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+    };
+    expect(body.segments["10"]!["1-2"]).toEqual({ avg: 495.1, sd: 5, n: 0, drive: 15, driveN: 25 });
+    expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
+    expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24 });
+    expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+  });
+
+  // The estimator's fields (the ring plan, step 1) — `dq`/`dqn` whole seconds
+  // beside the drive, `pstop` to 3 decimals beside `q`, and the route `pace`
+  // to 4 decimals, twice: top-level, and as the inert `__pace` carrier row
+  // inside `segments[route]` so it reaches computeUpcomingArrivals through its
+  // unchanged signature. All additive: absent where the calibrator has none.
+  it("carries the whole-hop quantiles, P(stop) and the route pace, and omits them where absent", async () => {
+    const net = collector.ref.get();
+    const spm = [0.0812345, 0.1, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19];
+    net.setCalibration(
+      new Map([
+        ["10:1:2", { mean: 495.06, stddev: 5, n: 0, source: "route-segment" as const, drive: 15.1, driveN: 25, dq: [20.4, 25.5, 90.1], dqn: 3 }],
+        ["10:2:3", { mean: 60, stddev: 5, n: 3, source: "specific" as const }],
+      ]),
+      new Map([
+        ["10:1", { mean: 415.3, stddev: 279.8, n: 0, q: [118.1, 136.5, 302.8, 598.1], qn: 24, pstop: 2 / 3 }],
+        ["10:2", { mean: 20, stddev: 5, n: 2 }],
+      ]),
+      new Map([[10, { spm, n: 41 }]]),
+    );
+    (collector as unknown as { version: number }).version++;
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+      pace: Record<string, { spm: number[]; n: number }>;
+    };
+    expect(body.segments["10"]!["1-2"]).toEqual({ avg: 495.1, sd: 5, n: 0, drive: 15, driveN: 25, dq: [20, 26, 90], dqn: 3 });
+    expect(body.segments["10"]!["2-3"]).toEqual({ avg: 60, sd: 5, n: 3 });
+    expect(body.dwells["10"]!["1"]).toEqual({ med: 415.3, sd: 279.8, n: 0, q: [118, 137, 303, 598], qn: 24, pstop: 0.667 });
+    expect(body.dwells["10"]!["2"]).toEqual({ med: 20, sd: 5, n: 2 });
+    const rounded = [0.0812, 0.1, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19];
+    expect(body.pace).toEqual({ "10": { spm: rounded, n: 41 } });
+    // The carrier: n is 0 (the client averages `avg` over rows with n >= 2)
+    // and there is no driveN (splitServedForRoute scans every row for it).
+    expect(body.segments["10"]![PACE_KEY]).toEqual({ avg: 0, sd: 0, n: 0, spm: rounded, spmN: 41 });
+    expect(Object.keys(body.segments["10"]!).sort()).toEqual(["1-2", "2-3", "3-1", PACE_KEY].sort());
+    // Routes without a pace carry neither.
+    expect(body.segments["11"]![PACE_KEY]).toBeUndefined();
+    expect(body.pace["11"]).toBeUndefined();
+  });
+
+  // The estimator's geometry and its per-pass tables: `legM` (road metres of
+  // the hop along the published line, whole metres, absent where the line
+  // cannot supply it) on every hop, and `"<stop>#<index>"` dwell entries for
+  // a stop the route lists twice, beside the pooled one. Both additive.
+  it("carries road metres per hop and a stand table per pass of a repeated stop", async () => {
+    // A rectangle whose bottom side holds stops 1 (corner) and 2 (mid) and
+    // whose top holds 3 (mid); the route runs 1 → 2 → 3 → 2, visiting 2 on
+    // the way out (index 1) and on the way back (index 3). The last hop 2 → 1
+    // would cover 78% of the loop, so the tracer bridges it: no legM there.
+    const path: [number, number][] = [
+      [41.31, -72.93], [41.31, -72.91], [41.312, -72.91], [41.312, -72.93],
+    ];
+    const foldStops: Stop[] = [
+      { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+      { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+      { id: 3, name: "C", lat: 41.312, lon: -72.92 },
+    ];
+    const fold: Route[] = [{ id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2], path }];
+    const c2 = await Collector.create(bundle, {
+      upstream: fakeUpstream([], foldStops, fold),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+    });
+    await (c2 as unknown as { refreshStaticIfNeeded: (force: boolean) => Promise<void> }).refreshStaticIfNeeded(true);
+    const net = c2.ref.get();
+    net.setCalibration(
+      new Map(),
+      new Map([
+        ["10:2", { mean: 20, stddev: 5, n: 2, q: [0, 10, 100], qn: 3, pstop: 0.5 }],
+        ["10:2#1", { mean: 100.04, stddev: 5, n: 2, q: [90.4, 110.5], qn: 2, pstop: 1 }],
+        ["10:2#3", { mean: 0, stddev: 5, n: 1, q: [0, 0], qn: 1, pstop: 0.25 }],
+        ["10:1#0", { mean: 50, stddev: 5, n: 1, q: [50], qn: 1 }], // not a repeated stop: never served
+      ]),
+    );
+    const app2 = buildApp({ collector: c2, bundle, now: () => 1_700_000_000_000, adminToken: TEST_ADMIN_TOKEN, statsSinceDay: "2000-01-01", geocoder: { lookup: async () => [] } });
+    const body = (await (await app2.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, Record<string, unknown>>>;
+      dwells: Record<string, Record<string, Record<string, unknown>>>;
+    };
+    const segs = body.segments["10"]!;
+    expect(Object.keys(segs).sort()).toEqual(["1-2", "2-3", "3-2", "2-1"].sort());
+    expect(segs["1-2"]!.legM).toBe(Math.round(net.getLegMeters(10, 1, 2)!));
+    expect(segs["1-2"]!.legM).toBeCloseTo(837, -1); // one straight block east
+    expect(segs["2-3"]!.legM).toBeGreaterThan(1800); // east to the corner, up, back west
+    expect(segs["3-2"]!.legM).toBeGreaterThan(1800); // the mirror image, round the other corner
+    expect(segs["2-1"]!.legM).toBeUndefined(); // bridged: not road
+    for (const k of ["1-2", "2-3", "3-2"]) expect(Number.isInteger(segs[k]!.legM)).toBe(true);
+    expect(segs["1-2"]).toEqual({ avg: segs["1-2"]!.avg, sd: segs["1-2"]!.sd, n: 0, legM: segs["1-2"]!.legM });
+
+    const dw = body.dwells["10"]!;
+    expect(Object.keys(dw).sort()).toEqual(["1", "2", "3", "2#1", "2#3"].sort());
+    expect(dw["2"]).toEqual({ med: 20, sd: 5, n: 2, q: [0, 10, 100], qn: 3, pstop: 0.5 });
+    expect(dw["2#1"]).toEqual({ med: 100, sd: 5, n: 2, q: [90, 111], qn: 2, pstop: 1 });
+    expect(dw["2#3"]).toEqual({ med: 0, sd: 5, n: 1, q: [0, 0], qn: 1, pstop: 0.25 });
+  });
+
+  it("serves an empty pace table, and no carrier rows, before any route has legs", async () => {
+    const body = (await (await app.request("/api/buses")).json()) as {
+      segments: Record<string, Record<string, unknown>>;
+      pace: Record<string, unknown>;
+    };
+    expect(body.pace).toEqual({});
+    for (const seg of Object.values(body.segments)) expect(seg[PACE_KEY]).toBeUndefined();
   });
 
   it("rebuilds when the collector observes a new position", async () => {
@@ -1070,6 +1214,94 @@ describe("GET /api/weather", () => {
   });
 });
 
+// The archive feed (docs/closed-loop.md, stage 2): one table, one ET day,
+// JSON lines, admin header only. The Pi keeps what the volume sweeps.
+describe("GET /api/archive/day", () => {
+  const FROZEN = Date.UTC(2026, 8, 6, 16, 0, 0); // Sun 2026-09-06 12:00 ET
+  const DAY_START = Date.UTC(2026, 8, 5, 4, 0, 0); // Sat 2026-09-05 00:00 EDT
+  let archiveApp: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    archiveApp = buildApp({ collector, bundle, now: () => FROZEN, adminToken: TEST_ADMIN_TOKEN });
+    const ins = bundle.sqlite.prepare(
+      "INSERT INTO arrivals (bus_id, bus_name, route_id, stop_id, arrived_at, departed_at, dwell_sec, dow, hour) VALUES (1, '#40', 10, 2, ?, NULL, NULL, 6, 12)",
+    );
+    // One before midnight ET, two inside the day, one at the next midnight.
+    for (const t of [DAY_START - 1, DAY_START, DAY_START + 12 * 3_600_000, DAY_START + 24 * 3_600_000]) ins.run(t);
+  });
+
+  const lines = async (res: Response) => (await res.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>);
+
+  it("streams the day's rows between a header and a trailer, bounded to the ET day", async () => {
+    const res = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("application/x-ndjson");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    const out = await lines(res);
+    expect(out[0]).toMatchObject({ table: "arrivals", day: "2026-09-05", from: DAY_START, to: DAY_START + 24 * 3_600_000, build: "dev" });
+    expect((out[0]!.columns as string[])).toContain("arrived_at");
+    expect(out[out.length - 1]).toEqual({ end: true, rows: 2 });
+    const times = out.slice(1, -1).map((r) => r.arrived_at as number);
+    expect(times).toEqual([DAY_START, DAY_START + 12 * 3_600_000]);
+  });
+
+  it("serves an empty day and the day-keyed scorecard table", async () => {
+    const empty = await archiveApp.request("/api/archive/day?day=2026-09-01&table=legs", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(await lines(empty)).toHaveLength(2);
+    bundle.sqlite.prepare(
+      "INSERT INTO scorecard_days (day, route_id, horizon, surface, metrics, scored_through, scored_at, final) VALUES ('2026-09-05', 0, 'all', 'ours', '{}', 1, 1, 1)",
+    ).run();
+    const sc = await archiveApp.request("/api/archive/day?day=2026-09-05&table=scorecard_days", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const out = await lines(sc);
+    expect(out[out.length - 1]).toEqual({ end: true, rows: 1 });
+    expect(out[1]).toMatchObject({ day: "2026-09-05", surface: "ours" });
+  });
+
+  it("refuses anything but the allowlisted tables and a real, retained day", async () => {
+    const headers = { "x-admin-token": TEST_ADMIN_TOKEN };
+    for (const q of [
+      "day=2026-09-05&table=reports",            // never: free text and IP addresses
+      "day=2026-09-05&table=arrivals;--",
+      "day=2026-09-05",
+    ]) {
+      const res = await archiveApp.request(`/api/archive/day?${q}`, { headers });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe("unknown_table");
+    }
+    for (const day of ["2026-09-07", "2026-13-01", "yesterday", "2024-01-01", "2026-02-30"]) {
+      const res = await archiveApp.request(`/api/archive/day?day=${day}&table=arrivals`, { headers });
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe("bad_day");
+    }
+    // Today is a legitimate partial.
+    expect((await archiveApp.request("/api/archive/day?day=2026-09-06&table=arrivals", { headers })).status).toBe(200);
+  });
+
+  it("takes the admin header and nothing else", async () => {
+    expect((await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals")).status).toBe(401);
+    const login = await archiveApp.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const withCookie = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { cookie: `stats_session=${value}` },
+    });
+    expect(withCookie.status).toBe(401);
+    const wrong = await archiveApp.request("/api/archive/day?day=2026-09-05&table=arrivals", {
+      headers: { "x-admin-token": "nope" },
+    });
+    expect(wrong.status).toBe(401);
+  });
+});
+
 // The dashboard at /stats must not keep the admin token in the browser: one
 // XSS, or one borrowed phone, would otherwise hand over the triage log with
 // every reporter's IP address in it. The token is exchanged once for an
@@ -1143,6 +1375,35 @@ describe("operator stats session", () => {
     const body = (await history.json()) as { history: { day: string; newRiders: number }[] };
     expect(body.history).toHaveLength(1);
     expect(body.history[0]!.newRiders).toBe(1);
+  });
+
+  // The scorecard rides on the same auth: the header for scripts, the cookie
+  // for the dashboard. /api/scorecard is the same handler under a spelling the
+  // cookie's Path can never reach — header only there, by construction.
+  it("serves the scorecard to the cookie and to the header, and to nobody else", async () => {
+    const { cookie } = await login();
+    const viaCookie = await app.request("/api/stats/scorecard?days=7", { headers: { cookie } });
+    expect(viaCookie.status).toBe(200);
+    expect(viaCookie.headers.get("Cache-Control")).toBe("no-store");
+    const body = (await viaCookie.json()) as {
+      days: unknown[]; rows: unknown[]; routes: Array<{ id: number }>;
+      rules: { horizonCapSec: number; errorSign: string }; estimatorVersion: string;
+    };
+    // Nothing scored yet on a fresh database: the shape is there, the rows are not.
+    expect(body.days).toEqual([]);
+    expect(body.rows).toEqual([]);
+    expect(body.routes.map((r) => r.id)).toEqual([10, 11, 12]);
+    expect(body.rules.horizonCapSec).toBe(30 * 60);
+    expect(body.rules.errorSign).toContain("optimistic");
+    expect(body.estimatorVersion).toBe("dev");
+
+    const viaHeader = await app.request("/api/scorecard", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } });
+    expect(viaHeader.status).toBe(200);
+    expect((await app.request("/api/stats/scorecard", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } })).status).toBe(200);
+
+    expect((await app.request("/api/stats/scorecard")).status).toBe(401);
+    expect((await app.request("/api/scorecard")).status).toBe(401);
+    expect((await app.request("/api/scorecard", { headers: { cookie: `stats_session=${mint(FROZEN + 60_000, "other")}` } })).status).toBe(401);
   });
 
   // The whole point of scoping the cookie: it must not unlock the triage log.
@@ -1232,6 +1493,7 @@ describe("static routes", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-v2-static-"));
     fs.writeFileSync(path.join(dir, "index.html"), "<html>rider app</html>");
     fs.writeFileSync(path.join(dir, "stats.html"), "<html>operator dashboard</html>");
+    fs.writeFileSync(path.join(dir, "stop-data.html"), "<html>operator stop data</html>");
     return {
       dir,
       app: buildApp({
@@ -1270,6 +1532,47 @@ describe("static routes", () => {
       expect((await withDir.request("/api/stats")).status).toBe(401);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves the stop visualizer entry without caching or exposing data", async () => {
+    const { dir, app: withDir } = withStatic();
+    try {
+      for (const route of ["/stats/stops", "/stats/stops/", "/stop-data.html"]) {
+        const response = await withDir.request(route);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect(await response.text()).toContain("operator stop data");
+      }
+      expect((await withDir.request("/api/stats/stops/catalog")).status).toBe(401);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+describe("operator stop evidence API", () => {
+  const selection = "/api/stats/stops/visits?day=2023-11-14&routeId=10&stopId=1&stopIndex=0";
+  it("requires operator authentication on every read and accepts the existing read-only cookie", async () => {
+    for (const route of ["/api/stats/stops/catalog", selection, "/api/stats/stops/visits/1"]) {
+      const response = await app.request(route);
+      expect(response.status).toBe(401);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    const login = await app.request("/api/stats/session", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({token:TEST_ADMIN_TOKEN}),
+    });
+    const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
+    const response = await app.request("/api/stats/stops/catalog", {headers:{cookie}});
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({schemaVersion:1,source:"retained_database",days:[]});
+    expect((await app.request(selection,{headers:{cookie}})).status).toBe(200);
+    expect((await app.request("/api/stats/stops/visits/1",{headers:{cookie}})).status).toBe(404);
+    expect((await app.request("/api/stats/stops/visits",{method:"POST",headers:{cookie}})).status).toBe(404);
+  });
+  it("rejects invalid dates, missing selectors and unsafe ids before querying", async () => {
+    const headers = {"x-admin-token":TEST_ADMIN_TOKEN};
+    for (const route of [selection.replace("2023-11-14","2023-02-30"),selection.replace("&stopIndex=0",""),selection.replace("stopIndex=0","stopIndex="),selection.replace("routeId=10","routeId=1e1"),"/api/stats/stops/visits/NaN"]) {
+      expect((await app.request(route,{headers})).status).toBe(400);
     }
   });
 });
@@ -1325,6 +1628,33 @@ describe("GET /api/stats/reports — the dashboard's \"someone wrote in\" alert"
     const body = (await res.json()) as { reports: Array<{ excerpt: string }>; total: number };
     expect(body.total).toBe(1);
     expect(body.reports[0]!.excerpt).toBe("the bus never came");
+  });
+
+  it("counts from the same epoch as the rest of /stats, not from all of history", async () => {
+    expect((await submit("filed while the app was still being built", STRANGER)).status).toBe(200);
+    // Same bundle, same reports — only the configured epoch differs, and it
+    // is later than anything filed. The panel must be empty rather than
+    // contradicting the "counting from …" line printed above it.
+    const laterEpoch = buildApp({
+      collector,
+      bundle,
+      now: () => 1_700_000_000_000,
+      adminToken: TEST_ADMIN_TOKEN,
+      statsSinceDay: "2099-01-01",
+      geocoder: { lookup: async () => [] },
+    });
+    const res = await laterEpoch.request("/api/stats/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { reports: unknown[]; total: number; newestId: number | null };
+    expect(body.reports).toHaveLength(0);
+    expect(body.total).toBe(0);
+    expect(body.newestId).toBeNull();
+    // The report itself is untouched: triage still sees everything.
+    const triage = await app.request("/api/reports", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(await triage.text()).toContain("filed while the app was still being built");
   });
 
   it("is reachable with the stats cookie, and leaks nothing that identifies a reporter", async () => {
@@ -1421,5 +1751,296 @@ describe("GET /api/stats/searches — what riders looked for", () => {
 
   it("refuses an unauthenticated caller", async () => {
     expect((await app.request("/api/stats/searches")).status).toBe(401);
+  });
+
+  /**
+   * The whole point of this table is to prioritise lookup work by RIDER
+   * evidence, and on 2026-09-03 its loudest zero-result term was
+   * walk-fallback-check.mjs's own hardcoded destination — 8 of the 12
+   * coordinate searches in the window. Because rows carry no anon id BY
+   * DESIGN, `daily_actives`'s after-the-fact exclusion is impossible here, so
+   * the decision has to happen before the write.
+   */
+  it("does not record a search from a verification harness", async () => {
+    await app.request("/api/geocode?q=zzz robot plaza", {
+      headers: { "x-anon-id": TEST_ANON_ID },
+    });
+    const res = await app.request("/api/stats/searches", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { searches: number; missing: Array<{ q: string }> };
+    expect(body.searches).toBe(0);
+    expect(body.missing.map((m) => m.q)).not.toContain("zzz robot plaza");
+  });
+
+  it("still records a rider who sends no id at all", async () => {
+    // Storage disabled means no header. That rider is not a harness, and a
+    // zero-result search from them is exactly the signal we want.
+    await app.request("/api/geocode?q=zzz storageless plaza");
+    const res = await app.request("/api/stats/searches", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { missing: Array<{ q: string }> };
+    expect(body.missing.map((m) => m.q)).toContain("zzz storageless plaza");
+  });
+});
+
+describe("canary ingest and panel", () => {
+  const ADMIN = { "x-admin-token": TEST_ADMIN_TOKEN, "content-type": "application/json" };
+
+  /** The 07:37 Red finding, in the shape scripts/canary-ship.mjs sends. */
+  const RED = {
+    runKey: "1788522000000-Red",
+    startedAt: 1788522000000,
+    line: "Red",
+    tripFrom: "Prospect / Canner",
+    tripTo: "School of Public Health (YSPH)",
+    ok: false,
+    arrived: true,
+    watchedMin: 11.2,
+    readings: 40,
+    reversals: 2,
+    catastrophic: 2,
+    worstDriftSec: 426,
+    failures: [{ kind: "eta-jump", detail: '"now, then 66 min" -> "in 7, 25 min" in 15 s' }],
+    jumps: [{
+      atMs: 1788522100000, fromSec: 0, driftSec: 426,
+      from: "now, then 66 min", to: "in 7, 25 min", announced: false,
+    }],
+  };
+
+  const ship = (runs: unknown[]) =>
+    app.request("/api/canary/runs", { method: "POST", headers: ADMIN, body: JSON.stringify({ runs }) });
+
+  it("stores a shipped run and reports it back on the panel", async () => {
+    const post = await ship([RED]);
+    expect(post.status).toBe(200);
+    expect(((await post.json()) as { stored: number }).stored).toBe(1);
+
+    const res = await app.request("/api/stats/canary?hours=99999", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const body = (await res.json()) as {
+      runs: number; lines: Array<{ line: string }>;
+      findings: Array<{ failures: Array<{ detail: string }> }>;
+    };
+    expect(body.runs).toBe(1);
+    expect(body.lines[0]!.line).toBe("Red");
+    // The sequence is the useful part, not the count.
+    expect(body.findings[0]!.failures[0]!.detail).toContain("now, then 66 min");
+  });
+
+  // The write must never be reachable with the cookie the browser carries:
+  // the dashboard renders this panel, and a cookie that could write to it
+  // would let any page the operator visits put words on their own dashboard.
+  it("refuses the ingest route without the admin HEADER", async () => {
+    const login = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const cookie = `stats_session=${value}`;
+
+    const withCookie = await app.request("/api/canary/runs", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ runs: [RED] }),
+    });
+    expect(withCookie.status).toBe(401);
+
+    const anon = await app.request("/api/canary/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runs: [RED] }),
+    });
+    expect(anon.status).toBe(401);
+
+    // But the READ is cookie-reachable, like the rest of /api/stats: the
+    // payload is harness output and names no rider.
+    expect((await app.request("/api/stats/canary", { headers: { cookie } })).status).toBe(200);
+  });
+
+  it("rejects a body that is not a run list", async () => {
+    for (const body of ['{"runs":"nope"}', "{}", "[]"]) {
+      const res = await app.request("/api/canary/runs", { method: "POST", headers: ADMIN, body });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("answers an empty panel before anything is shipped", async () => {
+    const res = await app.request("/api/stats/canary", {
+      headers: { "x-admin-token": TEST_ADMIN_TOKEN },
+    });
+    const body = (await res.json()) as { runs: number; lines: unknown[]; openAlerts: number };
+    expect(body).toMatchObject({ runs: 0, openAlerts: 0 });
+    expect(body.lines).toEqual([]);
+  });
+});
+
+/**
+ * `res.json()` is `unknown` here; every assertion below is over a shape this
+ * file itself constructed, so one cast at the boundary is honest.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const jsonOf = async (res: Response): Promise<any> => (await res.json()) as any;
+
+describe("the learned parameters (docs/closed-loop.md, stage 3)", () => {
+  const FROZEN = 1_700_000_000_000;
+  const goodParams = () => ({
+    P_REPEAT_STAND: 0.926, P_REPEAT_MOVE: 0.135, P_REPEAT_MOVE_ZONE: 0.5,
+    HOLD_ENTER_PER_S: 0.0134, HOLD_LEAVE_PER_S: 0.0136,
+    SHUFFLE_PER_POLL: 0.0277, P_DEPART_ON_FRESH: 0.726,
+    CONFORMAL: { "0-2": 1.4, "2-5": 1.2, "5-10": 1.1, "10-30": 1 },
+  });
+  const submission = (over: Record<string, unknown> = {}) => ({
+    params: goodParams(),
+    n: { P_REPEAT_STAND: 224917, "CONFORMAL.0-2": 4210 },
+    window: { from: "2026-09-03", to: "2026-09-06", days: 4 },
+    version: "fit-2026-09-06",
+    accepted: true,
+    note: "promoted",
+    ...over,
+  });
+  const post = (body: unknown, headers: Record<string, string> = { "x-admin-token": TEST_ADMIN_TOKEN }) =>
+    app.request("/api/model-params", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    });
+
+  const mint = (expiryMs: number) =>
+    `${expiryMs}.${crypto.createHmac("sha256", TEST_ADMIN_TOKEN).update(String(expiryMs)).digest("hex")}`;
+
+  it("serves no model_params until something is published — the compiled client, byte for byte", async () => {
+    const res = await app.request("/api/buses");
+    const body = await jsonOf(res);
+    expect(body.model_params).toBeUndefined();
+    expect("model_params" in body).toBe(false);
+  });
+
+  it("publishes a set and serves it on the very next poll", async () => {
+    const before = await jsonOf(await app.request("/api/buses"));
+    expect(before.model_params).toBeUndefined();
+    const res = await post(submission());
+    expect(res.status).toBe(200);
+    const out = await jsonOf(res);
+    expect(out.ok).toBe(true);
+    expect(out.accepted).toBe(true);
+    // No collector tick happened in between: the payload cache must key on the
+    // parameter version too, or a publish would wait for one.
+    const after = await jsonOf(await app.request("/api/buses"));
+    expect(after.model_params.version).toBe("fit-2026-09-06");
+    expect(after.model_params.params.P_REPEAT_STAND).toBe(0.926);
+    expect(after.model_params.params.CONFORMAL["0-2"]).toBe(1.4);
+    expect(after.model_params.publishedAt).toBe(FROZEN);
+  });
+
+  it("a set the fit did NOT accept is recorded and NOT served", async () => {
+    await post(submission({ accepted: false, note: "kept the champion: median |err| worse by 30.0 s" }));
+    const body = await jsonOf(await app.request("/api/buses"));
+    expect(body.model_params).toBeUndefined();
+    const read = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(read.current).toBeNull();
+    expect(read.history).toHaveLength(1);
+    expect(read.history[0].accepted).toBe(false);
+    expect(read.history[0].note).toContain("kept the champion");
+  });
+
+  it("refuses a value outside its range, naming the key, and changes nothing", async () => {
+    await post(submission());
+    for (const [over, reason] of [
+      [{ params: { ...goodParams(), P_REPEAT_STAND: 1.4 } }, "out_of_range:P_REPEAT_STAND"],
+      [{ params: { ...goodParams(), CONFORMAL: { ...goodParams().CONFORMAL, "2-5": 99 } } }, "out_of_range:CONFORMAL.2-5"],
+      [{ window: { from: "2026-09-06", to: "2026-09-03", days: 4 } }, "window_order"],
+      [{ version: "no spaces allowed" }, "version"],
+      [{ accepted: "yes" }, "accepted"],
+    ] as Array<[Record<string, unknown>, string]>) {
+      const res = await post(submission(over));
+      expect(res.status).toBe(400);
+      expect((await jsonOf(res)).reason).toBe(reason);
+    }
+    // Still the one good set.
+    const read = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(read.history).toHaveLength(1);
+  });
+
+  it("the stats cookie reads but must NOT publish", async () => {
+    const login = await app.request("/api/stats/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: TEST_ADMIN_TOKEN }),
+    });
+    const value = /stats_session=([^;]+)/.exec(login.headers.get("set-cookie") ?? "")?.[1] ?? "";
+    const cookie = `stats_session=${value}`;
+    expect(value).not.toBe("");
+
+    const read = await app.request("/api/stats/model-params", { headers: { cookie } });
+    expect(read.status).toBe(200);
+
+    const write = await post(submission(), { cookie });
+    expect(write.status).toBe(401);
+    // A hand-forged cookie is no better: the write path never looks at cookies.
+    const forged = await post(submission(), { cookie: `stats_session=${mint(FROZEN + 86_400_000)}` });
+    expect(forged.status).toBe(401);
+    const still = await jsonOf(await app.request("/api/stats/model-params", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    expect(still.history).toHaveLength(0);
+  });
+
+  it("refuses both routes without any credential", async () => {
+    expect((await app.request("/api/stats/model-params")).status).toBe(401);
+    expect((await post(submission(), {})).status).toBe(401);
+    expect((await post(submission(), { "x-admin-token": "wrong" })).status).toBe(401);
+  });
+});
+
+describe("a replayed challenger in the scorecard (stage 4)", () => {
+  const rows = (medianAbsSec: number) => [
+    { routeId: 0, horizon: "all", metrics: { n: 100, paired: 90, medianAbsSec, intervalCoveragePct: 78.5, intervalRows: 90 } },
+    { routeId: 3, horizon: "0-2", metrics: { n: 20, paired: 20, medianAbsSec: 12.5 } },
+  ];
+  const post = (body: unknown, headers: Record<string, string> = { "x-admin-token": TEST_ADMIN_TOKEN }) =>
+    app.request("/api/scorecard/replay", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it("writes replay:<name> rows the reader hands back, and re-running replaces them", async () => {
+    expect((await post({ day: "2026-09-05", name: "challenger", rows: rows(101.5) })).status).toBe(200);
+    expect((await post({ day: "2026-09-05", name: "champion", rows: rows(104.2) })).status).toBe(200);
+    let read = await jsonOf(await app.request("/api/scorecard?days=400", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    const surfaces = read.rows.map((r: { surface: string }) => r.surface);
+    expect(surfaces).toContain("replay:challenger");
+    expect(surfaces).toContain("replay:champion");
+    expect(read.rows.filter((r: { surface: string }) => r.surface.startsWith("replay:"))).toHaveLength(4);
+
+    await post({ day: "2026-09-05", name: "challenger", rows: rows(99.9) });
+    read = await jsonOf(await app.request("/api/scorecard?days=400", { headers: { "x-admin-token": TEST_ADMIN_TOKEN } }));
+    const chall = read.rows.filter((r: { surface: string }) => r.surface === "replay:challenger");
+    expect(chall).toHaveLength(2);
+    expect(chall.find((r: { horizon: string }) => r.horizon === "all").metrics.medianAbsSec).toBe(99.9);
+    // The champion's rows were not touched by the challenger's re-run.
+    expect(read.rows.filter((r: { surface: string }) => r.surface === "replay:champion")).toHaveLength(2);
+  });
+
+  it("rejects a malformed row, a bad day and a bad name, and needs the header", async () => {
+    for (const [body, reason] of [
+      [{ day: "nope", name: "x", rows: [] }, "day"],
+      [{ day: "2026-09-05", name: "a b", rows: [] }, "name"],
+      [{ day: "2026-09-05", name: "x", rows: {} }, "rows_not_array"],
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "nope", metrics: {} }] }, "row_0_horizon"],
+      // NaN cannot travel over JSON at all (it serialises to null, i.e. 0);
+      // a negative count is what a buggy script actually sends.
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "all", metrics: { n: -1 } }] }, "row_0_n"],
+      [{ day: "2026-09-05", name: "x", rows: [{ routeId: 0, horizon: "all", metrics: { medianAbsSec: "12" } }] }, "row_0_medianAbsSec"],
+    ] as Array<[Record<string, unknown>, string]>) {
+      const res = await post(body);
+      expect(res.status).toBe(400);
+      expect((await jsonOf(res)).reason).toBe(reason);
+    }
+    expect((await post({ day: "2026-09-05", name: "x", rows: [] }, {})).status).toBe(401);
   });
 });

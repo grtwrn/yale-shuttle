@@ -1,0 +1,21 @@
+{
+  "caption": "A destination lookup whose first result is malformed (a name under the wrong key)",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 36,
+    "dest": 4
+  },
+  "views": [
+    "search"
+  ],
+  "mocked": [
+    "/api/geocode"
+  ],
+  "shots": [
+    "pr-preview/geocode-malformed/after-fixed.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false,
+  "note": "after-fixed.png is this branch (exit 0, no page errors). before-master-crash.png is the SAME recipe against master, where the harness exited 1 with crashed:true \u2014 that capture is the bug, deliberately kept, not a failed preview of this feature."
+}

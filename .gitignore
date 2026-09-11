@@ -17,3 +17,4 @@ __pycache__/
 services/shuttle-v2/scripts/.feedback-bot/
 services/shuttle-v2/scripts/.cache/
 services/shuttle-v2/scripts/.eta-replay/
+services/shuttle-v2/scripts/.reestimate/

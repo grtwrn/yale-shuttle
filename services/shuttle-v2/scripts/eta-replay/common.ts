@@ -502,18 +502,39 @@ export interface Metrics {
   medianSignedSec: number;
   within60: number;
   within120: number;
+  /**
+   * The tails that decide whether a change is shippable. Error is
+   * `predicted - actual`.
+   *
+   * NEGATIVE is optimistic: the app named a time the bus did not manage, so
+   * the rider arrives early and WAITS. Annoying; safe.
+   *
+   * POSITIVE is pessimistic: the app named a time the BUS BEAT — "5 min" for
+   * a bus two minutes away — so the rider strolls up and watches it leave.
+   * **`pessimistic120` is the number that must not grow**, whatever the
+   * median does; see docs/eta-accuracy.md.
+   *
+   * (This comment said the opposite until 2026-09-07 — it glossed the
+   * negative tail as "the bus beat the time", which is the positive one. The
+   * field NAMES were right and every table in docs/ is keyed on them, so no
+   * measurement was misread; a reader might have been.)
+   */
+  optimistic120: number;
+  pessimistic120: number;
 }
 
 export function metricsOf(errs: ArrayLike<number>): Metrics {
   const n = errs.length;
   if (n === 0) {
-    return { n: 0, medianAbsSec: NaN, p90AbsSec: NaN, meanSignedSec: NaN, medianSignedSec: NaN, within60: NaN, within120: NaN };
+    return { n: 0, medianAbsSec: NaN, p90AbsSec: NaN, meanSignedSec: NaN, medianSignedSec: NaN, within60: NaN, within120: NaN, optimistic120: NaN, pessimistic120: NaN };
   }
   const abs = new Float64Array(n);
   const signed = new Float64Array(n);
   let sum = 0;
   let w60 = 0;
   let w120 = 0;
+  let opt120 = 0;
+  let pes120 = 0;
   for (let i = 0; i < n; i++) {
     const e = errs[i]!;
     signed[i] = e;
@@ -522,6 +543,8 @@ export function metricsOf(errs: ArrayLike<number>): Metrics {
     sum += e;
     if (a <= 60) w60++;
     if (a <= 120) w120++;
+    if (e < -120) opt120++;
+    if (e > 120) pes120++;
   }
   abs.sort();
   signed.sort();
@@ -540,6 +563,8 @@ export function metricsOf(errs: ArrayLike<number>): Metrics {
     medianSignedSec: r1(q(signed, 0.5)),
     within60: Math.round((w60 / n) * 1000) / 10,
     within120: Math.round((w120 / n) * 1000) / 10,
+    optimistic120: Math.round((opt120 / n) * 1000) / 10,
+    pessimistic120: Math.round((pes120 / n) * 1000) / 10,
   };
 }
 
@@ -547,4 +572,76 @@ export function fmtEt(t: number): string {
   const d = new Date(t);
   const p = (x: number) => String(x).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// -- Dwell calibration, time-travelled ----------------------------------------
+
+/**
+ * What `dwells[route][stop]` would have carried at any past instant: the
+ * calibrator's dwell statistic (14-day window, same-weekday hour ±1 median,
+ * p90 spread, p35 low) rebuilt from the `arrivals` rows that had COMPLETED by
+ * the bucket start. This is the replica `jitter-audit.ts` and
+ * `trace-departure.ts` each carry inline; shared here so a fourth harness
+ * cannot drift from them.
+ */
+export function makeDwellCache(net: Net, from: number, to: number) {
+  const DWELL_WINDOW_MS = 14 * DAY_MS;
+  const DWELL_LOW_QUANTILE = 0.35;
+  const DWELL_LOW_MIN_SAMPLES = 5;
+  interface DwellGroup { at: Float64Array; done: Float64Array; sec: Float64Array; dow: Int8Array; hour: Int8Array }
+  const groups = new Map<string, DwellGroup>();
+  const rows = net.db
+    .prepare(`SELECT route_id r, stop_id s, arrived_at a, dwell_sec d, dow, hour FROM arrivals
+              WHERE dwell_sec IS NOT NULL AND arrived_at >= ? AND arrived_at <= ? ORDER BY arrived_at`)
+    .all(from - DWELL_WINDOW_MS - 3_600_000, to) as Array<{ r: number; s: number; a: number; d: number; dow: number; hour: number }>;
+  const tmp = new Map<string, Array<{ a: number; d: number; dow: number; hour: number }>>();
+  for (const x of rows) {
+    const k = `${x.r}:${x.s}`;
+    let l = tmp.get(k);
+    if (!l) tmp.set(k, (l = []));
+    l.push(x);
+  }
+  for (const [k, l] of tmp) groups.set(k, {
+    at: Float64Array.from(l.map((x) => x.a)), done: Float64Array.from(l.map((x) => x.a + x.d * 1000)),
+    sec: Float64Array.from(l.map((x) => x.d)), dow: Int8Array.from(l.map((x) => x.dow)), hour: Int8Array.from(l.map((x) => x.hour)),
+  });
+  const pct = (a: ArrayLike<number>, q: number): number => {
+    const s = Float64Array.from(a).sort();
+    if (s.length === 0) return NaN;
+    const i = (s.length - 1) * q;
+    const lo = Math.floor(i);
+    const hi = Math.ceil(i);
+    return s[lo]! + (s[hi]! - s[lo]!) * (i - lo);
+  };
+  type DwellTimes = Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>>;
+  const cache = new Map<number, DwellTimes>();
+  return {
+    /** `start` must be an ET hour-bucket start (see makeCalibCache.bucketStart). */
+    at(start: number): DwellTimes {
+      const hit = cache.get(start);
+      if (hit) return hit;
+      const d = new Date(start);
+      const dow = d.getDay();
+      const hours = new Set([(d.getHours() + 23) % 24, d.getHours(), (d.getHours() + 1) % 24]);
+      const out: DwellTimes = {};
+      for (const [key, g] of groups) {
+        const [rid, sid] = key.split(":");
+        const all: number[] = [];
+        const win: number[] = [];
+        for (let i = 0; i < g.at.length; i++) {
+          if (g.at[i]! < start - DWELL_WINDOW_MS || g.done[i]! > start) continue;
+          all.push(g.sec[i]!);
+          if (g.dow[i] === dow && hours.has(g.hour[i]!)) win.push(g.sec[i]!);
+        }
+        if (!all.length) continue;
+        const low = all.length >= DWELL_LOW_MIN_SAMPLES ? pct(all, DWELL_LOW_QUANTILE) : undefined;
+        const src = win.length ? win : all;
+        const med = median(src);
+        (out[rid!] ||= {})[sid!] = { med, sd: Math.max(pct(src, 0.9) - med, 5), n: win.length, ...(low !== undefined ? { low: Math.min(low, med) } : {}) };
+      }
+      cache.set(start, out);
+      return out;
+    },
+    rows: rows.length,
+  };
 }

@@ -178,6 +178,21 @@
   .hours path { fill: none; stroke-linejoin: round; stroke-linecap: round; }
   .hours .past { stroke: var(--ink-2); stroke-width: 1.5; }
   .hours .today { stroke: var(--series-new); stroke-width: 2.5; }
+  /* Weekday filter above the hourly chart. Buttons, not a <select>: seven
+     one-tap targets beat a picker on a phone, and the state is visible without
+     opening anything. */
+  /* Eight chips on ONE line at 390 px: All plus seven days wrapped "Sun" onto
+     a second row at 12px/9px, which reads as a separate control. */
+  .dow { display: flex; gap: 3px; margin: 0 0 8px; }
+  .dow button {
+    font: inherit; font-size: 11.5px; line-height: 1; flex: 1 1 0; min-width: 0;
+    padding: 7px 4px; min-height: 32px; border-radius: 999px;
+    border: 1px solid var(--rule); background: var(--card); color: var(--muted);
+    cursor: pointer;
+  }
+  .dow button[aria-pressed="true"] {
+    background: var(--series-returning); border-color: var(--series-returning); color: #fff;
+  }
   .hours-legend {
     display: flex; flex-wrap: wrap; gap: 10px;
     font-size: 12px; color: var(--ink-2); margin-top: 6px;
@@ -226,6 +241,82 @@
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px;
   }
 
+  /* The rider canary. Same visual language as the mail above — a quiet card
+     list that goes loud only when something is wrong — because it answers the
+     same shape of question ("is there something here I have not seen?").
+     Every colour is an EXISTING token: the attention role is the one the mail
+     badge already uses, and --danger appears only as text, never as a fill,
+     because in dark mode it is a pale pink that white would vanish into. */
+  .canary { display: grid; gap: 10px; }
+  .canary-lines {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .canary-line {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-size: 13px; padding: 5px 9px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 999px;
+  }
+  .canary-line.bad { border-color: var(--series-returning); }
+  .canary-line b { font-weight: 600; font-size: 14px; }
+  .canary-line span { color: var(--ink-2); }
+  /* The failing sequence is the useful part of a finding, so it is set as
+     code — but it WRAPS. Left to scroll sideways it read as truncated in the
+     one place it matters ('"now, then 66 min" -> "in 7, 25 min" in 15 s' fits;
+     the drift that follows it did not), and because the card is a grid item
+     its default min-width:auto let the long line widen the whole page, which
+     clipped the escalated tag off the right edge. Hence min-width: 0 below. */
+  .canary-seq {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.5;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .canary > .note { min-width: 0; }
+  .canary-kind {
+    font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase;
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px;
+  }
+  .note.alerted { border-color: var(--series-returning); border-width: 2px; }
+  .canary-escalated { color: var(--danger); font-weight: 700; }
+
+  /* The ETA scorecard (docs/closed-loop.md, stage 1). Two series only —
+     ours and the official app — on the SAME two validated colours the rider
+     chart uses, because the question is the same shape: us against the
+     other thing. Every number is labelled with the rule it was scored under
+     (horizon cap, standing buses, sign), since without the rules the number
+     read the opposite of the truth once already (see #147). */
+  .score { width: 100%; height: 190px; display: block; overflow: visible; }
+  .score .grid { stroke: var(--grid); stroke-width: 1; }
+  .score .axis-text { fill: var(--ink-2); font-size: 10px; }
+  .score path { fill: none; stroke-linejoin: round; stroke-linecap: round; stroke-width: 2.5; }
+  .score .ours { stroke: var(--series-new); }
+  .score .official { stroke: var(--series-returning); }
+  .score circle.ours { fill: var(--series-new); }
+  .score circle.official { fill: var(--series-returning); }
+  .score-rules { font-size: 12px; color: var(--ink-2); margin-top: 6px; line-height: 1.5; }
+  /* The one other element allowed to scroll sideways: a table with a column
+     per statistic does not fit a phone, and wrapping the numbers would make
+     the rows unreadable. */
+  .score-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin-top: 10px; }
+  .score-table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .score-table th, .score-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+  .score-table th { font-weight: 600; color: var(--ink-2); font-size: 12px; }
+  .score-table th:first-child, .score-table td:first-child { text-align: left; }
+  .score-table td.ours { color: var(--series-new); }
+  .score-table td.official { color: var(--series-returning); }
+  .score-table tr.total td { font-weight: 600; }
+
+  /* Learning (docs/closed-loop.md, stages 3-4): what the nightly fit
+     published, and whether the last run promoted it. A table and some
+     sentences, no chart — so it needs no colour of its own. The only thing
+     the eye has to find is the row that actually MOVED, and a muted
+     "unchanged" beside every other one does that without adding a hue. */
+  .learn { display: grid; gap: 10px; margin-top: 10px; }
+  .learn-line { font-size: 15px; font-weight: 600; }
+  .learn-sub { font-size: 13px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
+  .learn-reasons { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+  .learn-reasons li { margin-bottom: 2px; overflow-wrap: anywhere; }
+  .score-table td.quiet { color: var(--ink-2); }
+
   /* -- Login / error states --------------------------------------------- */
   .panel {
     background: var(--raised);
@@ -257,6 +348,7 @@
 
 <header>
   <h1>Shuttle riders</h1>
+  <a href="/stats/stops" style="font-size:14px;min-height:44px;display:inline-flex;align-items:center;color:var(--focus)">Stop data</a>
   <button id="refresh" type="button">Refresh</button>
 </header>
 
@@ -289,6 +381,16 @@
       <div class="hero-split" id="hero-split"></div>
       <div class="stamp" id="stamp"></div>
       <div class="stamp" id="since"></div>
+      <!--
+        Ours against the official Downtowner app's own ETAs, scored on the same
+        arrivals, like for like: promises of 30 min or less on both sides (all
+        upstream publishes), a bus already standing at the stop excluded on
+        both sides, and a second line on the (bus, stop, minute) both apps
+        predicted. Absent entirely until both arms have enough paired rows to
+        mean anything (the server sends null; see MIN_COMPARE_PAIRS) — a
+        comparison is a claim, and a thin one flips sign by the hour.
+      -->
+      <div class="stamp" id="eta-vs" hidden></div>
     </section>
 
     <section class="tiles" id="tiles"></section>
@@ -315,6 +417,7 @@
         <h2>Riders by hour</h2>
         <div class="legend"><span id="hours-note"></span></div>
       </div>
+      <div class="dow" id="dow" role="group" aria-label="Filter riders by hour to one weekday"></div>
       <svg id="hours" class="hours" role="img" aria-label="Riders by hour of day, one line per day"></svg>
       <div id="hours-legend" class="hours-legend"></div>
       <div id="hours-empty" class="empty" hidden>No hourly data yet.</div>
@@ -349,6 +452,72 @@
         Nobody but you has written in yet.
       </div>
     </section>
+
+    <!-- The rider canary. It rides a line and watches the countdown a rider
+         sees; before this panel existed its findings only ever reached a
+         JSONL file on the Pi, and the one that caught the 2026-09-04 ETA bug
+         sat there unread. See src/server/canary.ts. -->
+    <section>
+      <div class="chart-head">
+        <h2>Rider canary<span id="canary-alert" class="mail-new" hidden></span></h2>
+        <div class="legend"><span id="canary-note"></span></div>
+      </div>
+      <div id="canary-lines" class="canary-lines"></div>
+      <div id="canary" class="canary"></div>
+      <div id="canary-empty" class="empty" hidden>
+        No canary runs shipped yet.
+      </div>
+      <div id="canary-clean" class="empty" hidden>
+        Every run passed. Nothing to look at.
+      </div>
+    </section>
+
+    <!-- The ETA scorecard: every arm scored against the detector's arrivals,
+         per day, by the hourly job in src/server/scorecard.ts. "ours" is what
+         sampled browsers had on screen (trip, ride and route cards pooled);
+         "official" is the Downtowner app's own routes_eta.php, whole minutes.
+         Same rules on both: promises of 30 min or less, a bus already standing
+         at the stop excluded, first arrival within 45 min. -->
+    <section>
+      <div class="chart-head">
+        <h2>ETA scorecard</h2>
+        <div class="legend">
+          <span><i class="chip chip-new"></i>ours</span>
+          <span><i class="chip chip-returning"></i>official</span>
+        </div>
+      </div>
+      <svg id="score-chart" class="score" role="img"
+           aria-label="Median absolute ETA error per day, ours against the official app"></svg>
+      <div id="score-note" class="score-rules"></div>
+      <div class="score-wrap">
+        <table id="score-table" class="score-table" hidden></table>
+      </div>
+      <div id="score-rules" class="score-rules"></div>
+      <div id="score-empty" class="empty" hidden>No scored days yet — the first hour settles at :35.</div>
+    </section>
+
+    <!-- Learning: stages 3 and 4 of docs/closed-loop.md — the parameters the
+         nightly fit published, beside the constants the client ships with,
+         and the last promotion decision. Fed by GET /api/stats/model-params;
+         if that endpoint is not there yet the whole section hides itself and
+         the rest of the dashboard is untouched. -->
+    <section id="learn-section" hidden>
+      <div class="chart-head">
+        <h2>Learning</h2>
+      </div>
+      <div id="learn-stamp" class="score-rules"></div>
+      <div id="learn-empty" class="empty" hidden>
+        Nothing published yet — the client is running its compiled constants.
+      </div>
+      <div class="score-wrap">
+        <table id="learn-params" class="score-table" hidden></table>
+      </div>
+      <div id="learn-decision" class="learn"></div>
+      <div class="score-wrap">
+        <table id="learn-perday" class="score-table" hidden></table>
+      </div>
+      <div id="learn-issues" class="score-rules"></div>
+    </section>
   </div>
 </main>
 
@@ -361,7 +530,18 @@
   var HISTORY_DAYS = 30;
   // Seven lines is the most this chart stays readable with — past that the
   // older days are a smudge and the legend outgrows the phone.
-  var HOURLY_DAYS = 7;
+  // Four weeks, so picking a weekday leaves four lines to compare rather than
+  // one. The unfiltered view still draws only the most recent HOURLY_SHOWN of
+  // them — a month of overlapping lines is a smear, and the default view is
+  // what it always was.
+  var HOURLY_DAYS = 28;
+  var HOURLY_SHOWN = 7;
+  // A day of riding. The canary gets through ~11 lines in that time, which is
+  // the span over which "which lines were watched" has a true answer.
+  var CANARY_HOURS = 24;
+  // A month of days on the scorecard line: the same span as the rider chart,
+  // and a deploy shows up as a step against a fortnight either side.
+  var SCORE_DAYS = 30;
 
   var el = {
     loading: document.getElementById("loading"),
@@ -380,6 +560,7 @@
     chartAxis: document.getElementById("chart-axis"),
     chartEmpty: document.getElementById("chart-empty"),
     since: document.getElementById("since"),
+    etaVs: document.getElementById("eta-vs"),
     chartScroll: document.getElementById("chart-scroll"),
     refresh: document.getElementById("refresh"),
     hours: document.getElementById("hours"),
@@ -394,7 +575,25 @@
     mail: document.getElementById("mail"),
     mailNew: document.getElementById("mail-new"),
     mailTotal: document.getElementById("mail-total"),
-    mailEmpty: document.getElementById("mail-empty")
+    mailEmpty: document.getElementById("mail-empty"),
+    canary: document.getElementById("canary"),
+    canaryLines: document.getElementById("canary-lines"),
+    canaryNote: document.getElementById("canary-note"),
+    canaryAlert: document.getElementById("canary-alert"),
+    canaryEmpty: document.getElementById("canary-empty"),
+    canaryClean: document.getElementById("canary-clean"),
+    scoreChart: document.getElementById("score-chart"),
+    scoreNote: document.getElementById("score-note"),
+    scoreTable: document.getElementById("score-table"),
+    scoreRules: document.getElementById("score-rules"),
+    scoreEmpty: document.getElementById("score-empty"),
+    learnSection: document.getElementById("learn-section"),
+    learnStamp: document.getElementById("learn-stamp"),
+    learnEmpty: document.getElementById("learn-empty"),
+    learnParams: document.getElementById("learn-params"),
+    learnDecision: document.getElementById("learn-decision"),
+    learnPerDay: document.getElementById("learn-perday"),
+    learnIssues: document.getElementById("learn-issues")
   };
 
   // Which reports this browser has already been shown. Highest id seen, in
@@ -446,6 +645,9 @@
     }
     return {
       full: f({ weekday: "short", month: "short", day: "numeric" }),
+      // "Sep 3" — for a span, where the weekday is noise and "9/3" beside a
+      // second date reads as a fraction.
+      md: f({ month: "short", day: "numeric" }),
       short: f({ month: "numeric", day: "numeric" })
     };
   }
@@ -488,13 +690,23 @@
       // count is the page's job, the mail is the addition.
       getJson("/api/stats/reports?limit=15").catch(function () { return null; }),
       getJson("/api/stats/hourly?days=" + HOURLY_DAYS).catch(function () { return null; }),
-      getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; })
+      getJson("/api/stats/searches?days=30&limit=12").catch(function () { return null; }),
+      getJson("/api/stats/canary?hours=" + CANARY_HOURS).catch(function () { return null; }),
+      getJson("/api/stats/scorecard?days=" + SCORE_DAYS).catch(function () { return null; }),
+      // Stages 3-4. The endpoint may not exist on this build at all;
+      // then the Learning section simply never appears.
+      getJson("/api/stats/model-params").catch(function () { return null; })
     ]).then(function (both) {
       pending = false;
       render(both[0] && both[0].riders, (both[1] && both[1].history) || [], both[0] && both[0].since);
+      renderEtaVs(both[0] && both[0].etaVsOfficial);
       renderMail(both[2]);
       renderHours(both[3] && both[3].hourly);
+      renderDow();
       renderTerms(both[4]);
+      renderCanary(both[5]);
+      renderScorecard(both[6]);
+      renderLearning(both[7]);
       show("dash");
       parkChartAtToday();
     }).catch(function (err) {
@@ -558,13 +770,62 @@
    * this page loads no libraries and makes no external request — the whole
    * point of it working when the bundle does not.
    */
+  // Every day the API returned, kept so the weekday filter can re-cut it
+  // without another request.
+  var hoursAll = [];
+  // null = every day; 0..6 = a weekday, Sunday first, matching Date.getUTCDay.
+  var dowFilter = null;
+  var DOW_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function dowOf(day) {
+    var ms = Date.parse(day + "T12:00:00Z");
+    return isFinite(ms) ? new Date(ms).getUTCDay() : null;
+  }
+
+  /**
+   * The weekday buttons. A day with no data in the window is disabled rather
+   * than hidden: a missing Sunday is information ("we have not seen one yet"),
+   * and a row that changes width as days accrue is harder to aim at.
+   */
+  function renderDow() {
+    var box = document.getElementById("dow");
+    if (!box) return;
+    box.textContent = "";
+    var have = {};
+    for (var i = 0; i < hoursAll.length; i++) {
+      var d = dowOf(hoursAll[i].day);
+      if (d !== null) have[d] = (have[d] || 0) + 1;
+    }
+    var opts = [{ v: null, label: "All" }];
+    for (var k = 1; k <= 7; k++) opts.push({ v: k % 7, label: DOW_LABEL[k % 7] });  // Mon-first
+    opts.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = o.label;
+      var n = o.v === null ? hoursAll.length : (have[o.v] || 0);
+      b.setAttribute("aria-pressed", String(dowFilter === o.v));
+      if (n === 0) { b.disabled = true; b.style.opacity = "0.4"; }
+      b.title = o.v === null
+        ? hoursAll.length + " day(s)"
+        : n + " " + o.label + (n === 1 ? "" : "s") + " in the last " + hoursAll.length + " day(s)";
+      b.onclick = function () { dowFilter = o.v; renderHours(); renderDow(); };
+      box.appendChild(b);
+    });
+  }
+
   function renderHours(days) {
-    var list = days || [];
+    if (days) hoursAll = days;
+    var list = hoursAll;
+    if (dowFilter === null) list = list.slice(Math.max(0, list.length - HOURLY_SHOWN));
+    else list = list.filter(function (d) { return dowOf(d.day) === dowFilter; });
     var svg = el.hours;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     el.hoursLegend.textContent = "";
     el.hoursEmpty.hidden = list.length > 0;
-    el.hoursNote.textContent = list.length ? "each line is a day" : "";
+    el.hoursNote.textContent = !list.length ? ""
+      : dowFilter === null
+        ? "each line is a day"
+        : list.length + " " + DOW_LABEL[dowFilter] + (list.length === 1 ? "" : "s") + ", newest darkest";
     if (!list.length) { svg.setAttribute("viewBox", "0 0 340 190"); return; }
 
     var W = 340, H = 190, padL = 26, padR = 8, padT = 10, padB = 10 + 16;
@@ -606,8 +867,10 @@
     // Oldest first so today is drawn last and sits on top of the others.
     for (var d = 0; d < list.length; d++) {
       var hours = list[d].hours || [];
-      var isToday = d === list.length - 1;
-      var lastHour = isToday && list[d].day === etNow ? etHourNow : 23;
+      // Positional before the weekday filter existed, and wrong the moment it
+      // did: the newest Monday is the last line drawn but is not today.
+      var isToday = list[d].day === etNow;
+      var lastHour = isToday ? etHourNow : 23;
       var parts = [];
       for (var hh = 0; hh <= lastHour; hh++) {
         parts.push((hh === 0 ? "M" : "L") + x(hh).toFixed(1) + " " + y(hours[hh] || 0).toFixed(1));
@@ -626,7 +889,7 @@
       var parts2 = dayParts(list[L].day);
       var item = document.createElement("span");
       var swatch = document.createElement("i");
-      var isTodayL = L === list.length - 1;
+      var isTodayL = list[L].day === etNow;
       if (isTodayL) swatch.className = "today";
       else swatch.style.opacity = String(Math.max(0.18, 0.5 - (list.length - 1 - L) * 0.06));
       item.appendChild(swatch);
@@ -729,6 +992,565 @@
     // Reading the page IS the acknowledgement: the badge clears on the next
     // load, not on a button nobody would press.
     markSeen(data.newestId);
+  }
+
+  /**
+   * What the rider canary saw. The panel has to answer four things at a
+   * glance — which lines were watched, how recently, how many runs passed,
+   * and WHAT THE FAILURES WERE — and the fourth is the one that matters: a
+   * count of failures is what the JSONL file already had, and nobody read it.
+   * So each finding prints its sequence verbatim.
+   *
+   * textContent and createElement throughout, exactly as the mail above: this
+   * is machine output, but it quotes strings scraped off a live page.
+   */
+  function renderCanary(payload) {
+    var d = payload || {};
+    var lines = d.lines || [];
+    var findings = d.findings || [];
+
+    el.canaryLines.textContent = "";
+    for (var i = 0; i < lines.length; i++) {
+      var L = lines[i];
+      var chip = document.createElement("div");
+      chip.className = L.lastOk ? "canary-line" : "canary-line bad";
+      var name = document.createElement("b");
+      name.textContent = L.line;
+      chip.appendChild(name);
+      var meta = document.createElement("span");
+      // "2/3 · 14 min ago" — passed of watched, and how fresh the answer is.
+      meta.textContent = L.passed + "/" + L.runs + " · " + ago(L.lastRunAt);
+      chip.appendChild(meta);
+      el.canaryLines.appendChild(chip);
+    }
+
+    el.canary.textContent = "";
+    for (var j = 0; j < findings.length; j++) {
+      var f = findings[j];
+      var card = document.createElement("div");
+      card.className = f.alertedAt && !f.resolvedAt ? "note alerted" : "note";
+
+      var meta2 = document.createElement("div");
+      meta2.className = "note-meta";
+      var who = document.createElement("span");
+      who.textContent = f.line + " · " + ago(f.startedAt);
+      meta2.appendChild(who);
+      var kinds = {}, order = [];
+      for (var k = 0; k < (f.failures || []).length; k++) {
+        var kind = f.failures[k].kind || "unknown";
+        if (!kinds[kind]) { kinds[kind] = true; order.push(kind); }
+      }
+      for (var o = 0; o < order.length; o++) {
+        var tag = document.createElement("span");
+        tag.className = "canary-kind";
+        tag.textContent = order[o];
+        meta2.appendChild(tag);
+      }
+      if (f.alertedAt) {
+        var esc = document.createElement("span");
+        esc.className = "canary-kind canary-escalated";
+        esc.textContent = f.resolvedAt ? "escalated · closed" : "escalated";
+        meta2.appendChild(esc);
+      }
+      card.appendChild(meta2);
+
+      // The sequence, one line per failure, verbatim.
+      var seq = document.createElement("div");
+      seq.className = "canary-seq";
+      var texts = [];
+      for (var m = 0; m < (f.failures || []).length; m++) {
+        texts.push(f.failures[m].detail || f.failures[m].kind);
+      }
+      seq.textContent = texts.join("\n");
+      card.appendChild(seq);
+      el.canary.appendChild(card);
+    }
+
+    var ran = typeof d.runs === "number" ? d.runs : 0;
+    el.canaryEmpty.hidden = ran > 0;
+    el.canaryClean.hidden = !(ran > 0 && findings.length === 0);
+    el.canaryNote.textContent = ran
+      ? (d.passed || 0) + " of " + ran + " runs passed in " + d.windowHours + " h"
+      : "";
+    // Loud only while an escalated finding is still open. When the lines are
+    // healthy this whole section is one grey sentence.
+    el.canaryAlert.hidden = !d.openAlerts;
+    el.canaryAlert.textContent = d.openAlerts + " escalated";
+  }
+
+  /**
+   * The ETA scorecard. Three parts: a 30-day line of median |error|, ours
+   * against the official app, every route pooled; the rules the numbers were
+   * scored under, printed rather than implied; and the latest day, route by
+   * route. Drawn by hand in SVG like the hours chart — no libraries here.
+   *
+   * "ours" is the pooled rider surfaces (what a sampled browser had on
+   * screen); "official" is the operator's own routes_eta.php, sampled at the
+   * stops riders watch. The census arm (every stop, uncapped) is in the API
+   * and deliberately not on this page: it covers a different population.
+   */
+  function renderScorecard(payload) {
+    var d = payload || {};
+    var days = d.days || [];
+    var rows = d.rows || [];
+    var rules = d.rules || {};
+    var svg = el.scoreChart;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    el.scoreTable.textContent = "";
+    el.scoreTable.hidden = true;
+    el.scoreEmpty.hidden = days.length > 0;
+    svg.hidden = days.length === 0;
+    el.scoreNote.textContent = "";
+    el.scoreRules.textContent = "";
+    if (!days.length) { svg.setAttribute("viewBox", "0 0 340 190"); return; }
+
+    var capMin = Math.round((rules.horizonCapSec || 1800) / 60);
+    var matchMin = Math.round((rules.matchWindowSec || 2700) / 60);
+    function pick(day, routeId, horizon, surface) {
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (r.day === day && r.routeId === routeId && r.horizon === horizon && r.surface === surface) return r.metrics;
+      }
+      return null;
+    }
+
+    // -- the line ------------------------------------------------------------
+    var W = 340, H = 190, padL = 30, padR = 8, padT = 10, padB = 10 + 16;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var series = { ours: [], official: [] };
+    var peak = 60;
+    for (var i = 0; i < days.length; i++) {
+      var o = pick(days[i].day, 0, "all", "ours");
+      var u = pick(days[i].day, 0, "all", "upstream");
+      series.ours.push(o && o.medianAbsSec !== null ? o.medianAbsSec : null);
+      series.official.push(u && u.medianAbsSec !== null ? u.medianAbsSec : null);
+      if (o && o.medianAbsSec !== null) peak = Math.max(peak, o.medianAbsSec);
+      if (u && u.medianAbsSec !== null) peak = Math.max(peak, u.medianAbsSec);
+    }
+    peak = Math.ceil(peak / 60) * 60;
+    var x = function (i) { return days.length === 1 ? padL + plotW / 2 : padL + (i / (days.length - 1)) * plotW; };
+    var y = function (v) { return padT + plotH - (v / peak) * plotH; };
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(0), x2: W - padR, y2: y(0) }));
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(peak), x2: W - padR, y2: y(peak) }));
+    svg.appendChild(svgEl("line", { class: "grid", x1: padL, y1: y(120), x2: W - padR, y2: y(120), "stroke-dasharray": "3 3" }));
+    [[peak, Math.round(peak / 60) + " min"], [120, "2 min"], [0, "0"]].forEach(function (t) {
+      var lbl = svgEl("text", { class: "axis-text", x: 0, y: y(t[0]) + 3 });
+      lbl.textContent = t[1];
+      svg.appendChild(lbl);
+    });
+    var ticks = days.length > 1 ? [0, days.length - 1] : [0];
+    if (days.length > 6) ticks.splice(1, 0, Math.floor((days.length - 1) / 2));
+    ticks.forEach(function (i) {
+      var t = svgEl("text", {
+        class: "axis-text", x: x(i), y: H - 4,
+        "text-anchor": i === 0 ? "start" : (i === days.length - 1 ? "end" : "middle")
+      });
+      t.textContent = dayParts(days[i].day).short;
+      svg.appendChild(t);
+    });
+    ["official", "ours"].forEach(function (name) {
+      var vals = series[name];
+      var parts = [], pen = false;
+      for (var j = 0; j < vals.length; j++) {
+        if (vals[j] === null) { pen = false; continue; }
+        parts.push((pen ? "L" : "M") + x(j).toFixed(1) + " " + y(vals[j]).toFixed(1));
+        pen = true;
+        // A day is a point as well as a vertex: a single scored day, or a gap
+        // in the log, would otherwise draw nothing at all.
+        svg.appendChild(svgEl("circle", { class: name, cx: x(j).toFixed(1), cy: y(vals[j]).toFixed(1), r: 2.5 }));
+      }
+      if (parts.length) svg.appendChild(svgEl("path", { class: name, d: parts.join(" ") }));
+    });
+
+    // -- freshness and the rules ------------------------------------------
+    var last = days[days.length - 1];
+    var through = last.scoredThrough ? clockET(last.scoredThrough) + " ET" : "";
+    el.scoreNote.textContent =
+      "median |error| per day, every route · " + dayParts(last.day).full +
+      (last.final ? " is final" : " scored through " + through) +
+      (last.estimatorVersion ? " · build " + last.estimatorVersion : "");
+    el.scoreRules.textContent =
+      "Rules, both arms alike: promises ≤ " + capMin + " min only (what the official app publishes); " +
+      "a bus already standing at the stop is not a forecast and is excluded; " +
+      "truth is the detector's first arrival within " + matchMin + " min. " +
+      "Error = promise − actual: pessimistic means the bus beat the promise by ≥ 2 min, " +
+      "optimistic that it came ≥ 2 min later. The official app serves whole minutes (±30 s is rounding). " +
+      "A strand is a bus arriving while the last number shown was still ≥ 3 min; " +
+      "a jump is the promised arrival moving ≥ 3 min between looks.";
+
+    // -- the latest day, per route -------------------------------------------
+    var routes = d.routes || [];
+    var names = {};
+    for (var k = 0; k < routes.length; k++) names[routes[k].id] = routes[k].name;
+    var lines = [];
+    var seen = {};
+    for (var m = 0; m < rows.length; m++) {
+      var r = rows[m];
+      if (r.day !== last.day || r.horizon !== "all" || r.routeId === 0) continue;
+      if (r.surface !== "ours" && r.surface !== "upstream") continue;
+      if (!seen[r.routeId]) { seen[r.routeId] = true; lines.push(r.routeId); }
+    }
+    lines.sort(function (a, b) {
+      var oa = pick(last.day, a, "all", "ours"), ob = pick(last.day, b, "all", "ours");
+      return ((ob && ob.paired) || 0) - ((oa && oa.paired) || 0) || a - b;
+    });
+    lines.push(0);
+
+    var table = el.scoreTable;
+    var head = document.createElement("tr");
+    ["route", "paired (ours / official)", "|err| p50", "within 2 min", "pessimistic ≥2 min", "optimistic ≥2 min", "band covers", "strands / waits", "jumps / looks"]
+      .forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+    table.appendChild(head);
+    var secs = function (v) { return v === null || v === undefined ? "—" : Math.round(v) + " s"; };
+    var pc = function (v) { return v === null || v === undefined ? "—" : v + "%"; };
+    var both = function (tr, o, u, f) {
+      var td = document.createElement("td");
+      var a = document.createElement("span"); a.className = "ours"; a.textContent = o ? f(o) : "—";
+      var b = document.createElement("span"); b.className = "official"; b.textContent = u ? f(u) : "—";
+      td.appendChild(a); td.appendChild(document.createTextNode(" / ")); td.appendChild(b);
+      tr.appendChild(td);
+    };
+    for (var n = 0; n < lines.length; n++) {
+      var id = lines[n];
+      var o2 = pick(last.day, id, "all", "ours");
+      var u2 = pick(last.day, id, "all", "upstream");
+      var tr = document.createElement("tr");
+      if (id === 0) tr.className = "total";
+      var name = document.createElement("td");
+      name.textContent = id === 0 ? "every route" : (names[id] || ("route " + id));
+      tr.appendChild(name);
+      both(tr, o2, u2, function (mm) { return num(mm.paired); });
+      both(tr, o2, u2, function (mm) { return secs(mm.medianAbsSec); });
+      both(tr, o2, u2, function (mm) { return pc(mm.within120Pct); });
+      both(tr, o2, u2, function (mm) { return pc(mm.pessimistic120Pct); });
+      both(tr, o2, u2, function (mm) { return pc(mm.optimistic120Pct); });
+      var cov = document.createElement("td");
+      cov.className = "ours";
+      cov.textContent = o2 && o2.intervalCoveragePct !== null ? o2.intervalCoveragePct + "% of " + num(o2.intervalRows) : "—";
+      tr.appendChild(cov);
+      both(tr, o2, u2, function (mm) { return num(mm.strands) + " / " + num(mm.waits); });
+      both(tr, o2, u2, function (mm) { return num(mm.jumps) + " / " + num(mm.jumpPairs); });
+      table.appendChild(tr);
+    }
+    table.hidden = false;
+  }
+
+
+  /**
+   * Learning — stages 3 and 4 of docs/closed-loop.md. Three questions, in the
+   * order the operator asks them: what is being SERVED (and which of it moved
+   * off the compiled constant), did the last run PROMOTE anything, and which
+   * keys the fit refused to publish.
+   *
+   * The promotion decision is read from the newest run in `history`, not from
+   * `current`: a run that declined to publish leaves `current` untouched and
+   * is exactly the run worth reading.
+   *
+   * Every level of the payload is optional — the endpoint may not exist yet
+   * (then this section hides itself and nothing else on the page changes),
+   * a run may have published nothing, and any single field may be absent.
+   * The whole render sits in a try/catch for the same reason: a shape this
+   * page did not expect must not take the rider numbers down with it.
+   */
+  var LEARN_KEY_ORDER = [
+    "P_REPEAT_STAND", "P_REPEAT_MOVE", "P_REPEAT_MOVE_ZONE",
+    "HOLD_ENTER_PER_S", "HOLD_LEAVE_PER_S",
+    "SHUFFLE_PER_POLL", "P_DEPART_ON_FRESH"
+  ];
+  var LEARN_BAND_ORDER = ["0-2", "2-5", "5-10", "10-30"];
+
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  // Anything that is not a plain object becomes one, so `in` and property
+  // reads below can never throw on a null or a primitive.
+  function obj(v) { return v && typeof v === "object" ? v : {}; }
+
+  function sec1(v) { return isNum(v) ? v.toFixed(1) + " s" : "—"; }
+  function sec1Signed(v) { return isNum(v) ? (v > 0 ? "+" : "") + v.toFixed(1) + " s" : "—"; }
+  function pct1(v) { return isNum(v) ? v.toFixed(1) + "%" : "—"; }
+  function pct1Signed(v) { return isNum(v) ? (v > 0 ? "+" : "") + v.toFixed(1) + "%" : "—"; }
+
+  // Probabilities and rates as they were fitted: five significant digits at
+  // most, and never in scientific notation — "1.63e-2" is not a number an
+  // operator can compare against the constant beside it.
+  function prob5(v) {
+    if (!isNum(v)) return "—";
+    var n = Number(v.toPrecision(5));
+    var s = String(n);
+    if (s.indexOf("e") < 0 && s.indexOf("E") < 0) return s;
+    return n.toFixed(20).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  // Epoch ms -> "Sun Sep 6" in ET, matching dayParts().full for a calendar
+  // day. The operator's phone may be anywhere; the fit is stamped in ET.
+  function dayET(ms) {
+    if (!isNum(ms)) return "";
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: ET, weekday: "short", month: "short", day: "numeric"
+      }).format(new Date(ms));
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function cell(tr, text, cls) {
+    var td = document.createElement("td");
+    if (cls) td.className = cls;
+    td.textContent = text;
+    tr.appendChild(td);
+    return td;
+  }
+  function headRow(table, labels) {
+    var tr = document.createElement("tr");
+    labels.forEach(function (h) {
+      var th = document.createElement("th");
+      th.textContent = h;
+      tr.appendChild(th);
+    });
+    table.appendChild(tr);
+  }
+
+  function hideLearning() {
+    el.learnSection.hidden = true;
+    el.learnStamp.textContent = "";
+    el.learnParams.textContent = "";
+    el.learnParams.hidden = true;
+    el.learnDecision.textContent = "";
+    el.learnPerDay.textContent = "";
+    el.learnPerDay.hidden = true;
+    el.learnIssues.textContent = "";
+    el.learnEmpty.hidden = true;
+  }
+
+  function renderLearning(payload) {
+    try {
+      drawLearning(payload);
+    } catch (e) {
+      hideLearning();
+    }
+  }
+
+  function drawLearning(payload) {
+    hideLearning();
+    var d = obj(payload);
+    // No endpoint (404, network, or not deployed yet) — say nothing at all.
+    if (!payload || d.endpointReady === false) return;
+    var hist = Array.isArray(d.history) ? d.history : [];
+    var cur = d.current ? obj(d.current) : null;
+    // The run that DECIDED last, published or not; falls back to the served
+    // set when there is no history.
+    var latest = obj(hist[0] || cur);
+    el.learnSection.hidden = false;
+
+    // -- 1. the stamp ------------------------------------------------------
+    if (cur) {
+      var parts = [];
+      var fitted = dayET(cur.publishedAt);
+      if (fitted) parts.push("fitted " + fitted);
+      var w = obj(cur.window);
+      var span = w.from && w.to
+        ? dayParts(w.from).md + "–" + dayParts(w.to).md
+        : (w.from ? dayParts(w.from).md : (w.to ? dayParts(w.to).md : ""));
+      if (isNum(w.days) || span) {
+        parts.push("from " +
+          (isNum(w.days) ? w.days + (w.days === 1 ? " day" : " days") : "the fit window") +
+          (span ? ", " + span : ""));
+      }
+      if (cur.version) parts.push(String(cur.version));
+      if (cur.accepted === false) parts.push("not accepted");
+      if (cur.note) parts.push(String(cur.note));
+      el.learnStamp.textContent = parts.join(" · ");
+    }
+
+    // -- 2. the served parameters, beside the compiled constants -----------
+    // Anything printed at all clears the empty state; a payload this page
+    // cannot read prints nothing, and then it says so rather than leaving a
+    // bare heading.
+    var printed = false;
+    if (cur) {
+      var params = obj(cur.params);
+      var compiled = obj(obj(cur.decision).compiled);
+      var counts = obj(cur.n);
+      var rows = [];
+      var used = {};
+      function addRow(label, key, published, constant, n) {
+        rows.push({ label: label, published: published, constant: constant, n: n });
+        if (key) used[key] = true;
+      }
+      LEARN_KEY_ORDER.forEach(function (k) {
+        if (!(k in params) && !(k in compiled)) return;
+        addRow(k, k, params[k], compiled[k], counts[k]);
+      });
+      // A key the fit added that this page has never heard of still gets a row.
+      Object.keys(params).forEach(function (k) {
+        if (used[k] || k === "CONFORMAL") return;
+        addRow(k, k, params[k], compiled[k], counts[k]);
+      });
+      var pubBands = obj(params.CONFORMAL);
+      var compBands = obj(compiled.CONFORMAL);
+      var bands = LEARN_BAND_ORDER.slice();
+      Object.keys(pubBands).forEach(function (b) {
+        if (bands.indexOf(b) < 0) bands.push(b);
+      });
+      bands.forEach(function (b) {
+        if (!(b in pubBands) && !(b in compBands)) return;
+        addRow("band × (" + b + " min)", null, pubBands[b], compBands[b], counts["CONFORMAL." + b]);
+      });
+
+      if (rows.length) {
+        headRow(el.learnParams, ["parameter", "serving", "compiled", "n"]);
+        rows.forEach(function (r) {
+          var tr = document.createElement("tr");
+          cell(tr, r.label);
+          cell(tr, prob5(r.published));
+          // Quietly "unchanged" when the fit landed on the constant the
+          // client already ships: the rows that MOVED are the ones to find.
+          var same = isNum(r.published) && isNum(r.constant) &&
+            Math.abs(r.published - r.constant) < 1e-9;
+          cell(tr, same ? "unchanged" : prob5(r.constant), same ? "quiet" : "");
+          cell(tr, num(r.n), "quiet");
+          el.learnParams.appendChild(tr);
+        });
+        el.learnParams.hidden = false;
+        printed = true;
+      }
+    }
+
+    // -- 3. the last promotion decision ------------------------------------
+    var promo = obj(obj(latest.decision).promotion);
+    var hasPromo = typeof promo.promote === "boolean" ||
+      isNum(promo.medianDiffSec) || isNum(promo.coverageDiffPct) ||
+      Array.isArray(promo.reasons) || Array.isArray(promo.perDay);
+    if (hasPromo) {
+      var card = document.createElement("div");
+      card.className = "note";
+
+      var head = document.createElement("div");
+      head.className = "learn-line";
+      head.textContent = promo.promote ? "Promoted" : "Kept the champion";
+      card.appendChild(head);
+
+      var meta = document.createElement("div");
+      meta.className = "learn-sub";
+      var bits = [];
+      var decided = dayET(latest.publishedAt);
+      if (decided) bits.push("decided " + decided);
+      if (promo.heldOut) bits.push("held out " + dayParts(promo.heldOut).full);
+      if (latest.version) bits.push(String(latest.version));
+      meta.textContent = bits.join(" · ");
+      card.appendChild(meta);
+
+      // Why it declined, in the fit's own words. Nothing is printed when it
+      // promoted: the reasons list is empty then by construction.
+      var reasons = Array.isArray(promo.reasons) ? promo.reasons : [];
+      if (!promo.promote && reasons.length) {
+        var ul = document.createElement("ul");
+        ul.className = "learn-reasons";
+        reasons.forEach(function (r) {
+          var li = document.createElement("li");
+          li.textContent = String(r);
+          ul.appendChild(li);
+        });
+        card.appendChild(ul);
+      }
+
+      var bounds = obj(promo.bounds);
+      var nums = document.createElement("div");
+      nums.className = "learn-sub";
+      nums.textContent =
+        "median |err| " + sec1Signed(promo.medianDiffSec) +
+        " (noise bound " + sec1(bounds.medianSec) + ")" +
+        " · held-out coverage " + pct1Signed(promo.coverageDiffPct) +
+        " (bound " + pct1(bounds.coveragePct) + ")" +
+        " · challenger minus champion, so a negative error favours the challenger";
+      card.appendChild(nums);
+      el.learnDecision.appendChild(card);
+      printed = true;
+    }
+
+    var perDay = Array.isArray(promo.perDay) ? promo.perDay : [];
+    if (perDay.length) {
+      headRow(el.learnPerDay,
+        ["day", "champion |err| p50", "challenger |err| p50", "difference", "band covers (champ / chall)"]);
+      perDay.forEach(function (p) {
+        var row = obj(p);
+        var champ = obj(row.champion);
+        var chall = obj(row.challenger);
+        var tr = document.createElement("tr");
+        cell(tr, row.day ? dayParts(row.day).full : "—");
+        cell(tr, sec1(champ.medianAbsSec));
+        cell(tr, sec1(chall.medianAbsSec));
+        cell(tr, sec1Signed(row.medianDiffSec));
+        cell(tr, pct1(champ.intervalCoveragePct) + " / " + pct1(chall.intervalCoveragePct), "quiet");
+        el.learnPerDay.appendChild(tr);
+      });
+      el.learnPerDay.hidden = false;
+    }
+
+    // -- 4. what the fit refused to publish --------------------------------
+    var issues = Array.isArray(obj(latest.decision).issues)
+      ? obj(latest.decision).issues
+      : (cur && Array.isArray(obj(cur.decision).issues) ? obj(cur.decision).issues : []);
+    if (issues.length) {
+      var lead = document.createElement("div");
+      lead.textContent = "Held back this run:";
+      el.learnIssues.appendChild(lead);
+      var ul2 = document.createElement("ul");
+      ul2.className = "learn-reasons";
+      issues.forEach(function (it) {
+        var i2 = obj(it);
+        var li2 = document.createElement("li");
+        li2.textContent = (i2.key ? String(i2.key) : "?") +
+          " — " + (i2.reason ? String(i2.reason) : "no reason given") +
+          (isNum(i2.kept) ? " (kept " + prob5(i2.kept) + ")" : "");
+        ul2.appendChild(li2);
+      });
+      el.learnIssues.appendChild(ul2);
+      printed = true;
+    }
+
+    el.learnEmpty.hidden = !!cur && printed;
+  }
+
+  // Ours vs the operator's own app, both paired against the same detected
+  // arrivals. Two lines, and only when the server judged there was enough to
+  // say: `etaVsOfficial` is null otherwise and this stays hidden.
+  //
+  // The label carries the rules because the number is meaningless without
+  // them: both arms are capped at the horizon upstream publishes to (30 min —
+  // ours used to be scored out to 90), and a prediction for a bus already
+  // standing at the stop is excluded from both (it used to be paired with the
+  // NEXT visit, a lap later). The second line is the only controlled read:
+  // the same bus, stop and minute predicted by both apps, paired to the same
+  // arrival. Below the floor it prints the count and withholds the numbers.
+  //
+  // "official" is `routes_eta.php`, which serves WHOLE MINUTES, so roughly
+  // ±30 s of its error is rounding. That is why the lines name the two
+  // numbers and draw no conclusion — the full read is
+  // scripts/eta-replay/compare-upstream.ts and docs/upstream-eta-measurement.md.
+  function renderEtaVs(d) {
+    if (!d || !d.ours || !d.official) { el.etaVs.hidden = true; return; }
+    var secs = function (x) { return Math.round(x) + " s"; };
+    var versus = function (a, b) {
+      return "|err| p50 " + secs(a.medianAbsErrorSec) + " vs " + secs(b.medianAbsErrorSec) +
+        " · within 2 min " + a.within120Pct + "% vs " + b.within120Pct + "%";
+    };
+    var capMin = Math.round((d.horizonCapSec || 1800) / 60);
+    var excluded = (d.ours.standing || 0) + (d.official.standing || 0);
+    var arms = document.createElement("div");
+    arms.textContent =
+      "ours vs official, last " + d.hours + " h, promises ≤ " + capMin + " min" +
+      ", standing buses excluded: " + versus(d.ours, d.official) +
+      " (" + num(d.ours.paired) + " vs " + num(d.official.paired) + " paired" +
+      (excluded ? ", " + num(excluded) + " standing" : "") + ")";
+    var shared = document.createElement("div");
+    var s = d.shared || { n: 0, ours: null, official: null };
+    shared.textContent = s.ours && s.official
+      ? "same bus, stop & minute, " + num(s.n) + " pairs: " + versus(s.ours, s.official)
+      : "same bus, stop & minute: " + num(s.n) + " pairs, below the " + num(d.minPairs || 50) + " needed to compare";
+    el.etaVs.replaceChildren(arms, shared);
+    el.etaVs.hidden = false;
   }
 
   function render(r, history, since) {

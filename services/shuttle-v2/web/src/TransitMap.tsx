@@ -7,20 +7,42 @@ import {
 } from "./map-data";
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "./anchor";
-import { announcementsForRoute, type ServiceAnnouncement } from "./announcements";
+import { isBusOnRoute, registerRoutePaths } from "./anchor";
+import { liveAnchorStore } from "./eta";
+import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
+import { applyModelParams } from "./eta/params";
+import { announcementsForRoute, generalAnnouncements, type ServiceAnnouncement } from "./announcements";
 import {
   degreesText, hourLabel, loadTempUnit, nextWetHour, outlookHours,
-  tempTrend, temperatureIn, trendText,
   RAIN_PROBABILITY_THRESHOLD, rainLikelyFrom, saveTempUnit,
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
-import { billedDwellSec, computeUpcomingArrivals, dwellRangeSec, type UpcomingArrival } from "./arrivals";
 import {
-  fmtBusPair, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec, suggIcon,
+  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec,
+  type DwellStat, type SegmentStat, type UpcomingArrival,
+} from "./arrivals";
+// Records what the screen actually said, sampled, deduplicated and posted from
+// module scope — see shownLog.ts. Deliberately NOT a hook: it adds no state,
+// no effect and no dependency array to this component.
+import { noteShown } from "./shownLog";
+// What a STANDING bus is allowed to promise — the chip's words and the
+// countdown's range, both read off the stand table the countdown is billed
+// from. All the reasoning lives there; this file only places the strings.
+import { berthFor, type Berth } from "./berths";
+import { buildBerthThumb } from "./berthThumb";
+import { clusterChips } from "./chipCluster";
+import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
+import {
+  fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
 } from "./format";
+import {
+  CURRENT_LOCATION_TEXT, isCurrentLocationText, unresolvedEndpoint, unresolvedEndpointHint,
+} from "./endpoints";
+import { loadRecents, recordRecent, samePlace, saveRecents, type SavedTrip } from "./recents";
+import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
 import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
@@ -29,25 +51,39 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions,
-  dwellBoardWindowSec, findPotentialRoutes, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, type TripOption,
+  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
-import { loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+import { rideEndDecision } from "./rideEnd";
+import { liveUpdateMessage } from "./liveUpdates";
+import { planningTimeError } from "./planningTime";
+import { rideMapStopSequence } from "./rideMapFocus";
+import { loadTripDraft, saveTripDraft } from "./tripDraft";
+import { RideFinish } from "./RideFinish";
+import { isUnambiguousRideArrival } from "./rideArrival";
+import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
+import { AffiliationDisclaimer, BetaBanner } from "./Banners";
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
-  BUS_SPEED_M_S, LEGEND_ROUTES, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+  ROUTE_ID_LABEL,
+  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
-import { fmtSchedule, fmtWindows, isBusInService } from "./schedule";
+import { lastBusVerdict } from "./lastBus";
+import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
-import { walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, walkSecFromMeters } from "./walk";
 
 // ── SVG constants ──────────────────────────────────────────────────────────
+
+/** Yale's published 2026 grocery shuttle calendar (the alternating weekends). */
+const GROCERY_CALENDAR_URL = "https://your.yale.edu/sites/default/files/2026-01/2026_Grocery_Shuttle_Calendar.pdf";
 
 const SVG_W = 960;
 const SVG_H = 1120;
@@ -218,6 +254,10 @@ const ROUTE_ID_GROUP: Record<number, string> = {
 };
 
 // Map route_id → toggle label for filtering
+// The Map tab's chip labels, in chip order — the `known` list every
+// mapFilter.ts function takes.
+const LEGEND_TOGGLES: readonly string[] = LEGEND_ROUTES.map((r) => r.toggleLabel);
+
 const ROUTE_ID_TO_TOGGLE: Record<number, string> = {
   1: "Blue", 4: "Blue Weekend", 13: "Blue Night",
   3: "Red",
@@ -238,12 +278,8 @@ const ROUTE_LABEL_TO_TOGGLE: Record<string, string> = {
 
 type StopGroup = { id: string; name: string; stopIds: number[] };
 
-type SavedTrip = {
-  id: string;
-  name: string;
-  fromText: string; fromLat: number; fromLon: number;
-  toText: string; toLat: number; toLon: number;
-};
+// SavedTrip — the record both the saved and the recent lists store — now
+// lives in ./recents, beside the store that reads and writes it.
 
 // Anything this far from campus isn't reachable by a Yale shuttle — the
 // geocoder result is noise for this app's purpose.
@@ -330,13 +366,6 @@ const POPULAR_DESTS: { name: string; lat: number; lon: number }[] = [
   { name: "Old Campus", lat: 41.30815, lon: -72.92915 },
 ];
 
-// What the From box reads after the rider taps 📍. It is a sentinel, not a
-// geocoded place: the origin should keep tracking live GPS while they walk.
-// The live-origin checks used to test `!fromText`, which is only true when the
-// box is BLANK — so tapping 📍 (which fills in this text) silently froze the
-// origin at the first fix, the exact bug report #19 was about.
-const CURRENT_LOCATION_TEXT = "Current location";
-const isCurrentLocationText = (t: string) => !t || t === CURRENT_LOCATION_TEXT;
 
 
 // Road-following polylines per (from_stop, to_stop) pair. Fetched from
@@ -878,6 +907,17 @@ type OverviewOption = {
   // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
   boardEta?: string | null;
   arriveAt?: string | null;
+  /**
+   * Detail view only: where this line actually pulls up at the PICKUP stop,
+   * when that is measurably not where the stop is drawn (berths.ts).
+   *
+   * The overview is deliberately untouched — one dot per stop, as now
+   * (operator, 2026-09-10: "I don't want the map to be clogged, that should
+   * probably show published locations but once user clicks a route it could
+   * show difference in berth at pickup"). A second marker is only worth its
+   * clutter once there is one rider, one line and one stop to say it about.
+   */
+  berth?: Berth | null;
 };
 const CombinedTripMap: FC<{
   from: LatLon;
@@ -938,22 +978,13 @@ const CombinedTripMap: FC<{
       }
     }
     // Union-find over overlapping label rectangles.
-    const parent = chips.map((_, i) => i);
-    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-    for (let i = 0; i < chips.length; i++) {
-      for (let j = i + 1; j < chips.length; j++) {
-        if (
-          Math.abs(chips[i].x - chips[j].x) < (chips[i].w + chips[j].w) / 2 + 4 &&
-          Math.abs(chips[i].y - chips[j].y) < 18
-        ) {
-          parent[find(i)] = find(j);
-        }
-      }
-    }
-    const clusters: Record<number, Chip[]> = {};
-    chips.forEach((c, i) => { (clusters[find(i)] ??= []).push(c); });
+    // Which chips share a box: pure geometry, and it lives in chipCluster.ts
+    // so the arrangement that broke it can be written down. It could not be
+    // reproduced by driving the live site — six trips, no overlap — because it
+    // needs a particular spread of board and alight stops.
+    const groups = clusterChips(chips);
     const seen = new Set<string>();
-    for (const members of Object.values(clusters)) {
+    for (const members of groups.map((idx) => idx.map((i) => chips[i]))) {
       const boards = members.filter((m) => m.kind === "board");
       const alights = members.filter((m) => m.kind === "alight");
       // Merged times stack VERTICALLY (user request 2026-07-17), emoji on
@@ -1038,6 +1069,19 @@ const CombinedTripMap: FC<{
       L.circleMarker([board.lat, board.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Board ${o.label}`, { direction: "top" });
+      // Where the bus really pulls up, when that is not the board dot. Detail
+      // view only (`options.length === 1`), pickup stop only, and drawn AFTER
+      // the board ring so it reads as the answer to it: a dashed tie for the
+      // walk and a filled dot for the kerb.
+      if (options.length === 1 && o.berth) {
+        L.polyline([[board.lat, board.lon], [o.berth.lat, o.berth.lon]], {
+          color: "#5f6368", weight: 2.5, dashArray: "2 6", opacity: 0.9,
+        }).addTo(map);
+        L.circleMarker([o.berth.lat, o.berth.lon], {
+          radius: 7, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 3,
+        }).addTo(map).bindTooltip(`${o.label} pulls up here`, { direction: "top" });
+        points.push([o.berth.lat, o.berth.lon]);
+      }
       L.circleMarker([alight.lat, alight.lon], {
         radius: 5, color: "#fff", fillColor: o.color, fillOpacity: 1, weight: 2,
       }).addTo(map).bindTooltip(`Get off ${o.label}`, { direction: "top" });
@@ -1443,6 +1487,19 @@ const AllRoutesMap: FC<{
   }, [JSON.stringify(Object.keys(routePaths).sort()), [...hiddenRoutes].sort().join("|")]);
 
   // Live buses — redrawn each poll (the hot path; cheap for ~17 markers).
+  //
+  // `hiddenRoutes` MUST be in the dependency array below, and its absence was
+  // a five-second stall a rider could see (operator, 2026-09-10: "why does it
+  // take like 5 seconds for bus locations to render on the map page when I
+  // change filters?").
+  //
+  // Toggling a line re-runs the map effect above — `hiddenRoutes` is in ITS
+  // deps — which rebuilds the map and with it a fresh, EMPTY `busLayerRef`.
+  // This effect then did not re-run, because `buses` had not changed, so the
+  // map carried no bus markers at all until the next `/api/buses` poll
+  // happened to land. That is a wait of up to the 5 s poll interval, and
+  // measured on the live site it was 0.6 s, 3.0 s and 4 s on three toggles —
+  // the spread being nothing but where in the poll cycle the tap fell.
   useEffect(() => {
     const grp = busLayerRef.current;
     if (!grp) return;
@@ -1476,7 +1533,10 @@ const AllRoutesMap: FC<{
         padding: [48, 48], maxZoom: 15,
       });
     }
-  }, [buses]);
+  // Same stable key the map effect uses: a Set is a new object every render,
+  // so depending on it directly would redraw the fleet on every poll for
+  // nothing.
+  }, [buses, [...hiddenRoutes].sort().join("|")]);
 
   // "You are here" — same pulsing blue dot as the trip mini-map. Created
   // lazily on the first fix, then moved in place per watchPosition update
@@ -1563,12 +1623,19 @@ const TripPlanner: FC<{
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
   routePaths: Record<string, [number, number][]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
+  // The CANONICAL statistic types, not a local narrowing of them: the pause
+  // chip below has to read the same `q`/`drive` fields the estimator prices
+  // from, and a prop type that quietly drops them is how the chip ended up
+  // quoting a superseded number beside a countdown derived from a different
+  // one. Every other component here still takes the narrow shape it uses.
+  segmentTimes: Record<string, Record<string, SegmentStat>>;
+  dwellTimes: Record<string, Record<string, DwellStat>>;
   dwellsByBus: Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>;
   // Operator-published timetable per route id (`/api/buses` `route_hours`);
   // what the "Shuttles that go there" panel prints and judges "running" by.
   routeHours: Record<string, PublishedWindow>;
+  // Upstream's "in service right now" flag per route id (`route_active`).
+  routeActive: Record<string, boolean>;
   userLatLon: LatLon | null;
   onRequestLocate: () => void;
   locating?: boolean;
@@ -1591,11 +1658,12 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
-  const [fromText, setFromText] = useState("");
-  const [toText, setToText] = useState("");
-  const [fromLL, setFromLL] = useState<LatLon | null>(null);
-  const [toLL, setToLL] = useState<LatLon | null>(null);
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+  const [initialDraft] = useState(loadTripDraft);
+  const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
+  const [toText, setToText] = useState(initialDraft?.toText ?? "");
+  const [fromLL, setFromLL] = useState<LatLon | null>(initialDraft?.fromLL ?? null);
+  const [toLL, setToLL] = useState<LatLon | null>(initialDraft?.toLL ?? null);
   const [fromSugg, setFromSugg] = useState<GeocodeResult[]>([]);
   const [toSugg, setToSugg] = useState<GeocodeResult[]>([]);
   // Keyboard-navigation index into each suggestion list. -1 = nothing
@@ -1619,7 +1687,7 @@ const TripPlanner: FC<{
   // the walk option), not list position — the list re-sorts live (departed
   // options sink), and a positional index made the open card silently jump
   // to whichever option landed on that index mid-watch.
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(initialDraft?.expandedKey ?? null);
   // ── Leave-time reminder ──────────────────────────────────────────────
   // At most ONE armed reminder at a time (arming another option replaces
   // it). Deliberately NOT persisted: an in-page timer cannot fire after
@@ -1687,8 +1755,21 @@ const TripPlanner: FC<{
   // Empty string = "plan for now". A datetime-local value flips future mode
   // on inside planTrip and lets us predict against the published schedule
   // instead of the live bus fleet.
-  const [tripTime, setTripTime] = useState<string>("");
+  const [tripTime, setTripTimeValue] = useState<string>(initialDraft?.tripTime ?? "");
+  const [tripTimeSetAt, setTripTimeSetAt] = useState(() => initialDraft?.tripTimeSetAt
+    // Legacy drafts already flowed into live mode as they aged; retain that.
+    ?? (initialDraft?.tripTime ? Math.min(Date.now(), Date.parse(initialDraft.tripTime)) : Date.now()));
+  const setTripTime = (value: string) => {
+    setTripTimeValue(value);
+    setTripTimeSetAt(Date.now());
+  };
+  useEffect(() => {
+    // Preserve the last committed selection while either field is being edited.
+    if (fromExpanded || toExpanded) return;
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
+  const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
 
   // AbortControllers per field so pickFrom/pickTo can cancel a debounced
@@ -1722,13 +1803,12 @@ const TripPlanner: FC<{
     return () => clearTimeout(id);
   }, [searching]);
 
-  const pickFrom = (g: GeocodeResult) => {
+  // Settle the From box on a known place — a geocoder pick, a recent, a
+  // saved or popular destination — without going back to the geocoder.
+  const commitFrom = (display: string, ll: LatLon) => {
     fromAbortRef.current?.abort();
     fromAbortRef.current = null;
-    setFromLL({ lat: g.lat, lon: g.lon });
-    // Same label the row carried, town and all — the pill must not quietly
-    // drop the word that made the rider pick this one over its namesake.
-    const display = suggLabel(g, fromSugg);
+    setFromLL({ lat: ll.lat, lon: ll.lon });
     setFromText(display);
     prevFromTextRef.current = display;
     setFromSugg([]);
@@ -1743,6 +1823,9 @@ const TripPlanner: FC<{
     // stuck even though results are now on screen.
     setSearching((cur) => cur === "from" ? null : cur);
   };
+  // Same label the row carried, town and all — the pill must not quietly
+  // drop the word that made the rider pick this one over its namesake.
+  const pickFrom = (g: GeocodeResult) => commitFrom(suggLabel(g, fromSugg), g);
   const pickTo = (g: GeocodeResult) => {
     toAbortRef.current?.abort();
     toAbortRef.current = null;
@@ -1782,10 +1865,16 @@ const TripPlanner: FC<{
         headers: anonIdHeader(),
         cache: "no-store", signal: controller.signal,
       });
+      if (!r.ok) throw new Error(`Search returned ${r.status}`);
       const d = await r.json();
       // If a newer request (or a pick) has superseded us, bail quietly.
       if (abortRef.current !== controller) return;
-      const raw: GeocodeResult[] = d.results ?? [];
+      // Every field below (name, coordinate, class, type) comes from Photon or
+      // Nominatim, so nothing is assumed about its shape: one row missing
+      // `display_name` used to throw inside the dropdown's render and take the
+      // whole app down behind the ErrorBoundary. Malformed rows are dropped,
+      // the rest of the answer still shows. See sanitizeGeocodeResults.
+      const raw: GeocodeResult[] = sanitizeGeocodeResults(d?.results);
       // Drop results outside the shuttle service area (a Milford hit is
       // noise here) and cap the list so the dropdown stays scannable.
       // If the filter kills everything, fall back to the raw list — the
@@ -1794,7 +1883,7 @@ const TripPlanner: FC<{
       if (results.length === 0) results = raw.slice(0, 8);
       if (results.length === 0) {
         if (which === "from") setFromSugg([]); else setToSugg([]);
-        if (autoPick) setError("No matches found");
+        setError("No matches found — try another name or address.");
         return;
       }
       // Auto-pick when confidence is high (explicit search only): a Yale
@@ -1813,7 +1902,9 @@ const TripPlanner: FC<{
       }
     } catch (e) {
       if ((e as DOMException)?.name === "AbortError") return;
-      if (autoPick) setError("Geocode request failed");
+      if (abortRef.current !== controller) return;
+      if (which === "from") setFromSugg([]); else setToSugg([]);
+      setError("Search is unavailable — please try again.");
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -1848,6 +1939,37 @@ const TripPlanner: FC<{
       if (toTimerRef.current) { clearTimeout(toTimerRef.current); toTimerRef.current = null; }
     };
   }, [toText, toLL]);
+
+  // The blur handlers below act 180 ms late (so a suggestion click lands
+  // first), by which time their closed-over `fromText`/`fromLL` may be a
+  // render out of date — and acting on a stale null coord would re-search a
+  // box the rider has just settled. Refs are read at fire time instead.
+  const fromLLRef = useRef<LatLon | null>(fromLL);
+  fromLLRef.current = fromLL;
+  const fromTextRef = useRef(fromText);
+  fromTextRef.current = fromText;
+  const toLLRef = useRef<LatLon | null>(toLL);
+  toLLRef.current = toLL;
+  const toTextRef = useRef(toText);
+  toTextRef.current = toText;
+
+  /**
+   * Leaving a box with text in it that never became a place: search it, the
+   * same way Enter does.
+   *
+   * Report #84 — the operator typed "517 Prospect St" into From, left the
+   * box, and the app planned nothing and said nothing, because only a PICK
+   * (or Enter) ever sets the coordinate the planner needs. Typing an address
+   * and moving on is what a rider thinks "changing the start" means, so it
+   * now resolves on its own; an ambiguous query still opens the list rather
+   * than guessing, and the hint below the form says so.
+   */
+  const resolveOnLeave = (which: "from" | "to") => {
+    const text = (which === "from" ? fromTextRef : toTextRef).current;
+    const coord = (which === "from" ? fromLLRef : toLLRef).current;
+    if (coord || isCurrentLocationText(text.trim())) return;
+    geocode(text, which);
+  };
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
   const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
@@ -1937,6 +2059,14 @@ const TripPlanner: FC<{
     }
   }, [busRoster, stableOptions]);
 
+  // Which lines have a bus out right now — the live half of the weekend
+  // alternation (schedule.ts ROUTE_CALENDAR). Keyed as a string so the
+  // memo below recomputes when a line appears or vanishes, not every poll.
+  const liveLabelsKey = useMemo(
+    () => [...new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l))].sort().join("|"),
+    [buses],
+  );
+  const liveLabels = useMemo(() => new Set(liveLabelsKey ? liveLabelsKey.split("|") : []), [liveLabelsKey]);
   // "Routes that could get you there, but aren't running right now"
   // — displayed when planTrip yields only Walk. Recomputed alongside
   // stableOptions because it depends on the same endpoint + targetDate.
@@ -1945,11 +2075,11 @@ const TripPlanner: FC<{
     const after = targetDate && targetDate.getTime() > Date.now()
       ? targetDate
       : new Date();
-    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours);
+    return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours, { labels: liveLabels, now: new Date(), active: routeActive });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, refreshKey]);
+  }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
   const options: TripOption[] | null = useMemo(() => {
-    if (!stableOptions) return null;
+    if (tripTimeError || !stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
     // against live buses — keep the memoized numbers.
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -1963,8 +2093,12 @@ const TripPlanner: FC<{
       // bus on the route is catchable.
       const nowMs = Date.now();
       const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes,
+        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
       ).filter((a) => a.routeLabel === o.routeLabel);
+      // THE countdown — the number every accuracy and stability finding is
+      // about, and until now the one nothing recorded. Sampled and dedup'd
+      // inside noteShown; this call allocates nothing on an unsampled load.
+      noteShown(live, "trip", nowMs);
       // No live arrival = planTrip saw a bus on this route but the
       // anchor math can't produce a future ETA for the board stop.
       // This has two distinct causes:
@@ -1974,10 +2108,10 @@ const TripPlanner: FC<{
       //       flag departed. Instead treat it as waitSec=0 so the card shows
       //       "arriving now" / "0 min". Fixes reports #36, #37, #38.
       //   (b) Genuinely no catchable bus — flag departed as before.
-      // If the user's GPS puts them within 80 m of the board stop, treat them
-      // as already there (walkToSec = 0). Stale GPS commonly reports a position
-      // 30-100 m off, which makes an arriving bus look uncatchable when the rider
-      // is standing right at the stop.
+      // If the user's GPS puts them within AT_PLACE_M of the board stop, treat
+      // them as already there (walkToSec = 0). Stale GPS commonly reports a
+      // position 30-100 m off, which makes an arriving bus look uncatchable when
+      // the rider is standing right at the stop.
       // Judge proximity from the rider's LIVE position, not the origin
       // pinned at search time. When the trip starts from "current
       // location", fromLL (hence effectiveFromLL) is frozen at the coord
@@ -1991,11 +2125,11 @@ const TripPlanner: FC<{
       const distToBoard = (boardCoords && liveFromLL)
         ? haversineMeters(liveFromLL, boardCoords)
         : Infinity;
-      // Within 80 m → treat as standing at the stop (walk = 0). Otherwise,
+      // Within AT_PLACE_M → treat as standing at the stop (walk = 0). Otherwise,
       // when tracking live GPS, derive the *remaining* walk from current
       // distance rather than the original full walk leg, so partial
       // progress toward the stop shrinks the wait/catchable window.
-      const effectiveWalkToSec = distToBoard < 80
+      const effectiveWalkToSec = distToBoard < AT_PLACE_M
         ? 0
         : (usingLive ? walkSecFromMeters(distToBoard) : o.walkToSec);
 
@@ -2023,7 +2157,7 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, computedAtMs: nowMs,
+          busEtaSec: 0, busDepartNowSec: 0, computedAtMs: nowMs,
         };
       }
 
@@ -2037,16 +2171,39 @@ const TripPlanner: FC<{
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
       if (!picked) return { ...o, departed: true };
-      const { match, departed, missedBus } = picked;
-      const waitSec = Math.max(0, match.eta - effectiveWalkToSec);
+      const { match, boardable, departed, missedBus } = picked;
+      // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
+      // the one the rider can see coming, which must not vanish while it is
+      // still closing on the stop. `boardable` is the one they can actually
+      // reach, and the wait and the total are priced on THAT. They are the
+      // same object unless the followed bus is out of reach by the walk model.
+      //
+      // Report #99: "How could I catch the blue if its a 7min walk and it
+      // arrives in 5?" — the card read `in 5, 17 min · 16 min · arrive
+      // 11:46a · 🚶 7 min › 🚌 4 min › 🚶 5 min`. `max(0, eta - walk)` clamps
+      // the wait to zero exactly when the bus beats the rider to the stop,
+      // which is right when they can catch it (dwell covers the gap) and a
+      // lie when they cannot. The countdown was not the problem; the total
+      // was, and the total now waits for a bus the rider can board.
+      const waitSec = Math.max(0, boardable.eta - effectiveWalkToSec);
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
-        busEtaSec: match.eta, computedAtMs: nowMs,
+        // The floor rides with the pin: one row of one estimator pass, so the
+        // range's low end cannot be built from a different bus's drive.
+        busEtaSec: match.eta, busDepartNowSec: match.departNow, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, tripTimeError, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+
+  // Origin and destination are the same place (report: setting one's own
+  // location as the destination "gets confused"). Keyed on effectiveFromLL,
+  // the same origin planTrip used, so the message and the option list can
+  // never disagree about which trip is on screen. Declared here, above every
+  // hook, because a dependency array that reaches a later const is a TDZ
+  // ReferenceError that blank-screens the app.
+  const alreadyThere = isAlreadyThere(effectiveFromLL, toLL, options);
 
   // Latest options for the reminder engine's interval closure — the memo
   // above rebuilds the array every /api/buses poll, and re-arming the
@@ -2095,16 +2252,9 @@ const TripPlanner: FC<{
     return () => clearInterval(id);
   }, [reminder]);
 
-  // A shuttle is "slower than walking" only when the time spent actually
-  // COMMUTING (walk to stop + ride + walk from stop) exceeds the direct
-  // walk — not when the arrival time does. Waiting isn't commuting: the
-  // rider can spend the wait at their desk and leave at the leave-by
-  // time. Only judged when walking is a real alternative (direct walk
-  // ≤ 60 min — the walk card itself is suppressed beyond that).
-  const slowerThanWalk = (o: TripOption) =>
-    o.mode === "shuttle" && !o.departed &&
-    o.directWalkSec <= 3600 &&
-    o.walkToSec + o.rideSec + o.walkFromSec > o.directWalkSec;
+  // `slowerThanWalk` — the commute-vs-direct-walk test — now lives in
+  // planner.ts, where `mostDirectOption` needs the same verdict about which
+  // options are worth offering at all.
   // Shared row/map order: competitive / slower-than-walk / departed,
   // fastest first within each tier by live total.
   const optionTier = (o: TripOption) => (o.departed ? 2 : slowerThanWalk(o) ? 1 : 0);
@@ -2247,30 +2397,26 @@ const TripPlanner: FC<{
   // user's current location, so saving a fixed From coord went stale).
   // SavedTrip shape is kept for storage compatibility; only toText/toLat/
   // toLon are used.
-  const sameDest = (a: { toLat: number; toLon: number }, b: { toLat: number; toLon: number }) =>
-    Math.abs(a.toLat - b.toLat) < 1e-4 && Math.abs(a.toLon - b.toLon) < 1e-4;
+  const sameDest = samePlace;
 
   const alreadySaved = toLL && savedTrips.some((t) => sameDest(t, { toLat: toLL.lat, toLon: toLL.lon }));
 
-  // Record each new destination as "recent". De-dup by to-coord, most
-  // recent first, cap at 10. Skip if already in saved.
-  useEffect(() => {
-    if (!toLL || !toText) return;
-    const key = { toLat: toLL.lat, toLon: toLL.lon };
+  // Record each resolved endpoint as "recent" — ONE list for both boxes
+  // (./recents): a place someone rode to is a natural start next time. Skips
+  // a place already in Saved, and the 📍 sentinel, which is not a place: the
+  // swap button used to put "Current location" into To, and that was being
+  // remembered as a destination with the GPS fix of the moment.
+  const remember = (text: string, ll: LatLon | null) => {
+    if (!ll || isCurrentLocationText(text)) return;
+    const key = { toLat: ll.lat, toLon: ll.lon };
     if (savedTrips.some((t) => sameDest(t, key))) return;
-    const filtered = recentTrips.filter((t) => !sameDest(t, key));
-    const entry: SavedTrip = {
-      id: `r${Date.now().toString(36)}`,
-      name: toText,
-      fromText: "", fromLat: 0, fromLon: 0,
-      toText, toLat: toLL.lat, toLon: toLL.lon,
-    };
-    const next = [entry, ...filtered].slice(0, 10);
-    if (next.length !== recentTrips.length || next[0].id !== recentTrips[0]?.id) {
-      onRecordRecent(next);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toLL?.lat, toLL?.lon]);
+    const next = recordRecent(recentTrips, { text, lat: ll.lat, lon: ll.lon });
+    if (next !== recentTrips) onRecordRecent(next);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => remember(toText, toLL), [toLL?.lat, toLL?.lon]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => remember(fromText, fromLL), [fromLL?.lat, fromLL?.lon]);
 
   // "Current location" isn't a typed value — it's the implicit meaning
   // of an empty From field. Treat empty fromText + userLatLon as valid
@@ -2400,8 +2546,8 @@ const TripPlanner: FC<{
   // state pattern: setState-during-render is legal when gated on a
   // prop/state change, and React reschedules the render with the new
   // state before paint.
-  const tripKeyRef = useRef<string>("");
   const tripKey = `${fromLL?.lat}|${fromLL?.lon}|${toLL?.lat}|${toLL?.lon}|${targetDate?.getTime() ?? ""}`;
+  const tripKeyRef = useRef<string>(tripKey);
   if (tripKeyRef.current !== tripKey) {
     tripKeyRef.current = tripKey;
     if (expandedKey !== null) setExpandedKey(null);
@@ -2497,6 +2643,55 @@ const TripPlanner: FC<{
     );
   };
 
+  // The rows under each box, rendered by one PlaceList for both ends.
+  const suggRows = (list: GeocodeResult[], pick: (g: GeocodeResult) => void): PlaceRow[] =>
+    list.map((g) => ({
+      key: `${g.lat},${g.lon},${g.display_name}`,
+      icon: suggIcon(g),
+      label: suggLabel(g, list),
+      onPick: () => pick(g),
+    }));
+  // What the From box offers BEFORE the rider types (operator, 2026-09-06:
+  // "can you add location suggestions when i change start location? like
+  // seeing my recent list would help"): the way back to GPS, then the
+  // recents the To box keeps (one shared list — a place someone rode to is a
+  // natural start next time), then their favourites. Nothing else: the
+  // operator (2026-09-06) — "I dont want start to show recent and popular.
+  // popular could expose private data. I want it to show recent and
+  // favorites" — so the curated Popular list stays a destination-only
+  // affordance. Each row carries its coordinate, so a pick never goes to the
+  // geocoder. Once they type, the geocoder's suggestions take the space.
+  const fromIdleRows = (): PlaceRow[] => {
+    if (!fromExpanded || fromText.trim() || fromSugg.length > 0) return [];
+    const rows: PlaceRow[] = [{
+      key: "current", icon: "📍", label: CURRENT_LOCATION_TEXT,
+      onPick: () => {
+        // Collapse to the pill the way a pick does. The blur handler below
+        // restores `prevFromTextRef`, so it must already say 📍.
+        prevFromTextRef.current = CURRENT_LOCATION_TEXT;
+        useCurrent();
+        fromInputRef.current?.blur();
+        setFromExpanded(false);
+      },
+    }];
+    // One row per place across the groups: a favourite that is also recent
+    // shows once, and the name is checked as well as the coordinate.
+    const seen: SavedTrip[] = [];
+    const add = (section: string, icon: string, t: SavedTrip) => {
+      if (seen.some((s) => sameDest(s, t) || s.toText.trim().toLowerCase() === t.toText.trim().toLowerCase())) return;
+      seen.push(t);
+      rows.push({
+        key: `${section}-${t.id}`, icon, label: t.toText, section,
+        onPick: () => commitFrom(t.toText, { lat: t.toLat, lon: t.toLon }),
+      });
+    };
+    recentTrips.forEach((t) => add("Recent", "🕘", t));
+    savedTrips.forEach((t) => add("Favorites", "★", t));
+    return rows;
+  };
+  const fromRows: PlaceRow[] = fromSugg.length > 0 ? suggRows(fromSugg, pickFrom) : fromIdleRows();
+  const toRows: PlaceRow[] = suggRows(toSugg, pickTo);
+
   // Summary label for the collapsed From pill. Mirrors what the trip
   // planner would actually use as the start coord: explicit pick wins,
   // otherwise fall back to live GPS.
@@ -2564,6 +2759,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
@@ -2629,25 +2832,33 @@ const TripPlanner: FC<{
                    if (e.target.value) setFromLL(null);
                  }}
                  onKeyDown={(e) => {
-                   if (e.key === "ArrowDown" && fromSugg.length > 0) {
+                   // The arrows walk whichever list is open: the geocoder's
+                   // suggestions once they type, the recents/saved/popular
+                   // rows before.
+                   if (e.key === "ArrowDown" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromActive((i) => (i + 1) % fromSugg.length);
+                     setFromActive((i) => (i + 1) % fromRows.length);
                      return;
                    }
-                   if (e.key === "ArrowUp" && fromSugg.length > 0) {
+                   if (e.key === "ArrowUp" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromActive((i) => (i <= 0 ? fromSugg.length - 1 : i - 1));
+                     setFromActive((i) => (i <= 0 ? fromRows.length - 1 : i - 1));
                      return;
                    }
-                   if (e.key === "Escape" && fromSugg.length > 0) {
+                   if (e.key === "Escape" && fromRows.length > 0) {
                      e.preventDefault();
-                     setFromSugg([]);
+                     // Typed suggestions just close; the idle list has nothing
+                     // to close but the box, so leave it (blur restores the pill).
+                     if (fromSugg.length > 0) setFromSugg([]);
+                     else (e.target as HTMLInputElement).blur();
                      return;
                    }
                    if (e.key !== "Enter") return;
                    if (fromTimerRef.current) { clearTimeout(fromTimerRef.current); fromTimerRef.current = null; }
                    if (fromSugg.length > 0) {
                      pickFrom(fromSugg[fromActive >= 0 ? fromActive : 0]);
+                   } else if (fromActive >= 0 && fromRows[fromActive]) {
+                     fromRows[fromActive].onPick();
                    } else {
                      geocode(fromText, "from");
                    }
@@ -2658,11 +2869,11 @@ const TripPlanner: FC<{
                    (e.target as HTMLInputElement).blur();
                  }}
                  role="combobox"
-                 aria-expanded={fromSugg.length > 0}
+                 aria-expanded={fromRows.length > 0}
                  aria-autocomplete="list"
                  aria-controls="from-suggestions"
                  aria-activedescendant={
-                   fromActive >= 0 ? `from-sugg-${fromActive}` : undefined
+                   fromActive >= 0 ? `from-suggestions-${fromActive}` : undefined
                  }
                  onBlur={() => {
                    // Bail-out path: if they opened edit mode and
@@ -2681,44 +2892,16 @@ const TripPlanner: FC<{
                        setFromLL(userLatLon);
                        setFromExpanded(false);
                        setFromSugg([]);
+                     } else {
+                       // Text, but no place yet (report #84).
+                       resolveOnLeave("from");
                      }
                    }, 180);
                  }}
                  placeholder="📍 Current location"
                  style={inputStyle} />
         </div>
-        {fromSugg.length > 0 && (
-          <div
-            id="from-suggestions"
-            role="listbox"
-            style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}
-          >
-            {fromSugg.map((g, i) => (
-              <div
-                key={`${g.lat},${g.lon},${g.display_name}`}
-                id={`from-sugg-${i}`}
-                role="option"
-                aria-selected={i === fromActive}
-                onMouseEnter={() => setFromActive(i)}
-                onClick={() => pickFrom(g)}
-                style={{
-                  padding: "12px 14px",
-                  fontSize: 15,
-                  cursor: "pointer",
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  background: i === fromActive ? "#eef4ff" : "transparent",
-                  borderBottom: i === fromSugg.length - 1 ? "none" : "1px solid #f0ede8",
-                  gap: 8,
-                }}
-              >
-                <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, fromSugg)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <PlaceList id="from-suggestions" rows={fromRows} active={fromActive} onHover={setFromActive} />
       </div>
       )}
 
@@ -2744,6 +2927,14 @@ const TripPlanner: FC<{
           }}
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            // The swap/save buttons inside the pill handle their own keys.
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             marginBottom: 8, padding: "8px 12px",
@@ -2828,7 +3019,7 @@ const TripPlanner: FC<{
                  aria-autocomplete="list"
                  aria-controls="to-suggestions"
                  aria-activedescendant={
-                   toActive >= 0 ? `to-sugg-${toActive}` : undefined
+                   toActive >= 0 ? `to-suggestions-${toActive}` : undefined
                  }
                  onBlur={() => {
                    // If the rider opened edit mode on a locked
@@ -2842,6 +3033,8 @@ const TripPlanner: FC<{
                        setToText(prevToTextRef.current);
                        setToExpanded(false);
                        setToSugg([]);
+                     } else {
+                       resolveOnLeave("to");
                      }
                    }, 180);
                  }}
@@ -2864,41 +3057,15 @@ const TripPlanner: FC<{
             </button>
           )}
         </div>
-        {toSugg.length > 0 && (
-          <div
-            id="to-suggestions"
-            role="listbox"
-            style={{ border: "1px solid #e0ddd8", borderRadius: 6, marginTop: 4, background: "#fff", marginLeft: 32 }}
-          >
-            {toSugg.map((g, i) => (
-              <div
-                key={`${g.lat},${g.lon},${g.display_name}`}
-                id={`to-sugg-${i}`}
-                role="option"
-                aria-selected={i === toActive}
-                onMouseEnter={() => setToActive(i)}
-                onClick={() => pickTo(g)}
-                style={{
-                  padding: "12px 14px",
-                  fontSize: 15,
-                  cursor: "pointer",
-                  minHeight: 48,
-                  display: "flex",
-                  alignItems: "center",
-                  background: i === toActive ? "#eef4ff" : "transparent",
-                  borderBottom: i === toSugg.length - 1 ? "none" : "1px solid #f0ede8",
-                  gap: 8,
-                }}
-              >
-                <span style={{ flexShrink: 0 }}>{suggIcon(g)}</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggLabel(g, toSugg)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <PlaceList id="to-suggestions" rows={toRows} active={toActive} onHover={setToActive} />
       </div>
       )}
-      {locateError && (
+      {/* Only while the start still depends on GPS. Once the rider has a
+          start of their own — resolved, or even just typed — this is a stale
+          complaint about a request they have already routed around, and in
+          report #84's screenshot it was the only red text on a screen whose
+          real problem was elsewhere. */}
+      {locateError && !effectiveFromLL && isCurrentLocationText(fromText) && (
         <div style={{ fontSize: 10, color: "#C62828", marginBottom: 6, marginLeft: 32 }}>
           📍 {locateError}
         </div>
@@ -2916,6 +3083,9 @@ const TripPlanner: FC<{
             <>
               <input
                 type="datetime-local"
+                aria-label="Departure time"
+                aria-invalid={!!tripTimeError}
+                aria-describedby={tripTimeError ? "trip-time-error" : undefined}
                 value={tripTime}
                 onChange={(e) => setTripTime(e.target.value)}
                 style={{
@@ -2947,6 +3117,11 @@ const TripPlanner: FC<{
               }}>Plan for later…</button>
             </>
           )}
+        </div>
+      )}
+      {tripTimeError && (
+        <div id="trip-time-error" role="alert" style={{ fontSize: 13, color: "#C62828", marginBottom: 10 }}>
+          {tripTimeError}
         </div>
       )}
       {isFuture && targetDate && (
@@ -3009,16 +3184,6 @@ const TripPlanner: FC<{
         const nowMs = Date.now();
         const later = nextWetHour(hourly, nowMs);
         const hours = outlookHours(hourly, nowMs);
-        // ONE number, not two: where the temperature is heading from here,
-        // and when it gets there. The low is not news at 9am on a warming
-        // day — it is the temperature the rider is already standing in
-        // (operator, 2026-09-03).
-        const trend = tempTrend(hours, rain.temperatureF);
-        // The line always names the trend now (see weatherMessage), so the
-        // strip marks that hour whenever there is one to mark. Null when the
-        // destination reads the same as now in the unit on screen — see
-        // trendText — and then nothing is marked either.
-        const span = trendText(trend, rain.temperatureF, tempUnit);
         return (
           <div style={{
             marginBottom: 8,
@@ -3046,13 +3211,11 @@ const TripPlanner: FC<{
                 }}
               >
                 <span aria-hidden="true" style={{ fontSize: warn ? 16 : 14 }}>{weatherEmoji(rain)}</span>
-                {/* One line: "warming to 80° by 2pm", not "↑80°" — a bare
-                    arrow beside a number read as a DELTA to a rider who saw
-                    it live (operator, 2026-09-03), and a second row under the
-                    sentence read as two separate facts when it is one. The
-                    trend only ever appears here, in the quietest branch (see
-                    weatherMessage), which is what keeps it to one line. */}
-                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit, trend)}</span>
+                {/* One question, one line: when it will next rain. The
+                    temperature trend used to ride here ("· cooling to 69° by
+                    8pm") and was removed on 2026-09-04 — reports #90 and #97;
+                    see weatherMessage. The hours are in the strip below. */}
+                <span style={{ flex: 1, minWidth: 0 }}>{weatherMessage(rain, later, tempUnit)}</span>
                 {hours.length > 1 && (
                   <span aria-hidden="true" style={{ fontSize: 11, color: "#90a4ae", flexShrink: 0 }}>
                     {weatherOpen ? "▴" : "▾"}
@@ -3094,18 +3257,6 @@ const TripPlanner: FC<{
               }}>
                 {hours.map((h) => {
                   const wet = h.probability >= RAIN_PROBABILITY_THRESHOLD;
-                  // Which cell each arrow in the line points at. Only marked
-                  // when the two differ — a flat window has no high or low.
-                  // Marks only the hour the LINE names, and compares in the
-                  // unit on screen: in °C two hours often print the same
-                  // number (60°F and 61°F are both 16°C), so every cell
-                  // showing that number is marked rather than an arbitrary
-                  // one of them.
-                  const shown = temperatureIn(h.temperatureF, tempUnit);
-                  const peak = span && trend && shown != null
-                    && shown === temperatureIn(trend.temperatureF, tempUnit)
-                    ? (trend.dir === "up" ? "↑" : "↓")
-                    : "";
                   return (
                     <div key={h.timeMs} style={{
                       flexShrink: 0, minWidth: 62, textAlign: "center",
@@ -3114,11 +3265,12 @@ const TripPlanner: FC<{
                       borderRadius: 8, padding: "6px 8px",
                     }}>
                       <div style={{ fontSize: 11, color: "#78909c", whiteSpace: "nowrap" }}>{hourLabel(h.timeMs)}</div>
+                      {/* The number, and only the number. The ↑/↓ that used
+                          to mark the trend hour went with the trend clause
+                          (reports #90, #97) — it pointed at an hour the line
+                          no longer names. */}
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#37474f" }}>
                         {degreesText(h.temperatureF, tempUnit)}
-                        {peak && (
-                          <span aria-hidden="true" style={{ fontSize: 10, color: "#90a4ae" }}>{peak}</span>
-                        )}
                       </div>
                       {/* The drop says what the number is. Without it a bare
                           "35%" beside a temperature reads as anything
@@ -3142,8 +3294,57 @@ const TripPlanner: FC<{
         );
       })()}
 
+      {/* Nothing is planned because one end is still just text (report #84).
+          Without this the screen is indistinguishable from "no trip asked
+          for": the address sits in the box and the app looks broken. */}
+      {!options && (() => {
+        const pending = unresolvedEndpoint(
+          { text: fromText, hasCoord: fromLL != null },
+          { text: toText, hasCoord: toLL != null },
+        );
+        // Not while that end is mid-lookup: the "Looking up…" banner above
+        // is already saying so, and two messages about one box is one too
+        // many.
+        if (!pending || searching === pending || error) return null;
+        return (
+          <div style={{ fontSize: 13, color: "#78909c", padding: "14px 8px", textAlign: "center" }}>
+            {unresolvedEndpointHint(pending)}
+          </div>
+        );
+      })()}
       {/* Results */}
-      {options && options.length === 0 && (
+      {/* A trip of no distance is not a trip. Say the true thing FIRST.
+          Measured on master with the rider standing at Phelps Gate and Phelps
+          Gate as the destination: the walk-only shape lit the fallback below,
+          so the page opened with FIFTEEN route cards each reading "Should be
+          running now — no bus reporting yet" — which reads as a broken feed,
+          not as "you are here". The honest answer was on the page, but under
+          all of them and past the fold. The route list is noise in this state:
+          someone standing at their destination does not need to know which
+          shuttles serve it. */}
+      {alreadyThere && (
+        <div style={{
+          marginTop: 12, padding: "16px 16px 14px", background: "#fff",
+          borderRadius: 12, border: "1px solid #e0ddd8",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            fontSize: 16, fontWeight: 700, color: "#263238",
+          }}>
+            <span aria-hidden="true">🏁</span>
+            <span>You&rsquo;re already there</span>
+          </div>
+          <div style={{ fontSize: 14, color: "#546e7a", lineHeight: 1.45, marginTop: 6 }}>
+            {haversineMeters(effectiveFromLL!, toLL!) <= SAME_SPOT_M
+              ? "That\u2019s the same place you\u2019re starting from."
+              : "Your destination is just a few steps away."}
+          </div>
+          <div style={{ fontSize: 12.5, color: "#90a4ae", lineHeight: 1.45, marginTop: 8 }}>
+            Pick a different destination above to plan a trip.
+          </div>
+        </div>
+      )}
+      {options && options.length === 0 && !alreadyThere && (
         <div style={{ fontSize: 14, color: "#9e9e9e", padding: "24px 8px", textAlign: "center" }}>
           No trip options found between these locations.
           <div style={{ fontSize: 13, color: "#bdbdbd", marginTop: 8 }}>
@@ -3157,7 +3358,7 @@ const TripPlanner: FC<{
           there, just not right now. Triggers on options=[] too because
           directWalkSec>1hr suppresses the walk entry, leaving riders
           with no context when a route is simply off-schedule. */}
-      {options && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
+      {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
             {potentialRoutes.some((p) => p.activeNow)
@@ -3171,6 +3372,11 @@ const TripPlanner: FC<{
                     weekday: "short", month: "short", day: "numeric",
                     hour: "numeric", minute: "2-digit",
                   })
+                : null;
+              // A line off for the whole weekend gets a date, not a time —
+              // "next Sat Sep 12", the day the rider will plan around.
+              const nextDayStr = p.nextActive
+                ? p.nextActive.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
                 : null;
               return (
                 <div key={p.label} style={{
@@ -3193,12 +3399,41 @@ const TripPlanner: FC<{
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
                       </div>
+                    ) : p.off ? (
+                      // The hours say open but the line is not out today —
+                      // upstream's own active flag, the partner's bus, or
+                      // the published calendar (schedule.ts ROUTE_CALENDAR).
+                      // Before this the card read "should be running now —
+                      // no bus reporting yet" every other weekend for the
+                      // grocery lines, which is a broken feed, not a line
+                      // that is simply the other one's this week.
+                      <>
+                        <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
+                          {p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
+                        </div>
+                        {p.off.partner && (
+                          <div style={{ fontSize: 11, color: "#78909c", marginTop: 2 }}>
+                            Alternates weekends with {p.off.partner}
+                            {p.source ? <> — <a href={GROCERY_CALENDAR_URL} target="_blank" rel="noopener" style={{ color: "#78909c" }}>{p.source}</a></> : null}
+                          </div>
+                        )}
+                      </>
                     ) : nextStr && (
+                      // Report #86 asked whether a route that is not running
+                      // should be listed at all. It should — the alternative
+                      // is "No trip options found", which reads as "no
+                      // shuttle goes there" — but its state must be said
+                      // outright, not left to be inferred from "Next:".
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
-                        Next: {nextStr}
+                        Not running now · next {nextStr}
                       </div>
                     )}
                   </span>
+                  {p.note && (
+                    <div style={{ flexBasis: "100%", fontSize: 11, color: "#78909c", lineHeight: 1.4 }}>
+                      {p.note}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -3206,7 +3441,7 @@ const TripPlanner: FC<{
         </div>
       )}
       </div>
-      {options && options.length > 0 && (
+      {options && options.length > 0 && !alreadyThere && (
         <div style={{ marginTop: 4 }}>
           {/* Details page leads with the way back — the search rows are
               hidden while a route is open, so this is the page header. */}
@@ -3267,6 +3502,24 @@ const TripPlanner: FC<{
                 normBus(b.bus_name) === normBus(o.busName) &&
                 cfg.busRouteIds.includes(b.route_id)
               );
+              // The stand the lead bus is in — the same resolver, the same
+              // tables and the same clock the row below uses, so the chip and
+              // the row cannot disagree about a bus they are both describing.
+              const standView = o.departed || !busMatch
+                ? null
+                : standWaitFor(
+                    resolveStandingStop(
+                      busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                    ),
+                    dwellTimes?.[cfg.routeIds[0]] ?? {},
+                    dwellTimes ?? undefined,
+                    remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                    o.boardStopId,
+                    // NOT decayed by wall clock: it is the drive AFTER the
+                    // stand ends, and none of it has been served while the bus
+                    // sits. The point number above still is (report #48).
+                    o.busDepartNowSec,
+                  );
               const passedMatch = o.missedBus
                 ? buses.find((b) =>
                     isBusOnRoute(b, allStops, stopCoords) &&
@@ -3278,7 +3531,12 @@ const TripPlanner: FC<{
               // current anchor to the pickup stop.
               let approach: [number, number][] | undefined;
               if (expandedKey === o.routeLabel && busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                // The gated anchor, off the app's one live store — the dashed
+                // approach must start where the cards and the countdown say
+                // the bus is (liveAnchor.ts).
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0 && busIdx !== bi) {
                   const upstream = busIdx <= bi
                     ? allStops.slice(busIdx, bi + 1)
@@ -3306,7 +3564,23 @@ const TripPlanner: FC<{
                 // waitSec clamps at 0 when the bus beats the rider there, so
                 // the sum froze at the walk time — report #48. Rider steps
                 // off at total minus the trailing walk.
-                boardEta: o.departed ? null : fmtMin(
+                // The SAME answer the card's countdown gives, in the chip's
+                // shorter words. It used to be `fmtMin` of the point number
+                // alone, so a bus mid-layover read `<1-9 min` on its row and a
+                // definitive `1 min` on the map (operator, 2026-09-10). That
+                // point is the median of a standing bus's departure
+                // distribution — it legitimately moves while the bus sits,
+                // which is why the card stopped showing one — and the chip was
+                // watched going 5 -> 1 -> 2 min with nothing happening.
+                // `chipCountdownText` picks the range when there is one and
+                // deliberately does not decay it by wall clock; the point
+                // number still is, for report #48's reason.
+                // Only where the rider is actually boarding, and only for the
+                // line they picked: `berthFor` answers null for all but ten
+                // stop/route cells and the map is unchanged wherever it does.
+                berth: berthFor(o.boardStopId, cfg.busRouteIds),
+                boardEta: o.departed ? null : chipCountdownText(
+                  standView,
                   remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
@@ -3399,6 +3673,12 @@ const TripPlanner: FC<{
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
             const _visibleBase = showAllOptions ? _sorted : topVisibleOptions(_sorted);
+            // The route that goes straight there, when it isn't already at the
+            // top of the list (report #93). topVisibleOptions keeps its row
+            // out from behind "Show N more routes"; this caption says why a
+            // slower row is on screen. Computed from _sorted, not from the
+            // visible slice, so expanding the list doesn't drop the caption.
+            const _direct = directPromotion(_sorted);
             // Keep the open route visible even when it ranks outside the top 3.
             // `detailOpen` (which hides the search chrome and shows the
             // "← All routes" bar) tests ALL options, but this list only tested
@@ -3468,12 +3748,20 @@ const TripPlanner: FC<{
               ) ?? null;
               let stopsAway: number | null = null;
               if (busMatch) {
-                const busIdx = findRouteAnchor(busMatch, allStops, stopCoords);
+                const busIdx = anchorIndexOnList(
+                  busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                );
                 if (busIdx >= 0) {
                   stopsAway = (bi - busIdx + allStops.length) % allStops.length;
                 }
               }
-              return { busMatch, stopsAway, normBus };
+              // How many buses are really on this line — the same on-route
+              // test the pin uses, so a depot ghost cannot make "2 buses out"
+              // of one. The last-bus warning below reads this.
+              const liveCount = buses.filter((b) =>
+                cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
+              ).length;
+              return { busMatch, stopsAway, normBus, cfg, liveCount };
             })();
             // Live bus ETA, hoisted to row scope so the TOP line can carry it
             // beside the total (operator, 2026-09-03: "could this go on the
@@ -3488,20 +3776,88 @@ const TripPlanner: FC<{
             const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
               ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
               : null;
+            /**
+             * THE STAND THE LEAD BUS IS IN, resolved once at ROW scope so the
+             * top line's countdown and the pause chip further down cannot
+             * disagree about it (CLAUDE.md: "the hold SHOWN must be the hold
+             * BILLED"). Same resolver the price uses, same tables, same clock.
+             *
+             * While a bus stands at a layover the countdown is not a point:
+             * #119 forbids it to rise, so it flattens and never tells the
+             * rider the wait has run long, and letting it rise instead
+             * promises a departure later than the bus may actually make
+             * (10:28 against a 9:16 truth, 2026-09-07). standWait.ts turns the
+             * model's own q10/q90 into a range floored by the drive — see the
+             * header there for the measured case.
+             */
+            const standCtx = o.mode === "shuttle" && !o.departed && shuttleCtx?.busMatch
+              ? standWaitFor(
+                  resolveStandingStop(
+                    shuttleCtx.busMatch, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                  ),
+                  dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
+                  dwellTimes ?? undefined,
+                  busEtaLive,
+                  o.boardStopId,
+                  o.busDepartNowSec,
+                )
+              : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
             // than the pinned arrival so an earlier, uncatchable bus never
             // masquerades as "next"; the same vehicle a loop later counts.
             const nextArrLive = busEtaLive !== null && !o.departed
-              ? (computeUpcomingArrivals(
-                  // dwellTimes matters here: #32 made a dwell able to cancel
-                  // the waiting inside a segment, and hoisting this call must
-                  // not quietly drop that argument.
-                  [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+              ? nextArrivalAfterPinned(
+                  computeUpcomingArrivals(
+                    // dwellTimes matters here: #32 made a dwell able to cancel
+                    // the waiting inside a segment, and hoisting this call must
+                    // not quietly drop that argument.
+                    [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
+                  ).filter((a) => a.routeLabel === o.routeLabel),
+                  o.busName,
+                  busEtaLive,
                 )
-                  .filter((a) => a.routeLabel === o.routeLabel && a.eta > busEtaLive + 30)
-                  .sort((a, b) => a.eta - b.eta)[0] ?? null)
               : null;
+            // Is this the last one, and will there be another? Judged
+            // against the PUBLISHED close (the same `route_hours` the
+            // "Runs …" caption shows), the second bus above when the card
+            // can see it — one headway when it cannot — and the live count;
+            // see lastBus.ts. It is computed AFTER `nextArrLive` for exactly
+            // that reason: the countdown's own second slot is the evidence,
+            // and reading the headway prior instead printed a warning under
+            // Blue Day while withholding it from a Red card whose "then 14
+            // min" said the same thing. Plain render-time arithmetic, no
+            // hook, so it cannot trip the TDZ hazard this component is known
+            // for. It only ever ADDS a line: the option is never hidden or
+            // moved.
+            const lastBus = shuttleCtx
+              ? lastBusVerdict({
+                  label: o.routeLabel,
+                  published: publishedWindowFor(shuttleCtx.cfg, routeHours),
+                  now: new Date(),
+                  busEtaSec: busEtaLive,
+                  nextBusEtaSec: nextArrLive?.eta ?? null,
+                  liveCount: shuttleCtx.liveCount,
+                  future: isFuture,
+                })
+              : null;
+            // Whether line 2's left column draws the trip's legs. EVERY
+            // collapsed shuttle row has one: the ride. This used to also
+            // require a walk at one end or the other, so a rider already at
+            // the stop whose destination is on it got a blank second line —
+            // the one card on screen that did not say what the trip was made
+            // of, next to four that did (visible on #115's own screenshot:
+            // "Blue Day  in 4, 9 min" and then nothing). The walk legs inside
+            // are each guarded on their own duration, so a 0 s walk is still
+            // omitted and a bus-only trip reads "🚌 17 min".
+            //
+            // It is also the single gate for the separator: "most direct"
+            // carries its own leading "·" and would open the column with an
+            // orphaned bullet if nothing were drawn before it. The arrival
+            // clock used to sit to its left and always supplied that
+            // neighbour; it is the right column now, so the separator has to
+            // ask.
+            const legsShown = !isExpanded && o.mode === "shuttle";
             return (
               // Keyed by IDENTITY (route label), not list position — the
               // list reorders live (Go pin, departed sink) and an index
@@ -3512,93 +3868,242 @@ const TripPlanner: FC<{
                 cursor: isExpanded ? "default" : "pointer",
                 opacity: o.departed ? 0.7 : 1,
               }}
+              role={isExpanded ? undefined : "button"}
+              tabIndex={isExpanded ? undefined : 0}
+              aria-label={isExpanded ? undefined : `View ${o.routeLabel} trip details`}
+              onKeyDown={isExpanded ? undefined : (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setExpandedKey(oKey);
+                }
+              }}
               onClick={isExpanded ? undefined : () => setExpandedKey(oKey)}>
                 {/* The back control lives at the TOP of the details page
                     (above the map) — see the detailOpen bar. */}
-                {/* Line 1: leave–arrival range (left) + duration (right),
-                    Google-transit style. Range starts at "leave now" (offset
-                    0) so it always spans exactly the shown duration — a
-                    board-time start read as a 3-min trip next to "27 min". */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  {/* Duration leads (left), arrival trails (right) — swapped
-                      2026-07-17 on user request. */}
-                  {o.departed ? (
-                    <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368" }}>Departed</span>
-                  ) : (
-                    <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap" }}>
-                      {fmtMin(o.totalSec)}
-                    </span>
-                  )}
-                  {/* The live bus, between the total and the arrival: it is
-                      the number that decides whether you leave now, and it
-                      used to sit two lines further down. Secondary weight so
-                      the two bold numbers still frame the row, nowrap +
-                      ellipsis so a narrow phone clips the "next in" tail
-                      rather than wrapping the row onto two lines. */}
-                  {busEtaLive !== null && !o.departed && !isExpanded && (
-                    <span style={{
-                      fontSize: 13, color: "#5f6368", fontWeight: 500,
-                      flex: 1, minWidth: 0, overflow: "hidden",
-                      textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      textAlign: "center",
-                    }}>
-                      {`🚌 ${fmtBusPair(busEtaLive, nextArrLive?.eta)}`}
-                    </span>
-                  )}
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    {!o.departed && (
-                      <span style={{ fontSize: 16, fontWeight: 600, color: "#202124" }}>
-                        {/* Live mode: arrival only — the start is always "now"
-                            (user feedback 2026-07-17). Future mode keeps the
-                            range, since the start is the chosen departure. */}
-                        {isFuture
-                          ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                          : `arrive ${fmtClock(o.totalSec)}`}
+                {/* Lines 1 and 2 are ONE two-column block (operator,
+                    2026-09-04): the left column is the line and how it is
+                    made — pill + countdown over the walk/ride legs — and the
+                    right column is the two clock facts, how long it takes
+                    over when you land, right-aligned and flush with each
+                    other. The arrival used to lead line 2 with the duration
+                    alone on the right, so the two numbers a rider compares
+                    across cards ("23 min", "arrive 10:33a") sat on opposite
+                    sides of the card and never lined up.
+
+                    The chevron is a THIRD column, vertically centred across
+                    both rows, because the slot it used to occupy — the right
+                    end of line 2 — is now the arrival clock. Putting it back
+                    there would either shove the clock out of alignment with
+                    the duration or stack under it. It is decoration, not the
+                    control: the whole card carries the onClick, so the tap
+                    target is the full row, and the chevron still gets 44 px
+                    of height so a stylus-precise tap on the glyph itself
+                    lands. */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  marginBottom: (!o.departed || !isExpanded) ? 8 : 0,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Line 1: THE LINE LEADS (operator, 2026-09-04) — route
+                        pill top-left, the two-bus countdown beside it, the
+                        total duration on the right. The total used to hold
+                        the top-left slot with the pill a row below it, so
+                        picking "the Blue one" off a five-card list meant
+                        reading five durations first. Reading order is now
+                        line → when it comes → how long it takes → what the
+                        trip is made of and when you land (line 2). */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                        {/* Pill colour comes off the option, i.e. off ROUTE_LISTS —
+                            the one source. The walk option keeps its outlined
+                            chip: it is an option, not a line. */}
+                        {o.mode === "walk" ? (
+                          <span style={{
+                            fontSize: 13, fontWeight: 600, color: "#5f6368",
+                            background: "transparent", border: "1px solid #dadce0",
+                            borderRadius: 6, padding: "2px 8px", flexShrink: 0,
+                          }}>🚶 Walk</span>
+                        ) : (
+                          <span style={{
+                            fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
+                            borderRadius: 6, padding: "3px 8px", flexShrink: 0,
+                            maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>{o.routeLabel}</span>
+                        )}
+                        {/* The live bus, directly right of the line it belongs to.
+                            No glyph: the pill already says this is a shuttle, and
+                            the operator asked for the "in" to follow the line with
+                            nothing between them (2026-09-04). Secondary weight so
+                            the pill and the total frame the row; nowrap + ellipsis
+                            so a narrow phone clips the second figure rather than
+                            wrapping the row in two.
+
+                            The canary reads this line as TEXT and used to key on
+                            the glyph — scripts/canary-metrics.mjs now accepts both
+                            forms, because it watches production, which is always a
+                            deploy behind this.
+
+                            Shown EXPANDED as well as collapsed (operator,
+                            2026-09-08, comparing the two cards side by side:
+                            "were just missing some data in the route plan
+                            region, that should look like trip overview
+                            region"). Opening a card used to drop the pair —
+                            the one figure that says when the NEXT bus comes if
+                            this one is missed — so the detail view carried
+                            less than the summary it came from. The leg strip
+                            below spells out this bus's wait; the pair is about
+                            the one after it. */}
+                        {busEtaLive !== null && !o.departed && (
+                          <span title={standCtx?.rangeTitle ?? undefined} style={{
+                            fontSize: 13, color: "#5f6368", fontWeight: 500,
+                            minWidth: 0, overflow: "hidden",
+                            textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {standCtx?.range
+                              ? fmtBusRange(standCtx.range.lowSec, standCtx.range.highSec, nextArrLive?.eta)
+                              : fmtBusPair(busEtaLive, nextArrLive?.eta)}
+                          </span>
+                        )}
                       </span>
+                      {/* Duration, right-aligned. "Departed" takes the same slot —
+                          it is what that number would have said. */}
+                      {o.departed ? (
+                        <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368", flexShrink: 0 }}>Departed</span>
+                      ) : (
+                        <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {fmtMin(o.totalSec)}
+                        </span>
+                      )}
+                    </div>
+                    {/* No badges: FASTEST is implied by sort order — the top card
+                        is the recommendation, Google-style — and
+                        slower-than-walking is already communicated by the tier
+                        sort + the "walking wins" banner. */}
+                    {/* Line 2: what the trip is made of on the left, when you
+                        land on the right. The legs used to be led by the route
+                        pill — the pill has moved to line 1, so the ride between
+                        the walks is drawn in the same ink as them rather than
+                        repeating the name. Collapsed rows only: the details
+                        view's step list carries the same durations (user
+                        feedback 2026-07-17). Every leg is optional — a walk of
+                        0 s is omitted and the wait, when there is one, has its
+                        own line below — so the row carries a minHeight: a
+                        Departed card with no walks would otherwise collapse to
+                        nothing and the card would jump a line shorter than its
+                        neighbours. */}
+                    {(!o.departed || !isExpanded) && (
+                    <div style={{
+                      display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                      gap: 8, marginTop: 4, minHeight: 18,
+                    }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+                        {legsShown && (
+                          <>
+                            {o.walkToSec > 0 && (
+                              <>
+                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
+                                <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                              </>
+                            )}
+                            {/* The ride leg, named and timed like the walks
+                                either side of it. It was a bare coloured bar whose
+                                only label was a `title` nobody on a phone can
+                                reach — the operator: "the horizonal bar should say
+                                ride X min or bus icon instead of 'ride'". The
+                                expanded card already spells it this way. Colour
+                                stays on the pill on line 1, so this reads in the
+                                same ink as the walks and cannot land on a light
+                                route colour. */}
+                            <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
+                              🚌 {fmtMin(o.rideSec)}
+                            </span>
+                            {o.walkFromSec > 0 && (
+                              <>
+                                <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
+                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
+                              </>
+                            )}
+                          </>
+                        )}
+                        {/* Why a slower row is on screen: this is the route that
+                            runs straight there — least walking + riding of any
+                            option, whatever the wait happens to be right now.
+                            Plain grey text, not a badge: FASTEST was removed from
+                            these rows deliberately and this is an explanation, not
+                            a ranking. */}
+                        {!isExpanded && o.mode === "shuttle" && _direct && o.routeLabel === _direct.routeLabel && (
+                          <span data-testid="most-direct" style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>
+                            {legsShown ? "· most direct" : "most direct"}
+                          </span>
+                        )}
+                      </span>
+                      {/* When you land, right-aligned under the duration. It
+                          never shrinks and never wraps: on a narrow phone the
+                          legs on the left wrap to a second line instead, because
+                          future mode prints a RANGE here ("10:33a – 10:56a")
+                          and a clipped clock is a wrong clock, whereas a leg
+                          list that runs onto two lines is merely longer.
+                          Suppressed on a Departed card — nothing goes under the
+                          word "Departed", which is not a duration and has no
+                          arrival to quote. */}
+                      {!o.departed && (
+                        <span style={{
+                          fontSize: 13, fontWeight: 500, color: "#202124",
+                          whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
+                        }}>
+                          {/* Live mode: the bare clock — the start is always
+                              "now" (user feedback 2026-07-17), and sitting
+                              directly under the duration in a right-aligned
+                              column, the number no longer needs a word to say
+                              what it is (operator, 2026-09-04: "remove
+                              'arrive' from arrival time and just show the
+                              time"). Future mode already printed a bare range,
+                              since the start is the chosen departure; the two
+                              modes now agree. */}
+                          {isFuture
+                            ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
+                            : fmtClock(o.totalSec)}
+                        </span>
+                      )}
+                    </div>
                     )}
-                    {/* Rows navigate (Google-style ›); the details view
-                        exits via ← All routes instead. */}
-                    {!isExpanded && <span style={{ fontSize: 16, color: "#9aa0a6" }}>›</span>}
-                  </span>
-                </div>
-                {/* No badges: FASTEST is implied by sort order — the top card
-                    is the recommendation, Google-style — and
-                    slower-than-walking is already communicated by the tier
-                    sort + the "walking wins" banner. */}
-                {/* Line 2: leg chips — walk / route pill / walk, Google
-                    transit-style, omitting a walk leg when it's 0 sec.
-                    Collapsed rows ONLY: the details view's step list
-                    carries the same durations + route pill, so chips
-                    there were pure repetition (user feedback 2026-07-17). */}
-                {!isExpanded && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6, marginBottom: 8 }}>
-                  {o.mode === "walk" ? (
+                  </div>
+                  {/* Rows navigate (Google-style ›); the details view
+                      exits via ← All routes instead. */}
+                  {!isExpanded && (
                     <span style={{
-                      fontSize: 13, fontWeight: 600, color: "#5f6368",
-                      background: "transparent", border: "1px solid #dadce0",
-                      borderRadius: 6, padding: "2px 8px",
-                    }}>🚶 Walk</span>
-                  ) : (
-                    <>
-                      {o.walkToSec > 0 && (
-                        <>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkToSec)}</span>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                        </>
-                      )}
-                      <span style={{
-                        fontSize: 13, fontWeight: 600, color: "#fff", background: o.color,
-                        borderRadius: 6, padding: "2px 8px",
-                      }}>{o.routeLabel}</span>
-                      {o.walkFromSec > 0 && (
-                        <>
-                          <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
-                          <span style={{ fontSize: 13, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
-                        </>
-                      )}
-                    </>
+                      fontSize: 16, color: "#9aa0a6", flexShrink: 0, lineHeight: 1.2,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      minHeight: 44, width: 12,
+                    }}>›</span>
                   )}
                 </div>
+                {/* Last-bus warning — shown in BOTH the collapsed row and the
+                    details view, because the rider decides in either. Two
+                    nowrap lines (measured at 390px, see lastBus.test.ts);
+                    explicit background and colour because the rider app has
+                    no dark theme to inherit from. Amber like the service
+                    banners; the headline turns red once the published
+                    hours have actually ended. */}
+                {lastBus && (
+                  <div
+                    data-testid="last-bus"
+                    data-kind={lastBus.kind}
+                    role="note"
+                    style={{
+                      background: "#FFF8E1", border: "1px solid #FFE082",
+                      borderRadius: 6, padding: "6px 8px", marginBottom: 8,
+                      fontSize: 13, lineHeight: 1.45, color: "#795548",
+                    }}
+                  >
+                    <div style={{
+                      fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      color: lastBus.kind === "closing" ? "#795548" : "#C62828",
+                    }}>{lastBus.headline}</div>
+                    <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {lastBus.detail}
+                    </div>
+                  </div>
                 )}
                 {/* Collapsed preview: a single summary line. For shuttle
                     options it's "#bus · N stops before yours · arrives
@@ -3722,6 +4227,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
+                        const waitText = waitLegText(standCtx, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -3729,8 +4235,8 @@ const TripPlanner: FC<{
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
                               {sep}
                             </>)}
-                            {o.waitSec >= 60 && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>⏳ {fmtWait(o.waitSec)}</span>
+                            {waitText && (<>
+                              <span style={{ whiteSpace: "nowrap" }}>⏳ {waitText}</span>
                               {sep}
                             </>)}
                             <span style={{
@@ -3741,6 +4247,90 @@ const TripPlanner: FC<{
                               {sep}
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
                             </>)}
+                          </div>
+                        );
+                      })()}
+                      {/* Where the bus really pulls up, when that is not the
+                          stop's own dot. The sentence, not the marker, is what
+                          makes this usable: a second dot on its own reads as
+                          the map being wrong, and the count is what turns it
+                          into advice. Sits directly above Directions because
+                          that is the thing it corrects. */}
+                      {(() => {
+                        const cfgB = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
+                        const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
+                        if (!berth) return null;
+                        const m = Math.round(Math.abs(berth.offsetM));
+                        const signLL = stopCoords[o.boardStopId];
+                        // The picture, not the sentence, is what makes this
+                        // land: on the trip map above, framed for the whole
+                        // journey, the sign and the kerb are two dots a few
+                        // pixels apart (operator, 2026-09-10: "this message
+                        // doesn't make sense until i zoom into map"). An SVG
+                        // rather than a second Leaflet — see berthThumb.ts.
+                        const th = signLL
+                          ? buildBerthThumb(
+                              signLL, { lat: berth.lat, lon: berth.lon },
+                              (routePaths[String(berth.routeId)] ?? []).map(
+                                ([lat, lon]) => ({ lat, lon }),
+                              ),
+                              // Sized to the card rather than 100%-scaled: an SVG fits its viewBox with
+                              // preserveAspectRatio, so a 200-wide box in a ~304 px card was
+                              // drawn 200 wide with white either side.
+                              { width: 300, height: 116 },
+                            )
+                          : null;
+                        return (
+                          <div style={{
+                            marginTop: 10, padding: "8px 10px", borderRadius: 8,
+                            background: "#f8f9fa", fontSize: 13, lineHeight: 1.45, color: "#3c4043",
+                          }}>
+                            {th && (
+                              <svg viewBox={th.viewBox} width="100%" height={th.height}
+                                role="img" style={{ display: "block", marginBottom: 6, borderRadius: 6, overflow: "hidden" }}
+                                aria-label={`${o.routeLabel} pulls up about ${m} metres ${berth.offsetM > 0 ? "past" : "before"} the ${boardName} sign`}>
+                                {/* The same tiles Leaflet would draw, as plain images —
+                                    a map object per expanded card is what routeThumb.ts
+                                    exists to avoid. Streets behind the dots are what
+                                    make them mean anything (operator, 2026-09-10). */}
+                                <clipPath id={`bt-${o.boardStopId}-${berth.routeId}`}>
+                                  <rect x={0} y={0} width={th.width} height={th.height} />
+                                </clipPath>
+                                <g clipPath={`url(#bt-${o.boardStopId}-${berth.routeId})`}>
+                                  {th.tiles.map((t) => (
+                                    <image key={`${t.z}/${t.x}/${t.y}`}
+                                      href={`https://tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`}
+                                      x={t.px} y={t.py} width={t.size} height={t.size} opacity={0.85} />
+                                  ))}
+                                </g>
+                                {th.road.length > 1 && (
+                                  <polyline points={th.road.map((p) => `${p.x},${p.y}`).join(" ")}
+                                    fill="none" stroke={o.color} strokeWidth={3} opacity={0.35} />
+                                )}
+                                <line x1={th.sign.x} y1={th.sign.y} x2={th.berth.x} y2={th.berth.y}
+                                  stroke="#9aa0a6" strokeWidth={1.5} strokeDasharray="2 4" />
+                                <circle cx={th.sign.x} cy={th.sign.y} r={5}
+                                  fill="#fff" stroke="#9aa0a6" strokeWidth={2.5} />
+                                <circle cx={th.berth.x} cy={th.berth.y} r={6}
+                                  fill={o.color} stroke="#fff" strokeWidth={2.5} />
+                                {/* Painted twice: a white stroke under the fill, so the
+                                    words stay readable over whatever the tile shows. */}
+                                {[{ stroke: true }, { stroke: false }].map((pass, i) => (
+                                  <g key={i} {...(pass.stroke ? { stroke: "#fff", strokeWidth: 3, strokeLinejoin: "round" as const } : {})}>
+                                    <text x={th.sign.x + (th.signAnchor === "start" ? 9 : -9)} y={th.sign.y + 4}
+                                      textAnchor={th.signAnchor} fontSize={10} fill="#5f6368">stop sign</text>
+                                    <text x={th.berth.x + (th.berthAnchor === "start" ? 10 : -10)} y={th.berth.y + 4}
+                                      textAnchor={th.berthAnchor} fontSize={10.5} fontWeight={650} fill={o.color}>wait here</text>
+                                  </g>
+                                ))}
+                              </svg>
+                            )}
+                            <span style={{ fontWeight: 650 }}>
+                              🚏 Wait about {m} m {berth.offsetM > 0 ? "past" : "before"} the stop sign
+                            </span>
+                            <br />
+                            {o.routeLabel} buses pull up there, not at the sign — seen {berth.seen} of
+                            the last {berth.of} times one served this stop.
                           </div>
                         );
                       })()}
@@ -3917,7 +4507,15 @@ const TripPlanner: FC<{
                     cfg.busRouteIds.includes(b.route_id) &&
                     isBusOnRoute(b, allStops, stopCoords),
                   );
-                  const busAnchorIdx = busMatch ? findRouteAnchor(busMatch, allStops, stopCoords) : -1;
+                  // THE number the rider reads on the "🚌 #316 · N stops away"
+                  // line below. Ungated it oscillated 3/4/4/2/4 across polls
+                  // beside a countdown that was not moving; it now comes from
+                  // the same gated anchor the countdown does.
+                  const busAnchorIdx = busMatch
+                    ? anchorIndexOnList(
+                        busMatch, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+                      )
+                    : -1;
                   const busSegPos = busAnchorIdx >= 0 ? segStops.indexOf(allStops[busAnchorIdx]) : -1;
                   // Approach: bus's current stop → the stop before the
                   // pickup, only while the bus is genuinely upstream.
@@ -3927,29 +4525,94 @@ const TripPlanner: FC<{
                         ? allStops.slice(busAnchorIdx, bi)
                         : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
                     : [];
-                  // Dwell readouts: typical hold at a stop (per-bus stats
-                  // preferred, route stats fallback) + live elapsed while
-                  // the bus is parked at its current stop.
+                  // Dwell readouts: the typical hold at a stop, plus the live
+                  // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
-                  const busDwells = busMatch ? (dwellsByBus?.[normBus(busMatch.bus_name)]?.[cfg.routeIds[0]] ?? {}) : {};
-                  // The hold shown must be the hold BILLED — see
-                  // billedDwellSec. `started` is true only for the stop the
-                  // bus is standing at; every other stop on the approach is
-                  // still ahead of it and is priced at the low quantile
+                  // The hold SHOWN must be the hold BILLED — see shownStandSec
                   // (report #73: "it says arrive in 8 but expected dwell is
-                  // 10", which was the median on screen and the low quantile
-                  // in the arithmetic).
-                  const typDwell = (sid: number, started = false): number | null => {
-                    const pb = busDwells[String(sid)];
-                    if (pb && pb.n >= 5) return billedDwellSec(pb, started);
-                    const r = routeDwells[String(sid)];
-                    if (r && r.n >= 3) return billedDwellSec(r, started);
-                    return null;
-                  };
+                  // 10", which was the median on screen and a low quantile in
+                  // the arithmetic).
+                  //
+                  // So this reads the same records computeUpcomingArrivals
+                  // prices from, through the same predicates, and nothing else.
+                  // Two ways it has drifted before:
+                  //
+                  //  - It used to prefer a per-bus dwell (dwellsByBus, n >= 5)
+                  //    while the arithmetic only ever read the ROUTE dwell:
+                  //    "held 5 min of ~5" beside a countdown charging a
+                  //    different ~5. It could not fire only because the server
+                  //    hardcodes dwells_by_bus to {} (src/server/v1compat.ts)
+                  //    — a latent trap, not a working feature.
+                  //  - Once the stand/drive split went live (Red, Blue Day)
+                  //    the chip kept quoting `dwell.med`, the arrival-to-
+                  //    arrival median that CONTAINS DRIVE TIME, while the
+                  //    countdown priced the conditional standing quantiles:
+                  //    "⏸ 3 min / ~10 min" beside "5 min" (2026-09-04).
+                  //
+                  // If per-bus dwells are ever really served, thread them into
+                  // computeUpcomingArrivals FIRST; display follows billing.
+                  // The chip reads the model's own stand table (see
+                  // shownStandSec), the one the countdown is billed from.
                   const fmtShort = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 60)} min`);
-                  const liveElapsedSec = busMatch && busMatch.at_stop_id != null && busMatch.at_stop_since
-                    ? Math.max(0, (Date.now() - new Date(busMatch.at_stop_since + "Z").getTime()) / 1000)
+                  /**
+                   * M:SS for the live pause chip, so a hold keeps its seconds
+                   * past the first minute.
+                   *
+                   * `fmtShort` drops to whole minutes at 60 s, which is right
+                   * for a figure a rider glances at but wrong for one they are
+                   * watching tick: the operator, watching a bus stand at a
+                   * layover — "after it gets to 1 min we lose the seconds but I
+                   * like those". A hold is the one number on this screen that
+                   * moves every second and is worth watching move.
+                   *
+                   * NOT `min`-suffixed, and that is a deliberate exception to
+                   * the app's "spell minutes `min`" rule rather than an
+                   * oversight: the rule exists so a bare `m` is never read as
+                   * miles, and `2:15` cannot be. It reads as a stopwatch,
+                   * which is what it is. Minutes past the hour never appear —
+                   * a layover running over 59 minutes would print `62:10`,
+                   * which is still a duration and still unambiguous.
+                   */
+                  const fmtMmss = (s: number) => {
+                    const t = Math.max(0, Math.round(s));
+                    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+                  };
+                  /**
+                   * WHERE THE BUS IS STANDING — the estimator's answer, not a
+                   * second reading of the payload.
+                   *
+                   * This used to derive the hold straight from
+                   * `at_stop_id`/`at_stop_since`. That agreed with the price
+                   * until #130 shipped the approach zone, and then stopped: a
+                   * bus taking its layover short of the marker publishes no
+                   * `at_stop_id`, so the countdown priced it as standing while
+                   * the chip beside it showed nothing and the row read as a bus
+                   * still rolling. Report #102 is a rider seeing exactly that —
+                   * "a bus sitting in a garage lot was counted down as if on
+                   * its way".
+                   *
+                   * `resolveStandingStop` is the one the price uses. The hold
+                   * shown must be the hold billed, and now the STOP shown is
+                   * the stop billed too.
+                   */
+                  const standing = busMatch
+                    ? resolveStandingStop(
+                        busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                      )
                     : null;
+                  const liveElapsedSec = standing ? standing.standingSec : null;
+                  /**
+                   * The hold to show at `sid`. `elapsed` is passed only for the
+                   * stop the bus is actually standing at — everywhere else
+                   * there is no remainder to state, so the typical hold is
+                   * the honest answer. Same table, same pools, same clock as
+                   * the countdown (shownStandSec).
+                   */
+                  const standAt = (sid: number, elapsed: number | null) => {
+                    const stat = routeDwells[String(sid)];
+                    if (!stat || stat.n < 3) return null;
+                    return shownStandSec(stat, elapsed, routeDwells, dwellTimes ?? undefined);
+                  };
                   return (
                     <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
                       {approachStops.length > 0 && busMatch && (
@@ -3971,8 +4634,8 @@ const TripPlanner: FC<{
                           {approachStops.map((sid, j) => {
                             const isBusHere = j === 0;
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
-                            const typ = typDwell(sid, isBusHere);
-                            const showLive = isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null;
+                            const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
+                            const stand = standAt(sid, showLive ? liveElapsedSec : null);
                             return (
                               <div key={sid} style={{
                                 position: "relative", display: "flex", alignItems: "center",
@@ -3994,31 +4657,87 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                          title={typ != null ? `Typically holds ~${fmtShort(typ)}` : "Time the bus has been sitting here"}>
-                                      ⏸ {fmtShort(liveElapsedSec!)}{typ != null ? ` / ~${fmtShort(typ)}` : ""}
+                                    // "⏸ 3:21 · up to 6 min left" — the clock the
+                                    // rider watches tick, then WHAT IS LEFT of the
+                                    // stand, bounded.
+                                    //
+                                    // It used to be "3:21 / ~4:48": elapsed over the
+                                    // stop's TYPICAL hold. Two shapes have now failed
+                                    // here for the same reason — a rider subtracts.
+                                    // First Y was `dwell.med`, an arrival-to-arrival
+                                    // figure containing drive time ("3 of 10" → they
+                                    // expected seven more minutes and the app said
+                                    // four). Then Y became the typical hold, honest
+                                    // about the STOP and still wrong about the BUS:
+                                    // at 3:21 into the operator's 2026-09-07 stand it
+                                    // implied 1:27 more when the model's own answer
+                                    // was 3:15 and the truth 5:55. The right number
+                                    // was already here — the tooltip has always said
+                                    // "about N still to go".
+                                    //
+                                    // So the chip states the remainder, and states it
+                                    // as a pair or a ceiling rather than a point,
+                                    // because a stand that has run long ends at no
+                                    // predictable second (standWait.ts). The typical
+                                    // hold keeps its place in the tooltip, where a
+                                    // rider reads it as context instead of subtracting
+                                    // from it.
+                                    <span style={{
+                                            fontSize: 10, fontWeight: 700, marginLeft: 6,
+                                            // Amber once the stand has outlasted the stop's
+                                            // typical hold. The typical figure itself left
+                                            // the chip (it was the misleading half), so this
+                                            // is what carries "this is running long" at a
+                                            // glance; the tooltip names the figure.
+                                            color: standCtx?.overdue ? "#8a5300" : "#5f6368",
+                                          }}
+                                          title={(standing?.approach
+                                            ? "Waiting for this stop, holding just short of the marker. "
+                                            : "") + (standCtx
+                                            ? standCtx.chipTitle
+                                            : "Time the bus has been sitting here")}>
+                                      ⏸ {fmtMmss(liveElapsedSec!)}
+                                      {standCtx ? ` · ${standCtx.leftText}` : ""}
                                     </span>
                                   )}
-                                  {!showLive && typ != null && typ >= 180 && (() => {
-                                    // A rest is a distribution — show it as
-                                    // one. A point estimate here jumped by
-                                    // four minutes the moment the bus
-                                    // arrived and the median took over
-                                    // (report #77); the range does not.
-                                    const pb = busDwells[String(sid)];
-                                    const stat = pb && pb.n >= 5 ? pb : routeDwells[String(sid)];
-                                    const range = dwellRangeSec(stat);
-                                    return (
-                                      <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
-                                            title={range
-                                              ? "Typical hold here runs this long"
-                                              : "Typical hold at this stop"}>
-                                        ⏸ {range
-                                          ? `${fmtShort(range[0]).replace(/ min$/, "")}–${fmtShort(range[1])}`
-                                          : `~${fmtShort(typ)}`}
-                                      </span>
-                                    );
-                                  })()}
+                                  {showLive && standing?.approach && (
+                                    // WHERE it is waiting, in one word.
+                                    //
+                                    // Report #102: a bus holding in the Science
+                                    // Park Garage lot showed as "here" at
+                                    // 344 Winchester, 144 m away. The countdown
+                                    // is right — it IS taking that layover — but
+                                    // a rider standing at the marker looks up
+                                    // and sees no bus.
+                                    //
+                                    // Deliberately NOT a "~" prefix on the
+                                    // clock, which was the first draft: this UI
+                                    // already spends "~" on approximate
+                                    // DURATIONS (the hold beside it), so
+                                    // the same mark for approximate PLACE reads
+                                    // as fuzziness about the number instead.
+                                    // A word cannot be misread that way.
+                                    <span style={{ fontSize: 10, fontWeight: 600, color: "#9aa0a6", marginLeft: 4 }}
+                                          title="Holding just short of the stop, not at the kerb">
+                                      nearby
+                                    </span>
+                                  )}
+                                  {!showLive && stand != null && stand.sec >= 180 && (
+                                    // One figure, before the bus arrives and
+                                    // after. This was briefly a "5-9 min"
+                                    // range, because the ETA billed a low
+                                    // quantile ahead of the stop and the
+                                    // median once the bus was standing there,
+                                    // and report #77 saw the number change on
+                                    // arrival. The estimator no longer bills
+                                    // two prices, so there is nothing left to
+                                    // disagree and nothing to show a spread
+                                    // for.
+                                    <span style={{ fontSize: 10, color: "#9aa0a6", marginLeft: 6 }}
+                                          title="Typical hold at this stop">
+                                      ⏸ ~{fmtShort(stand.sec)}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             );
@@ -4064,10 +4783,12 @@ const TripPlanner: FC<{
                               {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
                               {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                               {name}
-                              {isBusHere && busMatch?.at_stop_id === sid && liveElapsedSec != null && (
+                              {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
                                 <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
-                                      title="Time the bus has been sitting here">
-                                  ⏸ {fmtShort(liveElapsedSec)}
+                                      title={standing.approach
+                                        ? "The bus is waiting for this stop — it is holding just short of the marker"
+                                        : "Time the bus has been sitting here"}>
+                                  ⏸ {fmtMmss(liveElapsedSec)}
                                 </span>
                               )}
                             </span>
@@ -4154,6 +4875,24 @@ const TripPlanner: FC<{
                 ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
                 : "😴 No shuttles running right now"}
             </div>
+            {/* WHY nothing is running, in Yale's own words. A system-wide
+                notice names no route, so the per-option banners never showed
+                it: on Labor Day 2026 the feed said "Yale Shuttles will be
+                closed … resume on 09/08/2026" while this screen said only
+                "No shuttles running right now", which reads as a broken app
+                rather than a holiday. Shown only when nothing is running, so
+                a normal service day is not covered in notices. */}
+            {buses.length === 0 && generalAnnouncements(announcements).map((a) => (
+              <div key={a.id} style={{
+                marginTop: 8, padding: "10px 12px", borderRadius: 10,
+                background: "#fff8e1", border: "1px solid #ffe082",
+                fontSize: 13, color: "#5d4037", lineHeight: 1.45,
+              }}>
+                <span style={{ fontWeight: 700 }}>{a.title}</span>
+                <span style={{ margin: "0 6px" }}>·</span>
+                <span>{a.message}</span>
+              </div>
+            ))}
             {firstTimer && buses.length > 0 && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
                 Pick a destination — we compare walking against every shuttle.
@@ -4297,7 +5036,7 @@ const TripPlanner: FC<{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             marginBottom: 3, padding: "0 2px",
           }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent destinations</span>
+            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent places</span>
             <button
               onClick={onClearRecents}
               style={{
@@ -4306,7 +5045,7 @@ const TripPlanner: FC<{
                 fontSize: 12, fontWeight: 400,
                 cursor: "pointer", padding: "0 4px", lineHeight: 1,
               }}
-              title="Clear all recent destinations"
+              title="Clear all recent places"
             >Clear all</button>
           </div>
           <div style={{
@@ -4373,72 +5112,6 @@ const TripPlanner: FC<{
   );
 };
 
-
-const NextShuttles: FC<{
-  buses: BusData[];
-  savedStops: Set<number>;
-  stopNames: Record<number, string>;
-  stopCoords: Record<number, { lat: number; lon: number }>;
-  routeStops: Record<string, number[]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  tick: number;
-}> = ({ buses, savedStops, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
-  if (savedStops.size === 0) return null;
-
-  const all = computeUpcomingArrivals(Array.from(savedStops), buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes);
-  const arrivals: Record<number, UpcomingArrival[]> = {};
-  for (const a of all) {
-    (arrivals[a.stopId] ??= []).push(a);
-  }
-
-  const formatEta = formatEtaRange;
-  const formatClock = fmtClock;
-
-  return (
-    <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", padding: "8px 16px" }}>
-      {Array.from(savedStops).map((stopId) => {
-        const next = (arrivals[stopId] ?? []).slice(0, 2);
-        const name = (stopNames[stopId] ?? `Stop ${stopId}`).replace(/\s*\/\s*/g, "/");
-        return (
-          <div key={stopId} style={{
-            padding: "8px 12px",
-            background: "#fff", borderRadius: 8, marginBottom: 8,
-            border: "1px solid #e0ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#2E7D32", marginBottom: 4 }}>
-              ★ {name}
-            </div>
-            {next.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: "#9e9e9e", paddingLeft: 12 }}>no buses incoming</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {next.map((a, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 8, fontSize: 11,
-                  }}>
-                    <span style={{
-                      width: 8, height: 8, borderRadius: "50%",
-                      background: a.color, flexShrink: 0,
-                    }} />
-                    <span style={{ fontWeight: 700, color: a.color, minWidth: 90 }}>{a.routeLabel}</span>
-                    <span style={{ fontWeight: 700, color: "#455a64" }}>
-                      {formatEta(a)}
-                    </span>
-                    <span style={{ color: "#9e9e9e", fontVariantNumeric: "tabular-nums" }}>
-                      · {formatClock(a.eta)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 // Picker: search a location (or use current), see the nearest ~15 stops on a
 // Leaflet map with tap-to-toggle markers and a parallel text list.
 const NearbyStopsPicker: FC<{
@@ -4482,7 +5155,8 @@ const NearbyStopsPicker: FC<{
       });
       const d = await r.json();
       if (abortRef.current !== ctrl) return;
-      const rawR: GeocodeResult[] = d.results ?? [];
+      // Same untrusted payload as the trip search — see the note there.
+      const rawR: GeocodeResult[] = sanitizeGeocodeResults(d?.results);
       let results = rawR.filter(inServiceArea).slice(0, 8);
       if (results.length === 0) results = rawR.slice(0, 8);
       if (results.length === 0) {
@@ -4645,298 +5319,6 @@ const NearbyStopsPicker: FC<{
   );
 };
 
-const FavoriteStopsPage: FC<{
-  groups: StopGroup[];
-  setGroups: (groups: StopGroup[]) => void;
-  buses: BusData[];
-  stopNames: Record<number, string>;
-  stopCoords: Record<number, { lat: number; lon: number }>;
-  routeStops: Record<string, number[]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  tick: number;
-  userLatLon: LatLon | null;
-  onRequestLocate: () => void;
-  savedTrips: SavedTrip[];
-  setSavedTrips: (t: SavedTrip[]) => void;
-  onPlanTrip: (t: SavedTrip) => void;
-}> = ({ groups, setGroups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes, userLatLon, onRequestLocate, savedTrips, setSavedTrips, onPlanTrip }) => {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [nearbyGroupId, setNearbyGroupId] = useState<string | null>(null);
-
-  const updateGroup = (id: string, patch: Partial<StopGroup>) => {
-    setGroups(groups.map((g) => (g.id === id ? { ...g, ...patch } : g)));
-  };
-  const deleteGroup = (id: string) => {
-    setGroups(groups.filter((g) => g.id !== id));
-  };
-  const addGroup = () => {
-    const id = `g${Date.now().toString(36)}`;
-    setGroups([...groups, { id, name: "New Group", stopIds: [] }]);
-    setEditingId(id);
-  };
-  const moveGroup = (id: string, dir: -1 | 1) => {
-    const idx = groups.findIndex((g) => g.id === id);
-    if (idx < 0) return;
-    const next = idx + dir;
-    if (next < 0 || next >= groups.length) return;
-    const copy = [...groups];
-    [copy[idx], copy[next]] = [copy[next], copy[idx]];
-    setGroups(copy);
-  };
-
-  // All stops, sorted by name — for the add-stop picker
-  const allStopEntries = Object.entries(stopNames)
-    .map(([sid, n]) => ({ id: Number(sid), name: n }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return (
-    <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {savedTrips.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, padding: "0 4px 6px" }}>
-            Saved destinations
-          </div>
-          <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #e0ddd8", overflow: "hidden" }}>
-            {savedTrips.map((t, i) => (
-              <div key={t.id} style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 10px",
-                borderBottom: i === savedTrips.length - 1 ? "none" : "1px solid #f0ede8",
-              }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#263238", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <span style={{ color: "#9e9e9e", marginRight: 6 }}>→</span>
-                  <span style={{ color: "#C62828", fontWeight: 700 }}>{t.toText}</span>
-                </div>
-                <button onClick={() => onPlanTrip(t)} style={{
-                  fontSize: 11, padding: "3px 10px", border: "1px solid #2E7D32",
-                  background: "#fff", color: "#2E7D32", borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
-                  minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                }}>Plan</button>
-                <button onClick={() => setSavedTrips(savedTrips.filter((x) => x.id !== t.id))} style={{
-                  border: "none", background: "transparent", color: "#9e9e9e",
-                  fontSize: 14, cursor: "pointer", padding: "0 4px",
-                }} title="Remove">✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {groups.length === 0 && (
-        <div style={{ textAlign: "center", padding: "24px 16px", color: "#9e9e9e", fontSize: 12 }}>
-          No stop groups yet. Create one to track arrivals across multiple stops.
-        </div>
-      )}
-      {groups.map((g, idx) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
-        const editing = editingId === g.id;
-        return (
-          <div key={g.id} style={{
-            padding: "10px 14px", background: "#fff", borderRadius: 10, marginBottom: 10,
-            border: "1px solid #e0ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-          }}>
-            {/* Header row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              {editing ? (
-                <input
-                  value={g.name}
-                  onChange={(e) => updateGroup(g.id, { name: e.target.value })}
-                  onBlur={() => setEditingId(null)}
-                  onKeyDown={(e) => { if (e.key === "Enter") setEditingId(null); }}
-                  autoFocus
-                  style={{
-                    flex: 1, fontSize: 13, fontWeight: 700, color: "#2E7D32",
-                    border: "1px solid #c5e1a5", background: "#f1f8e9",
-                    borderRadius: 4, padding: "2px 6px", fontFamily: "inherit",
-                  }}
-                />
-              ) : (
-                <span
-                  onClick={() => setEditingId(g.id)}
-                  style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#2E7D32", cursor: "pointer" }}
-                >
-                  ★ {g.name}
-                </span>
-              )}
-              <button onClick={() => moveGroup(g.id, -1)} disabled={idx === 0} style={{
-                border: "none", background: "transparent",
-                color: idx === 0 ? "#d0d0d0" : "#78909c",
-                fontSize: 14, cursor: idx === 0 ? "default" : "pointer", padding: "0 3px",
-              }} title="Move up">▲</button>
-              <button onClick={() => moveGroup(g.id, 1)} disabled={idx === groups.length - 1} style={{
-                border: "none", background: "transparent",
-                color: idx === groups.length - 1 ? "#d0d0d0" : "#78909c",
-                fontSize: 14, cursor: idx === groups.length - 1 ? "default" : "pointer", padding: "0 3px",
-              }} title="Move down">▼</button>
-              <button onClick={() => deleteGroup(g.id)} style={{
-                border: "none", background: "transparent", color: "#9e9e9e",
-                fontSize: 14, cursor: "pointer", padding: "0 4px",
-              }} title="Delete group">✕</button>
-            </div>
-
-            {/* Stop chips + add picker */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-              {g.stopIds.map((sid) => (
-                <span key={sid} style={{
-                  fontSize: 10.5, padding: "2px 6px", background: "#eceff1",
-                  color: "#455a64", borderRadius: 4, display: "inline-flex",
-                  alignItems: "center", gap: 4,
-                }}>
-                  {(stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/")}
-                  <button
-                    onClick={() => updateGroup(g.id, { stopIds: g.stopIds.filter((s) => s !== sid) })}
-                    style={{
-                      border: "none", background: "transparent", color: "#78909c",
-                      cursor: "pointer", padding: 0, fontSize: 11, lineHeight: 1,
-                    }}
-                    title="Remove"
-                  >✕</button>
-                </span>
-              ))}
-              <button
-                onClick={() => setNearbyGroupId(nearbyGroupId === g.id ? null : g.id)}
-                style={{
-                  fontSize: 10.5, padding: "2px 8px", background: nearbyGroupId === g.id ? "#1976D2" : "#fff",
-                  border: "1px dashed #b0bec5", color: nearbyGroupId === g.id ? "#fff" : "#546e7a",
-                  borderRadius: 4, fontFamily: "inherit", cursor: "pointer",
-                }}
-              >
-                {nearbyGroupId === g.id ? "✓ done" : "🔍 near a place"}
-              </button>
-              <select
-                value=""
-                onChange={(e) => {
-                  const sid = Number(e.target.value);
-                  if (!sid || g.stopIds.includes(sid)) return;
-                  updateGroup(g.id, { stopIds: [...g.stopIds, sid] });
-                }}
-                style={{
-                  fontSize: 10.5, padding: "2px 6px", background: "#fff",
-                  border: "1px dashed #b0bec5", color: "#546e7a", borderRadius: 4,
-                  fontFamily: "inherit", cursor: "pointer",
-                }}
-              >
-                <option value="">+ add stop</option>
-                {allStopEntries
-                  .filter((s) => !g.stopIds.includes(s.id))
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-              </select>
-            </div>
-
-            {/* Nearby-a-place picker */}
-            {nearbyGroupId === g.id && (
-              <NearbyStopsPicker
-                selected={new Set(g.stopIds)}
-                stopCoords={stopCoords}
-                stopNames={stopNames}
-                userLatLon={userLatLon}
-                onRequestLocate={onRequestLocate}
-                onToggle={(sid) => {
-                  const has = g.stopIds.includes(sid);
-                  updateGroup(g.id, {
-                    stopIds: has ? g.stopIds.filter((s) => s !== sid) : [...g.stopIds, sid],
-                  });
-                }}
-              />
-            )}
-
-            {/* Arrivals — next 5 across all routes, sorted by ETA */}
-            {g.stopIds.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: "#9e9e9e", paddingLeft: 12 }}>add stops to see arrivals</div>
-            ) : arrivals.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: "#9e9e9e", paddingLeft: 12 }}>no buses incoming</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {arrivals.map((a, i) => {
-                  const sName = (stopNames[a.stopId] ?? `Stop ${a.stopId}`).replace(/\s*\/\s*/g, "/");
-                  return (
-                    <div key={i} style={{
-                      display: "flex", alignItems: "center", gap: 8, fontSize: 11,
-                    }}>
-                      <span style={{
-                        width: 8, height: 8, borderRadius: "50%",
-                        background: a.color, flexShrink: 0,
-                      }} />
-                      <span style={{ fontWeight: 700, color: a.color, minWidth: 80 }}>{a.routeLabel}</span>
-                      <span style={{ color: "#546e7a", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {sName}
-                      </span>
-                      <span style={{ fontWeight: 700, color: "#455a64" }}>
-                        {formatEtaRange(a)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      <button onClick={addGroup} style={{
-        width: "100%", padding: "8px 12px", borderRadius: 8,
-        border: "1px dashed #b0bec5", background: "transparent",
-        color: "#546e7a", cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-      }}>
-        + New group
-      </button>
-    </div>
-  );
-};
-
-const StopGroupsSummary: FC<{
-  groups: StopGroup[];
-  buses: BusData[];
-  stopNames: Record<number, string>;
-  stopCoords: Record<number, { lat: number; lon: number }>;
-  routeStops: Record<string, number[]>;
-  segmentTimes: Record<string, Record<string, { avg: number; sd?: number; n: number }>>;
-  dwellTimes: Record<string, Record<string, { med: number; sd: number; n: number }>>;
-  tick: number;
-}> = ({ groups, buses, stopNames, stopCoords, routeStops, segmentTimes, dwellTimes }) => {
-  if (groups.length === 0) return null;
-  return (
-    <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 16px" }}>
-      {groups.map((g) => {
-        const arrivals = computeUpcomingArrivals(g.stopIds, buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes).slice(0, 5);
-        const name = g.name || "Unnamed";
-        return (
-          <div key={g.id} style={{
-            padding: "8px 12px", background: "#fff", borderRadius: 8, marginBottom: 8,
-            border: "1px solid #e0ddd8", boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#2E7D32", marginBottom: 4 }}>
-              ★ {name}
-            </div>
-            {g.stopIds.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: "#9e9e9e", paddingLeft: 12 }}>no stops in group</div>
-            ) : arrivals.length === 0 ? (
-              <div style={{ fontSize: 10.5, color: "#9e9e9e", paddingLeft: 12 }}>no buses incoming</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {arrivals.map((a, i) => {
-                  const sName = (stopNames[a.stopId] ?? `Stop ${a.stopId}`).replace(/\s*\/\s*/g, "/");
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: a.color, flexShrink: 0 }} />
-                      <span style={{ fontWeight: 700, color: a.color, minWidth: 80 }}>{a.routeLabel}</span>
-                      <span style={{ color: "#546e7a", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {sName}
-                      </span>
-                      <span style={{ fontWeight: 700, color: "#455a64" }}>{formatEtaRange(a)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
 // The collapsed route card lists only the soonest arrivals; the whole stop
 // list is one tap away on the isolated view.
 const MAX_CARD_ARRIVALS = 4;
@@ -5009,6 +5391,7 @@ const StopList: FC<{
   routePeaks?: Record<string, number>;
   // Operator-published timetable per route id; the All tab's schedule line.
   routeHours?: Record<string, PublishedWindow>;
+  routeActive?: Record<string, boolean>;
   tick: number;
   listView: "all" | "favorites" | "accuracy";
   activeOnly?: boolean;
@@ -5020,7 +5403,7 @@ const StopList: FC<{
   onToggleSavedStop: (stopId: number) => void;
   userLatLon?: LatLon | null;
   onRequestLocate?: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
   // purpose: leaving the tab unmounts this list, so isolation never survives a
   // visit. The effect covers the case where the view changes underneath us
@@ -5028,43 +5411,115 @@ const StopList: FC<{
   const [isolatedRouteId, setIsolatedRouteId] = useState<string | null>(null);
   useEffect(() => { setIsolatedRouteId(null); }, [listView]);
 
-  // GPS-based: find nearest route stop for each bus
-  function nearestRouteStop(bus: BusData, routeIds: string[]): number | null {
-    if (!bus.lat || !bus.lon) return null;
-    let bestStop: number | null = null;
-    let bestD = Infinity;
-    for (const rid of routeIds) {
-      for (const sid of routeStops[rid] ?? []) {
-        const sc = stopCoords[sid];
-        if (!sc) continue;
-        const dLat = bus.lat - sc.lat;
-        const dLon = bus.lon - sc.lon;
-        const d = dLat * dLat + dLon * dLon;
-        if (d < bestD) { bestD = d; bestStop = sid; }
-      }
-    }
-    return bestStop;
-  }
-  // Build bus-at-stop lookup: for each config entry, map stopId → bus
-  const busLookups: Record<number, Record<number, BusData>> = {}; // keyed by list index
+  // ── ONE estimator, one anchor, for the whole page ──────────────────────
+  //
+  // Until 2026-09-04 everything below this comment was computed HERE, by a
+  // second ETA estimator this component carried inline: the nearest stop by
+  // squared lat/lon DEGREE delta as the anchor, and a bare sum of segment
+  // averages as the number. It had none of `arrivals.ts` — no gated anchor, no
+  // direction of travel, no stall credit, no stand/drive split, no mid-hop
+  // proration — and it walked a DE-DUPLICATED stop list, which on Green and
+  // Purple silently deletes the West Campus legs the bus actually drives.
+  //
+  // Measured over a day (`docs/card-vs-trip.md`, 948,072 paired rows): the two
+  // surfaces printed the same minute on 14.4% of rows and were five or more
+  // minutes apart on 36.8%. The buses agreed with THIS function — |err| p50
+  // 126 s against 174 s, and at a layover the card's promise ran +185 s late
+  // against +14 s.
+  //
+  // But the number that decided it is the SEQUENCE. The old arithmetic was not
+  // a function of `now` at all, so it could only change when the naive anchor
+  // jumped a stop — frozen on 95.6% of consecutive polls against this
+  // function's 29.2%, and then falling by a whole hop at once. A rider at
+  // Division / Prospect watched it hold "6 min" for four and a half minutes
+  // through a layover and drop to "1 min" in a single 5-second poll. That is
+  // the operator's founding complaint — "saying a bus is 10min away and then a
+  // few seconds later dropping to 1 second" — and every fix for it had gone to
+  // the OTHER estimator, because the reports came in tagged `view=trip`.
+  //
+  // Two things about the shape, both measured, neither free to change:
+  //
+  //   ONE call over every stop, not one per line. `computeUpcomingArrivals`
+  //   already loops `ROUTE_LISTS` internally; fifteen calls is fifteen sweeps.
+  //   0.93 ms shared against 6.25 ms per-line, on the Pi, at the busiest poll
+  //   of the day — and 16.7 ms is the frame.
+  //
+  //   `anchorIndexOnList`, not `findRouteAnchor`. The gate's memory is an
+  //   INDEX into the canonical `mergedRouteStops` sequence; the list below is
+  //   de-duplicated (Green 23 -> 20, Purple 15 -> 11), so the same integer
+  //   means two different stops. That helper anchors on the canonical list and
+  //   translates back by stop id, which is why it exists (liveAnchor.ts). This
+  //   component is the render site PR #102 missed.
+  const displayStops: Record<number, number[]> = {}; // keyed by ROUTE_LISTS index
+  const busLookups: Record<number, Record<number, BusData>> = {};
   const nextLookups: Record<number, Set<number>> = {};
-  ROUTE_LISTS.forEach((cfg, idx) => {
-    busLookups[idx] = {};
-    nextLookups[idx] = new Set();
-    for (const bus of buses) {
-      if (!cfg.busRouteIds.includes(bus.route_id)) continue;
-      // Use GPS to find nearest stop on this route (more accurate than last_stop_id)
-      const gpsStop = nearestRouteStop(bus, cfg.routeIds);
-      const busStop = gpsStop ?? bus.last_stop_id;
-      busLookups[idx][busStop] = bus;
-      // Compute next stop from the bus's actual route
-      const stops = routeStops[String(bus.route_id)];
-      if (stops) {
-        const i = stops.indexOf(busStop);
-        if (i !== -1) nextLookups[idx].add(stops[(i + 1) % stops.length]);
+  const etaLookups: Record<number, Record<number, UpcomingArrival>> = {};
+  /** Buses on the line that the estimator will actually price from. */
+  const onRouteCounts: Record<number, number> = {};
+  {
+    // One clock for the whole page: the anchor and the ETA must be answers
+    // about the same instant, or the badge and the countdown beside it can
+    // disagree by a poll.
+    const nowMs = Date.now();
+    const targets: number[] = [];
+    ROUTE_LISTS.forEach((cfg, idx) => {
+      const seen = new Set<number>();
+      let stops: number[] = [];
+      for (const rid of cfg.routeIds) {
+        for (const sid of routeStops[rid] ?? []) {
+          if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
+        }
       }
+      if (cfg.sliceStart !== undefined || cfg.sliceEnd !== undefined) {
+        stops = stops.slice(cfg.sliceStart ?? 0, cfg.sliceEnd);
+      }
+      displayStops[idx] = stops;
+      busLookups[idx] = {};
+      nextLookups[idx] = new Set();
+      etaLookups[idx] = {};
+      onRouteCounts[idx] = 0;
+      for (const sid of stops) targets.push(sid);
+    });
+
+    const live = computeUpcomingArrivals(
+      targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+    );
+    // Sorted by eta ascending, so the first entry for a (line, stop) is this
+    // lap and any later one is the same vehicle coming round again. A card row
+    // wants the former.
+    const idxByLabel = new Map<string, number>();
+    ROUTE_LISTS.forEach((cfg, idx) => idxByLabel.set(cfg.label, idx));
+    for (const a of live) {
+      const idx = idxByLabel.get(a.routeLabel);
+      if (idx === undefined) continue;
+      if (!etaLookups[idx]![a.stopId]) etaLookups[idx]![a.stopId] = a;
     }
-  });
+    // What the screen just said, for the accuracy log. The route cards are a
+    // DIFFERENT population from the trip card — every line and every stop
+    // rather than the one stop a rider chose — so they report under their own
+    // surface and no query can pool the two by accident.
+    noteShown(live, "card", nowMs);
+
+    ROUTE_LISTS.forEach((cfg, idx) => {
+      const stops = displayStops[idx]!;
+      if (stops.length === 0) return;
+      const canonical = mergedRouteStops(cfg, routeStops);
+      for (const bus of buses) {
+        if (!cfg.busRouteIds.includes(bus.route_id)) continue;
+        // The same gate the ETA used. A bus the estimator will not price from
+        // (deadheading off the line — Blue Night runs a 2.1 km relief leg past
+        // no stops) gets no badge either: a vehicle marked as sitting at a
+        // stop it is not serving, above a list with no times in it, is two
+        // contradictory claims on one card.
+        if (!isBusOnRoute(bus, canonical, stopCoords)) continue;
+        onRouteCounts[idx]!++;
+        const i = anchorIndexOnList(bus, cfg, routeStops, stopCoords, stops, nowMs, liveAnchorStore);
+        if (i < 0) continue;
+        busLookups[idx]![stops[i]!] = bus;
+        nextLookups[idx]!.add(stops[(i + 1) % stops.length]!);
+      }
+    });
+  }
 
   return (
     <div style={{
@@ -5088,21 +5543,15 @@ const StopList: FC<{
         >← All routes</button>
       )}
       {ROUTE_LISTS.map((cfg, listIdx) => {
-        // Merge stops from all route IDs in this config (deduplicated, preserving order)
-        const seen = new Set<number>();
-        let stops: number[] = [];
-        for (const rid of cfg.routeIds) {
-          for (const sid of routeStops[rid] ?? []) {
-            if (!seen.has(sid)) { seen.add(sid); stops.push(sid); }
-          }
-        }
+        // Built once above, beside the anchor and the ETAs, so the three
+        // cannot be indexing different sequences.
+        const stops = displayStops[listIdx] ?? [];
         if (stops.length === 0) return null;
-        if (cfg.sliceStart !== undefined || cfg.sliceEnd !== undefined) {
-          stops = stops.slice(cfg.sliceStart ?? 0, cfg.sliceEnd);
-        }
         const busMap = busLookups[listIdx] ?? {};
         const nextSet = nextLookups[listIdx] ?? new Set<number>();
-        const hasBuses = Object.keys(busMap).length > 0;
+        const etaAtStop = etaLookups[listIdx] ?? {};
+        const onRoute = onRouteCounts[listIdx] ?? 0;
+        const hasBuses = onRoute > 0;
         const primaryRouteId = cfg.routeIds[0];
         const isFav = favorites.has(primaryRouteId);
         const isolated = isolatedRouteId === primaryRouteId;
@@ -5161,67 +5610,22 @@ const StopList: FC<{
         // Published hours when the server parsed them; ROUTE_HOURS (the wider
         // in-service gate) only as a fallback.
         const published = publishedWindowFor(cfg, routeHours);
-        const schedule = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        const hoursText = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+        // A line whose partner runs this weekend (schedule.ts
+        // ROUTE_CALENDAR) says so beside its hours, so "0/1 bus" under
+        // "Sa/Su 7a–5p" on a Sunday does not read as a bus that failed to
+        // come out.
+        const off = routeBuses.length === 0
+          ? serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, new Date(), {
+              labels: new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l)),
+              now: new Date(),
+              active: routeActiveFor(cfg, routeActive),
+            }).off
+          : null;
+        const schedule = off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
+        const routeNote = ROUTE_CALENDAR[cfg.label]?.note ?? null;
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
-
-        // ── ETAs: cumulative from each bus to the stops ahead of it ──
-        const routeSegs = segmentTimes[primaryRouteId] ?? {};
-        const segValues = Object.values(routeSegs).filter((s) => s.n >= 2);
-        const avgSeg = segValues.length > 0
-          ? segValues.reduce((sum, s) => sum + s.avg, 0) / segValues.length
-          : 0;
-
-        const etaAtStop: Record<number, { eta: number; low: number; high: number; busName: string; estimated: boolean }> = {};
-        for (const [sid, b] of Object.entries(busMap)) {
-          const busIdx = stops.indexOf(Number(sid));
-          if (busIdx === -1) continue;
-          let cumulative = 0;
-          let cumulativeVar = 0;
-          let hasAnyData = false;
-          const totalStops = stops.length;
-          const fallbackSd = avgSeg * 0.5;
-          // Segments are arrival-to-arrival (include dwell at origin) — don't add dwells separately.
-          for (let step = 1; step < totalStops; step++) {
-            const prevIdx = (busIdx + step - 1) % totalStops;
-            const curIdx = (busIdx + step) % totalStops;
-
-            const seg = routeSegs[`${stops[prevIdx]}-${stops[curIdx]}`];
-            if (seg && seg.n >= 1) {
-              cumulative += seg.avg;
-              cumulativeVar += (seg.sd ?? 0) ** 2;
-              hasAnyData = true;
-            } else if (avgSeg > 0) {
-              cumulative += avgSeg;
-              cumulativeVar += fallbackSd * fallbackSd;
-            } else {
-              // No calibration at all — a fresh database, or a route the
-              // collector has not yet learned. Price the hop by distance at
-              // bus speed, exactly as planTrip and the loop-time line above
-              // already do, rather than giving up: this loop used to `break`,
-              // and the card that reads from it then showed a route with two
-              // running buses and not one stop.
-              const pc = stopCoords[stops[prevIdx]], cc = stopCoords[stops[curIdx]];
-              if (!pc || !cc) break;
-              const est = Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
-              cumulative += est;
-              cumulativeVar += (est * 0.5) ** 2;
-            }
-            if (cumulative > 0) {
-              const sd = Math.sqrt(cumulativeVar);
-              const existing = etaAtStop[stops[curIdx]];
-              if (!existing || cumulative < existing.eta) {
-                etaAtStop[stops[curIdx]] = {
-                  eta: cumulative,
-                  low: Math.max(0, cumulative - sd),
-                  high: cumulative + sd,
-                  busName: (b as BusData).bus_name,
-                  estimated: !hasAnyData,
-                };
-              }
-            }
-          }
-        }
 
         // One stop row. Shared by the collapsed card (a handful of them, in
         // arrival order) and the isolated view (all of them, in route order),
@@ -5294,12 +5698,20 @@ const StopList: FC<{
                 )}
               </span>
               {etaAtStop[stopId] && !bus && (() => {
-                const e = etaAtStop[stopId];
-                const lo = Math.round(e.low / 60);
+                const e = etaAtStop[stopId]!;
                 return (
                   <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
-                      {e.estimated ? "~" : ""}{lo} min
+                      {/* `fmtMin(eta)`, the trip card's own rule — not the LOW
+                          end of the interval, which is what this row used to
+                          print. Two surfaces now share an estimator; printing
+                          its answer through two different transforms would put
+                          them a minute or two apart again for no reason, and
+                          `Math.round(low / 60)` could reach "0 min" for a bus
+                          at the kerb, which PR #98 already established is not a
+                          countdown. The interval has not gone: it is the clock
+                          time beside it. */}
+                      {e.estimated ? "~" : ""}{fmtMin(e.eta)}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
                       {fmtClock(e.eta)}
@@ -5466,6 +5878,9 @@ const StopList: FC<{
                   {schedule}
                 </span>
                 <span>{busLabel}</span>
+                {routeNote && (
+                  <span style={{ flexBasis: "100%", lineHeight: 1.4 }}>{routeNote}</span>
+                )}
               </div>
             )}
 
@@ -5519,7 +5934,19 @@ const StopList: FC<{
                   >
                     {upcoming.length > 0
                       ? `and ${moreStops} more stops ›`
-                      : `${stops.length} stops${hasBuses ? "" : " · no buses en route"} ›`}
+                      // Three states, because there are three, and a card that
+                      // says "2 buses" above an empty list has to say why.
+                      // `onRoute === 0` with vehicles on the line is a bus
+                      // deadheading: Blue Night drives a 2.1 km relief leg past
+                      // no stops, and the old arithmetic cheerfully promised
+                      // arrivals off it (7,566 rows in a day — Pink, Blue Night
+                      // and Green, docs/card-vs-trip.md). Declining to answer
+                      // is right; declining silently is not.
+                      : routeBuses.length === 0
+                        ? `${stops.length} stops · no buses en route ›`
+                        : onRoute === 0
+                          ? `${stops.length} stops · ${routeBuses.length} bus${routeBuses.length === 1 ? "" : "es"} off route ›`
+                          : `${stops.length} stops ›`}
                   </button>
                 )}
               </>
@@ -5584,7 +6011,7 @@ const RideRouteMap: FC<{
   };
 
   // Mount-once (rebuilds when route path data lands): tiles, the boarded route's
-  // polyline, its stops with board emphasised + alight as 🚏, fit to the route.
+  // polyline, its stops with board emphasised + alight as 🚏, fit to the ride leg.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
     const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
@@ -5651,8 +6078,20 @@ const RideRouteMap: FC<{
       pts.push([dest.lat, dest.lon]);
     }
 
+    // Keep the full route available for panning, but frame this rider's leg.
+    // A local Green ride must not start zoomed out to all of West Campus.
+    const trackedBus = buses.find((b) => cfg.busRouteIds.includes(b.route_id) && normBus(b.bus_name) === normBus(ride.busName));
+    const focusRouteId = trackedBus ? String(trackedBus.route_id) : routeIds[0];
+    const legIds = rideMapStopSequence(focusRouteId ? routeStops[focusRouteId] : undefined, ride.boardStopId, ride.alightStopId);
+    const legStops = legIds?.map((id) => stopCoords[id]);
+    let focusPts = pts;
+    if (legStops && legStops.every((p): p is LatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon))) {
+      focusPts = buildStopSequencePolyline(focusRouteId ? routePaths[focusRouteId] : undefined, legStops)
+        ?? legStops.map((p) => [p.lat, p.lon] as [number, number]);
+      if (dest) focusPts.push([dest.lat, dest.lon]);
+    }
     busLayerRef.current = L.layerGroup().addTo(map);
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [28, 28] });
+    if (focusPts.length) map.fitBounds(L.latLngBounds(focusPts), { padding: [28, 28], maxZoom: 16 });
     const t1 = setTimeout(() => map.invalidateSize(), 60);
     const t2 = setTimeout(() => map.invalidateSize(), 300);
     return () => {
@@ -5745,16 +6184,25 @@ const RideStopList: FC<{
       )
     : undefined;
 
-  const busIdx = bus ? findRouteAnchor(bus, allStops, stopCoords) : -1;
+  const busIdx = bus && cfg
+    ? anchorIndexOnList(bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore)
+    : -1;
   const boardIdx = allStops.indexOf(ride.boardStopId);
   const alightIdx = allStops.indexOf(ride.alightStopId);
   const n = allStops.length;
 
   let etaSec: number | null = null;
-  if (bus) {
+  // Once this ride reaches its exit, the next arrival is another lap, not
+  // the time remaining for the passenger who is getting off here.
+  if (bus && isUnambiguousRideArrival(routeStops[String(bus.route_id)], ride.alightStopId, busIdx, alightIdx)) {
+    etaSec = 0;
+  } else if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    // The ride page's countdown to the alight stop. Same estimator, different
+    // population — one stop the rider is already travelling to — so it says so.
+    noteShown(arr, "ride");
     const mine = arr.find(a => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName));
     if (mine) etaSec = mine.eta;
   }
@@ -5807,7 +6255,7 @@ const RideStopList: FC<{
           const isBoard = idx === boardIdx;
 
           const icon = isBusCur ? "🚌" : isAlight ? "🚏" : passed ? "✓" : "·";
-          const dimmed = passed && !isBoard;
+          const dimmed = passed && !isBoard && !isAlight;
           const highlighted = isBusCur || isAlight;
 
           return (
@@ -5888,8 +6336,10 @@ const OnBusBanner: FC<{
     : undefined;
 
   let stopsRemaining: number | null = null;
-  if (bus && allStops.length > 0) {
-    const anchor = findRouteAnchor(bus, allStops, stopCoords);
+  if (bus && cfg && allStops.length > 0) {
+    const anchor = anchorIndexOnList(
+      bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
+    );
     const alightIdx = allStops.indexOf(ride.alightStopId);
     if (anchor >= 0 && alightIdx >= 0) {
       stopsRemaining = (alightIdx - anchor + allStops.length) % allStops.length;
@@ -5899,8 +6349,9 @@ const OnBusBanner: FC<{
   let etaSec: number | null = null;
   if (bus) {
     const arr = computeUpcomingArrivals(
-      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes,
+      [ride.alightStopId], buses, routeStops, stopCoords, segmentTimes, undefined, dwellTimes, liveAnchorStore,
     );
+    noteShown(arr, "ride");
     const mine = arr.find(
       (a) => a.stopId === ride.alightStopId && normBus(a.busName) === normBus(ride.busName),
     );
@@ -5918,12 +6369,19 @@ const OnBusBanner: FC<{
   // don't re-fire.
   const getOffAlertRef = useRef<string | null>(null);
   const [getOffPopup, setGetOffPopup] = useState<string | null>(null);
+  const getOffButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!getOffPopup) return;
+    const previous = document.activeElement as HTMLElement | null;
+    getOffButtonRef.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, [getOffPopup]);
   useEffect(() => {
     if (stopsRemaining === null || stopsRemaining > 2) return;
     const key = `${ride.busName}-${ride.alightStopId}`;
     if (getOffAlertRef.current === key) return;
     getOffAlertRef.current = key;
-    const title = stopsRemaining <= 1 ? "Get off at the next stop" : "Get off in 2 stops";
+    const title = getOffAlertTitle(stopsRemaining)!;
     try { navigator.vibrate?.([200, 100, 200]); } catch { /* unsupported */ }
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       try {
@@ -5957,6 +6415,20 @@ const OnBusBanner: FC<{
         mid-doomscroll; tap anywhere to dismiss. */}
     {getOffPopup && (
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="get-off-prompt-title"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setGetOffPopup(null);
+          } else if (e.key === "Tab") {
+            // Got it is the only control in this modal.
+            e.preventDefault();
+            getOffButtonRef.current?.focus();
+          }
+        }}
         onClick={() => setGetOffPopup(null)}
         style={{
           position: "fixed", inset: 0, zIndex: 10000,
@@ -5971,13 +6443,14 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
-            {getOffPopup}
+          <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+            {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
           </div>
           <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
             {ride.routeLabel} → {alightName}
           </div>
           <button
+            ref={getOffButtonRef}
             onClick={() => setGetOffPopup(null)}
             style={{
               marginTop: 14, width: "100%", minHeight: 44,
@@ -6032,6 +6505,9 @@ const TransitMap: FC = () => {
   // route description (`route_hours`). Riders are shown THIS; the in-service
   // gate (isBusInService) stays on ROUTE_HOURS. Empty until the first poll.
   const [routeHours, setRouteHours] = useState<Record<string, PublishedWindow>>({});
+  // Upstream's "in service right now" flag per route id (`route_active`),
+  // the first word on whether a line with no bus is off today.
+  const [routeActive, setRouteActive] = useState<Record<string, boolean>>({});
   // Full per-route polyline from downtownerapp's routes_routes.php
   // `path` field. Used to draw exact bus-route shapes on the trip map,
   // replacing the OSRM driving-directions fallback that occasionally
@@ -6043,9 +6519,13 @@ const TransitMap: FC = () => {
   const [dwellsByBus, setDwellsByBus] = useState<Record<string, Record<string, Record<string, { med: number; sd: number; n: number }>>>>({});
   const [stopCoords, setStopCoords] = useState<Record<number, { lat: number; lon: number }>>({});
   const [tick, setTick] = useState(0);
+  const busUpdatesStartedAt = useRef(Date.now());
+  const [lastBusUpdateAt, setLastBusUpdateAt] = useState<number | null>(null);
+  const [busUpdateFailed, setBusUpdateFailed] = useState(false);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
+  const [finishedRide, setFinishedRide] = useState<BoardedRide | null>(null);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -6059,7 +6539,7 @@ const TransitMap: FC = () => {
   // every view change to keep the favourites filter from leaking into the All
   // page, which would wipe this the moment the rider switched tabs.
   const [mapHidden, setMapHidden] = useState<Set<string>>(() =>
-    loadHiddenRoutes(LEGEND_ROUTES.map((r) => r.toggleLabel)));
+    loadHiddenRoutes(LEGEND_TOGGLES));
   const setMapHiddenPersisted = (next: Set<string>) => {
     setMapHidden(next);
     saveHiddenRoutes(next);
@@ -6111,12 +6591,51 @@ const TransitMap: FC = () => {
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
   const activeFilter = activeOnly && buses.length > 0;
+  // Which lines have a bus ON ROUTE right now, as toggle labels — the same
+  // test the route cards use (isBusOnRoute over the merged stop list), so a
+  // bus upstream has mis-assigned to a line does not light it up. Feeds the
+  // Map tab: "Running now" hides the other lines from the map as well as from
+  // the cards (operator, 2026-09-06). Recomputed per poll; fifteen routes by
+  // ~17 buses is nothing.
+  const runningToggles = useMemo(() => {
+    const out = new Set<string>();
+    for (const cfg of ROUTE_LISTS) {
+      const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
+      if (!toggle || out.has(toggle)) continue;
+      const canonical = mergedRouteStops(cfg, routeStops);
+      if (buses.some((b) => cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, canonical, stopCoords))) {
+        out.add(toggle);
+      }
+    }
+    return out;
+  }, [buses, routeStops, stopCoords]);
+  // THE filter for the Map tab: the chips, plus every idle line while
+  // "Running now" is on. The map draws by this set and the route cards under
+  // it are shown by this same set (operator, 2026-09-06: one filter setting,
+  // not two) — StopList is handed it as its hiddenRoutes and nothing else, so
+  // a line is on the map exactly when its card is on the page.
+  const mapDrawnHidden = useMemo(
+    () => drawnHidden(LEGEND_TOGGLES, mapHidden, activeOnly, buses.length > 0, runningToggles),
+    [mapHidden, activeOnly, buses.length, runningToggles]);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
   // /api/report endpoint as the per-route report button, tagged
   // with source:"feedback" so debug queries can distinguish general
   // feedback from route-specific reports.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // The composer sits at the foot of the page, so the beta banner up by the
+  // tabs has to bring it into view as well as open it — expanding a form
+  // several screens below the tap looks like nothing happened.
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const openFeedback = () => {
+    setFeedbackOpen(true);
+    // Next frame: the composer has to exist before it can be scrolled to.
+    // Both calls are optional-chained — an older engine without smooth
+    // scrolling should still get the open form, not a crash.
+    requestAnimationFrame(() => {
+      feedbackRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    });
+  };
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
@@ -6270,6 +6789,21 @@ const TransitMap: FC = () => {
     } catch { return true; }
   });
   const [locateError, setLocateError] = useState<string | null>(null);
+  // WHEN the last fix was taken, so a check can tell a live position from a
+  // frozen one (report #96 — see rideEnd.ts). The browser's own timestamp is
+  // preferred, since the rescue one-shot will hand back a fix up to two
+  // minutes old, but it is only trusted when it reads as a sane epoch: a few
+  // engines have shipped a different clock here, and a bogus one must not be
+  // able to make a stale fix look fresh (or a fresh one look stale).
+  const fixAtRef = React.useRef<number | null>(null);
+  const noteFixAge = (timestamp?: number) => {
+    const now = Date.now();
+    const t = typeof timestamp === "number" && Number.isFinite(timestamp)
+      && timestamp <= now + 60_000 && now - timestamp < 24 * 3600_000
+      ? Math.min(timestamp, now)
+      : now;
+    fixAtRef.current = t;
+  };
   const geoWatchRef = React.useRef<GeoWatchHandle | null>(null);
   // Accuracy tier the live watch is currently running at (null = none yet).
   // Every watch registration below records its tier here so the
@@ -6289,6 +6823,7 @@ const TransitMap: FC = () => {
     geoWatchRef.current = startGeoWatch(navigator.geolocation, {
       precise,
       onFix: (p) => {
+        noteFixAge(p.timestamp);
         setUserLatLon({ lat: p.coords.latitude, lon: p.coords.longitude });
         setLocating(false);
         setLocateError(null);
@@ -6312,6 +6847,7 @@ const TransitMap: FC = () => {
     setLocateError(null);
     const applyFix = (pos: GeolocationPosition) => {
       console.log("[locate] got position", pos.coords);
+      noteFixAge(pos.timestamp);
       setUserLatLon({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       setLocating(false);
       if (geoWatchRef.current == null) {
@@ -6440,21 +6976,17 @@ const TransitMap: FC = () => {
 
   // Auto-end forgotten trips (user request 2026-07-17) — an active trip
   // is what keeps the GPS in high-accuracy mode, so one the rider forgot
-  // to end would burn battery indefinitely. Three independent triggers:
-  //   (a) age cap — no shuttle trip takes 2 hours;
-  //   (b) rider has been ≥300 m from their bus for 3 consecutive checks
-  //       (~15 s of polls): they got off (or never boarded);
-  //   (c) the pinned bus has been absent from the feed for 10 min —
-  //       service ended with the ride page still open.
+  // to end would burn battery indefinitely. The three triggers and the
+  // evidence each one needs live in rideEnd.ts; this effect only gathers
+  // the inputs. Report #96 is why the off-bus one now asks how OLD the
+  // rider's fix is: the bus poll runs while the page is hidden and the
+  // geolocation watch does not, so composing feedback froze the rider's
+  // position while their bus drove away from it, and the ride they were
+  // sitting on was retired underneath them.
   const offBusStreakRef = React.useRef(0);
   const busLastSeenRef = React.useRef<number>(Date.now());
   useEffect(() => {
-    const TRIP_MAX_AGE_MS = 2 * 3600_000;
     const now = Date.now();
-    if (boardedRide && boardedRide.startedAt && now - boardedRide.startedAt > TRIP_MAX_AGE_MS) {
-      setBoardedRide(null);
-      return;
-    }
     if (!boardedRide) {
       offBusStreakRef.current = 0;
       busLastSeenRef.current = now;
@@ -6465,25 +6997,29 @@ const TransitMap: FC = () => {
     const bus = cfg
       ? buses.find((b) => norm(b.bus_name) === norm(boardedRide.busName) && cfg.busRouteIds.includes(b.route_id))
       : undefined;
-    if (!bus) {
-      if (now - busLastSeenRef.current > 10 * 60_000) {
-        setBoardedRide(null);
-      }
-      return;
-    }
-    busLastSeenRef.current = now;
-    if (userLatLon && bus.lat && bus.lon) {
-      const d = haversineMeters(userLatLon, { lat: bus.lat, lon: bus.lon });
-      offBusStreakRef.current = d > 300 ? offBusStreakRef.current + 1 : 0;
-      if (offBusStreakRef.current >= 3) {
-        offBusStreakRef.current = 0;
-        setBoardedRide(null);
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          try {
-            new Notification("Ride ended", { body: "Looks like you've left the bus — tracking stopped to save battery." });
-          } catch { /* blocked */ }
-        }
-      }
+    const positioned = bus && bus.lat && bus.lon ? { lat: bus.lat, lon: bus.lon } : null;
+    const decision = rideEndDecision({
+      now,
+      startedAt: boardedRide.startedAt,
+      bus: bus ? { lat: bus.lat, lon: bus.lon } : null,
+      busLastSeenMs: busLastSeenRef.current,
+      user: userLatLon,
+      fixAgeMs: fixAtRef.current == null ? null : now - fixAtRef.current,
+      hidden: typeof document !== "undefined" && document.hidden === true,
+      streak: offBusStreakRef.current,
+      distanceM: userLatLon && positioned ? haversineMeters(userLatLon, positioned) : null,
+    });
+    offBusStreakRef.current = decision.streak;
+    busLastSeenRef.current = decision.busLastSeenMs;
+    if (!decision.end) return;
+    setBoardedRide(null);
+    // Only the off-bus ending is a surprise worth a notification; the other
+    // two are a ride the rider had already forgotten about.
+    if (decision.reason === "off-bus"
+      && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        new Notification("Ride ended", { body: "Looks like you've left the bus — tracking stopped to save battery." });
+      } catch { /* blocked */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buses, userLatLon?.lat, userLatLon?.lon, boardedRide]);
@@ -6507,15 +7043,11 @@ const TransitMap: FC = () => {
     setSavedTrips(t);
     try { localStorage.setItem("shuttle-saved-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
   };
-  const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(() => {
-    try {
-      const saved = localStorage.getItem("shuttle-recent-trips");
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  // One recents list, shared by the From and To boxes — see ./recents.
+  const [recentTrips, setRecentTrips] = useState<SavedTrip[]>(loadRecents);
   const saveRecentTrips = (t: SavedTrip[]) => {
     setRecentTrips(t);
-    try { localStorage.setItem("shuttle-recent-trips", JSON.stringify(t)); } catch { /* quota / blocked */ }
+    saveRecents(t);
   };
   // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
   // on mount / prop change and applies the from+to fields.
@@ -6660,10 +7192,20 @@ const TransitMap: FC = () => {
         // A failed poll must not be mistaken for an empty fleet: the server
         // answers 5xx as JSON `{error}`, and applying that as `buses ?? []`
         // flipped a live page to "No shuttles running" for one tick.
-        if (!res.ok) return;
+        if (!res.ok) throw new Error("Bus update failed");
         const data = await res.json();
-        if (stopped || mySeq <= latestApplied) return;
+        if (stopped || controller.signal.aborted || mySeq <= latestApplied) return;
+        // A malformed response is not a successfully refreshed empty fleet.
+        if (!data || !Array.isArray(data.buses)) throw new Error("Invalid bus update");
         latestApplied = mySeq;
+        setLastBusUpdateAt(Date.now());
+        setBusUpdateFailed(false);
+        // The estimator's learned parameters, before anything that prices a
+        // row with them (docs/closed-loop.md, stage 3). Absent, malformed or
+        // out of range and this resets to the compiled constants, which is
+        // exactly the client without this line — an older server, a rolled-back
+        // publish and a corrupt field all degrade the same way.
+        applyModelParams(data.model_params);
         // Drop out-of-service ghosts (see isBusInService) before anything
         // downstream — map markers, planner, and arrival boards all read
         // this state.
@@ -6674,6 +7216,10 @@ const TransitMap: FC = () => {
         if (data.dwells) setDwellTimes(data.dwells);
         if (data.stop_coords) setStopCoords(data.stop_coords);
         if (data.route_peaks) setRoutePeaks(data.route_peaks);
+        if (data.route_active && typeof data.route_active === "object" && !Array.isArray(data.route_active)) {
+          const fresh = data.route_active as Record<string, boolean>;
+          setRouteActive((prev) => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
+        }
         if (data.route_hours && typeof data.route_hours === "object" && !Array.isArray(data.route_hours)) {
           setRouteHours(data.route_hours as Record<string, PublishedWindow>);
         }
@@ -6685,7 +7231,12 @@ const TransitMap: FC = () => {
           setRoutePaths(data.route_paths);
         }
         if (Array.isArray(data.announcements)) setAnnouncements(data.announcements as ServiceAnnouncement[]);
-      } catch { /* aborted or network error — next tick will retry */ }
+      } catch {
+        // Replaced requests and unmounts are not connection failures.
+        if (!stopped && !controller.signal.aborted && mySeq > latestApplied) {
+          setBusUpdateFailed(true);
+        }
+      }
     };
     // Adaptive cadence: 5s when the tab is visible (active riders
     // watching an ETA), 30s when hidden (battery-friendly background).
@@ -6699,7 +7250,12 @@ const TransitMap: FC = () => {
     };
     const onVisibility = () => {
       restart();
-      if (!document.hidden) poll();
+      if (!document.hidden) {
+        // A sleeping browser is not evidence of a broken connection. Start a
+        // fresh visible window without pretending a response has arrived.
+        busUpdatesStartedAt.current = Date.now();
+        poll();
+      }
     };
     document.addEventListener("visibilitychange", onVisibility);
     poll();
@@ -6747,6 +7303,7 @@ const TransitMap: FC = () => {
   // the previous attempt only edited one. It is now derived — the short chip
   // label and the toggle grouping key live beside the colour in ROUTE_LISTS.
   const legendRoutes = LEGEND_ROUTES;
+  const busUpdateNotice = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busUpdateFailed, document.hidden);
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
@@ -6773,7 +7330,7 @@ const TransitMap: FC = () => {
           stopCoords={stopCoords}
           routeStops={routeStops}
           segmentTimes={segmentTimes}          dwellTimes={dwellTimes}
-          onEnd={() => setBoardedRide(null)}
+          onEnd={() => { setFinishedRide(boardedRide); setBoardedRide(null); }}
         />
       )}
       {/* Header */}
@@ -6857,6 +7414,16 @@ const TransitMap: FC = () => {
 
       {/* Status-change banner: shown on any tab except Issues itself, until
           dismissed or until the Issues tab marks everything seen. */}
+      {busUpdateNotice && (
+        <div role="status" style={{
+          width: "calc(100% - 32px)", maxWidth: 528, margin: "6px auto 10px",
+          padding: "10px 12px", borderRadius: 10, border: "1px solid #d6a849",
+          background: "#fff4d6", color: "#634600", fontSize: 13, lineHeight: 1.4,
+        }}>
+          {busUpdateNotice}
+        </div>
+      )}
+
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
         <div style={{
           width: "100%", maxWidth: 560, padding: "0 16px", boxSizing: "border-box",
@@ -6887,6 +7454,10 @@ const TransitMap: FC = () => {
             >✕</button>
           </div>
         </div>
+      )}
+
+      {!boardedRide && finishedRide && (
+        <RideFinish ride={finishedRide} onDismiss={() => setFinishedRide(null)} />
       )}
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
@@ -6929,8 +7500,7 @@ const TransitMap: FC = () => {
             alignItems: "center",
           }}>
             <button
-              onClick={() => setMapHiddenPersisted(
-                toggleAll(LEGEND_ROUTES.map((r) => r.toggleLabel), mapHidden))}
+              onClick={() => setMapHiddenPersisted(toggleAll(LEGEND_TOGGLES, mapHidden))}
               style={{
                 padding: "3px 10px", borderRadius: 10, border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", fontSize: 11, fontWeight: 600,
@@ -6939,20 +7509,27 @@ const TransitMap: FC = () => {
                 flexShrink: 0, whiteSpace: "nowrap",
               }}
             >
-              {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) ? "Show all" : "Hide all"}
+              {allHidden(LEGEND_TOGGLES, mapHidden) ? "Show all" : "Hide all"}
             </button>
             {LEGEND_ROUTES.map((r) => {
               const off = mapHidden.has(r.toggleLabel);
+              // On, but not drawn: "Running now" is on and this line has no
+              // bus. Outlined in its own colour rather than dimmed — a filled
+              // chip at half opacity loses its white text — so the three
+              // states read apart: filled = on the map, outlined = switched on
+              // but idle, grey = switched off. Still 44 px and still tappable.
+              const idle = !off && activeFilter && !runningToggles.has(r.toggleLabel);
               return (
                 <button
                   key={r.toggleLabel}
                   onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
                   aria-pressed={!off}
+                  title={idle ? `No ${r.label} bus right now — hidden by "Running now"` : undefined}
                   style={{
                     padding: "3px 10px", borderRadius: 10,
                     border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
-                    background: off ? "#fff" : r.color,
-                    color: off ? "#90a4ae" : "#fff",
+                    background: off || idle ? "#fff" : r.color,
+                    color: off ? "#90a4ae" : idle ? r.color : "#fff",
                     fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                     minHeight: 44, display: "inline-flex", alignItems: "center",
                     flexShrink: 0, whiteSpace: "nowrap",
@@ -6963,21 +7540,32 @@ const TransitMap: FC = () => {
               );
             })}
           </div>
-          {LEGEND_ROUTES.every((r) => mapHidden.has(r.toggleLabel)) && (
+          {allHidden(LEGEND_TOGGLES, mapHidden) ? (
             <div style={{
               width: "100%", maxWidth: 800, margin: "0 auto",
               padding: "0 12px 8px", fontSize: 13, color: "#78909c",
             }}>
-              Every line is switched off — tap one above to put it back on the map.
+              Every line is switched off — tap one above to put it back on the map and in the cards below.
             </div>
-          )}
+          ) : allHidden(LEGEND_TOGGLES, mapDrawnHidden) ? (
+            // The chips leave something on, but none of it has a bus: say so,
+            // or an empty map under lit chips reads as broken.
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto",
+              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
+            }}>
+              None of the lines switched on has a bus right now — the map shows only running lines. Tap "Every route" below to see them all.
+            </div>
+          ) : null}
           <AllRoutesMap
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
             height="min(48vh, 430px)"
             buses={buses} routePaths={routePaths}
             stopCoords={stopCoords} stopNames={stopNames} routeStops={routeStops}
-            hiddenRoutes={mapHidden}
+            // The page's one filter: the chips, plus every idle line while
+            // "Running now" is on. The cards below take this same set.
+            hiddenRoutes={mapDrawnHidden}
             userLatLon={userLatLon} onRequestLocate={startLocating}
           />
 
@@ -6985,21 +7573,28 @@ const TransitMap: FC = () => {
               a tab of their own; the map above answers "where is everything"
               and these answer "when does MY line reach MY stop", which is one
               page, not two. The line filter above governs both. */}
-          {/* One control row above the cards: the "running now" filter, then
-              the jump index. Two stacked rows pushed the first card entirely
-              off a phone screen. It scrolls sideways rather than wrapping, so
-              fifteen routes cost the same height as three.
-              The jump index earns its place because the page is thousands of
-              pixels tall and a swipe starting on the map pans the map instead
-              of scrolling the page — report #21 is the same complaint about a
-              list sitting too low. */}
+          {/* One control above the cards: the "Running now / Every route"
+              MODE. It is not a second per-route filter — the chip row above
+              the map is the only one (operator, 2026-09-06: "share one filter
+              setting instead of two"). The row of jump chips that used to sit
+              beside it is gone: it was a second row of route names that did
+              something different from the first, and with one filter a rider
+              who wants one card taps "Hide all" and that line, which puts the
+              card directly under the map. */}
+          {buses.length === 0 && generalAnnouncements(announcements).map((a) => (
+            <div key={a.id} style={{
+              margin: "10px 0 0", padding: "10px 12px", borderRadius: 10,
+              background: "#fff8e1", border: "1px solid #ffe082",
+              fontSize: 13, color: "#5d4037", lineHeight: 1.45,
+            }}>
+              <span style={{ fontWeight: 700 }}>{a.title}</span>
+              <span style={{ margin: "0 6px" }}>·</span>
+              <span>{a.message}</span>
+            </div>
+          ))}
           <div style={{
-            // Same shape as the line-filter row above the map: a sideways
-            // scroller must be width-constrained or it widens the PAGE, and a
-            // page that scrolls sideways on a phone feels broken.
             width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
             padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
-            flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
           }}>
             <button
               onClick={() => setActiveOnly(!activeOnly)}
@@ -7013,39 +7608,31 @@ const TransitMap: FC = () => {
             >
               {activeOnly ? "Running now" : "Every route"}
             </button>
-            {ROUTE_LISTS.map((cfg) => {
-              const hasBuses = buses.some((b) => cfg.busRouteIds.includes(b.route_id));
-              if (activeOnly && buses.length > 0 && !hasBuses) return null;
-              const toggle = cfg.busRouteIds.map((bid) => ROUTE_ID_TO_TOGGLE[bid]).find(Boolean);
-              if (toggle && mapHidden.has(toggle)) return null;
-              return (
-                <button
-                  key={cfg.label}
-                  onClick={() => document.getElementById(`route-card-${cfg.label}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  title={`Jump to the ${cfg.label} route`}
-                  style={{
-                    padding: "3px 10px", borderRadius: 10, minHeight: 44,
-                    border: `1px solid ${cfg.color}`, background: "#fff",
-                    color: cfg.color, fontSize: 10, fontWeight: 700,
-                    cursor: "pointer", fontFamily: "inherit",
-                    flexShrink: 0, whiteSpace: "nowrap",
-                  }}
-                >
-                  {cfg.label}
-                </button>
-              );
-            })}
           </div>
+          {/* The card area never goes silently blank: with every card filtered
+              out, one plain line says why, in the place the cards would be. */}
+          {allHidden(LEGEND_TOGGLES, mapDrawnHidden) && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
+              padding: "6px 12px 12px", fontSize: 13, color: "#78909c",
+            }}>
+              {allHidden(LEGEND_TOGGLES, mapHidden)
+                ? "No lines selected — tap a line above."
+                : "None of the selected lines has a bus right now — tap \"Every route\" to see them all."}
+            </div>
+          )}
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
               buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
-              routeHours={routeHours} tick={tick}
-              listView="all" activeOnly={activeOnly && buses.length > 0}
-              // One filter for the page: the chips above already say which
-              // lines the rider cares about, and they persist between visits.
-              hiddenRoutes={mapHidden}
+              routeHours={routeHours} routeActive={routeActive} tick={tick}
+              listView="all"
+              // The SAME set the map above draws by — chips plus the "Running
+              // now" mode, decided once in drawnHidden(). No activeOnly here:
+              // the toggle is already folded into that set, and a second copy
+              // of the decision is how the two would drift apart again.
+              hiddenRoutes={mapDrawnHidden}
               favorites={favorites} onToggleFavorite={toggleFavorite}
               savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
               userLatLon={userLatLon} onRequestLocate={startLocating}
@@ -7058,7 +7645,7 @@ const TransitMap: FC = () => {
         <TripPlanner
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
-          routeHours={routeHours}
+          routeHours={routeHours} routeActive={routeActive}
           userLatLon={userLatLon} onRequestLocate={startLocating}
           locating={locating} locateError={locateError}
           savedTrips={savedTrips}
@@ -7072,7 +7659,7 @@ const TransitMap: FC = () => {
           announcements={announcements}
           onReportSubmitted={() => setMyReportsBump((b) => b + 1)}
           pendingTrip={pendingTrip} onConsumePending={() => setPendingTrip(null)}
-          onBoard={(ride) => { setBoardedRide(ride); }}
+          onBoard={(ride) => { saveTripDraft(null); setFinishedRide(null); setBoardedRide(ride); }}
         />
       ) : (
       // Unreachable: the tab bar offers trip/map/issues only, and a stored
@@ -7303,7 +7890,7 @@ const TransitMap: FC = () => {
           <StopList
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
-            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} tick={tick}
+            segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} routeActive={routeActive} tick={tick}
             listView={listView} activeOnly={activeFilter}
             hiddenRoutes={hiddenRoutes}
             favorites={favorites} onToggleFavorite={toggleFavorite}
@@ -7319,7 +7906,7 @@ const TransitMap: FC = () => {
           tabs (Trip / All / Accuracy). Collapsed by default so it
           doesn't compete with the primary UI; expands into a small
           textarea when the rider wants to say something. */}
-      <div style={{
+      <div ref={feedbackRef} style={{
         width: "100%", maxWidth: 560, margin: "16px auto 24px",
         padding: "0 16px", display: "flex", flexDirection: "column",
         alignItems: "stretch", gap: 8,
@@ -7499,6 +8086,21 @@ const TransitMap: FC = () => {
           </div>
         )}
       </div>
+
+      {/* Beta notice — persistent, and the tap opens the feedback composer
+          just above it. It sat under the tabs until the operator asked for it
+          moved: "please put the beta banner at the bottom. it clutters the
+          top". The original argument for the top was that the footer composer
+          was a full scroll away — but down here the banner IS at the composer,
+          so the tap has less distance to travel, not more. Hidden on the ride
+          page, which hides the tabs for the same reason: that view is about
+          the bus you are on. */}
+      {!boardedRide && <BetaBanner onSendFeedback={openFeedback} />}
+
+      {/* Last line on every page, and not dismissible: the app is named for
+          Yale, serves its shuttle feed and draws its route colours, so this
+          sentence is what keeps that honest. */}
+      <AffiliationDisclaimer />
     </div>
   );
 };

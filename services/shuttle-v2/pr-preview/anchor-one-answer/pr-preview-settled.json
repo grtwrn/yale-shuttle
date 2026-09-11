@@ -1,0 +1,13 @@
+{
+  "caption": "Red #316 at 130 Prospect (N): the approach reads 12 stops away",
+  "views": ["trip"],
+  "trip": { "board": 98, "dest": 72 },
+  "mock": {
+    "/api/buses": { "$patch": { "buses": [
+      { "bus_id": 9001, "bus_name": "#316", "route_id": 3, "heading": 0,
+        "lat": 41.31532, "lon": -72.92455, "last_stop_id": 92 }
+    ] } }
+  },
+  "actions": [ { "click": "Red", "which": "last", "settle": 3000 }, { "wait": 12000 } ],
+  "focus": "stops away"
+}

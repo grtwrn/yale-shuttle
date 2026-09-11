@@ -1,0 +1,20 @@
+{
+  "caption": "Beta banner under the tabs; affiliation disclaimer at the foot of every page",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 36,
+    "dest": 4
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/home/gwarren/yale-shuttle/.claude/worktrees/agent-aba771559f530da95/services/shuttle-v2/pr-preview/banners/trip.png",
+    "/home/gwarren/yale-shuttle/.claude/worktrees/agent-aba771559f530da95/services/shuttle-v2/pr-preview/banners/map.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

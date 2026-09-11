@@ -1,0 +1,187 @@
+{
+  "source": "Saved September 8 fleet evidence; isolated localhost preview, no live network calls",
+  "snapshot": {
+    "name": "production-2026-09-09-0046.db",
+    "sha256": "3497051dda04ab85d46949573b96605dcb5e1f9fe708450fddc926a544e773fa"
+  },
+  "study": {
+    "name": "study-sep8-final.json",
+    "sha256": "649a29058efa788fa9a9d7d67729fa40e7a033c6ecfb77a7d91ed1ec6fda1e58",
+    "bytes": 17402960,
+    "visits": 5461,
+    "provenance": {
+      "exporterVersion": "stop-study-v1",
+      "inputs": [
+        {
+          "role": "export_config",
+          "name": "study-sep8-inputs.json",
+          "sha256": "ec20e9e93979ce07bea2b8b184092b6851784e1d756eb79b5e4750cae6743511"
+        },
+        {
+          "role": "names_and_coordinates",
+          "name": "topology.json",
+          "sha256": "fbca2108191a85050774d7412e8717103a21f41a363d1d8eff42d8bfbf23746e"
+        },
+        {
+          "role": "recorded_episodes",
+          "name": "episodes.jsonl.gz",
+          "sha256": "d6dea3c6e128061528d23880abb3ca18c6c494f1477f1c596470ce21eb6b6aa8"
+        },
+        {
+          "role": "episode_matches",
+          "name": "matches.jsonl.gz",
+          "sha256": "eefec3e6a6e3e1a3a5f8bfca52827ff0b3549635979a286db4024121b1a86579"
+        },
+        {
+          "role": "reconstructed_episodes",
+          "name": "episodes.jsonl.gz",
+          "sha256": "6e52820e06ccf78bafbbe47e10e3a31bc55cc659ae74aed6a6b76f5ecd8b6b14"
+        },
+        {
+          "role": "baseline_standing_forecasts",
+          "name": "baseline.associated.stands.jsonl.gz",
+          "sha256": "55fd4b709ea5fb7fe52fb5f2bbe87f0316a969ed5d418787fa85c3cb362ebd88"
+        },
+        {
+          "role": "candidate_standing_forecasts",
+          "name": "candidate.associated.stands.jsonl.gz",
+          "sha256": "bd4b2f5b0e07f4791657d59498b04765d255a24dd74a9d4c32b32f775de0a165"
+        },
+        {
+          "role": "baseline_paired_arrival_forecasts",
+          "name": "baseline.matched.jsonl.gz",
+          "sha256": "ad1ea26ae828cdcd7c5eab473888e4411bd92dd6d3e24cb10b78adec52d1b415"
+        },
+        {
+          "role": "candidate_paired_arrival_forecasts",
+          "name": "candidate.matched.jsonl.gz",
+          "sha256": "b8e402a592ce61a9c917d4a3096f79066f7a80d57066c971779d4845a631dbd0"
+        },
+        {
+          "role": "observed_positions",
+          "name": "positions.jsonl.gz",
+          "sha256": "ce61a1cb7c721416e024744a3859463b529f724189a1a3e677ff9158bb9c891d"
+        },
+        {
+          "role": "source_manifest",
+          "name": "manifest.json",
+          "sha256": "f74adea5a2edf16a0067b1483c0d648152fb41eab45b9124b685c5ab637c103a"
+        },
+        {
+          "role": "source_manifest",
+          "name": "2026-09-08-baseline.manifest.json",
+          "sha256": "7dc478f5c64e9e37df84264ee953f5317eb86dd9eb30b1407943bbd4d7198a53"
+        },
+        {
+          "role": "source_manifest",
+          "name": "2026-09-08-candidate.manifest.json",
+          "sha256": "74bd8372b52943dbab9f7d097cc656dab6863e089aded66de71f94243f2ac825"
+        }
+      ],
+      "sourceHashes": {
+        "manifest.json:scripts/eta-replay/general-eval/rebuild-labels.ts": "dbbb08f78f2b3e22cf70f07c7d2474a4d14aaba00c77117c238a2f3fd76f9b16",
+        "manifest.json:src/collector/detector.ts": "e4b317bcf04f8609ad07fb20fd70546f734fecc8bd93db2f0413e475a95af7f5",
+        "manifest.json:src/collector/departure.ts": "e403c2376d1344701d156e40e9707784ebc5a9f691a29496f7e797dc720c2fcd",
+        "manifest.json:src/network/TransitNetwork.ts": "1ab94789a986289c526cfd1ef17af05c83f36a40727d1ce7f80e6dae7adf049b",
+        "manifest.json:src/network/geo.ts": "cc88428f2d09c4b66462109a0b3472ff9c7308891c849ebe9173394c20bf2a18",
+        "manifest.json:src/network/alignStops.ts": "7933bf134ce010ebceb33d1ea9afe77ff36361e0b4cab0cc4228b7af8bc412da",
+        "manifest.json:src/network/legs.ts": "93c4515396bdb3a2a2ee8aacea7b649631ecaeea69977991c1422fc34d1959fe",
+        "manifest.json:package-lock.json": "f8ae9e6e79086709728313b7812d8b7999fb136b21902558ac7ab5abac44be79",
+        "manifest.json:node_modules/kdbush/index.js": "879feffa0d443787c752809bd975d106c5f98fbb81921bef9aed22e834a252d1",
+        "2026-09-08-baseline.manifest.json:web/src/arrivals.ts": "92314e290402e465bfffdff5069a814fd5f28753f2960df0f651e0e89761f9a5",
+        "2026-09-08-baseline.manifest.json:web/src/liveAnchor.ts": "3fb3337461e7232956098122a245e3267286b6abdd50065748d0a8bf7a9020db",
+        "2026-09-08-baseline.manifest.json:web/src/eta/index.ts": "d11fe9a9d1dc99c11e3de2778be1992e2211a1da72fbcb5c4f83e9133033de71",
+        "2026-09-08-baseline.manifest.json:web/src/eta/arrival.ts": "b33551743b1aa5c9f21d06873fcbbf378bf33e79afd5e2be2720f6a73b142e6b",
+        "2026-09-08-baseline.manifest.json:web/src/eta/filter.ts": "3087856f5ac0868cf46beeb6a7d5e8420f5b165d58da505e3def504792e76c90",
+        "2026-09-08-baseline.manifest.json:web/src/eta/ring.ts": "251b8a3a26864052a5c9a5a6fbda5940c753548df1f75b47b207c1c429092a5a",
+        "2026-09-08-baseline.manifest.json:web/src/eta/tables.ts": "45d886acd0760e372022a01c133a2622bbea61a96780c41140c3d17432952c41",
+        "2026-09-08-baseline.manifest.json:web/src/eta/dist.ts": "983e7e0dbcd08d8bb36dd18e9128e3a199d5bfe4821e976156f73352fa8bb80d",
+        "2026-09-08-baseline.manifest.json:web/src/eta/params.ts": "8b89b27904ea2af48be51d6e77cc6d6f4c037761ebec89969985a379f41a7872",
+        "2026-09-08-baseline.manifest.json:web/src/eta/standingForecast.ts": "21e2b56a3d2d101f463b8e24634c708ce210bbf04ade573c5d3a0a79e9b08be1",
+        "2026-09-08-baseline.manifest.json:web/src/eta/standingDistribution.ts": "01bffaf909b3125d4d326b3dd237ea41e45180989b27a5c9c9e1688e69aa58de",
+        "2026-09-08-baseline.manifest.json:src/collector/detector.ts": "e4b317bcf04f8609ad07fb20fd70546f734fecc8bd93db2f0413e475a95af7f5",
+        "2026-09-08-baseline.manifest.json:src/calibrator/calibrator.ts": "9f0239c0df89b222e1b3b930e65c14f5d027e3ac465d7b37091024cb747cf1c1",
+        "2026-09-08-candidate.manifest.json:web/src/arrivals.ts": "92314e290402e465bfffdff5069a814fd5f28753f2960df0f651e0e89761f9a5",
+        "2026-09-08-candidate.manifest.json:web/src/liveAnchor.ts": "3fb3337461e7232956098122a245e3267286b6abdd50065748d0a8bf7a9020db",
+        "2026-09-08-candidate.manifest.json:web/src/eta/index.ts": "d11fe9a9d1dc99c11e3de2778be1992e2211a1da72fbcb5c4f83e9133033de71",
+        "2026-09-08-candidate.manifest.json:web/src/eta/arrival.ts": "b33551743b1aa5c9f21d06873fcbbf378bf33e79afd5e2be2720f6a73b142e6b",
+        "2026-09-08-candidate.manifest.json:web/src/eta/filter.ts": "3087856f5ac0868cf46beeb6a7d5e8420f5b165d58da505e3def504792e76c90",
+        "2026-09-08-candidate.manifest.json:web/src/eta/ring.ts": "251b8a3a26864052a5c9a5a6fbda5940c753548df1f75b47b207c1c429092a5a",
+        "2026-09-08-candidate.manifest.json:web/src/eta/tables.ts": "45d886acd0760e372022a01c133a2622bbea61a96780c41140c3d17432952c41",
+        "2026-09-08-candidate.manifest.json:web/src/eta/dist.ts": "983e7e0dbcd08d8bb36dd18e9128e3a199d5bfe4821e976156f73352fa8bb80d",
+        "2026-09-08-candidate.manifest.json:web/src/eta/params.ts": "8b89b27904ea2af48be51d6e77cc6d6f4c037761ebec89969985a379f41a7872",
+        "2026-09-08-candidate.manifest.json:web/src/eta/standingForecast.ts": "21e2b56a3d2d101f463b8e24634c708ce210bbf04ade573c5d3a0a79e9b08be1",
+        "2026-09-08-candidate.manifest.json:web/src/eta/standingDistribution.ts": "01bffaf909b3125d4d326b3dd237ea41e45180989b27a5c9c9e1688e69aa58de",
+        "2026-09-08-candidate.manifest.json:src/collector/detector.ts": "e4b317bcf04f8609ad07fb20fd70546f734fecc8bd93db2f0413e475a95af7f5",
+        "2026-09-08-candidate.manifest.json:src/calibrator/calibrator.ts": "9f0239c0df89b222e1b3b930e65c14f5d027e3ac465d7b37091024cb747cf1c1",
+        "exporter:export-study.ts": "2978e4fca72a935adceb1c3eacc276c04d1e0c75a82cd6a12cf945fa2dcb8311",
+        "exporter:stop-study.ts": "594a49e8ef8d90b96bf51763eaa98a8f17703052ef58eba442cfb48f8d0c87f2"
+      },
+      "sampling": {
+        "forecastIntervalSec": 30,
+        "positionIntervalSec": 5,
+        "pairedQueriesOnly": true,
+        "firstPairedDisplayPreserved": true,
+        "description": "Joint baseline/candidate timestamps; first common row per visit, then minimum interval. firstCapturedDisplay identifies the original per-arm first before pairing. GPS first/last fixes and both edges of gaps over30s retained; gapSec measures raw adjacent fixes."
+      },
+      "counts": {
+        "originalMatches_unresolved_original": 2146,
+        "originalMatches_unmatched": 40,
+        "originalMatches_matched": 3179,
+        "censoredVisits": 342,
+        "completeVisits": 5119,
+        "baselineDisplayRows": 7827,
+        "candidateDisplayRows": 7827,
+        "pairedDisplayQueries": 7827,
+        "baselineUnpairedDisplayQueries": 0,
+        "candidateUnpairedDisplayQueries": 0,
+        "exportedDisplayQueries": 5871,
+        "baselineEtaRowsRead": 104900,
+        "candidateEtaRowsRead": 104900,
+        "displayQueriesWithoutPairedArrival": 5643,
+        "displayQueriesWithPairedArrival": 228,
+        "positionRowsRead": 147014,
+        "exportedPositionRows": 93951
+      },
+      "warnings": [
+        "Saved forecasts are replay evidence, not a live prediction service.",
+        "Standing rows are the saved associated-display subset; absence is not a zero wait or proof of no display.",
+        "Recorded pins are shown only for uniquely matched original episodes. Unresolved matches remain missing.",
+        "Downstream ETA uses paired physical arrivals at selected stop 48 linked by explicit currentVisitId; interval bounds are saved display bounds, not a full distribution."
+      ],
+      "context": {
+        "cohort": "September 8 regression; previously examined, not an independent holdout.",
+        "training": "Standing-model fit frozen from September 3\u20134 history; published September 8 tracking parameters.",
+        "comparison": "Saved paired browser replay after merging master 93aa45d. Rebuilt physical labels are distinct from original recorded pins."
+      },
+      "arrivalSelection": {
+        "kind": "target_stop",
+        "targetStopId": 48
+      }
+    }
+  },
+  "selection": {
+    "day": "2026-09-08",
+    "routeId": 3,
+    "stopId": 11,
+    "stopIndex": 14,
+    "downstreamStopId": 48
+  },
+  "redFirstTotal": {
+    "pairedVisits": 25,
+    "baselineMaeSec": 134.8647398261211,
+    "candidateMaeSec": 71.16930962264851
+  },
+  "viewports": {
+    "desktop": [
+      1440,
+      1100
+    ],
+    "phone": [
+      390,
+      844
+    ]
+  },
+  "browserTimezone": "Asia/Tokyo",
+  "displayTimezone": "America/New_York"
+}

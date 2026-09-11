@@ -1,12 +1,15 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { LapFitCache } from "../calibrator/lapFit.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
   arrivals,
+  legs,
   rawPositions,
   routes as routesTable,
   segments,
+  stopVisits,
   stops as stopsTable,
 } from "../db/schema.js";
 import {
@@ -20,8 +23,22 @@ import { NetworkRef } from "../network/NetworkRef.js";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
-import type { BusObservation, BusState, DetectorEvent, TrackPlan } from "./detector.js";
-import { planTracks, reconcileTracks, stepMany } from "./detector.js";
+import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
+import { visitRowsOf } from "./visitRows.js";
+import type {
+  BusObservation,
+  BusState,
+  DetectorEvent,
+  PositionSample,
+  StandSeed,
+  TrackPlan,
+} from "./detector.js";
+import {
+  AT_STOP_PIN_M,
+  planTracks,
+  reconcileTracks,
+  seedStationaryFromHistory,
+} from "./detector.js";
 import {
   PathStore,
   shouldReplacePath,
@@ -31,6 +48,22 @@ import {
   type StoredPath,
 } from "./pathStore.js";
 import { type Announcement, UpstreamClient, UpstreamError, type RawBus } from "./upstream.js";
+import { UpstreamEtaPoller } from "./upstreamEta.js";
+import { DEFAULT_INTERVAL_MS as ETA_SAMPLE_DEFAULT_MS, MIN_INTERVAL_MS as ETA_SAMPLE_MIN_MS, UpstreamEtaSampler } from "./upstreamEtaSampler.js";
+
+/**
+ * How long a departure stays on the lap clock. The correction is off outside
+ * 1.65 x a cell's loop (`LAP_BAND_HI`), and the longest loop on the network is
+ * an hour, so anything past two is already ignored — this only bounds memory.
+ */
+const LAP_CLOCK_TTL_MS = 2 * 60 * 60 * 1000;
+/**
+ * How far before the TTL floor the seed's `arrived_at` bound reaches. A stand
+ * cannot exceed `MAX_STAND_SEC` in the fitter, so a departure inside the TTL
+ * arrived at most one stand earlier; the bound is what lets the query use
+ * `arrivals_route_stop_time_idx`, whose leading time column is `arrived_at`.
+ */
+const MAX_SEEDABLE_STAND_MS = 60 * 60 * 1000;
 
 // Cadences --------------------------------------------------------------------
 
@@ -146,11 +179,156 @@ const LIVE_BUS_TTL_MS = 120_000;
  */
 const STATE_TTL_MS = 30 * 60_000;
 
+/**
+ * How far back {@link Collector.seedStationary} will look for the moment a
+ * standing bus actually arrived.
+ *
+ * The same 30 minutes as {@link STATE_TTL_MS}, and for the same reason: a bus
+ * the detector would have aged out is a bus whose wait it would have restarted
+ * anyway, so the seed must not reach past that and claim a longer one. It also
+ * caps the scan at ~360 rows on a 5 s poll.
+ */
+const STATIONARY_SEED_WINDOW_MS = STATE_TTL_MS;
+
+/** Hard row cap on the seed scan, so a dense window can never make it unbounded. */
+const STATIONARY_SEED_MAX_ROWS = 600;
+
+/**
+ * How many of a bus's most recent arrivals `resumeArrival` inspects.
+ *
+ * It walks back over consecutive OPEN rows at one stop and stops at the first
+ * row that is not one, so in the ordinary case it reads one row and in the
+ * worst recorded case (seven arrivals for a single stand, 2026-09-04) seven.
+ * The cap is only there so a pathological history cannot make the scan grow.
+ */
+const RESUME_ARRIVAL_MAX_ROWS = 20;
+
 // Retention windows -----------------------------------------------------------
 
 const RAW_POSITION_RETAIN_MS = 6 * 60 * 60_000; // 6 h
 const ARRIVAL_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d
 const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 30 d)
+// Derived stop visits and legs are small (a few hundred rows a day) and belong
+// with arrivals/segments, not with the 6 h raw_positions window they came from.
+const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
+const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
+/**
+ * What riders were told (`predictions_log`, written by /api/shown). Shorter
+ * than its neighbours on purpose — see the retention note in
+ * server/predictions.ts: this is the one table whose volume scales with USAGE
+ * rather than with the fleet, `arrivals` outlives it so a row is pairable for
+ * as long as it exists, and shorter is the safe direction for a record of what
+ * was on somebody's screen.
+ */
+const PREDICTION_RETAIN_DAYS_DEFAULT = 30;
+function resolvePredictionRetainDays(): number {
+  // Resolved here rather than imported: nothing in src/collector depends on
+  // src/server and this sweep is not the place to start. `predictions.test.ts`
+  // parses this file and fails if the two defaults ever disagree, the same way
+  // `walk.test.ts` pins the client's walk speed to the server's.
+  const raw = Number(process.env.SHUTTLE_PREDICTION_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return PREDICTION_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const PREDICTION_RETAIN_MS = resolvePredictionRetainDays() * 24 * 60 * 60_000;
+
+/**
+ * The operator's own ETAs (`surface = "upstream"`) age out MUCH faster than the
+ * rider-reported rows they sit beside, and this is a capacity decision, not a
+ * policy one.
+ *
+ * The rider surfaces write ~3k rows a day, because a row needs somebody to
+ * have been looking. The upstream poller writes one per (vehicle, sampled
+ * stop) every 30 s whether or not anyone is awake — measured against the live
+ * feed that is ~5k an hour, so ~120k a day, forty times the rest of the table.
+ * At the 30-day window that is roughly 4M rows and ~440 MB of a volume with
+ * 427 MB free (measured 2026-09-04). It would fill the disk.
+ *
+ * Seven days is not a compromise: the comparison is a rolling read of the last
+ * day or two, `/api/stats` asks for 24 h, and no question anyone has wanted to
+ * ask of this arm reaches back a month. `arrivals` still outlives it 13x, so
+ * every row is pairable for as long as it exists.
+ *
+ * Override with SHUTTLE_UPSTREAM_ETA_RETAIN_DAYS. Raising it costs ~15 MB a day.
+ */
+const UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT = 7;
+function resolveUpstreamPredictionRetainDays(): number {
+  const raw = Number(process.env.SHUTTLE_UPSTREAM_ETA_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const UPSTREAM_PREDICTION_RETAIN_MS =
+  resolveUpstreamPredictionRetainDays() * 24 * 60 * 60_000;
+/** Key for the extra trim statement; not a table, so not in RETAINED_TABLES. */
+const UPSTREAM_PREDICTION_TRIM = "predictions_log(upstream)";
+
+/**
+ * The verbatim upstream ETA census (`upstream_etas`, see upstreamEtaSampler.ts)
+ * is bounded TWICE: by age, and by row count, and the count is the one that
+ * binds on a weekday.
+ *
+ * Volume is one row per (call, predicted bus) plus one marker per empty call,
+ * at 1 call/s while anything is running. Measured on Sun 2026-09-06 (6 buses,
+ * 4 routes, 57 live stops): 1.64 rows a call, 155 bytes a row with its three
+ * indexes at small scale (~120 at page-fill). A weekday feed answers ~5 rows a
+ * call (the `predictions_log` poller's 30-min-capped 3.5 rows a call,
+ * uncapped) over ~18 service hours: ~320k rows, ~40 MB a day; a weekend day
+ * is ~70k rows, ~9 MB. Thirty days of that is ~900 MB on a 1 GB volume with
+ * 431 MB free (2026-09-06) — it would fill the disk. So the age window says how
+ * long a row MAY live and the row cap says how many may exist: the default cap
+ * holds ~150–185 MB, about four weekdays of census or two quiet weeks, and
+ * neither number can surprise the volume. To keep more, take a DB snapshot off
+ * the machine (scripts/eta-replay/README.md) or slow the census with
+ * SHUTTLE_ETA_SAMPLE_MS. Override with SHUTTLE_ETA_RETAIN_DAYS and
+ * SHUTTLE_ETA_MAX_ROWS; raising the cap costs ~120–155 bytes a row.
+ */
+const UPSTREAM_ETA_RETAIN_DAYS_DEFAULT = 30;
+function resolveUpstreamEtaRetainDays(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_RETAIN_DAYS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_ETA_RETAIN_DAYS_DEFAULT;
+  return Math.min(90, Math.floor(raw));
+}
+const UPSTREAM_ETA_RETAIN_MS = resolveUpstreamEtaRetainDays() * 24 * 60 * 60_000;
+const UPSTREAM_ETA_MAX_ROWS_DEFAULT = 1_200_000;
+function resolveUpstreamEtaMaxRows(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_MAX_ROWS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_ETA_MAX_ROWS_DEFAULT;
+  return Math.floor(raw);
+}
+const UPSTREAM_ETA_MAX_ROWS = resolveUpstreamEtaMaxRows();
+
+/**
+ * Sampling cadence for the census: one call every 3 s by default — each
+ * stop of a weekday fleet about every 8 min, a weekend stop every 3. The
+ * predictions move slowly and the measurement needs samples across horizons,
+ * not every tick (the operator: "one a second for eta might not be
+ * necessary"). `SHUTTLE_ETA_SAMPLE=0` turns it off; `SHUTTLE_ETA_SAMPLE_MS`
+ * changes it, never below one call a second — that floor is the politeness
+ * promise to the provider, not a tunable.
+ */
+function resolveEtaSampleMs(): number {
+  const raw = Number(process.env.SHUTTLE_ETA_SAMPLE_MS ?? Number.NaN);
+  if (!Number.isFinite(raw) || raw <= 0) return ETA_SAMPLE_DEFAULT_MS;
+  return Math.max(ETA_SAMPLE_MIN_MS, Math.floor(raw));
+}
+
+type RetainedTable =
+  | "raw_positions"
+  | "arrivals"
+  | "segments"
+  | "stop_visits"
+  | "legs"
+  | "predictions_log"
+  | "upstream_etas";
+const RETAINED_TABLES: readonly RetainedTable[] = [
+  "raw_positions",
+  "arrivals",
+  "segments",
+  "stop_visits",
+  "legs",
+  "predictions_log",
+  "upstream_etas",
+];
 
 // Batched-delete tuning carried forward from the v1 retention fix:
 // large transactions starved the poll loop and tripped /healthz.
@@ -216,6 +394,19 @@ export interface DerivedPathStats {
 export interface CollectorOptions {
   upstream?: UpstreamClient;
   logger?: Logger;
+  /**
+   * Record the operator's own ETAs beside ours (see `upstreamEta.ts`).
+   * Defaults ON in production and OFF whenever `upstream` is injected, so the
+   * suite and the harnesses never reach the network. `SHUTTLE_UPSTREAM_ETA=0`
+   * turns it off in production without a code change.
+   */
+  upstreamEta?: boolean;
+  /**
+   * The verbatim per-stop ETA census (`upstreamEtaSampler.ts`). Same default
+   * as `upstreamEta`: ON in production, OFF whenever `upstream` is injected.
+   * `SHUTTLE_ETA_SAMPLE=0` turns it off in production.
+   */
+  etaSampler?: boolean;
 }
 
 /**
@@ -250,6 +441,12 @@ export class Collector {
    */
   private readonly states = new Map<string, BusState>();
   private readonly livePositions = new Map<string, BusPosition>();
+  /**
+   * The visit reducer's state, keyed and reconciled exactly like `states`, so
+   * a departure derived here joins the arrival the detector wrote under the
+   * same track. See `departure.ts`.
+   */
+  private readonly visitStates = new Map<string, VisitState>();
   /** Names seen carried by two live ids at once, cumulative. */
   private contendedNameEvents = 0;
 
@@ -259,6 +456,8 @@ export class Collector {
   private readonly trimStmts = new Map<string, Database.Statement>();
   private readonly countRouteSamplesStmt: Database.Statement;
   private readonly selectRouteSamplesStmt: Database.Statement;
+  private readonly recentBusSamplesStmt: Database.Statement;
+  private readonly recentBusArrivalsStmt: Database.Statement;
 
   /**
    * Route geometry derived from observed GPS, best-so-far per route.
@@ -294,6 +493,15 @@ export class Collector {
   private deriveLastMs: number | null = null;
   private deriveMaxMs = 0;
 
+  /** Records the operator's own ETAs into predictions_log. Null when disabled. */
+  readonly upstreamEta: UpstreamEtaPoller | null;
+  /** The verbatim census of the same endpoint into upstream_etas. Null when disabled. */
+  readonly etaSampler: UpstreamEtaSampler | null;
+
+  /** See {@link setPollObserver}. */
+  private pollObserver: (() => void) | null = null;
+  private pollObserverFailures = 0;
+
   private pollHandle?: NodeJS.Timeout;
   private calibrateHandle?: NodeJS.Timeout;
   private staticHandle?: NodeJS.Timeout;
@@ -322,6 +530,13 @@ export class Collector {
   // flaky upstream never blanks a live construction notice.
   private announcementsList: Announcement[] = [];
   private announcementsHandle: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Upstream's `active` flag per route id, from routes_routes.php. Refreshed
+   * on every static refresh and, because the flag changes with the service
+   * day while the topology does not, on the announcements' 5-min cadence
+   * too. Served as `route_active` in /api/buses.
+   */
+  private routeActiveMap = new Map<number, boolean>();
   private staticRetryHandle: NodeJS.Timeout | undefined;
   private staticRetryDelayMs = STATIC_RETRY_BASE_MS;
   /** Upstream rows rejected by `sanitizeObservations`, cumulative. */
@@ -349,6 +564,40 @@ export class Collector {
     this.ref = ref;
     this.upstream = opts.upstream ?? new UpstreamClient();
     this.logger = opts.logger ?? consoleLogger;
+    // A SEPARATE timer with its own in-flight guard, deliberately: the whole
+    // point is that the operator's ETAs are a bonus measurement and the buses
+    // poll never waits on, or fails because of, anything here.
+    //
+    // Off by default whenever a caller injected its own `upstream` — that is
+    // a test or a harness, and CLAUDE.md's rule is that nothing in the suite
+    // reaches the network. Production passes no client, so it gets the poller.
+    this.upstreamEta =
+      (opts.upstreamEta
+        ?? (opts.upstream === undefined && process.env.SHUTTLE_UPSTREAM_ETA !== "0"))
+        ? new UpstreamEtaPoller({
+            sqlite: this.sqlite,
+            ref: this.ref,
+            upstream: this.upstream,
+            liveBuses: () => this.getLiveBuses(),
+            logger: this.logger,
+          })
+        : null;
+    // Same gate, same reasoning, its own switch: the census is a heavier
+    // request stream than the poller and the operator may want one without
+    // the other.
+    this.etaSampler =
+      (opts.etaSampler
+        ?? (opts.upstream === undefined && process.env.SHUTTLE_ETA_SAMPLE !== "0"))
+        ? new UpstreamEtaSampler({
+            sqlite: this.sqlite,
+            ref: this.ref,
+            upstream: this.upstream,
+            liveBuses: () => this.getLiveBuses(),
+            routeActive: () => this.routeActiveMap,
+            logger: this.logger,
+            intervalMs: resolveEtaSampleMs(),
+          })
+        : null;
 
     // Prepared once; reused on every poll. Composing these via Drizzle's
     // template SQL works too but adds parsing on each call.
@@ -403,10 +652,29 @@ export class Collector {
         "FROM raw_positions WHERE route_id = ? AND collected_at >= ? " +
         "ORDER BY collected_at DESC LIMIT ?",
     );
+    // Hits raw_positions_bus_time_idx. Keyed on `bus_id` rather than the
+    // stable `bus_name` because that is the index we have — and because the
+    // degradation is the right one: history written under a retired id is
+    // invisible here, and an id reissue is precisely the case where the clock
+    // is SUPPOSED to restart (see MAX_HANDOFF_GAP_MS). DESC because the scan
+    // walks backwards from the present until the stand ends.
+    this.recentBusSamplesStmt = this.sqlite.prepare(
+      "SELECT lat, lon, collected_at AS collectedAt FROM raw_positions " +
+        "WHERE bus_id = ? AND collected_at >= ? AND collected_at < ? " +
+        "ORDER BY collected_at DESC LIMIT ?",
+    );
+    // Hits `arrivals_bus_time_idx` (bus_id, arrived_at). Newest first, so
+    // `resumeArrival` can stop at the first row that is not part of the stand.
+    this.recentBusArrivalsStmt = this.sqlite.prepare(
+      "SELECT stop_id AS stopId, route_id AS routeId, arrived_at AS arrivedAt, " +
+        "departed_at AS departedAt FROM arrivals " +
+        "WHERE bus_id = ? AND arrived_at >= ? AND arrived_at < ? " +
+        "ORDER BY arrived_at DESC LIMIT ?",
+    );
     this.pathStore = new PathStore(this.sqlite);
     this.derivedPathsByRoute = this.pathStore.loadAll();
 
-    for (const table of ["raw_positions", "arrivals", "segments"] as const) {
+    for (const table of RETAINED_TABLES) {
       const col = retentionColumn(table);
       this.trimStmts.set(
         table,
@@ -416,6 +684,17 @@ export class Collector {
         ),
       );
     }
+    // The operator's own ETAs share `predictions_log` but not its window —
+    // see UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT. Same batched shape as the
+    // rest, one extra predicate.
+    this.trimStmts.set(
+      UPSTREAM_PREDICTION_TRIM,
+      this.sqlite.prepare(
+        "DELETE FROM predictions_log WHERE rowid IN " +
+          "(SELECT rowid FROM predictions_log WHERE surface = 'upstream' " +
+          "AND predicted_at < ? LIMIT ?)",
+      ),
+    );
   }
 
   /**
@@ -435,6 +714,10 @@ export class Collector {
     // Warm calibration from existing samples before the first poll, so
     // day-zero predictions aren't pure distance-based priors.
     this.runCalibrate();
+    // ...and warm the lap clock from history, for the same reason. It has to
+    // come AFTER the first calibration, because the fitted cells are what say
+    // which stops are worth seeding.
+    this.seedLapClock();
 
     this.pollHandle = setInterval(() => void this.runPoll(), POLL_INTERVAL_MS);
     this.calibrateHandle = setInterval(() => this.runCalibrate(), CALIBRATE_INTERVAL_MS);
@@ -449,7 +732,7 @@ export class Collector {
     this.deriveHandle = setInterval(() => this.runDerivePaths(), DERIVE_INTERVAL_MS);
     void this.refreshAnnouncements();
     this.announcementsHandle = setInterval(
-      () => void this.refreshAnnouncements(),
+      () => { void this.refreshAnnouncements(); void this.refreshRouteActive(); },
       ANNOUNCEMENTS_INTERVAL_MS,
     );
     for (const h of [
@@ -462,6 +745,9 @@ export class Collector {
     ]) {
       h?.unref();
     }
+
+    this.upstreamEta?.start();
+    this.etaSampler?.start();
 
     void this.runPoll();
     this.logger.info("collector.started");
@@ -478,6 +764,8 @@ export class Collector {
     ]) {
       if (h) clearInterval(h);
     }
+    this.upstreamEta?.stop();
+    this.etaSampler?.stop();
     this.cancelStaticRetry();
     this.logger.info("collector.stopped");
   }
@@ -553,9 +841,21 @@ export class Collector {
           });
         }
         reconcileTracks(this.livePositions, plan);
-        const events = stepMany(this.ref.get(), this.states, observations, plan);
-        if (events.length > 0) this.persistEvents(events);
+        // The same `step`, in the same order, as `stepMany` — `events` is
+        // byte-for-byte what it returned before. The visit reducer rides
+        // alongside and adds the departure observation the detector lacks.
+        const stepped = stepManyWithVisits(
+          this.ref.get(),
+          this.states,
+          this.visitStates,
+          observations,
+          plan,
+          (obs, anchorStop) => this.seedStationary(obs, anchorStop),
+        );
+        if (stepped.events.length > 0) this.persistEvents(stepped.events);
+        if (stepped.visits.length > 0) this.persistVisits(stepped.visits);
         this.updateLivePositions(observations, plan);
+        this.notifyPollObserver();
       } catch (err) {
         this.logger.error("collector.poll_process_failed", {
           error: (err as Error).message,
@@ -641,6 +941,9 @@ export class Collector {
     for (const [key, s] of this.states) {
       if (s.lastObservedAt < stateCutoff) this.states.delete(key);
     }
+    // A visit whose bus went dark is closed as unresolved rather than lost.
+    const closed = pruneVisits(this.visitStates, this.states);
+    if (closed.length > 0) this.persistVisits(closed);
   }
 
   /**
@@ -672,6 +975,43 @@ export class Collector {
   }
 
   /**
+   * One slot for something that must run on every poll that produced new
+   * positions — today only the server-side ETA belief (`src/server/serverEta.ts`),
+   * which has to be stepped whether or not a rider is asking, because a belief
+   * only stays warm by never stopping.
+   *
+   * A SLOT rather than a list: `buildApp` registers it, and the tests build
+   * several apps over one collector, so a growing array would leak an observer
+   * per app and step the same belief several times per poll. The last app wins,
+   * which is the only one that is ever serving.
+   *
+   * It runs AFTER `updateLivePositions`, so `dataVersion()` has already moved
+   * and `getLiveBuses()` already reports this poll's fixes.
+   */
+  setPollObserver(fn: (() => void) | null): void {
+    this.pollObserver = fn;
+  }
+
+  /**
+   * Never lets an observer break the poll. The collector's own work is done by
+   * the time this runs; an estimator exception must cost the served ETA field
+   * and nothing else.
+   */
+  private notifyPollObserver(): void {
+    const fn = this.pollObserver;
+    if (!fn) return;
+    try {
+      fn();
+    } catch (err) {
+      this.pollObserverFailures++;
+      this.logger.error("collector.poll_observer_failed", {
+        error: (err as Error).message,
+        failures: this.pollObserverFailures,
+      });
+    }
+  }
+
+  /**
    * Snapshot of the latest observed position per bus. Read by the HTTP
    * server's /api/live and by the trip planner's wait-time estimator.
    * Returns a freshly-cloned array so consumers can't mutate internal state.
@@ -686,6 +1026,107 @@ export class Collector {
       if (b.collectedAt >= cutoff) out.push(b);
     }
     return out;
+  }
+
+  /**
+   * Recover a standing bus's wait from `raw_positions` when this process has
+   * never seen it before — the {@link StationarySeed} the detector consults on
+   * a first sighting, and nowhere else.
+   *
+   * `states` lives in memory only, so every restart turns every bus into a
+   * first sighting and restarted the wait of any bus that was standing at a
+   * stop. Report #100 (2026-09-04, the first from an outside rider) caught it:
+   * six deploys landed between 15:48 and 15:58 UTC, and #44 — motionless at
+   * 333 Cedar from 15:53:39 to 16:03:34 — was re-arrived at 15:53:39, 15:55:11,
+   * 15:56:53 and 15:59:14, one per restart. The rider's payload carried
+   * `at_stop_since` 15:56:53, so the chip read about a minute beside a bus four
+   * and a half minutes into its layover, and the stall credit was zeroed with
+   * it. The positions the reconstruction needs were on disk the whole time.
+   *
+   * The rule lives in {@link seedStationaryFromHistory}; this supplies the
+   * history, the window, and the one thing no pure rule can know — whether the
+   * database still holds the `arrivals` row this stand opened. Reads only.
+   *
+   * That row is what {@link resumeArrival} looks for, and finding it is what
+   * makes the restart free rather than merely cheaper: the detector then keeps
+   * the anchor instant instead of writing a second arrival for one stand.
+   */
+  private seedStationary(obs: BusObservation, anchorStop: Stop | null): StandSeed | null {
+    // Cheap gate first: a bus that is not at a stop needs no query at all, and
+    // that includes every bus on a route the network does not know.
+    if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
+    try {
+      const history = this.recentBusSamplesStmt.all(
+        obs.busId,
+        obs.collectedAt - STATIONARY_SEED_WINDOW_MS,
+        obs.collectedAt,
+        STATIONARY_SEED_MAX_ROWS,
+      ) as PositionSample[];
+      const run = seedStationaryFromHistory(history, obs, anchorStop);
+      if (!run) return null;
+      // `restSince === null` means the bus is reporting a FRESH fix on this very
+      // poll — it is moving, so there is no stand to resume and the ordinary
+      // rules (which may be watching a departure) must have it.
+      if (run.restSince === null) return run;
+      return { ...run, enteredAt: this.resumeArrival(obs, anchorStop, run.unbrokenSince) };
+    } catch (err) {
+      // A seed is an improvement, never a requirement: a failed read leaves the
+      // clock exactly where it would have been without this method.
+      this.logger.warn("collector.stationary_seed_failed", {
+        busName: obs.busName,
+        error: (err as Error).message,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * The `arrivals` row this stand already opened, if the database holds one.
+   *
+   * Three things have to agree before a row is resumable, and they are the
+   * whole safety of resuming it:
+   *
+   *  1. The bus's LATEST recorded arrival is at this very stop, on this route,
+   *     and still open (`departed_at IS NULL`). A row from an earlier lap has
+   *     arrivals at other stops after it and is rejected on the first test —
+   *     which is why no time window has to be guessed at.
+   *  2. It lies inside the unbroken observed run (`unbrokenSince`). A bus that
+   *     went off the air between the arrival and now is one the live rules
+   *     re-anchor anyway, so its old row must not be resumed across the hole.
+   *  3. Its `bus_id` is the one reporting now. An id reissue across the restart
+   *     is exactly the case {@link MAX_HANDOFF_GAP_MS} refuses to inherit, and
+   *     the dwell patch keys on the arriving id, so resuming across a reissue
+   *     would leave a row this process could never close.
+   *
+   * Walking back over consecutive open rows at the same stop and taking the
+   * EARLIEST is what merges a stand a PREVIOUS release already split into
+   * several: within one unbroken run inside `AT_STOP_PIN_M` the bus never left,
+   * so every open row there belongs to this one stand.
+   */
+  private resumeArrival(
+    obs: BusObservation,
+    anchorStop: Stop,
+    unbrokenSince: number,
+  ): number | null {
+    const rows = this.recentBusArrivalsStmt.all(
+      obs.busId,
+      unbrokenSince,
+      obs.collectedAt,
+      RESUME_ARRIVAL_MAX_ROWS,
+    ) as Array<{ stopId: number; routeId: number; arrivedAt: number; departedAt: number | null }>;
+    let resumeAt: number | null = null;
+    // Newest first: stop at the first row that is not part of this stand.
+    for (const row of rows) {
+      if (
+        row.stopId !== anchorStop.id ||
+        row.routeId !== obs.routeId ||
+        row.departedAt !== null
+      ) {
+        break;
+      }
+      resumeAt = row.arrivedAt;
+    }
+    return resumeAt;
   }
 
   private updateLivePositions(
@@ -717,8 +1158,14 @@ export class Collector {
         // different stop becomes nearest, and a bus shuffling a few metres
         // while parked flips that. A rider watched "⏸ 45s" on a bus most of
         // the way through a ~10 min layover at 344 Winchester (2026-09-03),
-        // which zeroed the stall credit and charged the layover twice. The
-        // stationary clock only restarts on real movement. See BusState.
+        // which zeroed the stall credit and charged the layover twice.
+        //
+        // That clock is pinned to the STOP while the bus is at it, so it
+        // survives a shuffle around the yard and restarts only on reaching a
+        // different stop or leaving for good. `AT_STOP_MAX_M` below and
+        // `AT_STOP_PIN_M` in the detector are deliberately the same number —
+        // the clock is pinned over exactly the region where it is published.
+        // See BusState.stationaryStopId.
         ? { id: state.nearestStopId, since: state.stationarySince }
         : null;
       this.livePositions.set(key, {
@@ -731,6 +1178,18 @@ export class Collector {
         lastStopId: o.lastStopId,
         atStopId: atStop ? atStop.id : null,
         atStopSince: atStop ? atStop.since : null,
+        // The same clock, published unconditionally. `atStopSince` above is
+        // gated on being within AT_STOP_MAX_M of the stop; a bus resting SHORT
+        // of its layover marker is invisible without this (see
+        // BusPosition.stationarySince).
+        stationarySince: state ? state.stationarySince : null,
+        stationaryStopId: state ? state.stationaryStopId : null,
+        // When the fix last changed. The clock above says how long the WAIT
+        // has been going on and is pinned to a stop so a shuffle cannot
+        // restart it; that pinning makes it run straight through a bus that is
+        // only driving past. This one answers "is it moving", which is what a
+        // client holding a single frame has no other way to know.
+        lastMovedAt: state ? state.lastMovedAt : null,
         collectedAt: o.collectedAt,
       });
     }
@@ -740,9 +1199,107 @@ export class Collector {
     this.version++;
   }
 
+  /**
+   * When each bus last DEPARTED each stop — the lap covariate's clock
+   * (src/calibrator/lapFit.ts). Keyed by bus NAME, the identity invariant:
+   * upstream reissues `bus_id` per service block, and a lap that spans a
+   * reissue is exactly the lap this exists to measure. Fed by the detector's
+   * own dwell events, so nothing queries on the request path; entries older
+   * than {@link LAP_CLOCK_TTL_MS} are dropped, since a gap that long is past
+   * every cell's band and would be ignored anyway.
+   */
+  private readonly lapClock = new Map<string, Map<number, number>>();
+  private lapFitsCache: LapFitCache | null = null;
+
+  /** Seconds since this bus last departed each stop it has a record for. */
+  lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
+    const m = this.lapClock.get(busName);
+    if (!m || m.size === 0) return undefined;
+    const out: Record<string, number> = {};
+    let any = false;
+    for (const [stopId, at] of m) {
+      const age = Math.round((nowMs - at) / 1000);
+      if (age < 0 || age * 1000 > LAP_CLOCK_TTL_MS) continue;
+      out[String(stopId)] = age;
+      any = true;
+    }
+    return any ? out : undefined;
+  }
+
+  /**
+   * WARM-START THE LAP CLOCK FROM HISTORY.
+   *
+   * `lapClock` is in-memory and fed only by the detector's dwell events, so a
+   * fresh process knows nothing: a bus carries no lap until it completes a
+   * loop AND departs a fitted stop again — on Red up to an hour, and only at
+   * 344 Winchester or Union Station (N). This app deploys several times a
+   * day, so without this the correction is INERT for a lap after every
+   * restart, which is exactly the window a rider is most likely to be looking
+   * at. It is the same failure as report #100 (a restart zeroing a standing
+   * bus's clock, fixed by `seedStationaryFromHistory`) and the same failure as
+   * PR #81 (served, live and inert because the payload lacked what the client
+   * needed), and it is fixed the same way: the data is already on disk.
+   *
+   * `arrivals.departed_at` is the very column `lapFit` reads for the 90-day
+   * fit, so this needs no new table and no new write. One indexed query per
+   * FITTED cell — two on today's rollout — bounded by {@link LAP_CLOCK_TTL_MS},
+   * because a gap longer than that is outside every cell's band and the client
+   * would ignore it anyway.
+   *
+   * Non-throwing, exactly like the seed it is modelled on: a failed warm start
+   * costs the feature a lap, never the collector.
+   */
+  private seedLapClock(): void {
+    try {
+      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+      const cells = this.lapFitsCache.get();
+      if (cells.size === 0) return;
+      const now = Date.now();
+      const floor = now - LAP_CLOCK_TTL_MS;
+      const stmt = this.sqlite.prepare(
+        "SELECT bus_name AS busName, MAX(departed_at) AS departedAt FROM arrivals " +
+          "WHERE route_id = ? AND stop_id = ? AND arrived_at >= ? AND departed_at IS NOT NULL " +
+          "AND departed_at >= ? GROUP BY bus_name",
+      );
+      let seeded = 0;
+      for (const key of cells.keys()) {
+        const i = key.indexOf(":");
+        const routeId = Number(key.slice(0, i)), stopId = Number(key.slice(i + 1));
+        if (!Number.isFinite(routeId) || !Number.isFinite(stopId)) continue;
+        // `arrived_at` leads the index; the stand itself is bounded, so a
+        // departure inside the TTL cannot have arrived more than one stand
+        // before it.
+        const rows = stmt.all(routeId, stopId, floor - MAX_SEEDABLE_STAND_MS, floor) as Array<{ busName: string; departedAt: number }>;
+        for (const r of rows) {
+          if (!r.busName || !(r.departedAt > 0)) continue;
+          this.noteDeparture(r.busName, stopId, r.departedAt);
+          seeded++;
+        }
+      }
+      if (seeded > 0) this.logger.info("collector.lap_clock_seeded", { cells: cells.size, entries: seeded, buses: this.lapClock.size });
+    } catch (err) {
+      this.logger.warn("collector.lap_clock_seed_failed", { error: (err as Error).message });
+    }
+  }
+
+  private noteDeparture(busName: string, stopId: number, leftAt: number): void {
+    let m = this.lapClock.get(busName);
+    if (!m) this.lapClock.set(busName, (m = new Map()));
+    m.set(stopId, leftAt);
+    if (this.lapClock.size > 400) {
+      // A fleet is ~50 names; anything past this is dead ids accumulating.
+      for (const [k, v] of this.lapClock) {
+        let live = false;
+        for (const at of v.values()) if (leftAt - at <= LAP_CLOCK_TTL_MS) { live = true; break; }
+        if (!live) this.lapClock.delete(k);
+      }
+    }
+  }
+
   private runCalibrate(): void {
     try {
-      const stats = calibrate(this.db, this.ref.get());
+      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+      const stats = calibrate(this.db, this.ref.get(), new Date(), this.lapFitsCache.get());
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
@@ -757,6 +1314,37 @@ export class Collector {
   /** The service banners Yale's own map shows. Failure keeps the last batch. */
   announcements(): readonly Announcement[] {
     return this.announcementsList;
+  }
+
+  /** Upstream's `active` flag per route id (as strings, for the payload); routes without one are absent. */
+  routeActive(): Record<string, boolean> {
+    const out: Record<string, boolean> = {};
+    for (const [id, a] of this.routeActiveMap) out[String(id)] = a;
+    return out;
+  }
+
+  private applyRouteActive(routes: readonly Route[]): void {
+    const fresh = new Map<number, boolean>();
+    for (const r of routes) if (r.active !== undefined) fresh.set(r.id, r.active);
+    let changed = fresh.size !== this.routeActiveMap.size;
+    if (!changed) for (const [id, a] of fresh) if (this.routeActiveMap.get(id) !== a) { changed = true; break; }
+    this.routeActiveMap = fresh;
+    if (changed) {
+      // The /api/buses payload embeds these and is memoized on dataVersion().
+      this.version++;
+      this.logger.info("collector.route_active_changed", {
+        active: [...fresh].filter(([, a]) => a).map(([id]) => id),
+      });
+    }
+  }
+
+  private async refreshRouteActive(): Promise<void> {
+    try {
+      const routes = await this.upstream.routes();
+      if (routes.length > 0) this.applyRouteActive(routes);
+    } catch {
+      // Same policy as the announcements: the last flags stand.
+    }
   }
 
   private async refreshAnnouncements(): Promise<void> {
@@ -797,6 +1385,7 @@ export class Collector {
         return;
       }
       this.persistStatic(stops, routes);
+      this.applyRouteActive(routes);
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
       const rebuilt = TransitNetwork.build(stops, routes);
@@ -849,10 +1438,19 @@ export class Collector {
     // and crash the process. Contain it; a failed sweep just retries next hour.
     try {
       const now = Date.now();
-      const trims: Array<[string, number]> = [
+      const trims: Array<[RetainedTable | typeof UPSTREAM_PREDICTION_TRIM, number]> = [
         ["raw_positions", now - RAW_POSITION_RETAIN_MS],
         ["arrivals", now - ARRIVAL_RETAIN_MS],
         ["segments", now - SEGMENT_RETAIN_MS],
+        ["stop_visits", now - VISIT_RETAIN_MS],
+        ["legs", now - LEG_RETAIN_MS],
+        // Two windows over one table: the operator's arm is ~40x the volume of
+        // the rider surfaces and ages out at 7 d, not 30. Each entry gets its
+        // own time budget below, so the order between them does not matter.
+        [UPSTREAM_PREDICTION_TRIM, now - UPSTREAM_PREDICTION_RETAIN_MS],
+        ["predictions_log", now - PREDICTION_RETAIN_MS],
+        // Age window first; the row cap below may move this cutoff forward.
+        ["upstream_etas", Math.max(now - UPSTREAM_ETA_RETAIN_MS, this.upstreamEtaCapCutoff())],
       ];
       for (const [table, cutoffMs] of trims) {
         const stmt = this.trimStmts.get(table);
@@ -868,6 +1466,26 @@ export class Collector {
       }
     } catch (err) {
       this.logger.error("collector.retention_failed", { error: (err as Error).message });
+    }
+  }
+
+  /**
+   * The `sampled_at` below which `upstream_etas` exceeds its row cap, or 0
+   * when it does not. One indexed seek (`upstream_etas_time_idx`), newest
+   * first, offset by the cap: everything older than that row goes.
+   */
+  private upstreamEtaCapCutoff(): number {
+    try {
+      const row = this.sqlite
+        .prepare(
+          "SELECT sampled_at AS at FROM upstream_etas ORDER BY sampled_at DESC LIMIT 1 OFFSET ?",
+        )
+        .get(UPSTREAM_ETA_MAX_ROWS) as { at: number } | undefined;
+      // `< cutoff` in the trim, so the row AT the cap survives and the table
+      // settles at cap + 1 rows sharing its oldest instant — close enough.
+      return row ? row.at : 0;
+    } catch {
+      return 0;
     }
   }
 
@@ -1154,6 +1772,7 @@ export class Collector {
 
     for (const e of events) {
       if (e.kind !== "dwell") continue;
+      this.noteDeparture(e.busName, e.stopId, e.leftAt);
       this.patchDwellStmt.run({
         leftAt: e.leftAt,
         dwellSec: e.dwellSec,
@@ -1162,6 +1781,18 @@ export class Collector {
         enteredAt: e.enteredAt,
       });
     }
+  }
+
+  /**
+   * One insert per visit or leg, batched per poll — a few hundred rows a day,
+   * never a write on the request path. `dow`/`hour` follow the same ET
+   * convention as `arrivals`/`segments` (process TZ), keyed on the instant a
+   * consumer groups by: the arrival for a visit, the departure for a leg.
+   */
+  private persistVisits(events: readonly VisitEvent[]): void {
+    const { visitRows, legRows } = visitRowsOf(events);
+    if (visitRows.length > 0) this.db.insert(stopVisits).values(visitRows).run();
+    if (legRows.length > 0) this.db.insert(legs).values(legRows).run();
   }
 
   private persistStatic(stops: readonly Stop[], routes: readonly Route[]): void {
@@ -1286,7 +1917,7 @@ function routeStopSequence(net: TransitNetwork, route: Route): LatLon[] {
   return out;
 }
 
-function retentionColumn(table: "raw_positions" | "arrivals" | "segments"): string {
+function retentionColumn(table: RetainedTable): string {
   switch (table) {
     case "raw_positions":
       return "collected_at";
@@ -1294,5 +1925,13 @@ function retentionColumn(table: "raw_positions" | "arrivals" | "segments"): stri
       return "arrived_at";
     case "segments":
       return "started_at";
+    case "stop_visits":
+      return "anchored_at";
+    case "legs":
+      return "departed_at";
+    case "predictions_log":
+      return "predicted_at";
+    case "upstream_etas":
+      return "sampled_at";
   }
 }

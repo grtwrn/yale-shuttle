@@ -1,0 +1,19 @@
+{
+  "caption": "Same bus, twitched 23 m to 130 Prospect (S) — nine slots away in the sequence",
+  "views": ["trip"],
+  "trip": { "board": 98, "dest": 72 },
+  "mock": {
+    "/api/buses": [
+      { "untilMs": 18000, "$patch": { "buses": [
+        { "bus_id": 9001, "bus_name": "#316", "route_id": 3, "heading": 0,
+          "lat": 41.31532, "lon": -72.92455, "last_stop_id": 92 }
+      ] } },
+      { "$patch": { "buses": [
+        { "bus_id": 9001, "bus_name": "#316", "route_id": 3, "heading": 0,
+          "lat": 41.315161, "lon": -72.924729, "last_stop_id": 92 }
+      ] } }
+    ]
+  },
+  "actions": [ { "click": "Red", "which": "last", "settle": 3000 }, { "wait": 12000 } ],
+  "focus": "stops away"
+}

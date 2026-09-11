@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  etDayAndMinutes, fmtSchedule, fmtScheduleDays, fmtScheduleTime, fmtWindows,
-  isBusInService, isRouteActiveAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
-  ROUTE_HOURS, SERVICE_GRACE_MS,
+  ACTIVE_FLAG_SETTLE_MIN, calendarAllows, etDayAndMinutes, etDayNumber, fmtSchedule, fmtScheduleDays, fmtScheduleTime, fmtWindows,
+  isBusInService, isClosedOn, isRouteActiveAt, isRouteScheduledAt, isWindowActiveAt, nextActiveWindow, nextWindowStart,
+  ROUTE_CALENDAR, ROUTE_HOURS, SERVICE_GRACE_MS, serviceStateAt,
 } from "./schedule";
 import { ROUTE_LISTS } from "./routes";
 import { makeBus } from "./__fixtures__/payload";
@@ -120,6 +120,20 @@ describe("isBusInService", () => {
   it("never filters a route id it has no label for", () => {
     expect(isBusInService(makeBus({ route_id: 999, lat: 41.31, lon: -72.93 }), MON_1630_ET.getTime()))
       .toBe(true);
+  });
+
+  // The record, because the first reading of the 2026-09-06 canary finding
+  // blamed this gate. Blue Night's #57 reported route 13 at 17:42 ET on a
+  // Sunday, 18 min before the 18:00 open, and the plan never offered the
+  // line. The gate passed it the whole time — 18 min is well inside the
+  // grace — and the plan was right: the bus was on Whitney Ave in Hamden,
+  // 4 km from the line, deadheading in (isBusOnRoute false). The fix was
+  // in the canary's idea of "running", not here.
+  it("passes a Blue Night bus reporting 18 min before its Sunday open", () => {
+    const sun1742 = new Date("2026-09-06T17:42:00-04:00").getTime();
+    const bus = makeBus({ route_id: 13, bus_name: "#57", lat: 41.3531, lon: -72.9247 });
+    expect(isRouteActiveAt("Blue Night", new Date(sun1742))).toBe(false);
+    expect(isBusInService(bus, sun1742)).toBe(true);
   });
 });
 
@@ -412,4 +426,191 @@ describe("fmtWindows / isWindowActiveAt / nextWindowStart", () => {
       }
     }
   });
+});
+
+// The two grocery lines alternate whole weekends. Yale publishes it: the "2026
+// Grocery Shuttle Calendar" colours every weekend — Schedule #1 Trader Joe's,
+// Schedule #2 Hamden, Dec 24–31 struck through — and the `arrivals` table
+// agrees on every weekend 2026-06-13 → 2026-09-06 (13 of 13). On Sun
+// 2026-09-06 10:28 ET the operator planned to Trader Joe's and read "Should
+// be running now — no bus reporting yet" on a Hamden weekend.
+describe("ROUTE_CALENDAR (the grocery lines' alternate weekends)", () => {
+  // Saturdays of every Trader Joe's weekend on the published 2026 calendar.
+  const TJ_2026 = [
+    "2026-01-03", "2026-01-17", "2026-01-31", "2026-02-14", "2026-02-28", "2026-03-14", "2026-03-28",
+    "2026-04-11", "2026-04-25", "2026-05-09", "2026-05-23", "2026-06-06", "2026-06-20", "2026-07-04",
+    "2026-07-18", "2026-08-01", "2026-08-15", "2026-08-29", "2026-09-12", "2026-09-26", "2026-10-10",
+    "2026-10-24", "2026-11-07", "2026-11-21", "2026-12-05", "2026-12-19",
+  ];
+  // Hamden weekends the calendar lists explicitly (the rest are "the others").
+  const HAM_2026 = ["2026-09-05", "2026-09-19", "2026-10-03", "2026-10-17", "2026-10-31", "2026-11-14", "2026-11-28", "2026-12-12"];
+  // What the arrivals table saw, Jun 13 → Sep 6.
+  const TJ_SEEN = ["2026-06-20", "2026-07-04", "2026-07-18", "2026-08-01", "2026-08-15", "2026-08-29"];
+  const HAM_SEEN = ["2026-06-13", "2026-06-27", "2026-07-11", "2026-07-25", "2026-08-08", "2026-08-22", "2026-09-05"];
+  const sat = (iso: string, h = 10) => new Date(`${iso}T${String(h).padStart(2, "0")}:00:00-04:00`);
+  const sun = (iso: string, h = 10) => new Date(sat(iso, h).getTime() + 86_400_000);
+  const tj = ROUTE_CALENDAR["Grocery TJ"]!, ham = ROUTE_CALENDAR["Grocery Ham"]!;
+  const TJ_WINS = ROUTE_HOURS["Grocery TJ"]!, HAM_WINS = ROUTE_HOURS["Grocery Ham"]!;
+  const SUN_0906_1028 = new Date("2026-09-06T10:28:00-04:00");
+  const SAT_0912_0700 = new Date("2026-09-12T07:00:00-04:00");
+
+  it("reproduces the published 2026 calendar, both days of every weekend, for both lines", () => {
+    for (const w of TJ_2026) {
+      expect(calendarAllows(tj, sat(w)), `TJ on ${w}`).toBe(true);
+      expect(calendarAllows(tj, sun(w)), `TJ on ${w}+1`).toBe(true);
+      expect(calendarAllows(ham, sat(w)), `Ham off ${w}`).toBe(false);
+      expect(calendarAllows(ham, sun(w)), `Ham off ${w}+1`).toBe(false);
+    }
+    for (const w of HAM_2026) {
+      expect(calendarAllows(ham, sat(w)), `Ham on ${w}`).toBe(true);
+      expect(calendarAllows(ham, sun(w)), `Ham on ${w}+1`).toBe(true);
+      expect(calendarAllows(tj, sat(w)), `TJ off ${w}`).toBe(false);
+      expect(calendarAllows(tj, sun(w)), `TJ off ${w}+1`).toBe(false);
+    }
+    // Every Saturday of 2026 outside the winter recess belongs to exactly one line.
+    for (let d = sat("2026-01-03"); d.getTime() < sat("2026-12-24").getTime(); d = new Date(d.getTime() + 7 * 86_400_000)) {
+      expect(calendarAllows(tj, d) !== calendarAllows(ham, d), d.toISOString()).toBe(true);
+    }
+  });
+
+  it("agrees with the arrivals table on all 13 observed weekends", () => {
+    for (const w of TJ_SEEN) { expect(calendarAllows(tj, sat(w))).toBe(true); expect(calendarAllows(ham, sat(w))).toBe(false); }
+    for (const w of HAM_SEEN) { expect(calendarAllows(ham, sat(w))).toBe(true); expect(calendarAllows(tj, sat(w))).toBe(false); }
+  });
+
+  it("closes both lines Dec 24–31 (struck through on the calendar) and reopens after", () => {
+    for (const iso of ["2026-12-24", "2026-12-26", "2026-12-27", "2026-12-31"]) {
+      expect(isClosedOn(tj, sat(iso))).toBe(true);
+      expect(calendarAllows(tj, sat(iso))).toBe(false);
+      expect(calendarAllows(ham, sat(iso))).toBe(false);
+    }
+    expect(isClosedOn(tj, sat("2026-12-23"))).toBe(false);
+    expect(isClosedOn(tj, sat("2027-01-01"))).toBe(false);
+    // Sat Dec 26 would be Hamden's by the cycle; the next Hamden start is Sat Jan 9 2027.
+    const dec26 = new Date("2026-12-26T10:00:00-05:00");
+    const st = serviceStateAt(HAM_WINS, "Grocery Ham", dec26);
+    expect(st.open).toBe(false);
+    expect(st.off).toEqual({ partner: "Grocery TJ" });
+    expect(st.next?.toISOString()).toBe(new Date("2027-01-09T07:00:00-05:00").toISOString());
+  });
+
+  it("a TJ weekend day is in service; a Hamden weekend day is 'not this weekend', with TJ's next date", () => {
+    expect(isRouteScheduledAt("Grocery TJ", sat("2026-09-12"))).toBe(true);
+    expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-12"))).toMatchObject({ open: true, off: null });
+    expect(isRouteScheduledAt("Grocery TJ", SUN_0906_1028)).toBe(false);
+    const st = serviceStateAt(TJ_WINS, "Grocery TJ", SUN_0906_1028);
+    expect(st.open).toBe(false);
+    expect(st.off).toEqual({ partner: "Grocery Ham" });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    expect(serviceStateAt(HAM_WINS, "Grocery Ham", SUN_0906_1028)).toMatchObject({ open: true, off: null });
+  });
+
+  it("the same answers against the operator's PUBLISHED window (what riders are shown)", () => {
+    const published = [{ days: [0, 6], startMin: 7 * 60, endMin: 17 * 60, text: "7am - 5pm, Sat - Sun" }];
+    const st = serviceStateAt(published, "Grocery TJ", SUN_0906_1028);
+    expect(st).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    expect(serviceStateAt(published, "Grocery TJ", sat("2026-09-12"))).toMatchObject({ open: true, off: null });
+  });
+
+  it("a weekday is simply not running — no 'off' — and next is the line's own Saturday", () => {
+    const wed = new Date("2026-09-09T12:00:00-04:00");
+    const st = serviceStateAt(TJ_WINS, "Grocery TJ", wed);
+    expect(st).toMatchObject({ open: false, off: null });
+    expect(st.next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    expect(serviceStateAt(HAM_WINS, "Grocery Ham", wed).next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    const satEve = new Date("2026-09-12T20:00:00-04:00");
+    expect(serviceStateAt(TJ_WINS, "Grocery TJ", satEve)).toMatchObject({ open: false, off: null });
+    expect(nextWindowStart(TJ_WINS, satEve, tj)?.toISOString()).toBe(new Date("2026-09-13T07:00:00-04:00").toISOString());
+  });
+
+  describe("upstream's active flag comes first", () => {
+    const live = (active: boolean | undefined, now: Date, labels: string[] = []) => ({ labels: new Set(labels), now, active });
+
+    it("active=false on the line's own weekend, once the window has settled, is 'not this weekend'", () => {
+      const at = new Date("2026-09-12T10:00:00-04:00");
+      const st = serviceStateAt(TJ_WINS, "Grocery TJ", at, live(false, at));
+      expect(st).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
+      // Next: after this weekend, the cycle having shifted — Sat Sep 19, not Sep 26.
+      expect(st.next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    });
+
+    it("active=false in the first minutes of the window is not yet 'not running' (the flag may lag the bus)", () => {
+      const at = new Date(`2026-09-12T07:${String(ACTIVE_FLAG_SETTLE_MIN - 1).padStart(2, "0")}:00-04:00`);
+      expect(serviceStateAt(TJ_WINS, "Grocery TJ", at, live(false, at))).toMatchObject({ open: true, off: null });
+      const settled = new Date(`2026-09-12T07:${String(ACTIVE_FLAG_SETTLE_MIN).padStart(2, "0")}:00-04:00`);
+      expect(serviceStateAt(TJ_WINS, "Grocery TJ", settled, live(false, settled)).open).toBe(false);
+    });
+
+    it("active=true on the partner's weekend overrides the calendar: the line is out", () => {
+      const st = serviceStateAt(TJ_WINS, "Grocery TJ", SUN_0906_1028, live(true, SUN_0906_1028, ["Grocery Ham"]));
+      expect(st).toMatchObject({ open: true, off: null });
+    });
+
+    it("a line that does not alternate reads 'not running today' from the flag, next tomorrow", () => {
+      const at = new Date("2026-09-08T12:00:00-04:00"); // Tue noon; Blue Day is open by the hours
+      const st = serviceStateAt(ROUTE_HOURS["Blue Day"], "Blue Day", at, live(false, at));
+      expect(st).toMatchObject({ open: false, off: { partner: null } });
+      expect(st.next?.toISOString()).toBe(new Date("2026-09-09T07:00:00-04:00").toISOString());
+      // Off-hours the flag says nothing new.
+      const night = new Date("2026-09-08T22:00:00-04:00");
+      expect(serviceStateAt(ROUTE_HOURS["Blue Day"], "Blue Day", night, live(false, night))).toMatchObject({ open: false, off: null });
+    });
+
+    it("the flag bears on today only", () => {
+      const now = SUN_0906_1028;
+      const nextSat = new Date("2026-09-12T10:00:00-04:00");
+      expect(serviceStateAt(TJ_WINS, "Grocery TJ", nextSat, live(false, now)).open).toBe(true);
+    });
+  });
+
+  it("the partner's bus out today is the fallback when no flag is served, today only", () => {
+    const live = { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") };
+    const st = serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-12"), live);
+    expect(st).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
+    expect(st.next?.toISOString()).toBe(new Date("2026-09-19T07:00:00-04:00").toISOString());
+    expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-12") }).open).toBe(false);
+    expect(serviceStateAt(TJ_WINS, "Grocery TJ", sat("2026-09-26"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(true);
+    expect(serviceStateAt(HAM_WINS, "Grocery Ham", sat("2026-09-19"), { labels: new Set(["Grocery Ham"]), now: sat("2026-09-19") }).open).toBe(true);
+  });
+
+  it("the in-service gate stays wide: a TJ bus on a Hamden weekend is still shown", () => {
+    const bus = makeBus({ route_id: 6, lat: 41.2513, lon: -73.0177 });
+    expect(isBusInService(bus, SUN_0906_1028.getTime())).toBe(true);
+    expect(isRouteActiveAt("Grocery TJ", SUN_0906_1028)).toBe(true);
+  });
+
+  it("lines without a calendar are untouched", () => {
+    const d = new Date("2026-09-05T10:00:00-04:00");
+    expect(serviceStateAt(ROUTE_HOURS["Blue Weekend"], "Blue Weekend", d, { labels: new Set(["Grocery Ham"]), now: d })).toMatchObject({ open: true, off: null });
+    expect(serviceStateAt(undefined, "Nowhere", d)).toEqual({ open: true, off: null, next: null });
+    expect(isRouteScheduledAt("Nowhere", d)).toBe(true);
+  });
+
+  it("carries the published sheet's note and source for both lines", () => {
+    for (const cal of [tj, ham]) {
+      expect(cal.note).toMatch(/FlexiStop/);
+      expect(cal.note).toMatch(/holidays and recess/);
+      expect(cal.source).toMatch(/2026 grocery shuttle calendar/);
+    }
+  });
+
+  // Fri 2026-09-11 23:30 ET is 03:30 UTC on Sat Sep 12. On the ET calendar
+  // that is still the Hamden week's Friday; on a UTC device it is TJ's
+  // Saturday. Every zone must read the ET calendar.
+  const FRI_2330_ET = new Date("2026-09-12T03:30:00Z");
+  const zones = ["UTC", "Asia/Tokyo", "America/Los_Angeles", "Pacific/Kiritimati", "Europe/London"];
+  for (const tz of zones) {
+    it(`resolves the weekend on the ET calendar under TZ=${tz}`, async () => {
+      process.env.TZ = tz;
+      vi.resetModules();
+      const mod = await import("./schedule");
+      const rule = mod.ROUTE_CALENDAR["Grocery TJ"]!.alternation!;
+      expect(mod.etDayNumber(FRI_2330_ET)).toBe(etDayNumber(new Date("2026-09-11T12:00:00-04:00")));
+      expect(mod.isOnWeekAt(rule, FRI_2330_ET)).toBe(false);
+      expect(mod.isOnWeekAt(rule, new Date(FRI_2330_ET.getTime() + 5 * 3_600_000))).toBe(true);
+      expect(mod.serviceStateAt(mod.ROUTE_HOURS["Grocery TJ"], "Grocery TJ", SUN_0906_1028)).toMatchObject({ open: false, off: { partner: "Grocery Ham" } });
+      expect(mod.serviceStateAt(mod.ROUTE_HOURS["Grocery TJ"], "Grocery TJ", SUN_0906_1028).next?.toISOString()).toBe(SAT_0912_0700.toISOString());
+    });
+  }
 });

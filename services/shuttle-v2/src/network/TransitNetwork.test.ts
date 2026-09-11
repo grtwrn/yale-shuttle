@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import green from "../../web/src/__fixtures__/green-published-order.json";
 import type { Route, Stop } from "../schema/api.js";
 
-import { TransitNetwork, WALK_TRANSFER_MAX_M, WALK_M_PER_S } from "./TransitNetwork.js";
+import { TransitNetwork, WALK_TRANSFER_MAX_M, WALK_M_PER_S, type DwellStats } from "./TransitNetwork.js";
 
 // Synthetic 4-stop network: a small loop and a sibling stop ~50 m from stop 1.
 //
@@ -270,5 +271,102 @@ describe("nearestStopAheadOnRoute", () => {
     // index 0 with a span of 2 can only answer with indices 0, 1 or 2.
     const anchor = net.nearestStopAheadOnRoute(1, twinStops[4]!, 0, 2)!;
     expect(anchor.index).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("TransitNetwork leg metres and per-pass dwell keys", () => {
+  // A rectangle: stops 1 and 2 on the bottom side, 3 on the top. 1→2 runs
+  // straight (road ≈ chord); 2→3 goes round the corner; 3→1 round the other.
+  const path: [number, number][] = [
+    [41.31, -72.93], [41.31, -72.91], [41.312, -72.91], [41.312, -72.93],
+  ];
+  const rectStops: Stop[] = [
+    { id: 1, name: "A", lat: 41.31, lon: -72.93 },
+    { id: 2, name: "B", lat: 41.31, lon: -72.92 },
+    { id: 3, name: "C", lat: 41.312, lon: -72.92 },
+  ];
+
+  it("measures each hop along the published line, keyed like the segment stats", () => {
+    const net = TransitNetwork.build(rectStops, [
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3], path },
+    ]);
+    const ab = net.getLegMeters(3, 1, 2)!;
+    const bc = net.getLegMeters(3, 2, 3)!;
+    const ca = net.getLegMeters(3, 3, 1)!;
+    expect(ab).toBeCloseTo(837, -1); // one straight block east
+    expect(bc).toBeGreaterThan(1800); // east to the corner, up, and back west: ~837 + 222 + 837
+    expect(ca).toBeGreaterThan(1000); // west along the top and down: ~837 + 222
+    expect(net.getLegMeters(3, 2, 1)).toBeUndefined(); // not a hop of the route
+    expect(net.getLegMeters(4, 1, 2)).toBeUndefined();
+  });
+
+  it("has no leg metres without a path or with a stop it cannot place", () => {
+    const noPath = TransitNetwork.build(rectStops, [
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 3] },
+    ]);
+    expect(noPath.getLegMeters(3, 1, 2)).toBeUndefined();
+    const missingStop = TransitNetwork.build(rectStops, [
+      { id: 3, name: "Red", shortName: "R", color: "#c00", stops: [1, 2, 99], path },
+    ]);
+    expect(missingStop.getLegMeters(3, 1, 2)).toBeUndefined();
+  });
+
+  it("keys one pass of a repeated stop as route:stop#index and reads it back", () => {
+    expect(TransitNetwork.occurrenceDwellKey(10, 25, 6)).toBe("10:25#6");
+    const net = TransitNetwork.build(rectStops, [
+      { id: 10, name: "Purple", shortName: "P", color: "#808", stops: [1, 2, 3, 2] },
+    ]);
+    const pass = { mean: 100, stddev: 5, n: 2, q: [90, 110], qn: 2 };
+    net.setCalibration(new Map(), new Map<string, DwellStats>([["10:2#1", pass], ["10:2", { mean: 15, stddev: 10, n: 0 }]]));
+    expect(net.getOccurrenceDwellStats(10, 2, 1)).toEqual(pass);
+    expect(net.getOccurrenceDwellStats(10, 2, 3)).toBeUndefined();
+    expect(net.getDwellStats(10, 2).n).toBe(0); // the pooled entry, untouched
+  });
+});
+
+describe("a published stop order its published line cannot supply", () => {
+  const greenFixture = green as unknown as {
+    stops: number[];
+    path: [number, number][];
+    stopCoords: Record<string, [number, number]>;
+    stopNames: Record<string, string>;
+    repairedOrder: number[];
+  };
+  const greenStops: Stop[] = Object.entries(greenFixture.stopCoords).map(([id, c]) => ({
+    id: Number(id), name: greenFixture.stopNames[id]!, lat: c[0], lon: c[1],
+  }));
+  const greenRoute: Route = {
+    id: 9, name: "Green - West Campus", shortName: "Green", color: "#0a0",
+    stops: greenFixture.stops, path: greenFixture.path,
+  };
+
+  it("runs the network on the repaired order and keeps upstream's list beside it", () => {
+    const net = TransitNetwork.build(greenStops, [greenRoute]);
+    const r = net.routes.get(9)!;
+    expect(r.publishedStops).toEqual(greenFixture.stops);
+    expect(r.stops).toEqual(greenFixture.repairedOrder.map((i) => greenFixture.stops[i]!));
+    // Upstream's slot 18 is the station, named once. The network lists it
+    // twice — the outbound pass between Bradley (S) and Building 900, and the
+    // return pass after Building 900 — which is what the line does and what
+    // the buses do.
+    expect(greenFixture.stops[18]).toBe(127);
+    expect(r.stops.filter((s) => s === 127).length).toBe(2);
+    expect(r.stops.slice(10, 13)).toEqual([81, 127, 26]);
+    expect(r.stops.slice(19, 22)).toEqual([26, 127, 80]);
+  });
+
+  it("gives the highway hops a road length the published order could not", () => {
+    const net = TransitNetwork.build(greenStops, [greenRoute]);
+    // Bradley (S) -> the station, and the station -> Bradley (N): the two
+    // highway runs, neither of which had a `legM` at all while the ring was
+    // bridged, and neither of which the detector could bill as a hop.
+    expect(net.getLegMeters(9, 81, 127)).toBeGreaterThan(9_000);
+    expect(net.getLegMeters(9, 127, 80)).toBeGreaterThan(9_000);
+  });
+
+  it("leaves a route whose line supports its order alone", () => {
+    const net = TransitNetwork.build(stops, routes);
+    expect(net.routes.get(100)!.publishedStops).toBeUndefined();
+    expect(net.routes.get(100)!.stops).toEqual([1, 2, 3]);
   });
 });

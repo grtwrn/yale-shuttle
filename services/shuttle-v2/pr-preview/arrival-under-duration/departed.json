@@ -1,0 +1,12 @@
+{
+  "caption": "A Departed card: nothing sits under the word \"Departed\", and the legs row keeps its height so the card does not jump",
+  "trip": { "board": 100, "dest": 72, "from": { "lat": 41.32235, "lon": -72.92289 } },
+  "views": ["trip"],
+  "mock": {
+    "/api/buses": [
+      { "untilMs": 11000, "$patch": {} },
+      { "$patch": { "buses": [] } }
+    ]
+  },
+  "actions": [{ "wait": 12000 }]
+}

@@ -1,6 +1,7 @@
 import type { DbBundle } from "../db/client.js";
 import { percentile } from "../calibrator/shrinkage.js";
 import type { AccuracyBucket, AccuracyResponse } from "../schema/api.js";
+import { RIDER_SURFACES_SQL } from "./predictions.js";
 
 const WINDOW_DAYS = 7;
 const MATCH_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 h
@@ -35,9 +36,12 @@ export function getAccuracy(
 
   const predictions = bundle.sqlite
     .prepare(
+      // The surface clause is load-bearing: `predictions_log` also holds the
+      // OPERATOR's ETAs (`surface = 'upstream'`), and this endpoint answers
+      // "how accurate are WE". See RIDER_SURFACES_SQL in predictions.ts.
       `SELECT bus_id, to_stop_id, predicted_sec, predicted_at, stops_ahead
        FROM predictions_log
-       WHERE predicted_at >= ?`,
+       WHERE predicted_at >= ? AND ${RIDER_SURFACES_SQL}`,
     )
     .all(cutoff) as PredRow[];
 

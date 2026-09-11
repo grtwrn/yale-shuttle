@@ -143,7 +143,8 @@ export const LEGEND_ROUTES: {
  *
  * Downstream is repeat-safe: `planTrip` reduces to one option per route label,
  * `computeUpcomingArrivals` caps entries per stop, and `findRouteAnchor`
- * disambiguates revisited vicinities by forward distance from `last_stop_id`.
+ * disambiguates revisited vicinities by EXCLUDING candidate legs more than
+ * `ANCHOR_FEED_LEAD_HOPS` ahead of `last_stop_id`.
  */
 export function mergedRouteStops(
   cfg: RouteListConfig,

@@ -112,7 +112,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Divinity School", lat: 41.3232, lon: -72.922508, aliases: ["divinity", "yds", "divinity library", "marquand chapel", "sterling divinity quadrangle", "409 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // OSM R5730472
   { label: "School of Art (Green Hall)", lat: 41.308301, lon: -72.933003, aliases: ["art school", "school of art", "green hall", "1156 chapel", "iseman theater", "iseman"], poi: "college", anchorStop: "York / Chapel" }, // OSM W224973110
   { label: "School of Management (SOM)", lat: 41.315171, lon: -72.920475, aliases: ["som", "evans hall", "business school", "yale som", "165 whitney"], poi: "college", anchorStop: "SOM" }, // OSM R3959340
-  { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine", "harkness auditorium (shm)", "harkness auditorium", "med school auditorium"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
+  { label: "School of Medicine (YSM)", lat: 41.303186, lon: -72.933746, aliases: ["med school", "medical school", "ysm", "sterling hall of medicine", "shm", "333 cedar", "medicine"], poi: "college", anchorStop: "333 Cedar" }, // OSM W180193233
   { label: "School of Nursing (West Campus)", lat: 41.255831, lon: -72.992846, aliases: ["nursing", "nursing school", "ysn", "400 west campus"], poi: "college", anchorStop: "Building 400" }, // OSM W336607422
   { label: "School of Public Health (YSPH)", lat: 41.303735, lon: -72.932155, aliases: ["laboratory of epidemiology and public health", "ysph", "public health", "leph", "60 college", "epidemiology"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W239527110
   { label: "Yale Law School", lat: 41.312032, lon: -72.927781, aliases: ["law school", "yls", "sterling law building", "law library", "lillian goldman law library", "127 wall", "law"], poi: "college", anchorStop: "Wall / York" }, // OSM R2840491
@@ -122,6 +122,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Asian American Cultural Center", lat: 41.306987, lon: -72.931583, aliases: ["aacc", "asian american center", "295 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240137
   { label: "Dwight Hall", lat: 41.308947, lon: -72.929297, aliases: ["dwight hall & memorial chapel", "dwight", "dwight chapel", "67 high"], poi: "college", anchorStop: "Phelps Gate" }, // OSM W139753858
   { label: "Graduate & Professional Student Center (GPSCY)", lat: 41.309255, lon: -72.931882, aliases: ["gpscy", "gypsy", "grad center", "204 york", "gryphon", "gryphons", "gryphon's pub", "the gryphon"], poi: "college", anchorStop: "180 York (A&A)" }, // OSM W224973083
+  { label: "McDougal Center (Founders Hall)", lat: 41.3157176, lon: -72.9241619, aliases: ["mcdougal", "mcdougal center", "mcdougal graduate student center", "founders hall", "135 prospect"], poi: "college", anchorStop: "Prospect / Sachem (N)" }, // OSM W210260688
   { label: "La Casa Cultural", lat: 41.307061, lon: -72.931765, aliases: ["la casa", "latino cultural center", "301 crown"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606240136
   { label: "Native American Cultural Center", lat: 41.306961, lon: -72.93118, aliases: ["nacc", "native american center", "26 high"], poi: "college", anchorStop: "York / Crown" }, // OSM N11606236056
   { label: "Schwarzman Center", lat: 41.311808, lon: -72.92644, aliases: ["commons", "the commons", "schwarzman", "schwarzman commons", "the elm", "the well", "dome"], poi: "college", anchorStop: "College / Grove (N)" }, // OSM W363426802
@@ -141,10 +142,11 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Yale University Art Gallery", lat: 41.308435, lon: -72.93088, aliases: ["yuag", "art gallery", "the gallery", "1111 chapel"], poi: "museum", anchorStop: "Chapel / York" }, // OSM R6686912
 
   // -- Medical campus and hospitals ------------------------------------------
+  { label: "Mary S. Harkness Auditorium", lat: 41.3034645, lon: -72.9338409, aliases: ["harkness auditorium", "harkness memorial auditorium", "mary s harkness memorial auditorium", "harkness auditorium (shm)", "shm auditorium", "med school auditorium"], poi: "theatre", anchorStop: "333 Cedar" }, // OSM N367139179
   { label: "100 College Street", lat: 41.304191, lon: -72.931689, aliases: ["100 college", "alexion", "100 college st"], poi: "college", anchorStop: "LEPH / 60 College" }, // OSM W266150495
   { label: "Smilow Cancer Hospital", lat: 41.3051, lon: -72.93584, aliases: ["smilow", "cancer center", "yale cancer center", "35 park"], poi: "hospital", anchorStop: "Howard / Park" }, // OSM R5641557
   { label: "The Anlyan Center (TAC)", lat: 41.30118, lon: -72.934072, aliases: ["tac", "anlyan", "300 cedar"], poi: "hospital", anchorStop: "Gilbert / Cedar" }, // OSM W232595709
-  { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
+  { label: "VA Hospital (West Haven)", lat: 41.283664, lon: -72.959832, aliases: ["va", "the va", "veterans hospital", "va medical center", "west haven va", "veterans affairs", "va ct", "va connecticut", "va connecticut healthcare", "va health center", "va healthcare"], poi: "hospital", anchorStop: "VA Entrance Inbound" }, // OSM W42735113
   { label: "Yale Health Center", lat: 41.315731, lon: -72.927521, aliases: ["yale health", "health center", "student health", "yuhs", "55 lock", "pharmacy", "acute care"], poi: "hospital", anchorStop: "Winchester / Sachem" }, // OSM W217340232
   { label: "Yale New Haven Hospital Saint Raphael Campus", lat: 41.310144, lon: -72.942931, aliases: ["st raphael", "saint raphael", "st raphaels", "srh", "1450 chapel"], poi: "hospital", anchorStop: "Chapel / Dwight" }, // OSM W442001687
   { label: "Yale Physicians Building", lat: 41.302563, lon: -72.936326, aliases: ["ypb", "physicians building", "800 howard"], poi: "hospital", anchorStop: "Davenport / Howard" }, // OSM W232595708
@@ -175,6 +177,17 @@ export const LANDMARKS: readonly Landmark[] = [
   // -- Cafes, restaurants and bars -------------------------------------------
   { label: "Archie Moore's", lat: 41.321407, lon: -72.910523, aliases: ["archie moores", "archies", "wings", "188 willow"], poi: "bar", anchorStop: "Willow / Foster" }, // OSM N299708928
   { label: "Arethusa Farm Dairy", lat: 41.307405, lon: -72.929298, aliases: ["arethusa", "arethusa ice cream", "1020 chapel"], poi: "ice_cream", anchorStop: "Chapel / College" }, // OSM N2760039180
+  { label: "Miller Hall", lat: 41.323144, lon: -72.923783, aliases: ["miller hall", "institute of sacred music", "sacred music", "ism", "406 prospect"], poi: "college", anchorStop: "Divinity / 409 Prospect" }, // Yale's Institute of Sacred Music, 406 Prospect St; the coordinate is the geocoded address, OSM has no
+  // building of that name here. Searched 3 times, empty 3 times.
+  { label: "Tropical Smoothie Cafe", lat: 41.313524, lon: -72.932287, aliases: ["tropical smoothie", "smoothie", "15 dixwell"], poi: "cafe", anchorStop: "Payne Whitney Gym" }, // 15 Dixwell Ave, geocoded. Added on its own merit rather than as an answer to
+  // "tropical zone", which matches nothing that exists in New Haven — see the note in the commit.
+  { label: "Chef Jiang", lat: 41.312258, lon: -72.921739, aliases: ["chef jiang", "jiang", "chef jiang new haven", "67 whitney"], poi: "restaurant", anchorStop: "Whitney / Audubon" }, // NOT in OSM under any name — Photon answers a Hong Kong restaurant and Nominatim nothing, so the
+  // coordinate is the geocoded street address, 67 Whitney Ave (Nominatim, node "67;69 Whitney Avenue"). Riders searched it 3 times in 30 days and got nothing every time.
+  { label: "City Crossing", lat: 41.301511, lon: -72.930319, aliases: ["city crossing", "the mason", "mason at city crossing", "the maddox", "188 lafayette"], poi: "apartments", anchorStop: "Amistad CSS Weekend Blue" }, // Also absent from OSM as a name; the coordinate is 188 Lafayette St, which
+  // Nominatim returns as "Mason, 188, Lafayette Street". Searched 5 times, empty 5 times — the joint top of the not-found list with the Chaplain's Office.
+  { label: "Whitehall Apartments", lat: 41.326073, lon: -72.922248, aliases: ["whitehall", "whitehall apartments", "whitehall apts"], poi: "apartments", anchorStop: "Prospect / Canner" }, // OSM way; a rider typing "whitehall appa" got nothing.
+  { label: "Arwa Yemeni Coffee", lat: 41.30969, lon: -72.920192, aliases: ["arwa", "arwa cafe", "arwa coffee", "yemeni coffee", "arwa yemeni", "335 orange"], poi: "cafe", anchorStop: "Orange / Grove" }, // OSM N9021774207 — the 335 Orange St address node: the cafe itself is not mapped in OSM yet,
+  // which is exactly why neither Photon nor Nominatim could answer "arwa cafe" and the app showed nothing.
   { label: "Ashley's Ice Cream", lat: 41.311033, lon: -72.929949, aliases: ["ashleys", "ashley's", "ice cream", "280 york"], poi: "ice_cream", anchorStop: "Broadway / York" }, // OSM N2719756863
   { label: "Atticus Bookstore Cafe", lat: 41.307953, lon: -72.930644, aliases: ["atticus", "atticus cafe", "1082 chapel"], poi: "cafe", anchorStop: "Chapel / York" }, // OSM N2373828306
   { label: "BAR (Crown St)", lat: 41.306176, lon: -72.930261, aliases: ["bar", "bar pizza", "mashed potato pizza", "254 crown"], poi: "pizza", anchorStop: "College / Crown" }, // OSM N430030530
@@ -190,6 +203,9 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Junzi Kitchen", lat: 41.311129, lon: -72.93034, aliases: ["junzi", "21 broadway"], poi: "restaurant", anchorStop: "Broadway / York" }, // OSM N8910620396
   { label: "Koffee?", lat: 41.31155, lon: -72.92192, aliases: ["koffee", "koffee on audubon", "104 audubon"], poi: "cafe", anchorStop: "Whitney / Audubon" }, // OSM N470632969
   { label: "Louis' Lunch", lat: 41.306474, lon: -72.930408, aliases: ["louis lunch", "louis", "hamburger", "261 crown"], poi: "fast_food", anchorStop: "College / Crown" }, // OSM N2122108492
+  { label: "M2 Mocha Cafe", lat: 41.315647, lon: -72.929289, aliases: ["m2", "m2 mocha", "m2 cafe", "mocha cafe", "yemeni coffee", "100 ashmun"], poi: "cafe", anchorStop: "Ashmun / Lock" }, // OSM W340518188 — the 100 Ashmun St building: the cafe is not mapped in OSM either (see Arwa).
+  { label: "Maison B Cafe", lat: 41.311074, lon: -72.931398, aliases: ["maison b", "maison", "maison mathis", "304 elm"], poi: "cafe", anchorStop: "Elm / York (TYCO)" }, // OSM N2719815433 — still tagged "Maison Mathis", the name it traded under until 2025.
+  { label: "Olmo", lat: 41.313181, lon: -72.921492, aliases: ["olmo bagels", "bagels", "93 whitney"], poi: "bakery", anchorStop: "Whitney / Trumbull" }, // OSM N9021776924 — the 93 Whitney Ave address node; the shop is not mapped (see Arwa).
   { label: "Lupi-Legna Bakery", lat: 41.300835, lon: -72.933212, aliases: ["lupi legna bakery"], poi: "bakery", anchorStop: "Amistand / Cedar Weekend Blue" }, // OSM N3454951826
   { label: "Mamoun's Falafel", lat: 41.310327, lon: -72.934555, aliases: ["mamouns", "falafel", "85 howe"], poi: "restaurant", anchorStop: "Howe / Edgewood" }, // OSM N2191968199
   { label: "Modern Apizza", lat: 41.313825, lon: -72.912834, aliases: ["modern", "modern pizza", "874 state"], poi: "pizza", anchorStop: "Nicoll / Edwards" }, // OSM N470623969
@@ -197,7 +213,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "Pataka", lat: 41.312649, lon: -72.933259, aliases: ["pataka indian"], poi: "restaurant", anchorStop: "Elm / Lynwood" }, // OSM N2637704331
   { label: "Rubamba", lat: 41.306923, lon: -72.930973, aliases: ["arepas", "25 high"], poi: "restaurant", anchorStop: "York / Crown" }, // OSM N11606236058
   { label: "Sally's Apizza", lat: 41.303057, lon: -72.920077, aliases: ["sallys", "sally's", "wooster street pizza", "237 wooster"], poi: "pizza", anchorStop: "Olive / Wooster" }, // OSM N2567417097
-  { label: "Shake Shack", lat: 41.307009, lon: -72.928393, aliases: ["986 chapel"], poi: "fast_food", anchorStop: "Chapel / College" }, // OSM N2760039198
+  { label: "Shake Shack", lat: 41.307009, lon: -72.928393, aliases: ["986 chapel", "shakeshack", "shake shack"], poi: "fast_food", anchorStop: "Chapel / College" }, // OSM N2760039198 — "shakeshack" as ONE word scored zero and was searched 3 times; the label's own two words never matched it.
   { label: "Sherkaan", lat: 41.312009, lon: -72.930715, aliases: ["65 broadway"], poi: "restaurant", anchorStop: "Broadway / Park" }, // OSM N2719765603
   { label: "Tomatillo", lat: 41.311191, lon: -72.931701, aliases: ["taco joint", "320 elm"], poi: "fast_food", anchorStop: "Broadway / Park" }, // OSM N2657096153
   { label: "Willoughby's Coffee (Church St)", lat: 41.310424, lon: -72.922827, aliases: ["willoughbys church", "willoughby's church street"], poi: "cafe", anchorStop: "Church / Grove" }, // OSM N2373871290
@@ -229,6 +245,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { label: "New Haven Free Public Library", lat: 41.309007, lon: -72.924766, aliases: ["public library", "nhfpl", "ives library", "city library", "133 elm"], poi: "library", anchorStop: "Wall / Church" }, // OSM W141163194
   { label: "New Haven Superior Court", lat: 41.309527, lon: -72.922894, aliases: ["courthouse", "superior court", "235 church", "jury duty"], poi: "civic", anchorStop: "Church Wall" }, // OSM W141164127
   { label: "Ninth Square", lat: 41.305025, lon: -72.924922, aliases: ["9th square"], poi: "neighbourhood", anchorStop: "Chapel / Church" }, // OSM W777642209
-  { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police department", "yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
+  { label: "Yale Police (101 Ashmun)", lat: 41.315822, lon: -72.928726, aliases: ["yale police", "ypd", "rose center", "police"], poi: "civic", anchorStop: "Ashmun / Lock" }, // OSM N511976767
+  { label: "Yale Chaplain's Office (Bingham Hall)", lat: 41.3077098, lon: -72.928779, aliases: ["chaplain", "chaplains office", "yale chaplain", "chaplaincy", "bingham d", "300 college"], poi: "college", anchorStop: "Chapel / College" }, // OSM W139759942
   { label: "Yale Station Post Office", lat: 41.309901, lon: -72.928555, aliases: ["yale station", "yale post office", "campus post office"], poi: "civic", anchorStop: "Elm / High" }, // OSM N359283573
 ];

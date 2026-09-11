@@ -1,0 +1,24 @@
+{
+  "caption": "A Departed card: nothing sits under the word \"Departed\", and the legs row keeps its height so the card does not jump",
+  "base": "http://127.0.0.1:8098",
+  "trip": {
+    "board": 100,
+    "dest": 72,
+    "from": {
+      "lat": 41.32235,
+      "lon": -72.92289
+    }
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/70fd443b-870f-4c0f-aea2-856c8edea1ec/scratchpad/shots-departed2/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}
