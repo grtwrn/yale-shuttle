@@ -7411,7 +7411,12 @@ const TransitMap: FC = () => {
               a visible button is the one riders find. */}
           <button
             className="app-refresh"
-            onClick={() => window.location.reload()}
+            // Refresh is also Clear (operator, 2026-09-11: "the refresh button at
+            // top of page used to have same functionality of clear. I want that
+            // again"). Since tripDraft.ts began restoring the planned trip across
+            // reloads, a bare reload came back to the same trip; wiping the draft
+            // first makes ↻ land on a fresh page, the way it did before.
+            onClick={() => { saveTripDraft(null); window.location.reload(); }}
             title="Refresh the app"
             aria-label="Refresh the app"
             style={{
