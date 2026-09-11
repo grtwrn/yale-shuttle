@@ -11,6 +11,7 @@ import {
   parseCaptureLine,
   parseRiderArg,
   scoreWait,
+  strandAttribution,
   stopVisits,
   subsample,
   truthFor,
@@ -171,11 +172,43 @@ describe("scoreWait", () => {
 
   it("told 7, then 2, gone in 66 s is a STRAND", () => {
     const ticks = [tick(0, "in 7, 30 min"), tick(15, "in 2, 30 min"), tick(60, "in 1, 30 min")];
-    const r = scoreWait(spec, ticks, { kind: "arrived", at: T0 + 81_000, busName: "#304" }, null, "arrived", { sampleMs: 5000 });
+    const r = scoreWait(spec, ticks, { kind: "arrived", at: T0 + 81_000, busName: "#309" }, null, "arrived", { sampleMs: 5000 });
     expect(r.worst!.driftSec).toBe(-225); // 7 min bucket [420,480) -> 2 min [120,180) in 15 s: at least 420-180-15
     expect(r.catastrophic).toBe(1);
     expect(r.strand).toBe(true);
     expect(r.firstSightMissSec).toBe(-339); // promised >= 420 s, came after 81
+  });
+
+  it("does not attribute a second-slot collapse to the primary arrival", () => {
+    const r = scoreWait(spec, [tick(0, "in 1, 30 min"), tick(15, "in 1, 20 min")],
+      { kind: "arrived", at: T0 + 81_000, busName: "#309" }, null, "arrived", { sampleMs: 5000 });
+    expect(r.strand).toBe(false);
+    expect(r.unattributedStrand).toBe(true);
+    expect(r.catastrophic).toBeGreaterThan(0);
+  });
+
+  it("requires the arrival to belong to the bus whose promise collapsed", () => {
+    const r = scoreWait(spec, [tick(0, "in 7, 30 min"), tick(15, "in 2, 30 min")],
+      { kind: "arrived", at: T0 + 81_000, busName: "#304" }, null, "arrived", { sampleMs: 5000 });
+    expect(r.strand).toBe(false);
+    expect(r.unattributedStrand).toBe(true);
+    expect(r.catastrophic).toBe(1);
+  });
+
+  it("keeps missing vehicle identity unscored and visible in the aggregate", () => {
+    const r = scoreWait(spec, [tick(0, "in 7, 30 min", ""), tick(15, "in 2, 30 min", "")],
+      { kind: "arrived", at: T0 + 81_000, busName: "#309" }, null, "arrived", { sampleMs: 5000 });
+    expect(r.strand).toBe(false);
+    expect(r.unattributedStrand).toBe(true);
+    expect(aggregate([r]).all.pctUnattributedStrand).toBe(100);
+  });
+
+  it("does not turn non-finite transition or arrival values into evidence", () => {
+    const r = scoreWait(spec, [tick(0, "in 7, 30 min"), tick(15, "in 2, 30 min")],
+      { kind: "arrived", at: T0 + 81_000, busName: "#309" }, null, "arrived", { sampleMs: 5000 });
+    expect(strandAttribution({ ...r.worst!, driftSec: NaN }, T0 + 81_000, "#309")).toBe("none");
+    expect(strandAttribution({ ...r.worst!, atMs: NaN }, T0 + 81_000, "#309")).toBe("none");
+    expect(strandAttribution(r.worst!, NaN, "#309")).toBe("none");
   });
 
   it("the same collapse with no bus for three minutes is not a strand, but is an overshoot", () => {

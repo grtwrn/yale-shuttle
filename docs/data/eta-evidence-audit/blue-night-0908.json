@@ -1,0 +1,101 @@
+{
+  "inputs": [
+    {
+      "path": "/home/gwarren/wt/eta-uncertainty/services/shuttle-v2/scripts/.eta-replay/r13/rs/A0908.waits.jsonl",
+      "sha256": "db156666951dffb2bc7bef99550c278c37dd027e84434f14507787d6814c9acc",
+      "rows": 1252
+    },
+    {
+      "path": "/home/gwarren/wt/eta-uncertainty/services/shuttle-v2/scripts/.eta-replay/r13/rs/B0908.waits.jsonl",
+      "sha256": "4728ee8ee94abf77d0d906727bd8d859264649495525398babde6b5d9e718cf4",
+      "rows": 1212
+    }
+  ],
+  "validPairedWaits": 1044,
+  "excluded": {
+    "arrival_unobserved": 152,
+    "unpaired": 56
+  },
+  "legacyReproduced": true,
+  "legacyStrand": {
+    "both": 29,
+    "onlyA": 0,
+    "onlyB": 39,
+    "neither": 976
+  },
+  "attributableStrand": {
+    "both": 29,
+    "onlyA": 0,
+    "onlyB": 0,
+    "neither": 1015
+  },
+  "catastrophicWaits": {
+    "a": {
+      "primary": 261,
+      "secondary": 62
+    },
+    "b": {
+      "primary": 261,
+      "secondary": 381
+    }
+  },
+  "a": {
+    "classifications": {
+      "none": 8603,
+      "secondary": 0,
+      "unmatched": 0,
+      "confirmed": 29
+    },
+    "removedIds": []
+  },
+  "b": {
+    "classifications": {
+      "none": 8369,
+      "secondary": 39,
+      "unmatched": 0,
+      "confirmed": 29
+    },
+    "removedIds": [
+      "Blue Night|2|2026-09-08T22:52:09.891Z",
+      "Blue Night|2|2026-09-08T22:52:44.855Z",
+      "Blue Night|2|2026-09-08T22:54:44.855Z",
+      "Blue Night|2|2026-09-08T22:56:09.891Z",
+      "Blue Night|2|2026-09-08T22:56:44.855Z",
+      "Blue Night|2|2026-09-08T22:58:44.855Z",
+      "Blue Night|2|2026-09-08T22:59:09.891Z",
+      "Blue Night|2|2026-09-08T22:59:39.891Z",
+      "Blue Night|2|2026-09-09T00:51:45.693Z",
+      "Blue Night|2|2026-09-09T00:52:40.729Z",
+      "Blue Night|2|2026-09-09T00:53:45.693Z",
+      "Blue Night|2|2026-09-09T00:55:45.693Z",
+      "Blue Night|2|2026-09-09T00:56:40.729Z",
+      "Blue Night|2|2026-09-09T00:57:45.693Z",
+      "Blue Night|2|2026-09-09T00:59:40.729Z",
+      "Blue Night|2|2026-09-09T00:59:45.693Z",
+      "Blue Night|2|2026-09-09T01:00:00.741Z",
+      "Blue Night|2|2026-09-09T01:00:10.729Z",
+      "Blue Night|2|2026-09-09T01:39:41.000Z",
+      "Blue Night|2|2026-09-09T01:40:01.000Z",
+      "Blue Night|2|2026-09-09T01:43:41.000Z",
+      "Blue Night|2|2026-09-09T01:46:41.000Z",
+      "Blue Night|2|2026-09-09T01:50:01.021Z",
+      "Blue Night|2|2026-09-09T02:32:36.301Z",
+      "Blue Night|2|2026-09-09T02:36:36.301Z",
+      "Blue Night|2|2026-09-09T02:39:36.301Z",
+      "Blue Night|2|2026-09-09T02:40:01.354Z",
+      "Blue Night|2|2026-09-09T02:49:16.371Z",
+      "Blue Night|2|2026-09-09T02:50:01.405Z",
+      "Blue Night|2|2026-09-09T02:51:16.371Z",
+      "Blue Night|2|2026-09-09T02:52:46.472Z",
+      "Blue Night|2|2026-09-09T02:53:16.371Z",
+      "Blue Night|2|2026-09-09T02:55:16.371Z",
+      "Blue Night|2|2026-09-09T02:56:46.472Z",
+      "Blue Night|2|2026-09-09T02:57:16.371Z",
+      "Blue Night|2|2026-09-09T02:59:16.371Z",
+      "Blue Night|2|2026-09-09T02:59:46.472Z",
+      "Blue Night|2|2026-09-09T03:00:01.641Z",
+      "Blue Night|2|2026-09-09T03:00:16.472Z"
+    ]
+  },
+  "limitation": "Checks saved first-arrival identity/timing, not independent GPS truth or second-slot arrivals. Unattributed drops are not passes; stability transitions remain unchanged."
+}

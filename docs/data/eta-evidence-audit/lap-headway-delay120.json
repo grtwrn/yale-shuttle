@@ -1,0 +1,129 @@
+{
+  "input": "/home/gwarren/wt/r184data/red-arrivals-90d.jsonl",
+  "history_delay_sec": 120.0,
+  "sha256": "d9247c26237cd7df807bf20442387ef0a047097af12b8b65223e63ad6b22166d",
+  "audit": {
+    "input_rows": 3752,
+    "exact_duplicate_rows": 0,
+    "overlap_rows": 0,
+    "valid_closed_visits": 3752,
+    "stands_over_40_min_retained": 0,
+    "no_confirmed_same_day_loop": 399
+  },
+  "fit_before": "2026-08-15 ET",
+  "interval_calibration_before": "2026-08-29 ET",
+  "test_from": "2026-08-29 ET",
+  "results": [
+    {
+      "stop": 11,
+      "train": 1411,
+      "calibration": 274,
+      "test": 197,
+      "test_days": 8,
+      "loop_minutes": 59.84458333333334,
+      "lap_training_n": 1253,
+      "headway_training_n": 1227,
+      "test_lap_available": 164,
+      "test_headway_available": 164,
+      "lap_coefficients": [
+        2001.9173587524547,
+        -0.47454509298583863
+      ],
+      "lap_headway_coefficients": [
+        2003.0892591475083,
+        -0.4681976122095449,
+        -0.025724566836392602
+      ],
+      "metrics": {
+        "pooled": {
+          "mae_sec": 228.20951776649747,
+          "overpredict_gt120_pct": 67.00507614213198,
+          "underpredict_gt120_pct": 7.614213197969543,
+          "coverage80_pct": 75.63451776649747,
+          "mean_width_sec": 538.5097000000001
+        },
+        "lap": {
+          "mae_sec": 151.01160230968406,
+          "overpredict_gt120_pct": 46.192893401015226,
+          "underpredict_gt120_pct": 5.583756345177665,
+          "coverage80_pct": 80.20304568527919,
+          "mean_width_sec": 407.64518947958936
+        },
+        "lap_plus_prior_departure_headway": {
+          "mae_sec": 148.85400987778266,
+          "overpredict_gt120_pct": 44.16243654822335,
+          "underpredict_gt120_pct": 7.106598984771574,
+          "coverage80_pct": 78.68020304568527,
+          "mean_width_sec": 408.62164577641363
+        }
+      },
+      "lap_minus_pooled_mae_ci": [
+        -90.75166896268661,
+        -64.34357275149478
+      ],
+      "headway_minus_lap_mae_ci": [
+        -4.830868875888061,
+        0.113736251543796
+      ]
+    },
+    {
+      "stop": 121,
+      "train": 1384,
+      "calibration": 274,
+      "test": 212,
+      "test_days": 8,
+      "loop_minutes": 59.926125,
+      "lap_training_n": 1233,
+      "headway_training_n": 1231,
+      "test_lap_available": 178,
+      "test_headway_available": 178,
+      "lap_coefficients": [
+        2930.543672183087,
+        -0.7641769153883675
+      ],
+      "lap_headway_coefficients": [
+        2910.716869252592,
+        -0.760059483491773,
+        0.007786968703918224
+      ],
+      "metrics": {
+        "pooled": {
+          "mae_sec": 253.5655047169812,
+          "overpredict_gt120_pct": 65.56603773584905,
+          "underpredict_gt120_pct": 3.7735849056603774,
+          "coverage80_pct": 83.01886792452831,
+          "mean_width_sec": 655.6501
+        },
+        "lap": {
+          "mae_sec": 158.7814007131843,
+          "overpredict_gt120_pct": 37.735849056603776,
+          "underpredict_gt120_pct": 5.188679245283019,
+          "coverage80_pct": 77.35849056603773,
+          "mean_width_sec": 381.55401350270967
+        },
+        "lap_plus_prior_departure_headway": {
+          "mae_sec": 159.0341950078919,
+          "overpredict_gt120_pct": 37.735849056603776,
+          "underpredict_gt120_pct": 5.188679245283019,
+          "coverage80_pct": 77.35849056603773,
+          "mean_width_sec": 385.48843793734443
+        }
+      },
+      "lap_minus_pooled_mae_ci": [
+        -118.92440512056093,
+        -69.63265418220776
+      ],
+      "headway_minus_lap_mae_ci": [
+        -0.02525730318831659,
+        0.5987118574589253
+      ]
+    }
+  ],
+  "limits": [
+    "Retrospective previously inspected archive, not untouched confirmation.",
+    "Historical closed geofence visits are not independently validated physical stand labels; no censoring or receipt-time metadata is available.",
+    "Headway is elapsed time since another bus departed this stop, not live road distance to either neighbor. Following-bus distance requires synchronized GPS.",
+    "Component predictions at arrival only; no whole-trip, remaining-wait, countdown-stability or deployment claim.",
+    "Long closed visits retained in scoring; unavailable/out-of-band lap uses pooled fallback; no test-based window or model selection."
+  ]
+}
