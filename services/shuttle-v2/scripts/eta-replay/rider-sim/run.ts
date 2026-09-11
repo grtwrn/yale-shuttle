@@ -706,14 +706,10 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   const highSec = hereBus ? 0 : pinnedEntry ? pinnedEntry.high : null;
   // The token as the client prints it. Slot 2's own band (the standing-bus
   // evidence of #216's third rule) is not reproduced here.
-  // A standing pinned bus's low end is floored at departNow + the shortest
-  // stand left (etaBand.ts `standingLowFloor`), as the card does.
-  let floorSec: number | undefined;
-  if (bandMod && standWaitMod && liveAnchorMod && busMatch && pinnedEntry) {
-    const standing = liveAnchorMod.resolveStandingStop(busMatch, cfg, net.routeStops, net.stopCoords, t, cohorts.get(a.cohort)?.store);
-    const sw = standing ? standWaitMod.standWaitFor(standing, dw?.[cfg.routeIds[0]!] ?? {}, dw) : null;
-    if (sw) floorSec = (bandMod as any).standingLowFloor(pinnedEntry.departNow, sw.soonSec);
-  }
+  // No standing floor: the card stopped applying it (standWait.ts
+  // `arrivalBand`, refused on measurement 2026-09-11), so the simulator
+  // must not either or it would score a client that no longer exists.
+  const floorSec: number | undefined = undefined;
   const leadBand = bandMod && lowSec != null && highSec != null ? (bandMod.displayBand as any)(lowSec, highSec, t, t, floorSec) : null;
   const token = bunchingMod && leadBand
     ? bunchingMod.fmtBusLine({ leadSec: busEtaLive, leadBand, nextSec: nextArr ? nextArr.eta : null })
