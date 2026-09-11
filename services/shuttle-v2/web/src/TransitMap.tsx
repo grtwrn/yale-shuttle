@@ -64,6 +64,7 @@ import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
 import { getOffAlertTitle } from "./rideAlert";
+import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -6331,7 +6332,7 @@ const RideStopList: FC<{
         {ride.routeLabel} · Bus #{normBus(ride.busName)}
         {etaSec !== null && (
           <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
-            {etaSec < 60 ? "· arriving now!" : `· ${Math.round(etaSec / 60)} min to your stop`}
+            {`· ${etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`} to your stop`}
           </span>
         )}
       </div>
@@ -6384,7 +6385,7 @@ const RideStopList: FC<{
                 {isBoard && <span style={{ fontSize: 11, color: "#90a4ae", marginLeft: 6, fontWeight: 400 }}>boarded</span>}
                 {isAlight && etaSec !== null && !isBusCur && (
                   <span style={{ fontSize: 11, color: ride.color, marginLeft: 6, fontWeight: 600 }}>
-                    {etaSec < 60 ? "now!" : `~${Math.round(etaSec / 60)} min`}
+                    {etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`}
                   </span>
                 )}
               </span>
@@ -6409,7 +6410,6 @@ const OnBusBanner: FC<{
   const cfg = ROUTE_LISTS.find((c) => c.label === ride.routeLabel);
   const alightName = (stopNames[ride.alightStopId] ?? `Stop ${ride.alightStopId}`).replace(/\s*\/\s*/g, "/");
   const normBus = (s: string) => s.replace(/^#/, "");
-  const fmtEta = (s: number) => (s < 60 ? "now" : `${Math.round(s / 60)} min`);
 
   // Build the route's full stop loop (dedup across sub-route ids).
   const allStops: number[] = [];
@@ -6489,7 +6489,7 @@ const OnBusBanner: FC<{
     setGetOffPopup(title);
   }, [stopsRemaining, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
-  const etaStr = etaSec !== null ? fmtEta(etaSec) : null;
+  const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
   const headline =
     bus === undefined
       ? "Looking for your bus…"

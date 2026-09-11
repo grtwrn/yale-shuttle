@@ -71,6 +71,12 @@ export function fmtMin(s: number): string {
   return `${Math.floor(s / 60)} min`;
 }
 
+/** Ride predictions share fmtMin's flooring, but never say "now": only
+ * the stop-based get-off instruction establishes arrival on this surface. */
+export function formatRideEta(seconds: number): string {
+  return seconds < 60 ? "<1 min" : fmtMin(seconds);
+}
+
 /**
  * A live ETA is a snapshot: `etaSec` seconds remaining as of `computedAtMs`.
  * By render time some of it has already elapsed — subtract it (clamped at 0)
