@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
   ABOUT_HREF, ABOUT_LABEL, AffiliationDisclaimer, BETA_LABEL, BetaBanner,
@@ -89,12 +90,15 @@ describe("BetaBanner", () => {
 });
 
 describe("AffiliationDisclaimer", () => {
-  it("disclaims both affiliation and endorsement", () => {
+  it("no longer repeats the disclaimer in the footer — the header carries it", () => {
     const text = textOf(flatten(AffiliationDisclaimer() as unknown));
-    expect(text).toContain(DISCLAIMER_TEXT);
-    expect(text).toMatch(/not affiliated/i);
-    expect(text).toMatch(/endorse/i);
-    expect(text).toMatch(/Yale University/);
+    expect(text).not.toContain(DISCLAIMER_TEXT);
+    // The sentence is rendered under the title from the same constant, so the
+    // two cannot drift; TransitMap cannot be rendered here, so pin it at source.
+    const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/className="app-tagline"[\s\S]{0,400}\{DISCLAIMER_TEXT\}/);
+    expect(DISCLAIMER_TEXT).toMatch(/not affiliated/i);
+    expect(DISCLAIMER_TEXT).toMatch(/endorse/i);
   });
 
   it("has nothing to dismiss, and no control but the About link", () => {

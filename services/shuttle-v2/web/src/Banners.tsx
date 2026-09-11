@@ -132,9 +132,13 @@ export function BetaBanner({ onSendFeedback }: { onSendFeedback: () => void }) {
  * reads once and leaves would strand the app behind it on a phone).
  */
 export function AffiliationDisclaimer() {
+  // The sentence itself moved into the header under the title (operator,
+  // 2026-09-11: "change the unofficial app message to 'Not affiliated with or
+  // endorsed by Yale University' and then remove the additional message at
+  // the bottom"). The footer keeps the About link alone; DISCLAIMER_TEXT stays
+  // the one source both surfaces read.
   return (
     <div style={disclaimerStyle}>
-      <div>{DISCLAIMER_TEXT}</div>
       <a href={ABOUT_HREF} style={aboutLinkStyle}>{ABOUT_LABEL}</a>
     </div>
   );
