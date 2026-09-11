@@ -54,7 +54,7 @@
 // under (arrivals.ts). Nothing here estimates anything; it decides wording.
 
 import { fmtMin } from "./format";
-import { chipCountdownText, displayBand, standingLowFloor, type EtaBand } from "./etaBand";
+import { chipCountdownText, displayBand, type EtaBand } from "./etaBand";
 import { shownStandSec, type DwellStat, type DwellTimes, type ShownStand } from "./arrivals";
 
 /**
@@ -241,10 +241,15 @@ export function standChipFor(
  * THE BAND ONE ARRIVAL PRINTS — the one place the estimator's 10-90 band
  * (`UpcomingArrival.low` / `.high`) and the stand a bus is in are put
  * together. `displayBand` decides whether the band is wide enough to print
- * and ticks it with the point; for a STANDING bus (`view` non-null) its low
- * end is floored at `departNow + the shortest stand still left`
- * (`standingLowFloor`, etaBand.ts) — the low end this module used to print on
- * its own. Every surface — the trip row, the minimap chip (`stopEtaText`),
+ * and ticks it with the point. A STANDING bus's low end is NOT floored: a
+ * floor at `departNow + the shortest stand still left` (`standingLowFloor`,
+ * etaBand.ts) shipped in #228 and was REFUSED on measurement the same day —
+ * real arrivals beat it on 31–52% of standing pairs at 2–10 min and it halved
+ * standing coverage (Red 2-5 min 90.4 → 46.4%, Blue Day 88.4 → 41.5%, held-out
+ * 2026-09-10, identical pairs, confirmed by an independent re-score), because
+ * `departNow` is a chain median and on ~a third of standing rows no rest was
+ * removed at all (`departNow === eta`). A too-high low end is the dangerous
+ * direction: the bus beats the earliest time shown. Every surface — the trip row, the minimap chip (`stopEtaText`),
  * the Map tab's stop rows (`stopEtaText`) and the expanded card's wait leg —
  * reads the band through here, so none can disagree about one bus.
  */
@@ -255,7 +260,7 @@ export function arrivalBand(
 ): EtaBand | null {
   return displayBand(
     arrival.low, arrival.high, arrival.computedAtMs, nowMs,
-    view ? standingLowFloor(arrival.departNow, view.soonSec) : undefined,
+    undefined, // no standing floor — see above
   );
 }
 

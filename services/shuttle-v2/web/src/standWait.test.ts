@@ -205,15 +205,14 @@ describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
     expect(Math.round(v.lateSec)).toBe(487);
   });
 
-  it("ties the two quantities: the standing floor is the drive floor plus the shortest stand left", () => {
-    const b = band();
-    expect(b.lowSec).toBeCloseTo(CASE.departNowSec + view().soonSec, 6);
-    // A band whose low end is under the floor is lifted to it; nothing else moves.
-    const lifted = arrivalBand(view(), { ...arrival(), low: 0 }, 0)!;
-    expect(lifted.lowSec).toBeCloseTo(b.lowSec, 6);
-    expect(lifted.highSec).toBeCloseTo(b.highSec, 6);
-    // A MOVING bus (no stand view) keeps its band as measured.
-    expect(arrivalBand(null, { ...arrival(), low: 0 }, 0)!.lowSec).toBe(0);
+  it("does NOT lift a standing bus's low end (the #228 floor was refused on measurement)", () => {
+    // Real arrivals beat departNow + the shortest stand left on 31–52% of
+    // standing pairs, so the printed low end must be the estimator's own.
+    const lowered = arrivalBand(view(), { ...arrival(), low: 0 }, 0)!;
+    expect(lowered.lowSec).toBe(0);
+    expect(lowered.highSec).toBeCloseTo(band().highSec, 6);
+    // Standing and moving buses now print the same band for the same arrival.
+    expect(arrivalBand(null, { ...arrival(), low: 0 }, 0)).toEqual(lowered);
   });
 
   it("says DEPARTURE for the chip and ARRIVAL for everything else", () => {
