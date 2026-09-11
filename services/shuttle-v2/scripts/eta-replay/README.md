@@ -61,6 +61,13 @@ PR.
 `raw_positions` is retention-swept, so the GPS replay only ever covers the last
 few hours; take the snapshot at the end of a service day to get a full one.
 
+`gps-replay.ts` serves `buses[].lap` (the lap covariate, `web/src/eta/lap.ts`)
+from the replayed detector's own departures at every stop whose `PAYLOAD_PATCH`
+cell carries `lapB`, bounded by the collector's 2 h TTL — the same rule
+`rider-sim/run.ts` uses. Until 2026-09-10 it served none, so both arms of a lap
+A/B priced the factor as 1 and the `PAIRS_OUT` files were byte-identical; md5
+them before reading any A/B here.
+
 ## jitter-audit.ts — the jump classification, re-derived and paired
 
 `jitter-audit.ts` replays the REAL `computeUpcomingArrivals` over a snapshot and

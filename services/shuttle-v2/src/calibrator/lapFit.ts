@@ -101,6 +101,21 @@ const GATE_MIN_DAYS = 10;
  *   improved / 101 worsened, first-promise |miss| 254 / 256 (a wash). The
  *   dangerous tail (`firstSightMissSec < -60`) 22.6 -> 14.8%.
  *   `docs/stand-lap-covariate.md` section 6.
+ *
+ * **13 (Blue Night) was measured on 2026-09-10 and is NOT served.** Its cells
+ * pass the cell gate by the widest margin on the network (333 Cedar -115.5 s
+ * held out) and the covariate moves the stand the right way on every evening
+ * replayed, but the paired rider table on the held-out Sat 09/06 evening
+ * (1,349 waits) read STRAND 0 fixed / 74 introduced, jump >= 180 s 0 / 555,
+ * reversal 24 / 556 — every one of them in the SECOND slot ("then N min").
+ * On a one-bus line that slot is the same bus a lap later, so its chain
+ * always carries the full 333 Cedar stand as a FUTURE stand, and at the poll
+ * the bus leaves that stop the stand is priced under a lap the served clock
+ * has not yet reset: the number drops ~4 min and comes back a poll later
+ * (CHAIN block: +185 s at the departure poll on 184 of 270 riders). The bus
+ * the rider boards is untouched (slot-1 jumps 851 -> 842). gps-replay cannot
+ * see it (k <= 5). Fix the lap of a stop the bus is LEAVING before adding
+ * this id; `docs/stand-lap-covariate.md` section 6b has the numbers.
  */
 export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3]);
 

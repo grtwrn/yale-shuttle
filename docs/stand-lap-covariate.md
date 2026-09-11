@@ -351,6 +351,163 @@ straightforward optimisation and it has not been made.
   600 s pairing window. That is why the full day is the number quoted: at
   n=445 this metric is two anecdotes counted eleven times.
 
+## 6b. Route 13 (Blue Night): measured and REFUSED by the rider table (2026-09-10)
+
+333 Cedar on Blue Night (13:10) is the largest lap effect on the network —
+delta -115.5 s held out with `FIT_BEFORE=2026-09-06` (upper -104.1), nearly
+twice 344 Winchester's — and the cell gate also passes Union Station (N) on
+that line (13:121, -55.9, on a THIN effective count of 157) and Peabody
+Museum (13:97, -1.5 s, a factor of essentially 1). The fit that was scored is
+byte-identical to the one `lap-fit.ts` regenerates from `snap909.db` with
+`LAP_ROUTES=3,13 FIT_BEFORE=2026-09-06`, so every evening below is held out
+from it. The arms differ in ONE thing — whether the patch carries route 13's
+three cells — and share one client tree (master d505923) and one harness, so
+this measures exactly what flipping the ledger serves.
+
+Blue Night runs one bus most evenings, 18:00-00:15, on a ~48 min loop: six
+stands at 333 Cedar an evening, five of them with a lap. That is the size of
+each evening's evidence, which is why three of them are stacked.
+
+### The stand itself, evening by evening
+
+At 333 Cedar the correction moves the RIGHT way on every evening and
+UNDERSHOOTS: the fitted slope (-0.5) is partial, and a bus back 1-5 min early
+stood 655-945 s against a pooled 591 s.
+
+| evening | bus | stands with a lap | pooled MAE | lap MAE |
+|---|---|---:|---:|---:|
+| Sat 09/06 | #57 | 5 | 268 s | **175 s** |
+| Mon 09/08 | #38 | 5 | 166 s | **152 s** |
+| Tue 09/09 | #40 | 5 | 299 s | **244 s** |
+
+The failure case is in there too and worth knowing the shape of: Tue 09/09
+#40 came back 7 min early at 20:44 and stood 70 s (predicted 857), then 73 min
+late at 23:56 and stood 410 (predicted 207) — an evening the line was not
+regulated. The covariate is a tendency, not a timetable.
+
+### gps-replay, three evenings, route 13 only, proximity truth
+
+`archive-db.ts` built each ET day from `~/shuttle-archive`, `raw_positions`
+trimmed to route 13, `POLL_STRIDE=1`, both arms into their own `REPLAY_OUT`
+with `PAIRS_OUT`, paired row for row. **Tue 09/09 holds positions only from
+21:00** (three hours, two lap-corrected stands), so it is the weakest evening
+and is reported rather than pooled away.
+
+| evening | rows | median \|err\| | p90 | pessimistic >= 120 s | optimistic >= 120 s | 10-90 coverage | better / worse | jumps >= 180 s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Sat 09/06 | 17,788 | 78.8 -> **69.9** | 296 -> 272 | 13.8 -> 13.4 | 24.4 -> 20.1 | 73.9 -> **78.2** | 3,876 / 1,213 | 91 -> 94 |
+| Mon 09/08 | 16,119 | 73 -> 72 | 339 -> 338 | 15.5 -> **13.9** | 22.5 -> 22.4 | 75.5 -> 76.3 | 2,617 / 1,703 | 98 -> 95 |
+| Tue 09/09 (partial) | 8,447 | 92 -> 90 | 360 -> 321 | 18.2 -> 19.3 | 26.4 -> 24.5 | 71.6 -> 71.4 | 856 / 1,095 | 66 -> 74 |
+| **pooled** | **42,354** | **78.7 -> 74.1** | 325 -> 310 | **15.3 -> 14.8** | 24.1 -> 21.9 | **74.1 -> 76.2** (width 347 -> 346) | **7,349 / 4,011** | 255 -> 263 |
+
+Pooled, the standing population — where the correction acts — moves most:
+median 95.5 -> 85.7 s, coverage 74.8 -> 77.9%, with the dangerous tail flat
+(14.3 -> 14.7%). First sight, taken as the first row for each (stop, arrival)
+as the stop enters the 5-stop window (one bus per evening, so the sequence is
+one vehicle's): 301 first sights, median |err| 142 -> 131 s, pessimistic
+20.6 -> 18.3%, coverage 68.8 -> 71.8%, 62 better / 19 worse. Detector truth
+agrees on every column (pooled median 97.4 -> 89.1).
+
+A third arm with ONLY the 333 Cedar cell was run to see whether the thin
+Union Station (N) fit costs anything in the chain. It does not: on all three
+evenings the full patch beats the Cedar-only one (09/06 median 69.9 vs 73.0,
+pessimistic 13.4 vs 14.9%; 09/09 better/worse 856/1,095 vs 358/718). The cell
+gate's answer stands; no per-cell carve-out.
+
+**The instrument, not the model, was the first result.** The first two
+gps-replay arms came out byte-identical — same md5 — because `gps-replay.ts`
+built its payload without `buses[].lap`, so the client's factor was 1 in both
+arms. That is the null A/B the standing rules warn about, and it means no
+gps-replay number ever measured this covariate before today (#206 was gated on
+the rider-sim alone, correctly). The replay now serves the lap age from the
+replayed detector's own departures, the same rule `rider-sim/run.ts` uses.
+
+### The gate: the paired rider table
+
+`rider-sim`, `ROUTES="Blue Night"`, `CHAIN="Blue Night:10:6"`, `snap909.db`,
+one client tree (master d505923) and one harness; the arms differ only in
+whether `PAYLOAD_PATCH` carries route 13's three lap cells. `waits.jsonl`
+md5-different (`d3fcf66d…` vs `40e507ee…`). Every number below is the
+corrected truth rule (#190).
+
+**Sat 09/06, 1,349 paired waits — REFUSED.**
+
+| | fixed (base only) | introduced (lap only) | both | neither |
+|---|---:|---:|---:|---:|
+| **STRAND** | **0** | **74** | 9 | 1,112 |
+| **jump >= 180 s** | **0** | **555** | 279 | 384 |
+| **reversal >= 60 s** | **24** | **556** | 454 | 184 |
+| dropped while approaching | 0 | 0 | 133 | 1,062 |
+| pin wrong | 0 | 0 | 0 | 1,195 |
+
+- worst drift per wait: improved 83, **worsened 853**, same 259 (p50 +135 s)
+- first promise |miss|: **improved 304, worsened 89**, median 110 -> 85 s
+- interval at first sight: coverage 74.5 -> 77.6% at a NARROWER width (637 -> 575 s)
+- the dangerous tail (`early > 60 s`) 11.9 -> 10.7%; `late > 60 s` 50.2 -> 46.9%
+
+**Mon 09/08, 1,196 paired waits — the same shape, REFUSED.** Arms
+md5-different (`a89a846d…` vs `6c9b30ec…`).
+
+| | fixed | introduced | both | neither |
+|---|---:|---:|---:|---:|
+| **STRAND** | **0** | **39** | 29 | 976 |
+| **jump >= 180 s** | 30 | **310** | 263 | 459 |
+| **reversal >= 60 s** | 11 | **388** | 476 | 185 |
+| dropped / pin wrong | 0 / 0 | 0 / 0 | | |
+
+- worst drift: improved 133, worsened 569; first promise |miss| improved 163,
+  worsened 152 (median 105 -> 90 s, a wash); coverage 82.6 -> 82.0% at 699 -> 625 s
+- by slot: slot 1 jumps >= 180 s **1,067 -> 967** (one wait introduced), slot 2
+  **517 -> 1,175** (448 waits introduced)
+
+So the accuracy the cell gate promised is real — first sight improves for
+three riders in four that move, the band narrows and covers more — and the
+line still fails the gate that decides, by a margin no accuracy gain could
+buy back. Where it fails is specific:
+
+**Every introduced defect is in the SECOND slot.** Parsing the two numbers on
+the row apart (`in 3, 64 min` = slot 1 the pinned bus, slot 2 the next
+arrival) over the same 1,349 waits:
+
+| slot | jumps >= 180 s, base | lap | waits with one, base | lap | introduced |
+|---|---:|---:|---:|---:|---:|
+| 1 — the bus the rider boards | 851 | 842 | 420 | 409 | **1** |
+| 2 — "then N min" | 269 | **1,628** | 150 | **813** | **696** |
+
+On a one-bus line slot 2 is the SAME bus a lap later, so its chain always
+carries the whole 333 Cedar stand as a future stand — 600 s scaled by the
+factor — and the `CHAIN` block puts the swing at the poll the bus LEAVES
+333 Cedar: displayed drift at the departure poll p50 **+185 s**, >= 180 s on
+**184 of 270** chain riders, against p50 0 s on master. A rider one hop past
+Cedar read `in 3, 64 min | in 1, 60 min | in 1, 63 min` across three polls
+around 00:00:30. The strand rule then fires because a >= 180 s drop lands
+inside the minutes before the pinned bus arrives (`lib.ts:680`), and the
+reversal rule because the number comes back a poll later.
+
+The mechanism, from the arithmetic in `lapCorrection`: the lap a FUTURE
+visit to stop `s` is priced under is `ages[s] + t`, the served seconds since
+the bus last left `s` plus the nominal seconds until it is back. At the
+departure poll the belief has already released the rest (a fresh fix past the
+mask) while the served departure clock has not yet reset (the collector's
+at-stop rule clears at 75 m), so for a poll or two the stop the bus is leaving
+is priced as a visit ~30 s ahead under a lap of ~3,500 s — inside the band,
+and a factor of 0.35 on a 600 s stand. One poll later the clock resets and
+the stand is back. Red did not show this in section 6 because slot 2 there is
+a DIFFERENT vehicle whose chain rarely carries 344 Winchester in full; the
+same window exists on Red for a rider a lap away, and is worth measuring.
+
+**gps-replay cannot see any of this**: it prices the next 1-5 stops, and the
+defect is a lap ahead. Its every-column improvement above is real and is not
+the number that decides. Both instruments are needed, and in this order.
+
+**Fix before retrying, not a route switch:** in `lapCorrection`, a future
+visit to the stop the bus most recently rested at must not take a lap from a
+departure clock older than that rest (read the rest identity the #119 clamp
+already keys on, or treat `ages[s] > r_rest` as "just left" and price the
+factor at 1). Then re-run this pair; the accuracy is waiting on the other
+side of it.
+
+
 ## 7. The warm start, and what else a restart loses
 
 `Collector.lapClock` is in-memory and fed only by the detector's dwell events,

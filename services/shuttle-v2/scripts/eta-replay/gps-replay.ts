@@ -132,6 +132,26 @@ function payloadAt(t: number) {
 }
 interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
 const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
+/**
+ * The stops whose patch cell carries a lap fit — the only ones `buses[].lap`
+ * has to name. Without this the replay served no `lap` at all and the lap
+ * covariate (web/src/eta/lap.ts) priced as 1 in BOTH arms of any A/B: the two
+ * `PAIRS_OUT` files came out byte-identical on 2026-09-10 for the route-13
+ * widening, which is the "null A/B that looks like a pass" the standing rules
+ * warn about. Same rule as rider-sim/run.ts: a departure is known only once it
+ * has been observed, keyed on the bus NAME, and bounded by the collector's
+ * LAP_CLOCK_TTL_MS so a bus back from the depot carries no lap.
+ */
+const LAP_STOPS = new Set<number>();
+for (const byKey of Object.values(patch?.dwells ?? {})) {
+  for (const [k, fields] of Object.entries(byKey)) {
+    if ((fields as Record<string, unknown>).lapB === undefined) continue;
+    const id = Number(k.split("#")[0]);
+    if (Number.isFinite(id)) LAP_STOPS.add(id);
+  }
+}
+const LAP_CLOCK_TTL_MS = 2 * 60 * 60 * 1000; // collector.ts
+if (LAP_STOPS.size) log(`lap ages served for ${LAP_STOPS.size} stops: ${[...LAP_STOPS].join(",")}`);
 if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 
 // -- Time-travelled dwell calibration (calibrator.ts loadDwellGroups + computeDwellStats) --
@@ -268,17 +288,49 @@ interface Obs {
 const observations: Obs[] = [];
 {
   const states = new Map<string, BusState>();
+  /** bus NAME -> stop -> when it last left that stop (LAP_STOPS only). */
+  const lastDep = new Map<string, Map<number, number>>();
+  /** detector key -> the stop the bus was at on the previous poll, or null. */
+  const prevAt = new Map<string, number | null>();
+  const lapFor = (busName: string, t: number): { lap?: Record<string, number> } => {
+    const m = lastDep.get(busName);
+    if (!m) return {};
+    const out: Record<string, number> = {};
+    let any = false;
+    for (const [sid, dep] of m) {
+      const age = Math.round((t - dep) / 1000);
+      if (age < 0 || age * 1000 > LAP_CLOCK_TTL_MS) continue;
+      out[String(sid)] = age;
+      any = true;
+    }
+    return any ? { lap: out } : {};
+  };
   for (let pi = 0; pi < polls.length; pi++) {
     const poll = polls[pi]!;
     const plan = planTracks(poll);
     stepMany(network, states, poll, plan);
-    if (pi % POLL_STRIDE !== 0) continue;
+    const atNow = new Map<string, { id: number; since: number } | null>();
     for (const o of poll) {
       const key = plan.keys.get(o.busId) ?? o.busName;
       const st = states.get(key);
       const dwellingForMs = st ? o.collectedAt - st.enteredAt : 0;
       const cand = st && dwellingForMs >= 15_000 ? net.stopById.get(st.nearestStopId) : undefined;
       const atStop = st && cand && distanceMeters(o, cand) <= AT_STOP_MAX_M ? { id: st.nearestStopId, since: st.enteredAt } : null;
+      atNow.set(key, atStop);
+      // A departure: it was at a lap stop last poll and is not at that stop now.
+      const was = prevAt.get(key) ?? null;
+      if (was !== null && (atStop === null || atStop.id !== was) && LAP_STOPS.has(was)) {
+        let m = lastDep.get(o.busName);
+        if (!m) lastDep.set(o.busName, (m = new Map()));
+        m.set(was, o.collectedAt);
+      }
+      prevAt.set(key, atStop ? atStop.id : null);
+    }
+    if (pi % POLL_STRIDE !== 0) continue;
+    for (const o of poll) {
+      const key = plan.keys.get(o.busId) ?? o.busName;
+      const st = states.get(key);
+      const atStop = atNow.get(key) ?? null;
       const bus: BusData = {
         bus_id: o.busId,
         bus_name: o.busName,
@@ -288,6 +340,7 @@ const observations: Obs[] = [];
         heading: o.heading,
         last_stop_id: o.lastStopId as number,
         stationary: atStop != null,
+        ...lapFor(o.busName, o.collectedAt),
         ...(atStop ? { at_stop_id: atStop.id, at_stop_since: new Date(atStop.since).toISOString().replace(/Z$/, "") } : {}),
         // The movement clock the payload publishes (v1compat `last_moved_at`).
         // Without it this replay cannot see the cold-start fix at all, and the
