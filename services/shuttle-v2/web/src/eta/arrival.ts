@@ -542,7 +542,7 @@ export interface Floors {
  * The switch exists for the paired replays (both arms from one tree); the
  * measurement is in docs/eta-ring-posterior.md.
  */
-let armOnStanding = true;
+let armOnStanding = false; // measured 2026-09-11 and NOT shipped: see the commit below and docs — default OFF so a merge cannot ship it by accident
 export function setCeilingArmsOnStanding(on: boolean): void { armOnStanding = on; }
 export function ceilingArmsOnStanding(): boolean { return armOnStanding; }
 
