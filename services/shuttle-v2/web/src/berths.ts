@@ -23,10 +23,10 @@
  * 2026-09-03..09 (27,718 visits). A cell needs >=20 observed visits, >=20 of
  * them inside one 40 m window holding >=75% of the visits that are not SHORT of
  * it and a majority of all of them, <=10% ending PAST it, a berth >=35 m from
- * the sign — above anything the deadband alone can produce — and no other stop
- * nearer to that berth than its own. Division / Prospect on Red is here because
- * the operator supplied the ground truth that separates its two clusters: the
- * northern one is Red waiting to turn off Division, the southern one is the
+ * the published stop — above anything the deadband alone can produce — and no
+ * other stop nearer to that berth than its own. Division / Prospect on Red is
+ * here because the operator supplied the ground truth that separates its two
+ * clusters: the northern one is Red waiting to turn off Division, the southern one is the
  * kerb.
  *
  * THE STOP IS DIFFERENT PER LINE, so cells are per (stop, route) and never

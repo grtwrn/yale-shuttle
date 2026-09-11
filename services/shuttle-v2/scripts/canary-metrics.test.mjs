@@ -1426,6 +1426,63 @@ describe("the destination the canary serves to the app", () => {
   });
 });
 
+describe("an expanded card carrying the berth inset", () => {
+  // The berth inset (2026-09-10) draws two labelled dots — where the feed says
+  // the stop is and where the bus is measured to pull up — and SVG <text>
+  // reaches `innerText` like any other text. "published stop" and "expected
+  // stop" are lower-case, letters-and-space only, and sit BELOW the duration,
+  // which is the precise shape that made "nearby" outrank the route pill
+  // (report #102) and "Contribute" end the card list. Both are in NOT_A_ROUTE,
+  // and this capture is what proves it rather than an argument that the parser
+  // is fine — #111 "needed no change" too, and blinded the canary for twelve
+  // minutes.
+  const LIVE_BERTH_INSET = `YALE SHUTTLE
+1:31 PM
+Trip
+Map
+Issues
+↻
+Red
+in 9, 24 min
+14 min
+🚶 2 min
+›
+🚌 9 min
+1:45p
+›
+Division/Prospect
+published stop
+expected stop
+50 m
+© OpenStreetMap contributors
+Wait about 55 m past the published stop
+Red buses actually stop there — seen 37 of the last 40 times one served this stop.
+🧭 Directions to stop
+Blue Day
+in 4, 19 min
+17 min
+1:48p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+Not affiliated with or endorsed by Yale University.`;
+
+  it("still reads the line as Red, not as one of the inset's map labels", () => {
+    const opts = parseOptions(LIVE_BERTH_INSET);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
+  });
+
+  it("takes the countdown from the card, not from the sentence's metres", () => {
+    const [red] = parseOptions(LIVE_BERTH_INSET);
+    expect(red.eta?.raw).toBe("in 9, 24 min");
+    expect(red.eta?.first).toEqual([540, 600]);
+    expect(red.totalMin).toBe(14);
+    expect(red.walkToMin).toBe(2);
+  });
+});
+
 describe("an expanded card whose bus is holding short of a stop", () => {
   // Report #102 added one word to the expanded card: `nearby`, beside the
   // pause chip, for a bus taking its layover just short of the marker.
