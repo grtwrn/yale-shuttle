@@ -327,6 +327,19 @@ const ZERO = new Float64Array(K);
  * stop and every caller with no served ages. A standing lead already seeds
  * its own stop from the residual and needs nothing here.
  *
+ * NO served age for that stop is the same case, not the absence of one: the
+ * bus's FIRST visit of its service block (`buses[].lap` names only stops it
+ * has already departed) and a warm-start that missed the stop both leave the
+ * age undefined while the belief has plainly seen a departure. Left unseeded,
+ * the moving variant priced the next visit with no lap (f 1) while the
+ * standing variant of the same leg seeded it from the residual (f 1.41 at 333
+ * Cedar), and the lead flipping between them over a shuffling pull-out was
+ * the residual two-reading dip of #217/#218 — Blue Night 9/6 23:00:46 Z and
+ * 9/8 22:59:59 Z, both the bus's first departure from Cedar that evening,
+ * "then 64 | 59 | 63 min", -266 s in the second slot for six polls, the served
+ * age for Cedar first appearing 80 s after the belief's departure
+ * (docs/stand-lap-covariate.md section 6d).
+ *
  * Only a rest in the stop's OWN zone counts, never one attributed to its
  * approach (`restApproach`): a hold at a light short of Union Station is not a
  * visit to it, and reading it as one declared the served clock stale for the
@@ -339,13 +352,12 @@ function ownDeparture(
 ): { stop: number; depT: number } | null {
   if (belief.rested && belief.restStop >= 0 && !belief.restApproach && standingAt !== belief.restStop) {
     const served = ages[stops[belief.restStop]!];
-    return served !== undefined && Number.isFinite(served) && served > r ? { stop: belief.restStop, depT: 0 } : null;
+    return served === undefined || !Number.isFinite(served) || served > r ? { stop: belief.restStop, depT: 0 } : null;
   }
   const i = belief.leftStop;
   if (i < 0 || i === standingAt || i >= stops.length) return null;
   const served = ages[stops[i]!];
-  if (served === undefined || !Number.isFinite(served)) return null;
-  if (!(served > (now - belief.leftSince) / 1000)) return null;
+  if (served !== undefined && Number.isFinite(served) && !(served > (now - belief.leftSince) / 1000)) return null;
   return { stop: i, depT: -Math.max(0, (now - belief.leftAt) / 1000) };
 }
 

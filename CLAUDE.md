@@ -1383,7 +1383,19 @@ Five rules, each of which cost a measurement:
   `leftSince` / `leftAt` once released); re-run, the same pair reads
   0 / 0 and 0 / 8 strands. gps-replay cannot see this (it prices the next
   five stops); the rider-sim with `CHAIN=Blue Night:10:6` can.
-  `docs/stand-lap-covariate.md` section 6c.
+  `docs/stand-lap-covariate.md` section 6c. **And NO served age is the same
+  case** (section 6d): on the bus's first departure from the stop that
+  service block `buses[].lap` does not name it at all, and `ownDeparture`
+  used to return null there — so the standing variant seeded the next
+  visit's lap from the residual (f 1.41 at 333 Cedar) while the moving
+  variant of the same leg priced it with no lap (f 1), and the lead flipping
+  between them over a shuffling pull-out was the "unexplained two-reading
+  episode" of #217/#218 (Blue Night 9/6 23:00:46 Z and 9/8 22:59:59 Z,
+  −266 s in the second slot for six polls; the handoff had the Mon time
+  wrong by four hours). An absent age is now treated as a stale one; Sat
+  jump ≥180 s 0 / 76 → 0 / 0 against master, reversal 38 / 101 → 48 / 20.
+  A per-poll dump of `priceRoute`'s inputs on a named rider is how it was
+  found — trace the departure poll, not the window after it.
 
 **The lap clock is warm-started, and it has to be.** `Collector.lapClock` is
 in-memory and fed only by dwell events, so without a seed a bus carries no

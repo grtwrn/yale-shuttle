@@ -137,9 +137,14 @@ const GATE_MIN_DAYS = 10;
  *   699 -> 625 s, the dangerous tail (`early > 60 s`) 11.9 -> 10.7% and
  *   17.1 -> 14.2%; stand MAE at 333 Cedar 268 -> 175 and 166 -> 152 s.
  *   gps-replay median |err| 78.8 -> 70.3 and 72.5 -> 71.9 s at coverage
- *   73.9 -> 78.2% and 75.5 -> 76.3%. Strand is at master's own rate; the
- *   residual jumps are one unexplained two-reading episode an evening
- *   (`docs/stand-lap-covariate.md` section 6c, "What is left").
+ *   73.9 -> 78.2% and 75.5 -> 76.3%. The residual two-reading episode was
+ *   the bus's FIRST departure from Cedar of the evening, where the served
+ *   clock has no age for the stop and `ownDeparture` seeded nothing
+ *   (section 6d); with an absent age treated as a stale one the same pair
+ *   reads STRAND 0 / 0 and 0 / 0, jump >= 180 s 0 / 0 and
+ *   34 / 0, reversal >= 60 s 48 / 20 and 24 / 10, the
+ *   first-sight columns unchanged; gps-replay median |err| 70.0 and 71.8 s.
+ *   Red 9/4 against master: 0 / 0 on every column over 1,374 paired waits, 1,373 sequences byte-identical.
  */
 export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3, 13]);
 

@@ -613,7 +613,15 @@ prices for the next five stops) by +0.4 and +0.1 s of median; the moving
 population is byte-identical. A → B here reproduces #215's gps table to the
 decimal.
 
-### What is left, and is NOT the departure
+### What is left, and is NOT the departure — CORRECTED in 6d below
+
+**This subsection is kept as the record of a wrong reading.** The Mon episode
+was at 22:59:59–23:00:14 Z, not 02:59:59 Z (the 03:00 window was traced and
+held nothing, which is what "not reproduced" measured); both episodes ARE
+the departure poll — the bus's FIRST departure from 333 Cedar of the
+evening, when the served lap clock has no age for the stop at all. Section
+6d has the per-poll dump and the fix.
+
 
 The residual introduced jumps (76 on Sat, 60 on Mon) are each ONE episode:
 Sat 23:00–23:01 Z (70 of 76) and Mon 02:59:59–03:00:09 Z (60 of 60), the
@@ -637,6 +645,125 @@ difference a single reading's second slot 80 → 81 min for a rider at
 Winchester itself. First-sight miss identical on every wait. Red's second
 slot is a different vehicle, so the held-rest path has nothing to correct
 there; this is the fix costing Red nothing, measured rather than argued.
+
+### 6d. What was left: the FIRST departure, and a served age that does not exist (2026-09-11)
+
+The residual two-reading episode was traced with a per-poll dump of
+`priceRoute`'s inputs (belief, situations, `ownDeparture`, the lap walk's
+`lap`/`f` per fitted stop, the rows for the rider's stop) on a named rider
+boarding 129 York (stop 2) across the Sat 9/6 departure, `RIDER="Blue
+Night@2@2026-09-06T22:44:00Z"`, the #217 tree, route 13's cells served.
+
+**Where it was.** Not "at rest, no fresh fix": the capture has #57's fix
+frozen 31 m from the 333 Cedar marker from 22:57:01 to 23:00:41 Z with
+`last_stop_id` 43, then NEW fixes at 23:00:46 / 23:00:51 / 23:01:01 with
+`last_stop_id` 10 — the pull-out — then a 60 s pause 61 m out (inside the
+125 m rest radius), then away at 23:02:06. Mon is the same shape one
+evening later: #38 frozen 12 m from the marker until 22:59:54, fresh fixes
+from 22:59:59 Z. Both are the bus's FIRST departure from Cedar that evening
+(#57 first appears at 21:36 Z and never comes within 75 m of Cedar before
+22:52; #38's only earlier pass was a 59 s roll-through at 21:22 on Blue Day
+that the detector never pinned).
+
+**What the dump says**, Sat, the rider's second slot (129 York, occurrence 1):
+
+| poll (Z) | lead | `sits` (leg 0) standing / moving mass | `ages` | `own` | next-Cedar walk `lap` → `f` | slot 2 |
+|---|---|---|---|---|---|---|
+| 23:00:41 | standing at 0 (Cedar), r 520 | 0.959 / 0.029 | {97: 3021, 121: 1180} — **no 10** | null (standing seeds itself) | 2496 → **1.409** (prevDep = residual 136) | 3885 |
+| 23:00:46 | standing, fresh fix | 0.717 / 0.283 | same | null | 2496 → 1.409 | 3849 |
+| **23:00:51** | **moving** (standingAt −1), rest still held | 0.176 / 0.824 | same, no 10 | **null** — `ages[10]` undefined | **null → 1** | **3583** |
+| 23:00:56 … 23:01:11 | moving | 0.33 → 0.40 standing | | null | null → 1 | 3593 / 3569 / 3577 / 3595 |
+| 23:01:16 | standing again (the pause) | 0.575 / 0.425 | | null | 2495 → 1.41 | 3818 |
+| 23:02:06 | moving, released | | **{10: 0, …}** first served | | 0 + t → 1.39 | 3777 |
+
+The mechanism in one line: **the standing variant seeds the next visit's lap
+from the residual (`depT[standingAt] = rem`) whatever the served ages say;
+the moving variant of the SAME leg was seeded only by `ownDeparture`, which
+returned null because `ages[10]` was undefined** — the bus had not departed
+Cedar yet this block, so `buses[].lap` did not name it. So the next Cedar
+stand was priced f 1.41 (+240 s on a 590 s table) in one variant and f 1 in
+the other, and the lead flipping between them over a shuffling pull-out was
+the dip: 3849 → 3583 → 3818, "then 64 | 59 | 63 min", −266 s for six polls.
+The served age first appears 80 s after the belief's departure (23:02:06 Z,
+when the collector's own at-stop gate finally clears). #217 handled a served
+age OLDER than the rest (`served > r`) and left an ABSENT one alone; they are
+the same case — the belief has seen a departure the clock has not.
+
+**The fix** is one predicate in `ownDeparture` (web/src/eta/arrival.ts): an
+undefined or non-finite served age is treated exactly as a stale one, in both
+the held-rest branch (`depT` 0) and the released branch (`depT` −(now −
+leftAt)). Nothing else moves: a served age younger than the rest is still
+taken as served; every stop without a rest identity, every standing lead and
+every caller with no ages price bit-identically. `lap.test.ts` walks the case
+(stand → held pull-out → released → served) with the stop's age absent and
+asserts one correction all the way through, and that without the rest
+identity the same polls price the stand uncorrected.
+
+Re-traced on the same rider: 3849 → 3823 → 3833 → 3814 → 3823 → 3836 → 3818,
+"then 64 | 63 | 63 min".
+
+**Measured exactly as 6c, four arms.** A = master client (Red's cells only),
+C = #217 + route 13's cells, D = this fix + route 13's cells; the A and C
+runs are the 6c artifacts (`~/wt/eta-uncertainty/.../r13/rs`, `~/wt/lapfix/
+.../lapfix/rs`), D from `~/wt/lapres/.../lapres/rs`; same captures, same
+`snap909.db`, same `CHAIN="Blue Night:10:6"`, `pair-by-route.mjs`.
+
+rider-sim, fixed / introduced:
+
+| evening | paired | arm | STRAND | jump ≥180 s | reversal ≥60 s | dropped | first-promise \|miss\| p50 | early >60 s | coverage @ width | worst drift p50 |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Sat 9/6 | 1,349 | A → C (#217) | 0 / 0 | 0 / 76 | 38 / 101 | 0 / 0 | 110 → 85 s | 11.9 → 10.7% | 74.5 → 77.6% @ 637 → 575 s | 70 → 110 s |
+| Sat 9/6 | 1,349 | **A → D** | **0 / 0** | **0 / 0** | **48 / 20** | 0 / 0 | 110 → 85 s | 11.9 → 10.7% | 74.5 → 77.6% @ 637 → 575 s | 70 → 70 s |
+| Sat 9/6 | 1,351 | C → D | 0 / 0 | 76 / 0 | 91 / 0 | 0 / 0 | 85 → 85 s | identical | identical | 110 → 70 s |
+| Mon 9/8 | 1,196 | A → C (#217) | 0 / 8 | 34 / 60 | 22 / 75 | 0 / 0 | 105 → 90 s | 17.1 → 14.2% | 82.6 → 82.0% @ 699 → 625 s | — |
+| Mon 9/8 | 1,196 | **A → D** | **0 / 0** | **34 / 0** | **24 / 10** | 0 / 0 | 105 → 90 s | 17.1 → 14.2% | 82.6 → 82.0% @ 699 → 625 s | 125 → 70 s |
+| Mon 9/8 | 1,212 | C → D | 8 / 0 | 60 / 0 | 67 / 0 | 0 / 0 | 90 → 90 s | identical | identical | 130 → 70 s |
+
+Riders who saw a jump ≥180 s: Sat master 29.9%, #217 34.0%, **D 27.9%**, Mon
+36.0%, 35.5%, **31.2%**; a reversal ≥60 s: Sat 49.7%, 52.1%, **45.5%**, Mon
+58.0%, 60.1%, **55.0%**. Worst drift per wait p50: Sat 70 / 110 / **70** s,
+Mon 125 / 130 / **70** s. The Mon episode (22:59:59–23:00:14 Z, the same
+first-departure shape) is gone from D's window entirely; what remains there is
+master's own +2880 s for a rider at Cedar itself when the bus pulls out. The first-sight columns are
+byte-identical between C and D on both evenings — the accuracy 6b measured
+is intact, and the departure-poll lurch is gone in both its forms.
+
+**Strands under both rules** (PR #220's `audit-strands.ts`, run out of its
+branch over the same saved waits — a strand there needs one named vehicle
+across the drop and at the arrival): Sat, valid paired 1,195, legacy
+strand both 9 / onlyA 0 / onlyB 0, attributable both 7 / 0 / 0, for A → D
+and for A → C alike; Mon, valid paired 1,044, legacy both 29 / 0 / 0 and
+attributable 29 / 0 / 0 for A → D (A → C: legacy onlyB 8, attributable 0 —
+#217's eight Mon strands were second-slot drops with no named vehicle, i.e.
+the instrument's, and D removes them under both rules). Secondary-catastrophic WAITS (the
+audit's `!leader && catastrophic`): Sat A 16 / C 140 / **D 45**, Mon A 62 / C 125 / **D 66**; the 29 (Sat) and 4
+(Mon) above master are the hourly re-anchor at the Cedar ARRIVAL for riders
+boarding Congress / Cedar (43 → 96: "in 15, 73" → "in <1, 66", −350 s in the
+second slot beside a −870 s leader jump master makes too) — present
+identically in B, C and D, so they are the covariate re-pricing the Cedar
+stand on an anchor event, not the departure and not this fix.
+
+gps-replay (route 13, proximity truth, paired row for row, 17,788 / 16,119
+scorable rows):
+
+| evening | arm | median \|err\| | pessimistic ≥120 s | optimistic ≥120 s | 10–90 coverage | better / worse |
+|---|---|---:|---:|---:|---:|---:|
+| Sat 9/6 | A → D | 78.8 → 70.0 | 13.8 → 13.5% | 24.4 → 20.2% | 73.9 → 78.2% | 4,540 / 2,493 |
+| Sat 9/6 | C → D | 70.3 → 70.0 | 13.6 → 13.5% | 20.2 → 20.2% | 78.2 → 78.2% | 259 / 64 (moving rows 4 / 0) |
+| Mon 9/8 | A → D | 72.5 → 71.8 | 15.5 → 14.0% | 22.5 → 22.4% | 75.5 → 76.3% | 3,138 / 2,781 |
+| Mon 9/8 | C → D | 71.9 → 71.8 | 14.0 → 14.0% | 22.4 → 22.4% | 76.3 → 76.3% | 39 / 0 (moving rows byte-identical) |
+
+**Red, where #206 is live** (held-out 9/4, 13:00–19:00 Z, `POP=uniform`,
+`CHAIN="Red:11:6"`, `model-patch-0904-lapS.json`, master client vs D):
+**STRAND 0 / 0, jump ≥180 s 0 / 0, reversal ≥60 s 0 / 0, dropped 0 / 0 on
+1,374 paired waits, against master AND against #217; 1,373 of 1,374 sequences
+byte-identical** — the one difference is #217's own (a single reading's second
+slot 80 → 81 min for a rider at Winchester), unchanged by this fix. First-sight
+miss 55 s, early >60 s 13.1%, identical on every wait. `audit-strands.ts`: valid
+paired 1,288, legacy strand 13 / 0 / 0, attributable 5 / 0 / 0, catastrophic
+waits identical (primary 4, secondary 29). Red's first departure of a block from
+344 Winchester is the same shape, but the second slot there is a different
+vehicle, so the moving variant's seed prices nothing a rider sees.
 
 ## 7. The warm start, and what else a restart loses
 
