@@ -56,7 +56,7 @@ import { topVisibleOptions, keptThirdLabel,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
-import { rideEndDecision } from "./rideEnd";
+import { rideEndDecision, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
 import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
@@ -1653,7 +1653,7 @@ const TripPlanner: FC<{
   onClearRecents: () => void;
   announcements: ServiceAnnouncement[];
   onReportSubmitted?: () => void;
-  pendingTrip: SavedTrip | null;
+  pendingTrip: (Pick<SavedTrip, "toText" | "toLat" | "toLon"> & { recoverRide?: boolean }) | null;
   onConsumePending: () => void;
   // Parent passes a callback so the Accuracy tab can scope its stats to
   // the pickup stops on the current plan. Pushed as a deduped, sorted
@@ -2401,15 +2401,18 @@ const TripPlanner: FC<{
     setAutoDetectOffer(null);
   }, [userLatLon, buses, options, stopCoords]);
 
-  // Apply a "plan this saved destination" request from Favorites: sets
-  // the To field, and defaults From to current location (falling back to
-  // empty if we don't have GPS yet).
+  // Apply a destination request. Ride recovery explicitly starts a fresh
+  // trip at Now and requests a current fix through the normal locate flow.
   useEffect(() => {
     if (!pendingTrip) return;
     setToText(pendingTrip.toText);
     setToLL({ lat: pendingTrip.toLat, lon: pendingTrip.toLon });
     setToSugg([]);
-    if (userLatLon) {
+    if (pendingTrip.recoverRide) {
+      useCurrent();
+      setTripTime("");
+      setExpandedKey(null);
+    } else if (userLatLon) {
       setFromLL(userLatLon);
       setFromText(CURRENT_LOCATION_TEXT);
       setFromSugg([]);
@@ -6621,7 +6624,7 @@ const TransitMap: FC = () => {
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
-  const [finishedRide, setFinishedRide] = useState<BoardedRide | null>(null);
+  const [finishedRide, setFinishedRide] = useState<(BoardedRide & { endReason?: RideEndReason }) | null>(null);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -7108,6 +7111,7 @@ const TransitMap: FC = () => {
     offBusStreakRef.current = decision.streak;
     busLastSeenRef.current = decision.busLastSeenMs;
     if (!decision.end) return;
+    setFinishedRide({ ...boardedRide, endReason: decision.reason ?? undefined });
     setBoardedRide(null);
     // Only the off-bus ending is a surprise worth a notification; the other
     // two are a ride the rider had already forgotten about.
@@ -7145,9 +7149,9 @@ const TransitMap: FC = () => {
     setRecentTrips(t);
     saveRecents(t);
   };
-  // Channel for "plan this saved trip": Favorites sets it, Trip picks it up
-  // on mount / prop change and applies the from+to fields.
-  const [pendingTrip, setPendingTrip] = useState<SavedTrip | null>(null);
+  // Destination-only requests consumed by Trip on mount / prop change.
+  // Recovery requests additionally reset the departure time and locate From.
+  const [pendingTrip, setPendingTrip] = useState<(Pick<SavedTrip, "toText" | "toLat" | "toLon"> & { recoverRide?: boolean }) | null>(null);
   const favoriteStopIds = useMemo(
     () => new Set<number>(stopGroups.flatMap((g) => g.stopIds)),
     [stopGroups],
@@ -7566,7 +7570,18 @@ const TransitMap: FC = () => {
       )}
 
       {!boardedRide && finishedRide && (
-        <RideFinish ride={finishedRide} onDismiss={() => setFinishedRide(null)} />
+        <RideFinish ride={finishedRide} reason={finishedRide.endReason}
+          onDismiss={() => setFinishedRide(null)}
+          onFindShuttle={() => {
+            if (finishedRide.toText && Number.isFinite(finishedRide.toLat) && Number.isFinite(finishedRide.toLon)) {
+              setPendingTrip({ toText: finishedRide.toText, toLat: finishedRide.toLat!,
+                toLon: finishedRide.toLon!, recoverRide: true });
+            } else if (!userLatLon) {
+              startLocating();
+            }
+            setListView("trip");
+            setFinishedRide(null);
+          }} />
       )}
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
