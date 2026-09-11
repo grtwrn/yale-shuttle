@@ -1342,10 +1342,19 @@ waved through: the median process lives 17 min and only 8% of them reach the
 6 h timer (39 deploy gaps), a stall delays one poll rather than skipping it
 (interval 5 s, staleness already p90 4.4 s, `pollSkipped` 0), and `calibrate`
 itself already stalls **1.0 s every 5 min** against the fit's 2.4 s every 6 h —
-a 30x bigger duty cycle. Chunk `calibrate` before this. **What IS worth fixing:
-`CalibrationStats.durationMs` excludes `lapFitsCache.get()`, so the log line
-read 996 ms while the loop had been held twenty-one seconds. Log the fit's own
-duration.**
+a 30x bigger duty cycle. Chunk `calibrate` before this.
+
+**`durationMs` could not see the stall, and that is why it hid for a day.**
+`CalibrationStats.durationMs` times `calibrate()`, and `lapFitsCache.get()` is
+evaluated in its argument list — so the log line read 996 ms while the loop had
+been held twenty-one seconds. `collector.calibrated` now also carries
+`lapFitMs` (the fit's own cost: ~0 on the 5-minute cadence, its own number on
+the six-hourly refresh) and **`loopHeldMs` = `durationMs + lapFitMs`, which is
+the one to read** — the whole synchronous hold, i.e. what `pollStalenessMs`
+will show. `durationMs` deliberately still means the calibrator alone, so a
+slow fit stays distinguishable from a slow calibration.
+`collector.fitClock.test.ts` pins it with a cache stubbed to busy-wait 120 ms
+and fails on the code that shipped.
 
 Wire cost at the rollout-gated set: **+172 B a poll, +0.13%**. At the 22 cells
 the cell gate passes it would be +1,337 B / +0.98%; ungated, +2,770 B / +2.02%.
