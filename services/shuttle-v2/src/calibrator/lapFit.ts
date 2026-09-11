@@ -127,8 +127,21 @@ const GATE_MIN_DAYS = 10;
  * 34 / 60, reversal 38 / 101 and 22 / 75 (from 0 / 555, 24 / 556 unfixed),
  * with the first-sight columns byte-identical to #215's. The residual is one
  * unexplained episode an evening; `docs/stand-lap-covariate.md` section 6c.
+ *
+ * - **13 (Blue Night)** — Sat 2026-09-06 and Mon 2026-09-08, both held out
+ *   (`FIT_BEFORE=2026-09-06`), 1,349 and 1,196 paired waits against master
+ *   with the departure seed above: STRAND 0 fixed / 0 introduced and 0 / 8,
+ *   jump >= 180 s 0 / 76 and 34 / 60, reversal >= 60 s 38 / 101 and 22 / 75,
+ *   drops and pin 0 / 0; first-promise |miss| 110 -> 85 s and 105 -> 90 s,
+ *   interval coverage 74.5 -> 77.6% at 637 -> 575 s and 82.6 -> 82.0% at
+ *   699 -> 625 s, the dangerous tail (`early > 60 s`) 11.9 -> 10.7% and
+ *   17.1 -> 14.2%; stand MAE at 333 Cedar 268 -> 175 and 166 -> 152 s.
+ *   gps-replay median |err| 78.8 -> 70.3 and 72.5 -> 71.9 s at coverage
+ *   73.9 -> 78.2% and 75.5 -> 76.3%. Strand is at master's own rate; the
+ *   residual jumps are one unexplained two-reading episode an evening
+ *   (`docs/stand-lap-covariate.md` section 6c, "What is left").
  */
-export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3]);
+export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3, 13]);
 
 const median = (a: number[]): number => {
   if (!a.length) return NaN;

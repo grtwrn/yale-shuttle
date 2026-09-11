@@ -1339,7 +1339,8 @@ Five rules, each of which cost a measurement:
   gate is agnostic about the SIGN: three survivors fit a positive slope and are
   served on evidence, not mechanism.
 - **And served only on a ROUTE whose rider table has been watched.**
-  `LAP_SERVED_ROUTE_IDS` = `{3}` (Red). The cell gate proves the fit beats
+  `LAP_SERVED_ROUTE_IDS` = `{3, 13}` (Red; Blue Night since the departure
+  seed below, on the paired evenings in `lapFit.ts`). The cell gate proves the fit beats
   pooled on held-out stand MAE, which is necessary and NOT sufficient — the
   split stand tables improved Pink's stand estimate and took it 280 -> 431
   strands, because an unbiased estimate strands the half of riders whose bus
