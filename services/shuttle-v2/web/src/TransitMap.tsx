@@ -76,6 +76,7 @@ import {
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
 import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
+import { stopRowHighlight } from "./stopRow";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import { AT_PLACE_M, walkSecFromMeters } from "./walk";
@@ -4636,13 +4637,18 @@ const TripPlanner: FC<{
                             const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
                             const showLive = isBusHere && standing?.stopId === sid && liveElapsedSec != null;
                             const stand = standAt(sid, showLive ? liveElapsedSec : null);
+                            const hl = stopRowHighlight(isBusHere, false, o.color);
                             return (
                               <div key={sid} style={{
                                 position: "relative", display: "flex", alignItems: "center",
-                                padding: "2px 0", opacity: isBusHere ? 1 : 0.65,
+                                padding: hl.banded ? "4px 6px" : "2px 0",
+                                marginLeft: hl.banded ? -6 : 0,
+                                borderRadius: 4,
+                                background: hl.background,
+                                opacity: isBusHere ? 1 : 0.65,
                               }}>
                                 <span style={{
-                                  position: "absolute", left: -13, top: "50%",
+                                  position: "absolute", left: hl.banded ? -7 : -13, top: "50%",
                                   transform: "translateY(-50%)",
                                   width: 7, height: 7, borderRadius: "50%",
                                   background: "#fff", border: `2px solid ${o.color}`,
@@ -4651,7 +4657,7 @@ const TripPlanner: FC<{
                                 <span style={{
                                   fontSize: 13,
                                   fontWeight: isBusHere ? 700 : 400,
-                                  color: isBusHere ? o.color : "#5f6368",
+                                  color: hl.color,
                                   marginLeft: 10,
                                 }}>
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
@@ -4755,16 +4761,17 @@ const TripPlanner: FC<{
                         const isEnd = isBoard || isAlight;
                         const isBusHere = j === busSegPos;
                         const name = (stopNames[sid] ?? `Stop ${sid}`).replace(/\s*\/\s*/g, "/");
+                        const hl = stopRowHighlight(isBusHere, isEnd, o.color);
                         return (
                           <div key={sid} style={{
                             position: "relative", display: "flex", alignItems: "center",
-                            padding: isEnd ? "4px 6px" : "2px 0",
-                            marginLeft: isEnd ? -6 : 0,
+                            padding: hl.banded ? "4px 6px" : "2px 0",
+                            marginLeft: hl.banded ? -6 : 0,
                             borderRadius: 4,
-                            background: isEnd ? `${o.color}1f` : "transparent",
+                            background: hl.background,
                           }}>
                             <span style={{
-                              position: "absolute", left: isEnd ? -8 : -14, top: "50%",
+                              position: "absolute", left: hl.banded ? -8 : -14, top: "50%",
                               transform: "translateY(-50%)",
                               width: isEnd ? 14 : 8, height: isEnd ? 14 : 8,
                               borderRadius: "50%",
@@ -4776,7 +4783,7 @@ const TripPlanner: FC<{
                             <span style={{
                               fontSize: 14,
                               fontWeight: isEnd || isBusHere ? 700 : 400,
-                              color: isEnd ? "#202124" : isBusHere ? o.color : "#5f6368",
+                              color: hl.color,
                               marginLeft: 10,
                             }}>
                               {isBoard && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>BOARD</span>}
