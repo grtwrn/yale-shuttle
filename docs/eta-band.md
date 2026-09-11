@@ -130,6 +130,10 @@ same days (`--floor sl`):
 | + standing floor `departNow + q10 stand left` | 46.4 / 46.8 | 51.0 / 36.7 | 59.8 / 30.2 | 41.5 / 52.0 | 52.7 / 37.7 | 70.5 / 19.0 |
 | median printed width, min | 4 → 2 | 6 → 3 | 12 → 7 | 4 → 2 | 5 → 3 | 15 → 11 |
 
+9/9 agrees (standing, cover % before → with the floor): Red 2-5 83.0 → 41.4,
+5-10 76.3 → 41.3, 10-30 92.4 → 31.4; Blue Day 2-5 93.2 → 51.1, 5-10 89.1 →
+67.0, 10-30 94.0 → 90.9.
+
 **The premise does not survive the measurement.** `departNow` is the MEDIAN of the rest-less chain, not a minimum drive: the detector's arrival comes BEFORE `departNow + stand q10` on 43-52% of standing pairs, so the floor is not "a low end no bus can beat" — it is a low end about half of them beat, and it halves standing coverage. The reason is the one §B already found: the chain prices the drive and the stands ahead at pooled medians, and a bus that just finished a stand tends to run ahead of them. The floor is shipped as reviewed (`standingLowFloor`, one call in `arrivalBand`), with this table beside it; on the numbers it should be switched off until the chain's median is a floor, and `now-10` for a standing bus is the honest low end the operator's own standWait header asked for ("bounded below by now").
 
 ## C. The display rule (`web/src/etaBand.ts`)
