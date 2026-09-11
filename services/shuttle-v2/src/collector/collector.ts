@@ -1296,14 +1296,32 @@ export class Collector {
     }
   }
 
+  /**
+   * Calibrate, and report the WHOLE stall.
+   *
+   * `CalibrationStats.durationMs` times `calibrate()` alone, which excludes
+   * the lap fit the argument list hides: `lapFitsCache.get()` is evaluated
+   * before the call, on this same event loop, and every six hours it is the
+   * expensive half. That is how a 21,190 ms hold on the loop that serves
+   * `/api/buses` reported itself as `durationMs: 996` and hid for a day
+   * (NEXT-STEPS 2026-09-10 §7, §9). So the fit is timed here, beside
+   * `lapFitCount`, and `loopHeldMs` is the number to read: the total
+   * synchronous hold, which is what `pollStalenessMs` will show.
+   *
+   * A cached get costs microseconds, so `lapFitMs` is ~0 on the 5-minute
+   * cadence and names its own cost on the six-hourly refresh.
+   */
   private runCalibrate(): void {
     try {
       if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
-      const stats = calibrate(this.db, this.ref.get(), new Date(), this.lapFitsCache.get());
+      const fitAt = Date.now();
+      const lapFits = this.lapFitsCache.get();
+      const lapFitMs = Date.now() - fitAt;
+      const stats = calibrate(this.db, this.ref.get(), new Date(), lapFits);
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
-      this.logger.info("collector.calibrated", { ...stats });
+      this.logger.info("collector.calibrated", { ...stats, lapFitMs, loopHeldMs: stats.durationMs + lapFitMs });
     } catch (err) {
       this.logger.error("collector.calibrate_failed", {
         error: (err as Error).message,
