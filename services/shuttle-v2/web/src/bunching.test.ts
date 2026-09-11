@@ -94,15 +94,15 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
     expect(fmtBusLine({ leadSec: 45, nextSec: M(11) })).toBe("in <1, 11 min");
     expect(fmtBusLine({
       leadSec: M(5), leadBand: { lowSec: M(3), highSec: M(7) }, nextSec: M(21),
-    })).toBe("in 5 (3-7), 21 min");
+    })).toBe("in 3-7, then 21 min");
     expect(fmtBusLine({ leadSec: M(5), leadBand: { lowSec: M(3), highSec: M(7) } }))
-      .toBe("in 5 (3-7) min");
+      .toBe("in 3-7 min");
   });
 
   it("says the interval once plus the cause when the two have bunched", () => {
     expect(fmtBusLine({
       leadSec: M(29), leadBand: { lowSec: M(23), highSec: M(36) }, nextSec: M(35),
-    })).toBe("29 (23-36) min · 2 buses");
+    })).toBe("23-36 min · 2 buses");
     expect(fmtBusLine({ leadSec: M(25) + 10, nextSec: M(25) + 50 }))
       .toBe("25 min · 2 buses");
     expect(fmtBusLine({
@@ -119,7 +119,7 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
     // With a median to print, the head is the median-with-band form less its "in".
     expect(fmtBusLine({
       leadSec: M(3), leadBand: { lowSec: 5, highSec: M(6) }, nextSec: M(4),
-    })).toBe("3 (now-6) min · 2 buses");
+    })).toBe("now-6 min · 2 buses");
     // "<1 min" keeps its "<" and loses the "in" like any other number.
     expect(fmtBusLine({ leadSec: 20, nextSec: 50 })).toBe("<1 min · 2 buses");
   });
@@ -137,7 +137,7 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
       nextSec: M(30), nextBand: { lowSec: M(30), highSec: M(44) },
     });
     // (That band overlaps nothing here — 30 > 7 — so the pair survives.)
-    expect(line).toBe("in 5 (3-7), 30 min");
+    expect(line).toBe("in 3-7, then 30 min");
     expect(line.match(/-/g)).toHaveLength(1);
   });
 });

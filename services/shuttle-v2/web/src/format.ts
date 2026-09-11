@@ -66,40 +66,19 @@ export function fmtBusRange(lowSec: number, highSec: number, secondSec?: number 
 }
 
 /**
- * A countdown with its RANGE and its MEDIAN: "in 5 (2-9) min", and with a
- * second bus "in 5 (2-9), 17 min" — the three numbers of one distribution
- * (eta/arrival.ts), the median first because it is the number a rider plans
- * on and the band in brackets because it says how far to trust it (operator,
- * 2026-09-11: "show the expected median or average to give user more info").
- * The two ends share the unit exactly as `fmtBusRange` does.
- *
- * NO "then" BEFORE THE SECOND BUS, unlike `fmtBusRange`. MEASURED at 390 px
- * in the rendered card (13 px Inter 500, pr-preview/eta-band/probe.mjs): the
- * span beside the widest route pills holds 134 px ("Orange Night") and
- * 128 px ("Blue Weekend"), and "in 10 (6-18), then 26 min" needs 150 —
- * it clips beside both, as today's "in 23-36, then 35 min" (133) already
- * does beside one. "in 10 (6-18), 26 min" needs 119 and fits beside every
- * pill. The brackets do the grouping the word did: "in 3-8, 19 min" was
- * three bare numbers, "in 5 (3-8), 19 min" is a pair with a band on the
- * first.
- *
- * A median inside a minute has no number to print ("now (now-6) min" is not
- * a countdown), so those rows keep `fmtBusRange`'s spelling: "now-6 min".
- * Ends that print the same minute collapse to the point, as `fmtBusRange`
- * collapses — but to the MEDIAN, not the low end, since it is in hand.
+ * The countdown for an arrival that carries a 10–90 band: the RANGE and
+ * nothing in front of it — "in 1-8, then 14 min". The median is not printed
+ * (operator, 2026-09-11, on "in 2 (1-8), 14 min": "just show 1-8, no need to
+ * show 2 (1-8)"); it lives in the row's tooltip (etaBand.ts `bandTitle`).
+ * The three numbers are still one distribution (eta/arrival.ts); this is only
+ * what the row says. Ends that print the same minute collapse to the point,
+ * exactly as `fmtBusRange` collapses. The `etaSec` argument is kept so every
+ * caller keeps passing the median and the tooltip/bunching logic can use it.
  */
 export function fmtBusBand(lowSec: number, etaSec: number, highSec: number, secondSec?: number | null): string {
-  const low = fmtMin(lowSec), high = fmtMin(highSec), mid = fmtMin(etaSec);
+  const low = fmtMin(lowSec), high = fmtMin(highSec);
   if (low === high) return fmtBusPair(etaSec, secondSec);
-  // ...and so does a median that sits UNDER the band's low end: #119's clamp
-  // holds the shown number down while a standing bus's low end is floored at
-  // what it must still stand and drive (etaBand.ts), and "in 1 (2-9) min" is
-  // not a statement a rider can read. The band is the honest part; print it.
-  if (mid === "now" || mid === "<1 min" || etaSec < lowSec) return fmtBusRange(lowSec, highSec, secondSec);
-  const bare = (t: string) => t.replace(" min", "");
-  const head = `in ${bare(mid)} (${bare(low)}-${bare(high)})`;
-  if (secondSec == null || !Number.isFinite(secondSec)) return `${head} min`;
-  return `${head}, ${fmtMin(secondSec)}`;
+  return fmtBusRange(lowSec, highSec, secondSec);
 }
 export function fmtMin(s: number): string {
   if (s < 10) return "now";

@@ -353,12 +353,13 @@ describe("a malformed geocode result never crashes the dropdown", () => {
   });
 });
 
-describe("fmtBusBand — the median with its band (operator, 2026-09-11)", () => {
-  it("prints the median first and the band in brackets, sharing the unit", () => {
-    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60)).toBe("in 5 (2-9) min");
-    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60, 17 * 60)).toBe("in 5 (2-9), 17 min");
-    // The operator's Red card: a bus ten minutes out, driving toward a layover.
-    expect(fmtBusBand(6 * 60 + 20, 10 * 60 + 5, 18 * 60 + 40, 26 * 60)).toBe("in 10 (6-18), 26 min");
+describe("fmtBusBand — the range alone (operator, 2026-09-11)", () => {
+  it("prints the range and nothing in front of it", () => {
+    // "just show 1-8, no need to show 2 (1-8)" — the median is the tooltip's.
+    expect(fmtBusBand(1 * 60 + 5, 2 * 60 + 10, 8 * 60 + 30, 14 * 60)).toBe("in 1-8, then 14 min");
+    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60)).toBe("in 2-9 min");
+    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60, 17 * 60)).toBe("in 2-9, then 17 min");
+    expect(fmtBusBand(6 * 60 + 20, 10 * 60 + 5, 18 * 60 + 40, 26 * 60)).toBe("in 6-18, then 26 min");
   });
 
   it("keeps fmtBusRange's spelling when the median is inside a minute", () => {
@@ -368,8 +369,8 @@ describe("fmtBusBand — the median with its band (operator, 2026-09-11)", () =>
   });
 
   it("spells a sub-minute low end the way the range does", () => {
-    expect(fmtBusBand(5, 3 * 60, 6 * 60)).toBe("in 3 (now-6) min");
-    expect(fmtBusBand(45, 3 * 60, 6 * 60)).toBe("in 3 (<1-6) min");
+    expect(fmtBusBand(5, 3 * 60, 6 * 60)).toBe("now-6 min");
+    expect(fmtBusBand(45, 3 * 60, 6 * 60)).toBe("in <1-6 min");
   });
 
   it("prints the band alone when the shown number is held under its low end", () => {
@@ -378,7 +379,7 @@ describe("fmtBusBand — the median with its band (operator, 2026-09-11)", () =>
     expect(fmtBusBand(128, 117, 559, 14 * 60)).toBe("in 2-9, then 14 min");
   });
 
-  it("collapses to the MEDIAN when the two ends print the same minute", () => {
+  it("collapses to the median when the two ends print the same minute", () => {
     expect(fmtBusBand(200, 215, 230)).toBe("in 3 min");
     expect(fmtBusBand(200, 215, 230, 900)).toBe("in 3, 15 min");
   });
