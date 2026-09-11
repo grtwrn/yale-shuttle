@@ -1628,7 +1628,7 @@ describe("an expanded card carrying the berth map", () => {
   // The Directions button is relabelled in the same breath (operator,
   // 2026-09-11: "the directions to stop button should now say directions to
   // published stop since we show two"), and only on a card that shows a berth.
-  const LIVE_BERTH_INSET = `YALE SHUTTLE
+  const LIVE_BERTH_OPEN = `YALE SHUTTLE
 1:31 PM
 Trip
 Map
@@ -1643,6 +1643,9 @@ in 9, 24 min
 1:45p
 ›
 Division/Prospect
+🧭 Directions to published stop
+⚠ 55 m past
+▴
 published stop
 expected stop
 +
@@ -1653,7 +1656,6 @@ expected stop
 Tap the map to zoom and pan
 Wait about 55 m past the published stop
 Red buses actually stop there — seen 37 of the last 40 times one served this stop.
-🧭 Directions to published stop
 Blue Day
 in 4, 19 min
 17 min
@@ -1665,13 +1667,70 @@ Contribute
 🧪
 Not affiliated with or endorsed by Yale University.`;
 
+  /**
+   * And the state almost every card is actually in, since 2026-09-11: folded.
+   * The map is not mounted, so none of its lines exist; what is left is the
+   * Directions button back to its short wording and the ⚠ chip beside it.
+   *
+   * The chip is the line to watch. `isLabelish` is `^[A-Za-z][A-Za-z ]{0,19}$`,
+   * so a chip reading "Stops past published" WOULD have matched and outranked
+   * the route pill — the same failure as "nearby" (#102) and "Contribute". It
+   * carries digits and opens with ⚠, so it cannot; the chevron is its own line
+   * (the button is a flex container) and is not a letter. Captured verbatim at
+   * 390 px by `scripts/berth-map-capture.mjs`, not written by hand.
+   */
+  const LIVE_BERTH_FOLDED = `YALE SHUTTLE
+1:31 PM
+Trip
+Map
+Issues
+↻
+Red
+in 9, 24 min
+14 min
+🚶 2 min
+›
+🚌 9 min
+1:45p
+›
+Division/Prospect
+🧭 Directions to stop
+⚠ 55 m past
+▾
+Blue Day
+in 4, 19 min
+17 min
+1:48p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the FOLDED card — the state almost every berth card is in", () => {
+    const opts = parseOptions(LIVE_BERTH_FOLDED);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
+    expect(opts[0].eta?.raw).toBe("in 9, 24 min");
+    expect(opts[0].totalMin).toBe(14);
+  });
+
+  it("never reads the ⚠ chip as a route label", () => {
+    // Belt and braces on the wording rule: whatever the distance, the chip
+    // opens with a glyph and carries digits, so it can never match the route
+    // pill pattern. A future reword that dropped both would be caught here.
+    for (const text of ["⚠ 55 m past", "⚠ 39 m before", "⚠ 91 m past"]) {
+      expect(/^[A-Za-z][A-Za-z ]{0,19}$/.test(text)).toBe(false);
+    }
+  });
+
   it("still reads the line as Red, not as one of the map's labels or controls", () => {
-    const opts = parseOptions(LIVE_BERTH_INSET);
+    const opts = parseOptions(LIVE_BERTH_OPEN);
     expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
   });
 
   it("takes the countdown from the card, not from the sentence's metres", () => {
-    const [red] = parseOptions(LIVE_BERTH_INSET);
+    const [red] = parseOptions(LIVE_BERTH_OPEN);
     expect(red.eta?.raw).toBe("in 9, 24 min");
     expect(red.eta?.first).toEqual([540, 600]);
     expect(red.totalMin).toBe(14);
