@@ -514,9 +514,56 @@ export interface Floors {
    * never climb (#119's rule: `min(prev, raw)` on the standing term); the
    * arrival instant is deliberately NOT what is clamped — pinning that would
    * run the countdown to zero while the bus still sits.
+   *
+   * `armed` (see CEILING ARMS ON STANDING below): false while the entry is
+   * PROVISIONAL — recorded from the mixture before the standing hypothesis
+   * had cleared LEAD_SWITCH_MASS. A provisional ceiling holds the number
+   * flat exactly as an armed one does, but it is re-armed ONCE, from the
+   * standing variant's own number, the poll the mass clears. Absent means
+   * armed (an entry written by hand, or by a client that predates the flag).
    */
-  map: Map<number, { eta: number; standingAt: number; since: number }>;
+  map: Map<number, { eta: number; standingAt: number; since: number; armed?: boolean }>;
 }
+
+/**
+ * CEILING ARMS ON STANDING (2026-09-11). #119's ceiling used to be recorded
+ * on the first poll the lead situation stood — from the MIXTURE, while the
+ * moving hypothesis still held about half the mass. On every visit to Red's
+ * 344 Winchester layover that froze the countdown at the arrival poll's
+ * number (#310 -> Division / Prospect, 08:24 ET: 208 s shown from 08:25 to
+ * 08:32 while the true remainder fell 615 -> 165 s; the honest standing
+ * number was ~450 s). The ceiling is now armed only once the lead leg's
+ * standing mass has cleared LEAD_SWITCH_MASS, from the standing variant's
+ * own quantiles; until then the entry is provisional and holds the number
+ * exactly as before. So the countdown may rise ONCE, shortly after arrival,
+ * and then never again during that stand. The reset rules, the rest
+ * identity and the departure collapse are untouched.
+ *
+ * The switch exists for the paired replays (both arms from one tree); the
+ * measurement is in docs/eta-ring-posterior.md.
+ */
+let armOnStanding = true;
+export function setCeilingArmsOnStanding(on: boolean): void { armOnStanding = on; }
+export function ceilingArmsOnStanding(): boolean { return armOnStanding; }
+
+/** One clamp decision, for the replays that count them; never fires in production (no trace is set). */
+export interface ClampEvent {
+  stopIdx: number;
+  occurrence: number;
+  /** Ring index the lead stands at, and the rest's clock origin (the rest identity). */
+  clampAt: number;
+  since: number;
+  /** Mass of the lead cluster priced as this rest continuing (the standing variant). */
+  standMass: number;
+  /** The mixture's quantile tau (what master arms with) and the standing variant's own. */
+  mixture: number;
+  standing: number;
+  /** The ceiling in force before this poll, if any. */
+  prevCeiling: number | null;
+  action: "hold" | "arm" | "provisional" | "rearm";
+}
+let clampTrace: ((ev: ClampEvent) => void) | null = null;
+export function setClampTrace(fn: ((ev: ClampEvent) => void) | null): void { clampTrace = fn; }
 
 export function priceRoute(
   belief: Belief,
@@ -599,6 +646,11 @@ export function priceRoute(
     if (leadMedian > MAX_ETA_SEC) break;
     const parts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     const all: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
+    // The lead cluster's parts priced as the rest at `clampAt` continuing —
+    // the standing variant (and a repositioning one): what the ceiling is
+    // armed from, and whose mass gates the arming.
+    const standParts: { s: Float64Array; w: number }[] = clampAt >= 0 && lead.standingAt === clampAt ? [{ s: leadBuf, w: lead.sit.mass }] : [];
+    let standMass = standParts.length ? lead.sit.mass : 0;
     let mass = lead.sit.mass;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
@@ -628,6 +680,7 @@ export function priceRoute(
       if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
+      if (clampAt >= 0 && c.standingAt === clampAt) { standParts.push({ s: bufs[i]!, w: c.sit.mass }); standMass += c.sit.mass; }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
@@ -660,13 +713,32 @@ export function priceRoute(
     const key = chainKey(cur, o);
     if (floors && clampAt >= 0) {
       const prev = floors.map.get(key);
-      if (prev && prev.standingAt === clampAt && prev.since === clockSince) {
-        const shown = Math.min(prev.eta, eta);
+      const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
+      const cleared = standMass >= LEAD_SWITCH_MASS;
+      const mixture = eta;
+      // The standing variant's own number is computed only for the trace
+      // (a replay counting the gap); production pays nothing for it.
+      let standing = clampTrace && standParts.length ? (mixedQuantiles(standParts, [tau]) as [number])[0] : eta;
+      if (armOnStanding && cleared && standParts.length && (!held || held.armed === false)) {
+        // Arming (or re-arming a provisional entry): the standing variant's
+        // own quantiles, not the mixture's. The one rise a stand may show.
+        const [s10, sT, s90] = mixedQuantiles(standParts, [0.1, tau, 0.9]) as [number, number, number];
+        standing = sT;
+        eta = sT; low = s10; high = s90;
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held ? held.eta : null, action: held ? "rearm" : "arm" });
+        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed: true });
+      } else if (held) {
+        const shown = Math.min(held.eta, eta);
         const delta = shown - eta;
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
-        floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince });
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held.eta, action: "hold" });
+        floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince, armed: held.armed !== false });
       } else {
-        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
+        // Master's rule (and, with the switch on, the provisional entry
+        // while the standing mass is still short of the gate): the mixture.
+        const armed = !armOnStanding || cleared;
+        if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: null, action: armed ? "arm" : "provisional" });
+        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed });
       }
     }
     // The learned per-ROUTE correction (params.ts, docs/route-bias.md). The
