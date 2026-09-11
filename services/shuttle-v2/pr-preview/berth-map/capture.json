@@ -1,0 +1,56 @@
+{
+  "base": "http://127.0.0.1:8098",
+  "cells": [
+    {
+      "cell": "67-13",
+      "files": {
+        "initial": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/bluenight-wall-york-initial.png",
+        "zoomout": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/bluenight-wall-york-zoomout.png",
+        "fullscreen": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/bluenight-wall-york-fullscreen.png"
+      },
+      "inertTouchAction": "auto",
+      "inertClasses": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "fullscreenHeight": 844,
+      "back": true,
+      "escapeClosed": true
+    },
+    {
+      "cell": "48-3",
+      "files": {
+        "initial": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/red-division-prospect-initial.png",
+        "zoomout": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/red-division-prospect-zoomout.png",
+        "fullscreen": "/tmp/claude-1000/-home-gwarren-yale-shuttle/1ae8d7cb-99d4-43ef-af18-772e1927777e/scratchpad/shots3/red-division-prospect-fullscreen.png"
+      },
+      "inertTouchAction": "auto",
+      "inertClasses": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "fullscreenHeight": 844,
+      "back": true,
+      "escapeClosed": true
+    }
+  ],
+  "scroll": {
+    "inert": {
+      "touchAction": "auto",
+      "classes": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim",
+      "scrollY": [
+        0,
+        205
+      ],
+      "panMoved": false
+    },
+    "armed": {
+      "touchAction": "none",
+      "classes": "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom",
+      "scrollY": [
+        0,
+        0
+      ],
+      "panMoved": true,
+      "inertTouchActionBefore": "auto"
+    },
+    "disarmedByOutsideTap": true
+  },
+  "errors": [],
+  "ok": true,
+  "failures": []
+}

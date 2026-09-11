@@ -1603,16 +1603,31 @@ describe("the destination the canary serves to the app", () => {
   });
 });
 
-describe("an expanded card carrying the berth inset", () => {
-  // The berth inset (2026-09-10) draws two labelled dots — where the feed says
-  // the stop is and where the bus is measured to pull up — and SVG <text>
-  // reaches `innerText` like any other text. "published stop" and "expected
+describe("an expanded card carrying the berth map", () => {
+  // The berth inset draws two labelled dots — where the feed says the stop is
+  // and where the bus is measured to pull up. "published stop" and "expected
   // stop" are lower-case, letters-and-space only, and sit BELOW the duration,
   // which is the precise shape that made "nearby" outrank the route pill
   // (report #102) and "Contribute" end the card list. Both are in NOT_A_ROUTE,
   // and this capture is what proves it rather than an argument that the parser
   // is fine — #111 "needed no change" too, and blinded the canary for twelve
   // minutes.
+  //
+  // UPDATED 2026-09-11, when the inset became a live Leaflet map. The two words
+  // still reach `innerText` — a permanent tooltip lands there exactly as an SVG
+  // <text> did — and the map brings five new lines with it: the zoom buttons
+  // "+" and "−", Leaflet's attribution, the ⤢ that opens the full map, and the
+  // two lines of the arm-the-map row (the 👆 and its words split because the
+  // row is a flex container, which blockifies its children for innerText).
+  // None of them is `isLabelish`: the glyphs are not letters, the attribution
+  // carries "|" and "©", and "Tap the map to zoom and pan" is 27 characters
+  // against that pattern's 20. The lines below are a VERBATIM capture from
+  // `scripts/berth-map-capture.mjs` at 390 px, spliced into this card — not a
+  // hand-written guess at what the map prints.
+  //
+  // The Directions button is relabelled in the same breath (operator,
+  // 2026-09-11: "the directions to stop button should now say directions to
+  // published stop since we show two"), and only on a card that shows a berth.
   const LIVE_BERTH_INSET = `YALE SHUTTLE
 1:31 PM
 Trip
@@ -1630,11 +1645,15 @@ in 9, 24 min
 Division/Prospect
 published stop
 expected stop
-50 m
-© OpenStreetMap contributors
++
+−
+ Leaflet | © OpenStreetMap contributors
+⤢
+👆
+Tap the map to zoom and pan
 Wait about 55 m past the published stop
 Red buses actually stop there — seen 37 of the last 40 times one served this stop.
-🧭 Directions to stop
+🧭 Directions to published stop
 Blue Day
 in 4, 19 min
 17 min
@@ -1646,7 +1665,7 @@ Contribute
 🧪
 Not affiliated with or endorsed by Yale University.`;
 
-  it("still reads the line as Red, not as one of the inset's map labels", () => {
+  it("still reads the line as Red, not as one of the map's labels or controls", () => {
     const opts = parseOptions(LIVE_BERTH_INSET);
     expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
   });
