@@ -453,7 +453,25 @@ Three numbers settle it.
 **The defect worth fixing is that none of this was visible.**
 `CalibrationStats.durationMs` times `calibrate()` and EXCLUDES
 `lapFitsCache.get()` — which is precisely where the 21 s lived, in a log line
-that reported 996 ms while the loop had been held for twenty-one seconds. The
-next change here should be to log the fit's own duration and its cell counts
-beside `lapFitCount`, so the cost is legible before it is a problem. Cheap, and
-not done tonight.
+that reported 996 ms while the loop had been held for twenty-one seconds.
+
+**Fixed (2026-09-10).** `runCalibrate` times the get itself and
+`collector.calibrated` now carries two fields beside `lapFitCount`:
+
+| field | |
+|---|---|
+| `lapFitMs` | what `lapFitsCache.get()` cost. ~0 on the 5-minute cadence (a cached get), its own number on the six-hourly refresh and at boot |
+| `loopHeldMs` | `durationMs + lapFitMs` — **the number to read**, because it is the whole synchronous hold, which is what `pollStalenessMs` will show |
+
+`durationMs` is left exactly as it was: it is the calibrator's own cost, and
+keeping the two apart is what makes a slow FIT distinguishable from a slow
+calibration. The timing is a wrapper around a call that already happened on
+this line, so nothing about when the fit runs, how often, or what it returns
+changed — the 90-day window and both gates are untouched.
+
+`src/collector/collector.fitClock.test.ts` is the regression, and its middle
+case is the 2026-09-10 shape at 1/100 scale: a stubbed cache that busy-waits
+120 ms, then an assertion that `lapFitMs` and `loopHeldMs` both see it **while
+`durationMs` stays under it**. Two of its three cases fail on the code as it
+shipped, which is the point — an instrument that can go blind silently is how
+this hid for a day.
