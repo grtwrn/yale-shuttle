@@ -64,12 +64,29 @@ own offline simulation.
 
 ## The inputs (NOT committed — ~4 MB a day)
 
-Identical to `../ceiling/README.md`, which documents the schema: `arch-<day>.tsv`
-(type letter, TAB, one JSON row — `A` arrivals, `V` stop_visits, `R`
-raw_positions, route 3, that ET day) plus one captured `/api/buses` payload as
-`buses_now.json`. Rebuild them from `~/shuttle-archive/<day>` and copy both into
-`services/shuttle-v2/scripts/.eta-replay/trough/`. Red days with a full service
-day of positions: **2026-09-04, 09-10, 09-11**.
+They live under `services/shuttle-v2/scripts/.eta-replay/trough/` (gitignored)
+and are extracted from a production DB snapshot or from `~/shuttle-archive/<day>`.
+Each `arch-<day>.tsv` line is a type letter, a TAB, then one JSON row:
+
+| type | table | fields the replay uses |
+|---|---|---|
+| `A` | `arrivals` (route 3, that ET day) | `bus_name`, `stop_id`, `arrived_at`, `departed_at` |
+| `V` | `stop_visits` | `bus_name`, `stop_id`, `pinned_at`, `departed_at` |
+| `R` | `raw_positions` (route 3) | `collected_at`, `bus_id`, `bus_name`, `lat`, `lon`, `heading`, `last_stop_id` |
+
+`buses_now.json` is one captured `/api/buses` payload, for `routes`,
+`route_paths`, `stop_coords`, `stop_names`, `segments`, `dwells` and
+`model_params`.
+
+The payload each poll is rebuilt as the 2026-09-11 investigation's `minireplay.ts`
+did it: positions at 5 s, `at_stop_since` from `stop_visits.pinned_at`,
+`stationary_since` from a repeated coordinate, lap ages from the arrivals'
+departures at stops 11 and 121. Truth is the detector's own next arrival within
+45 min, and a poll where the bus is already standing at the target stop is
+excluded — the same rule as `truthAt` in `src/server/predictions.ts`.
+
+Red days with a full service day of positions: **2026-09-04, 09-10, 09-11**
+(09-08 and 09-09 hold only 1-3 h and are useful only as a smoke test).
 
 Fidelity: the rebuilt payload's numbers run a median 2 s under the logged
 `predictions_log` rows for the same day (the 2026-09-11 investigation's check).
