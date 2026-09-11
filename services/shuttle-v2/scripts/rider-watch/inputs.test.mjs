@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {labeledStopId,destinationMatches,selectDestination} from './inputs.mjs';
 const names={145:'Science Park Garage',98:'Phelps Gate',48:'Division / Prospect'};
