@@ -178,8 +178,10 @@ run("stage 3/6: frontend build", "npx", ["vite", "build"], { cwd: path.join(ROOT
   const holders = fs.readdirSync(assets)
     .filter((f) => f.endsWith(".js"))
     .filter((f) => fs.readFileSync(path.join(assets, f), "utf8").includes("/api/shown"));
-  if (holders.length !== 1 || !/^rider-[A-Za-z0-9_-]{4,24}\.js$/.test(holders[0])) {
-    fail(`the /api/shown client must live in the rider entry chunk so client_build names the bundle; found: ${holders.join(", ") || "none"}`);
+  // Must accept exactly what web/src/shownLog.ts `buildFromModuleUrl` accepts
+  // (rider- or index-), or a correct build would be refused.
+  if (holders.length !== 1 || !/^(?:rider|index)-[A-Za-z0-9_-]{4,24}\.js$/.test(holders[0])) {
+    fail(`the /api/shown client must live in the entry chunk (rider-/index-) so client_build names the bundle; found: ${holders.join(", ") || "none"}`);
   }
   log(`build identity: /api/shown lives in ${holders[0]}`);
 }
