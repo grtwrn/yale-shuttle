@@ -9,6 +9,13 @@
 // `/api/buses` payload, and a screenshot at 390 px is the before/after evidence
 // (the sibling of `?review=minimap`).
 //
+// It also carries a Collapse/Expand button, which the rider's card does not
+// need one of: in the app the inset is mounted and unmounted by `expandedKey`,
+// and the only way to watch a Leaflet TEARDOWN from outside is to make that
+// lifecycle drivable. `scripts/berth-teardown-check.mjs` uses it to prove the
+// map really goes — no container left in the DOM, no tile requests afterwards,
+// no console error — and that a second expand leaves exactly one, not two.
+//
 // ONE CELL AT A TIME, since 2026-09-11. This page used to stack all ten at
 // once, which was free when each was an SVG and is not now that each is a live
 // Leaflet map: ten instances on one page is the very thing `routeThumb.ts`
@@ -39,6 +46,7 @@ const keyOf = (b: { stopId: number; routeId: number }) => `${b.stopId}-${b.route
 export default function BerthReview() {
   const [p, setP] = useState<Payload | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
   const [pick, setPick] = useState(() => {
     const want = new URLSearchParams(window.location.search).get("cell");
     return BERTHS.some((b) => keyOf(b) === want) ? want! : keyOf(BERTHS[0]);
@@ -83,14 +91,28 @@ export default function BerthReview() {
         <div style={{ fontSize: 12, fontWeight: 700, color: "#202124" }}>
           {name} · {cfg?.label ?? `route ${b.routeId}`} · offset {b.offsetM} m
         </div>
-        <BerthInset
-          berth={b}
-          published={asLatLon(p.stop_coords?.[String(b.stopId)])}
-          routeLabel={cfg?.label ?? `route ${b.routeId}`}
-          color={cfg?.color ?? "#5f6368"}
-          stopName={name}
-          path={p.route_paths?.[String(b.routeId)] ?? []}
-        />
+        {/* The card's own lifecycle, made drivable: `expandedKey` mounts and
+            unmounts the inset, and this is the same mount and the same
+            unmount. */}
+        <button
+          data-toggle="card"
+          onClick={() => setOpen((v) => !v)}
+          style={{
+            marginTop: 6, minHeight: 44, padding: "0 12px", borderRadius: 8,
+            border: "1px solid #dadce0", background: "#fff", cursor: "pointer",
+            fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#3c4043",
+          }}
+        >{open ? "Collapse card" : "Expand card"}</button>
+        {open && (
+          <BerthInset
+            berth={b}
+            published={asLatLon(p.stop_coords?.[String(b.stopId)])}
+            routeLabel={cfg?.label ?? `route ${b.routeId}`}
+            color={cfg?.color ?? "#5f6368"}
+            stopName={name}
+            path={p.route_paths?.[String(b.routeId)] ?? []}
+          />
+        )}
       </div>
       {/* The button the card carries under the inset, so its relabelled text is
           in the same capture as the map it belongs to (operator, 2026-09-11:

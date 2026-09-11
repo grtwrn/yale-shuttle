@@ -1,0 +1,36 @@
+{
+  "base": "http://127.0.0.1:8101",
+  "cell": "48-3",
+  "quietMs": 5000,
+  "cycles": [
+    {
+      "cycle": 1,
+      "afterCollapse": {
+        "leafletContainers": 0,
+        "tileRequestsInNext5s": 0,
+        "consoleErrors": 0
+      },
+      "afterExpand": {
+        "leafletContainers": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "afterCollapse": {
+        "leafletContainers": 0,
+        "tileRequestsInNext5s": 0,
+        "consoleErrors": 0
+      },
+      "afterExpand": {
+        "leafletContainers": 1
+      }
+    }
+  ],
+  "afterSecondExpand": {
+    "leafletContainers": 1
+  },
+  "totalTileRequests": 20,
+  "consoleErrors": [],
+  "ok": true,
+  "failures": []
+}
