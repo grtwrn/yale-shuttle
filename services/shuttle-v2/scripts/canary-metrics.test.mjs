@@ -2174,3 +2174,126 @@ describe("a bus that reaches the stop has not vanished", () => {
     expect(reachedBoardStop([{ name: "325", distM: 90, atStop: 25 }], null)).toBe(false);
   });
 });
+
+
+/**
+ * THE EXPANDED CARD WITH A STANDING BUS, AFTER THE CHIP NAMED ITS QUANTITY
+ * (2026-09-11).
+ *
+ * The pause chip in the expanded card's stop list used to read
+ * "⏸ 3:08 · <1-8 min left" — which the operator read as an ARRIVAL, twelve
+ * pixels under a row saying "in 2-9, then 17 min" and a bubble saying
+ * "(R) 2-9 min". It says "leaves in <1-8 min" now.
+ *
+ * Nothing about that SHOULD reach the parser: the chip line starts with "⏸",
+ * carries digits and a "·", and so matches neither `isLabelish` (letters and
+ * spaces only) nor `parseBusEtaText`. But "nearby" was the same argument and
+ * "Contribute" before it, and #111 "needed no change" too and blinded the
+ * canary for twelve minutes — so this is a capture, not the argument. 390x844,
+ * the operator's own Prospect / Canner -> School of Public Health trip, off a
+ * staged build of this branch with #310's real fix and clocks replayed onto
+ * /api/buses.
+ *
+ * Note what the capture shows about the DOM: the stop name, the bus glyph and
+ * the chip are inline spans in one element, so `innerText` runs them together
+ * as "🚌344 Winchester⏸ 3:26 · leaves in <1-7 min". That single line is
+ * therefore neither label-shaped nor countdown-shaped, which is the belt to the
+ * braces above.
+ */
+describe("the expanded card's standing chip", () => {
+  const LIVE_STAND_LEAVES_IN = `SHUTTLE TRACKER
+Trip
+Map
+Issues
+↻
+← All routes
+RED ROUTE · Runs M–F 7a–6p
+▴
+🚌
+🚌 (R) 2-9 min
+🏁 (R) 9:12a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Red
+in 2-9, then 61 min
+18 min
+9:13a
+⚠️
+Due to Construction the State Street Station has been relocated to Chapel and Union.
+🚶 1 min
+›
+⏳ <1-7 min
+›
+🚌 #310 · 12 min
+published stop
+expected stop
+25 m
+© OpenStreetMap contributors
+Wait about 55 m past the published stop
+Red buses actually stop there — seen 37 of the last 40 times one served this stop.
+🧭 Directions to stop
+🚌 I'm on it
+·
+🔔 Remind me
+·
+🚩 Report
+📱 Yale tracker
+▾
+🚌 #310 · 3 stops away
+🚌344 Winchester⏸ 3:26 · leaves in <1-7 min
+Winchester/Division
+Division/Sheffield
+BOARDDivision/Prospect
+Prospect/Hillside
+SCL
+130 Prospect Street (S)
+College/Wall (S)
+Phelps Gate
+College/Crown
+College/George
+GET OFFLEPH/60 College
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("still reads the line as Red — not 'SCL', and not the chip", () => {
+    // The detail view draws ONE card (`_detailOpen` hides the others), so one
+    // option is the right answer here, not a truncated list.
+    const opts = parseOptions(LIVE_STAND_LEAVES_IN);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red"]);
+    expect(opts[0]).toMatchObject({ totalMin: 18, arriveText: "9:13a" });
+    expect(opts[0].eta.raw).toBe("in 2-9, then 61 min");
+    // The range, read as an interval — 2 min at the earliest, 9 at the latest.
+    expect(opts[0].eta.first).toEqual([120, 600]);
+    expect(opts[0].eta.spread).toBe(true);
+    // The stop list is still EVIDENCE, just not a source of route names: the
+    // ride bar and the standing chip are both in the card's body.
+    expect(opts[0].busLines).toContain("🚌 #310 · 12 min");
+  });
+
+  it("would have read the line as a stop name before the stop-list cut", () => {
+    // The defect, stated as the thing that changed: "SCL" and "Phelps Gate" are
+    // letters-only stop names on this very ride, below the duration.
+    const lines = LIVE_STAND_LEAVES_IN.split("\n").map((l) => l.trim());
+    expect(lines).toContain("SCL");
+    expect(lines).toContain("Phelps Gate");
+    expect(lines.indexOf("SCL")).toBeGreaterThan(lines.indexOf("18 min"));
+  });
+
+  it("does not take the chip for a countdown", () => {
+    for (const l of [
+      "⏸ 3:26 · leaves in <1-7 min",
+      "⏸ 3:26 · leaves in 1-6 min",
+      "⏸ 3:26 · leaves in ~1 min",
+      "⏸ 3:26 · leaving any moment",
+      "🚌344 Winchester⏸ 3:26 · leaves in <1-7 min",
+    ]) expect(parseBusEtaText(l)).toBeNull();
+  });
+});

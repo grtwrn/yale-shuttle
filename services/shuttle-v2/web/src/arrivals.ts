@@ -107,6 +107,38 @@ export interface ShownStand {
  * "3 of 10" subtracts against the wrong total); without it, the typical
  * stand. Null for a stop with no table.
  */
+/**
+ * The route's class pools, per payload object. `classPools` walks every stand
+ * table on the route and mixes them, which costs 0.4 ms — fine once per poll
+ * and not fine once per rendered stop row: the Map tab's route cards ask for
+ * this figure on every row of every line (up to 29 rows on an isolated card),
+ * and measured on this Pi 400 calls cost 171 ms against a 16.7 ms frame.
+ *
+ * Keyed on the payload object itself, so it is exact rather than a
+ * fingerprint: every render site in one poll reads the same `dwells[route]`
+ * object out of the same parsed payload, and the next poll's object is a new
+ * one the map lets go of. `globalPoolsFor` already caches its own half by
+ * content hash. Pure memoisation — same inputs, same pools, no arithmetic
+ * changes.
+ */
+type Pools = ReturnType<typeof poolsWithFallback>;
+const NO_GLOBAL = {};
+const routePoolCache = new WeakMap<object, WeakMap<object, Pools>>();
+function pooledFor(routeDwells: Record<string, DwellStat>, dwellsByRoute: DwellTimes | undefined): Pools {
+  let byGlobal = routePoolCache.get(routeDwells);
+  if (!byGlobal) { byGlobal = new WeakMap(); routePoolCache.set(routeDwells, byGlobal); }
+  const gk = dwellsByRoute ?? NO_GLOBAL;
+  let pools = byGlobal.get(gk);
+  if (!pools) {
+    pools = poolsWithFallback(
+      classPools(routeDwells),
+      dwellsByRoute ? globalPoolsFor(dwellsByRoute).pools : undefined,
+    );
+    byGlobal.set(gk, pools);
+  }
+  return pools;
+}
+
 export function shownStandSec(
   stat: DwellStat | undefined,
   elapsedSec: number | null,
@@ -115,7 +147,7 @@ export function shownStandSec(
   dwellsByRoute?: DwellTimes,
 ): ShownStand | null {
   if (!stat || !stat.q || stat.q.length < 3) return null;
-  const pools = poolsWithFallback(classPools(routeDwells), dwellsByRoute ? globalPoolsFor(dwellsByRoute).pools : undefined);
+  const pools = pooledFor(routeDwells, dwellsByRoute);
   const m = stopModel(stat, pools);
   if (elapsedSec !== null) {
     const rest = residual(m.stand, elapsedSec);
