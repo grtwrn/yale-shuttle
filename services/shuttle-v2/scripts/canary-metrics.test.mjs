@@ -1039,7 +1039,8 @@ describe("the median-with-band form on a captured page (etaBand.ts, 2026-09-11)"
   // #304 standing at 344 Winchester, #316 far behind: the band is wide enough
   // to print, the median sits inside it, the second bus stands apart, and the
   // low end is floored at what the bus must still stand and then drive.
-  const LIVE_BAND_MEDIAN = `SHUTTLE TRACKER
+  const LIVE_BAND_MEDIAN = `YALE SHUTTLE TRACKER
+Unofficial app · not affiliated with Yale University
 Trip
 Map
 Issues
@@ -1054,7 +1055,7 @@ WHEN
 Now
 Plan for later…
 ☁️
-70°F · Cloudy · no rain expected
+71°F · Cloudy · no rain expected
 ▾
 °F
 |
@@ -1063,7 +1064,7 @@ OVERVIEW — ALL 1 ROUTE
 ▴
 🚌
 🚌 (R) 4 (2-10) min
-🏁 (R) 10:59a
+🏁 (R) 11:36a
 +
 −
  Leaflet | © OpenStreetMap contributors
@@ -1073,11 +1074,11 @@ Red
 in 4 (2-10), 17 min
 17 min
 🚌 12 min
-10:59a
+11:36a
 ›
 🚶 Walk
 37 min
-11:20a
+11:56a
 ›
 Clear
 💬 Send feedback
@@ -1089,7 +1090,8 @@ Not affiliated with or endorsed by Yale University.`;
 
   // #304 driving toward the 344 Winchester layover, #316 behind it INSIDE the
   // band: bunching.ts folds the pair, the head keeps its median and its band.
-  const LIVE_BAND_BUNCHED = `SHUTTLE TRACKER
+  const LIVE_BAND_BUNCHED = `YALE SHUTTLE TRACKER
+Unofficial app · not affiliated with Yale University
 Trip
 Map
 Issues
@@ -1104,7 +1106,7 @@ WHEN
 Now
 Plan for later…
 ☁️
-70°F · Cloudy · no rain expected
+71°F · Cloudy · no rain expected
 ▾
 °F
 |
@@ -1113,7 +1115,7 @@ OVERVIEW — ALL 1 ROUTE
 ▴
 🚌
 🚌 (R) 12 (6-20) min
-🏁 (R) 11:08a
+🏁 (R) 11:44a
 +
 −
  Leaflet | © OpenStreetMap contributors
@@ -1123,11 +1125,11 @@ Red
 12 (6-20) min · 2 buses
 25 min
 🚌 12 min
-11:08a
+11:44a
 ›
 🚶 Walk
 37 min
-11:19a
+11:56a
 ›
 Clear
 💬 Send feedback
@@ -1140,7 +1142,7 @@ Not affiliated with or endorsed by Yale University.`;
   it("reads the median with its band, the second bus after it, and the card around them", () => {
     const opts = parseOptions(LIVE_BAND_MEDIAN);
     expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Walk"]);
-    expect(opts[0]).toMatchObject({ totalMin: 17, arriveText: "10:59a" });
+    expect(opts[0]).toMatchObject({ totalMin: 17, arriveText: "11:36a" });
     // The low end is 2, not "now": a standing bus's band is floored at
     // departNow + the shortest stand left (etaBand.ts `standingLowFloor`).
     expect(opts[0].eta).toMatchObject({
