@@ -167,6 +167,23 @@ run("stage 1/6: typecheck (backend + web)", "npm", ["run", "typecheck"]);
 run("stage 2/6: unit tests", "npx", ["vitest", "run"]);
 run("stage 3/6: frontend build", "npx", ["vite", "build"], { cwd: path.join(ROOT, "web") });
 
+// predictions_log.client_build is read from shownLog's OWN module URL
+// (web/src/shownLog.ts `buildFromModuleUrl`), which only names a build when
+// that code lands in the rider entry chunk. It silently read "dev" for two
+// days (2026-09-09..11) after the entry was renamed; if a refactor ever hoists
+// shownLog into a shared chunk (`geo-`), it would go blind the same way while
+// every unit test still passed. So the built bundle is checked here.
+{
+  const assets = path.join(ROOT, "web", "dist", "assets");
+  const holders = fs.readdirSync(assets)
+    .filter((f) => f.endsWith(".js"))
+    .filter((f) => fs.readFileSync(path.join(assets, f), "utf8").includes("/api/shown"));
+  if (holders.length !== 1 || !/^rider-[A-Za-z0-9_-]{4,24}\.js$/.test(holders[0])) {
+    fail(`the /api/shown client must live in the rider entry chunk so client_build names the bundle; found: ${holders.join(", ") || "none"}`);
+  }
+  log(`build identity: /api/shown lives in ${holders[0]}`);
+}
+
 log(`stage 4/6: staging server on :${STAGE_PORT} (throwaway DB in ${stageDir})`);
 // Refuse to stage against a squatter: if anything already holds the port, the
 // smoke checks would test THAT build and bless this one on false evidence.
