@@ -1330,18 +1330,27 @@ export function buildApp(opts: AppOptions): Hono {
       });
     }
 
-    // The operator dashboard is a standalone page in web/public, which Vite
-    // copies verbatim; serveStatic already answers /stats.html, and this makes
-    // the extensionless /stats work too. Registered before the SPA fallback so
-    // it isn't swallowed by index.html. Deliberately unlinked from the rider app.
-    // Both spellings answer identically — /stats.html would otherwise fall to
-    // serveStatic with no Cache-Control at all and be heuristically cached,
-    // so a bookmark to it could show yesterday's dashboard after a deploy.
-    for (const route of ["/stats", "/stats.html"]) {
+    // Two standalone pages live in web/public, which Vite copies verbatim:
+    // the operator dashboard (stats.html, deliberately unlinked from the rider
+    // app) and the About page (about.html, linked from the footer). serveStatic
+    // already answers the .html spellings, and these routes make the
+    // extensionless ones work too. Registered before the SPA fallback so they
+    // aren't swallowed by index.html.
+    //
+    // Both spellings answer identically — the .html one would otherwise fall to
+    // serveStatic with no Cache-Control at all and be heuristically cached, so
+    // a bookmark to it could show yesterday's page after a deploy. sw.js skips
+    // all four paths for the same reason.
+    for (const [route, file] of [
+      ["/stats", "stats.html"],
+      ["/stats.html", "stats.html"],
+      ["/about", "about.html"],
+      ["/about.html", "about.html"],
+    ] as const) {
       app.get(route, async (c) => {
-        const statsPath = path.join(opts.staticDir!, "stats.html");
+        const pagePath = path.join(opts.staticDir!, file);
         try {
-          const html = await fs.promises.readFile(statsPath, "utf8");
+          const html = await fs.promises.readFile(pagePath, "utf8");
           c.header("Cache-Control", "no-store");
           return c.html(html);
         } catch {
