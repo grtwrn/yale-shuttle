@@ -624,7 +624,9 @@ describe("the real list against every live stop", () => {
     // phrase too, so the workaround is no longer needed.
     expect(top("ice rink")?.label).toBe("Ingalls Rink");
     expect(top("memorial chapel")?.label).toBe("Dwight Hall");
+  });
 
+  /**
    * The search that started the campus sweep, and now confirmed by live rider
    * data: `/api/stats/searches` shows "chaplains office" searched four times
    * in seven days, returning nothing every time.
