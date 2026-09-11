@@ -276,6 +276,44 @@ describe("the lap correction in the chain", () => {
     expect(etaTo(ring, tables, b1, 2, t1, { 1: L + r + 15 })).toBe(etaTo(ring, tables, b1, 2, t1));
   });
 
+  it("does not read a hold on the APPROACH to a stop as a departure from it (Red #310, Union Station)", () => {
+    // The seed trusts the belief's rest identity, and the belief attributes a
+    // rest short of a layover stop to that stop's approach zone. A hold at a
+    // light there is not a visit: read as a departure it declared the served
+    // lap stale for the stop the bus was about to serve, and replaced a
+    // correct served lap (a long one, f 0.59) with "departed just now" (f 1)
+    // — +150 s on the second bus for one poll, 13 reversals introduced on an
+    // otherwise byte-identical Red day. Only a rest in the stop's OWN zone
+    // is a departure from it.
+    const { ring, tables } = build({ ...PLAIN, "1": { ...PLAIN["1"]!, lapB: -5e-3, lapM: 580, lapN: 1667 } });
+    const now0 = 1_700_000_000_000;
+    let b: Belief | undefined;
+    // Approach stop 1 down leg 3, then hold 150 m short of it for a minute.
+    for (let i = 6; i >= 1; i--) { const p = at(0, 150 + i * 40); b = stepBelief(b, ring, { lat: p.lat, lon: p.lon }, now0 - 60_000 - i * 5000, STOPS); }
+    const hold = at(0, 150);
+    for (let t = now0 - 60_000; t <= now0; t += 15_000) b = stepBelief(b, ring, { lat: hold.lat, lon: hold.lon }, t, STOPS);
+    expect(b!.rested).toBe(true);
+    expect(b!.restStop).toBe(0);
+    expect(b!.restApproach).toBe(true);
+    // Drive on: a fresh fix 140 m further, at the stop, past the rest radius.
+    const t1 = now0 + 10_000;
+    const f1 = at(0, 10);
+    b = stepBelief(b, ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    expect(b!.rested).toBe(false);
+    // The approach hold is NOT recorded as a departure from stop 1 ...
+    expect(b!.leftStop).toBe(-1);
+    // ... so the stand AHEAD at stop 1 keeps its correction: the served lap
+    // (a short one) still prices a longer stand for a rider past it. Had the
+    // hold been taken as the departure, the visit 30 s ahead would read as a
+    // 30 s lap — out of band, factor 1 — and the correction would vanish.
+    const short = 480 - 100;
+    const kept = etaTo(ring, tables, b!, 2, t1, { 1: short });
+    const flat = etaTo(ring, tables, b!, 2, t1);
+    expect(kept).toBeGreaterThan(flat + 120);
+    const asDeparture = { ...b!, leftStop: 0, leftSince: now0 - 60_000, leftAt: t1 };
+    expect(etaTo(ring, tables, asDeparture, 2, t1, { 1: short })).toBeLessThan(kept - 120);
+  });
+
   it("scales the RESIDUAL of a stand in progress by the identity the code relies on", () => {
     // A stand scaled by f is the variable f x X, so the remaining time given r
     // seconds already stood is f x (X's remainder given r / f). `addResidual`
