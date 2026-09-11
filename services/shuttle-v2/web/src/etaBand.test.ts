@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bandTitle, chipCountdownText, displayBand, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
+import { bandTitle, chipCountdownText, displayBand, RANGE_MAX_SHOWN_MIN, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 
 const M = (m: number) => m * 60;
@@ -15,6 +15,19 @@ describe("displayBand — when the estimator's band is worth printing", () => {
     expect(displayBand(M(4), M(6) + 59, undefined, 0)).toBeNull(); // 4 and 6: two minutes apart
     expect(displayBand(M(4), M(7), undefined, 0)).not.toBeNull();   // 4 and 7: three
     expect(displayBand(M(3) + 50, M(4) + 10, undefined, 0)).toBeNull();
+  });
+
+  it("caps a band too wide to be useful — the Green 9-52 min case (RANGE_MAX_SHOWN_MIN)", () => {
+    expect(RANGE_MAX_SHOWN_MIN).toBe(15);
+    // "(G) 9-52 min" — a 43-minute span, useless to a rider. Prints as the
+    // point (null band) instead.
+    expect(displayBand(M(9), M(52), undefined, 0)).toBeNull();
+    // Exactly at the cap still prints: shownMinutes(15+3) - shownMinutes(3) = 15.
+    expect(displayBand(M(3), M(18), undefined, 0)).toEqual({ lowSec: M(3), highSec: M(18) });
+    // One printed minute past the cap is capped.
+    expect(displayBand(M(3), M(19), undefined, 0)).toBeNull();
+    // A normal band well inside both bounds is unaffected.
+    expect(displayBand(M(2), M(9), undefined, 0)).toEqual({ lowSec: M(2), highSec: M(9) });
   });
 
   it("is nothing for a bus at the board stop (0-0) or with no band at all", () => {

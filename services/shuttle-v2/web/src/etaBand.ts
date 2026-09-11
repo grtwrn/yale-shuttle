@@ -31,6 +31,16 @@
 // 12:00-13:30 ET) 80% of Red first sights and 77% of Blue Day's print a
 // band under this rule.
 //
+// THE MIRROR RULE (2026-09-11, report on Green): the same reasoning caps the
+// wide end. A band the model cannot narrow — Green's out-and-back with the
+// branch undecided printed "9-52 min · 2 buses", a 43-minute span with no
+// real second bus, the "2 buses" only because the second bus's point landed
+// inside that span — is not a range a rider can use either. Past
+// `RANGE_MAX_SHOWN_MIN` printed minutes wide, `displayBand` returns null the
+// same as it does for too-narrow, and every reader (the row, the map chip,
+// the wait leg, and `bunching.ts`, which only folds two buses when a band
+// was passed) falls back to the point it printed before this module existed.
+//
 // A STANDING BUS CANNOT BEAT ITS OWN STAND. For a bus standing at a stop the
 // band's low end is floored at `departNow + q10 of what is LEFT of the stand`
 // (`standingLowFloor`) — the low end standWait.ts printed until today, and one
@@ -52,6 +62,32 @@ import { fmtBusBand, fmtMin, fmtWait, remainingSec } from "./format";
 
 /** Below this many printed minutes between the ends, a range says nothing a point does not. */
 export const RANGE_MIN_SHOWN_MIN = 3;
+
+/**
+ * Above this many printed minutes between the ends, a range says too much to
+ * be useful — the case that shipped as the bug: a Green out-and-back bus the
+ * model cannot branch-assign printed "9-52 min · 2 buses" (a 43-minute
+ * span), with the "2 buses" suffix itself an artefact of the second bus's
+ * point falling inside that huge span rather than any real bunching
+ * (`bunching.ts`). This is a DISPLAY cap only — the estimator's band is
+ * unchanged; the wide case still exists, it just prints as the point median
+ * it would have shown before this band existed.
+ *
+ * MEASURED (2026-09-11), not guessed: the saved gps-replay pairs for Red and
+ * Blue Day, 9/9 + 9/10 (`scripts/.eta-replay/band/pairs-2026-09-{09,10}-raw.jsonl`,
+ * the served widening, no floor — the same basis as `RANGE_MIN_SHOWN_MIN`
+ * above and docs/eta-band.md SS C), routes 3 and 1, n = 171,239 PRINTED bands
+ * (shown width >= 3 min, `RANGE_MIN_SHOWN_MIN` already applied). Share of
+ * those wider than each candidate cap: 15 min -> 1.19%, 20 min -> 0.98%,
+ * 25 min -> 0.98% (2026-09-09 alone: 1.88% / 1.82% / 1.82%; 2026-09-10 alone:
+ * 1.05% / 0.82% / 0.81%; route 3 (Red) 1.21% / 0.82% / 0.82%, route 1 (Blue
+ * Day) 1.17% / 1.17% / 1.17%). All three candidates already clear "drops
+ * under 5% of printed Red/Blue Day bands", so the rule picks the smallest:
+ * 15 min caps the fewest real ranges while still catching every case this
+ * wide (there is a near-empty gap between 15 and 20-25 — almost nothing
+ * lands in (15, 25], so 15 costs little more than 20 or 25 would).
+ */
+export const RANGE_MAX_SHOWN_MIN = 15;
 
 export interface EtaBand { lowSec: number; highSec: number }
 
@@ -81,7 +117,9 @@ export function displayBand(
   const high = remainingSec(highSec, computedAtMs, nowMs);
   if (floorSec != null && Number.isFinite(floorSec)) low = Math.max(low, floorSec);
   if (high <= low) return null;
-  if (shownMinutes(high) - shownMinutes(low) < RANGE_MIN_SHOWN_MIN) return null;
+  const shownWidth = shownMinutes(high) - shownMinutes(low);
+  if (shownWidth < RANGE_MIN_SHOWN_MIN) return null;
+  if (shownWidth > RANGE_MAX_SHOWN_MIN) return null;
   return { lowSec: low, highSec: high };
 }
 

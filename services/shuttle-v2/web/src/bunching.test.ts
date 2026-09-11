@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bunchDecision, BUNCHED_SUFFIX, fmtBusLine } from "./bunching";
+import { displayBand } from "./etaBand";
 
 const M = (m: number) => m * 60;
 
@@ -139,5 +140,20 @@ describe("fmtBusLine — the countdown line, all four forms", () => {
     // (That band overlaps nothing here — 30 > 7 — so the pair survives.)
     expect(line).toBe("in 3-7, then 30 min");
     expect(line.match(/-/g)).toHaveLength(1);
+  });
+
+  it("a band too wide to print (RANGE_MAX_SHOWN_MIN) falls back to the point pair — the Green 9-52 min case", () => {
+    // "(G) 9-52 min · 2 buses" — etaBand.ts caps the estimator's own band at
+    // RANGE_MAX_SHOWN_MIN printed minutes; past it `displayBand` returns null,
+    // exactly as standWait.ts's `arrivalBand` hands `fmtBusLine` no band at
+    // all. A second bus that would have landed INSIDE the old 43-minute span
+    // (30 is between 9 and 52) is no longer folded into a false "2 buses" —
+    // the row prints two ordinary points instead.
+    const leadBand = displayBand(M(9), M(52), undefined, 0);
+    expect(leadBand).toBeNull();
+    const line = fmtBusLine({ leadSec: M(23), leadBand, nextSec: M(30) });
+    expect(line).toBe("in 23, 30 min");
+    expect(line).not.toContain(BUNCHED_SUFFIX);
+    expect(line).not.toContain("9-52");
   });
 });
