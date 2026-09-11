@@ -1368,6 +1368,21 @@ Five rules, each of which cost a measurement:
   upstream stop at nine cells, the stop's own lap ranks first at eight, and the
   ninth loses by 0.027 to a stop three minutes upstream on the same run. 333
   Cedar is not on Red at all.
+- **The belief sees a departure before the served lap clock does, and the
+  chain must not read the stale clock for that one stop.** `buses[].lap`
+  counts from the collector's departure event; the lead switches to the
+  moving variant a poll or more earlier, and through that window the served
+  age for the stop being left is still the PREVIOUS lap's — a lap plus a
+  stand old — which put the next visit's lap out of band and switched the
+  correction OFF for the departure polls, then back. Invisible on Red (the
+  second slot is a different vehicle), it was what refused Blue Night in
+  PR #215 (strand 0 fixed / 74 introduced, all second-slot). `ownDeparture`
+  in `web/src/eta/arrival.ts` seeds that stop's departure from the belief's
+  own rest identity (`restStop` while the rest is held, `leftStop` /
+  `leftSince` / `leftAt` once released); re-run, the same pair reads
+  0 / 0 and 0 / 8 strands. gps-replay cannot see this (it prices the next
+  five stops); the rider-sim with `CHAIN=Blue Night:10:6` can.
+  `docs/stand-lap-covariate.md` section 6c.
 
 **The lap clock is warm-started, and it has to be.** `Collector.lapClock` is
 in-memory and fed only by dwell events, so without a seed a bus carries no

@@ -278,6 +278,53 @@ interface LapCorrection {
 
 const ZERO = new Float64Array(K);
 
+/**
+ * The departure the BELIEF has seen and the served lap clock has not.
+ *
+ * `buses[].lap` counts from the collector's departure event, which fires a
+ * poll or more after the belief sees the bus go — first the lead switches to
+ * the moving variant while the rest is still held (`rested`, `restStop`), then
+ * the fix leaves the 125 m radius (`leftStop`), and only then does the
+ * detector's anchor move on. Through that window the served age for the stop
+ * being left still counts from the PREVIOUS lap's departure — a lap plus a
+ * whole stand old — so a future visit to that stop is priced under `age + t`,
+ * twice a lap, outside the band, and the correction on that stand switches
+ * OFF for the departure polls and comes back when the clock resets. On a
+ * one-bus line the card's second slot is that very visit: Blue Night 9/6,
+ * 333 Cedar, "then N min" read 66 | 62 | 61 | 62 | 66 across the departure
+ * (docs/stand-lap-covariate.md: strand 0 fixed / 74 introduced, every one in
+ * slot 2).
+ *
+ * A served departure that predates the rest cannot be the departure from it —
+ * a bus does not leave before it arrives — so the walk is seeded with the
+ * belief's own: `depT` 0 for a bus departing its held rest now, minus the
+ * seconds since the fix left it for a released one. A served age younger than
+ * the rest is the collector's own event and is left alone, as is every other
+ * stop and every caller with no served ages. A standing lead already seeds
+ * its own stop from the residual and needs nothing here.
+ *
+ * Only a rest in the stop's OWN zone counts, never one attributed to its
+ * approach (`restApproach`): a hold at a light short of Union Station is not a
+ * visit to it, and reading it as one declared the served clock stale for the
+ * stop the bus was about to serve and dropped a correct correction on the
+ * stand AHEAD (Red #310, 9/4 13:57 ET, +150 s for one poll, 13 reversals
+ * introduced on an otherwise byte-identical day).
+ */
+function ownDeparture(
+  belief: Belief, stops: readonly number[], ages: LapAges, standingAt: number, r: number, now: number,
+): { stop: number; depT: number } | null {
+  if (belief.rested && belief.restStop >= 0 && !belief.restApproach && standingAt !== belief.restStop) {
+    const served = ages[stops[belief.restStop]!];
+    return served !== undefined && Number.isFinite(served) && served > r ? { stop: belief.restStop, depT: 0 } : null;
+  }
+  const i = belief.leftStop;
+  if (i < 0 || i === standingAt || i >= stops.length) return null;
+  const served = ages[stops[i]!];
+  if (served === undefined || !Number.isFinite(served)) return null;
+  if (!(served > (now - belief.leftSince) / 1000)) return null;
+  return { stop: i, depT: -Math.max(0, (now - belief.leftAt) / 1000) };
+}
+
 function accAt(c: LapCorrection | null, k: number): Float64Array {
   if (!c) return ZERO;
   let i = 0;
@@ -296,7 +343,7 @@ function accAt(c: LapCorrection | null, k: number): Float64Array {
  */
 function lapCorrection(
   tables: RouteTables, pre: ChainPrefix, stops: readonly number[], ages: LapAges,
-  leadLeg: number, standingAt: number, frac: number, r: number,
+  leadLeg: number, standingAt: number, frac: number, r: number, own: { stop: number; depT: number } | null,
 ): LapCorrection | null {
   const N = tables.hops.length;
   // A stand already in progress: its lap ENDED when the bus arrived, r seconds
@@ -321,6 +368,7 @@ function lapCorrection(
   // for the first visit, because the departure it counts from is about to be
   // superseded by this lap's own.
   const depT = new Float64Array(N).fill(NaN);
+  if (own && own.stop !== standingAt) depT[own.stop] = own.depT;
   let t: number;
   if (standingAt >= 0) {
     const f0 = fStand[standingAt]!;
@@ -521,7 +569,8 @@ export function priceRoute(
   const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null));
   const lead0 = pick(plain);
   const lap = lapAges && tables.stops.some((st) => st.lap)
-    ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r)
+    ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r,
+      ownDeparture(belief, stops, lapAges, lead0.standingAt, r, now))
     : null;
   const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
   const lead = pick(chains);

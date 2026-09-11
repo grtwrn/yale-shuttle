@@ -193,6 +193,89 @@ describe("the lap correction in the chain", () => {
     expect(Math.max(...rs.slice(1).map((x, i) => Math.abs(x - rs[i]!)))).toBeLessThan(0.08);
   });
 
+  it("keeps the correction across a departure while the served lap clock still lags (Blue Night 9/6)", () => {
+    // The served age counts from the collector's departure event, which fires
+    // a poll or more after the belief releases the rest. In that window the
+    // stop being left still carries the PREVIOUS lap's departure — a lap and
+    // a stand old — so a future visit to it (the second slot on a one-bus
+    // line) is priced under twice a lap, out of band, and the correction on
+    // that stand vanishes for the departure polls and comes back when the
+    // clock resets: 333 Cedar read "then 66 | 62 | 61 | 62 | 66 min" across
+    // the departure (docs/stand-lap-covariate.md section 6b). The belief has
+    // seen the departure; a served departure older than the rest is not it.
+    // A fit sized to this ring's ~480 s nominal loop: reference lap 580 s,
+    // -0.5 % of the stand per second, band [377, 957] s. A stale age (a lap
+    // and a stand old) puts the next visit at ~1,275 s — out of band.
+    const { ring, tables } = build({ ...PLAIN, "1": { ...PLAIN["1"]!, lapB: -5e-3, lapM: 580, lapN: 1667 } });
+    const plain = build(PLAIN);
+    const now0 = 1_700_000_000_000;
+    const L = 380, r = 400;
+    const occ1 = (b: Belief, bp: Belief, t: number, ages?: Record<number, number>) => {
+      const f = priceRoute(b, ring, tables, STOPS, new Set([2]), t, 0.5, undefined, ages).find((x) => x.stopId === 2 && x.occurrence === 1)!;
+      const p = priceRoute(bp, plain.ring, plain.tables, STOPS, new Set([2]), t, 0.5, undefined, undefined).find((x) => x.stopId === 2 && x.occurrence === 1)!;
+      return f.eta - p.eta;
+    };
+    // Standing at stop 1 for r seconds — a NEW observation object each poll,
+    // since `stepBelief` treats the same object as the same poll — so the
+    // rest is established by the repeated fix and attributed to stop 1. The
+    // served clock says the bus left stop 1 a lap + r ago (its PREVIOUS
+    // departure).
+    const stood = (rg: Ring): Belief => {
+      let b: Belief | undefined;
+      for (let t = now0 - r * 1000; t <= now0; t += 15_000) {
+        b = stepBelief(b, rg, { lat: corners[0]!.lat, lon: corners[0]!.lon, stationary_since: since(now0 - r * 1000) }, t, STOPS);
+      }
+      return b!;
+    };
+    let bf = stood(ring), bp = stood(plain.ring);
+    expect(bf.rested).toBe(true);
+    expect(bf.restStop).toBe(0);
+    expect(occ1(bf, bp, now0, { 1: L + r })).toBeGreaterThan(120);
+    // The departure poll: a fresh fix 100 m out on leg 0 — inside the rest
+    // radius, so the rest is still HELD, but the lead is now the moving
+    // variant. The served age has not reset.
+    const t0 = now0 + 10_000;
+    for (const [xm, dt] of [[45, 5_000], [100, 10_000]] as const) {
+      const f0 = at(xm, 0);
+      bf = stepBelief(bf, ring, { lat: f0.lat, lon: f0.lon }, now0 + dt, STOPS);
+      bp = stepBelief(bp, plain.ring, { lat: f0.lat, lon: f0.lon }, now0 + dt, STOPS);
+    }
+    expect(bf.rested).toBe(true);
+    expect(bf.restStop).toBe(0);
+    const gapHeld = occ1(bf, bp, t0, { 1: L + r + 10 });
+    // Next poll: 140 m out, past the rest radius, so the belief releases the
+    // rest — and the served age has STILL not reset.
+    const t1 = now0 + 15_000;
+    const f1 = at(140, 0);
+    bf = stepBelief(bf, ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    bp = stepBelief(bp, plain.ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    expect(bf.rested).toBe(false);
+    expect(bf.leftStop).toBe(0);
+    const gapDeparture = occ1(bf, bp, t1, { 1: L + r + 15 });
+    // The defect, for the record: read off the wire alone (no memory of the
+    // rest that just ended) the same poll prices the stand uncorrected.
+    expect(Math.abs(occ1({ ...bf, leftStop: -1 }, bp, t1, { 1: L + r + 15 }))).toBeLessThan(30);
+    // One poll later the collector has fired and the age counts from now.
+    const t2 = now0 + 30_000;
+    const f2 = at(220, 0);
+    bf = stepBelief(bf, ring, { lat: f2.lat, lon: f2.lon }, t2, STOPS);
+    bp = stepBelief(bp, plain.ring, { lat: f2.lat, lon: f2.lon }, t2, STOPS);
+    const gapNext = occ1(bf, bp, t2, { 1: 20 });
+    // A short lap so far -> a longer stand next time, worth minutes in slot 2.
+    expect(gapNext).toBeGreaterThan(120);
+    // The correction does not step at the departure poll: what it adds there
+    // is what it adds a poll later, and what it added while standing.
+    expect(Math.abs(gapHeld - gapNext)).toBeLessThan(30);
+    expect(Math.abs(gapDeparture - gapNext)).toBeLessThan(30);
+    // A served age younger than the rest is the collector's own event and is
+    // taken as served: nothing is rewritten.
+    expect(occ1(bf, bp, t2, { 1: 20 })).toBe(gapNext);
+    // And the stop AHEAD on this lap has no fitted stand before it, so slot 1
+    // at the departure poll is priced identically with and without ages.
+    const b1 = stepBelief(stood(ring), ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    expect(etaTo(ring, tables, b1, 2, t1, { 1: L + r + 15 })).toBe(etaTo(ring, tables, b1, 2, t1));
+  });
+
   it("scales the RESIDUAL of a stand in progress by the identity the code relies on", () => {
     // A stand scaled by f is the variable f x X, so the remaining time given r
     // seconds already stood is f x (X's remainder given r / f). `addResidual`

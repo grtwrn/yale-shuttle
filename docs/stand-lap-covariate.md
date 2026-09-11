@@ -507,6 +507,136 @@ already keys on, or treat `ages[s] > r_rest` as "just left" and price the
 factor at 1). Then re-run this pair; the accuracy is waiting on the other
 side of it.
 
+## 6c. The departure poll: the belief sees the bus go before the served clock does (2026-09-11)
+
+PR #215 widened the lap cells to Blue Night (route 13), found every accuracy
+column improving, and was **refused by the rider table** — strand 0 fixed / 74
+introduced on Sat 09/06, 0 / 39 on Mon 09/08, every one in the card's SECOND
+slot. Its section 6b names the mechanism; this section is the fix and the
+same pair re-run, arm for arm, on the same evenings.
+
+### The mechanism, read off the arms rather than argued
+
+On a one-bus line the "then N min" slot is the same bus a lap later, so its
+chain always carries the full 333 Cedar stand as a FUTURE stand, priced under
+the lap the bus will have run when it gets back: `ages[s] + t`, the served
+seconds since it last LEFT `s` plus the nominal seconds until it is back
+(`lapCorrection`, arrival.ts). `buses[].lap` counts from the collector's
+departure event, and the belief sees a departure a poll or more BEFORE that:
+first the lead switches to the moving variant while the rest is still held
+(`rested`, `restStop`), then the fix leaves the 125 m rest radius (`moved`),
+and only then does the detector's anchor move on and the clock reset. Through
+that window the served age for the stop being left still counts from the
+PREVIOUS lap's departure — a lap plus a whole stand old — so the next visit is
+priced under twice a lap, OUTSIDE the band, and the correction on that stand
+switches off, then comes back when the clock resets. The unfixed arm reads
+exactly that against master (Sat 09/06, a rider one hop past Cedar):
+
+    master   22:59:36  in 6, 63 | 23:00:51  in 4, 61 | 23:01:21  in 5, 62
+    +13      23:00:36  in 6, 66 | 23:00:51  in 4, 62 | 23:01:01  in 4, 61 | 23:01:11  in 4, 62 | 23:01:21  in 5, 66
+
+The +13 arm sits 3–4 min above master (the bus came back early, so a longer
+stand is promised next lap) and collapses to master +1 for three polls at the
+departure, then returns. 6b's reading of the same polls — "a visit ~30 s ahead
+under a 3,500 s lap, factor 0.35" — was the theory; the arms say the
+correction is simply switched OFF (out of band), and the fix is the same
+either way.
+
+### The fix (`ownDeparture` in web/src/eta/arrival.ts, `leftStop` in filter.ts)
+
+A served departure that predates the rest cannot be the departure from it — a
+bus does not leave before it arrives — so the walk in `lapCorrection` is seeded
+with the belief's own departure for that ONE stop: `depT` 0 for a bus departing
+its held rest now (the lead is the moving variant, `rested` and `restStop` still
+set, served age older than the rest's elapsed), and minus the seconds since the
+fix left the radius for a released rest (the belief now remembers the rest it
+last ended: `leftStop`, `leftSince`, `leftAt`). A served age younger than the
+rest is the collector's own event and is kept; every other stop, a standing
+lead (which already seeds its own stop from the residual), and every caller
+with no served ages price bit-identically. `lap.test.ts` walks a synthetic
+stand → held-rest departure → released → clock-reset sequence and asserts the
+correction on the second slot does not step across it, and that without the
+memory the released poll prices the stand uncorrected.
+
+**Two cuts were measured and refused on the way.** The first keyed on `moved`
+alone and changed nothing (arm C0906 on this branch: departure-poll drift p50
+185 s on 184 riders, the same as unfixed) — the step lands one poll EARLIER,
+when the lead switches to the moving variant inside the rest radius, which is
+why the held rest is keyed first. The second took every named rest as a visit
+and was refused by RED: on 9/4 it introduced 13 reversals in 1,374 otherwise
+identical waits, all at 13:57:21 ET, where #310 had held short of Union
+Station (N) and the belief had attributed the hold to the stop's APPROACH zone;
+released, it read as a departure from a stop the bus was about to serve, and
+the seed replaced a correct served lap (f 0.59, a long lap) with "departed just
+now" (f 1) — +150 s on the second bus for one poll. A hold on the approach is
+not a visit, so only a rest in the stop's own zone (`!restApproach`) is taken.
+
+### The three arms, both evenings
+
+Instruments exactly as #215: `rider-sim`, `ROUTES="Blue Night"`,
+`CHAIN="Blue Night:10:6"`, `snap909.db`, corrected truth rule (#190),
+`pair-by-route.mjs`; gps-replay on the `archive-db.ts` day trimmed to route 13
+with #215's `gps-replay.ts` (which serves `buses[].lap`; applied to this branch
+as a file, since #215 is unmerged). A = master client (lap cells for route 3
+only), B = master client + route 13's three cells, C = this branch + route 13's
+cells. B on this harness is **md5-identical to #215's B arm** (`40e507ee92ed`)
+and reproduces its table to the row — that is the instrument check.
+
+**rider-sim, paired waits, fixed / introduced** (A → B is #215; A → C is this PR):
+
+| evening | paired | arm | STRAND | jump ≥ 180 s | reversal ≥ 60 s | first promise \|miss\| (p50) | early > 60 s | worst drift p50 | departure-poll drift p50 (≥ 180 s on) |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| Sat 09/06 | 1,349 | A → B | 0 / 74 | 0 / 555 | 24 / 556 | 110 → 85 s | 11.9 → 10.7% | 70 → 230 s | 0 → 185 s (0 → 184) |
+| Sat 09/06 | 1,349 | **A → C** | **0 / 0** | **0 / 76** | **38 / 101** | 110 → 85 s | 11.9 → 10.7% | 70 → 110 s | 0 → 0 s (0 → 0) |
+| Mon 09/08 | 1,196 | A → B | 0 / 39 | 30 / 310 | 11 / 388 | 105 → 90 s | 17.1 → 14.2% | 125 → 185 s | 0 → 130 s (0 → 83) |
+| Mon 09/08 | 1,196 | **A → C** | **0 / 8** | **34 / 60** | **22 / 75** | 105 → 90 s | 17.1 → 14.2% | 125 → 130 s | 0 → 0 s (0 → 20) |
+
+B → C directly: Sat 74 strands fixed / 0 introduced, 479 / 0 jumps, 473 / 4
+reversals; Mon 31 / 0, 260 / 0, 330 / 1. The first-sight columns are
+byte-identical between B and C on both evenings (the fix touches no poll the
+first sight is taken on), so the accuracy #215 measured is intact: first
+promise |miss| 110 → 85 and 105 → 90 s, interval coverage 74.5 → 77.6% at a
+narrower width (637 → 575 s) and 82.6 → 82.0% at 699 → 625 s, the dangerous
+tail (`early > 60 s`) 11.9 → 10.7% and 17.1 → 14.2%.
+
+**gps-replay, route 13, proximity truth, paired row for row:**
+
+| evening | rows | arm | median \|err\| | pessimistic ≥ 120 s | optimistic ≥ 120 s | 10–90 coverage | better / worse |
+|---|---:|---|---:|---:|---:|---:|---:|
+| Sat 09/06 | 17,788 | A → B | 78.8 → 69.9 | 13.8 → 13.4% | 24.4 → 20.2% | 73.9 → 78.2% | 4,624 / 2,508 |
+| Sat 09/06 | 17,788 | **A → C** | 78.8 → 70.3 | 13.8 → 13.6% | 24.4 → 20.2% | 73.9 → 78.2% | 4,309 / 2,461 |
+| Mon 09/08 | 16,119 | A → B | 72.5 → 71.8 | 15.5 → 13.9% | 22.5 → 22.4% | 75.5 → 76.3% | 3,229 / 2,792 |
+| Mon 09/08 | 16,119 | **A → C** | 72.5 → 71.9 | 15.5 → 14.0% | 22.5 → 22.4% | 75.5 → 76.3% | 3,099 / 2,781 |
+
+B → C moves 431 and 153 standing rows (the departure polls, which gps-replay
+prices for the next five stops) by +0.4 and +0.1 s of median; the moving
+population is byte-identical. A → B here reproduces #215's gps table to the
+decimal.
+
+### What is left, and is NOT the departure
+
+The residual introduced jumps (76 on Sat, 60 on Mon) are each ONE episode:
+Sat 23:00–23:01 Z (70 of 76) and Mon 02:59:59–03:00:09 Z (60 of 60), the
+second slot dipping ~4 min for two readings and returning, with the bus at rest
+at 333 Cedar and NO fresh fix (the trace shows #38's first movement at
+03:00:21 Z). A named-rider trace of the same client over the same capture from
+01:40 Z does not show the dip, and a full-population run of the window from
+01:40 Z has 0 of 74 riders spanning that instant with a jump — so it depends on
+belief state older than 80 minutes, not on the departure. It is the open item
+for the route-13 widening; strand is at master's own 1.0% on Sat and 3.7%
+against master's 4.1% on Mon.
+
+### Red, where #206 is live
+
+Held-out ET day 2026-09-04, 13:00–19:00 UTC, `ROUTES=Red`, `POP=uniform`,
+`CHAIN="Red:11:6"` (the 344 Winchester chain, so the departure polls are
+watched), `model-patch-0904-lapS.json`, 1,374 paired waits, master client
+against this branch: **STRAND 0 / 0, jump ≥ 180 s 0 / 0, reversal ≥ 60 s
+0 / 0, dropped 0 / 0; 1,373 of 1,374 sequences byte-identical**, the one
+difference a single reading's second slot 80 → 81 min for a rider at
+Winchester itself. First-sight miss identical on every wait. Red's second
+slot is a different vehicle, so the held-rest path has nothing to correct
+there; this is the fix costing Red nothing, measured rather than argued.
 
 ## 7. The warm start, and what else a restart loses
 

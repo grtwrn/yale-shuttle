@@ -181,6 +181,19 @@ export interface Belief {
   restStop: number;
   /** True when `restStop` came from the approach zone rather than the stop's own. */
   restApproach: boolean;
+  /**
+   * The rest most recently ENDED, kept across the moving spell that follows:
+   * the stop it was attributed to (else -1), when it began (`restSince` at the
+   * time) and when the fix left it (`moved`); a rest in the approach zone is
+   * not one. This is the departure the bus
+   * has just made, and it exists because the served lap clock (`buses[].lap`,
+   * the collector's departure) lags the belief by a poll or more — see
+   * `ownDeparture` in arrival.ts. Cleared by nothing: a later rest
+   * simply replaces it when IT ends.
+   */
+  leftStop: number;
+  leftSince: number;
+  leftAt: number;
   /** Cells within REST_RADIUS_M of the rest point (1) — the stand's extent. */
   restMask: Uint8Array;
   /** Server clock origin (ms) when served, else null. */
@@ -447,6 +460,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
     ringKey: ring.key, p, seenAt: now, lastObs: bus, lastFix: { lat: bus.lat, lon: bus.lon },
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
     rested: standing, restStop: -1, restApproach: false, restMask,
+    leftStop: -1, leftSince: 0, leftAt: 0,
     serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
@@ -755,6 +769,12 @@ export function stepBelief(
     restStop: moved ? -1 : prev.restStop,
     // At the marker the rest is the stop's own, no longer its approach.
     restApproach: moved || closedIn ? false : prev.restApproach,
+    // A named rest ending is a departure the belief has seen and the served
+    // clock has not yet: remember which stop, and when. A rest in the stop's
+    // APPROACH zone is a hold short of it, not a visit, and is not recorded.
+    leftStop: moved && prev.restStop >= 0 && !prev.restApproach ? prev.restStop : prev.leftStop,
+    leftSince: moved && prev.restStop >= 0 && !prev.restApproach ? prev.restSince : prev.leftSince,
+    leftAt: moved && prev.restStop >= 0 && !prev.restApproach ? now : prev.leftAt,
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
     lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
