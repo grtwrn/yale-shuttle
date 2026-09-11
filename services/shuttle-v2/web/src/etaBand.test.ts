@@ -60,9 +60,9 @@ describe("displayBand — when the estimator's band is worth printing", () => {
 describe("one belief, one screen — the row, the chip and the wait leg print the same band", () => {
   const band = { lowSec: M(2), highSec: M(9) };
 
-  it("the row prints the median with the band, the chip the same without its head word", () => {
-    expect(fmtBusLine({ leadSec: M(5), leadBand: band, nextSec: M(17) })).toBe("in 5 (2-9), 17 min");
-    expect(chipCountdownText(band, M(5))).toBe("5 (2-9) min");
+  it("the row prints the band, the chip the same without its head word", () => {
+    expect(fmtBusLine({ leadSec: M(5), leadBand: band, nextSec: M(17) })).toBe("in 2-9, then 17 min");
+    expect(chipCountdownText(band, M(5))).toBe("2-9 min");
   });
 
   it("the chip without a band is fmtMin's own spelling, byte-identical to before", () => {
@@ -72,7 +72,7 @@ describe("one belief, one screen — the row, the chip and the wait leg print th
   });
 
   it("the wait leg is the same band less the walk to the stop", () => {
-    expect(waitLegText(band, M(5), 60, M(4))).toBe("4 (1-8) min");
+    expect(waitLegText(band, M(5), 60, M(4))).toBe("1-8 min");
     expect(waitLegText(band, M(5), M(8), 0)).toBe("now-1 min");
     // Nothing left to wait for once the whole band is inside the walk.
     expect(waitLegText(band, M(5), M(9), 0)).toBeNull();
