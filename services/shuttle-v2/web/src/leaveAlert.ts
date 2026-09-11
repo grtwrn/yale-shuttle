@@ -164,12 +164,12 @@ export async function deliverPing(message: string): Promise<boolean> {
     try {
       const reg = await navigator.serviceWorker?.getRegistration?.();
       if (reg && typeof reg.showNotification === "function") {
-        await reg.showNotification("Yale Shuttle", opts);
+        await reg.showNotification("Shuttle Tracker", opts);
         return true;
       }
     } catch { /* fall through to page-context Notification */ }
     try {
-      new Notification("Yale Shuttle", opts);
+      new Notification("Shuttle Tracker", opts);
       return true;
     } catch {
       return false;

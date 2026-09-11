@@ -107,7 +107,7 @@ async function apiSmoke(base) {
     }],
     ["SPA shell serves", async () => {
       const html = await (await fetch(`${base}/`)).text();
-      if (!html.includes("Yale Shuttle")) throw new Error("index.html lacks the app title");
+      if (!html.includes("Shuttle Tracker")) throw new Error("index.html lacks the app title");
     }],
   ];
   for (const [label, f] of checks) {

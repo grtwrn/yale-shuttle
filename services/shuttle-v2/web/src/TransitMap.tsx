@@ -7367,9 +7367,25 @@ const TransitMap: FC = () => {
         display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
         position: "relative",
       }}>
+        {/* The product name is ours, not Yale's: "Yale Shuttle" used Yale's
+            mark as the name of a thing Yale does not publish (operator,
+            2026-09-10). The shuttles are still named descriptively wherever
+            they are described — the meta description, the route labels — and
+            the footer's "Not affiliated with or endorsed by Yale University."
+            is unchanged. */}
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
-          Yale Shuttle
+          Shuttle Tracker
         </h1>
+        {/* Yale is DESCRIBED here, never used as the name. Measured by probing
+            the rendered span at 390px: 216px of the 366px the header has, so
+            it holds one line on the narrowest phone this app is designed for.
+            It is allowed to wrap below that rather than force a horizontal
+            scroll — counting characters is how a wrapping line shipped once
+            before. The footer's disclaimer is unchanged and still the legal
+            statement; this line is orientation, not a notice. */}
+        <span style={{ fontSize: 11, color: "#8a8a9a", textAlign: "center", lineHeight: 1.35 }}>
+          Unofficial live tracker for the Yale shuttles
+        </span>
         <span style={{ fontSize: 12, color: "#8a8a9a" }}>{time}</span>
       </div>
 

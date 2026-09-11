@@ -1488,6 +1488,124 @@ Not affiliated with or endorsed by Yale University.`;
   });
 });
 
+/**
+ * THE PAGE CHROME AFTER THE RENAME (2026-09-10).
+ *
+ * The app is called "Shuttle Tracker" now — Yale's mark is not the product's
+ * name — and the header carries a second line under it, "Unofficial live
+ * tracker for the Yale shuttles". Both land in the page's innerText, which is
+ * the only thing this parser reads.
+ *
+ * Nothing about that SHOULD reach a card: the header is a dozen lines above
+ * the first duration, `startOf` walks back at most two, and the tagline is 44
+ * characters where `isLabelish` stops at 20. But #111 "needed no change" too
+ * and blinded the canary for twelve minutes, so this is a capture rather than
+ * that argument — 390x844, the operator's own Prospect / Canner -> School of
+ * Public Health trip, taken off a staged build of the rename branch against a
+ * live /api/buses.
+ */
+describe("the renamed header", () => {
+  const LIVE_RENAMED = `SHUTTLE TRACKER
+Unofficial live tracker for the Yale shuttles
+10:50 PM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 School of Public Health (YSPH)
+☆
+WHEN
+Now
+Plan for later…
+🌤
+71°F · Partly cloudy · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — TOP 3 OF 4 ROUTES
+▴
+🚌
+🚌
+🚌
+🚌 (B) 6 min
+ (O) 11 min
+🏁 (B) 11:04p
+ (B) 11:12p
+ (O) 11:11p
+🚌 (B) 16 min
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue West
+Blue Night
+Orange Night
+Blue West
+in 6, 33 min
+16 min
+🚶 2 min
+›
+🚌 7 min
+›
+🚶 3 min
+11:07p
+›
+Blue Night
+in 16, 46 min
+22 min
+🚶 17 min
+›
+🚌 4 min
+›
+🚶 1 min
+11:13p
+›
+Orange Night
+in 11, 36 min
+23 min
+🚶 9 min
+›
+🚌 8 min
+›
+🚶 3 min
+11:14p
+›
+🚶 Walk
+38 min
+11:29p
+›
+Show 1 more route
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads four cards off the renamed page, and no card out of the header", () => {
+    const opts = parseOptions(LIVE_RENAMED);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue West", "Blue Night", "Orange Night", "Walk"]);
+    expect(opts[0]).toMatchObject({ totalMin: 16, arriveText: "11:07p", walkToMin: 2, walkFromMin: 3 });
+    expect(opts[0].eta.raw).toBe("in 6, 33 min");
+    expect(opts[3]).toMatchObject({ mode: "walk", totalMin: 38, arriveText: "11:29p" });
+  });
+
+  it("never takes the brand or the tagline for a route pill", () => {
+    const labels = parseOptions(LIVE_RENAMED).map((o) => o.routeLabel);
+    // "SHUTTLE TRACKER" is letters-and-space and so IS label-shaped, exactly
+    // as "YALE SHUTTLE" was; what keeps it out is distance from the anchor,
+    // not its spelling. The tagline is too long to be label-shaped at all.
+    expect(labels).not.toContain("SHUTTLE TRACKER");
+    expect(labels.some((l) => /Unofficial/.test(l ?? ""))).toBe(false);
+  });
+});
+
 
 /**
  * THE STAND THE BOARD-STOP RULE CANNOT SEE.
