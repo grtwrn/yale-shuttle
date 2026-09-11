@@ -12,7 +12,7 @@ import {
   SHOWN_MAX_AGE_MS,
   SHOWN_MAX_BATCH,
   shownSampleRate,
-  type ShownTuple,
+  type ShownTuple, buildFromModuleUrl,
 } from "./shownLog";
 
 /**
@@ -233,5 +233,19 @@ describe("it must never be visible to a rider", () => {
       noteShown([arrival({ eta: Number.NaN }), arrival({ eta: -1 })], "trip", T),
     ).not.toThrow();
     expect(pendingCount()).toBe(0);
+  });
+});
+
+describe("buildFromModuleUrl — which bundle wrote the row", () => {
+  it("reads the rider entry's hash (the bundle production has served since 2026-09-09)", () => {
+    expect(buildFromModuleUrl("https://yale-shuttle.fly.dev/assets/rider-CEaAw1vF.js")).toBe("CEaAw1vF");
+  });
+  it("still reads the old index entry, so a cached pre-rename bundle names itself", () => {
+    expect(buildFromModuleUrl("https://yale-shuttle.fly.dev/assets/index-Bd7nFEaY.js")).toBe("Bd7nFEaY");
+  });
+  it("does not mistake a shared chunk or a dev server URL for a build", () => {
+    expect(buildFromModuleUrl("https://yale-shuttle.fly.dev/assets/geo-o5yIHg5a.js")).toBe("dev");
+    expect(buildFromModuleUrl("http://localhost:5173/src/shownLog.ts")).toBe("dev");
+    expect(buildFromModuleUrl("")).toBe("dev");
   });
 });
