@@ -29,7 +29,7 @@ import { noteShown } from "./shownLog";
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
-import { buildBerthThumb } from "./berthThumb";
+import { BerthInset } from "./BerthInset";
 import { clusterChips } from "./chipCluster";
 import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
 import {
@@ -4277,83 +4277,21 @@ const TripPlanner: FC<{
                           makes this usable: a second dot on its own reads as
                           the map being wrong, and the count is what turns it
                           into advice. Sits directly above Directions because
-                          that is the thing it corrects. */}
+                          that is the thing it corrects. The picture, the copy
+                          and the hooks it needs live in BerthInset.tsx. */}
                       {(() => {
                         const cfgB = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
                         const berth = cfgB ? berthFor(o.boardStopId, cfgB.busRouteIds) : null;
                         if (!berth) return null;
-                        const m = Math.round(Math.abs(berth.offsetM));
-                        const signLL = stopCoords[o.boardStopId];
-                        // The picture, not the sentence, is what makes this
-                        // land: on the trip map above, framed for the whole
-                        // journey, the sign and the kerb are two dots a few
-                        // pixels apart (operator, 2026-09-10: "this message
-                        // doesn't make sense until i zoom into map"). An SVG
-                        // rather than a second Leaflet — see berthThumb.ts.
-                        const th = signLL
-                          ? buildBerthThumb(
-                              signLL, { lat: berth.lat, lon: berth.lon },
-                              (routePaths[String(berth.routeId)] ?? []).map(
-                                ([lat, lon]) => ({ lat, lon }),
-                              ),
-                              // Sized to the card rather than 100%-scaled: an SVG fits its viewBox with
-                              // preserveAspectRatio, so a 200-wide box in a ~304 px card was
-                              // drawn 200 wide with white either side.
-                              { width: 300, height: 116 },
-                            )
-                          : null;
                         return (
-                          <div style={{
-                            marginTop: 10, padding: "8px 10px", borderRadius: 8,
-                            background: "#f8f9fa", fontSize: 13, lineHeight: 1.45, color: "#3c4043",
-                          }}>
-                            {th && (
-                              <svg viewBox={th.viewBox} width="100%" height={th.height}
-                                role="img" style={{ display: "block", marginBottom: 6, borderRadius: 6, overflow: "hidden" }}
-                                aria-label={`${o.routeLabel} pulls up about ${m} metres ${berth.offsetM > 0 ? "past" : "before"} the ${boardName} sign`}>
-                                {/* The same tiles Leaflet would draw, as plain images —
-                                    a map object per expanded card is what routeThumb.ts
-                                    exists to avoid. Streets behind the dots are what
-                                    make them mean anything (operator, 2026-09-10). */}
-                                <clipPath id={`bt-${o.boardStopId}-${berth.routeId}`}>
-                                  <rect x={0} y={0} width={th.width} height={th.height} />
-                                </clipPath>
-                                <g clipPath={`url(#bt-${o.boardStopId}-${berth.routeId})`}>
-                                  {th.tiles.map((t) => (
-                                    <image key={`${t.z}/${t.x}/${t.y}`}
-                                      href={`https://tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`}
-                                      x={t.px} y={t.py} width={t.size} height={t.size} opacity={0.85} />
-                                  ))}
-                                </g>
-                                {th.road.length > 1 && (
-                                  <polyline points={th.road.map((p) => `${p.x},${p.y}`).join(" ")}
-                                    fill="none" stroke={o.color} strokeWidth={3} opacity={0.35} />
-                                )}
-                                <line x1={th.sign.x} y1={th.sign.y} x2={th.berth.x} y2={th.berth.y}
-                                  stroke="#9aa0a6" strokeWidth={1.5} strokeDasharray="2 4" />
-                                <circle cx={th.sign.x} cy={th.sign.y} r={5}
-                                  fill="#fff" stroke="#9aa0a6" strokeWidth={2.5} />
-                                <circle cx={th.berth.x} cy={th.berth.y} r={6}
-                                  fill={o.color} stroke="#fff" strokeWidth={2.5} />
-                                {/* Painted twice: a white stroke under the fill, so the
-                                    words stay readable over whatever the tile shows. */}
-                                {[{ stroke: true }, { stroke: false }].map((pass, i) => (
-                                  <g key={i} {...(pass.stroke ? { stroke: "#fff", strokeWidth: 3, strokeLinejoin: "round" as const } : {})}>
-                                    <text x={th.sign.x + (th.signAnchor === "start" ? 9 : -9)} y={th.sign.y + 4}
-                                      textAnchor={th.signAnchor} fontSize={10} fill="#5f6368">stop sign</text>
-                                    <text x={th.berth.x + (th.berthAnchor === "start" ? 10 : -10)} y={th.berth.y + 4}
-                                      textAnchor={th.berthAnchor} fontSize={10.5} fontWeight={650} fill={o.color}>wait here</text>
-                                  </g>
-                                ))}
-                              </svg>
-                            )}
-                            <span style={{ fontWeight: 650 }}>
-                              🚏 Wait about {m} m {berth.offsetM > 0 ? "past" : "before"} the stop sign
-                            </span>
-                            <br />
-                            {o.routeLabel} buses pull up there, not at the sign — seen {berth.seen} of
-                            the last {berth.of} times one served this stop.
-                          </div>
+                          <BerthInset
+                            berth={berth}
+                            published={stopCoords[o.boardStopId]}
+                            routeLabel={o.routeLabel}
+                            color={o.color}
+                            stopName={boardName}
+                            path={routePaths[String(berth.routeId)] ?? []}
+                          />
                         );
                       })()}
                       {/* Directions is the card's one prominent action

@@ -372,7 +372,17 @@ export function pairBuses(prev, next, dtSec, thresholds = THRESHOLDS, pin = null
 // duration, an expanded card would have reported its line as "nearby" rather
 // than "Red". Exactly the "Contribute" failure IS_PAGE_CHROME was added for;
 // caught here before it shipped rather than after, and fixtured below.
-const NOT_A_ROUTE = new Set(["Find next bus", "Clear", "Walk", "Departed", "nearby"]);
+//
+// "published stop" and "expected stop" are the berth inset's two map labels
+// (2026-09-10): the expanded card now carries a small picture of where the bus
+// actually pulls up, and SVG <text> lands in `innerText` like any other text.
+// Both are lower-case, letters-and-space only, and sit BELOW the duration —
+// i.e. exactly the shape and exactly the place that made "nearby" outrank the
+// route pill. The same guard, added with the feature rather than after it.
+const NOT_A_ROUTE = new Set([
+  "Find next bus", "Clear", "Walk", "Departed", "nearby",
+  "published stop", "expected stop",
+]);
 /** Page furniture below the option list — where the last card stops. */
 const IS_PAGE_CHROME = /^(Show \d+ more route|Clear$|Contribute$|💬|🧪|Not affiliated)/;
 const isLabelish = (l) =>

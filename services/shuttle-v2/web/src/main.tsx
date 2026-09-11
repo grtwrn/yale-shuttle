@@ -2,6 +2,7 @@ import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import TransitMap from "./TransitMap";
 import MinimapReview from "./MinimapReview";
+import BerthReview from "./BerthReview";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -52,7 +53,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 const params = new URLSearchParams(window.location.search);
-const Page = params.get("review") === "minimap" ? MinimapReview : TransitMap;
+const review = params.get("review");
+// Isolated UI previews, not linked from the app: ?review=minimap for the route
+// thumbnails, ?review=berth for every berth inset at once (that one is how the
+// inset is screenshotted at 390 and 430 px — see BerthReview.tsx).
+const Page = review === "minimap" ? MinimapReview : review === "berth" ? BerthReview : TransitMap;
 
 // Installable-app support. Registered after load so it never competes with the
 // first paint; failures are silently ignored — the app works identically
