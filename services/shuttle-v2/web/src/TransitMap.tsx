@@ -32,8 +32,9 @@ import { berthFor, type Berth } from "./berths";
 import { BerthInset } from "./BerthInset";
 import { clusterChips } from "./chipCluster";
 import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
+import { fmtBusLine } from "./bunching";
 import {
-  fmtBusPair, fmtBusRange, fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -3783,7 +3784,7 @@ const TripPlanner: FC<{
               const liveCount = buses.filter((b) =>
                 cfg.busRouteIds.includes(b.route_id) && isBusOnRoute(b, allStops, stopCoords),
               ).length;
-              return { busMatch, stopsAway, normBus, cfg, liveCount };
+              return { busMatch, stopsAway, normBus, cfg, liveCount, allStops };
             })();
             // Live bus ETA, hoisted to row scope so the TOP line can carry it
             // beside the total (operator, 2026-09-03: "could this go on the
@@ -3839,6 +3840,41 @@ const TripPlanner: FC<{
                   o.busName,
                   busEtaLive,
                 )
+              : null;
+            /**
+             * THE SAME STAND RESOLUTION FOR SLOT 2's BUS. `standCtx` above is
+             * built from the PINNED vehicle alone, which is why the Orange
+             * Night card at 22:28 read "in 25, 25 min": #51 had overtaken #49
+             * and become the pin, so the bus that was standing — the one whose
+             * arrival was a 14-minute-wide question — was in slot 2 and got a
+             * bare point (bunching.ts).
+             *
+             * Its band is NEVER DRAWN (two intervals do not fit the span). It
+             * exists so `fmtBusLine` can tell whether the two buses are
+             * distinguishable at all, and it reads the same resolver, the same
+             * tables and the same clock as slot 1's, so the two cannot answer
+             * differently about the same stand.
+             */
+            const nextStandCtx = nextArrLive && shuttleCtx && !o.departed
+              ? (() => {
+                  const norm = shuttleCtx.normBus;
+                  const nextBus = buses.find((b) =>
+                    norm(b.bus_name) === norm(nextArrLive.busName) &&
+                    shuttleCtx.cfg.busRouteIds.includes(b.route_id) &&
+                    isBusOnRoute(b, shuttleCtx.allStops, stopCoords),
+                  ) ?? null;
+                  if (!nextBus) return null;
+                  return standWaitFor(
+                    resolveStandingStop(
+                      nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                    ),
+                    dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
+                    dwellTimes ?? undefined,
+                    nextArrLive.eta,
+                    o.boardStopId,
+                    nextArrLive.departNow,
+                  );
+                })()
               : null;
             // Is this the last one, and will there be another? Judged
             // against the PUBLISHED close (the same `route_hours` the
@@ -3981,9 +4017,17 @@ const TripPlanner: FC<{
                             minWidth: 0, overflow: "hidden",
                             textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>
-                            {standCtx?.range
-                              ? fmtBusRange(standCtx.range.lowSec, standCtx.range.highSec, nextArrLive?.eta)
-                              : fmtBusPair(busEtaLive, nextArrLive?.eta)}
+                            {/* ONE composer for all four forms — the pair,
+                                the pinned bus's range, and either of those
+                                collapsed to a single statement when the two
+                                buses have bunched (bunching.ts). Slot 2's own
+                                band goes in as evidence and is never drawn. */}
+                            {fmtBusLine({
+                              leadSec: busEtaLive,
+                              leadBand: standCtx?.range ?? null,
+                              nextSec: nextArrLive?.eta ?? null,
+                              nextBand: nextStandCtx?.range ?? null,
+                            })}
                           </span>
                         )}
                       </span>

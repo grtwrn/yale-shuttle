@@ -52,6 +52,27 @@ describe("parseBusEtaText", () => {
     expect(parseBusEtaText("🚌 in 8 min")).toMatchObject({ first: [480, 540], second: null });
   });
 
+  it("reads the BUNCHED forms, where two buses print one statement", () => {
+    // bunching.ts, the Orange Night case of 2026-09-10: slot 2's point was
+    // inside slot 1's own interval, so the line says the interval once and
+    // names the cause. There is no second slot to read.
+    expect(parseBusEtaText("🚌 23-36 min · 2 buses")).toMatchObject({
+      first: [1380, 2220], second: null, spread: true, bunched: true,
+      raw: "23-36 min · 2 buses",
+    });
+    expect(parseBusEtaText("🚌 25 min · 2 buses")).toMatchObject({
+      first: [1500, 1560], second: null, spread: false, bunched: true,
+      raw: "25 min · 2 buses",
+    });
+    // "arriving now · 2 buses" is the same case at the kerb.
+    expect(parseBusEtaText("🚌 arriving now · 2 buses")).toMatchObject({
+      first: [0, 10], second: null, bunched: true,
+    });
+    // And every unbunched form says so, rather than leaving the flag undefined.
+    expect(parseBusEtaText("🚌 in 8, 16 min").bunched).toBe(false);
+    expect(parseBusEtaText("🚌 in 3-7, then 19 min").bunched).toBe(false);
+  });
+
   it("refuses the card's SENTENCES, which also start with the bus emoji", () => {
     // Mistaking one of these for a countdown would invent a jump on the tick a
     // rider was actually being warned about.
@@ -826,6 +847,23 @@ describe("scoreSequence", () => {
     expect(r.drops[0]).toMatchObject({ leader: false, lastShownEtaSec: 1200 });
   });
 
+  it("does not call two bunched buses folding into one statement a vanishing", () => {
+    // The Orange Night card at 22:19: slot 2's point was inside slot 1's own
+    // interval, so the app now says the interval once and names the cause. The
+    // second slot leaves the TEXT; the bus is still on the row. Counted as an
+    // event, and it must not fail a run.
+    const r = pair("now, then 1 min", "now-6 min · 2 buses", 15);
+    expect(r.dropped).toBe(1);
+    expect(r.drops[0]).toMatchObject({ severe: true, event: "bunched", eventful: true });
+    expect(r.droppedSevereEventful).toBe(1);
+    expect(r.droppedSevereEventless).toBe(0);
+    // The same drop WITHOUT the suffix is the defect it always was — the
+    // excuse is the app saying why, not the shape of the line.
+    const bare = pair("now, then 1 min", "now-6 min", 15);
+    expect(bare.drops[0]).toMatchObject({ severe: true, eventful: false });
+    expect(bare.droppedSevereEventless).toBe(1);
+  });
+
   it("keeps the old record shape, so the archived runs still read", () => {
     const r = pair("in 10 min", "arriving now", 15);
     for (const k of ["readings", "transitions", "reversals", "notableReversals",
@@ -835,6 +873,145 @@ describe("scoreSequence", () => {
     // `transitions` still holds drift and nothing else, because the thresholds
     // and every reader of the log are written in terms of `driftSec`.
     expect(r.transitions.every((t) => t.kind === "drift" && typeof t.driftSec === "number")).toBe(true);
+  });
+});
+
+describe("two buses that have bunched", () => {
+  // CAPTURED INNERTEXT, not an argument. #111 "needed no change" either and
+  // blinded the canary for twelve minutes, so every layout or wording change
+  // to the card lands a real capture here. Both of these came off a
+  // phone-sized (390 px) headless browser driving the real bundle against a
+  // staged server with two Orange Night buses mocked onto route 14 — the line
+  // this change exists for (project-case-orange-night-bunching, 2026-09-10).
+  //
+  // The countdown line has NO "in" in this form (measured: it is what keeps
+  // the widest string inside the span beside the widest route pill), which
+  // makes it the one countdown that could be mistaken for a duration header
+  // — `isHeader` is /^\d+\s*min$/ and "8 min" matches it. The suffix is what
+  // keeps them apart, so the point form is fixtured as well as the interval.
+
+  // #49 standing at 100 Church Street South, #51 five stops back: the pinned
+  // bus is the STANDING one, so the row shows its interval and #51's point is
+  // inside it. The 22:19 card.
+  const LIVE_BUNCHED_RANGE = `YALE SHUTTLE
+11:37 PM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.310583, -72.926188
+☆
+WHEN
+Now
+Plan for later…
+🌤
+71°F · Partly cloudy · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 1 ROUTE
+▴
+🚌
+🚌 (O) 5-18 min
+🏁 (O) 12:01a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Orange Night
+🚶 Walk
+17 min
+11:54p
+›
+Orange Night
+5-18 min · 2 buses
+23 min
+🚌 12 min
+12:01a
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  // #51 moving and pinned, #49 standing behind it: the pin has no range of
+  // its own and the bus that is uncertain is in slot 2. The 22:28 card.
+  const LIVE_BUNCHED_POINT = `YALE SHUTTLE
+11:37 PM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.310583, -72.926188
+☆
+WHEN
+Now
+Plan for later…
+🌤
+71°F · Partly cloudy · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 1 ROUTE
+▴
+🚌
+🚌 (O) 8 min
+🏁 (O) 11:57p
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Orange Night
+🚶 Walk
+17 min
+11:54p
+›
+Orange Night
+8 min · 2 buses
+20 min
+🚌 12 min
+11:57p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the interval form, and the card around it", () => {
+    const opts = parseOptions(LIVE_BUNCHED_RANGE);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Walk", "Orange Night"]);
+    expect(opts[1]).toMatchObject({ totalMin: 23, arriveText: "12:01a" });
+    expect(opts[1].eta).toMatchObject({
+      first: [300, 1140], second: null, spread: true, bunched: true,
+      raw: "5-18 min \u00b7 2 buses",
+    });
+  });
+
+  it("reads the point form, and does not take it for a duration header", () => {
+    const opts = parseOptions(LIVE_BUNCHED_POINT);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Walk", "Orange Night"]);
+    // 20 min is the trip, 8 min is the countdown: one card, not two.
+    expect(opts[1]).toMatchObject({ totalMin: 20, arriveText: "11:57p" });
+    expect(opts[1].eta).toMatchObject({
+      first: [480, 540], second: null, spread: false, bunched: true,
+      raw: "8 min \u00b7 2 buses",
+    });
   });
 });
 
@@ -1816,11 +1993,12 @@ describe("the standing-bus range", () => {
   // dropped on the floor.
   it("reads a range as the interval it is", () => {
     expect(parseBusEtaText("🚌 in 3-7 min")).toEqual({
-      first: [180, 480], second: null, raw: "in 3-7 min", spread: true,
+      first: [180, 480], second: null, raw: "in 3-7 min", spread: true, bunched: false,
     });
     expect(parseBusEtaText("🚌 now-7 min").first).toEqual([0, 480]);
     expect(parseBusEtaText("🚌 in <1-7, then 19 min")).toEqual({
       first: [10, 480], second: [1140, 1200], raw: "in <1-7, then 19 min", spread: true,
+      bunched: false,
     });
   });
 
@@ -1835,8 +2013,8 @@ describe("the standing-bus range", () => {
     // rather than an argument.
     const before = parseBusEtaText("🚌 in <1-8, then 14 min");
     const after = parseBusEtaText("🚌 in 1-8, then 14 min");
-    expect(before).toEqual({ first: [10, 540], second: [840, 900], raw: "in <1-8, then 14 min", spread: true });
-    expect(after).toEqual({ first: [60, 540], second: [840, 900], raw: "in 1-8, then 14 min", spread: true });
+    expect(before).toEqual({ first: [10, 540], second: [840, 900], raw: "in <1-8, then 14 min", spread: true, bunched: false });
+    expect(after).toEqual({ first: [60, 540], second: [840, 900], raw: "in 1-8, then 14 min", spread: true, bunched: false });
     // The high end and the second bus are untouched, so a run spanning the
     // change reads as the low end tightening and nothing else.
     expect(after.first[1]).toBe(before.first[1]);
