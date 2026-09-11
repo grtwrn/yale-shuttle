@@ -152,6 +152,46 @@ export async function fetchMyReports(): Promise<MyReport[]> {
   return reports as MyReport[];
 }
 
+/**
+ * A rider action that the server refused, carrying the status so the panel can
+ * say something true about it.
+ *
+ * "Didn't go through — try again" is the right advice for a dropped
+ * connection and the wrong advice for a 429, where trying again inside the
+ * same minute is precisely what fails a second time (report #51: a rider
+ * archiving a long list hit the ceiling at row 11 and was told to retry).
+ */
+export class ReportActionError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`HTTP ${status}`);
+    this.name = "ReportActionError";
+    this.status = status;
+  }
+}
+
+/**
+ * What to tell a rider whose action failed. One sentence, no status codes: the
+ * only distinction that changes their next move is "wait" versus "retry".
+ */
+export function actionErrorText(err: unknown): string {
+  return err instanceof ReportActionError && err.status === 429
+    ? "Too many changes at once — give it a moment"
+    : "Didn’t go through — try again";
+}
+
+/**
+ * The empty Issues tab. With no id there is nothing to list and never will be,
+ * so saying "No reports yet" invites the rider to send another one into the
+ * same silence.
+ */
+export function emptyReportsText(browserKeepsReports: boolean): string {
+  return browserKeepsReports
+    ? "No reports yet — 🚩 Report issue or 💬 Send feedback and it will show up here."
+    : "This browser isn’t keeping your reports — that usually means private browsing, or storage turned off. "
+      + "Anything you send still reaches us; it just can’t be listed back to you here.";
+}
+
 /** Post an action on one report; resolves to the report's new status. */
 export async function postReportAction(
   id: number,
@@ -169,5 +209,5 @@ export async function postReportAction(
     headers: { "Content-Type": "application/json", ...anonIdHeader() },
     body: JSON.stringify(action),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new ReportActionError(res.status);
 }

@@ -6,7 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
 
-import { createActivesTracker, etDay, etHour, TEST_ANON_ID } from "./actives.js";
+import {
+  createActivesTracker,
+  DEFAULT_STATS_SINCE_DAY,
+  etDay,
+  etDayStartMs,
+  etHour,
+  resolveStatsSinceDay,
+  TEST_ANON_ID,
+} from "./actives.js";
 
 const ID_A = "11111111-2222-4333-8444-555555555555";
 const ID_B = "66666666-7777-4888-8999-aaaaaaaaaaaa";
@@ -524,5 +532,40 @@ describe("per-hour shape of a day", () => {
     // round into hours that belong to the 1st.
     expect(day.hours[23]).toBe(1);
     expect(day.hours[0]).toBe(0);
+  });
+});
+
+describe("etDayStartMs — the day-shaped epoch as a millisecond floor", () => {
+  it("lands on midnight ET on both sides of daylight saving", () => {
+    // The whole point: the offset is discovered, not assumed. A fixed -5 h
+    // would put the summer floor an hour late and hide an hour of reports.
+    for (const day of ["2026-08-31", "2026-01-15", "2026-03-08", "2026-11-01"]) {
+      const t = etDayStartMs(day);
+      expect(etDay(t)).toBe(day);
+      expect(etHour(t)).toBe(0);
+      // One millisecond earlier belongs to the previous day.
+      expect(etDay(t - 1)).not.toBe(day);
+    }
+  });
+
+  it("is 0 — a floor that hides nothing — for a malformed day", () => {
+    expect(etDayStartMs("")).toBe(0);
+    expect(etDayStartMs("last tuesday")).toBe(0);
+  });
+
+  it("resolves the epoch from option, then env, then the default", () => {
+    const saved = process.env.SHUTTLE_STATS_SINCE_DAY;
+    try {
+      delete process.env.SHUTTLE_STATS_SINCE_DAY;
+      expect(resolveStatsSinceDay()).toBe(DEFAULT_STATS_SINCE_DAY);
+      expect(resolveStatsSinceDay("2020-02-02")).toBe("2020-02-02");
+      expect(resolveStatsSinceDay("nonsense")).toBe(DEFAULT_STATS_SINCE_DAY);
+      process.env.SHUTTLE_STATS_SINCE_DAY = "2021-03-03";
+      expect(resolveStatsSinceDay()).toBe("2021-03-03");
+      expect(resolveStatsSinceDay("2020-02-02")).toBe("2020-02-02");
+    } finally {
+      if (saved === undefined) delete process.env.SHUTTLE_STATS_SINCE_DAY;
+      else process.env.SHUTTLE_STATS_SINCE_DAY = saved;
+    }
   });
 });

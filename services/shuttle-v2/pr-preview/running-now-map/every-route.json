@@ -1,0 +1,14 @@
+{
+  "caption": "Map tab after tapping the toggle to \"Every route\": every chip-selected line is drawn, as before",
+  "views": [
+    "map"
+  ],
+  "actions": [
+    {
+      "click": "Running now",
+      "on": "map",
+      "settle": 3000
+    }
+  ],
+  "fullPage": false
+}

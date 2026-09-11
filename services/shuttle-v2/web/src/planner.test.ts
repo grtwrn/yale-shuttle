@@ -1,11 +1,12 @@
+import type { LatLon } from "./geo";
 import { describe, expect, it } from "vitest";
 
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { dwellBoardWindowSec, findPotentialRoutes, keptThirdLabel, MAX_RIDE_SEC, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, THIRD_SHUTTLE_KEEP_SLACK_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { DIRECT_COMMUTE_MARGIN_SEC, directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, keptThirdLabel, MAX_RIDE_SEC, mostDirectOption, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_KEEP_SLACK_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
-import { MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
   at, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
 } from "./__fixtures__/payload";
@@ -99,6 +100,92 @@ describe("planTrip: walking dominance", () => {
       if (o.mode !== "shuttle") continue;
       expect(o.walkToSec + o.walkFromSec).toBeLessThan(o.directWalkSec);
     }
+  });
+});
+
+// The operator, 2026-09-03: setting the same place as both origin and
+// destination "gets confused". planTrip is right — every shuttle option is
+// dominated by a direct walk of ~zero, leaving one 0-minute Walk. What was
+// wrong is that the walk-only shape is ALSO the trigger for the "shuttles that
+// go there — none on the map yet" fallback, so the rider standing at their
+// destination got a dozen routes and "Should be running now" instead of the
+// answer.
+describe("isAlreadyThere", () => {
+  const walkOnly = (from: { lat: number; lon: number }, to: { lat: number; lon: number }) => {
+    const options = plan(from, to);
+    expect(options.every((o) => o.mode === "walk")).toBe(true);
+    return options;
+  };
+
+  it("is true for the exact same point, where the plan is a 0-minute walk", () => {
+    const here = at(STOP.phelpsGate);
+    const options = walkOnly(here, here);
+    expect(options).toHaveLength(1);
+    expect(options[0].totalSec).toBe(0);
+    expect(isAlreadyThere(here, here, options)).toBe(true);
+  });
+
+  // The near miss the exact case hides behind: a saved "Home" a few metres off
+  // the GPS fix produces the same walk-only state with a 20-second walk.
+  it("is true for a near miss — a saved place metres from the fix", () => {
+    const from = at(STOP.phelpsGate);
+    const to = northOf(STOP.phelpsGate, 22);
+    expect(walkSecFromMeters(haversineMeters(from, to))).toBeLessThan(30);
+    expect(isAlreadyThere(from, to, walkOnly(from, to))).toBe(true);
+  });
+
+  it("holds up to AT_PLACE_M and stops there", () => {
+    const from = at(STOP.phelpsGate);
+    const inside = northOf(STOP.phelpsGate, AT_PLACE_M - 5);
+    const outside = northOf(STOP.phelpsGate, AT_PLACE_M + 5);
+    expect(isAlreadyThere(from, inside, walkOnly(from, inside))).toBe(true);
+    expect(isAlreadyThere(from, outside, walkOnly(from, outside))).toBe(false);
+  });
+
+  // The threshold has room: nothing is being suppressed at 80 m because
+  // planTrip has no shuttle to offer until the endpoints are ~200 m apart.
+  it("cannot hide a ride — the first shuttle option needs far more separation", () => {
+    const from = at(STOP.phelpsGate);
+    for (const m of [AT_PLACE_M, 120]) {
+      expect(plan(from, northOf(STOP.phelpsGate, m)).some((o) => o.mode === "shuttle")).toBe(false);
+    }
+    expect(plan(from, northOf(STOP.phelpsGate, 200)).some((o) => o.mode === "shuttle")).toBe(true);
+  });
+
+  // Distance alone must not decide: two stops in this network are 10 m apart,
+  // so a (silly but real) ride between them can survive the dominance rule,
+  // and a message must never overrule an option the planner kept.
+  it("is false whenever a shuttle option survives, however close the ends", () => {
+    const here = at(STOP.phelpsGate);
+    const shuttle = { ...plan(northOf(STOP.phelpsGate, 200), at(STOP.cedar333)).find((o) => o.mode === "shuttle")! };
+    expect(shuttle).toBeDefined();
+    expect(isAlreadyThere(here, here, [shuttle])).toBe(false);
+  });
+
+  // And an empty shuttle list alone must not decide either: an off-hours
+  // cross-town trip looks identical, and THAT rider wants the route list.
+  it("is false for a long walk-only trip, so the route list still shows", () => {
+    const from = { lat: 41.20, lon: -72.90 };
+    const to = { lat: 41.25, lon: -72.90 };
+    expect(isAlreadyThere(from, to, walkOnly(from, to))).toBe(false);
+  });
+
+  it("is false before a trip exists", () => {
+    const here = at(STOP.phelpsGate);
+    expect(isAlreadyThere(null, here, [])).toBe(false);
+    expect(isAlreadyThere(here, null, [])).toBe(false);
+    expect(isAlreadyThere(here, here, null)).toBe(false);
+  });
+
+  // The wording split. SAME_SPOT_M sits below the closest pair of distinct
+  // stops this network serves (10.3 m), so "the same place you're starting
+  // from" is never printed for two points the app calls different stops.
+  it("splits its wording below the closest distinct stop pair", () => {
+    expect(SAME_SPOT_M).toBeLessThan(10.3);
+    expect(SAME_SPOT_M).toBeLessThan(AT_PLACE_M);
+    const here = at(STOP.phelpsGate);
+    expect(haversineMeters(here, northOf(STOP.phelpsGate, 5))).toBeLessThanOrEqual(SAME_SPOT_M);
+    expect(haversineMeters(here, northOf(STOP.phelpsGate, 22))).toBeGreaterThan(SAME_SPOT_M);
   });
 });
 
@@ -230,6 +317,80 @@ describe("pickLiveArrival", () => {
     expect(pick.match.busName).toBe("202");
     expect(pick.missedBus).toBe("101");
     expect(pick.departed).toBe(false);
+  });
+
+  // The canary, 2026-09-03 21:48 UTC on Brown: "in 1, 57 min" became "in 56
+  // min" in fifteen seconds while #301 was 77 m from the kerb, and the card
+  // sank to the bottom of the list. The rider's billed walk (204 m, 185 s)
+  // had crossed the pinned bus's eta + 60 + 90, so the first CATCHABLE entry
+  // was that same vehicle a lap later. Swapping to it says nothing — it is
+  // the same bus — and it deletes the only actionable fact on the row.
+  it("does not swap a still-approaching pinned bus for its own next lap", () => {
+    const live = [arr("301", 24), arr("301", 3439)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.eta).toBe(24);
+    expect(pick.departed).toBe(false);
+    expect(pick.missedBus).toBeUndefined();
+  });
+
+  it("still hands over to a DIFFERENT catchable bus, and names the one that got away", () => {
+    // Same rider, but a second vehicle is genuinely reachable: that is a real
+    // alternative and the card says why it moved.
+    const live = [arr("301", 24), arr("302", 600), arr("301", 3439)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.busName).toBe("302");
+    expect(pick.missedBus).toBe("301");
+  });
+
+  it("does not reach past its own lap for a later vehicle", () => {
+    // Both buses are out of reach this time round. The soonest thing the
+    // rider can catch is #301's own next lap, so #302's lap — 200 s LATER —
+    // must not take the row just because it is a different vehicle.
+    const live = [arr("301", 100), arr("302", 150), arr("301", 2400), arr("302", 2600)];
+    const pick = pickLiveArrival(live, "301", 400)!;
+    expect(pick.match.busName).toBe("301");
+    expect(pick.match.eta).toBe(100);
+  });
+
+  it("lets the departure clear the row: once the bus has gone, its lap is all there is", () => {
+    // #301 has left the stop, so computeUpcomingArrivals prices it a lap out
+    // and its soonest entry IS that lap. Catchable again, so the row follows
+    // it honestly at 40 min rather than defending a number the bus no longer
+    // owns.
+    const live = [arr("301", 2400)];
+    const pick = pickLiveArrival(live, "301", 185)!;
+    expect(pick.match.eta).toBe(2400);
+    expect(pick.departed).toBe(false);
+  });
+
+  // Report #99, 2026-09-04: "How could I catch the blue if its a 7min walk and
+  // it arrives in 5?" — the card read `Blue Day · in 5, 17 min · 16 min ·
+  // arrive 11:46a · 🚶 7 min › 🚌 4 min › 🚶 5 min`. The pin is right to stay
+  // (a 60 s shortfall is ~66 m, inside the walking-GPS buffer the constant
+  // exists for); the TOTAL must not price a boarding on it.
+  it("prices the wait on a bus the rider can reach, not the one they are watching", () => {
+    const live = [arr("B1", 300), arr("B2", 1020)];
+    const pick = pickLiveArrival(live, "B1", 420)!;
+    // The countdown still follows the bus that is 5 min out...
+    expect(pick.match.eta).toBe(300);
+    // ...and the trip is priced on the one 17 min out, which is the one a
+    // rider seven minutes' walk away will actually board.
+    expect(pick.boardable.eta).toBe(1020);
+  });
+
+  it("keeps boardable identical to match for a rider at the stop", () => {
+    // walk 0 makes every arrival catchable, so the two questions have one
+    // answer and every existing verdict is untouched.
+    for (const live of [[arr("101", 30)], [arr("202", 220), arr("101", 2440)], [arr("101", 1500)]]) {
+      const pick = pickLiveArrival(live, "101", 0)!;
+      expect(pick.boardable).toBe(pick.match);
+    }
+  });
+
+  it("falls back to the watched bus when nothing at all is catchable", () => {
+    const pick = pickLiveArrival([arr("101", 100)], "101", 1000)!;
+    expect(pick.departed).toBe(true);
+    expect(pick.boardable).toBe(pick.match);
   });
 
   it("declares departed only when nothing is catchable", () => {
@@ -412,6 +573,58 @@ describe("findPotentialRoutes", () => {
     expect(found[0]!.activeNow).toBe(true);
   });
 
+  // The grocery lines alternate whole weekends (schedule.ts ROUTE_CALENDAR).
+  // On Sun 2026-09-06 — Hamden's weekend — the panel read "Should be running
+  // now — no bus reporting yet" for Grocery TJ. It must read "not this
+  // weekend", with TJ's own next Saturday, and the partner's bus out today
+  // must say the same even when the calendar disagrees.
+  describe("a line that alternates weekends", () => {
+    // Grocery TJ's real stop list and coordinates (the fixture payload maps
+    // only Blue Day / Blue Weekend), from /api/buses on 2026-09-06.
+    const tjStops = [97, 118, 42, 38, 119];
+    const coords: Record<number, LatLon> = {
+      ...stopCoords,
+      97: { lat: 41.315675, lon: -72.920859 },   // Peabody Museum / Whitney / Sachem
+      118: { lat: 41.311184, lon: -72.923753 },  // Temple / Grove
+      38: { lat: 41.306177, lon: -72.929592 },   // College / Crown
+      119: { lat: 41.251375, lon: -73.018082 },  // Trader Joe's
+    };
+    const stopsWithTj = { ...routeStops, "6": tjStops };
+    const from = { lat: coords[97]!.lat + 0.0005, lon: coords[97]!.lon };
+    const to = { lat: coords[119]!.lat + 0.0005, lon: coords[119]!.lon };
+    const sun0906 = new Date("2026-09-06T10:28:00-04:00");
+    const sat0912 = new Date("2026-09-12T10:00:00-04:00");
+    const published = { "6": { days: [0, 6], startMin: 7 * 60, endMin: 17 * 60, text: "7am - 5pm, Sat - Sun" } };
+
+    it("says 'not this weekend' on the partner's weekend, never 'should be running'", () => {
+      const found = findPotentialRoutes(from, to, stopsWithTj, coords, sun0906, published);
+      const tj = found.find((r) => r.label === "Grocery TJ")!;
+      expect(tj).toBeDefined();
+      expect(tj.activeNow).toBe(false);
+      expect(tj.off).toEqual({ partner: "Grocery Ham" });
+      expect(tj.note).toMatch(/FlexiStop/);
+      expect(tj.nextActive?.toISOString()).toBe(new Date("2026-09-12T07:00:00-04:00").toISOString());
+      expect(tj.schedule).toBe("Sa/Su 7a–5p");
+    });
+
+    it("is 'should be running' on its own weekend, and off when the partner is out that day", () => {
+      const own = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published)
+        .find((r) => r.label === "Grocery TJ")!;
+      expect(own).toMatchObject({ activeNow: true, off: null });
+      const drifted = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
+        { labels: new Set(["Grocery Ham"]), now: sat0912 }).find((r) => r.label === "Grocery TJ")!;
+      expect(drifted).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // Upstream's flag is the first word: inactive on the line's own weekend is off.
+      const flagged = findPotentialRoutes(from, to, stopsWithTj, coords, sat0912, published,
+        { labels: new Set(), now: sat0912, active: { "6": false, "18": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(flagged).toMatchObject({ activeNow: false, off: { partner: "Grocery Ham" } });
+      // And active on the partner's weekend means it is out after all.
+      const out = findPotentialRoutes(from, to, stopsWithTj, coords, sun0906, published,
+        { labels: new Set(["Grocery Ham"]), now: sun0906, active: { "6": true } }).find((r) => r.label === "Grocery TJ")!;
+      expect(out).toMatchObject({ activeNow: true, off: null });
+    });
+  });
+
   it("returns nothing for a destination no route reaches", () => {
     expect(findPotentialRoutes(
       { lat: 41.20, lon: -72.90 }, { lat: 41.25, lon: -72.90 },
@@ -506,8 +719,20 @@ describe("routeHoursCaption (report #57: hours atop the route details page)", ()
 });
 
 describe("topVisibleOptions", () => {
-  const opt = (mode: "shuttle" | "walk", label: string, totalSec: number) =>
-    ({ mode, routeLabel: label, totalSec } as unknown as import("./planner").TripOption);
+  // Legs default to "the whole total is riding", so every option's commute
+  // orders the same way as its total and the direct-route promotion below
+  // never fires unless a test asks for it. `directWalkSec` is deliberately
+  // over an hour: walking is not a real alternative in these fixtures.
+  const opt = (
+    mode: "shuttle" | "walk", label: string, totalSec: number,
+    legs?: { walkToSec?: number; rideSec?: number; walkFromSec?: number },
+  ) => ({
+    mode, routeLabel: label, totalSec,
+    walkToSec: legs?.walkToSec ?? 0,
+    rideSec: legs?.rideSec ?? totalSec,
+    walkFromSec: legs?.walkFromSec ?? 0,
+    directWalkSec: 99_999,
+  } as unknown as import("./planner").TripOption);
 
   it("keeps a third shuttle that is nearly as good as the second (report #46)", () => {
     // The live case: Red 17 min, walk 31, Orange 34, Blue 35 — Blue is one
@@ -549,6 +774,122 @@ describe("topVisibleOptions", () => {
     const sorted = [opt("shuttle", "A", 900), opt("walk", "Walk", 1200)];
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "Walk"]);
   });
+
+  // ── The direct route always shows (report #93) ───────────────────────────
+  //
+  // The live trip from the report, measured against production 2026-09-04:
+  // Division/Prospect → LEPH. Red's total is a huge WAIT wrapped around the
+  // shortest commute on offer; Blue wins on total only because its bus is
+  // two minutes out rather than twenty-eight.
+  const report93 = () => [
+    opt("shuttle", "Blue Day", 22 * 60, { walkToSec: 78, rideSec: 1254, walkFromSec: 48 }),
+    opt("shuttle", "Orange Day", 34 * 60, { walkToSec: 972, rideSec: 786, walkFromSec: 48 }),
+    opt("walk", "Walk", 37 * 60),
+    opt("shuttle", "Red", 39 * 60, { walkToSec: 0, rideSec: 732, walkFromSec: 48 }),
+    opt("shuttle", "Brown", 66 * 60, { walkToSec: 126, rideSec: 1338, walkFromSec: 564 }),
+  ];
+
+  it("promotes the direct route out from behind 'Show more' (report #93)", () => {
+    const sorted = report93();
+    // Red is 4th on total and the third-shuttle slack does not reach it, yet
+    // it is the one that runs straight there — 13 min of walking + riding
+    // against Blue's 23 and Orange's 30.
+    expect(mostDirectOption(sorted)?.routeLabel).toBe("Red");
+    expect(directPromotion(sorted)?.routeLabel).toBe("Red");
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel))
+      .toEqual(["Blue Day", "Orange Day", "Walk", "Red"]);
+  });
+
+  it("keeps the fastest option on top — promotion adds a row, never reorders", () => {
+    const sorted = report93();
+    const visible = topVisibleOptions(sorted);
+    expect(visible[0].routeLabel).toBe("Blue Day");
+    // Every visible row keeps its rank from the sorted list.
+    const rank = (l: string) => sorted.findIndex((o) => o.routeLabel === l);
+    const ranks = visible.map((o) => rank(o.routeLabel));
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    // ...and Brown, which is neither fast nor direct, stays hidden.
+    expect(visible.map((o) => o.routeLabel)).not.toContain("Brown");
+  });
+
+  it("does not flicker as the wait moves: the promotion ignores live totals", () => {
+    // Replay the same plan with Red's wait sweeping the whole range that made
+    // it cross the slack boundary in the first place. Only totalSec changes —
+    // exactly what the per-poll live recompute rewrites.
+    for (let waitMin = 0; waitMin <= 40; waitMin++) {
+      const sorted = report93()
+        .map((o) => (o.routeLabel === "Red"
+          ? { ...o, totalSec: 13 * 60 + waitMin * 60 }
+          : o))
+        .sort((a, b) => a.totalSec - b.totalSec);
+      expect(mostDirectOption(sorted)?.routeLabel).toBe("Red");
+      expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toContain("Red");
+    }
+  });
+
+  it("stays quiet when the top of the list is already the direct route", () => {
+    // Blue is both fastest and most direct — no fourth row.
+    const sorted = [
+      opt("shuttle", "Blue Day", 12 * 60, { walkToSec: 60, rideSec: 600, walkFromSec: 60 }),
+      opt("shuttle", "Orange Day", 20 * 60, { walkToSec: 600, rideSec: 600, walkFromSec: 0 }),
+      opt("shuttle", "Red", 30 * 60, { walkToSec: 120, rideSec: 660, walkFromSec: 60 }),
+    ];
+    expect(directPromotion(sorted)).toBeUndefined();
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day"]);
+  });
+
+  it("needs a real margin — a hair more direct does not earn a row", () => {
+    const near = (extra: number) => [
+      opt("shuttle", "A", 10 * 60, { rideSec: 600 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+      opt("shuttle", "C", 40 * 60, { rideSec: 600 - extra }),
+    ];
+    // One second short of the margin: A is already the direct answer.
+    expect(directPromotion(near(DIRECT_COMMUTE_MARGIN_SEC - 1))).toBeUndefined();
+    expect(directPromotion(near(DIRECT_COMMUTE_MARGIN_SEC))?.routeLabel).toBe("C");
+  });
+
+  it("never promotes a bus the rider cannot catch, or one slower than walking", () => {
+    const base = [
+      opt("shuttle", "A", 10 * 60, { rideSec: 600 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+    ];
+    const departed = {
+      ...opt("shuttle", "C", 40 * 60, { rideSec: 60 }), departed: true,
+    } as import("./planner").TripOption;
+    expect(directPromotion([...base, departed])).toBeUndefined();
+    // Same option, catchable but with both walks longer than walking direct.
+    const slower = {
+      ...opt("shuttle", "C", 40 * 60, { walkToSec: 900, rideSec: 60, walkFromSec: 900 }),
+      directWalkSec: 1200,
+    } as import("./planner").TripOption;
+    expect(directPromotion([...base, slower])).toBeUndefined();
+  });
+
+  it("a short hop that leaves the rider far from the door is not 'direct'", () => {
+    // The operator's own caveat: "a short route that doesn't get you far
+    // wouldn't be good". C rides two minutes and drops them a 12-minute walk
+    // short; A carries them to the door in ten.
+    const sorted = [
+      opt("shuttle", "A", 10 * 60, { walkToSec: 60, rideSec: 480, walkFromSec: 60 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 1200 }),
+      opt("shuttle", "C", 40 * 60, { walkToSec: 60, rideSec: 120, walkFromSec: 720 }),
+    ];
+    expect(mostDirectOption(sorted)?.routeLabel).toBe("A");
+    expect(directPromotion(sorted)).toBeUndefined();
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B"]);
+  });
+
+  it("adds at most one row", () => {
+    const sorted = [
+      opt("shuttle", "A", 10 * 60, { rideSec: 3000 }),
+      opt("shuttle", "B", 20 * 60, { rideSec: 2400 }),
+      opt("shuttle", "C", 40 * 60, { rideSec: 600 }),
+      opt("shuttle", "D", 50 * 60, { rideSec: 300 }),
+      opt("shuttle", "E", 60 * 60, { rideSec: 120 }),
+    ];
+    // E is the most direct; C and D do not each get a row of their own.
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "E"]);
 
   describe("stability of the third row (report #76)", () => {
     // The reported trip: Red, then Blue 26 min, then Orange 31 min — the gap

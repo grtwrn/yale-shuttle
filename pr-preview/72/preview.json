@@ -1,0 +1,20 @@
+{
+  "caption": "Destination lookup for \"trader joes\": the second result now names its town (Hamden) instead of stopping at the street. Geocode response mocked to the two rows production returns.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 44,
+    "dest": 124
+  },
+  "views": [
+    "search"
+  ],
+  "mocked": [
+    "/api/geocode"
+  ],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788449443/pr-preview/72/search.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

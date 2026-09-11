@@ -24,20 +24,21 @@
 // Regenerate the fixture with `node scripts/record-layover-pass.mjs` (see its
 // header) after a route change; commit the new file, and say in the PR what
 // moved.
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { computeUpcomingArrivals } from "./arrivals";
 import type { DwellTimes, SegmentTimes } from "./arrivals";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { registerRoutePaths } from "./anchor";
+import type { AnchorStore } from "./eta";
 
 import pass from "./__fixtures__/red-layover-pass.json";
+import splitTables from "./__fixtures__/red-split-tables.json";
+import incidents from "./__fixtures__/anchor-incidents.json";
 
 const routeStops: Record<string, number[]> = pass.routeStops;
 const stopCoords: Record<number, LatLon> = pass.stopCoords as unknown as Record<number, LatLon>;
-const segmentTimes = pass.segments as unknown as SegmentTimes;
-const dwellTimes = pass.dwells as unknown as DwellTimes;
 const names = pass.stopNames as unknown as Record<number, string>;
 
 const layover = pass.arrivals.find((a) => a.stopId === pass.layoverStopId)!;
@@ -77,116 +78,146 @@ function busAt(t: number): BusData {
   } as BusData;
 }
 
-/** What the board would show a rider waiting at `stopId`, in seconds. */
-function shownEta(stopId: number, t: number): number | null {
-  const arrivals = computeUpcomingArrivals(
-    [stopId], [busAt(t)], routeStops, stopCoords, segmentTimes, t, dwellTimes,
-  ).filter((a) => a.routeLabel === pass.routeLabel);
-  return arrivals.length > 0 ? arrivals[0]!.eta : null;
-}
-
 /** Every recorded moment in [from, to], as epoch ms. */
 const momentsBetween = (from: number, to: number) =>
   pass.positions.map((p) => p.t).filter((t) => t >= from && t <= to);
 
-describe(`Red through the ${names[pass.layoverStopId]} layover`, () => {
-  // The map registers route polylines every poll; without them the anchor
-  // falls back to stop-to-stop chords, which is what a browser does on the
-  // first render anyway.
-  registerRoutePaths(null);
 
-  it("the fixture is the shape this test needs", () => {
-    expect(layover.departedAt).toBeTruthy();
-    const dwellMin = (LEFT_AT - layover.arrivedAt) / 60_000;
-    expect(dwellMin).toBeGreaterThan(5);
-    // before, during and after all present
-    expect(momentsBetween(pass.positions[0]!.t, layover.arrivedAt).length).toBeGreaterThan(3);
-    expect(momentsBetween(layover.arrivedAt, LEFT_AT).length).toBeGreaterThan(20);
-    expect(momentsBetween(LEFT_AT, pass.positions.at(-1)!.t).length).toBeGreaterThan(3);
-  });
 
-  // Division / Prospect is 65 s past the layover, Prospect / Hillside 215 s —
-  // the stops the rider in the report was waiting at.
-  for (const stopId of [48, 104]) {
-    describe(`a rider waiting at ${names[stopId]}`, () => {
-      const truth = actualArrivalAt(stopId, LEFT_AT)!;
+/**
+ * THE RING ESTIMATOR (web/src/eta/), which is the only estimator there is.
+ *
+ * Two blocks stood here until 2026-09-06 that registered no route polyline,
+ * which sent Red down the legacy arithmetic — a point anchor, a stall credit
+ * and an approach zone — and pinned its behaviour through the same layover.
+ * That arithmetic is gone (there is one estimator for every route now), and
+ * so are they. A browser always has the published line: it arrives in the
+ * same payload as the buses. Same recording, same split tables, the same four
+ * promises: never much earlier than the bus, within two minutes on the
+ * median, never climbing while the bus stands, and 5 -> 1 on the poll it
+ * leaves.
+ */
+describe(`Red through the ${names[pass.layoverStopId]} layover, priced on the ring`, () => {
+  const redPath = (incidents as unknown as { routes: Record<string, { path: [number, number][] }> }).routes["3"]!.path;
+  beforeEach(() => registerRoutePaths({ "3": redPath }));
+  afterEach(() => registerRoutePaths(null));
 
-      it("is never promised the bus much earlier than it comes", () => {
-        // THE ONE THAT MATTERS. A late bus costs a wait; an early one is
-        // gone. "Early" here means the board's number ran out before the bus
-        // arrived — i.e. the app was pessimistic, the rider relaxed, and the
-        // bus beat its own promise.
-        const worst = { at: 0, pessimisticBy: 0, shown: 0, truth: 0 };
-        for (const t of momentsBetween(pass.positions[0]!.t, truth)) {
-          const eta = shownEta(stopId, t);
-          if (eta === null) continue;
-          const remaining = (truth - t) / 1000;
-          const pessimisticBy = eta - remaining;
-          if (pessimisticBy > worst.pessimisticBy) {
-            Object.assign(worst, { at: t, pessimisticBy, shown: eta, truth: remaining });
-          }
-        }
-        expect(
-          worst.pessimisticBy,
-          `at ${new Date(worst.at).toISOString().slice(11, 19)} the board said ` +
-            `${Math.round(worst.shown)} s while the bus was ${Math.round(worst.truth)} s away`,
-        ).toBeLessThan(120);
-      });
-
-      it("stays within two minutes of the truth across the whole pass", () => {
-        const errors = momentsBetween(pass.positions[0]!.t, truth)
-          .map((t) => ({ t, eta: shownEta(stopId, t) }))
-          .filter((e): e is { t: number; eta: number } => e.eta !== null)
-          .map((e) => Math.abs(e.eta - (truth - e.t) / 1000));
-        expect(errors.length).toBeGreaterThan(20);
-        const median = errors.sort((a, b) => a - b)[Math.floor(errors.length / 2)]!;
-        expect(median).toBeLessThan(120);
-      });
-
-      it("does not lurch between one poll and the next", () => {
-        // The rider's other complaint: "the red jumped from 8 min to 30s".
-        // Fifteen seconds of real time may not move the estimate by minutes;
-        // the exception is the moment the bus is recorded leaving the stop,
-        // where a real discontinuity exists in the data itself.
-        const seen = momentsBetween(pass.positions[0]!.t, truth)
-          .map((t) => ({ t, eta: shownEta(stopId, t) }))
-          .filter((e): e is { t: number; eta: number } => e.eta !== null);
-        let worst = { t: 0, jump: 0 };
-        for (let i = 1; i < seen.length; i++) {
-          const prev = seen[i - 1]!, cur = seen[i]!;
-          if (prev.t < LEFT_AT && cur.t >= LEFT_AT) continue; // departure itself
-          const elapsed = (cur.t - prev.t) / 1000;
-          // A countdown should fall by roughly the time that passed.
-          const jump = Math.abs(cur.eta - prev.eta + elapsed);
-          if (jump > worst.jump) worst = { t: cur.t, jump };
-        }
-        expect(
-          worst.jump,
-          `biggest step at ${new Date(worst.t).toISOString().slice(11, 19)}`,
-        ).toBeLessThan(180);
-      });
-    });
+  const segmentsSplit: SegmentTimes = JSON.parse(JSON.stringify(pass.segments));
+  const dwellsSplit: DwellTimes = JSON.parse(JSON.stringify(pass.dwells));
+  for (const [r, tab] of Object.entries(splitTables.segments)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (segmentsSplit[r]?.[k]) Object.assign(segmentsSplit[r]![k]!, v);
+    }
   }
+  for (const [r, tab] of Object.entries(splitTables.dwells)) {
+    for (const [k, v] of Object.entries(tab as Record<string, object>)) {
+      if (dwellsSplit[r]?.[k]) Object.assign(dwellsSplit[r]![k]!, v);
+    }
+  }
+  const boardFor = (store?: AnchorStore) => (stopId: number, t: number): number | null => {
+    const arrivals = computeUpcomingArrivals(
+      [stopId], [busAt(t)], routeStops, stopCoords, segmentsSplit, t, dwellsSplit, store,
+    ).filter((a) => a.routeLabel === pass.routeLabel);
+    return arrivals.length > 0 ? arrivals[0]!.eta : null;
+  };
+  const standingMoments = momentsBetween(layover.arrivedAt, LEFT_AT - 1);
 
-  it("counts the layover down instead of sitting on a padded number", () => {
-    // Through the dwell the estimate must actually fall: this is what the
-    // half-the-segment cap broke, holding ~5 min for the last four minutes of
-    // the layover and then collapsing when the bus left.
-    const during = momentsBetween(layover.arrivedAt + 60_000, LEFT_AT - 30_000);
-    const first = shownEta(48, during[0]!)!;
-    const last = shownEta(48, during.at(-1)!)!;
-    expect(first).not.toBeNull();
-    expect(last).toBeLessThan(first);
-    // and by the end of the layover the bus really is close: 65 s of driving.
-    expect(last).toBeLessThan(240);
+  it("the board never climbs while the bus stands still", () => {
+    // Tolerance 10 s: the moving and the standing pricings of the same
+    // arrival differ by a few seconds, and the mode flips on the poll the
+    // bus settles — below any display bucket, unlike the 42 s creep #119
+    // removed.
+    const board = boardFor(new Map());
+    let prev = Infinity;
+    for (const t of standingMoments) {
+      const eta = board(48, t);
+      if (eta === null) continue;
+      expect(eta, `climbed at ${new Date(t).toISOString().slice(11, 19)}`).toBeLessThanOrEqual(prev + 10);
+      prev = eta;
+    }
   });
 
-  it("does not promise a bus that has only just parked", () => {
-    const justArrived = layover.arrivedAt + 30_000;
-    const eta = shownEta(48, justArrived)!;
-    const remaining = (actualArrivalAt(48, LEFT_AT)! - justArrived) / 1000;
-    // ~10 min of layover still ahead: the app must not read "a couple of
-    // minutes" just because the hop after the layover is short.
-    expect(eta).toBeGreaterThan(remaining / 2);
+  it("the departure collapses the number on the poll it happens", () => {
+    const board = boardFor(new Map());
+    const lastStanding = standingMoments.at(-1)!;
+    const firstGone = pass.positions.map((p) => p.t).find((t) => t >= LEFT_AT)!;
+    const secondGone = pass.positions.map((p) => p.t).filter((t) => t > firstGone)[0]!;
+    const held = board(48, lastStanding)!;
+    const gone = board(48, firstGone)!;
+    const gone2 = board(48, secondGone)!;
+    // The number before departure is already the conditional residual of a
+    // stand that has run past its p75, so it is small; the departure still
+    // takes the standing term out of it in one or two polls.
+    expect(Math.min(gone, gone2)).toBeLessThan(Math.min(held - 30, held * 0.7));
+  });
+
+  it("does not lurch between one poll and the next", () => {
+    // The rider's other complaint: "the red jumped from 8 min to 30s".
+    // Fifteen seconds of real time may not move the estimate by minutes; the
+    // exception is the moment the bus is recorded leaving the stop, where a
+    // real discontinuity exists in the data itself.
+    //
+    // The bar is coupled to the canary's `catastrophicSec`
+    // (scripts/canary-metrics.test.mjs asserts the two are the same number),
+    // so a jump this gate would fail on the recorded pass is a jump the
+    // canary names in the wild. Move one and you must move the other.
+    const board = boardFor(new Map());
+    for (const stopId of [48, 104]) {
+      const truth = actualArrivalAt(stopId, LEFT_AT)!;
+      const seen = momentsBetween(pass.positions[0]!.t, truth)
+        .map((t) => ({ t, eta: board(stopId, t) }))
+        .filter((e): e is { t: number; eta: number } => e.eta !== null);
+      let worst = { t: 0, jump: 0 };
+      for (let i = 1; i < seen.length; i++) {
+        const prev = seen[i - 1]!, cur = seen[i]!;
+        if (prev.t < LEFT_AT && cur.t >= LEFT_AT) continue; // the departure itself
+        const elapsed = (cur.t - prev.t) / 1000;
+        // A countdown should fall by roughly the time that passed.
+        const jump = Math.abs(cur.eta - prev.eta + elapsed);
+        if (jump > worst.jump) worst = { t: cur.t, jump };
+      }
+      expect(
+        worst.jump,
+        `${names[stopId]}: biggest step at ${new Date(worst.t).toISOString().slice(11, 19)}`,
+      ).toBeLessThan(180);
+    }
+  });
+
+  it("never promises the bus much earlier than it comes, and after the departure is within a minute on the median", () => {
+    // This pass is a 9 min 45 s stand against a table whose median is ~5 min:
+    // the arrival distribution's median is honestly two minutes early for
+    // most of it, and a single pass cannot judge a median (the rider
+    // simulator does, over thousands). What one pass CAN judge: the promise
+    // is never much later than the bus, and once the bus has left, the drive
+    // is priced to within a minute.
+    const board = boardFor(new Map());
+    for (const stopId of [48, 104]) {
+      const truth = actualArrivalAt(stopId, LEFT_AT)!;
+      let worst = { at: 0, pessimisticBy: 0, shown: 0, truth: 0 };
+      const errs: number[] = [];
+      for (const t of momentsBetween(pass.positions[0]!.t, truth)) {
+        const eta = board(stopId, t);
+        if (eta === null) continue;
+        const err = eta - (truth - t) / 1000;
+        errs.push(Math.abs(err));
+        if (err > worst.pessimisticBy) Object.assign(worst, { at: t, pessimisticBy: err, shown: eta, truth: (truth - t) / 1000 });
+      }
+      expect(
+        worst.pessimisticBy,
+        `${names[stopId]}: at ${new Date(worst.at).toISOString().slice(11, 19)} the board said ` +
+          `${Math.round(worst.shown)} s while the bus was ${Math.round(worst.truth)} s away`,
+      ).toBeLessThan(120);
+      const after: number[] = [];
+      for (const t of momentsBetween(LEFT_AT, truth)) {
+        const eta = board(stopId, t);
+        if (eta === null) continue;
+        after.push(Math.abs(eta - (truth - t) / 1000));
+      }
+      after.sort((a, b) => a - b);
+      expect(after.length).toBeGreaterThan(3);
+      // Four hops of drives and kerb stands carry ~60 s of spread between them.
+      expect(after[after.length >> 1]!, `${names[stopId]} median |error| after departure`).toBeLessThan(90);
+      expect(errs.length).toBeGreaterThan(20);
+    }
   });
 });

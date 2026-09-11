@@ -55,3 +55,20 @@ export function announcementsForRoute(
     return labels.size === 0 || labels.has(routeLabel);
   });
 }
+
+/**
+ * The banners that name no route at all — a system-wide notice.
+ *
+ * Yale posts closures this way: on 2026-09-07 the feed carried
+ * `{title: "Labor Day", message: "On 09/07/2026, Yale Shuttles will be closed
+ * … All services will resume on 09/08/2026"}`, which names no route family, so
+ * `announcementRouteLabels` returns nothing and the per-route banners never
+ * showed it. A rider opening the app on a holiday morning saw only "No
+ * shuttles running right now" and no reason — the app looked broken when it
+ * was right. These are the notices to show when nothing is running.
+ */
+export function generalAnnouncements(
+  all: readonly ServiceAnnouncement[],
+): ServiceAnnouncement[] {
+  return all.filter((a) => announcementRouteLabels(a.title).size === 0);
+}

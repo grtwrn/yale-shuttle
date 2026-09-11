@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -122,7 +122,144 @@ export const segments = sqliteTable(
   }),
 );
 
-// Every prediction we serve, for after-the-fact accuracy scoring.
+/**
+ * One row per pass of a stop by a bus: the DEPARTURE instant the detector never
+ * had, with the evidence it rests on. Derived by `src/collector/departure.ts`
+ * from the same positions and the detector's own stop-pinned clock; the
+ * `arrivals`/`segments` rows are untouched and still measure what they always
+ * did (arrival to arrival, twice).
+ *
+ * `stand_sec = departed_at − arrived_at` is the time the bus stood at the
+ * stop — the quantity `arrivals.dwell_sec` is often mistaken for and is not
+ * (`docs/eta-error-budget.md`). `outcome` keeps a skipped stop apart from a
+ * stop: a 0 s stand folded into a stop's distribution biases every quantile
+ * down, and the low tail is what a conditional-rest table reads first.
+ * `pinned_at` is production's `at_stop_since`, so a consumer that conditions
+ * on `r = now − at_stop_since` can measure on that clock instead.
+ *
+ * `(anchor_bus_id, stop_id, anchored_at)` joins the `arrivals` row the pass
+ * belongs to. `stop_index` is the position in the route sequence — the
+ * identity on the West Campus out-and-backs, where a stop id occurs twice.
+ *
+ * Retained with `arrivals` (90 d): a few hundred rows a day.
+ */
+export const stopVisits = sqliteTable(
+  "stop_visits",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    busId: integer("bus_id").notNull(),
+    busName: text("bus_name").notNull(),
+    anchorBusId: integer("anchor_bus_id").notNull(),
+    routeId: integer("route_id").notNull(),
+    stopId: integer("stop_id").notNull(),
+    stopIndex: integer("stop_index").notNull(),
+    anchoredAt: integer("anchored_at", { mode: "timestamp_ms" }).notNull(),
+    pinnedAt: integer("pinned_at", { mode: "timestamp_ms" }),
+    arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }),
+    departedAt: integer("departed_at", { mode: "timestamp_ms" }),
+    standSec: real("stand_sec"),
+    insideSec: real("inside_sec"),
+    outcome: text("outcome", { enum: ["stopped", "passed", "unresolved"] }).notNull(),
+    how: text("how", { enum: ["far", "next", "clock", "gap"] }),
+    confidence: real("confidence"),
+    // Evidence — the observation, not only the decision.
+    firstStepM: real("first_step_m"),
+    steps: integer("steps").notNull(),
+    farM: real("far_m"),
+    confirmSec: real("confirm_sec"),
+    restPolls: integer("rest_polls").notNull(),
+    shuffles: integer("shuffles").notNull(),
+    firstMovedAt: integer("first_moved_at", { mode: "timestamp_ms" }),
+    lastAtRestAt: integer("last_at_rest_at", { mode: "timestamp_ms" }),
+    closestM: real("closest_m").notNull(),
+    dow: integer("dow").notNull(),
+    hour: integer("hour").notNull(),
+  },
+  (t) => ({
+    routeStopTimeIdx: index("stop_visits_route_stop_time_idx").on(t.routeId, t.stopId, t.anchoredAt),
+    // Time-leading, for the retention sweep.
+    timeIdx: index("stop_visits_time_idx").on(t.anchoredAt),
+  }),
+);
+
+/**
+ * One row per hop, kerb to kerb: from the departure at `from_stop_id` to the
+ * first rest at `to_stop_id`, with the seconds spent stopped MID-leg split out.
+ * `drive_sec + hold_sec = leg_sec`. A hop's proration may scale `drive_sec`;
+ * it must never scale the stand at the origin, which is what `segments.
+ * travel_sec` bundles in. `to_pinned_at` is `at_stop_since` at the far end,
+ * for a consumer on that clock. Retained with `segments` (90 d).
+ */
+export const legs = sqliteTable(
+  "legs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    busId: integer("bus_id").notNull(),
+    busName: text("bus_name").notNull(),
+    routeId: integer("route_id").notNull(),
+    fromStopId: integer("from_stop_id").notNull(),
+    fromIndex: integer("from_index").notNull(),
+    toStopId: integer("to_stop_id").notNull(),
+    toIndex: integer("to_index").notNull(),
+    hops: integer("hops").notNull(),
+    departedAt: integer("departed_at", { mode: "timestamp_ms" }).notNull(),
+    arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }).notNull(),
+    toPinnedAt: integer("to_pinned_at", { mode: "timestamp_ms" }),
+    legSec: real("leg_sec").notNull(),
+    holdSec: real("hold_sec").notNull(),
+    driveSec: real("drive_sec").notNull(),
+    holds: integer("holds").notNull(),
+    reached: integer("reached", { mode: "boolean" }).notNull(),
+    dow: integer("dow").notNull(),
+    hour: integer("hour").notNull(),
+  },
+  (t) => ({
+    routeHopTimeIdx: index("legs_route_hop_time_idx").on(t.routeId, t.fromStopId, t.toStopId, t.departedAt),
+    timeIdx: index("legs_time_idx").on(t.departedAt),
+  }),
+);
+
+/**
+ * What the CLIENT actually displayed — a prediction about a bus, with no
+ * viewer attached.
+ *
+ * ── The privacy shape (read this before adding a column) ──────────────────
+ *
+ * A row is a statement about a VEHICLE: "bus #310's ETA to stop 48 was being
+ * shown as 5 min at 08:12:30, by the bundle `a1b2c3`". It carries no anonymous
+ * id, no IP, no user agent, no coordinates, no origin, no destination and no
+ * session key — there is nothing here two rows could be joined on to make one
+ * browser's trail, which is the property `daily_actives` buys by storing one
+ * row per (day, id) and nothing else.
+ *
+ * Three things keep it that way, and each is load-bearing:
+ *
+ * 1. **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+ *    prices (bus → stop); the rider's location enters the app one layer up, in
+ *    `pickLiveArrival`'s catchability rule and the walk legs. Logging at the
+ *    arrivals layer means a row cannot encode where anyone was standing, only
+ *    which stop was on some screen.
+ * 2. **The server DEDUPLICATES before writing.** `(bus_id, to_stop_id,
+ *    predicted_at, surface)` is UNIQUE and `predicted_at` is quantised to
+ *    `PREDICTION_BUCKET_MS`, so thirty riders watching one stop on one screen
+ *    in one bucket produce ONE row. A row therefore means "at least one client somewhere had
+ *    this on screen", never "a rider was here" — and the write volume is
+ *    bounded by buses x stops x time rather than by traffic.
+ * 3. **First writer wins.** `INSERT OR IGNORE`, so a late poster cannot
+ *    overwrite a value another client already established for a bucket.
+ *
+ * `client_build` is the hash out of the bundle filename the browser is running
+ * (`assets/index-<hash>.js`). It is the same for everybody on a deploy, so it
+ * identifies the CODE, not the reader — and it is the column that stops the
+ * failure this table exists to end: stability numbers measured against a
+ * client that had not shipped in months, and a hotfix's before/after credited
+ * to the wrong PR. Every row says which bundle produced it.
+ *
+ * Pair with `arrivals` on (bus_name, route_id, stop_id) — `bus_name` is the
+ * identity, `bus_id` is reissued per service block (see the data-quality
+ * invariants). The `bus_id` columns are kept because the two pre-existing
+ * accuracy readers join on them.
+ */
 export const predictionsLog = sqliteTable(
   "predictions_log",
   {
@@ -137,6 +274,33 @@ export const predictionsLog = sqliteTable(
     predictedLowSec: real("predicted_low_sec").notNull(),
     predictedHighSec: real("predicted_high_sec").notNull(),
     predictedAt: integer("predicted_at", { mode: "timestamp_ms" }).notNull(),
+    /** Bundle hash the reading came from; null for rows written before it existed. */
+    clientBuild: text("client_build"),
+    /**
+     * WHICH SCREEN showed it: `trip` (the trip card), `ride` (the on-bus
+     * countdown to the alight stop), `card` (a route card on the Map tab).
+     *
+     * It exists because of a change, not a curiosity. Until 2026-09-04 the
+     * route cards ran a SEPARATE ETA estimator, and this table deliberately
+     * logged only the trip card — pooling two estimators in one column is the
+     * inference error the table was built to stop. Merging them onto
+     * `computeUpcomingArrivals` removes that error and creates a subtler one:
+     * the route cards report a much larger and differently shaped population
+     * (every line, every stop, mostly far-horizon) than the trip card (one
+     * board stop a rider chose). Pooled silently, the median would move
+     * because the MIX changed, and it would read as the estimator changing.
+     *
+     * So the surface is part of the dedup key, not a decoration: one row per
+     * (vehicle, stop, bucket, surface), and every accuracy query says which
+     * population it means. Rows written before this column existed are `trip`,
+     * which is what they were.
+     *
+     * It does not weaken the privacy shape above. A row still says "at least
+     * one client somewhere had this on screen", now with which screen; it is a
+     * property of the APP, deduplicated across every browser, and there is
+     * still nothing two rows can be joined on to make one browser's trail.
+     */
+    surface: text("surface").notNull().default("trip"),
   },
   (t) => ({
     busToTimeIdx: index("predictions_bus_to_time_idx").on(
@@ -148,6 +312,72 @@ export const predictionsLog = sqliteTable(
     // variant) scan `WHERE predicted_at >= ?` with no bus_id — a request-path
     // query, so it must not be a full scan.
     timeIdx: index("predictions_time_idx").on(t.predictedAt),
+    // THE dedup key, and therefore half the privacy argument above: one row per
+    // (vehicle, stop, quantised instant) no matter how many browsers report it.
+    shownUniq: uniqueIndex("predictions_shown_uniq").on(
+      t.busId,
+      t.toStopId,
+      t.predictedAt,
+      t.surface,
+    ),
+  }),
+);
+
+/**
+ * The operator's own per-stop ETAs, sampled verbatim (`upstreamEtaSampler.ts`).
+ *
+ * This is the RAW record of what `routes_eta.php?stop=<id>` answered, kept
+ * apart from `predictions_log` on purpose. That table holds a curated,
+ * pairable subset (surface = "upstream": whole-minute rows ≤ 30 min, only for
+ * stops the route serves, one per 15 s bucket) so a head-to-head with what
+ * riders were shown is a query. This table keeps EVERYTHING the endpoint said,
+ * including what the curated row drops and what the endpoint did NOT say:
+ *
+ *  - one row per (call, bus) prediction, with upstream's whole minutes as
+ *    served (`eta_min`) and the derived seconds (`eta_sec`);
+ *  - one MARKER row per call that answered nothing (`bus_id IS NULL`), so an
+ *    absence is a fact with a timestamp rather than a gap — the question
+ *    "when did upstream stop predicting this bus" is answered by rows, not by
+ *    their lack;
+ *  - `probe = 1` when the stop was asked BECAUSE its route is active upstream
+ *    but has no live bus (the out-of-service / not-yet-in-service signal);
+ *  - `raw` only when the response carried fields the columns do not (unknown
+ *    keys on a row or the envelope, rows that failed the row schema, an
+ *    implausible `calculation_time`), capped at 2 KB. NULL is the normal case.
+ *
+ * Nothing here is about a rider: the rows are the operator's statements about
+ * the operator's own fleet, sampled on our timer.
+ */
+export const upstreamEtas = sqliteTable(
+  "upstream_etas",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** When WE made the call (ms). The retention column. */
+    sampledAt: integer("sampled_at", { mode: "timestamp_ms" }).notNull(),
+    /** Upstream's `calculation_time`, ms, when within 5 min of our clock; else NULL. */
+    calcAt: integer("calc_at", { mode: "timestamp_ms" }),
+    stopId: integer("stop_id").notNull(),
+    /** Upstream's `route`; on a marker row, the route the probe was for (or NULL). */
+    routeId: integer("route_id"),
+    /** NULL on a marker row (the call answered no predictions). */
+    busId: integer("bus_id"),
+    /** `#49`, exactly as `/routes_buses.php` and `arrivals` spell it. */
+    busName: text("bus_name"),
+    /** `avg` as served: whole minutes. 0 is what their app prints as "Arrived". */
+    etaMin: integer("eta_min"),
+    /** `eta_min * 60`, so readers and `predictions_log.predicted_sec` agree on units. */
+    etaSec: integer("eta_sec"),
+    /** 1 when the stop was chosen as an idle-route probe (see above). */
+    probe: integer("probe").notNull().default(0),
+    /** Unrecognised response fields, JSON, ≤ 2 KB. NULL unless upstream said something new. */
+    raw: text("raw"),
+  },
+  (t) => ({
+    stopTimeIdx: index("upstream_etas_stop_time_idx").on(t.stopId, t.sampledAt),
+    busTimeIdx: index("upstream_etas_bus_time_idx").on(t.busName, t.sampledAt),
+    // Time-leading, for the retention sweep (`WHERE sampled_at < ?`) and the
+    // row-cap cutoff; neither composite above serves a bare time range.
+    timeIdx: index("upstream_etas_time_idx").on(t.sampledAt),
   }),
 );
 
@@ -196,6 +426,48 @@ export const reports = sqliteTable("reports", {
  * The primary key makes the write idempotent, so a rider polling every 5 s for
  * an hour still produces exactly one row.
  */
+/**
+ * The scorecard: how accurate every ETA arm was, per ET day, route, horizon
+ * bucket and surface — the first stage of the closed loop (docs/closed-loop.md).
+ *
+ * One row per (day, route_id, horizon, surface); `metrics` is the JSON
+ * `ScorecardMetrics` from server/scorecard.ts. `route_id = 0` is every route
+ * pooled and `horizon = "all"` every horizon at or under the 30-min cap, so a
+ * reader never has to combine medians. Rows are REPLACED per day (the scorer
+ * runs hourly and rewrites the day it touched), `scored_through` says how far
+ * into the day the truth had settled when the row was written, `final` is set
+ * by the pass that runs once the day is over, and `estimator_version` is the
+ * server build the rows were scored under — so a change to the scorer or the
+ * rules is visible as a version boundary, not a mystery step in the chart.
+ *
+ * Tiny: a few hundred rows a day, kept 400 days.
+ */
+export const scorecardDays = sqliteTable(
+  "scorecard_days",
+  {
+    /** ET calendar day, YYYY-MM-DD. */
+    day: text("day").notNull(),
+    /** Upstream route id, or 0 for all routes pooled. */
+    routeId: integer("route_id").notNull(),
+    /** "0-2" | "2-5" | "5-10" | "10-30" (promised minutes) | "all". */
+    horizon: text("horizon").notNull(),
+    /** "trip" | "ride" | "card" | "ours" (the three pooled) | "upstream" | "census". */
+    surface: text("surface").notNull(),
+    /** JSON, see ScorecardMetrics. */
+    metrics: text("metrics").notNull(),
+    estimatorVersion: text("estimator_version"),
+    /** Predictions made before this instant (ms) are in the row. */
+    scoredThrough: integer("scored_through").notNull(),
+    scoredAt: integer("scored_at").notNull(),
+    /** 1 once the day has had its closing pass; such a day is never rescored. */
+    final: integer("final").notNull().default(0),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.day, t.routeId, t.horizon, t.surface] }),
+    dayIdx: index("scorecard_days_day_idx").on(t.day),
+  }),
+);
+
 export const dailyActives = sqliteTable(
   "daily_actives",
   {
@@ -239,6 +511,44 @@ export const excludedAnonIds = sqliteTable("excluded_anon_ids", {
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
 });
+
+/**
+ * What riders type into the destination box — the words only, never who typed
+ * them.
+ *
+ * The point is to fix lookup with evidence instead of guesses: which searches
+ * find NOTHING (a place to add — "one6three" and "ice rink" were both found
+ * this way, by hand, from rider reports), and which are common enough that
+ * their matching is worth tuning.
+ *
+ * The privacy shape is deliberate and is the reason this table can exist at
+ * all. A destination is the most revealing thing this app ever sees — a
+ * clinic, somebody's home address — so a row is keyed by (ET day, normalised
+ * query) and carries COUNTS. There is no anon id, no IP, no time of day and
+ * no session: two searches by one rider and one search by two riders are the
+ * same row, and nothing here can reconstruct one person's route. That is a
+ * stricter promise than `daily_actives` keeps, and it should stay stricter.
+ *
+ * Swept at 30 days, shorter than the 90 the rider counts keep, because a
+ * month is long enough to spot a missing place and there is no reason to hold
+ * the words longer than that.
+ */
+export const searchTerms = sqliteTable(
+  "search_terms",
+  {
+    /** ET calendar day, "YYYY-MM-DD" — the same service day the rest uses. */
+    day: text("day").notNull(),
+    /** Lower-cased, whitespace-collapsed query. Capped at 60 chars. */
+    q: text("q").notNull(),
+    /** How many times it was searched that day. */
+    n: integer("n").notNull().default(0),
+    /** How many of those returned nothing at all — the "add this place" signal. */
+    zero: integer("zero").notNull().default(0),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.day, t.q] }) }),
+);
+
+export type DbSearchTerm = typeof searchTerms.$inferSelect;
 
 /**
  * Browsers that belong to the OPERATOR, so the dashboard can tell a rider's
@@ -328,3 +638,113 @@ export type DbDailyActive = typeof dailyActives.$inferSelect;
 export type DbExcludedAnonId = typeof excludedAnonIds.$inferSelect;
 export type DbOperatorAnonId = typeof operatorAnonIds.$inferSelect;
 export type DbDerivedPath = typeof derivedPaths.$inferSelect;
+
+/**
+ * Findings from the rider canary (`scripts/rider-canary.mjs`), shipped here so
+ * the operator can see them.
+ *
+ * The canary runs on the Pi and wrote only to a local JSONL file. On
+ * 2026-09-04 it caught the ETA defect the operator had been chasing —
+ * `Red  eta-jump: "now, then 66 min" -> "in 7, 25 min" in 15 s` at 07:37 ET —
+ * and the finding sat in that file until he hit the same bug himself and asked
+ * whether the canary was even watching. The detection worked; nothing read it.
+ * This table is the missing half: `scripts/canary-ship.mjs` POSTs each run's
+ * SUMMARY (never its samples or page text) to /api/canary/runs, /stats renders
+ * it, and the server decides which findings are worth waking someone for.
+ *
+ * One row per run, and small by construction: a run is ~40 KB in the local log
+ * and ~1 KB here, because everything that made it big — 100 samples, two 3 KB
+ * page dumps per jump — is diagnostic detail that belongs on the machine that
+ * captured it. What travels is what the operator reads.
+ */
+export const canaryRuns = sqliteTable(
+  "canary_runs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /**
+     * `<startedAt>-<line>`, unique. The shipper is a cursor over an
+     * append-only log and a re-ship after a failed POST must not double a
+     * finding, so re-sending a run is a no-op rather than a duplicate row.
+     */
+    runKey: text("run_key").notNull().unique(),
+    startedAt: integer("started_at").notNull(),
+    endedAt: integer("ended_at"),
+    /** Route label as the rider sees it — "Blue Day", not a route id. */
+    line: text("line").notNull(),
+    tripFrom: text("trip_from"),
+    tripTo: text("trip_to"),
+    /** 1 when the run raised no finding at all. */
+    ok: integer("ok").notNull(),
+    /** 1 when a bus actually reached the board stop while the canary watched. */
+    arrived: integer("arrived").notNull(),
+    watchedMin: real("watched_min"),
+    /** Countdown readings parsed. Under 2 the run proves nothing. */
+    readings: integer("readings").notNull().default(0),
+    reversals: integer("reversals").notNull().default(0),
+    catastrophic: integer("catastrophic").notNull().default(0),
+    worstDriftSec: real("worst_drift_sec"),
+    firstSightMissSec: integer("first_sight_miss_sec"),
+    /** `[{kind, detail}]` — the sentences the operator reads, capped. */
+    failuresJson: text("failures_json").notNull().default("[]"),
+    /**
+     * `[{atMs, fromSec, driftSec, from, to, announced}]` — the catastrophic
+     * countdown transitions, kept STRUCTURED rather than as prose because the
+     * escalation rule turns on `fromSec` (how imminent the bus was said to be)
+     * and a regex over a sentence is not a rule anyone can test.
+     */
+    jumpsJson: text("jumps_json").notNull().default("[]"),
+    /** When this run was pushed out of band, if it was. Null = never. */
+    alertedAt: integer("alerted_at"),
+    /** When the same line was later seen healthy, so the alert could close. */
+    resolvedAt: integer("resolved_at"),
+    receivedAt: integer("received_at").notNull(),
+  },
+  (t) => ({
+    // The dashboard reads "the last N hours, newest first" and the escalation
+    // rule reads "this line's recent runs" — both lead with time.
+    timeIdx: index("canary_runs_time_idx").on(t.startedAt),
+    lineTimeIdx: index("canary_runs_line_time_idx").on(t.line, t.startedAt),
+  }),
+);
+
+export type DbCanaryRun = typeof canaryRuns.$inferSelect;
+
+/**
+ * The estimator's learned parameters — one row per daily fit, accepted or not
+ * (docs/closed-loop.md, stages 3-4).
+ *
+ * `scripts/reestimate-params.mjs` re-counts the ring filter's re-estimable
+ * constants on the Pi's archive, replays the candidate against the champion,
+ * and POSTs the outcome here. The server serves the latest ACCEPTED row as
+ * `model_params` in the /api/buses payload; the rejected rows are kept because
+ * "we tried this and it was worse" is the half of the record a dashboard has
+ * no other way to show. Append-only — a publish is never an UPDATE, so the
+ * history is the audit.
+ */
+export const modelParams = sqliteTable(
+  "model_params",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    publishedAt: integer("published_at").notNull(),
+    /** 1 = this set is served; 0 = the fit ran and kept the champion. */
+    accepted: integer("accepted").notNull(),
+    /** The fit's own name, e.g. "fit-2026-09-06". */
+    version: text("version").notNull(),
+    /** The ET days the fit read, inclusive. */
+    windowFrom: text("window_from").notNull(),
+    windowTo: text("window_to").notNull(),
+    windowDays: integer("window_days").notNull(),
+    /** The full parameter set as JSON — validated against PARAM_RANGES before it lands. */
+    params: text("params").notNull(),
+    /** Sample count behind each key, as JSON. An estimate without its n is not a measurement. */
+    n: text("n").notNull(),
+    note: text("note"),
+    /** The promotion comparison as JSON: bounds, per-day medians, the reasons. */
+    decision: text("decision"),
+  },
+  (t) => ({
+    publishedIdx: index("model_params_published_idx").on(t.publishedAt),
+  }),
+);
+
+export type DbModelParams = typeof modelParams.$inferSelect;

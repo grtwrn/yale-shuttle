@@ -22,6 +22,8 @@ export interface GeocodeHit {
   /** "stop" for shuttle stops, "landmark" for curated POIs. */
   kind: "stop" | "landmark";
   score: number;
+  /** The curated place's OSM category ("pizza", "library"), for its icon. */
+  poi?: string;
   /** Set when the best match came through an alias rather than the label. */
   viaAlias?: true;
 }
@@ -46,6 +48,7 @@ export function geocode(
       lon: l.lon,
       kind: "landmark" as const,
       score: 0,
+      ...(l.poi ? { poi: l.poi } : {}),
     }));
   }
 
@@ -69,6 +72,7 @@ export function geocode(
     if (score > 0) {
       out.push({
         label: l.label, lat: l.lat, lon: l.lon, kind: "landmark", score,
+        ...(l.poi ? { poi: l.poi } : {}),
         ...(labelScore < score ? { viaAlias: true as const } : {}),
       });
     }
@@ -232,6 +236,17 @@ function candidate(name: string): Candidate {
  * The more specific the hit, the higher, which keeps `som` ahead of
  * "social some thing".
  */
+/**
+ * How well a free-text name answers a rider's query, on the same tiers the
+ * curated list is ranked by. `v1compat.ts` uses it to drop an external result
+ * whose name has no relationship to what was typed — Photon matched "elenas"
+ * to a clothing shop called EbLens.
+ */
+export function relevanceOf(rawQuery: string, name: string): number {
+  const q = parseQuery(rawQuery);
+  return q === null ? 0 : scoreMatch(q, candidate(name));
+}
+
 function scoreMatch(q: Query, c: Candidate): number {
   const forms = q.stripped.length > 0 && q.stripped !== q.text ? [q.text, q.stripped] : [q.text];
   if (forms.some((f) => c.text === f)) return 1;

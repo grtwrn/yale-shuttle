@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { anonIdHeader, getAnonId } from "./anonId";
+import { anonIdHeader, getAnonId, hasAnonId } from "./anonId";
 
 const KEY = "shuttle-anon-id";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,6 +67,26 @@ describe("getAnonId", () => {
     } as unknown as Storage);
     expect(getAnonId()).toBeNull();
     expect(anonIdHeader()).toEqual({});
+  });
+});
+
+describe("hasAnonId", () => {
+  it("is true when the browser can keep an id", () => {
+    expect(hasAnonId()).toBe(true);
+  });
+
+  // The Issues tab reads this to decide whether an empty list means "nothing
+  // sent yet" or "nothing can ever be listed here" (report #51).
+  it("is false when storage is unavailable, and does not throw", () => {
+    vi.stubGlobal("localStorage", {
+      getItem() {
+        throw new DOMException("denied", "SecurityError");
+      },
+      setItem() {
+        throw new DOMException("denied", "SecurityError");
+      },
+    } as unknown as Storage);
+    expect(hasAnonId()).toBe(false);
   });
 });
 

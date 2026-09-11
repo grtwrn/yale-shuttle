@@ -1,9 +1,9 @@
 /**
  * GPS replay: feed every logged raw position (the last ~7 h) through the REAL
- * client ETA path — findRouteAnchor + computeUpcomingArrivals from
- * web/src/arrivals.ts — with the payload the server would have served at that
- * hour, and score the ETA for the bus's next 1..5 stops against two ground
- * truths:
+ * client ETA path — computeUpcomingArrivals from web/src/arrivals.ts, the
+ * ring estimator on every route — with the payload the server would have
+ * served at that hour, and score the ETA for the bus's next 1..5 stops
+ * against two ground truths:
  *
  *   detector  — the arrivals table (the collector's "nearest stop changed"
  *               event, which fires roughly at the midpoint BEFORE the stop)
@@ -15,6 +15,7 @@
  *   cd services/shuttle-v2 && TZ=America/New_York npx tsx <this file>
  */
 import fs from "node:fs";
+import path from "node:path";
 
 import {
   OUT_DIR,
@@ -38,11 +39,22 @@ import {
 } from "../../src/collector/detector.js";
 import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
-import { computeUpcomingArrivals, type SegmentTimes } from "../../web/src/arrivals";
-import { findRouteAnchor, isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
+import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
+import { anchorKeyFor } from "../../web/src/liveAnchor";
+import { ringForBus } from "../../web/src/eta/index";
+// The retired legacy arithmetic, kept as the replay's own copy: the `chord`
+// replica below is that estimator — the stateless anchor, the stall credit
+// and its bounds, chord proration — run as a counterfactual baseline against
+// the shipped `client` row. It stopped being a replica OF the client on
+// 2026-09-06, when the ring estimator took every route.
+import { findRouteAnchor, MAX_PLAUSIBLE_M_S, STALL_CREDIT_MAX_FRACTION } from "./legacy/anchor.js";
+import type { AnchorStore } from "../../web/src/eta/index.js";
+import { PACE_KEY, paceCarrier, type PaceEntry } from "../../src/server/v1compat";
 import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLegs } from "../../web/src/geo";
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
+import { applyModelParams, activeModelParams } from "../../web/src/eta/params";
 
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
@@ -57,6 +69,26 @@ const POLL_STRIDE = Number(process.env.POLL_STRIDE ?? 1);
 const net = loadNet();
 const { db, network } = net;
 registerRoutePaths(net.routePaths);
+// MODEL_ROUTES used to pair the legacy arithmetic against the ring estimator
+// in one process (`""` = legacy everywhere, `"3"` = the model on Red). The
+// legacy arm is gone from the client (2026-09-06); the `client` row is the
+// model on every route, and the `chord` row is the legacy arithmetic as the
+// replay's own counterfactual. To pair two ESTIMATORS, run this from each
+// worktree into its own REPLAY_OUT.
+if (process.env.MODEL_ROUTES !== undefined) {
+  log(`MODEL_ROUTES=${JSON.stringify(process.env.MODEL_ROUTES)} is ignored: the client prices every route on the ring; the legacy arm is the \`chord\` replica`);
+}
+// A CHALLENGER parameter set (docs/closed-loop.md, stage 4): the same file the
+// nightly fit POSTs to /api/model-params, applied to the estimator this replay
+// runs. Absent = the compiled constants, i.e. the champion the tree ships.
+if (process.env.MODEL_PARAMS) {
+  const wire = JSON.parse(fs.readFileSync(process.env.MODEL_PARAMS, "utf8")) as unknown;
+  if (!applyModelParams(wire)) {
+    console.error(`MODEL_PARAMS=${process.env.MODEL_PARAMS} was rejected by the client's own validation — refusing to score a set no rider could receive.`);
+    process.exit(2);
+  }
+  log(`MODEL_PARAMS ${activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
+}
 
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
 const pos = db
@@ -87,10 +119,20 @@ function payloadAt(t: number) {
       served.set(r.id, s);
       segmentTimes[String(r.id)] = segmentTimesFor(adj, s);
     }
+    // PAYLOAD_PATCH (see rider-sim/run.ts): the split and model fields a
+    // candidate reads that the snapshot's calibrator does not time-travel.
+    if (patch?.segments) for (const [rid, byKey] of Object.entries(patch.segments)) {
+      const r = (segmentTimes[rid] ??= {});
+      for (const [k, fields] of Object.entries(byKey)) Object.assign((r[k] ??= { avg: 0, n: 0 } as any), fields);
+    }
+    if (patch?.pace) for (const [rid, entry] of Object.entries(patch.pace)) (segmentTimes[rid] ??= {})[PACE_KEY] = paceCarrier(entry) as any;
     servedCache.set(String(bs), (p = { served, segmentTimes }));
   }
   return p;
 }
+interface PayloadPatch { segments?: Record<string, Record<string, Record<string, unknown>>>; dwells?: Record<string, Record<string, Record<string, unknown>>>; pace?: Record<string, PaceEntry> }
+const patch: PayloadPatch | null = process.env.PAYLOAD_PATCH ? (JSON.parse(fs.readFileSync(process.env.PAYLOAD_PATCH, "utf8")) as PayloadPatch) : null;
+if (patch) log(`payload patch ${process.env.PAYLOAD_PATCH}: segments ${Object.values(patch.segments ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, dwells ${Object.values(patch.dwells ?? {}).reduce((n, r) => n + Object.keys(r).length, 0)} keys, pace ${Object.keys(patch.pace ?? {}).length} routes`);
 
 // -- Time-travelled dwell calibration (calibrator.ts loadDwellGroups + computeDwellStats) --
 // The payload's dwells[route][stop].med: windowed (dow, hour±1) median over 14 days, else the 14-day median.
@@ -118,6 +160,61 @@ const dwellGroups = new Map<string, DwellGroup>();
     });
   }
 }
+// calibrator.ts DWELL_LOW_QUANTILE / DWELL_LOW_MIN_SAMPLES
+const DWELL_LOW_QUANTILE = 0.35;
+const DWELL_LOW_MIN_SAMPLES = 5;
+function percentileOf(a: number[], q: number): number {
+  const s = [...a].sort((x, y) => x - y);
+  const i = (s.length - 1) * q;
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  return s[lo]! + (s[hi]! - s[lo]!) * (i - lo);
+}
+/**
+ * The `dwells` half of the payload, rebuilt for the hour containing `t` the
+ * same way `computeDwellStats` builds it. Without this the real
+ * `computeUpcomingArrivals` is called with `dwellTimes = {}`, which silently
+ * disables everything `billedDwellSec` does — so the "client" row would be a
+ * client that production does not ship either.
+ */
+const dwellPayloadCache = new Map<string, DwellTimes>();
+function dwellPayloadAt(t: number): DwellTimes {
+  const start = calibCache.bucketStart(t);
+  const hit = dwellPayloadCache.get(String(start));
+  if (hit) return hit;
+  const d = new Date(start);
+  const dow = d.getDay();
+  const hours = new Set([(d.getHours() + 23) % 24, d.getHours(), (d.getHours() + 1) % 24]);
+  const out: DwellTimes = {};
+  for (const [key, g] of dwellGroups) {
+    const [rid, sid] = key.split(":");
+    const all: number[] = [];
+    const win: number[] = [];
+    for (let i = 0; i < g.at.length; i++) {
+      if (g.at[i]! < start - DWELL_WINDOW_MS || g.done[i]! > start) continue;
+      all.push(g.sec[i]!);
+      if (g.dow[i] === dow && hours.has(g.hour[i]!)) win.push(g.sec[i]!);
+    }
+    if (all.length === 0) continue;
+    const priorMedian = median(all);
+    const low = all.length >= DWELL_LOW_MIN_SAMPLES ? percentileOf(all, DWELL_LOW_QUANTILE) : undefined;
+    let stat: { med: number; sd: number; n: number; low?: number };
+    if (win.length === 0) {
+      stat = { med: priorMedian, sd: Math.max(percentileOf(all, 0.9) - priorMedian, 5), n: 0, ...(low !== undefined ? { low } : {}) };
+    } else {
+      const med = median(win);
+      stat = { med, sd: Math.max(percentileOf(win, 0.9) - med, 5), n: win.length, ...(low !== undefined ? { low: Math.min(low, med) } : {}) };
+    }
+    (out[rid!] ||= {})[sid!] = { med: Math.round(stat.med * 10) / 10, sd: Math.round(stat.sd * 10) / 10, n: stat.n, ...(stat.low !== undefined ? { low: Math.round(stat.low * 10) / 10 } : {}) };
+  }
+  if (patch?.dwells) for (const [rid, byKey] of Object.entries(patch.dwells)) {
+    const r = (out[rid] ??= {});
+    for (const [k, fields] of Object.entries(byKey)) Object.assign((r[k] ??= { med: 0, sd: 0, n: 0 } as any), fields);
+  }
+  dwellPayloadCache.set(String(start), out);
+  return out;
+}
+
 const dwellMedCache = new Map<string, number>();
 function dwellMedAt(routeId: number, stopId: number, t: number): number {
   const start = calibCache.bucketStart(t);
@@ -192,6 +289,10 @@ const observations: Obs[] = [];
         last_stop_id: o.lastStopId as number,
         stationary: atStop != null,
         ...(atStop ? { at_stop_id: atStop.id, at_stop_since: new Date(atStop.since).toISOString().replace(/Z$/, "") } : {}),
+        // The movement clock the payload publishes (v1compat `last_moved_at`).
+        // Without it this replay cannot see the cold-start fix at all, and the
+        // arm comparison would report "identical" for the wrong reason.
+        ...(st ? { last_moved_at: new Date(st.lastMovedAt).toISOString().replace(/Z$/, "") } : {}),
       };
       observations.push({ bus, t: o.collectedAt, routeId: o.routeId, atStop: atStop != null, detIdx: st ? st.nearestIndex : -1 });
     }
@@ -337,8 +438,26 @@ function pathFraction(routeId: number, idx: number, bus: { lat: number; lon: num
   return Math.max(0, Math.min(1, bestS / leg.total));
 }
 
-// -- Replica of the computeUpcomingArrivals loop for ONE bus ------------------
-type Proration = "chord" | "none" | "path" | "chordNoStall" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "oracleAnchor";
+// -- The retired legacy arithmetic for ONE bus (the `chord` family) -------------
+// A hand copy of computeUpcomingArrivals as it shipped until 2026-09-06 —
+// stateless anchor, stall credit bounded by the dwell and the drive floor,
+// chord proration — with its historical variants. It is NOT the client any
+// more; it is the baseline every later estimator was measured against.
+type Proration = "chord" | "none" | "path" | "chordNoStall" | "uncapped" | "cappedStallDwell" | "cappedStallHalfSeg" | "cappedStallQuarterSeg" | "cappedStallDwell2x" | "dwellSpillAdjacent" | "dwellSpillLayover" | "dwellSpillLayoverHalf" | "dwellSpillBigger" | "noFloor" | "driveFloor6" | "driveFloorNoMin" | "oracleAnchor";
+
+// The physical floor on the first hop: a bus cannot cover the distance to the
+// next stop in less time than driving it takes. Straight line at BUS_SPEED_M_S
+// UNDERSTATES the road distance, so it is a true lower bound. This is the same
+// construction the unmeasured-hop branch of arrivals.ts already uses, and it is
+// deliberately independent of the dwell/segment decomposition — see WHAT A
+// DWELL STATISTIC ACTUALLY MEASURES.
+function driveFloorSec(stops: number[], prevI: number, curI: number, speed: number, withMin: boolean): number {
+  const a = net.stopCoords[stops[prevI]!];
+  const b = net.stopCoords[stops[curI]!];
+  if (!a || !b) return 0;
+  const t = haversineMeters(a, b) / speed;
+  return withMin ? Math.max(30, t) : t;
+}
 function replicaEtas(
   bus: BusData,
   stops: number[],
@@ -353,7 +472,6 @@ function replicaEtas(
   if (mode !== "chordNoStall" && bus.at_stop_id && bus.at_stop_since) {
     const atIdx = stops.indexOf(bus.at_stop_id);
     if (atIdx >= 0 && atIdx === busIdx) stallCredit = Math.max(0, (now - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-    if (stallCredit > 0 && mode === "cappedStallDwell") stallCredit = Math.min(stallCredit, dwellMedAt(bus.route_id, bus.at_stop_id, now));
     if (stallCredit > 0 && mode === "cappedStallDwell2x") stallCredit = Math.min(stallCredit, 2 * dwellMedAt(bus.route_id, bus.at_stop_id, now));
   }
   let factor = 1;
@@ -385,9 +503,28 @@ function replicaEtas(
       segAvg = avgSeg > 0 && avgSeg >= byDistance ? avgSeg : byDistance || 90;
     }
     if (step === 1 && stallCredit > 0 && !mode.startsWith("dwellSpill")) {
-      if (mode === "cappedStallHalfSeg") stallCredit = Math.min(stallCredit, 0.5 * segAvg);
-      if (mode === "cappedStallQuarterSeg") stallCredit = Math.min(stallCredit, 0.25 * segAvg);
-      const applied = Math.min(stallCredit, segAvg);
+      // What SHIPPED until 2026-09-06 (web/src/arrivals.ts): the credit
+      // cancels at most the calibrated dwell for the anchor stop; the fraction
+      // is only the fallback for a stop the calibrator has never measured.
+      // `chord`, `none`, `path` and `oracleAnchor` are that arithmetic and
+      // carry the bound; the rest are its historical alternatives.
+      const med = dwellMedAt(bus.route_id, bus.at_stop_id!, now);
+      let cancellable = med > 0 ? med : segAvg * STALL_CREDIT_MAX_FRACTION;
+      if (mode === "uncapped") cancellable = segAvg;
+      if (mode === "cappedStallHalfSeg") cancellable = 0.5 * segAvg;
+      if (mode === "cappedStallQuarterSeg") cancellable = 0.25 * segAvg;
+      let applied = Math.min(stallCredit, cancellable, segAvg);
+      // The drive floor: a credit may cancel waiting, never driving. It was
+      // part of what shipped, so the default family carries it and `noFloor`
+      // is the behaviour it replaced (dwell bound alone, which could bill a hop at 0).
+      // 6 m/s is the app's TYPICAL bus speed; MAX_PLAUSIBLE_M_S is the fastest
+      // a shuttle is believed to cover the straight line. Only the latter is an
+      // upper bound on speed, so only it yields a true lower bound on time.
+      if (mode !== "noFloor") {
+        const speed = mode === "driveFloor6" ? BUS_SPEED_M_S : MAX_PLAUSIBLE_M_S;
+        const floor = driveFloorSec(stops, prevI, curI, speed, mode !== "driveFloorNoMin");
+        applied = Math.min(applied, Math.max(0, segAvg - floor));
+      }
       segAvg -= applied;
       stallCredit -= applied;
     }
@@ -427,13 +564,19 @@ function replicaEtas(
 }
 
 // -- Score ----------------------------------------------------------------------
-const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; dwellBin: string; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number }
+const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
-const counts = { obs: observations.length, offRoute: 0, noAnchor: 0, noRouteCfg: 0, replicaMismatch: 0, noDetector: 0, noProximity: 0, scored: 0 };
-let maxReplicaDiff = 0;
+/**
+ * The real client's memory — production passes `liveAnchorStore` on every
+ * call, so the ring estimator's belief and display floors ride it.
+ * Observations are in time order, one entry per vehicle.
+ */
+const clientStore: AnchorStore = new Map();
+const counts = { obs: observations.length, offRoute: 0, noAnchor: 0, noRouteCfg: 0, legacyDiffers: 0, noDetector: 0, noProximity: 0, scored: 0 };
+let maxLegacyDiff = 0;
 let diagLeft = 40;
 for (const o of observations) {
   const cfg = ROUTE_LISTS.find((c) => c.busRouteIds.includes(o.routeId));
@@ -454,10 +597,23 @@ for (const o of observations) {
   const payload = payloadAt(o.t);
   const targets: number[] = [];
   for (let k = 1; k <= MAX_K; k++) targets.push(stops[(busIdx + k) % stops.length]!);
-  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t)
+  const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t), clientStore)
     .filter((a) => a.routeLabel === cfg.label);
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
+  // The CLIENT's own anchor after this poll: the belief's lead leg, which is
+  // what actually prices the row (`findRouteAnchor`, above, only picks the
+  // targets). docs/eta-ring-posterior.md asks anyone re-measuring the anchor
+  // to record it; the decomposition in docs/route-bias.md is that reading.
+  // Compared by STOP ID, not by index: Green's ring is built on the repaired
+  // order (alignStops.ts), so its leg indices are not the published list's.
+  const leadLeg = clientStore.get(anchorKeyFor(cfg.label, o.bus.bus_name))?.belief?.lead ?? -1;
+  const ringStops = ringForBus(o.bus, stops, net.stopCoords)?.stops;
+  const leadSid = leadLeg >= 0 && ringStops ? (ringStops[leadLeg] ?? -1) : -1;
+  // The same +-1 rule `agree` uses: the detector's nearest stop is the leg's
+  // start (the bus has passed it) or its end (the bus is closing on it).
+  const leadNextSid = leadLeg >= 0 && ringStops ? (ringStops[(leadLeg + 1) % ringStops.length] ?? -1) : -1;
+  const detSid = o.detIdx >= 0 ? (stops[o.detIdx] ?? -1) : -1;
   const routeSegs = payload.segmentTimes[cfg.routeIds[0]!] ?? {};
   const etas: Record<Proration, number[]> = {} as any;
   for (const m of MODES) {
@@ -485,9 +641,12 @@ for (const o of observations) {
     const forStop = real.filter((a) => a.stopId === sid).sort((a, b) => a.eta - b.eta);
     const r = forStop[occ];
     if (!r) continue;
+    // How far the shipped model sits from the legacy baseline on this pair —
+    // a description of the change, not a fidelity check (the two are
+    // different estimators now).
     const diff = Math.abs(r.eta - etas.chord[k - 1]!);
-    if (diff > maxReplicaDiff) maxReplicaDiff = diff;
-    if (diff > 0.01) counts.replicaMismatch++;
+    if (diff > maxLegacyDiff) maxLegacyDiff = diff;
+    if (diff > 0.01) counts.legacyDiffers++;
     const det = detectorArrival(o.routeId, o.bus.bus_name, sid, o.t, occ);
     const prox = det === null ? null : proximityArrival(o.bus.bus_name, sid, det);
     if (det === null) counts.noDetector++;
@@ -506,10 +665,16 @@ for (const o of observations) {
       routeId: o.routeId,
       dwellBin,
       agree: o.detIdx >= 0 && ((busIdx - o.detIdx + stops.length) % stops.length === 0 || (o.detIdx - busIdx + stops.length) % stops.length === 1),
+      leadAgree: leadSid < 0 || detSid < 0 ? null : leadSid === detSid || leadNextSid === detSid,
+      sid,
+      t: o.t,
       eta: Object.fromEntries(MODES.map((m) => [m, etas[m][k - 1]!])) as Record<Proration, number>,
       det: det === null ? null : (det - o.t) / 1000,
       prox: prox === null ? null : (prox - o.t) / 1000,
       realEta: r.eta,
+      realLow: r.low,
+      realHigh: r.high,
+      realDepartNow: r.departNow,
     });
   }
 }
@@ -545,14 +710,63 @@ for (const o of observations) {
     oraclePairs.push({ k, routeId: o.routeId, eta: etas[k - 1]!, det: det === null ? null : (det - o.t) / 1000, prox: prox === null ? null : (prox - o.t) / 1000 });
   }
 }
-log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max replica diff ${maxReplicaDiff}`);
+log(`pairs ${pairs.length}, oracle pairs ${oraclePairs.length}`, JSON.stringify(counts), `max |client - legacy| ${maxLegacyDiff.toFixed(1)} s`);
+// The REAL client's three numbers per pair, as JSON lines, for anything that
+// wants to score them outside this script — the promotion comparison in
+// scripts/reestimate-params.mjs re-scores champion and challenger from two of
+// these files under the scorecard's own rules, so the two arms cannot drift
+// apart through this script's own summary code.
+if (process.env.PAIRS_OUT) {
+  const out: string[] = [];
+  for (const p of pairs) {
+    out.push(JSON.stringify({
+      r: p.routeId, k: p.k, atStop: p.atStop,
+      eta: Math.round(p.realEta * 10) / 10,
+      low: Math.round(p.realLow * 10) / 10,
+      high: Math.round(p.realHigh * 10) / 10,
+      det: p.det === null ? null : Math.round(p.det * 10) / 10,
+      // Everything below is for the DECOMPOSITION (docs/route-bias.md): the
+      // rider's truth, which stop and when, whether the client's own lead leg
+      // agreed with the detector, and the dwell bin. `reestimate-lib.mjs`
+      // reads the six keys above and ignores these, so the promotion
+      // comparison is unaffected.
+      prox: p.prox === null ? null : Math.round(p.prox * 10) / 10,
+      sid: p.sid, t: p.t, dwell: p.dwellBin,
+      agree: p.agree, leadAgree: p.leadAgree,
+    }));
+  }
+  fs.mkdirSync(path.dirname(process.env.PAIRS_OUT), { recursive: true });
+  fs.writeFileSync(process.env.PAIRS_OUT, out.join("\n") + (out.length ? "\n" : ""));
+  log(`wrote ${process.env.PAIRS_OUT} (${out.length} pairs)`);
+}
+// Until 2026-09-06 `chord` was a hand copy of computeUpcomingArrivals and a
+// fidelity check here shouted when it drifted. The client is the ring
+// estimator on every route now, so `chord` is the RETIRED arithmetic kept as
+// a baseline: `client` is what riders get, the replica rows are the legacy
+// family, and the share that differs is a fact about the change, not a defect.
+const legacyDiffersShare = counts.scored > 0 ? counts.legacyDiffers / counts.scored : 0;
 
-function score(truth: "det" | "prox", mode: Proration, filter: (p: Pair) => boolean) {
+// How often the drive floor actually bites, and by how much. A floor that
+// fires everywhere would be re-tuning the estimator by the back door; one that
+// fires only where the credit had erased the whole drive is the narrow repair
+// it is meant to be.
+{
+  const k1 = pairs.filter((p) => p.k === 1 && p.atStop);
+  const lifted = k1.filter((p) => p.eta.chord - p.eta.noFloor > 0.5);
+  const zeroed = k1.filter((p) => p.eta.noFloor < 0.5);
+  const ups = lifted.map((p) => p.eta.chord - p.eta.noFloor).sort((a, b) => a - b);
+  const med = ups.length ? ups[Math.floor(ups.length / 2)]! : 0;
+  log(`driveFloor: at-stop k=1 pairs ${k1.length}; shipped bills 0 s on ${zeroed.length} (${(100 * zeroed.length / k1.length).toFixed(1)}%); floor lifts ${lifted.length} (${(100 * lifted.length / k1.length).toFixed(1)}%), median lift ${med.toFixed(1)} s, max ${(ups[ups.length - 1] ?? 0).toFixed(1)} s`);
+}
+
+function score(truth: "det" | "prox", mode: Proration | "client", filter: (p: Pair) => boolean) {
   const errs: number[] = [];
   for (const p of pairs) {
     const a = p[truth];
     if (a === null || !filter(p)) continue;
-    errs.push(p.eta[mode] - a);
+    // "client" is the REAL computeUpcomingArrivals output recorded alongside
+    // the replica — the only row that is guaranteed to be what riders get.
+    errs.push((mode === "client" ? p.realEta : p.eta[mode]) - a);
   }
   return metricsOf(errs);
 }
@@ -562,18 +776,84 @@ const result: any = {
   generatedAt: new Date().toISOString(),
   window: { start: fmtEt(rawStart), end: fmtEt(rawEnd), hours: Math.round(((rawEnd - rawStart) / 3_600_000) * 10) / 10, pollStride: POLL_STRIDE },
   counts,
-  replicaCheck: { maxAbsDiffSec: maxReplicaDiff, mismatched: counts.replicaMismatch },
+  legacyBaseline: {
+    maxAbsDiffSec: maxLegacyDiff,
+    differs: counts.legacyDiffers,
+    differsPct: Math.round(1000 * legacyDiffersShare) / 10,
+    note: "`client` is the real computeUpcomingArrivals — the ring estimator on every route. `chord` and the other replica modes are the RETIRED legacy arithmetic (scripts/eta-replay/legacy/), kept as the counterfactual baseline; `differs` counts the pairs on which the two estimators disagree by more than 0.01 s.",
+  },
   atStopShare: Math.round((1000 * pairs.filter((p) => p.atStop).length) / pairs.length) / 10,
   truths: {},
 };
+/** Where the arrival fell against the client's own [low, high]: inside / before / after, and the median width. */
+function coverage(truth: "det" | "prox", filter: (p: Pair) => boolean) {
+  let n = 0, inside = 0, early = 0, late = 0;
+  const widths: number[] = [];
+  for (const p of pairs) {
+    const a = p[truth];
+    if (a === null || !filter(p)) continue;
+    n++;
+    if (a < p.realLow) early++; else if (a > p.realHigh) late++; else inside++;
+    widths.push(p.realHigh - p.realLow);
+  }
+  widths.sort((x, y) => x - y);
+  const pc = (x: number) => (n ? Math.round((1000 * x) / n) / 10 : null);
+  return { n, insidePct: pc(inside), earlyPct: pc(early), latePct: pc(late), medianWidthSec: widths.length ? Math.round(widths[widths.length >> 1]! * 10) / 10 : null };
+}
+/**
+ * THE DRIVE FLOOR as a claim about the world (`departNow`, arrival.ts): "this
+ * bus cannot reach the stop sooner than this, however soon it pulls out". A
+ * bus that arrives EARLIER than the floor falsifies it, so `beatsFloorPct` is
+ * the whole test — and it is measured beside the same pairs' `low`, which is
+ * the model's own q10 after #119's clamp shift and is NOT a physical floor.
+ */
+function floorCheck(truth: "det" | "prox", filter: (p: Pair) => boolean) {
+  let n = 0, beatsFloor = 0, beatsLow = 0, floorZero = 0, lowZero = 0;
+  const slack: number[] = [];
+  for (const p of pairs) {
+    const a = p[truth];
+    if (a === null || !filter(p)) continue;
+    n++;
+    if (a < p.realDepartNow) beatsFloor++;
+    if (a < p.realLow) beatsLow++;
+    if (p.realDepartNow < 10) floorZero++;
+    if (p.realLow < 10) lowZero++;
+    slack.push(a - p.realDepartNow);
+  }
+  slack.sort((x, y) => x - y);
+  const pc = (x: number) => (n ? Math.round((1000 * x) / n) / 10 : null);
+  return {
+    n,
+    beatsFloorPct: pc(beatsFloor),
+    beatsLowPct: pc(beatsLow),
+    floorUnder10sPct: pc(floorZero),
+    lowUnder10sPct: pc(lowZero),
+    medianSlackSec: slack.length ? Math.round(slack[slack.length >> 1]! * 10) / 10 : null,
+  };
+}
 for (const truth of ["prox", "det"] as const) {
   const t: any = {};
-  for (const mode of MODES) {
+  t.driveFloor = {
+    overall: floorCheck(truth, () => true),
+    atStop: floorCheck(truth, (p) => p.atStop),
+    standing300sPlus: floorCheck(truth, (p) => p.dwellBin === "300s+"),
+    moving: floorCheck(truth, (p) => !p.atStop),
+    byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, floorCheck(truth, (p) => p.k === k)])),
+  };
+  t.clientCoverage = {
+    overall: coverage(truth, () => true),
+    atStop: coverage(truth, (p) => p.atStop),
+    standing300sPlus: coverage(truth, (p) => p.dwellBin === "300s+"),
+    byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, coverage(truth, (p) => p.k === k)])),
+    byRoute: Object.fromEntries(routesSeen.map((r) => [routeName(r), coverage(truth, (p) => p.routeId === r)])),
+  };
+  for (const mode of ["client", ...MODES] as const) {
     t[mode] = {
       overall: score(truth, mode, () => true),
       byHops: Object.fromEntries(Array.from({ length: MAX_K }, (_, i) => i + 1).map((k) => [k, score(truth, mode, (p) => p.k === k)])),
       atStop: score(truth, mode, (p) => p.atStop),
       moving: score(truth, mode, (p) => !p.atStop),
+      byRoute: Object.fromEntries(routesSeen.map((r) => [routeName(r), score(truth, mode, (p) => p.routeId === r)])),
       movingK1: score(truth, mode, (p) => !p.atStop && p.k === 1),
       atStopK1: score(truth, mode, (p) => p.atStop && p.k === 1),
       anchorAgrees: score(truth, mode, (p) => p.agree),
@@ -618,10 +898,12 @@ for (const truth of ["prox", "det"] as const) {
 }
 fs.writeFileSync(`${OUT_DIR}/gps.json`, JSON.stringify(result, null, 1));
 log(`wrote ${OUT_DIR}/gps.json`);
-console.log(JSON.stringify({ counts, replica: result.replicaCheck, atStopShare: result.atStopShare }, null, 1));
+console.log(JSON.stringify({ counts, legacyBaseline: result.legacyBaseline, atStopShare: result.atStopShare }, null, 1));
 for (const truth of ["prox", "det"] as const) {
-  for (const mode of MODES) {
+  for (const mode of ["client", ...MODES] as const) {
     const t = result.truths[truth][mode];
-    console.log(truth.padEnd(5), mode.padEnd(13), "overall", JSON.stringify(t.overall), "movingK1", JSON.stringify(t.movingK1), "atStopK1", JSON.stringify(t.atStopK1));
+    const tag = mode === "client" ? "client  <-- SHIPPED" : mode;
+    console.log(truth.padEnd(5), tag.padEnd(22), "overall", JSON.stringify(t.overall));
   }
 }
+

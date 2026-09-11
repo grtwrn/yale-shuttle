@@ -1,0 +1,19 @@
+{
+  "caption": "No visual change by design — report #65 is about the location watch stalling after the app has been open a while, and the fix is in how that watch restarts (it now always carries a timeout, a one-shot network-accuracy retry, and always clears \"Locating…\"). The shots confirm the app still acquires a location and plans a trip normally; verified separately in a real browser that a hide/show cycle now restarts a single high-accuracy watch WITH a timeout (it had none before), and scripts/gps-tier-check.mjs still passes.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 136,
+    "dest": 39
+  },
+  "views": [
+    "trip",
+    "map"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788379221/pr-preview/64/trip.png",
+    "/tmp/feedback-bot-wt-1788379221/pr-preview/64/map.png"
+  ],
+  "pageErrors": [],
+  "crashed": false
+}

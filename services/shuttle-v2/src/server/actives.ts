@@ -73,6 +73,38 @@ export function etHour(now: number): number {
   return Number.isFinite(n) ? n % 24 : 0;
 }
 
+/**
+ * Midnight ET of an ET calendar day ("YYYY-MM-DD"), as epoch ms — the floor a
+ * table stamped in milliseconds needs in order to honour the day-shaped
+ * counting epoch.
+ *
+ * ET is UTC-5 or UTC-4 depending on the date, so the offset is discovered
+ * rather than assumed: UTC midnight + 5 h is that day in either offset (it is
+ * 00:00 EST or 01:00 EDT), and stepping back an hour lands on midnight only
+ * when the day is on daylight time. A malformed day yields 0 — a floor that
+ * hides nothing, which is the safe direction for a filter over reports.
+ */
+export function etDayStartMs(day: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day.trim());
+  if (!m) return 0;
+  const est = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) + 5 * 3_600_000;
+  const edt = est - 3_600_000;
+  return etDay(edt) === day ? edt : est;
+}
+
+/**
+ * The first ET day the operator statistics count, resolved from the same
+ * precedence everywhere: an explicit option, then SHUTTLE_STATS_SINCE_DAY,
+ * then the launch-week default. Anything reading the epoch must come through
+ * here, or a second reader drifts from the one the dashboard prints.
+ */
+export function resolveStatsSinceDay(sinceDay?: string): string {
+  for (const raw of [sinceDay?.trim(), process.env.SHUTTLE_STATS_SINCE_DAY?.trim()]) {
+    if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  }
+  return DEFAULT_STATS_SINCE_DAY;
+}
+
 /** What a browser did today, accumulated in memory between flushes. */
 interface DayState {
   firstSeen: number;
@@ -166,6 +198,13 @@ export interface ActivesTracker {
    * Days with no rows are absent, like history().
    */
   hourly(days?: number, now?: number): DayHours[];
+  /**
+   * Is this browser one the statistics ignore — a verification harness, or an
+   * id the operator flagged? Callers other than the counters need this too:
+   * `search_terms` stores no anon id by design and so cannot filter test
+   * traffic after the fact, and has to decide before it writes.
+   */
+  isExcluded(anonId: string | undefined | null): boolean;
   /** Write accumulated counters through. Called on a timer and at shutdown. */
   flush(now?: number): void;
   stop(): void;
@@ -247,12 +286,7 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
    * are still stored (the 90-day sweep owns deletion); they are simply not
    * counted. Override with SHUTTLE_STATS_SINCE_DAY=YYYY-MM-DD.
    */
-  const SINCE_DAY = (() => {
-    for (const raw of [opts.sinceDay?.trim(), process.env.SHUTTLE_STATS_SINCE_DAY?.trim()]) {
-      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    }
-    return DEFAULT_STATS_SINCE_DAY;
-  })();
+  const SINCE_DAY = resolveStatsSinceDay(opts.sinceDay);
   const notExcluded = sql`day >= ${SINCE_DAY}
     AND anon_id NOT IN (SELECT anon_id FROM excluded_anon_ids)`;
 
@@ -276,7 +310,29 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
     /* pre-migration database — the next boot seeds it */
   }
 
-  const timer = setInterval(() => flush(), FLUSH_MS);
+  /**
+   * The flagged ids, held in memory: `/api/buses` is ~40 req/s and a SELECT
+   * per request is exactly the cost this module exists to avoid. The table is
+   * a handful of rows and only the operator writes it, so the whole set is
+   * reloaded on the flush cadence — an id flagged through /api/stats/exclude
+   * takes effect within a minute rather than instantly, which is the right
+   * trade for never touching the database on a hot path.
+   */
+  let excludedIds = new Set<string>();
+  const reloadExcluded = () => {
+    try {
+      const rows = db.all<{ anon_id: string }>(sql`SELECT anon_id FROM excluded_anon_ids`);
+      excludedIds = new Set(rows.map((r) => r.anon_id));
+    } catch {
+      /* pre-migration database — keep whatever we had, and never throw */
+    }
+  };
+  reloadExcluded();
+
+  const timer = setInterval(() => {
+    flush();
+    reloadExcluded();
+  }, FLUSH_MS);
   // Never hold the process open on account of analytics.
   timer.unref?.();
 
@@ -404,6 +460,11 @@ export function createActivesTracker(bundle: DbBundle, opts: ActivesOptions = {}
       });
     },
 
+    isExcluded(anonId) {
+      // No id is not an excluded id: a rider with storage disabled sends no
+      // header, and their zero-result search is exactly the signal we want.
+      return typeof anonId === "string" && excludedIds.has(anonId);
+    },
     sinceDay() {
       return SINCE_DAY;
     },

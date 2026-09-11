@@ -7,7 +7,7 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
-import { streamSSE } from "hono/streaming";
+import { stream, streamSSE } from "hono/streaming";
 
 import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
@@ -27,8 +27,27 @@ import {
   type RiderAction,
 } from "./reports.js";
 import { createActivesTracker } from "./actives.js";
+import { canaryReport, recordCanaryRuns } from "./canary.js";
+import {
+  createPredictionRecorder,
+  isPredictionSurface,
+  isShownSurface,
+  MAX_READING_AGE_MS,
+  type PredictionRecorder,
+  type ShownReading,
+} from "./predictions.js";
 import { operatorIds, outsideReports, seedOperatorIds } from "./outsideReports.js";
+import { createSearchTermsTracker } from "./searchTerms.js";
+import {
+  createModelParamsSource, currentModelParams, modelParamsHistory, parseSubmission, recordModelParams,
+} from "./modelParams.js";
+import {
+  parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
+} from "./scorecard.js";
+import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
+import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
+import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
 import { createWeatherService, WEATHER_TTL_MS, type WeatherService } from "./weather.js";
 import {
   buildAccuracyV1,
@@ -60,6 +79,25 @@ const PLAN_BODY_LIMIT = 16 * 1024;
 const REPORT_UPDATE_BODY_LIMIT = 8 * 1024;
 // The stats-login body is one token and nothing else.
 const STATS_SESSION_BODY_LIMIT = 2 * 1024;
+// A shipped canary batch: up to 50 run SUMMARIES, ~1 KB each. The samples and
+// page dumps that make a run 40 KB on disk never travel — see canary.ts.
+const CANARY_BODY_LIMIT = 256 * 1024;
+/** Default window for the /stats canary panel: a day of riding. */
+const CANARY_DEFAULT_HOURS = 24;
+// A batch of displayed ETAs. 200 compact tuples is ~8 KB; the cap is generous
+// against that and still small enough that the endpoint cannot be used to push
+// bulk into the process.
+const SHOWN_BODY_LIMIT = 32 * 1024;
+/**
+ * A parameter set is seven numbers, four factors, their sample counts and the
+ * promotion comparison — a couple of KB. 64 is room for the per-day table and
+ * no room for anything else.
+ */
+const MODEL_PARAMS_BODY_LIMIT = 64 * 1024;
+/** One replayed day of scorecard rows: ~16 routes x 5 horizons of small JSON. */
+const SCORECARD_REPLAY_BODY_LIMIT = 512 * 1024;
+/** Readings accepted per post. A rider's screen shows a handful at a time. */
+const SHOWN_MAX_READINGS = 200;
 
 // -- Operator stats session ---------------------------------------------------
 // The dashboard at /stats needs to re-authenticate on every load without the
@@ -96,6 +134,27 @@ const SSE_MAX_LIFETIME_MS = 15 * 60_000;
 // A comment line dispatches no event on the client but resets the idle timers
 // of proxies and load balancers in between. Every 4th tick is ample.
 const SSE_HEARTBEAT_EVERY_TICKS = 4;
+
+/**
+ * One archive table's rows for a day, as a lazy iterator over the time index.
+ * `scorecard_days` is keyed by the day string; every other table by an epoch
+ * column named in archive.ts. Column names come from SQLite itself so the
+ * archive records the schema it was taken under.
+ */
+function archiveRows(
+  sqlite: import("better-sqlite3").Database,
+  table: ArchiveTable,
+  range: { day: string; from: number; to: number; column: string | null },
+): { columns: string[]; iterate: () => IterableIterator<unknown> } {
+  const stmt = range.column === null
+    ? sqlite.prepare(`SELECT * FROM ${table} WHERE day = ? ORDER BY route_id, surface, horizon`)
+    : sqlite.prepare(`SELECT * FROM ${table} WHERE ${range.column} >= ? AND ${range.column} < ? ORDER BY ${range.column}, rowid`);
+  const columns = stmt.columns().map((col) => col.name);
+  return {
+    columns,
+    iterate: () => (range.column === null ? stmt.iterate(range.day) : stmt.iterate(range.from, range.to)),
+  };
+}
 
 /**
  * Constant-time string compare, so a token can't be recovered byte-by-byte by
@@ -147,6 +206,19 @@ export interface AppOptions {
    * tests never reach the network; the default is created in v1compat.ts.
    */
   geocoder?: ExternalGeocoder;
+  /**
+   * Share of page loads that report what they displayed (see predictions.ts).
+   * Defaults to SHUTTLE_PREDICTION_SAMPLE, then 0.25. Zero turns the whole
+   * feature off, server and fleet both — the response tells clients to stop.
+   */
+  predictionSampleRate?: number;
+  /**
+   * The server-side ETA belief (src/server/serverEta.ts). Injected by tests;
+   * production reads SHUTTLE_SERVER_ETA. Pass `null` to force it off even when
+   * the environment sets the flag — which is how the payload-identity test
+   * builds the "flag off" arm without touching process.env.
+   */
+  serverEta?: ServerEta | null;
 }
 
 export function buildApp(opts: AppOptions): Hono {
@@ -161,6 +233,16 @@ export function buildApp(opts: AppOptions): Hono {
   // Who the operator is, so "somebody wrote in" can mean somebody else. Tests
   // pass their own list; production reads the Fly secret.
   seedOperatorIds(opts.bundle, opts.operatorAnonIds ?? process.env.SHUTTLE_OPERATOR_ANON_IDS);
+  // What riders type, so lookup is fixed with evidence rather than one rider
+  // report at a time. Words only — see searchTerms.ts for why there is no id.
+  const searchTerms = createSearchTermsTracker(opts.bundle);
+  // What the CLIENT displayed, deduplicated to one row per (bus, stop, 15 s)
+  // and carrying no viewer at all — see predictions.ts for why the browser has
+  // to be the source and how the row stays a statement about a bus.
+  const predictions: PredictionRecorder = createPredictionRecorder(
+    opts.bundle,
+    opts.predictionSampleRate === undefined ? {} : { sampleRate: opts.predictionSampleRate },
+  );
 
   // Catch-all so a thrown handler returns clean JSON instead of leaking a
   // stack trace (or, worse, a malformed response) to the client.
@@ -200,7 +282,27 @@ export function buildApp(opts: AppOptions): Hono {
   // see createBusesPayloadCache for why the naive per-request build was the
   // most expensive thing this process did. Per-app instance so tests that
   // build several apps over one collector stay independent.
-  const busesJson = createBusesPayloadCache(opts.collector);
+  // The estimator's learned parameters, re-read on every publish (stage 3 of
+  // docs/closed-loop.md). Null until a fit is accepted, and then the payload
+  // carries `model_params`.
+  const modelParams = createModelParamsSource(opts.bundle.sqlite);
+  // The server-side belief (src/server/serverEta.ts). Null unless
+  // SHUTTLE_SERVER_ETA=1 — and null is the default, which leaves `/api/buses`
+  // byte-for-byte what it is today.
+  const serverEta = opts.serverEta !== undefined
+    ? opts.serverEta
+    : serverEtaFromEnv(process.env, (msg, fields) =>
+      console.error(JSON.stringify({ level: "error", msg, ...fields })));
+  const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta);
+  if (serverEta) {
+    // Priming the cache on the collector's own poll is what steps the belief:
+    // it must advance on every observation, not only when a rider happens to
+    // ask, or it would be exactly as cold as the browser copy it replaces.
+    // The build it forces is the one the next five seconds of requests share,
+    // so this costs a stringify per poll on an idle machine and nothing at all
+    // on a busy one.
+    opts.collector.setPollObserver(() => { busesJson(); });
+  }
 
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a
@@ -209,6 +311,67 @@ export function buildApp(opts: AppOptions): Hono {
     c.header("Content-Type", "application/json");
     c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
     return c.body(busesJson());
+  });
+
+  // -- What the client actually displayed ------------------------------------
+  //
+  // The one thing no reconstruction can supply. The ETA is computed in the
+  // BROWSER, so replaying it server-side measures the code deployed now, not
+  // the bundle the rider is running — which is exactly how a family of
+  // stability numbers came to be measured against a client that had not
+  // shipped in months.
+  //
+  // Public and unauthenticated, like every rider endpoint, and therefore
+  // treated as untrusted: the bus must be one that is live right now, the stop
+  // must be one that bus's route serves, the numbers must be in range, and the
+  // INSTANT comes from this server's clock (the client sends an AGE, never a
+  // timestamp — a wrong or lying clock would otherwise write rows at instants
+  // that never happened, and the table's whole value is that its instants can
+  // be paired with an arrival). Deduplication on (bus, stop, 15 s bucket) with
+  // first-writer-wins bounds what a flood can do to one bucket it would have
+  // shared with real riders anyway.
+  //
+  // NO IDENTITY IS ACCEPTED HERE — not even the `x-anon-id` the poll carries.
+  // There is nothing to filter test traffic by, and nothing to filter it FOR:
+  // a harness runs the same client code and its reading of bus #310 to stop 48
+  // is the same reading a rider's browser makes, and dedup merges the two.
+  // See predictions.ts.
+  app.post("/api/shown", bodyLimit({
+    maxSize: SHOWN_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const rate = predictions.sampleRate();
+    // Turned off: answer the control value so the fleet stops posting within a
+    // minute, without a deploy. The body is not even read.
+    if (rate <= 0) return c.json({ sample: 0 });
+    const ip = clientIp(c) ?? "anon";
+    // A sampled client posts about once a minute, so this looks enormous for
+    // one browser — and it has to be. Campus Wi-Fi puts a whole building behind
+    // one NAT address (the same thing that made a 10/min cap on /api/report a
+    // per-building cap on the first school morning). A tight limit here would
+    // not merely shed load, it would systematically drop the measurements of
+    // riders on campus, which is precisely the population this data is about:
+    // a biased sample is worse than a small one. There is no anon id to budget
+    // per browser instead, by design, so the IP budget is set to a number a
+    // building cannot reach and a flood still can.
+    if (!rateLimitAllow(`shown:${ip}`, now(), { perMinute: 600, perDay: 200_000 })) {
+      return c.json({ sample: rate }, 429);
+    }
+    const body = await c.req.json().catch(() => null);
+    const readings = parseShownBatch(body);
+    if (readings.length > 0) {
+      predictions.record(readings, {
+        buses: opts.collector.getLiveBuses(),
+        network: opts.collector.ref.get(),
+        clientBuild: typeof (body as { b?: unknown } | null)?.b === "string"
+          ? (body as { b: string }).b
+          : null,
+        now: now(),
+      });
+    }
+    // The sample rate rides back on the response the client already makes, so
+    // the control channel costs no request of its own.
+    return c.json({ sample: rate });
   });
 
   // -- Server-Sent Events: push live snapshots ------------------------------
@@ -325,9 +488,26 @@ export function buildApp(opts: AppOptions): Hono {
     // would block the single event loop for seconds.
     // A destination search is a deliberate action, unlike the automatic poll,
     // so it is the honest measure of "queries".
-    actives.seen(c.req.header("x-anon-id"), "search", now());
+    const anonId = c.req.header("x-anon-id");
+    actives.seen(anonId, "search", now());
     const q = (c.req.query("q") ?? "").slice(0, 100);
     const results = await geocodeV1(opts.collector.ref.get(), q, geocoder);
+    // The words and whether they found anything — no id, no IP, no time of
+    // day. A search that finds nothing is the only reliable signal that a
+    // place is missing from the list.
+    //
+    // ...which is why our own harnesses must not be in it. `search_terms`
+    // stores no anon id BY DESIGN, so unlike `daily_actives` it cannot filter
+    // test traffic after the fact — the decision has to happen here, before
+    // the write. On 2026-09-03 the loudest zero-result term in the whole log
+    // was walk-fallback-check.mjs's hardcoded destination, 8 of 12 coordinate
+    // searches; a list meant to prioritise work by RIDER evidence was topped
+    // by a robot. This reuses the exclusion the harnesses already carry
+    // (`TEST_ANON_ID`, seeded into `excluded_anon_ids` at startup), so a new
+    // harness is covered the moment it calls `seedTestId` and nothing extra
+    // is stored to make it work: the id is read from the header, compared in
+    // memory, and dropped.
+    if (!actives.isExcluded(anonId)) searchTerms.record(q, results.length, now());
     c.header("Cache-Control", "no-store");
     return c.json({ results });
   });
@@ -655,13 +835,128 @@ export function buildApp(opts: AppOptions): Hono {
     return c.json({ ok: true });
   });
 
+  // Stop evidence shares the read-only operator session. Never serves model
+  // mutations or rider records, and never caches fleet evidence in a browser.
+  app.use("/api/stats/stops/*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
+  app.get("/api/stats/stops/catalog", requireStatsAuth, (c) =>
+    c.json(readStopDataCatalog(opts.bundle.sqlite, now(), opts.collector.ref.get())));
+  app.get("/api/stats/stops/visits", requireStatsAuth, (c) => {
+    try {
+      const integer = (name: string): number => {
+        const raw = c.req.query(name) ?? "";
+        if (!/^\d{1,10}$/.test(raw)) throw new StopDataInputError(`${name} is required and must be an integer`);
+        return Number(raw);
+      };
+      return c.json(readStopDataDay(opts.bundle.sqlite, {
+        day: c.req.query("day") ?? "", routeId: integer("routeId"),
+        stopId: integer("stopId"), stopIndex: integer("stopIndex"),
+      }, now()));
+    } catch (error) {
+      if (error instanceof StopDataInputError) return c.json({ error: error.message }, 400);
+      throw error;
+    }
+  });
+  app.get("/api/stats/stops/visits/:id", requireStatsAuth, (c) => {
+    try {
+      const detail = readStopDataVisit(opts.bundle.sqlite, c.req.param("id") ?? "", now());
+      return detail ? c.json(detail) : c.json({ error: "not_found" }, 404);
+    } catch (error) {
+      if (error instanceof StopDataInputError) return c.json({ error: error.message }, 400);
+      throw error;
+    }
+  });
+
   // Rider counts. Operator-only: an audience number is competitive information,
   // and there is no reason for it to be public just because it is anonymous.
   app.get("/api/stats", requireStatsAuth, (c) => {
     c.header("Cache-Control", "no-store");
     // `since` travels with the numbers so the dashboard can say what it is
     // counting from without hard-coding a date of its own.
-    return c.json({ riders: actives.stats(now()), since: actives.sinceDay() });
+    //
+    // `etaVsOfficial` is null — and the dashboard then prints nothing — until
+    // BOTH arms have enough paired rows to mean anything (see
+    // MIN_COMPARE_PAIRS). Fleet operational detail, no rider identity, same
+    // auth as the rest of this route.
+    return c.json({
+      riders: actives.stats(now()),
+      since: actives.sinceDay(),
+      etaVsOfficial: predictions.officialComparison(48, now()),
+    });
+  });
+
+  // The scorecard: every ETA arm scored against the detector's arrivals, per
+  // ET day / route / horizon / surface, written hourly by the job in
+  // scorecard.ts (stage 1 of docs/closed-loop.md). Same auth as the rest of
+  // /api/stats — fleet measurement, no rider in it. `/api/scorecard` is the
+  // same handler for scripts with the header; the cookie is scoped to
+  // /api/stats and never reaches that spelling, which is the point of the scope.
+  const SCORECARD_MAX_DAYS = 400;
+  const scorecardHandler = (c: Context) => {
+    const raw = parseInt(c.req.query("days") ?? "", 10);
+    const days = Number.isFinite(raw) ? Math.max(1, Math.min(SCORECARD_MAX_DAYS, raw)) : 30;
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      ...readScorecard(opts.bundle.sqlite, days, now()),
+      estimatorVersion: resolveEstimatorVersion(),
+      now: now(),
+    });
+  };
+  app.get("/api/stats/scorecard", requireStatsAuth, scorecardHandler);
+  app.get("/api/scorecard", requireStatsAuth, scorecardHandler);
+
+  // -- The learned parameters (docs/closed-loop.md, stages 3-4) --------------
+  //
+  // What the nightly fit publishes, and what it decided. Reading is fleet
+  // measurement like the rest of /api/stats, so the dashboard's cookie opens
+  // it. WRITING IS THE HEADER ALONE: a published set is a live change to the
+  // ETA every rider sees, with no deploy and no review in between, so it must
+  // not be reachable by anything the browser is holding. The cookie is scoped
+  // Path=/api/stats and this route is deliberately NOT under that prefix, so
+  // the scope enforces the rule as well as the middleware does.
+  app.get("/api/stats/model-params", requireStatsAuth, (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      current: currentModelParams(opts.bundle.sqlite),
+      history: modelParamsHistory(opts.bundle.sqlite, 10),
+      endpointReady: true,
+    });
+  });
+
+  app.post("/api/model-params", requireAdmin, bodyLimit({
+    maxSize: MODEL_PARAMS_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as unknown;
+    const parsed = parseSubmission(body);
+    if (!parsed.ok) return c.json({ error: "invalid_request", reason: parsed.error }, 400);
+    const id = recordModelParams(opts.bundle.sqlite, parsed.value, now());
+    // Take effect on the next poll, not the next collector tick.
+    modelParams.refresh();
+    c.header("Cache-Control", "no-store");
+    return c.json({ ok: true, id, accepted: parsed.value.accepted, serving: modelParams.wire() });
+  });
+
+  // A challenger scored offline on the Pi's archive, written back as
+  // `surface = "replay:<name>"` rows for one ET day — the hook stage 1 left
+  // open. Header only: it writes into the table the dashboard reads.
+  app.post("/api/scorecard/replay", requireAdmin, bodyLimit({
+    maxSize: SCORECARD_REPLAY_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as
+      | { day?: unknown; name?: unknown; rows?: unknown; estimatorVersion?: unknown; scoredThrough?: unknown }
+      | null;
+    const parsed = parseReplayRows(body);
+    if (!parsed.ok) return c.json({ error: "invalid_request", reason: parsed.error }, 400);
+    writeReplayDay(opts.bundle.sqlite, parsed.value, now());
+    c.header("Cache-Control", "no-store");
+    return c.json({
+      ok: true, day: parsed.value.day, surface: replaySurface(parsed.value.name),
+      rows: parsed.value.rows.length,
+    });
   });
 
   // When the app is used, hour by hour, one row per day. Derived from spans
@@ -677,6 +972,19 @@ export function buildApp(opts: AppOptions): Hono {
     });
   });
 
+  // What riders searched for, and what found nothing. Same auth as the rest
+  // of /api/stats; the payload is words and counts, never a rider.
+  app.get("/api/stats/searches", requireStatsAuth, (c) => {
+    const days = parseInt(c.req.query("days") ?? "", 10);
+    const limit = parseInt(c.req.query("limit") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json(searchTerms.report(
+      Number.isFinite(days) ? days : 30,
+      Number.isFinite(limit) ? limit : 25,
+      now(),
+    ));
+  });
+
   // Reports from someone OTHER than the operator — the dashboard's alert.
   // Same auth as the rest of /api/stats, which means the cookie reaches it,
   // so the payload carries no IP, no anon id and no context: an excerpt, a
@@ -685,7 +993,53 @@ export function buildApp(opts: AppOptions): Hono {
   app.get("/api/stats/reports", requireStatsAuth, (c) => {
     const raw = parseInt(c.req.query("limit") ?? "", 10);
     c.header("Cache-Control", "no-store");
-    return c.json(outsideReports(opts.bundle, Number.isFinite(raw) ? raw : 20));
+    // Same epoch the rider numbers count from, read off the tracker rather
+    // than re-derived: the page prints "counting from Mon Aug 31" over this
+    // very panel, so a pre-launch report here would contradict it.
+    return c.json(outsideReports(
+      opts.bundle,
+      Number.isFinite(raw) ? raw : 20,
+      { sinceDay: actives.sinceDay() },
+    ));
+  });
+
+  // What the rider canary saw. Same auth as the rest of /api/stats — the
+  // payload is entirely harness output (a route label, a countdown string, a
+  // timestamp) and names no rider at all, so the cookie is safe here for the
+  // same reason it is safe on the search terms.
+  app.get("/api/stats/canary", requireStatsAuth, (c) => {
+    const raw = parseInt(c.req.query("hours") ?? "", 10);
+    c.header("Cache-Control", "no-store");
+    return c.json(canaryReport(
+      opts.bundle,
+      Number.isFinite(raw) ? raw : CANARY_DEFAULT_HOURS,
+      now(),
+    ));
+  });
+
+  // Where the canary ships its runs from the Pi. ADMIN HEADER ONLY: this is a
+  // write, and the stats cookie rides along on a browser's requests — it must
+  // never be able to put words on the operator's own dashboard.
+  //
+  // The response tells the shipper which findings the server judged worth an
+  // interruption, and which lines have recovered since. That decision lives on
+  // the server because only the server has the history a cooldown needs, and
+  // because a rule about waking somebody up should be unit-tested. See
+  // canary.ts for the measurement that set the rule.
+  app.post("/api/canary/runs", requireAdmin, bodyLimit({
+    maxSize: CANARY_BODY_LIMIT,
+    onError: (c) => c.json({ error: "payload_too_large" }, 413),
+  }), async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { runs?: unknown } | null;
+    if (!body || !Array.isArray(body.runs)) {
+      return c.json({ error: "invalid_request" }, 400);
+    }
+    c.header("Cache-Control", "no-store");
+    const ingest = recordCanaryRuns(opts.bundle, body.runs, now());
+    // An over-size batch is refused whole rather than truncated, so a shipper
+    // cannot advance its cursor past runs the server never stored (2026-09-08:
+    // 152 canary runs lost exactly that way).
+    return ingest.tooMany ? c.json(ingest, 413) : c.json(ingest);
   });
 
   // Claim (or release) a browser as the operator's own, so its reports stop
@@ -751,6 +1105,95 @@ export function buildApp(opts: AppOptions): Hono {
       .prepare("SELECT COUNT(*) AS n FROM excluded_anon_ids")
       .get() as { n: number };
     return c.json({ ok: true, excluded: n.n, riders: actives.stats(now()) });
+  });
+
+  /**
+   * THE PAIRING. What we told riders, beside what the bus then did — the
+   * question nobody could answer without a replay.
+   *
+   *   /api/predictions?hours=6&route=3&stop=48
+   *
+   * returns each logged reading with the arrival that followed it and the
+   * signed error, plus a summary broken down by CLIENT BUILD. The build column
+   * is the point: it makes "which bundle was this measured against" a fact in
+   * the data rather than an assumption in the harness.
+   *
+   * Operator-only, and deliberately NOT under /api/stats: the stats-session
+   * cookie is scoped `Path=/api/stats` and must stay that way, so this route
+   * takes the admin HEADER and nothing else. The rows carry no personal data
+   * (see predictions.ts), but they are operational detail about the fleet and
+   * belong with triage, not with the public API.
+   *
+   * It answers about OUR app by default. `?surface=upstream` asks for the
+   * operator's own ETAs instead; there is deliberately no way to ask for both
+   * at once, because a pooled median is the error this table's `surface`
+   * column was added to prevent.
+   */
+  /**
+   * The archive feed (docs/closed-loop.md, stage 2): one table's rows for one
+   * ET day, streamed as JSON lines, so the Pi can keep what the volume cannot.
+   * Admin HEADER only — not under /api/stats, for the same reason as
+   * /api/predictions above. Bounded on purpose: one table per request, from
+   * the allowlist in archive.ts, one day within the retention, every table
+   * read over its time-leading index so no request is a full scan. The first
+   * line names the table, day, columns and build; the last is `{"end":true,
+   * "rows":N}` — a stream without it was cut off, and the archiver says so.
+   */
+  app.get("/api/archive/day", requireAdmin, (c) => {
+    const table = c.req.query("table") ?? "";
+    const day = c.req.query("day") ?? "";
+    if (!isArchiveTable(table)) {
+      return c.json({ error: "unknown_table", tables: ARCHIVE_TABLES }, 400);
+    }
+    const range = archiveDayRange(day, now(), table);
+    if (!range) return c.json({ error: "bad_day" }, 400);
+    c.header("Content-Type", "application/x-ndjson; charset=utf-8");
+    c.header("Cache-Control", "no-store");
+    return stream(c, async (out) => {
+      const rows = archiveRows(opts.bundle.sqlite, table, range);
+      await out.write(JSON.stringify({
+        table, day, from: range.from, to: range.to, columns: rows.columns, build: resolveEstimatorVersion(),
+      }) + "\n");
+      let n = 0;
+      let batch: string[] = [];
+      for (const row of rows.iterate()) {
+        batch.push(JSON.stringify(row));
+        n += 1;
+        // A few hundred rows per write keeps the syscalls down and still gives
+        // the event loop a turn every few milliseconds on a 300k-row day.
+        if (batch.length >= 500) {
+          await out.write(batch.join("\n") + "\n");
+          batch = [];
+        }
+      }
+      if (batch.length) await out.write(batch.join("\n") + "\n");
+      await out.write(JSON.stringify({ end: true, rows: n }) + "\n");
+    });
+  });
+
+  app.get("/api/predictions", requireAdmin, (c) => {
+    const numeric = (name: string): number | undefined => {
+      const raw = c.req.query(name);
+      if (raw === undefined) return undefined;
+      const v = Number(raw);
+      return Number.isFinite(v) ? v : undefined;
+    };
+    const result = predictions.paired({
+      hours: numeric("hours"),
+      routeId: numeric("route"),
+      stopId: numeric("stop"),
+      limit: numeric("limit"),
+      busName: c.req.query("bus"),
+      build: c.req.query("build"),
+      // Defaults to the rider-reported arms. `?surface=upstream` reads the
+      // operator's own ETAs instead — never both, see RIDER_SURFACES_SQL.
+      surface: isPredictionSurface(c.req.query("surface"))
+        ? c.req.query("surface")
+        : undefined,
+      now: now(),
+    });
+    c.header("Cache-Control", "no-store");
+    return c.json(result);
   });
 
   app.get("/api/reports", requireAdmin, (c) => {
@@ -907,6 +1350,18 @@ export function buildApp(opts: AppOptions): Hono {
       });
     }
 
+    // Separate Vite entry: the operator charts do not add weight to the rider
+    // bundle. The shell contains no evidence; every data request is gated above.
+    for (const route of ["/stats/stops", "/stats/stops/", "/stop-data.html"]) {
+      app.get(route, async (c) => {
+        try {
+          const html = await fs.promises.readFile(path.join(opts.staticDir!, "stop-data.html"), "utf8");
+          c.header("Cache-Control", "no-store");
+          return c.html(html);
+        } catch { return c.notFound(); }
+      });
+    }
+
     app.use(
       "/*",
       serveStatic({
@@ -954,6 +1409,10 @@ export function buildApp(opts: AppOptions): Hono {
         knownBuses: buses.length,
         pollSkipped: poll.skipped,
         droppedObservations: poll.droppedObservations,
+        // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by
+        // the Dockerfile; "dev" otherwise). The scorecard versions its rows by
+        // it, and "which build is live?" should not need a Fly console.
+        build: resolveEstimatorVersion(),
       },
       healthy ? 200 : 503,
     );
@@ -966,6 +1425,49 @@ export function buildApp(opts: AppOptions): Hono {
  * Best-effort client IP extraction. Fly.io adds Fly-Client-IP; behind a
  * generic proxy we fall back to X-Forwarded-For (first hop).
  */
+/**
+ * Parse the compact batch `POST /api/shown` accepts.
+ *
+ * The wire shape is positional on purpose — `{b, p:[[bus, stop, eta, low,
+ * high, stopsAhead, ageMs, surface], ...]}` — because this rides on a phone's
+ * radio beside a 5 s poll, and named keys would roughly triple it for no
+ * reader's benefit. Anything malformed is DROPPED, never rejected: a client one
+ * deploy behind must degrade to fewer readings, not to an error the rider could
+ * somehow notice.
+ *
+ * `surface` is the eighth element and is OPTIONAL on the wire: a bundle from
+ * before 2026-09-04 posts seven and every reading it sends is a trip-card one,
+ * which is exactly what the default says. Making it required would have thrown
+ * away the readings of every browser that had not yet reloaded.
+ *
+ * Nothing here trusts a value. Ranges, types and the fleet lookup are all
+ * re-checked in `predictions.record`; this only gets the shape right.
+ */
+export function parseShownBatch(body: unknown): ShownReading[] {
+  if (!body || typeof body !== "object") return [];
+  const raw = (body as { p?: unknown }).p;
+  if (!Array.isArray(raw)) return [];
+  const out: ShownReading[] = [];
+  for (const entry of raw.slice(0, SHOWN_MAX_READINGS)) {
+    if (!Array.isArray(entry) || entry.length < 7) continue;
+    const [busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs, surface] = entry as unknown[];
+    if (typeof busName !== "string" || busName.length === 0 || busName.length > 16) continue;
+    if (typeof stopId !== "number" || typeof etaSec !== "number") continue;
+    if (typeof lowSec !== "number" || typeof highSec !== "number") continue;
+    if (typeof stopsAhead !== "number" || typeof ageMs !== "number") continue;
+    if (ageMs > MAX_READING_AGE_MS) continue;
+    // Absent = a pre-2026-09-04 bundle, which only ever reported the trip card.
+    // Present but unrecognised = a client asserting a population that does not
+    // exist; drop the reading rather than invent a bucket for it.
+    if (surface !== undefined && !isShownSurface(surface)) continue;
+    out.push({
+      busName, stopId, etaSec, lowSec, highSec, stopsAhead, ageMs,
+      surface: surface === undefined ? "trip" : surface,
+    });
+  }
+  return out;
+}
+
 function clientIp(c: Context): string | null {
   const fly = c.req.header("fly-client-ip");
   if (fly) return fly;

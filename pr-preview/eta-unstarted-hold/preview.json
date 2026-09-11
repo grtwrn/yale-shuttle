@@ -1,0 +1,24 @@
+{
+  "caption": "A hold the bus has not reached: one figure, the median (333 Cedar, ~11 min). On master the same row read \"8-11 min\" because the ETA billed a low quantile ahead of the stop and the median once the bus was standing there.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 5,
+    "dest": 20,
+    "from": {
+      "lat": 41.30872,
+      "lon": -72.931417
+    }
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [
+    "/api/buses"
+  ],
+  "shots": [
+    "/tmp/claude-1000/-home-gwarren-yale-shuttle/70fd443b-870f-4c0f-aea2-856c8edea1ec/scratchpad/shots/trip.png"
+  ],
+  "failedViews": [],
+  "pageErrors": [],
+  "crashed": false
+}

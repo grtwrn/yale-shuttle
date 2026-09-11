@@ -1,0 +1,15 @@
+{
+  "caption": "A destination lookup whose first result is malformed (a name under the wrong key)",
+  "views": ["search"],
+  "search": "sterling",
+  "mock": {
+    "/api/geocode": {
+      "results": [
+        { "label": "Sterling Memorial Library", "lat": 41.3113, "lon": -72.9289, "type": "library", "class": "osm" },
+        { "display_name": "Sterling Memorial Library, High Street, New Haven", "lat": 41.31129, "lon": -72.92889, "type": "library", "class": "yale" },
+        { "display_name": "Sterling Chemistry Laboratory, Prospect Street, New Haven", "lat": 41.31843, "lon": -72.92384, "type": "college", "class": "yale" },
+        { "display_name": "Sterling Divinity Quadrangle, Prospect Street, New Haven", "lat": 41.33088, "lon": -72.92074, "type": "college", "class": "yale" }
+      ]
+    }
+  }
+}

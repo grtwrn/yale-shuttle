@@ -6,8 +6,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { hasAnonId } from "./anonId";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
 import {
+  actionErrorText,
+  emptyReportsText,
   fetchMyReports,
   markAllSeen,
   postReportAction,
@@ -70,7 +73,14 @@ const IssuesPanel: React.FC<{
   };
   const [replyText, setReplyText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [actionError, setActionError] = useState<number | null>(null);
+  // Which row's action failed, and what to say about it — a 429 needs
+  // different advice from a dropped connection (report #51).
+  const [actionError, setActionError] = useState<{ id: number; text: string } | null>(null);
+
+  // Whether this browser has an id at all, read once on mount: with none, the
+  // rider's reports can never be listed here and the empty state must say so
+  // rather than inviting them to send another one.
+  const [browserKeepsReports] = useState(() => hasAnonId());
 
   // The parent passes onAllSeen inline, so its identity changes every parent
   // render (every 5 s poll). Hold it in a ref so `load` stays stable and the
@@ -117,8 +127,8 @@ const IssuesPanel: React.FC<{
       setReplyImageErr(null);
       setReplyAttaching(false);
       await load();
-    } catch {
-      setActionError(id);
+    } catch (err) {
+      setActionError({ id, text: actionErrorText(err) });
     } finally {
       setBusyId(null);
     }
@@ -152,7 +162,7 @@ const IssuesPanel: React.FC<{
         <div style={{ fontSize: 13, color: "#78909c", padding: "8px 2px" }}>Loading…</div>
       ) : reports.length === 0 ? (
         <div style={{ fontSize: 13, color: "#78909c", padding: "8px 2px", lineHeight: 1.5 }}>
-          No reports yet — 🚩 Report issue or 💬 Send feedback and it will show up here.
+          {emptyReportsText(browserKeepsReports)}
         </div>
       ) : (
         <>
@@ -328,9 +338,9 @@ const IssuesPanel: React.FC<{
                       {busy ? "Sending…" : replyAttaching ? "Attaching…" : "Send"}
                     </button>
                   </div>
-                  {actionError === r.id && (
+                  {actionError?.id === r.id && (
                     <span style={{ fontSize: 12, color: "#c62828" }}>
-                      Didn’t go through — try again
+                      {actionError.text}
                     </span>
                   )}
                 </div>
@@ -394,9 +404,9 @@ const IssuesPanel: React.FC<{
                   >
                     {r.archived ? "Unarchive" : "Archive"}
                   </button>
-                  {actionError === r.id && (
+                  {actionError?.id === r.id && (
                     <span style={{ fontSize: 12, color: "#c62828" }}>
-                      Didn’t go through — try again
+                      {actionError.text}
                     </span>
                   )}
                 </div>

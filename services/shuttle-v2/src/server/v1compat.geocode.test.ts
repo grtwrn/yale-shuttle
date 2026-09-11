@@ -3,12 +3,18 @@ import { describe, expect, it } from "vitest";
 import { TransitNetwork } from "../network/TransitNetwork.js";
 import type { Stop } from "../schema/api.js";
 
+import fs from "node:fs";
+import liveStops from "./__fixtures__/stops.json";
+import { LANDMARKS } from "./landmarks.js";
 import {
+  EXTERNAL_REACH_M,
   createExternalGeocoder,
   geocodeV1,
   looksLikeStreetAddress,
+  parseCoordinateQuery,
   parsePhoton,
   rankExternal,
+  sanitizeHits,
   type GeocodeV1Hit,
 } from "./v1compat.js";
 
@@ -314,10 +320,77 @@ describe("rankExternal", () => {
   });
 });
 
+/**
+ * A destination pasted as a coordinate. This shipped broken for part of
+ * 2026-09-03: Photon answers nothing for a bare coordinate, Nominatim
+ * reverse-geocodes it to the nearest house, and the name-relevance filter
+ * added that morning scored that house 0 against a query with no words in it
+ * and dropped it — so `/api/geocode?q=41.296105,-72.955812` returned
+ * `{"results":[]}` and the rider got no options at all. `walk-fallback-check`
+ * (report #35's own regression harness) was red against production and, until
+ * this commit, exited 0 while saying so.
+ *
+ * The fix does not touch the relevance filter — that guard is load-bearing.
+ * A coordinate simply never reaches it.
+ */
+describe("a destination given as a coordinate", () => {
+  const REPORT_35_DEST = { q: "41.296105,-72.955812", lat: 41.296105, lon: -72.955812 };
+
+  it("answers the exact point, and asks no provider", async () => {
+    let asked = 0;
+    const external = { lookup: async () => { asked++; return []; } };
+    const results = await geocodeV1(network, REPORT_35_DEST.q, external);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      lat: REPORT_35_DEST.lat,
+      lon: REPORT_35_DEST.lon,
+      class: "coordinate",
+      type: "coordinate",
+    });
+    // The coordinate IS the answer; spending a throttled external lookup on it
+    // would be both slower and less accurate (Nominatim's house was 127 m off).
+    expect(asked).toBe(0);
+  });
+
+  it("never returns empty for a coordinate, whatever the providers do", async () => {
+    for (const q of ["41.296105,-72.955812", "41.31, -72.93", " 41.3163,-72.925 ", "-33.8688,151.2093"]) {
+      const results = await geocodeV1(network, q, { lookup: async () => [] });
+      expect(results.length, q).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not hijack a query that merely contains digits", () => {
+    // Anything here that parsed as a coordinate would stop reaching the
+    // matcher: "800" is Building 800, and "517 Prospect St" is report #59/#69.
+    for (const q of ["800", "517 Prospect St", "41.29", "-72.9", "1,2", "130 Prospect",
+                     "Chapel / York", "25 Science Park", "41.29,", "abc,def"]) {
+      expect(parseCoordinateQuery(q), q).toBeNull();
+    }
+  });
+
+  it("accepts the spellings a rider actually pastes, and rejects impossible ones", () => {
+    expect(parseCoordinateQuery("41.296105,-72.955812")).toEqual({ lat: 41.296105, lon: -72.955812 });
+    expect(parseCoordinateQuery(" 41.296105 , -72.955812 ")).toEqual({ lat: 41.296105, lon: -72.955812 });
+    expect(parseCoordinateQuery("+41.3,+72.9")).toEqual({ lat: 41.3, lon: 72.9 });
+    // Out of range is not a coordinate; let the matcher have it.
+    expect(parseCoordinateQuery("91.5,-72.9")).toBeNull();
+    expect(parseCoordinateQuery("41.3,-181.2")).toBeNull();
+  });
+
+  it("still lets a street address reach the address path", async () => {
+    // The address exemption and the coordinate path are separate mechanisms;
+    // widening `looksLikeStreetAddress` to cover coordinates would have blurred
+    // them, which is why it was not the fix.
+    expect(looksLikeStreetAddress(REPORT_35_DEST.q)).toBe(false);
+    expect(looksLikeStreetAddress("517 Prospect St")).toBe(true);
+  });
+});
+
 describe("geocodeV1 merge", () => {
   it("puts local results first and drops an external twin within 60 m of one", async () => {
-    // The local hit for "union" is the curated landmark (it absorbs the
-    // "Union Station (N)" stop 50 m away); put the external twin 30 m from it.
+    // "station" is only a word match, so the external lookup still runs (a
+    // rider may mean a place we do not list). The curated Union Station
+    // absorbs the stop 50 m away; the external twin 30 m from it is noise.
     const union = STOPS[0]!;
     const external = {
       lookup: async () => [
@@ -325,17 +398,186 @@ describe("geocodeV1 merge", () => {
         { display_name: "Elena's on Orange, Orange Street, New Haven", lat: 41.323, lon: -72.9108, type: "ice_cream", class: "osm" },
       ],
     };
-    const results = await geocodeV1(network, "union", external);
-    expect(results[0]).toMatchObject({ display_name: "Union Station", class: "yale", type: "landmark" });
+    const results = await geocodeV1(network, "station", external);
     expect(results.filter((r) => r.display_name.startsWith("Union Station"))).toHaveLength(1);
-    expect(results.at(-1)).toMatchObject({ display_name: "Elena's on Orange, Orange Street, New Haven", class: "osm" });
+    expect(results[0]).toMatchObject({ class: "yale" });
+    // The ice cream shop is dropped for a different reason — it is no answer
+    // to "station" — so assert the dedup on the twin, which is the point here.
+    expect(results.every((r) => !r.display_name.startsWith("Elena"))).toBe(true);
   });
 
   it("keeps the v1 class/type vocabulary for local hits", async () => {
+    // `type` carries the place's category so the client can draw an icon;
+    // `class` is what the frontend auto-picks on, and it does not move.
     const results = await geocodeV1(network, "SOM", { lookup: async () => [] });
-    expect(results[0]).toMatchObject({ display_name: "School of Management (SOM)", type: "landmark", class: "yale" });
+    expect(results[0]).toMatchObject({ display_name: "School of Management (SOM)", type: "college", class: "yale" });
+    const pizza = await geocodeV1(network, "pepes", { lookup: async () => [] });
+    expect(pizza[0]).toMatchObject({ display_name: "Frank Pepe Pizzeria", type: "pizza", class: "yale" });
     const stop = await geocodeV1(network, "Chapel / York", { lookup: async () => [] });
     expect(stop[0]).toMatchObject({ display_name: "Chapel / York", type: "bus_stop", class: "shuttle" });
+  });
+
+  /**
+   * Reported by the operator on 2026-09-03, three screenshots in a row:
+   * "pepes" answered Frank Pepe Pizzeria AND "Pepe's Lawn Care" in West
+   * Haven; "elenas" answered Elena's on Orange and a clothing shop called
+   * EbLens; "trader joes" listed the Milford store beside the Hamden one
+   * ("are there really two trader Joe's? this is confusing as a user").
+   *
+   * EVERY fixture below is Photon's real answer to that query, coordinates
+   * included, captured on 2026-09-03 and re-measured against the checked-in
+   * stop list. That matters: an earlier draft of this file invented a
+   * coordinate for the Hamden Trader Joe's (41.372, -72.8985), measured it at
+   * 1,590 m and asserted that the reach rule dropped it. Photon's actual node
+   * is at 41.37523, -72.91366 — **286 m from the Aldi/Walmart stop**, which
+   * route 18 serves. The test was green and the live server disagreed.
+   *
+   * So two of the three screenshots are answered here, by two rules that are
+   * each needed:
+   *   - REACH: Pepe's Lawn Care is 1,971 m from the nearest stop and Pepes
+   *     Farm Road 2,224 m — past MAX_WALK_M, so no trip can be planned to
+   *     them at all.
+   *   - NAME: EbLens is 290 m from Elm / Lynwood, entirely reachable, and no
+   *     answer to "elenas" under our own matcher. Distance can never catch it.
+   *
+   * The third is NOT a defect and is left alone: both Trader Joe's are within
+   * walking range of a stop a Grocery run serves, so the honest answer to
+   * "are there really two" is yes — see the test below.
+   *
+   * The rule that does NOT work, and was reverted before shipping: skipping
+   * the external lookup whenever a local hit matched well. That hides real
+   * places behind a curated one — "police" then answers only Yale Police and
+   * buries the New Haven Police Department 64 m from the Union Station stop.
+   */
+  describe("the noise the operator photographed", () => {
+    // The whole live network, because these rules are about DISTANCE to a
+    // stop: the grocery runs reach Milford and Hamden, which is exactly why
+    // "near the network" had to become "within walking range of a stop".
+    const liveNetwork = TransitNetwork.build(liveStops as Stop[], [
+      { id: 1, name: "Live", shortName: "L", color: "#000", stops: (liveStops as Stop[]).map((st) => st.id) },
+    ]);
+    const stub = (hits: GeocodeV1Hit[]) => {
+      const ext = { calls: 0, lookup: async () => { ext.calls++; return hits; } };
+      return ext;
+    };
+    const osm = (display_name: string, lat: number, lon: number, type = "yes"): GeocodeV1Hit =>
+      ({ display_name, lat, lon, type, class: "osm" });
+
+    it("answers 'pepes' with the pizzeria alone", async () => {
+      // Photon's real four hits, with their measured distance to the nearest
+      // live stop: a street in Orange twice (2,224 m / 1,764 m), the pizzeria
+      // (295 m, which then dedups into the curated entry) and a lawn-care
+      // business in West Haven (1,971 m). Everything past MAX_WALK_M goes,
+      // because a reachable hit exists.
+      const ext = stub([
+        osm("Pepes Farm Road, Orange", 41.23139, -73.01915, "tertiary"),
+        osm("Pepes Farm Road, Orange", 41.23592, -73.01337, "tertiary"),
+        osm("Frank Pepe Pizzeria Napoletana, Wooster Street", 41.30296, -72.91696, "restaurant"),
+        osm("Pepe's Lawn Care, 71 Lucey Avenue, West Haven", 41.24725, -72.96826, "gardener"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "pepes", ext);
+      expect(ext.calls).toBe(1);
+      expect(results.map((r) => r.display_name)).toEqual(["Frank Pepe Pizzeria"]);
+    });
+
+    it("drops a clothing shop that merely looks like 'elenas'", async () => {
+      // 290 m from Elm / Lynwood — reachable, so only the NAME can rule it
+      // out, and "eblens" is no answer to "elenas" under our own matcher.
+      const ext = stub([
+        osm("Elena's on Orange, Orange Street, New Haven", 41.32295, -72.9108, "ice_cream"),
+        osm("EbLens, Whalley Avenue, New Haven", 41.31359, -72.93508, "shoes"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "elenas", ext);
+      expect(ext.calls).toBe(1);
+      // One row: the curated shop, with Photon's own node for it deduped away.
+      expect(results.map((r) => r.display_name)).toEqual(["Elena's on Orange"]);
+    });
+
+    it("keeps the Hamden Trader Joe's, because a Grocery run stops 286 m away", async () => {
+      // The screenshot the operator called confusing, and the one this change
+      // does NOT make disappear. Photon's real nodes: Milford at 30 m from
+      // the "Trader Joe's" stop (route 6 parks at the door) and Hamden at
+      // 286 m from Aldi/Walmart (route 18) — a 3.5-minute walk, well inside
+      // MAX_WALK_M. Both are plannable destinations, so both are true
+      // answers; suppressing the second would need exactly the blanket rule
+      // the review rejected. What the rider sees is two rows that name their
+      // streets, not two rows reading "Trader Joe's".
+      const ext = stub([
+        osm("Trader Joe's, Boston Post Road, Milford", 41.25131, -73.01773, "supermarket"),
+        osm("Trader Joe's, 46 Skiff Street, Hamden", 41.37523, -72.91366, "supermarket"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "trader joes", ext);
+      // The curated store comes first (local always does) and Photon's node
+      // for it is deduped away, so the Milford store is one row, not two.
+      expect(results.map((r) => r.display_name)).toEqual([
+        "Trader Joe's (Milford)",
+        "Trader Joe's, 46 Skiff Street, Hamden",
+      ]);
+    });
+
+    it("keeps a real alternative that is near a stop and answers the query", async () => {
+      // The regression the first attempt at this caused: a curated place must
+      // not hide a genuine one. Photon's node for New Haven Police Department
+      // is 270 m from the Union Station stop and is exactly what "police" can
+      // mean; the shooting range 2,437 m out is not walkable and goes.
+      const ext = stub([
+        osm("New Haven Police Department, 1 Union Avenue", 41.30005, -72.92533, "police"),
+        osm("New Haven Police Substation, Congress Avenue", 41.30014, -72.93882, "police"),
+        osm("New Haven Police Shooting Range, New Haven", 41.33477, -72.95458, "yes"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "police", ext);
+      expect(ext.calls).toBe(1);
+      // The curated Yale Police office still leads; it no longer hides them.
+      expect(results[0]!.display_name).toBe("Yale Police (101 Ashmun)");
+      expect(results.some((r) => r.display_name.startsWith("New Haven Police Department"))).toBe(true);
+      expect(results.some((r) => r.display_name.includes("Shooting Range"))).toBe(false);
+    });
+
+    it("keeps another branch of a chain we curate one of", async () => {
+      // Photon returns eight CVS nodes; the Hamden one at 203 m from a stop
+      // is reachable and the ones 2–4.6 km out are not.
+      const ext = stub([
+        osm("CVS Pharmacy, Dixwell Avenue, Hamden", 41.36724, -72.91918, "pharmacy"),
+        osm("CVS Pharmacy, Amity Road, Woodbridge", 41.32881, -72.96818, "chemist"),
+        osm("CVS Pharmacy, Boston Post Road, East Haven", 41.28029, -72.87543, "chemist"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "cvs", ext);
+      expect(results[0]!.display_name).toBe("CVS (Church St)");
+      expect(results.some((r) => r.display_name.includes("Dixwell"))).toBe(true);
+      expect(results.some((r) => r.display_name.includes("East Haven"))).toBe(false);
+    });
+
+    it("still asks outside for a typo and for a half match", async () => {
+      for (const q of ["peobody", "station", "lawn care"]) {
+        const ext = stub([]);
+        await geocodeV1(liveNetwork, q, ext);
+        expect(ext.calls, q).toBe(1);
+      }
+    });
+
+    it("still resolves a street address the curated list does not hold", async () => {
+      // The relevance filter reads the name Photon returns, and an address IS
+      // its name: "270 Crown Street" answers "270 crown" at the prefix tier.
+      // A house is also what the frontend auto-picks on (type "house"), so
+      // dropping one would break typing an address outright.
+      const ext = stub([osm("270 Crown Street, New Haven", 41.30636, -72.93079, "house")]);
+      const results = await geocodeV1(liveNetwork, "270 crown", ext);
+      expect(ext.calls).toBe(1);
+      expect(results.some((r) => r.display_name.startsWith("270 Crown Street"))).toBe(true);
+    });
+
+    it("keeps everything when nothing at all is within walking range", async () => {
+      // The rider may genuinely mean somewhere far out; the filter drops the
+      // unreachable only when a reachable answer exists.
+      // Photon's real answer: 1,872 m, 1,712 m and 1,642 m from the nearest
+      // stop — every one past MAX_WALK_M, and the rider still gets them.
+      const ext = stub([
+        osm("Yale Bowl, Chapel Street, New Haven", 41.31323, -72.96049, "stadium"),
+        osm("Westville Music Bowl, Yale Avenue", 41.31184, -72.95739, "stadium"),
+      ]);
+      const results = await geocodeV1(liveNetwork, "yale bowl", ext);
+      expect(results.some((r) => r.display_name.startsWith("Yale Bowl"))).toBe(true);
+    });
   });
 
   it("skips the external lookup for queries under three characters", async () => {
@@ -371,6 +613,43 @@ describe("geocodeV1 merge", () => {
     expect(Date.now() - started).toBeLessThan(1000);
     expect(results.length).toBeGreaterThan(0);
     expect(results.every((r) => r.class !== "osm")).toBe(true);
+  });
+});
+
+/**
+ * Two invariants that span the server/client boundary, in the style this repo
+ * already uses for the walk model and route colours: a value that drifts here
+ * fails silently in front of a rider rather than loudly in CI.
+ */
+describe("what the server serves and the client can draw", () => {
+  const clientSource = fs.readFileSync(
+    new URL("../../web/src/format.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("has an icon for every category the landmark list ships", () => {
+    // A `poi` with no entry in PLACE_ICONS falls back to the generic building
+    // glyph — the very state the categories were added to remove, and
+    // invisible unless somebody searches for that one place.
+    const table = clientSource.match(/PLACE_ICONS[^{]*\{([\s\S]*?)\n\};/)![1]!;
+    const iconKeys = new Set([...table.matchAll(/([a-z_]+):\s*"/g)].map((m) => m[1]!));
+    expect(iconKeys.size).toBeGreaterThan(20);
+    const unmapped = [...new Set(LANDMARKS.map((l) => l.poi).filter(Boolean))]
+      .filter((poi) => !iconKeys.has(poi!));
+    expect(unmapped, `no icon for: ${unmapped.join(", ")}`).toEqual([]);
+  });
+
+  it("keeps the external reach equal to the planner's walking limit", () => {
+    // Past MAX_WALK_M the planner cannot offer a shuttle trip to the place at
+    // all, so listing it only invites a rider to pick a destination the
+    // shuttle does not serve.
+    const walkSource = fs.readFileSync(
+      new URL("../../web/src/walk.ts", import.meta.url),
+      "utf8",
+    );
+    const maxWalk = Number(walkSource.match(/export const MAX_WALK_M = ([\d_]+)/)![1]!.replace(/_/g, ""));
+    expect(maxWalk).toBeGreaterThan(0);
+    expect(EXTERNAL_REACH_M).toBe(maxWalk);
   });
 });
 
@@ -480,5 +759,93 @@ describe("a street address with a suffix (operator, 2026-09-03)", () => {
     for (const q of ["800", "prospect", "trader joes", "  "]) {
       expect(looksLikeStreetAddress(q)).toBe(false);
     }
+  });
+});
+
+/**
+ * A malformed record must not reach a rider — and must not cost the lookup.
+ *
+ * `parsePhoton` and `parseNominatim` are careful, but the `ExternalGeocoder`
+ * is an injected interface and the providers are outside our control, so this
+ * pins the endpoint's behaviour on a hit that is simply wrong. Before the
+ * guard, `rankExternal` split a missing `display_name` and threw — one bad row
+ * 500ing the whole lookup — and anything it did pass through blank-screened
+ * the client (see web/src/format.test.ts for the other half of this fix).
+ */
+describe("a malformed external hit costs its own row, not the lookup", () => {
+  const malformed = [
+    { lat: 41.2978, lon: -72.9268, type: "house", class: "osm" },            // no name
+    { display_name: null, lat: 41.2978, lon: -72.9268 },
+    { display_name: 42, lat: 41.2978, lon: -72.9268 },
+    { display_name: "   ", lat: 41.2978, lon: -72.9268 },
+    { display_name: "Union Station Cafe" },                                   // no coordinate
+    { display_name: "Union Station Bar", lat: 41.2978 },
+    { display_name: "Union Station Null", lat: null, lon: null },
+    { display_name: "Union Station Bool", lat: true, lon: false },
+    { display_name: "Union Station Blank", lat: "", lon: "" },
+    { display_name: "Union Station Off-Globe", lat: 900, lon: -72.9268 },
+    null,
+    "Union Station",
+  ] as unknown as GeocodeV1Hit[];
+
+  const goodHit: GeocodeV1Hit = {
+    // ~200 m from the Union Station stop: past LOCAL_DEDUP_M so it is a
+    // distinct place, well inside EXTERNAL_REACH_M so it is plannable.
+    display_name: "Union Station Diner, 50 Union Avenue, New Haven",
+    lat: 41.2996, lon: -72.9265, type: "restaurant", class: "osm",
+  };
+
+  it("answers with the good hits and none of the broken ones", async () => {
+    const results = await geocodeV1(network, "union station", {
+      lookup: async () => [...malformed, goodHit],
+    });
+    expect(results.some((r) => r.display_name === goodHit.display_name)).toBe(true);
+    // The local layer still answers, so the rider loses nothing real.
+    expect(results.some((r) => r.display_name === "Union Station" && r.class === "yale")).toBe(true);
+    for (const r of results) {
+      expect(typeof r.display_name).toBe("string");
+      expect(r.display_name.trim()).not.toBe("");
+      expect(Number.isFinite(r.lat)).toBe(true);
+      expect(Number.isFinite(r.lon)).toBe(true);
+      expect(Math.abs(r.lat)).toBeLessThanOrEqual(90);
+      expect(Math.abs(r.lon)).toBeLessThanOrEqual(180);
+      expect(typeof r.type).toBe("string");
+      expect(typeof r.class).toBe("string");
+    }
+  });
+
+  it("still answers from the local layer when every external hit is junk", async () => {
+    const results = await geocodeV1(network, "union station", { lookup: async () => malformed });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.class === "shuttle" || r.class === "yale")).toBe(true);
+  });
+
+  it("does not weaken the name-relevance filter to get there", async () => {
+    // A perfectly well-formed hit with an unrelated name is still dropped —
+    // sanitizing is about shape, never about whether a hit is an answer.
+    const results = await geocodeV1(network, "union station", {
+      lookup: async () => [
+        ...malformed,
+        { display_name: "EbLens, Whalley Avenue, New Haven", lat: 41.3092, lon: -72.9395, type: "clothes", class: "osm" },
+      ],
+    });
+    expect(results.some((r) => r.display_name.includes("EbLens"))).toBe(false);
+  });
+
+  it("sanitizeHits keeps the shape and drops the rest", () => {
+    expect(sanitizeHits([...malformed, goodHit])).toEqual([goodHit]);
+    expect(sanitizeHits(undefined)).toEqual([]);
+    expect(sanitizeHits(null)).toEqual([]);
+    expect(sanitizeHits("hits")).toEqual([]);
+    // Nominatim's string coordinates, and the neutral defaults a hit with no
+    // type/class takes rather than being dropped over an icon.
+    expect(sanitizeHits([{ display_name: "Union Station", lat: "41.29752", lon: "-72.92651" }]))
+      .toEqual([{ display_name: "Union Station", lat: 41.29752, lon: -72.92651, type: "place", class: "osm" }]);
+  });
+
+  it("rankExternal is never handed a row it would throw on", () => {
+    // The pairing this fix rests on: rankExternal splits display_name, so the
+    // sanitizer runs first. Together they must not throw on any of it.
+    expect(() => rankExternal(network, sanitizeHits(malformed), "union station")).not.toThrow();
   });
 });

@@ -17,17 +17,175 @@
 import type { Collector } from "../collector/collector.js";
 import type { DbBundle } from "../db/client.js";
 import { distanceMeters } from "../network/geo.js";
-import type { TransitNetwork } from "../network/TransitNetwork.js";
-import { geocode, normalizeName } from "./geocode.js";
+import type { DwellStats, PaceStats, SegmentStats, TransitNetwork } from "../network/TransitNetwork.js";
+import { geocode, normalizeName, relevanceOf } from "./geocode.js";
+import type { ModelParamsSource } from "./modelParams.js";
+import type { EtaPayloadView, ServerEta } from "./serverEta.js";
+import { RIDER_SURFACES_SQL } from "./predictions.js";
 import { parsePublishedHours, type PublishedWindow } from "./publishedHours.js";
 
 const round1 = (x: number): number => Math.round(x * 10) / 10;
 
+/**
+ * One hop / one stop in the v1 payload. `avg`/`sd`/`n` and `med`/`sd`/`n` are
+ * v1's arrival-to-arrival numbers; `drive`/`driveN` and `q`/`qn` are the
+ * stand/drive split the client's `hopPricing.ts` consumes — mirror its
+ * `SegmentStat` / `DwellStat` types in `web/src/arrivals.ts`. `dq`/`dqn`,
+ * `pstop` and the route `pace` are what the probabilistic estimator reads
+ * (docs: the ring plan); every one is additive, so a client that ignores
+ * them is byte-identical.
+ */
+export type SegmentEntry = {
+  avg: number; sd: number; n: number;
+  drive?: number; driveN?: number;
+  dq?: number[]; dqn?: number;
+  /**
+   * Road metres of the hop along the published line, whole metres — the
+   * length the route `pace` is per, and the length the client's ring cuts the
+   * leg into; absent where the line cannot supply the hop (see
+   * {@link TransitNetwork.getLegMeters}). Static geometry, not calibration.
+   */
+  legM?: number;
+  /** Only on the {@link PACE_KEY} carrier row — see {@link paceCarrier}; `spmPooled` marks the all-routes pace. */
+  spm?: number[]; spmN?: number; spmPooled?: boolean;
+};
+/**
+ * One stop of `dwells[route]`. Keyed by stop id for the pooled entry; a stop
+ * the route lists more than once ALSO carries one entry per pass under
+ * `"<stop>#<index>"` (`stop_index` in the route's raw sequence), where
+ * `med`/`sd`/`n` are that pass's stand summary (median, p90 − median, count)
+ * and `q`/`qn`/`pstop` are that pass alone. The pooled entry is unchanged.
+ */
+export type DwellEntry = {
+  med: number; sd: number; n: number; low?: number; q?: number[]; qn?: number; pstop?: number;
+  /**
+   * The lap fit (src/calibrator/lapFit.ts, web/src/eta/lap.ts). `lapB` is a
+   * FRACTION of this cell's own median stand per second of lap, so it scales
+   * whatever table `q` holds; `lapM` is the reference lap in seconds and
+   * `lapN` an effective count carrying the shrinkage. All three or none, and
+   * absent wherever the cell has no fit — a client that ignores them, or a
+   * payload without them, prices every stand exactly as before.
+   */
+  lapB?: number; lapM?: number; lapN?: number;
+};
+/**
+ * `pace[route]`: seconds per ROAD metre (`legM`; chord where absent),
+ * quantiles at (i + 0.5) / spm.length, 4 decimals. `pooled: true` when the
+ * route has no legs of its own and this is the all-routes pooled pace
+ * (`computePooledPace`), `n` then being the pooled count.
+ */
+export type PaceEntry = { spm: number[]; n: number; pooled?: boolean };
+
+const round3 = (x: number): number => Math.round(x * 1000) / 1000;
+const round4 = (x: number): number => Math.round(x * 10_000) / 10_000;
+
+/**
+ * The split fields of one hop, exactly as they go on the wire — whole seconds
+ * (the feed's poll quantum is 5 s) and the TRUE counts (the client gates on
+ * them; the server never pre-filters). Exported so the offline replay
+ * (`scripts/eta-replay/model-patch.ts`) emits the same bytes from a snapshot.
+ */
+export function segmentSplitFields(s: SegmentStats): Pick<SegmentEntry, "drive" | "driveN" | "dq" | "dqn"> {
+  return {
+    // The DRIVE half of the hop, on the at_stop_since clock, with the legs
+    // behind it — the client prorates this en route instead of `avg`
+    // (web/src/hopPricing.ts) once `driveN` clears its gate.
+    ...(s.drive !== undefined && s.driveN !== undefined ? { drive: Math.round(s.drive), driveN: s.driveN } : {}),
+    // The WHOLE hop's quantiles (leg_sec: drive + holds), what the estimator
+    // sums over; `dqn` is its gate.
+    ...(s.dq !== undefined && s.dqn !== undefined ? { dq: s.dq.map((x) => Math.round(x)), dqn: s.dqn } : {}),
+  };
+}
+
+/** `legM` for one hop, as it goes on the wire: whole metres, absent where the line cannot supply the hop. */
+export function legMetersField(net: TransitNetwork, routeId: number, fromStopId: number, toStopId: number): Pick<SegmentEntry, "legM"> {
+  const m = net.getLegMeters(routeId, fromStopId, toStopId);
+  return m !== undefined ? { legM: Math.round(m) } : {};
+}
+
+/** The split fields of one stop, as they go on the wire (see {@link segmentSplitFields}). */
+/** The lap fit, all three fields or none. */
+export function dwellLapFields(d: DwellStats): Pick<DwellEntry, "lapB" | "lapM" | "lapN"> {
+  if (d.lapB === undefined || d.lapM === undefined || d.lapN === undefined) return {};
+  return { lapB: d.lapB, lapM: d.lapM, lapN: d.lapN };
+}
+
+export function dwellSplitFields(d: DwellStats): Pick<DwellEntry, "q" | "qn" | "pstop"> {
+  return {
+    // Standing-time quantiles on the at_stop_since clock (DwellStats.q),
+    // whole seconds, with the stopped visits behind them. This is the
+    // `stand` half the client conditions on r with; `qn` is its gate.
+    ...(d.q !== undefined && d.qn !== undefined ? { q: d.q.map((x) => Math.round(x)), qn: d.qn } : {}),
+    // P(stop) over every visit, pinned or not (DwellStats.pstop), 3 decimals.
+    ...(d.pstop !== undefined ? { pstop: round3(d.pstop) } : {}),
+  };
+}
+
+/** `pace[route]` as it goes on the wire: 4 decimals, the true count. */
+export function paceEntry(p: PaceStats): PaceEntry {
+  return { spm: p.spm.map(round4), n: p.n, ...(p.pooled ? { pooled: true } : {}) };
+}
+
+/**
+ * The reserved key under which a route's pace ALSO rides inside
+ * `segments[route]`, so it reaches `computeUpcomingArrivals(..., segmentTimes,
+ * ...)` through its unchanged signature (the rider-sim contract in
+ * docs/rider-sim.md). The top-level `pace` field is the documented shape; this
+ * is the transport.
+ */
+export const PACE_KEY = "__pace";
+
+/**
+ * The carrier row for {@link PACE_KEY}. It MUST be inert to the client that
+ * exists today: `computeUpcomingArrivals` averages `avg` over every row of
+ * `segments[route]` with `n >= 2` for its fallback spread, and
+ * `splitServedForRoute` scans every row for `driveN`. So `n` is 0 here — the
+ * pace's own count is `spmN` — and there is no `driveN`. A client that never
+ * reads `spm` is byte-identical with or without this row; the estimator reads
+ * `segmentTimes[route][PACE_KEY].spm` / `.spmN`.
+ */
+export function paceCarrier(p: PaceEntry): SegmentEntry {
+  return { avg: 0, sd: 0, n: 0, spm: p.spm, spmN: p.n, ...(p.pooled ? { spmPooled: true } : {}) };
+}
+
 // -- /api/buses ---------------------------------------------------------------
 
-export function buildBusesPayload(collector: Collector): Record<string, unknown> {
+/**
+ * `lap` for one bus: the ages the collector's clock holds, narrowed to stops
+ * its own route has a fit for. Empty — the field absent — for every bus on a
+ * route with no fitted cell, and for a bus the clock has not seen depart yet
+ * (a fresh process, a bus just come on).
+ */
+function lapField(
+  collector: Collector,
+  net: TransitNetwork,
+  b: { busName: string; routeId: number },
+  nowMs: number,
+): { lap?: Record<string, number> } {
+  const ages = collector.lapAges(b.busName, nowMs);
+  if (!ages) return {};
+  const route = net.routes.get(b.routeId);
+  if (!route) return {};
+  const out: Record<string, number> = {};
+  let any = false;
+  for (const sid of new Set(route.stops)) {
+    const age = ages[String(sid)];
+    if (age === undefined) continue;
+    if (net.getDwellStats(b.routeId, sid).lapB === undefined) continue;
+    out[String(sid)] = age;
+    any = true;
+  }
+  return any ? { lap: out } : {};
+}
+
+export function buildBusesPayload(
+  collector: Collector,
+  modelParams?: ModelParamsSource | null,
+): Record<string, unknown> {
   const net = collector.ref.get();
+  const nowMs = Date.now();
   const live = collector.getLiveBuses();
+  const mp = modelParams?.wire() ?? null;
   // Geometry derived from where buses actually drove, best-so-far per route.
   // Usually empty at first boot and fills in over the following days as each
   // route is caught running; see `Collector.runDerivePaths`.
@@ -57,6 +215,27 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     ...(b.atStopSince != null
       ? { at_stop_since: new Date(b.atStopSince).toISOString().replace(/Z$/, "") }
       : {}),
+    // The stationary clock WITHOUT the at-a-stop gate, so the client can see a
+    // bus that is taking its layover short of the marker. Same naive-UTC
+    // spelling as `at_stop_since` — the client appends the "Z" itself.
+    // Consumed by the approach-zone rule in web/src/hopPricing.ts.
+    ...(b.stationarySince != null
+      ? { stationary_since: new Date(b.stationarySince).toISOString().replace(/Z$/, "") }
+      : {}),
+    // When the fix last CHANGED. The two clocks above are pinned to a stop, so
+    // both keep running while a bus drives through that stop's zone — which is
+    // how a client with one frame and no history came to price a bus that had
+    // already gone as arriving "now" (Red #307, Division / Prospect,
+    // 2026-09-08). Same naive-UTC spelling; the client appends the "Z".
+    ...(b.lastMovedAt != null
+      ? { last_moved_at: new Date(b.lastMovedAt).toISOString().replace(/Z$/, "") }
+      : {}),
+    // Seconds since this bus last DEPARTED each stop on its route that carries
+    // a lap fit — the covariate the stand at a regulated layover turns on
+    // (web/src/eta/lap.ts). The client cannot compute it: it sees only live
+    // positions, and the previous departure lives in `stop_visits`. Only
+    // fitted stops are named, so this is a couple of numbers a bus.
+    ...lapField(collector, net, b, nowMs),
   }));
 
   // Live bus count per route → stand-in for v1's historical "peak concurrent".
@@ -65,8 +244,9 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
 
   const routes: Record<string, number[]> = {};
   const route_paths: Record<string, [number, number][]> = {};
-  const segments: Record<string, Record<string, { avg: number; sd: number; n: number }>> = {};
-  const dwells: Record<string, Record<string, { med: number; sd: number; n: number; low?: number }>> = {};
+  const segments: Record<string, Record<string, SegmentEntry>> = {};
+  const dwells: Record<string, Record<string, DwellEntry>> = {};
+  const pace: Record<string, PaceEntry> = {};
   const route_peaks: Record<string, number> = {};
   // The operator's published timetable per route, parsed from the free-text
   // route description. Only routes whose text parsed are present; the client
@@ -77,7 +257,11 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
 
   for (const r of net.routes.values()) {
     const rid = String(r.id);
-    routes[rid] = r.stops;
+    // Upstream's own list, always — the map draws it, the planner lists it and
+    // riders read it. Where the network runs on a REPAIRED order (Green; see
+    // src/network/alignStops.ts) the client recomputes that repair from this
+    // list and `route_paths` for its ring alone, so nothing here changes.
+    routes[rid] = r.publishedStops ?? r.stops;
     const published = parsePublishedHours(r.description);
     if (published) route_hours[rid] = published;
     // Prefer the derived line over upstream's published one. Several published
@@ -92,17 +276,41 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     else if (r.path) route_paths[rid] = r.path;
     route_peaks[rid] = liveByRoute.get(r.id) ?? 0;
 
-    const n = r.stops.length;
-    const segMap: Record<string, { avg: number; sd: number; n: number }> = {};
-    for (let i = 0; i < n; i++) {
-      const from = r.stops[i]!;
-      const to = r.stops[(i + 1) % n]!;
-      const s = net.getSegmentStats(r.id, from, to);
-      segMap[`${from}-${to}`] = { avg: round1(s.mean), sd: round1(s.stddev), n: s.n };
+    const segMap: Record<string, SegmentEntry> = {};
+    // Both adjacencies, when they differ: the RING's (the network's own order,
+    // which is what the calibrator filled and what the client's ring prices
+    // on) and UPSTREAM's (which the legacy arithmetic still walks, since it
+    // walks `routes[rid]`). A repaired route would otherwise lose the legacy
+    // arm's keys the moment the model declined it.
+    for (const seq of r.publishedStops ? [r.stops, r.publishedStops] : [r.stops]) {
+      const n = seq.length;
+      for (let i = 0; i < n; i++) {
+        const from = seq[i]!;
+        const to = seq[(i + 1) % n]!;
+        if (segMap[`${from}-${to}`]) continue;
+        const s = net.getSegmentStats(r.id, from, to);
+        segMap[`${from}-${to}`] = {
+          avg: round1(s.mean), sd: round1(s.stddev), n: s.n,
+          ...segmentSplitFields(s),
+          ...legMetersField(net, r.id, from, to),
+        };
+      }
+    }
+    // The route's pace, twice: as `pace[rid]` (the documented shape) and as
+    // the inert carrier row `segments[rid][PACE_KEY]`, which is how it
+    // reaches the client's arrivals math without a signature change. A route
+    // with no legs of its own carries the all-routes pooled pace, flagged
+    // `pooled` (calibrator.ts withPooledPace); absent only before any route
+    // in the network has a leg.
+    const p = net.getPace(r.id);
+    if (p) {
+      const entry = paceEntry(p);
+      pace[rid] = entry;
+      segMap[PACE_KEY] = paceCarrier(entry);
     }
     segments[rid] = segMap;
 
-    const dwMap: Record<string, { med: number; sd: number; n: number; low?: number }> = {};
+    const dwMap: Record<string, DwellEntry> = {};
     for (const sid of new Set(r.stops)) {
       const d = net.getDwellStats(r.id, sid);
       dwMap[String(sid)] = {
@@ -110,7 +318,19 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
         // `low` is what the client bills for a dwell the bus has not started
         // (see DwellStats.low). Absent until the stop has enough history.
         ...(d.low !== undefined ? { low: round1(d.low) } : {}),
+        ...dwellSplitFields(d),
+        ...dwellLapFields(d),
       };
+    }
+    // A stop the route lists more than once (the West Campus out-and-backs)
+    // also carries one entry per PASS, `"<stop>#<index>"`, when the calibrator
+    // has a table for that pass. See DwellEntry.
+    for (let i = 0; i < r.stops.length; i++) {
+      const sid = r.stops[i]!;
+      if (net.positionsOnRoute(r.id, sid).length < 2) continue;
+      const d = net.getOccurrenceDwellStats(r.id, sid, i);
+      if (!d) continue;
+      dwMap[`${sid}#${i}`] = { med: round1(d.mean), sd: round1(d.stddev), n: d.n, ...dwellSplitFields(d) };
     }
     dwells[rid] = dwMap;
   }
@@ -135,10 +355,25 @@ export function buildBusesPayload(collector: Collector): Record<string, unknown>
     stop_coords,
     segments,
     dwells,
+    // Per-route pace for the probabilistic estimator's drive prior — the
+    // route's own, or the network's pooled one where it has no legs; `{}`
+    // until any route has legs. See PaceEntry / PACE_KEY.
+    pace,
     dwells_by_bus: {},
     route_peaks,
     route_hours,
+    // Upstream's own "in service right now" flag per route id, refreshed
+    // every 5 min. The client's service state reads it before any calendar
+    // inference (web/src/schedule.ts serviceStateAt): on Sun 2026-09-06 it is
+    // what says Grocery Trader Joe's is not out this weekend.
+    route_active: collector.routeActive(),
     bus_pace: {},
+    // The estimator's learned parameters (docs/closed-loop.md, stage 3), when
+    // a fit has been accepted. ADDITIVE AND OPTIONAL: with nothing published
+    // the key is absent and every client runs the constants it was compiled
+    // with, which is the behaviour this field was added to. An old client
+    // ignores it; a new client validates it and falls back the same way.
+    ...(mp ? { model_params: mp } : {}),
   };
 }
 
@@ -168,17 +403,49 @@ const BUSES_CACHE_MAX_AGE_MS = 1_000;
  * version-only key would keep serving ghost buses that have aged off the map.
  * Re-checking once a second still collapses ~40:1 at launch load.
  */
-export function createBusesPayloadCache(collector: Collector): () => string {
+export function createBusesPayloadCache(
+  collector: Collector,
+  modelParams?: ModelParamsSource | null,
+  /**
+   * The server-side belief, when `SHUTTLE_SERVER_ETA=1` built one. Omitted —
+   * the default — nothing below runs and the serialized bytes are exactly what
+   * they were; `serverEta.test.ts` asserts that byte-for-byte.
+   *
+   * It is attached HERE rather than inside `buildBusesPayload` because the
+   * estimator's input IS this payload: it reads the very topology, tables and
+   * positions the rider gets, so there is no second marshalling to drift from
+   * the client's. Building it and then appending the answer is the only
+   * ordering that keeps that true.
+   */
+  serverEta?: ServerEta | null,
+): () => string {
   let cachedVersion = -1;
+  let cachedParamsVersion = -1;
   let cachedAt = 0;
   let cachedJson = "";
   return () => {
     const nowMs = Date.now();
-    if (cachedVersion === collector.dataVersion() && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS) {
+    // The parameter set is its own version because a publish must reach riders
+    // on their next poll and does NOT move the collector's data version: the
+    // fit lands between two collector ticks and would otherwise wait for one.
+    const paramsVersion = modelParams?.version() ?? 0;
+    if (
+      cachedVersion === collector.dataVersion()
+      && cachedParamsVersion === paramsVersion
+      && nowMs - cachedAt < BUSES_CACHE_MAX_AGE_MS
+    ) {
       return cachedJson;
     }
     cachedVersion = collector.dataVersion();
-    cachedJson = JSON.stringify(buildBusesPayload(collector));
+    cachedParamsVersion = paramsVersion;
+    const payload = buildBusesPayload(collector, modelParams);
+    if (serverEta) {
+      // Non-throwing by contract (see serverEta.ts): the worst case is an
+      // absent field, never a failed /api/buses.
+      const wire = serverEta.contribute(payload as unknown as EtaPayloadView, cachedVersion, nowMs);
+      if (wire) payload["server_eta"] = wire;
+    }
+    cachedJson = JSON.stringify(payload);
     cachedAt = nowMs;
     return cachedJson;
   };
@@ -231,6 +498,97 @@ const GEOCODE_BUDGET_MS = 2_500;
  */
 export function looksLikeStreetAddress(query: string): boolean {
   return /^\s*\d{1,6}\s+\S/.test(query);
+}
+
+/**
+ * A destination the rider gave as a coordinate — "41.296105,-72.955812",
+ * pasted from a map or a message.
+ *
+ * This is NOT a name, and that is the whole point. Every layer below is built
+ * to compare names: the curated matcher, the reach filter, and above all the
+ * name-relevance filter that drops a hit whose name has no relationship to the
+ * query. A coordinate has no name to relate to anything, so it scored zero
+ * against every candidate and the rider's own destination was thrown away.
+ *
+ * It used to survive by accident. Photon returns nothing for a bare
+ * coordinate; Nominatim reverse-geocodes it to the nearest house ("452, Front
+ * Avenue, Allingtown…"), and before the relevance filter shipped that house
+ * was passed through as the answer — 127 m from the point the rider actually
+ * typed. So the pre-regression behaviour was an approximation nobody chose.
+ *
+ * A coordinate needs no geocoding: it IS the answer. Recognising it here is
+ * exact, costs no external call and no rate limit, cannot be changed by a
+ * provider, and leaves the relevance filter untouched — the guard that keeps
+ * EbLens out of "elenas" is load-bearing and is not what this fix pays with.
+ *
+ * Deliberately strict: comma-separated, and BOTH parts must carry a decimal
+ * point. "800" is Building 800, and a hypothetical "1,2" is far likelier to be
+ * something a rider typed than a destination in the Gulf of Guinea. Every real
+ * pasted coordinate has decimals.
+ */
+export function parseCoordinateQuery(q: string): { lat: number; lon: number } | null {
+  const m = /^\s*([+-]?\d{1,3}\.\d+)\s*,\s*([+-]?\d{1,3}\.\d+)\s*$/.exec(q);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lon = Number(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat, lon };
+}
+
+/**
+ * Junk out of the list, before it can become junk on a rider's screen.
+ *
+ * The two external providers are outside our control, and the
+ * `ExternalGeocoder` interface is injectable, so a hit can reach here with a
+ * field missing or of the wrong type even though `parsePhoton` and
+ * `parseNominatim` are careful. Two things then go wrong: `rankExternal`
+ * splits `display_name` and would throw — 500ing the whole lookup, so one bad
+ * row costs every good one — and anything that survives is rendered by the
+ * client, where a missing name blank-screened the app on 2026-09-03.
+ *
+ * The client guards itself too (`sanitizeGeocodeResults` in web/src/format.ts,
+ * same rules), because the crash must be impossible whatever the server sends.
+ * This end keeps the list itself honest: a row with no name is unreadable and
+ * a row with no plausible coordinate is unplannable, so neither is an answer.
+ *
+ * This is NOT a relevance or reach judgement — both of those still happen in
+ * `rankExternal`, unchanged, on rows that are at least well-formed.
+ */
+export function sanitizeHits(hits: unknown): GeocodeV1Hit[] {
+  if (!Array.isArray(hits)) return [];
+  const out: GeocodeV1Hit[] = [];
+  for (const row of hits) {
+    if (!row || typeof row !== "object") continue;
+    const h = row as Partial<Record<keyof GeocodeV1Hit, unknown>>;
+    if (typeof h.display_name !== "string" || h.display_name.trim() === "") continue;
+    const lat = coordOrNull(h.lat, 90);
+    const lon = coordOrNull(h.lon, 180);
+    if (lat === null || lon === null) continue;
+    out.push({
+      display_name: h.display_name,
+      lat,
+      lon,
+      // Optional in practice: they only steer the icon and the client's
+      // auto-pick, so a missing one takes the same neutral default the
+      // providers' own parsers already use rather than dropping the row.
+      type: typeof h.type === "string" ? h.type : "place",
+      class: typeof h.class === "string" ? h.class : "osm",
+    });
+  }
+  return out;
+}
+
+/**
+ * A coordinate, or null. Numeric strings pass (Nominatim sends lat/lon as
+ * strings); `null`, `""` and booleans do not, because `Number()` turns them
+ * into 0, which is a real-looking point in the Gulf of Guinea.
+ */
+function coordOrNull(v: unknown, limit: number): number | null {
+  const n = typeof v === "number" ? v
+    : typeof v === "string" && v.trim() !== "" ? Number(v)
+    : NaN;
+  return Number.isFinite(n) && Math.abs(n) <= limit ? n : null;
 }
 
 /** An address-level hit: the building the rider actually typed. */
@@ -501,7 +859,20 @@ export function parseNominatim(body: unknown): GeocodeV1Hit[] {
 // The right area is "near the shuttle network", not a rectangle: a viewbox
 // admits a street in Branford as readily as one on Orange Street. Any result
 // farther than this from every stop is dropped when a closer one exists.
-const EXTERNAL_REACH_M = 2_500;
+//
+// The bound is the planner's own walking limit (`MAX_WALK_M` in
+// web/src/walk.ts, pinned by a test in v1compat.geocode.test.ts): past it the
+// app cannot offer a shuttle trip to the place at all, so listing it only
+// invites the rider to pick a destination the shuttle does not serve. It used
+// to be 2.5 km, which is how "pepes" reached Pepe's Lawn Care in West Haven
+// (1,971 m from any stop) and Pepes Farm Road in Orange (2,224 m), both of
+// them under the pizzeria the rider meant (operator, 2026-09-03).
+//
+// It does NOT remove the second Trader Joe's from that operator's third
+// screenshot, and an earlier draft claiming it did was measuring an invented
+// coordinate: Photon's Hamden node is 286 m from Aldi/Walmart, which route 18
+// serves. Both stores are genuinely plannable, so both are listed.
+export const EXTERNAL_REACH_M = 1_500;
 const LOCAL_DEDUP_M = 60;
 const EXTERNAL_DEDUP_M = 150;
 const MERGED_MAX = 12;
@@ -513,7 +884,11 @@ const MERGED_MAX = 12;
  * external hits for the same place (Photon lists a shop's node and its
  * building) collapse on name + proximity.
  */
-export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): GeocodeV1Hit[] {
+export function rankExternal(
+  network: TransitNetwork,
+  hits: GeocodeV1Hit[],
+  query?: string,
+): GeocodeV1Hit[] {
   const stops = [...network.stops.values()];
   const nearest = (h: GeocodeV1Hit) => {
     let best = Infinity;
@@ -523,10 +898,33 @@ export function rankExternal(network: TransitNetwork, hits: GeocodeV1Hit[]): Geo
     }
     return best;
   };
+  // A result has to be a plausible answer to what the rider typed. Photon
+  // matches loosely: "elenas" returned EbLens, a clothing shop, and it sat
+  // directly under the ice cream shop the rider meant. No distance rule could
+  // catch that one — the shop is 292 m from a stop, genuinely reachable
+  // (operator, 2026-09-03). The test is the SAME matcher the curated list
+  // uses, at its weakest tier, so a real alternative survives ("police" still
+  // reaches New Haven Police Department, "cvs" the other branches) and only
+  // an unrelated name goes. It may empty the external list: the local answer
+  // is then the whole answer, which is the honest outcome.
+  //
+  // An ADDRESS is exempt, and has to be. Nominatim writes a house as
+  // "517, Prospect Street, Prospect Hill, ..." — its first segment is the bare
+  // number "517", which no relevance test can match against "517 Prospect St",
+  // so the exact building the rider typed scored zero and was dropped. That is
+  // the whole of report #59/#69's street-address fix undone (it shipped this
+  // morning; its test caught this). A house-typed hit answering an
+  // address-shaped query IS the answer, so it never faces this filter.
+  const addressQuery = query !== undefined && looksLikeStreetAddress(query);
+  const related = query
+    ? hits.filter((h) =>
+        (addressQuery && h.type === "house") ||
+        relevanceOf(query, h.display_name.split(",").slice(0, 2).join(" ").trim()) > 0)
+    : hits;
   // Keep the provider's order — it ranks by relevance, and re-sorting by
   // distance put a street centreline ahead of the house the rider typed —
   // and only DROP hits that are out of reach when a reachable one exists.
-  const scored = hits.map((h) => ({ h, d: nearest(h) }));
+  const scored = related.map((h) => ({ h, d: nearest(h) }));
   const reachable = scored.some((s) => s.d <= EXTERNAL_REACH_M)
     ? scored.filter((s) => s.d <= EXTERNAL_REACH_M)
     : scored;
@@ -548,12 +946,32 @@ export async function geocodeV1(
   q: string,
   external: ExternalGeocoder,
 ): Promise<GeocodeV1Hit[]> {
+  // A coordinate is already the answer — see parseCoordinateQuery. Answered
+  // before anything else so it never meets a filter built to compare names,
+  // and so it costs no external lookup.
+  const point = parseCoordinateQuery(q);
+  if (point) {
+    return [{
+      display_name: `${point.lat}, ${point.lon}`,
+      lat: point.lat,
+      lon: point.lon,
+      // Its own class/type rather than a borrowed one: calling a coordinate a
+      // "house" would be a lie, and `suggIcon` already falls back to 📍 for a
+      // type it has no glyph for. The frontend auto-picks a single result, so
+      // the rider still goes straight to the plan.
+      type: "coordinate",
+      class: "coordinate",
+    }];
+  }
   // Local stops + curated Yale landmarks first (ranked), mapped to v1 fields.
-  const local: GeocodeV1Hit[] = geocode(network, q).map((h) => ({
+  const hits = geocode(network, q);
+  const local: GeocodeV1Hit[] = hits.map((h) => ({
     display_name: h.label,
     lat: h.lat,
     lon: h.lon,
-    type: h.kind === "stop" ? "bus_stop" : "landmark",
+    // The curated category ('pizza', 'library') rides in `type`, where the
+    // client's icon table already reads OSM's own values for external hits.
+    type: h.kind === "stop" ? "bus_stop" : h.poi ?? "landmark",
     class: h.kind === "stop" ? "shuttle" : "yale",
   }));
 
@@ -564,7 +982,8 @@ export async function geocodeV1(
 
   // The shipped geocoder never throws, but the interface is injectable and a
   // rejection here would 500 the route: degrade to local instead.
-  const ranked = rankExternal(network, await external.lookup(query).catch(() => []));
+  const externalHits = sanitizeHits(await external.lookup(query).catch(() => []));
+  const ranked = rankExternal(network, externalHits, query);
   // Local results always come first; an external hit for a place we already
   // list (Photon knows our stops as bus_stop nodes) is noise.
   const merged = [...local];
@@ -572,7 +991,10 @@ export async function geocodeV1(
     if (local.some((m) => distanceMeters(m, e) < LOCAL_DEDUP_M)) continue;
     merged.push(e);
   }
-  return merged.slice(0, MERGED_MAX);
+  // One last pass over everything, the local half included: stop names come
+  // from the upstream feed, so "well-formed" is not ours to assume there
+  // either, and this is the last point before the payload leaves.
+  return sanitizeHits(merged.slice(0, MERGED_MAX));
 }
 
 // -- /api/accuracy (v1 shape) -------------------------------------------------
@@ -596,28 +1018,39 @@ const EMPTY_ACCURACY_PROBE_INTERVAL_MS = 60_000;
 // Latch per database, so the test suite's throwaway bundles don't inherit each
 // other's answer.
 const predictionProbes = new WeakMap<object, { seen: boolean; lastProbeAt: number }>();
+// Memoized rollup, per database for the same reason the latch is. Now that
+// predictions_log has a writer, the query below is real work on the request
+// path; 60 s of staleness on a 7-day window is invisible.
+const ACCURACY_MEMO_MS = 60_000;
+const accuracyMemo = new WeakMap<object, { at: number; value: Record<string, unknown> }>();
+function memoAccuracy(bundle: DbBundle, value: Record<string, unknown>): Record<string, unknown> {
+  accuracyMemo.set(bundle.sqlite, { at: Date.now(), value });
+  return value;
+}
 
 function emptyAccuracy(): Record<string, unknown> {
   return { overall: null, buckets: [], stops: [] };
 }
 
 /**
- * ⚠️ Prediction logging is NOT implemented. Nothing anywhere in `src/` inserts
- * into `predictions_log` — the schema definition plus two readers (this
- * function and server/accuracy.ts) are the table's only references — so in
- * production it holds zero rows and this endpoint's only honest answer is the
- * empty rollup. It still has to be *served*: the frontend polls /api/accuracy
- * every 2 min per rider (~1.7 req/s at 200 riders), so producing that constant
- * must cost nothing. Hence the probe below — one `LIMIT 1` at most once a
- * minute, then we bail before the real query runs.
+ * ⚠️ Prediction logging WAS not implemented, and this function was written for
+ * a permanently-empty table. `POST /api/shown` now fills it (see
+ * server/predictions.ts), so the two guards below are load-bearing rather than
+ * theoretical:
  *
- * If prediction logging is ever wired up, this function needs work before it
- * faces rider poll rates: the SELECT further down is a table SCAN — no index
- * leads with `predicted_at` — over a 7-day window, run synchronously by
- * better-sqlite3 on the one event loop that also serves every other request
- * and the 5 s collector poll. It wants an index on
- * `predictions_log(predicted_at)` and a memoized result (the window is 7 days;
- * a minute of staleness is free) before it can be let out.
+ *  - the probe, one `LIMIT 1` at most once a minute, which still short-circuits
+ *    a database that has no rows yet (a fresh deploy, a staging DB, every test
+ *    that does not write one);
+ *  - and the MEMO, because the query underneath is a 7-day scan run
+ *    synchronously by better-sqlite3 on the one event loop that also serves
+ *    every other request and the 5 s collector poll. `predictions_time_idx`
+ *    leads with `predicted_at` so it is an index range rather than a table
+ *    scan, but a 7-day range is still thousands of rows to fold, and this route
+ *    is public. The window is seven days; a minute of staleness is free.
+ *
+ * Nothing in the current frontend calls /api/accuracy — the comment that said
+ * riders poll it every 2 min predates the v2 client, which does not — but it is
+ * public and cached-for-60s, so it is sized as though they did.
  */
 export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Record<string, unknown> {
   let probe = predictionProbes.get(bundle.sqlite);
@@ -629,11 +1062,21 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     const probedAt = Date.now();
     if (probedAt - probe.lastProbeAt < EMPTY_ACCURACY_PROBE_INTERVAL_MS) return emptyAccuracy();
     probe.lastProbeAt = probedAt;
-    if (bundle.sqlite.prepare(`SELECT 1 FROM predictions_log LIMIT 1`).get() === undefined) {
+    // Probe the same population the scan below reads: with the operator's arm
+    // in the table, a bare `SELECT 1` would latch "we have data" off rows this
+    // endpoint must not count, and then scan on every public request forever.
+    if (
+      bundle.sqlite
+        .prepare(`SELECT 1 FROM predictions_log WHERE ${RIDER_SURFACES_SQL} LIMIT 1`)
+        .get() === undefined
+    ) {
       return emptyAccuracy();
     }
     probe.seen = true;
   }
+
+  const cached = accuracyMemo.get(bundle.sqlite);
+  if (cached && Date.now() - cached.at < ACCURACY_MEMO_MS) return cached.value;
 
   const cutoff = Date.now() - ACC_WINDOW_DAYS * 86_400_000;
 
@@ -647,13 +1090,21 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
   };
   const preds = bundle.sqlite
     .prepare(
+      // The surface clause is load-bearing, and this is the reader where it
+      // matters most: this number is shown to RIDERS as our accuracy, and
+      // `predictions_log` also holds the OPERATOR's own ETAs. Pooling the two
+      // would report someone else's app as ours. See RIDER_SURFACES_SQL.
       `SELECT bus_id, route_id, to_stop_id, stops_ahead, predicted_sec, predicted_at
-       FROM predictions_log WHERE predicted_at >= ? ORDER BY predicted_at ASC`,
+       FROM predictions_log WHERE predicted_at >= ? AND ${RIDER_SURFACES_SQL}
+       ORDER BY predicted_at ASC`,
     )
     .all(cutoff) as Pred[];
 
   if (preds.length === 0) {
-    return emptyAccuracy();
+    // Memoized like any other answer: once the table HAS rows the probe latch
+    // above stops short-circuiting, and "rows exist but none in the window"
+    // would otherwise re-run this scan on every public request.
+    return memoAccuracy(bundle, emptyAccuracy());
   }
 
   const earliest = preds[0]!.predicted_at;
@@ -690,7 +1141,9 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     });
   }
 
-  if (errs.length === 0) return emptyAccuracy();
+  // Same reason as the empty-window return above: rows without a matching
+  // arrival yet is the NORMAL state for a few minutes after a deploy.
+  if (errs.length === 0) return memoAccuracy(bundle, emptyAccuracy());
 
   const overall = cell(errs.map((e) => e.error));
 
@@ -744,7 +1197,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
   }
   stops.sort((a, b) => (b.n as number) - (a.n as number));
 
-  return {
+  const value = {
     overall: {
       ...overall,
       weighted: "pooled (v2 backend; v1-compatible rollup)",
@@ -752,6 +1205,7 @@ export function buildAccuracyV1(bundle: DbBundle, network: TransitNetwork): Reco
     buckets: [],
     stops,
   };
+  return memoAccuracy(bundle, value);
 }
 
 function cell(signed: number[]): AccCell {
