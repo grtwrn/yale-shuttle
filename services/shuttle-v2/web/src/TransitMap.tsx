@@ -55,12 +55,13 @@ import { topVisibleOptions, keptThirdLabel,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
-import { rideEndDecision } from "./rideEnd";
+import { rideEndDecision, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
 import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
+import { pickupUncertainty } from "./pickupUncertainty";
 import { isUnambiguousRideArrival } from "./rideArrival";
 import { getOffAlertTitle } from "./rideAlert";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
@@ -2407,11 +2408,11 @@ const TripPlanner: FC<{
     setToText(pendingTrip.toText);
     setToLL({ lat: pendingTrip.toLat, lon: pendingTrip.toLon });
     setToSugg([]);
-    if (userLatLon) {
-      setFromLL(userLatLon);
-      setFromText(CURRENT_LOCATION_TEXT);
-      setFromSugg([]);
-    }
+    setFromLL(userLatLon);
+    setFromText(userLatLon ? CURRENT_LOCATION_TEXT : "");
+    setFromSugg([]);
+    setTripTime("");
+    setExpandedKey(null);
     onConsumePending();
   }, [pendingTrip]);
 
@@ -3824,6 +3825,9 @@ const TripPlanner: FC<{
                   o.busDepartNowSec,
                 )
               : null;
+            const pickupNotice = !isFuture && o.mode === "shuttle" && !o.departed
+              ? pickupUncertainty(shuttleCtx?.busMatch?.last_moved_at, Date.now())
+              : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
             // than the pinned arrival so an earlier, uncatchable bus never
@@ -4100,6 +4104,12 @@ const TripPlanner: FC<{
                     }}>›</span>
                   )}
                 </div>
+                {pickupNotice && (
+                  <div role="note" data-testid="pickup-uncertainty" style={{
+                    marginTop: 6, padding: "8px 10px", borderRadius: 8,
+                    background: "#FFF8E1", color: "#795548", fontSize: 13, lineHeight: 1.4,
+                  }}>{pickupNotice}</div>
+                )}
                 {/* Last-bus warning — shown in BOTH the collapsed row and the
                     details view, because the rider decides in either. Two
                     nowrap lines (measured at 390px, see lastBus.test.ts);
@@ -4483,11 +4493,6 @@ const TripPlanner: FC<{
                           </span>
                         )}
                       </div>
-                      {/* Restored from v1: one tap to the operator's own view
-                          of THIS route, for when a rider doubts what we show. */}
-                      {o.mode === "shuttle" && (
-                        <YaleTrackerPreview routeLabel={o.routeLabel} color={o.color} />
-                      )}
                     </div>
                   );
                 })()}
@@ -4827,6 +4832,9 @@ const TripPlanner: FC<{
                     </div>
                   );
                 })()}
+                {isExpanded && o.mode === "shuttle" && (
+                  <YaleTrackerPreview routeLabel={o.routeLabel} color={o.color} />
+                )}
               </div>
             );
           })}
@@ -6553,7 +6561,7 @@ const TransitMap: FC = () => {
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
-  const [finishedRide, setFinishedRide] = useState<BoardedRide | null>(null);
+  const [finishedRide, setFinishedRide] = useState<(BoardedRide & { endReason?: RideEndReason }) | null>(null);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -7040,6 +7048,7 @@ const TransitMap: FC = () => {
     offBusStreakRef.current = decision.streak;
     busLastSeenRef.current = decision.busLastSeenMs;
     if (!decision.end) return;
+    setFinishedRide({ ...boardedRide, endReason: decision.reason ?? undefined });
     setBoardedRide(null);
     // Only the off-bus ending is a surprise worth a notification; the other
     // two are a ride the rider had already forgotten about.
@@ -7485,7 +7494,17 @@ const TransitMap: FC = () => {
       )}
 
       {!boardedRide && finishedRide && (
-        <RideFinish ride={finishedRide} onDismiss={() => setFinishedRide(null)} />
+        <RideFinish ride={finishedRide} reason={finishedRide.endReason}
+          onDismiss={() => setFinishedRide(null)}
+          onFindShuttle={() => {
+            if (finishedRide.toText && Number.isFinite(finishedRide.toLat) && Number.isFinite(finishedRide.toLon)) {
+              setPendingTrip({ id: "ride-recovery", name: finishedRide.toText,
+                fromText: "", fromLat: 0, fromLon: 0,
+                toText: finishedRide.toText, toLat: finishedRide.toLat!, toLon: finishedRide.toLon! });
+            }
+            setListView("trip");
+            setFinishedRide(null);
+          }} />
       )}
 
       {/* Ride page — once on a bus this is the whole view (its own page): a map
