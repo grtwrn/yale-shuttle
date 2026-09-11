@@ -103,6 +103,110 @@ export const HEADWAY_MIN: Record<string, number> = {
   "Grocery TJ": 30, "Grocery Ham": 30,
 };
 
+// Per-line calendar facts that the hours alone cannot express. Yale publishes
+// the weekend grocery service as an ALTERNATING schedule — "Alternating
+// Schedule - Weekend Grocery Shuttle Service - Saturday and Sunday 7:00 AM
+// until 5:00 PM" (https://your.yale.edu/media/3084/download?inline=) and the
+// "2026 Grocery Shuttle Calendar" PDF
+// (https://your.yale.edu/sites/default/files/2026-01/2026_Grocery_Shuttle_Calendar.pdf,
+// linked from your.yale.edu → Using the Shuttle → Weekend routes): Schedule #1
+// Trader Joe's on Jan 3–4 and every second weekend after; Schedule #2 Hamden
+// (Plaza, Aldi, Walmart, Shop Rite) on the others; Dec 24–31 struck through.
+// The operator's route description carries none of this — both lines read
+// "7am - 5pm, Sat - Sun" — so the cards used to say "should be running now —
+// no bus reporting yet" every other weekend (operator, Sun 2026-09-06 10:28,
+// planning to Trader Joe's on a Hamden weekend). The `arrivals` table agrees
+// with the published calendar on every weekend 2026-06-13 → 2026-09-06 (13 of
+// 13: never both lines, never the same one twice running).
+//
+// Evidence order at run time (`serviceStateAt`): upstream's own `active` flag
+// for the route (routes_routes.php, served as `route_active`) first; then the
+// partner's bus being out; then this calendar. NONE of it touches the
+// in-service gate (`isBusInService`): a bus reporting on the "wrong" weekend
+// is still a bus, and hiding one the rider can see is the worse failure.
+export interface AlternationRule {
+  /** An ET calendar date (YYYY-MM-DD) on which the line ran. */
+  anchorDay: string;
+  /** Length of the cycle in days; the line is on for the first 7 of them. */
+  periodDays: number;
+  /** The ROUTE_LISTS label of the line that runs the other weeks. */
+  partner: string;
+}
+export interface DateSpan { from: string; to: string; why: string }
+export interface RouteCalendar {
+  alternation?: AlternationRule;
+  /** Published no-service spans, ET dates inclusive. */
+  closures?: DateSpan[];
+  /** One plain line the route's cards carry, from the published sheet. */
+  note?: string;
+  /** Where the facts above come from, for the cards' small print. */
+  source?: string;
+}
+const GROCERY_NOTE = "FlexiStop: ask the driver to drop you anywhere along the route · no service on holidays and recess";
+const GROCERY_SOURCE = "Yale\u2019s 2026 grocery shuttle calendar";
+const GROCERY_CLOSURES: DateSpan[] = [{ from: "2026-12-24", to: "2026-12-31", why: "winter recess" }];
+export const ROUTE_CALENDAR: Record<string, RouteCalendar> = {
+  "Grocery TJ":  { alternation: { anchorDay: "2026-01-03", periodDays: 14, partner: "Grocery Ham" }, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
+  "Grocery Ham": { alternation: { anchorDay: "2026-01-10", periodDays: 14, partner: "Grocery TJ" }, closures: GROCERY_CLOSURES, note: GROCERY_NOTE, source: GROCERY_SOURCE },
+};
+
+/** Days of an alternation cycle the line is on: one week from the anchor. */
+const ON_SPAN_DAYS = 7;
+
+/**
+ * Upstream's `active` flag is read as "not running today" only once the
+ * line's window has been open this long. How promptly the operator flips the
+ * flag at the start of a service block is not measured, and "should be
+ * running now — no bus reporting yet" is the right thing to say at 07:02 on
+ * a school morning; "not running today" at 07:02 would be a guess.
+ */
+export const ACTIVE_FLAG_SETTLE_MIN = 20;
+
+const ET_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+/**
+ * The ET calendar day of `d` as a day count (days since 1970-01-01 on the ET
+ * calendar). Same discipline as `etDayAndMinutes`: the device clock is never
+ * consulted, so a phone on Tokyo time does not flip the weekend a day early.
+ */
+export function etDayNumber(d: Date): number {
+  const parts = ET_DATE_FMT.formatToParts(d);
+  const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? "", 10);
+  const y = get("year"), m = get("month"), day = get("day");
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(day)) {
+    return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+  }
+  return Math.floor(Date.UTC(y, m - 1, day) / 86_400_000);
+}
+
+function isoDayNumber(iso: string): number {
+  const [y, m, d] = iso.split("-").map((x) => parseInt(x, 10));
+  return Math.floor(Date.UTC(y!, (m ?? 1) - 1, d ?? 1) / 86_400_000);
+}
+
+/** Whether the ET date of `d` falls in the rule's on-week. */
+export function isOnWeekAt(rule: AlternationRule, d: Date): boolean {
+  const since = etDayNumber(d) - isoDayNumber(rule.anchorDay);
+  const p = Math.max(1, Math.round(rule.periodDays));
+  return ((since % p) + p) % p < ON_SPAN_DAYS;
+}
+
+/** Whether the ET date of `d` lies inside one of the calendar's closures. */
+export function isClosedOn(cal: RouteCalendar | undefined, d: Date): boolean {
+  if (!cal?.closures?.length) return false;
+  const n = etDayNumber(d);
+  return cal.closures.some((c) => n >= isoDayNumber(c.from) && n <= isoDayNumber(c.to));
+}
+
+/** The calendar says the line runs on the ET date of `d` (alternation and closures; hours aside). */
+export function calendarAllows(cal: RouteCalendar | undefined, d: Date): boolean {
+  if (!cal) return true;
+  if (isClosedOn(cal, d)) return false;
+  return !cal.alternation || isOnWeekAt(cal.alternation, d);
+}
+
 export function fmtScheduleTime(min: number): string {
   // Handles values > 1440 (overnight windows, e.g. 25*60 = 1:00 AM).
   const m = ((min % 1440) + 1440) % 1440;
@@ -165,17 +269,23 @@ export function etDayAndMinutes(d: Date): { day: number; mins: number } {
   return { day, mins: (hour % 24) * 60 + minute };
 }
 
-/** Is the ET instant `d` inside any of `wins`? False for an empty list. */
-export function isWindowActiveAt(wins: readonly ScheduleWindow[], d: Date): boolean {
+/**
+ * Is the ET instant `d` inside any of `wins`? False for an empty list. With a
+ * calendar, only on days it allows — judged on the ET date the window
+ * STARTED (an overnight window's small hours belong to the evening before).
+ */
+export function isWindowActiveAt(wins: readonly ScheduleWindow[], d: Date, cal?: RouteCalendar): boolean {
   const { day, mins } = etDayAndMinutes(d);
+  const onToday = calendarAllows(cal, d);
   for (const w of wins) {
     if (w.endMin <= 1440) {
-      if (w.days.includes(day) && mins >= w.startMin && mins < w.endMin) return true;
+      if (onToday && w.days.includes(day) && mins >= w.startMin && mins < w.endMin) return true;
     } else {
       // Overnight: same-day portion, then previous-day portion < (end-1440)
-      if (w.days.includes(day) && mins >= w.startMin) return true;
+      if (onToday && w.days.includes(day) && mins >= w.startMin) return true;
       const prev = (day + 6) % 7;
-      if (w.days.includes(prev) && mins < (w.endMin - 1440)) return true;
+      const onYesterday = calendarAllows(cal, new Date(d.getTime() - 86_400_000));
+      if (onYesterday && w.days.includes(prev) && mins < (w.endMin - 1440)) return true;
     }
   }
   return false;
@@ -230,11 +340,20 @@ export function nextActiveWindow(label: string, after: Date): Date | null {
   return nextWindowStart(wins, after);
 }
 
-/** Next instant strictly after `after` at which one of `wins` opens; null if none within a week. */
-export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date): Date | null {
-  for (let offset = 0; offset < 7; offset++) {
+/**
+ * Next instant strictly after `after` at which one of `wins` opens; null if
+ * none within a week — or, with a calendar, within a week plus one cycle plus
+ * the longest closure, since the whole of the next week may be the partner's
+ * and a recess may sit on top of it.
+ */
+export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date, cal?: RouteCalendar): Date | null {
+  let horizon = 7;
+  if (cal?.alternation) horizon += Math.max(1, Math.round(cal.alternation.periodDays));
+  for (const c of cal?.closures ?? []) horizon += Math.max(0, isoDayNumber(c.to) - isoDayNumber(c.from) + 1);
+  for (let offset = 0; offset < horizon; offset++) {
     const cand = new Date(after.getTime() + offset * 86_400_000);
     const { day: dow, mins } = etDayAndMinutes(cand);
+    if (!calendarAllows(cal, cand)) continue;
     for (const w of wins) {
       if (!w.days.includes(dow)) continue;
       // Shift from where the ET wall clock currently sits to the window's
@@ -248,4 +367,108 @@ export function nextWindowStart(wins: readonly ScheduleWindow[], after: Date): D
     }
   }
   return null;
+}
+
+/**
+ * What the app may SAY about a line at `at`, from its windows and its
+ * calendar (`ROUTE_CALENDAR`). This is the display-side question; the
+ * in-service gate (`isBusInService`) deliberately answers from hours alone.
+ *
+ *  open   the line runs at `at`
+ *  off    the HOURS say open at `at`, yet the line is not out: `partner` is
+ *         the line running instead when this one alternates ("not this
+ *         weekend"), null otherwise ("not running today")
+ *  next   the line's next start on a day the calendar allows; null when the
+ *         windows are unknown or nothing opens within the horizon
+ *
+ * `live` is the evidence from the feed at `now`, and bears on `at` only if
+ * `at` falls on the same ET day — a partner out today says nothing about next
+ * Saturday. In order of authority:
+ *   1. `active`, upstream's own flag for the route: false (once the window
+ *      has been open ACTIVE_FLAG_SETTLE_MIN) is off today; true is on today,
+ *      whatever the calendar arithmetic says.
+ *   2. `labels`, the lines with a bus reporting: the partner out means this
+ *      line is off today (the published schedule is mutually exclusive).
+ *   3. the calendar.
+ */
+export interface ServiceState {
+  open: boolean;
+  off: { partner: string | null } | null;
+  next: Date | null;
+}
+
+export interface LiveEvidence {
+  labels: ReadonlySet<string>;
+  now: Date;
+  /** Upstream's `active` flag for this route, when the payload carried one. */
+  active?: boolean | undefined;
+}
+
+/** Minutes the containing window of `wins` has been open at `d`; -1 when none is. */
+function openForMin(wins: readonly ScheduleWindow[], d: Date): number {
+  const { day, mins } = etDayAndMinutes(d);
+  let best = -1;
+  for (const w of wins) {
+    if (w.days.includes(day) && mins >= w.startMin && (w.endMin > 1440 || mins < w.endMin)) best = Math.max(best, mins - w.startMin);
+    if (w.endMin > 1440 && w.days.includes((day + 6) % 7) && mins < w.endMin - 1440) best = Math.max(best, mins + 1440 - w.startMin);
+  }
+  return best;
+}
+
+export function serviceStateAt(
+  wins: readonly ScheduleWindow[] | undefined,
+  label: string,
+  at: Date,
+  live?: LiveEvidence,
+): ServiceState {
+  if (!wins) return { open: true, off: null, next: null };
+  const cal = ROUTE_CALENDAR[label];
+  const hoursOpen = isWindowActiveAt(wins, at);
+  const today = !!live && etDayNumber(live.now) === etDayNumber(at);
+  const partner = cal?.alternation?.partner ?? null;
+  let open: boolean;
+  let overridden = false;
+  if (today && live!.active === true) {
+    open = hoursOpen;
+    overridden = !calendarAllows(cal, at);
+  } else if (today && live!.active === false && hoursOpen && openForMin(wins, at) >= ACTIVE_FLAG_SETTLE_MIN) {
+    open = false;
+    overridden = calendarAllows(cal, at);
+  } else if (today && partner && live!.labels.has(partner)) {
+    open = false;
+    overridden = calendarAllows(cal, at);
+  } else {
+    open = hoursOpen && calendarAllows(cal, at);
+  }
+  const off = !open && hoursOpen ? { partner } : null;
+  // The line's next start on a day the calendar allows. When live evidence
+  // overrode a calendar "on" day, the cycle has shifted and the honest next is
+  // the first opening after the days the windows cover (the rest of this
+  // weekend, or tomorrow for a daily line), cycle ignored.
+  let next = nextWindowStart(wins, at, cal);
+  if (off && overridden) {
+    let t = new Date(at.getTime() + 86_400_000);
+    if (partner) {
+      // The rest of this weekend is the partner's too.
+      for (let i = 0; i < 6; i++) {
+        const { day } = etDayAndMinutes(t);
+        if (!wins.some((w) => w.days.includes(day))) break;
+        t = new Date(t.getTime() + 86_400_000);
+      }
+    }
+    const { mins } = etDayAndMinutes(t);
+    const midnight = new Date(t.getTime() - mins * 60_000);
+    next = nextWindowStart(wins, midnight, cal?.closures ? { closures: cal.closures } : undefined) ?? next;
+  }
+  return { open, off, next };
+}
+
+/**
+ * `isRouteActiveAt` for the planner's calendar questions ("may a plan for
+ * Saturday ride this line?"): ROUTE_HOURS AND the calendar. Never the gate.
+ */
+export function isRouteScheduledAt(label: string, d: Date): boolean {
+  const wins = ROUTE_HOURS[label];
+  if (!wins) return true;
+  return isWindowActiveAt(wins, d, ROUTE_CALENDAR[label]);
 }

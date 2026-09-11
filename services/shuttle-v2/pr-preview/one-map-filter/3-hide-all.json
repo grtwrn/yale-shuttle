@@ -1,0 +1,7 @@
+{
+  "caption": "Hide all: the map keeps its New Haven basemap and the card area says one plain line instead of going blank",
+  "views": ["map"],
+  "actions": [
+    { "click": "Hide all", "on": "map", "settle": 3000 }
+  ]
+}

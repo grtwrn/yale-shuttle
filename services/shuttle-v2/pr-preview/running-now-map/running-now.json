@@ -1,0 +1,4 @@
+{
+  "caption": "Map tab with \"Running now\" on: only lines with a live bus are drawn; idle chips are outlined, not filled",
+  "views": ["map"]
+}

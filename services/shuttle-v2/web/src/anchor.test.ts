@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  ANCHOR_GPS_THRESHOLD_M, findRouteAnchor, isBusOnRoute, OFF_ROUTE_THRESHOLD_M,
-  registerRoutePaths,
-} from "./anchor";
+import { isBusOnRoute, OFF_ROUTE_THRESHOLD_M, registerRoutePaths } from "./anchor";
 import { haversineMeters } from "./geo";
 import { at, routeStops, STOP, stopCoords } from "./__fixtures__/payload";
+import incidents from "./__fixtures__/anchor-incidents.json";
+import { resolveAnchorIndex } from "./liveAnchor";
+import type { AnchorStore } from "./eta";
 
 const blueWeekend = routeStops["4"]!;
 const blueDay = routeStops["1"]!;
@@ -29,129 +29,15 @@ describe("the fixture really does contain the pathological geometry", () => {
     const gap = haversineMeters(at(STOP.broadwayYork), at(STOP.elmYorkTyco));
     expect(gap).toBeGreaterThan(15);
     expect(gap).toBeLessThan(30);
-    // Both sit comfortably inside the GPS threshold of each other, which is
-    // exactly why at_stop_id cannot be trusted to disambiguate them.
-    expect(gap).toBeLessThan(ANCHOR_GPS_THRESHOLD_M);
+    // Two stops one ring cell apart: the emission cannot separate them on
+    // position alone, which is why the belief carries both and the sequence
+    // decides. (Until 2026-09-06 the same fact was stated against the retired
+    // anchor's 150 m candidate threshold.)
+    expect(gap).toBeLessThan(30);
   });
 });
 
-describe("findRouteAnchor: at_stop_id refines, never overrides", () => {
-  // Reports #37/#38 (and the ETA swing in #32): at_stop_id used to
-  // short-circuit the whole GPS scan. A bus physically at Elm/York whose feed
-  // still said "at Broadway/York" was relocated TWO STOPS BACKWARDS, throwing
-  // the ETA a third of a loop.
-  it("does not anchor backwards when at_stop_id disagrees with GPS", () => {
-    const bus = {
-      ...at(STOP.elmYorkTyco),
-      last_stop_id: STOP.stopAndShop,
-      at_stop_id: STOP.broadwayYork,
-    };
-    const idx = findRouteAnchor(bus, blueWeekend, stopCoords);
-    expect(idx).not.toBe(IDX.broadwayYork);
-    // The GPS scan's own answer stands.
-    expect(idx).toBe(IDX.stopAndShop);
-  });
 
-  it("does not anchor backwards even with no last_stop_id hint", () => {
-    const bus = { ...at(STOP.elmYorkTyco), at_stop_id: STOP.broadwayYork };
-    const idx = findRouteAnchor(bus, blueWeekend, stopCoords);
-    expect(idx).not.toBe(IDX.broadwayYork);
-    expect(idx).toBeGreaterThanOrEqual(IDX.stopAndShop);
-  });
-
-  // Report #27's fix, which the refinement must preserve: the segment scan
-  // legitimately lags one stop behind at a shared segment endpoint, and
-  // at_stop_id is the fresher signal there.
-  it("still accepts at_stop_id exactly one stop ahead of the GPS anchor", () => {
-    const bus = {
-      ...at(STOP.broadwayYork),
-      last_stop_id: STOP.yorkChapel,
-      at_stop_id: STOP.broadwayYork,
-    };
-    // Without the hint the scan anchors on the segment ENDING at Broadway/York.
-    const withoutHint = findRouteAnchor(
-      { ...at(STOP.broadwayYork), last_stop_id: STOP.yorkChapel },
-      blueWeekend, stopCoords,
-    );
-    expect(withoutHint).toBe(IDX.yorkChapel);
-    // With it, the bus is correctly advanced by exactly one.
-    expect(findRouteAnchor(bus, blueWeekend, stopCoords)).toBe(IDX.broadwayYork);
-  });
-
-  it("agrees with at_stop_id when GPS already points at the same stop", () => {
-    const bus = { ...at(STOP.elmYorkTyco), at_stop_id: STOP.elmYorkTyco };
-    expect(findRouteAnchor(bus, blueWeekend, stopCoords)).toBe(IDX.elmYork);
-  });
-
-  it("ignores at_stop_id when the bus is nowhere near that stop", () => {
-    // Bus is at Phelps Gate; the feed claims Union Station, ~1.2 km away.
-    const gpsOnly = findRouteAnchor(at(STOP.phelpsGate ?? 98), blueWeekend, stopCoords);
-    const withBadHint = findRouteAnchor(
-      { ...at(98), at_stop_id: 122 }, blueWeekend, stopCoords,
-    );
-    expect(haversineMeters(at(98), at(122))).toBeGreaterThan(ANCHOR_GPS_THRESHOLD_M);
-    expect(withBadHint).toBe(gpsOnly);
-  });
-
-  it("ignores an at_stop_id that isn't on this route", () => {
-    const gpsOnly = findRouteAnchor(at(STOP.elmYorkTyco), blueWeekend, stopCoords);
-    const withOffRouteHint = findRouteAnchor(
-      { ...at(STOP.elmYorkTyco), at_stop_id: STOP.peabody }, blueWeekend, stopCoords,
-    );
-    expect(blueWeekend).not.toContain(STOP.peabody);
-    expect(withOffRouteHint).toBe(gpsOnly);
-  });
-});
-
-describe("findRouteAnchor: GPS scan", () => {
-  it("uses last_stop_id only to break ties among GPS candidates", () => {
-    // Blue Day passes College/Wall twice — (S) at idx 18 and (N) at idx 28.
-    const sIdx = blueDay.indexOf(42);
-    const nIdx = blueDay.indexOf(41);
-    expect(sIdx).toBeGreaterThanOrEqual(0);
-    expect(nIdx).toBeGreaterThan(sIdx);
-    // A bus sitting between them with a fresh southbound last_stop_id should
-    // pick the leg that follows that stop, not the far one.
-    const fromSouth = findRouteAnchor(
-      { ...at(42), last_stop_id: 118 }, blueDay, stopCoords,
-    );
-    expect(fromSouth).toBeGreaterThanOrEqual(blueDay.indexOf(118));
-    expect(fromSouth).toBeLessThanOrEqual(sIdx + 1);
-  });
-
-  it("falls back to last_stop_id when there is no GPS at all", () => {
-    const idx = findRouteAnchor(
-      { lat: 0, lon: 0, last_stop_id: STOP.elmYorkTyco }, blueWeekend, stopCoords,
-    );
-    expect(idx).toBe(IDX.elmYork);
-  });
-
-  it("returns 0 with neither GPS nor a usable last_stop_id", () => {
-    expect(findRouteAnchor({ lat: 0, lon: 0 }, blueWeekend, stopCoords)).toBe(0);
-    expect(findRouteAnchor({ lat: 0, lon: 0, last_stop_id: 99_999 }, blueWeekend, stopCoords)).toBe(0);
-  });
-
-  it("returns -1 for an empty stop list", () => {
-    expect(findRouteAnchor(at(STOP.elmYorkTyco), [], stopCoords)).toBe(-1);
-  });
-
-  it("still produces an anchor for a bus far off the route", () => {
-    // 5 km north of everything — no segment is within threshold, so the
-    // globally-nearest one is used rather than crashing downstream code.
-    const idx = findRouteAnchor(nudgeNorth(at(STOP.elmYorkTyco), 5_000), blueWeekend, stopCoords);
-    expect(idx).toBeGreaterThanOrEqual(0);
-    expect(idx).toBeLessThan(blueWeekend.length);
-  });
-
-  it("is unmoved by GPS jitter perpendicular to the segment", () => {
-    const base = { ...at(STOP.phelpsGate), last_stop_id: 42 };
-    const anchor = findRouteAnchor(base, blueWeekend, stopCoords);
-    for (const m of [-30, -10, 10, 30]) {
-      expect(findRouteAnchor({ ...nudgeNorth(base, m), last_stop_id: 42 }, blueWeekend, stopCoords))
-        .toBe(anchor);
-    }
-  });
-});
 
 describe("isBusOnRoute", () => {
   it("accepts a bus sitting on the route", () => {
@@ -206,5 +92,84 @@ describe("isBusOnRoute measures against the road polyline when one is registered
     registerRoutePaths({ "10": path });
     expect(isBusOnRoute({ ...onHighway, route_id: 3 }, stops, coords)).toBe(false);
     expect(isBusOnRoute({ ...a, route_id: 3 }, stops, coords)).toBe(true);
+  });
+});
+
+
+
+// ---------------------------------------------------------------------------
+// The two recorded incidents. Everything below runs on production feed rows
+// and the operator's own published geometry — `__fixtures__/anchor-incidents.json`,
+// written by `scripts/eta-replay/make-incident-fixture.ts` — so a regression
+// fails here with the real coordinates rather than a contrived pair of stops.
+// ---------------------------------------------------------------------------
+
+const INC = incidents as unknown as {
+  routes: Record<string, { label: string; stops: number[]; path: [number, number][] }>;
+  stopCoords: Record<string, { lat: number; lon: number }>;
+  stopNames: Record<string, string>;
+  incidents: Record<string, {
+    route_id: number; bus_name: string;
+    polls: Array<{ et: string; collected_at: number; lat: number; lon: number; last_stop_id: number }>;
+  }>;
+};
+const incCoords: Record<number, { lat: number; lon: number }> = {};
+for (const [k, v] of Object.entries(INC.stopCoords)) incCoords[Number(k)] = v;
+const incPaths: Record<string, [number, number][]> = {};
+for (const [k, v] of Object.entries(INC.routes)) incPaths[k] = v.path;
+const pollAt = (id: string, et: string) => {
+  const p = INC.incidents[id]!.polls.find((x) => x.et === et);
+  if (!p) throw new Error(`no poll ${et} in ${id}`);
+  return p;
+};
+
+
+describe("the anchor on screen walks the incident forward (report #95)", () => {
+  // Red #316, 2026-09-04. Upstream froze `last_stop_id` at Whitney / Audubon
+  // (index 9) from 11:34:56 to 11:41:57 — seven minutes, five stops. The rule
+  // that read that field, and the candidate sort it fed, are gone with the
+  // retired anchor; what a rider sees is `resolveAnchorIndex`, which reads the
+  // belief on the ring. It must still walk this recording forward.
+  const red = INC.routes["3"]!;
+  const stops = red.stops;
+
+  afterEach(() => registerRoutePaths(null));
+
+  it("the anchor walks the incident forward, one leg at a time", () => {
+    // Poll by poll on the real geometry, through the sequence a rider sees:
+    // `resolveAnchorIndex` steps the belief and reads its lead. Over seven
+    // minutes of a frozen feed the anchor advances and never retreats, and
+    // never skips a stop.
+    registerRoutePaths(incPaths);
+    const store: AnchorStore = new Map();
+    const N = stops.length;
+    let prev = -1;
+    const visited: string[] = [];
+    for (const p of INC.incidents["red316"]!.polls) {
+      const idx = resolveAnchorIndex(
+        { lat: p.lat, lon: p.lon, last_stop_id: p.last_stop_id, route_id: 3 },
+        stops, incCoords, "Red|#316", p.collected_at, store,
+      );
+      if (prev >= 0) {
+        const forward = (idx - prev + N) % N;
+        expect(
+          forward,
+          `${p.et}: ${INC.stopNames[String(stops[prev]!)]} -> ${INC.stopNames[String(stops[idx]!)]}`,
+        ).toBeLessThanOrEqual(1);
+      }
+      if (idx !== prev) visited.push(INC.stopNames[String(stops[idx]!)]!);
+      prev = idx;
+    }
+    // and it walked the whole Winchester loop rather than stalling behind it.
+    // The retired gate ended this trace at Canal / Munson, two stops short,
+    // with the 344 Winchester layover still in front of every rider downstream.
+    expect(visited).toContain("Canal / Munson");
+    expect(visited).toContain("344 Winchester");
+    expect(stops.indexOf(3 /* 130 Prospect (N) */)).toBeLessThan(prev);
+    // The retired gate ended this trace at Winchester / Division. The ring
+    // estimator (web/src/eta/, which answers for every route now) is a leg further on
+    // at 11:46:58 — the bus is 221 m past 344 Winchester and the hop to
+    // Winchester / Division is 112 m — so the bound is "at or past it".
+    expect(prev).toBeGreaterThanOrEqual(stops.indexOf(146 /* Winchester / Division */));
   });
 });

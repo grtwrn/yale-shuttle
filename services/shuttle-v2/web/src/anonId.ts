@@ -11,7 +11,9 @@
  *   - sent with a submitted report SINCE 2026-09-01, by design: the Issues tab
  *     shows riders their own reports, which requires linking a report to the
  *     browser that sent it. The id remains random and maps to nothing else.
- *   - never read back by the app; nothing here changes what a rider sees
+ *   - read back by the app in exactly one place: the Issues tab asks
+ *     `hasAnonId()` so it can tell a rider whose browser keeps no id why
+ *     their reports will never be listed there (see below)
  *
  * The server keeps one row per (day, id) and nothing else, so the data can
  * answer "how many distinct people rode this week" and cannot answer "what did
@@ -55,6 +57,20 @@ export function getAnonId(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Whether this browser has an id to send at all.
+ *
+ * Two empty report lists look identical and mean opposite things: "you have
+ * not sent us anything yet" and "this browser cannot be shown what you sent".
+ * A report is matched to the browser that filed it, so a rider with no id gets
+ * an empty Issues tab forever — and the old wording there, "No reports yet …
+ * it will show up here", promised something that could not happen (report
+ * #51). Nothing about the id changes; only whether the app admits it has none.
+ */
+export function hasAnonId(): boolean {
+  return getAnonId() !== null;
 }
 
 /** Header carrying the id, or `{}` when there is none to send. */

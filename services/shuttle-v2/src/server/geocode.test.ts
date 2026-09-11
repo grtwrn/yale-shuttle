@@ -125,7 +125,11 @@ describe("landmark coordinates", () => {
   // shared on purpose ("science hill" spans two buildings, "pharmacy" is
   // three shops) — list them here so an accidental clash still fails.
   it("does not reuse an alias across entries, except the deliberate ones", () => {
-    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket"]);
+    // "yemeni coffee" is a category, not a name: Arwa (335 Orange) and M2
+    // Mocha (100 Ashmun) both answer to it, and two more — Jabal on Chapel
+    // and Qahwah House on Elm — were announced for late 2026. A rider typing
+    // it wants whichever is nearest, so both must stay reachable by it.
+    const SHARED = new Set(["science hill", "pharmacy", "new colleges", "drugstore", "grocery", "grocery store", "supermarket", "yemeni coffee"]);
     const owner = new Map<string, string>();
     for (const l of LANDMARKS) {
       for (const a of l.aliases ?? []) {
@@ -513,6 +517,24 @@ describe("the real list against every live stop", () => {
     ["sss", "Sheffield-Sterling-Strathcona Hall (SSS)"],
     ["wlh", "William L. Harkness Hall (WLH)"],
     ["hgs", "Humanities Quadrangle (HQ)"],
+    // Yale has four Harknesses within a mile, and the production search log
+    // shows riders typing the full name of only one of them: "harkness
+    // memorial auditorium" (6 searches plus ten typo variants) returned
+    // nothing, because the auditorium's own OSM node is named "Mary Harkness
+    // Auditorium" and "memorial" matched no word on either side. The three
+    // rows below must stay three different places.
+    ["harkness memorial auditorium", "Mary S. Harkness Auditorium"],
+    ["harkness auditorium", "Mary S. Harkness Auditorium"],
+    ["harkness tower", "Branford College"],
+    ["harkness hall", "William L. Harkness Hall (WLH)"],
+    // The McDougal Center left the Hall of Graduate Studies during the
+    // Humanities Quadrangle renovation; it is now the upper level of
+    // Founders Hall, 135 Prospect Street. "hall of graduate studies" must
+    // still be HQ, and "mcdougal" must not be.
+    ["mcdougal", "McDougal Center (Founders Hall)"],
+    ["mcdougal center", "McDougal Center (Founders Hall)"],
+    ["founders hall", "McDougal Center (Founders Hall)"],
+    ["hall of graduate studies", "Humanities Quadrangle (HQ)"],
     ["becton", "Becton Center"],
     ["evans hall", "School of Management (SOM)"],
     ["som", "School of Management (SOM)"],
@@ -558,6 +580,33 @@ describe("the real list against every live stop", () => {
     expect(top("phelps gate")?.poi).toBeUndefined();
   });
 
+  /**
+   * The search that started the campus sweep, and now confirmed by live rider
+   * data: `/api/stats/searches` shows "chaplains office" searched four times
+   * in seven days, returning nothing every time.
+   *
+   * It could only ever be fixed here. The word "chaplain" appears on NO OSM
+   * object in New Haven — verified twice, the second time across any tag and a
+   * bbox far wider than campus — so no external provider can answer it. This
+   * is the failure class `lookup-sweep.mjs` is structurally blind to: an
+   * office inside a building, which OSM has no object for at all.
+   */
+  it("finds the Chaplain's Office, which no external provider can", () => {
+    for (const q of ["chaplain", "chaplains office", "chaplain's office", "yale chaplain", "chaplaincy"]) {
+      expect(top(q)?.label, q).toBe("Yale Chaplain's Office (Bingham Hall)");
+    }
+  });
+
+  it("does not let the Chaplain's Office take Bingham Hall or the Post Office row", () => {
+    // "bingham" belongs to Old Campus, whose alias covers the dorm itself.
+    expect(top("bingham")?.label).toBe("Old Campus");
+    // A bare "office" is genuinely ambiguous and the two tie at 0.5; what must
+    // not happen is the Post Office falling off the list altogether.
+    const office = geocode(live, "office").map((h) => h.label);
+    expect(office).toContain("Yale Station Post Office");
+    expect(office.indexOf("Yale Station Post Office")).toBeLessThan(3);
+  });
+
   it("ranks every live stop name first when typed verbatim", () => {
     for (const s of LIVE_STOPS) {
       const hit = top(s.name)!;
@@ -565,5 +614,82 @@ describe("the real list against every live stop", () => {
         Math.abs(hit.lat - s.lat) < 6e-4 && Math.abs(hit.lon - s.lon) < 8e-4;
       expect(hit.label === s.name || merged, `${s.name} -> ${hit.label}`).toBe(true);
     }
+  });
+});
+
+/**
+ * ARWA YEMENI COFFEE — the place OSM does not know.
+ *
+ * Reported by the operator, 2026-09-09: "arwa cafe is not shown". It was not a
+ * matcher bug and not a reach-filter bug — the app had nothing to show. The
+ * cafe opened on Orange Street in late 2025 and **is still absent from
+ * OpenStreetMap**, so both external providers answer it with nothing near New
+ * Haven (Photon offers cafes in Sarawak and Texas; Nominatim offers none), and
+ * the reach filter correctly drops those. A curated entry is the only way a
+ * rider can reach it.
+ *
+ * Its coordinate is therefore the OSM ADDRESS node for 335 Orange St
+ * (N9021774207), not a node for the business — the one place in the list where
+ * that is true, and the reason it is spelled out in the entry's comment. If
+ * someone later maps the cafe itself, move the coordinate to it.
+ *
+ * This test exists because the entry looks removable to anyone who assumes the
+ * external tier would cover a real cafe. It would not.
+ */
+describe("Arwa Yemeni Coffee", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  for (const q of ["arwa", "arwa cafe", "arwa coffee", "yemeni coffee", "335 orange"]) {
+    it(`answers "${q}" from the curated list`, () => {
+      expect(geocode(live, q)[0]?.label).toBe("Arwa Yemeni Coffee");
+    });
+  }
+  it("tolerates the typos the fuzzy tier is for", () => {
+    expect(geocode(live, "arwa cafee")[0]?.label).toBe("Arwa Yemeni Coffee");
+    expect(geocode(live, "arwa yemini")[0]?.label).toBe("Arwa Yemeni Coffee");
+  });
+});
+
+/**
+ * THE PLACES OPENSTREETMAP DOES NOT KNOW, AND THE ONE IT KNOWS BY ITS OLD NAME.
+ *
+ * Swept 2026-09-09 after the operator asked "are there other cafes we missed?".
+ * The lookup has three layers and ALL THREE read OpenStreetMap — the curated
+ * list was built by auditing it, and Photon and Nominatim are both OSM-backed.
+ * So a place OSM has never heard of is invisible to every layer at once, and a
+ * place whose name changed answers only to the name OSM still carries. These
+ * are the two failure modes; each entry below is one of them.
+ *
+ *   Arwa Yemeni Coffee   335 Orange St    opened 2025, absent from OSM
+ *   M2 Mocha Cafe        100 Ashmun St    opened Apr 2026, absent from OSM
+ *   Olmo                 93 Whitney Ave   absent from OSM (496 Yelp reviews)
+ *   Maison B Cafe        304 Elm St       IN OSM as "Maison Mathis", its former name
+ *
+ * Deliberately NOT added, and why — a lookup that answers with a closed door
+ * or an unopened one is worse than a lookup that says nothing:
+ *   Bru Cafe          141 Orange St   CLOSED (Yelp, Dec 2025)
+ *   Jabal Coffee      808 Chapel St   announced for autumn 2026, not confirmed open
+ *   Qahwah House      19 Elm St       announced mid-2026, not confirmed open
+ * Re-check the last two before adding them.
+ */
+describe("places the external tier cannot supply", () => {
+  const live = TransitNetwork.build(LIVE_STOPS, []);
+  const first = (q: string) => geocode(live, q)[0]?.label;
+
+  it("answers the cafes OSM has never been told about", () => {
+    expect(first("arwa")).toBe("Arwa Yemeni Coffee");
+    expect(first("m2")).toBe("M2 Mocha Cafe");
+    expect(first("m2 cafe")).toBe("M2 Mocha Cafe");
+    expect(first("olmo")).toBe("Olmo");
+  });
+
+  it("answers a renamed place by BOTH names", () => {
+    expect(first("maison b")).toBe("Maison B Cafe");
+    expect(first("maison mathis")).toBe("Maison B Cafe");
+  });
+
+  it("keeps the shared category reaching every place that answers to it", () => {
+    const labels = geocode(live, "yemeni coffee").map((h) => h.label);
+    expect(labels).toContain("Arwa Yemeni Coffee");
+    expect(labels).toContain("M2 Mocha Cafe");
   });
 });

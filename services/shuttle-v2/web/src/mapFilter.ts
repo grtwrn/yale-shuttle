@@ -1,5 +1,12 @@
 // Which shuttle lines the Map tab is showing, remembered between visits.
 //
+// ONE setting for the whole page: the chip row above the map decides which
+// lines are drawn on the map AND which route cards appear under it (operator,
+// 2026-09-06: "can both charts on the map page share one filter setting
+// instead of two?"). The "Running now / Every route" toggle is the MODE that
+// setting is read in, not a second per-route filter — `drawnHidden` below
+// folds it in once, and both consumers take that one set.
+//
 // The rider who only ever rides Blue should not re-hide fourteen routes every
 // time they open the map (operator request, 2026-09-02). Stored as the set of
 // HIDDEN toggle labels rather than the shown ones, so a route added upstream
@@ -43,8 +50,12 @@ export function saveHiddenRoutes(hidden: Set<string>): void {
  * is empty with no obvious way back.
  */
 export function toggleAll(known: readonly string[], hidden: Set<string>): Set<string> {
-  const allHidden = known.length > 0 && known.every((l) => hidden.has(l));
-  return allHidden ? new Set() : new Set(known);
+  return allHidden(known, hidden) ? new Set() : new Set(known);
+}
+
+/** True when every known line is in `hidden` — "Hide all" has been pressed. */
+export function allHidden(known: readonly string[], hidden: ReadonlySet<string>): boolean {
+  return known.length > 0 && known.every((l) => hidden.has(l));
 }
 
 /** Flip one route, returning a new set (never mutates). */
@@ -53,4 +64,36 @@ export function toggleOne(hidden: Set<string>, label: string): Set<string> {
   if (next.has(label)) next.delete(label);
   else next.add(label);
   return next;
+}
+
+/**
+ * What the Map tab hides — on the MAP and in the ROUTE CARDS alike — once the
+ * "Running now" toggle is applied on top of the chip row. This is the page's
+ * single filter decision: `AllRoutesMap` draws by it and `StopList` shows
+ * cards by it, so the two can never disagree about a line (operator,
+ * 2026-09-06: "have the running now filter work on the map", then "can both
+ * charts on the map page share one filter setting instead of two?").
+ *
+ * With the toggle on and buses reporting, every known line without a bus on
+ * it is hidden IN ADDITION to whatever the chips hide, so the chips remain
+ * the manual override in the other direction: a chip switched off stays off.
+ * With the toggle off — or with no buses at all, when it is inert for the
+ * cards too — the chip selection comes back unchanged, so the map behaves
+ * exactly as it did before the toggle reached it.
+ *
+ * `running` is the set of toggle labels with a live bus ON ROUTE, the same
+ * test the cards use — a bus upstream has mis-assigned to a line does not
+ * light that line up here either.
+ */
+export function drawnHidden(
+  known: readonly string[],
+  chipHidden: ReadonlySet<string>,
+  activeOnly: boolean,
+  anyBuses: boolean,
+  running: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set(chipHidden);
+  if (!activeOnly || !anyBuses) return out;
+  for (const label of known) if (!running.has(label)) out.add(label);
+  return out;
 }

@@ -201,7 +201,15 @@ if (STAGE_ONLY) {
   process.exit(0);
 }
 
-run("stage 5/6: deploy to Fly", FLYCTL, ["deploy", "--remote-only"]);
+// Stamp the image with the commit it was built from, so /healthz and the
+// scorecard (docs/closed-loop.md) can name the build. Deploys come from
+// committed history, so HEAD is the truth here; "dev" is the Dockerfile's
+// default when this is not passed.
+const buildSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
+const buildArgs = buildSha.status === 0 && /^[0-9a-f]{40}\s*$/.test(buildSha.stdout)
+  ? ["--build-arg", `SHUTTLE_BUILD_SHA=${buildSha.stdout.trim()}`]
+  : [];
+run("stage 5/6: deploy to Fly", FLYCTL, ["deploy", "--remote-only", ...buildArgs]);
 
 log("stage 6/6: verify production");
 await waitForHealthy(PROD_URL, 120_000);

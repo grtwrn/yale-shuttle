@@ -1,0 +1,21 @@
+{
+  "swap": {
+    "from": "From📍 Union Station⇅",
+    "to": "To🏁 517, Prospect Street☆"
+  },
+  "caption": "From box: recents, saved and popular places before typing; geocoder suggestions while typing",
+  "base": "http://127.0.0.1:8102",
+  "errors": [],
+  "recentsBefore": [
+    "Union Station",
+    "Trader Joe's (Milford)"
+  ],
+  "recentsAfter": [
+    "517, Prospect Street",
+    "Union Station",
+    "Trader Joe's (Milford)"
+  ],
+  "options": [
+    "📍517, Prospect Street"
+  ]
+}

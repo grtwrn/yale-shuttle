@@ -1,6 +1,6 @@
 import { distanceMeters } from "../network/geo.js";
 import type { TransitNetwork } from "../network/TransitNetwork.js";
-import type { EpochMs } from "../schema/api.js";
+import type { EpochMs, Stop } from "../schema/api.js";
 
 // Inputs ----------------------------------------------------------------------
 
@@ -50,8 +50,7 @@ export interface BusState extends TrackedIdentity {
   /** Longitude of the most recent observation. */
   lon: number;
   /**
-   * When the bus last STARTED standing still, independent of which stop is
-   * nearest.
+   * When the bus last STARTED standing still at the stop it is waiting at.
    *
    * `enteredAt` is anchored to `nearestIndex`, so it restarts whenever a
    * different stop becomes nearest — and a bus that shuffles a few metres
@@ -61,16 +60,57 @@ export interface BusState extends TrackedIdentity {
    * credit went to almost nothing, and the ETA charged the layover a second
    * time.
    *
-   * This clock resets only on real movement — more than STATIONARY_RADIUS_M
-   * from where the bus stopped — so it measures what a rider watching the bus
-   * would say. Kept deliberately SEPARATE from `enteredAt`: the dwell and
-   * segment events feeding calibration still key on the nearest-stop anchor,
-   * so this cannot change any statistic, only what the live payload reports.
+   * This clock measures what a rider watching the bus would say. Kept
+   * deliberately SEPARATE from `enteredAt`: the dwell and segment events
+   * feeding calibration still key on the nearest-stop anchor, so this cannot
+   * change any statistic, only what the live payload reports.
    */
   stationarySince: EpochMs;
-  /** Where the bus was when `stationarySince` started. */
+  /**
+   * The point `stationarySince` is measured from — the FRAME, and the whole
+   * subject of the 2026-09-03 fix.
+   *
+   * While the bus is at a stop this is the STOP's own position (see
+   * {@link stationaryStopId}). Only when it is standing somewhere that is not
+   * a stop does it fall back to where the bus itself came to rest.
+   */
   stationaryLat: number;
   stationaryLon: number;
+  /**
+   * When the bus's REPORTED FIX last changed.
+   *
+   * {@link stationarySince} answers "how long has this wait been going on", and
+   * it is pinned to a stop on purpose (see {@link stationaryStopId}) so a yard
+   * shuffle cannot restart it. That pinning costs it the other question, the one
+   * a rider asks first: *is the bus moving right now?* The clock is anchored the
+   * moment a bus comes within {@link AT_STOP_PIN_M} of a stop and carried until
+   * it is {@link STATIONARY_RADIUS_M} away, so it runs on while a bus DRIVES
+   * STRAIGHT THROUGH the stop's zone — for Red #307 past Division / Prospect on
+   * 2026-09-08, a 20 s "stationary" clock on a bus doing 6.6 m/s, which a client
+   * holding one frame and no history priced as standing at the kerb: "now", for
+   * a bus already 67 m gone.
+   *
+   * This clock answers only that question, and is pinned to nothing.
+   */
+  lastMovedAt: EpochMs;
+  /**
+   * The stop {@link stationaryLat}/{@link stationaryLon} is pinned to, or null
+   * while the bus is standing somewhere that is not a stop.
+   *
+   * Pinning to the stop rather than to the bus is what makes the clock survive
+   * a yard shuffle, and a replay of 81,617 production positions is what chose
+   * it: anchoring on the bus, a parked bus's own per-visit maximum excursion
+   * from its resting point is 64.4 m at p50 and 94.7 m at p90, because the
+   * anchor is laid down during roll-in at the EDGE of the stop and the bus then
+   * settles ~64 m away. Measured from the stop instead, the same distribution
+   * falls to 60.0 m / 73.8 m with the departure signal unchanged.
+   *
+   * Arriving at a DIFFERENT stop always restarts the clock — a different stop
+   * is a different wait. That rule is what stops a stale clock from following
+   * a bus to its next stop and over-cancelling the dwell there, which is the
+   * direction that makes an ETA too SHORT and has a rider miss the bus.
+   */
+  stationaryStopId: number | null;
 }
 
 // Outputs ---------------------------------------------------------------------
@@ -205,41 +245,307 @@ export const ANCHOR_SLACK_M = 150;
 export const MAX_OBSERVATION_GAP_MS = 10 * 60_000;
 
 /**
- * How far a bus may drift and still count as standing in the same place.
+ * How far a bus may stray from where its wait is anchored and still count as
+ * standing in the same place.
  *
- * 75 m, the same radius `AT_STOP_MAX_M` uses to call a bus "at" a stop: if it
- * is still close enough to be at the stop, it is still close enough to be the
- * same wait. A garage-lane shuffle is metres; a departure is hundreds.
+ * This is a fallback radius: while the bus is at a stop the wait is pinned to
+ * the stop and survives ANY shuffle inside {@link AT_STOP_PIN_M} of it (see
+ * {@link BusState.stationaryStopId}). The radius only decides matters once the
+ * bus is outside that — either standing somewhere that is not a stop, or
+ * genuinely pulling away.
+ *
+ * 125 m, from a replay of production `raw_positions` (PR #63, which adds
+ * `scripts/eta-replay/layover-replay.ts` and `docs/layover-clock.md`).
+ * Distance alone cannot separate parked from departed on this feed: a bus one
+ * poll into its departure has moved 32.4 m, the same ~30 m quantum as a
+ * shuffle, and the parked p50 maximum (60 m) is under the departed-at-2-polls
+ * p50 (64.5 m). What separates them is the frame, not the number. 125 m is
+ * chosen because the residual error is already zero there, and because it
+ * stays under the 160 m widest (N)/(S) stop pair on this network, so the
+ * fallback radius can never swallow a neighbouring stop.
  */
-export const STATIONARY_RADIUS_M = 75;
+export const STATIONARY_RADIUS_M = 125;
+
+/**
+ * How close to a stop a bus must be for its wait to be pinned to that stop.
+ *
+ * Deliberately the same 75 m as `AT_STOP_MAX_M` in `collector.ts`, which is
+ * the radius the payload uses to call a bus "at" a stop at all: the clock is
+ * pinned over exactly the region where a rider can see it. `detector.test.ts`
+ * pins the two equal so they cannot drift apart.
+ */
+export const AT_STOP_PIN_M = 75;
+
+/**
+ * How far the reported fix must change for {@link BusState.lastMovedAt} to call
+ * it movement.
+ *
+ * Not a tuned number: upstream quantises position, so a standing bus repeats its
+ * coordinate exactly (95.1% of 26,295 in-stand polls on 2026-09-08) and anything
+ * else jumps at least 33 m. Every value from 1 m to 25 m classifies every poll
+ * of that day identically, so this is really "the fix changed", spelled with a
+ * radius so a feed that starts dithering by a metre does not read as movement.
+ *
+ * A WINDOW rule was built and measured against this one and is not what shipped:
+ * requiring the bus to have covered 50 m in 30 s ignores a layover shuffle,
+ * which this clock does not, but it also lets a bus CRAWLING past a stop count
+ * as standing — and on the cold-start replay of 2026-09-08 that put the "now"
+ * rows for a bus that had gone back up from 9.3% to 14.7%. The shuffle costs
+ * seconds; the crawl costs a rider the bus.
+ */
+export const MOVED_M = 8;
+
+/** The fields {@link stationaryFields} carries. */
+export type StationaryState = Pick<
+  BusState,
+  "stationarySince" | "stationaryLat" | "stationaryLon" | "stationaryStopId"
+>;
+
+/**
+ * What the recorded feed says about the stand a bus is already in — the pure
+ * half of the restart seed.
+ *
+ * Every field is the reducers' own quantity, reconstructed from
+ * `raw_positions` rather than from state this process never had:
+ * `stationarySince` is the clock (`at_stop_since`, and `stop_visits.pinned_at`),
+ * and the three rest fields are what `departure.ts` would be holding had it
+ * watched the whole stand.
+ */
+export interface StandRun extends StationaryState {
+  /**
+   * Earliest sample reachable from `obs` with no hole longer than
+   * {@link MAX_HANDOFF_GAP_MS}, distance ignored.
+   *
+   * The bound on how far back a CALLER may join anything to this observation.
+   * `stationarySince` cannot serve for that: it is the first sample inside the
+   * pin radius, and a bus rolling in is anchored to the stop well before it
+   * gets there (`pinned_at − anchored_at` is a median 10 s but a p95 of 95 s),
+   * so an arrival row for this very stand routinely predates it.
+   */
+  unbrokenSince: EpochMs;
+  /**
+   * Start of the FIRST resting plateau inside the run — the visit's
+   * `arrivedAt`. Null when the bus never came to rest in it (still rolling in).
+   */
+  restedSince: EpochMs | null;
+  /**
+   * Start of the plateau `obs` itself sits on, or null when `obs` is a fresh
+   * fix — i.e. the bus is moving right now and this is not a stand to resume.
+   */
+  restSince: EpochMs | null;
+  /** Repeated polls of that plateau inside the run. */
+  restPolls: number;
+}
+
+/**
+ * Recovers the state of a bus the detector is seeing for the FIRST time, from
+ * history the detector itself does not hold.
+ *
+ * `states` is in-memory only, so every process restart makes each bus a first
+ * sighting again — and a bus standing at a stop across one had its wait
+ * restarted from zero. On 2026-09-04 six deploys landed between 15:48 and
+ * 15:58 UTC; #44 sat at 333 Cedar from 15:53:39 to 16:03:34 and was re-arrived
+ * four times (15:53:39, 15:55:11, 15:56:53, 15:59:14), so the rider watching it
+ * saw "⏸ 1min" beside a bus four and a half minutes into its layover, and the
+ * stall credit went with it. That is what report #100 caught — the first from
+ * an outside rider.
+ *
+ * The seed is consulted ONLY when `prev` is null. Every other re-anchor (a long
+ * gap, a route change, an id reissue across a layover) restarts the clock
+ * deliberately and must keep doing so.
+ *
+ * Returning null means "no better answer than now", which is the old behaviour.
+ */
+export type StationarySeed = (
+  obs: BusObservation,
+  anchorStop: Stop | null,
+) => StandSeed | null;
+
+/**
+ * A {@link StandRun} the caller has been able to match to the `arrivals` row
+ * the stand already opened.
+ *
+ * Only the caller can decide that — the rule is pure and has no database — so
+ * `enteredAt` is filled in by the collector and is null everywhere else,
+ * including in every test that feeds {@link seedStationaryFromHistory}
+ * straight into {@link step}.
+ */
+export interface StandSeed extends StandRun {
+  /**
+   * `arrivals.arrived_at` of the row this stand opened before the restart, or
+   * null when there is none to resume.
+   *
+   * Non-null makes {@link step} RESUME the visit: it takes this as
+   * `enteredAt` and emits no arrival event, so one stand keeps one row and the
+   * departure closes that row with the whole stand rather than the sliver
+   * after the restart.
+   */
+  enteredAt?: EpochMs | null;
+}
+
+/** One recorded position, as `raw_positions` stores it. */
+export interface PositionSample {
+  lat: number;
+  lon: number;
+  collectedAt: EpochMs;
+}
+
+/**
+ * The {@link StationarySeed} rule itself, over history the caller has already
+ * fetched. Pure, so the production feed can be replayed through it.
+ *
+ * Deliberately the mirror of {@link stationaryFields} case 1 — the wait began
+ * at the earliest sample of an unbroken run within {@link AT_STOP_PIN_M} of
+ * this very stop, and a shuffle inside that radius does not end it. Two limits
+ * keep the answer honest:
+ *
+ *  - {@link MAX_HANDOFF_GAP_MS} ends the run at a feed absence. A bus that went
+ *    off the air is one the live rules re-anchor anyway, so the seed must not
+ *    reach across the gap and claim a wait the running process would have
+ *    thrown away.
+ *  - The caller's window bounds how far back it can look at all.
+ *
+ * The rest fields mirror `departure.ts`'s plateau bookkeeping over the same
+ * run, because the feed repeats a coordinate rather than interpolating: a
+ * plateau begins at the poll on which the repeating fix was FIRST reported,
+ * which is what `Pass.restSince` holds and what `arrivedAt` is taken from.
+ *
+ * `history` is newest-first (the order the index yields) and must exclude `obs`
+ * itself. `null` means "no better answer than now" — the behaviour without a
+ * seed at all.
+ */
+export function seedStationaryFromHistory(
+  history: readonly PositionSample[],
+  obs: BusObservation,
+  anchorStop: Stop | null,
+): StandRun | null {
+  // Not at a stop: there is nothing to pin to, and `stationaryFields`'s
+  // fallback-radius branch reaches the same answer without any history.
+  if (!anchorStop || distanceMeters(obs, anchorStop) > AT_STOP_PIN_M) return null;
+  let since = obs.collectedAt;
+  let unbrokenSince = obs.collectedAt;
+  let inRun = true;
+  // Newest-first, so this collects the run in reverse.
+  const run: PositionSample[] = [];
+  for (const sample of history) {
+    if (unbrokenSince - sample.collectedAt > MAX_HANDOFF_GAP_MS) break;
+    unbrokenSince = sample.collectedAt;
+    if (!inRun) continue;
+    if (distanceMeters(sample, anchorStop) > AT_STOP_PIN_M) {
+      // The pinned run ends here, but the observed one may not: keep walking so
+      // `unbrokenSince` can reach back over the roll-in.
+      inRun = false;
+      continue;
+    }
+    since = sample.collectedAt;
+    run.push(sample);
+  }
+  if (since >= obs.collectedAt) return null;
+
+  // Oldest-first, with `obs` on the end: the plateaus as the reducer sees them.
+  const ordered: PositionSample[] = run.reverse();
+  ordered.push({ lat: obs.lat, lon: obs.lon, collectedAt: obs.collectedAt });
+  let restedSince: EpochMs | null = null;
+  let plateauStart = ordered[0]!.collectedAt;
+  let plateauPolls = 0;
+  for (let i = 1; i < ordered.length; i++) {
+    const before = ordered[i - 1]!;
+    const now = ordered[i]!;
+    if (before.lat === now.lat && before.lon === now.lon) {
+      plateauPolls++;
+      if (restedSince === null) restedSince = plateauStart;
+    } else {
+      plateauStart = now.collectedAt;
+      plateauPolls = 0;
+    }
+  }
+
+  return {
+    stationarySince: since,
+    // Pinned to the STOP, exactly as `stationaryFields` would have stored it:
+    // the frame is the stop, not wherever the bus came to rest.
+    stationaryLat: anchorStop.lat,
+    stationaryLon: anchorStop.lon,
+    stationaryStopId: anchorStop.id,
+    unbrokenSince,
+    restedSince,
+    // A fresh fix on this very poll means the bus is moving; there is no
+    // plateau to hand the visit reducer and nothing to resume.
+    restSince: plateauPolls > 0 ? plateauStart : null,
+    restPolls: plateauPolls,
+  };
+}
 
 /**
  * Carry the stationary clock when the bus has not actually gone anywhere,
- * restart it when it has. Crucially this is decided on DISTANCE from where
- * the bus stopped, not on which stop is nearest — the nearest stop flips on a
- * few metres of drift, which is the bug this exists to fix.
+ * restart it when it has.
+ *
+ * Three cases, in order:
+ *
+ *  1. **At the same stop as last time** — the clock is carried, unconditionally.
+ *     Not "carried unless the bus moved a bit": a bus repositioning inside its
+ *     own stop has not started a new wait no matter how far across the yard it
+ *     shuffles, and the anchor is never re-based, so a slow creep cannot
+ *     ratchet it either.
+ *  2. **At a DIFFERENT stop** — a different stop is a different wait. Restart,
+ *     pinned to the new stop. This is the rule that stops a stale clock
+ *     following a bus onward and over-cancelling the dwell at its next stop.
+ *  3. **Not at a stop** — fall back to a plain radius around whatever the clock
+ *     is anchored to (the stop it was pinned to, or the bus's own resting
+ *     point). Past {@link STATIONARY_RADIUS_M} the bus has left; restart.
+ *
+ * The bug this replaced anchored case 3 on the BUS and re-anchored on every
+ * breach, so each ~30 m creep around a garage yard ratcheted the clock forward.
+ * Red #316 at 344 Winchester lost its clock on all six of its layovers in a
+ * 7 h window, each time 55–80 s before it actually pulled out — 340 s thrown
+ * away on the one the operator filed as urgent (#82, "it jumped from 3min to
+ * 8 min!"). Fleet-wide that fired on 73.7% of layovers and inflated a
+ * rider-visible ETA on 50.0% of them.
  */
 function stationaryFields(
-  prev: Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon">,
+  prev: StationaryState | null,
   obs: BusObservation,
-): Pick<BusState, "stationarySince" | "stationaryLat" | "stationaryLon"> {
-  const moved = distanceMeters(
-    obs,
-    { lat: prev.stationaryLat, lon: prev.stationaryLon },
-  );
-  if (moved <= STATIONARY_RADIUS_M) {
-    // Still in the same place: keep the clock AND the original point, so a
+  anchorStop: Stop | null,
+): StationaryState {
+  if (anchorStop && distanceMeters(obs, anchorStop) <= AT_STOP_PIN_M) {
+    if (prev && prev.stationaryStopId === anchorStop.id) {
+      // Same stop, same wait — the clock survives any shuffle within it.
+      return {
+        stationarySince: prev.stationarySince,
+        stationaryLat: prev.stationaryLat,
+        stationaryLon: prev.stationaryLon,
+        stationaryStopId: prev.stationaryStopId,
+      };
+    }
+    // A different stop is a different wait. Pin to the stop, not to the bus:
+    // the bus is at the stop's edge on the poll it arrives, and anchoring
+    // there is what makes every later shuffle read as movement.
+    return {
+      stationarySince: obs.collectedAt,
+      stationaryLat: anchorStop.lat,
+      stationaryLon: anchorStop.lon,
+      stationaryStopId: anchorStop.id,
+    };
+  }
+  if (
+    prev &&
+    distanceMeters(obs, { lat: prev.stationaryLat, lon: prev.stationaryLon }) <=
+      STATIONARY_RADIUS_M
+  ) {
+    // Off the stop but not away: keep the clock AND the original point, so a
     // slow drift cannot walk the anchor across town one metre at a time.
     return {
       stationarySince: prev.stationarySince,
       stationaryLat: prev.stationaryLat,
       stationaryLon: prev.stationaryLon,
+      stationaryStopId: prev.stationaryStopId,
     };
   }
   return {
     stationarySince: obs.collectedAt,
     stationaryLat: obs.lat,
     stationaryLon: obs.lon,
+    stationaryStopId: null,
   };
 }
 
@@ -427,12 +733,13 @@ export function step(
   network: TransitNetwork,
   prev: BusState | null,
   obs: BusObservation,
-): { state: BusState | null; events: DetectorEvent[] } {
+  seed: StationarySeed | null = null,
+): { state: BusState | null; events: DetectorEvent[]; resumed: StandSeed | null } {
   const global = network.nearestStopOnRoute(obs.routeId, obs);
   if (!global) {
     // Bus is on a route we don't know about, or the route has no stops yet.
     // Drop state so we re-anchor cleanly once the route shows up.
-    return { state: null, events: [] };
+    return { state: null, events: [], resumed: null };
   }
 
   // Reject an observation that is not strictly newer than the one already
@@ -446,10 +753,20 @@ export function step(
   // duplicate row for one bus in a single payload, whose only possible
   // "segment" has travelSec 0.
   if (prev && obs.collectedAt <= prev.lastObservedAt) {
-    return { state: prev, events: [] };
+    return { state: prev, events: [], resumed: null };
   }
 
   const gap = prev ? obs.collectedAt - prev.lastObservedAt : Infinity;
+
+  // When the fix last changed. A reanchor (below) throws this away with
+  // everything else: after a gap we do not know what the bus did, and inventing
+  // stillness there is the one direction that invents a "now". With no history
+  // the bus counts as having just moved, which withholds.
+  const continuousHistory = prev != null && gap <= MAX_OBSERVATION_GAP_MS;
+  const lastMovedAt: EpochMs = continuousHistory
+    && distanceMeters(obs, { lat: prev.lat, lon: prev.lon }) <= MOVED_M
+    ? prev.lastMovedAt
+    : obs.collectedAt;
 
   // Identity handoff. Because tracking is keyed on the stable `bus_name`
   // (see `trackKeyFor`), `prev` can have been recorded under a different
@@ -494,11 +811,30 @@ export function step(
     }
   }
 
+  // The stop the stationary clock pins to while the bus is standing at it.
+  // Deliberately the detector's own anchor rather than a fresh unbounded
+  // nearest-neighbour: the anchor is what `collector.ts` publishes as
+  // `at_stop_id` beside this clock, so pinning to anything else would report a
+  // wait for one stop while naming another. It is also the more stable of the
+  // two — the lookahead window is what stops a bus teleporting between the
+  // (N)/(S) twins 28 m apart, and every such teleport would otherwise read as
+  // "arrived at a different stop" and throw the wait away.
+  const anchorStop = network.stops.get(nearest.stopId) ?? null;
+
+  // The one reanchor that is not a lost track is the first sighting of a bus by
+  // a freshly started process: the bus never went anywhere, we did. Consulted
+  // here and nowhere else, so every other reanchor is untouched.
+  const seeded = prev ? null : (seed?.(obs, anchorStop) ?? null);
+  // ...and the DB agreed this stand already has a row. Resuming its instant is
+  // what keeps one stand to one arrival, and what lets the departure close it
+  // with the whole stand rather than the piece after the restart.
+  const resumed = seeded && seeded.enteredAt != null ? seeded : null;
+
   // Re-anchor on first sight, after a long gap, on a route change, or when
-  // the bus left the modelled path (above). We always emit an arrival event
-  // so downstream consumers (the live UI, the dwell updater) have an anchor
-  // row, but we never emit a dwell or segment because we don't trust the
-  // missing time window.
+  // the bus left the modelled path (above). We emit an arrival event so
+  // downstream consumers (the live UI, the dwell updater) have an anchor row —
+  // unless we RESUMED one, which already exists — but we never emit a dwell or
+  // segment, because we don't trust the missing time window.
   const reanchor =
     !prev ||
     gap > MAX_OBSERVATION_GAP_MS ||
@@ -506,6 +842,14 @@ export function step(
     discontinuous ||
     !continuous;
   if (reanchor) {
+    // The stationary seed recovers how long this bus has been standing from
+    // recorded positions, so a restart does not zero every standing clock
+    // (report #100, #129). The movement clock has to be recovered with it: a
+    // bus the seed says has been stationary since T has not moved since T
+    // either, and without this every bus on the road reads as "just moved" for
+    // the first STANDING_MIN_S after a deploy — which withholds "now" from a
+    // bus sitting at the kerb.
+    const stationary = stationaryFields(seeded, obs, anchorStop);
     return {
       state: {
         busId: obs.busId,
@@ -513,26 +857,43 @@ export function step(
         routeId: obs.routeId,
         nearestStopId: nearest.stopId,
         nearestIndex: nearest.index,
-        enteredAt: obs.collectedAt,
+        // A resumed stand keeps the anchor instant the row it is resuming was
+        // written under, so the dwell patch finds that row and `stop_visits`
+        // joins to it. It also lifts the 15 s `at_stop_id` gate in
+        // `updateLivePositions`, which is measured from here and would
+        // otherwise withhold the stop for three polls after every deploy.
+        enteredAt: resumed?.enteredAt ?? obs.collectedAt,
         lastObservedAt: obs.collectedAt,
+        lastMovedAt: Math.min(lastMovedAt, stationary.stationarySince),
         lat: obs.lat,
         lon: obs.lon,
         // A reanchor means we lost track of this bus; nothing about how long
-        // it had been standing survives that.
-        stationarySince: obs.collectedAt,
-        stationaryLat: obs.lat,
-        stationaryLon: obs.lon,
+        // it had been standing survives that. Passing `null` for the previous
+        // state restarts the clock — but still PINS it to the stop when the
+        // bus is at one, so the frame is right from the very first poll rather
+        // than from wherever the bus happened to be seen.
+        //
+        // {@link StationarySeed} is the exception, and only on a first
+        // sighting: it recovers the clock from recorded positions.
+        ...stationary,
       },
-      events: [
-        {
-          kind: "arrival",
-          busId: obs.busId,
-          busName: obs.busName,
-          routeId: obs.routeId,
-          stopId: nearest.stopId,
-          arrivedAt: obs.collectedAt,
-        },
-      ],
+      // A resumed stand already HAS its arrival row. Writing another is the
+      // duplicate this exists to end — and each one truncated the measured
+      // stand, because `stop_visits.pinned_at` and the dwell patch both key on
+      // the anchor instant above.
+      events: resumed
+        ? []
+        : [
+            {
+              kind: "arrival",
+              busId: obs.busId,
+              busName: obs.busName,
+              routeId: obs.routeId,
+              stopId: nearest.stopId,
+              arrivedAt: obs.collectedAt,
+            },
+          ],
+      resumed,
     };
   }
 
@@ -553,11 +914,13 @@ export function step(
         busId: obs.busId,
         busName: obs.busName,
         lastObservedAt: obs.collectedAt,
+        lastMovedAt,
         lat: obs.lat,
         lon: obs.lon,
-        ...stationaryFields(prev, obs),
+        ...stationaryFields(prev, obs, anchorStop),
       },
       events: [],
+      resumed: null,
     };
   }
 
@@ -632,14 +995,17 @@ export function step(
       // the dwell/segment events above depend on it.
       enteredAt: obs.collectedAt,
       lastObservedAt: obs.collectedAt,
+      lastMovedAt,
       lat: obs.lat,
       lon: obs.lon,
-      // ...but the stationary clock does NOT, unless the bus actually moved.
-      // This is the whole fix: a parked bus that shuffles enough to flip the
-      // nearest stop keeps the wait a rider has been watching.
-      ...stationaryFields(prev, obs),
+      // ...but the stationary clock does NOT, unless the bus actually reached
+      // a different stop or left the one it was waiting at. This is the whole
+      // fix: a parked bus that shuffles enough to flip the nearest stop keeps
+      // the wait a rider has been watching.
+      ...stationaryFields(prev, obs, anchorStop),
     },
     events,
+    resumed: null,
   };
 }
 

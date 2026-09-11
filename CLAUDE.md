@@ -25,7 +25,8 @@ One Node process (`src/index.ts`, run via tsx) does everything:
   |---|---|
   | `planner.ts` | `planTrip`, trip options, walk/ride/dominance rules |
   | `arrivals.ts` | `computeUpcomingArrivals` — per-stop ETA math |
-  | `anchor.ts` | `findRouteAnchor` — which stop a bus is at / has passed |
+  | `eta/` | the ring estimator: where each bus is and when it reaches each stop (see below) |
+  | `anchor.ts` | `isBusOnRoute`, `registerRoutePaths` — the published polyline and the off-route filter |
   | `schedule.ts` | `ROUTE_HOURS`, `isBusInService`, ET day/hour resolution |
   | `routes.ts` | `ROUTE_LISTS` — **the single source of truth for route colour** |
   | `walk.ts` | the walk model (mirrors the server's `WALK_M_PER_S`) |
@@ -86,6 +87,23 @@ These came from past bugs/feedback — don't re-litigate them:
 - **Route colour has one source**: `ROUTE_LISTS` in `web/src/routes.ts`. Three other tables used to hold their own copies and two had silently drifted. Everything else derives from it; a test fails if they disagree.
 - **The walk model lives on the server** (`WALK_M_PER_S` in `src/network/TransitNetwork.ts`) and the client mirrors it. `walk.test.ts` parses the server's constant out of its source, so the two cannot drift. Change the server first, never one side alone.
 
+**The two grocery lines alternate whole weekends, and Yale publishes it**
+(`ROUTE_CALENDAR` in `web/src/schedule.ts`): the "2026 Grocery Shuttle
+Calendar" PDF and the "Alternating Schedule - Weekend Grocery Shuttle Service"
+sheet on your.yale.edu — Grocery TJ on the weekend of 2026-01-03 and every
+second weekend after, Grocery Ham the others, Dec 24–31 closed, both lines
+FlexiStop with no service on holidays and recess. The operator's route
+description carries none of this (both read "7am - 5pm, Sat - Sun"), and the
+`arrivals` table agrees with the calendar on 13 of 13 weekends. At run time
+`serviceStateAt` decides what a card SAYS in this order: upstream's own
+`active` flag per route (`routes_routes.php?inactive=true`, refreshed every
+5 min by the collector, served as `route_active`, trusted as "off" only once
+the window has been open 20 min), then the partner line's bus being out, then
+the calendar — "Not this weekend · next Sat Sep 12", never "should be running
+now". `isRouteScheduledAt` gates which lines a future-dated plan may ride. The
+in-service gate (`isBusInService`) deliberately ignores all of it — a bus on
+the "wrong" weekend is still shown.
+
 ## Bug reports
 
 Users submit reports via the in-app "🚩 Report issue" / "💬 Send feedback". Workflow:
@@ -128,14 +146,25 @@ still takes `listView="all"` internally — that is the card-list mode, not a
 tab. With every line switched off the map keeps a basemap centred on New
 Haven rather than rendering a grey void.
 
-The Map tab filters by line (`web/src/mapFilter.ts`): a scrolling chip row
-above the map toggles each route, and the choice is remembered in
-localStorage as the HIDDEN toggle labels — so a route added upstream appears
-by default rather than staying invisible. It is deliberately separate state
-from `hiddenRoutes`, which every view change resets (that reset exists so the
-favourites filter cannot leak into the All page, and it would wipe the map's
-filter on every tab switch). Every storage touch is guarded; blocked storage
-means the filter simply does not persist.
+The Map tab has ONE route filter (`web/src/mapFilter.ts`): the scrolling
+chip row above the map toggles each line for the map AND the route cards
+under it — a line hidden there is drawn nowhere on the page, and "Hide all"
+leaves the New Haven basemap plus one plain line where the cards were. The
+choice is remembered in localStorage as the HIDDEN toggle labels — so a route
+added upstream appears by default rather than staying invisible. "Running now
+/ Every route" (under the map) is the MODE that filter is read in, not a
+second per-route setting: `drawnHidden()` folds it into the chip set once,
+and `AllRoutesMap` and `StopList` are handed that same set (a source-level
+test in `mapFilter.test.ts` fails if either consumer takes anything else).
+There used to be a second row of route chips under the map that scrolled to a
+card; it was removed on 2026-09-06 (operator: "can both charts on the map
+page share one filter setting instead of two?") — two rows of route names
+that did different things read as two settings. Do not bring a second row
+back. It is deliberately separate state from `hiddenRoutes`, which every view
+change resets (that reset exists so the favourites filter cannot leak into
+the All page, and it would wipe the map's filter on every tab switch). Every
+storage touch is guarded; blocked storage means the filter simply does not
+persist.
 
 The forecast has TWO sources (`src/server/weather.ts`): Open-Meteo first,
 then the National Weather Service (`api.weather.gov`, no key). Open-Meteo's
@@ -152,36 +181,45 @@ words as fit one phone line: "66°F · rain likely 11pm (70%)". It drops the
 condition word ("Clear") whenever it has an hour to name, because the hour is
 the useful half.
 
-**Where the temperature is HEADING rides in the SAME sentence**, spelled out
-("warming to 80° by 2pm" / "cooling to 57° by 2pm") rather than an arrow —
-"↑80°" read live as "up 80 degrees" (a delta) rather than a destination, and a
-separate row under the sentence read as two facts when it is one. The extreme
-further from the current temperature wins, drawn from the hours the strip
-lists — not the calendar day, most of which a rider has already lived
-through. Showing both ends was the first cut and the operator cut it down
-(2026-09-03): at 9am on a warming day the low is the temperature you are
-already standing in.
+**The temperature TREND was removed on 2026-09-04** (reports #90 and #97)
+and must not come back in any wording. The line carried "· cooling to 69° by
+8pm" beside the rain half; the operator asked for it on 2026-09-03, rode with
+it for a day, and then filed twice — "I don't need to know when its cooling",
+and then "Maybe shouldn't say cooling. It's staying hot for the afternoon".
+The second one is the real defect: the clause names the extreme of the whole
+TEN-HOUR window, so at 11:21am on a 77° day the line said "cooling to 69° by
+8pm" directly above a strip reading 78° at noon, 1pm and 2pm. It was true of
+the evening and read as the afternoon. **A magnitude floor does not fix that**
+— a big evening swing is exactly the case it gets wrong — and neither does a
+different verb; the hours themselves are one tap away in the strip, which is
+where a rider asking about the afternoon should look. `tempTrend`,
+`trendText`, `trendHourFits` and the strip's ↑/↓ markers went with it, and
+`rainFragment` lost the TERSE form that existed only to make room for the
+clause. A test named for #97 pins the reported line.
 
-**The line carries BOTH facts at once** — the chance of rain and the
-temperature trend ("69°F · 35% rain · warming to 80°"). An earlier cut showed
-the trend only when there was no rain to report, which meant the two things
-the operator asked for were never on screen together. To fit at 390px,
-`rainFragment` has a TERSE form used only when the trend is beside it ("35%
-rain" rather than "35% chance of rain within the hour"), and the trend drops
-its hour ("by 2pm") whenever rain needs more than a bare percentage —
-`trendHourFits` is the one place that decides. Rain arriving later in the
-window still outranks a sub-20% near-term number, so "rain 9pm (70%)" is what
-a quiet-now-wet-later evening says. Inside the sentence they wrapped it: that
-shipped on 2026-09-03 and was caught on production, so measure the LONGEST
-branch (dry-with-condition, and the ≥70% umbrella one) at 390px before
-touching this line, not the shortest. The ≥70% branch still takes two rows by
-choice — it is the amber warning and the second row carries the advice. Tapping it opens the next six hours as a sideways-scrolling
+The line is back to two facts, so it fits with room to spare: the widest
+quiet branch is the dry one with a condition word ("100°F · Cloudy · no rain
+expected") and the widest warning is "100°F · rain by 12am — umbrella" at
+200 px of 236. Measure at 390px by probing the rendered span if you reword —
+counting characters is how a wrapping line shipped on 2026-09-03 — and
+`weather.test.ts` pins the widest string each branch can produce.
+
+Tapping the line opens the next six hours as a sideways-scrolling
 strip of temperature and rain chance, each percentage carrying a 💧 so it is
 not read as anything else; that strip is collapsed by default, since the
 sentence usually suffices. Hours are spelled `11pm`, not the app's usual
 `11p` — a bare letter beside a temperature and a percentage was one
-abbreviation too many. The server asks upstream for six hours for the same
-reason.
+abbreviation too many. The server asks upstream for ten hours, so an
+afternoon system is visible before lunchtime.
+
+**Every branch names an hour, including the near one** (report #83: "it
+should tell what time rain is expected"). The near-term half used to print a
+bare percentage, so the line answered "how likely" and never "when" — the one
+question it exists for. `rainLikely` now records WHICH bucket the peak came
+from, and the wording follows honestly: a bucket the rider is already inside
+is named by its END ("rain by 7pm"), because naming its start would say the
+rain is happening now, and a bucket still ahead is named by its start ("rain
+6pm").
 
 **Temperature shows ONE unit, the rider's** — a `°F | °C` toggle sits at the
 right of the line and persists in `localStorage` (`shuttle.tempUnit`, read
@@ -202,21 +240,104 @@ wording rather than to no line.
 across every bucket overlapping the next hour, so "raining now" would fire up
 to 55 minutes early on a dry evening. For the same reason the number is quoted
 without an adjective — 45% is neither likely nor unlikely — and only the
-"take an umbrella" clause changes at 70%, so no wording flips at the boundary.
+umbrella clause changes at 70%, so no wording flips at the boundary.
 A near-term chance always outranks the later hour: a rider with 45% in the
 next hour must not be told about nine o'clock instead. A wet WMO code with a
 low hourly chance prints the condition alone ("55°F · Rain"), never "Rain ·
 no rain expected".
 
-**The option row's top line is total · live bus · arrival** — "12 min · 🚌 in
-<1, 14 min · arrive 10:16a". The bus times moved up from a third line
-(operator, 2026-09-03) because that is the number deciding whether you leave
-now, and the card is two lines instead of three for it. The two ETAs share
-one unit via `fmtBusPair` ("in 12, 21 min", the operator's own wording): "in
-12 min · next in 21 min" clipped mid-number at 390px, and both times now fit
-at every ETA. The bus ETA is computed ONCE at row scope (`busEtaLive`) and
-consumed by both the top line and the departed warning, so they cannot
-disagree.
+**The option row is TWO COLUMNS, each read top-down** (operator, 2026-09-04)
+— the line and what it is made of on the left, the two clock facts on the
+right, and a chevron centred across both:
+
+    [Blue Day]  in 3, 21 min                            23 min
+    🚶 5 min › 🚌 12 min › 🚶 3 min · most direct         10:33a   ›
+
+The total used to hold the top-left slot with the pill a row below it, so
+picking "the Blue one" off five cards meant reading five durations first.
+The arrival clock then led line 2, which put the two numbers a rider compares
+ACROSS cards — "23 min" and "10:33a" — on opposite sides of the card,
+never lining up; the operator asked for the swap ("i want the arrive at time
+under the trip length and put the route info under the line name on the
+left"). Both right-hand figures are `flexShrink: 0` and never wrap: **future
+mode prints a RANGE there** ("1:22p – 1:48p"), and if anything has to give it
+is the leg list on the left, which merely runs onto a second line. Measured at
+390 px it does not have to — the widest real card, a Brown with both walks
+and a ride, fits the range on one line.
+
+**The arrival clock carries no word** (operator, 2026-09-04: "remove 'arrive'
+from arrival time and just show the time"). Sitting directly under the
+duration in a right-aligned column, the number says what it is, and live mode
+now agrees with future mode, which always printed a bare range. **That word
+was how the canary recognised a card at all** — `parseOptions` skipped any
+duration line with no `^arrive HH:MMx` beside it — so `IS_ARRIVAL_CLOCK`
+accepts both spellings, and the bare one is anchored at BOTH ends. That
+anchoring is the whole safety: the map overview quotes the very same clock
+values ("(B) 12:31p" is Blue Day's own arrival) and the header prints
+"12:13 PM". Five lines on a captured page match, and they are the five cards
+— asserted from a capture in `canary-metrics.test.mjs`, not argued.
+
+**The chevron is the third column, not the end of line 2** — that slot is the
+arrival clock now. It is decoration: the whole card carries the `onClick`, so
+the tap target is the full row, and the glyph still gets 44 px of height.
+
+Still two lines at 390px: the walk legs share the second line with the clock
+rather than keeping a row, and the ride between them is timed in the same ink
+as the walks instead of a second copy of the pill (colour off the option, i.e.
+off `ROUTE_LISTS`). The bus times themselves had moved up from a third line
+the day before, because that is the number deciding whether you leave now.
+The two ETAs share one unit via `fmtBusPair` ("in 12, 21 min", the operator's
+own wording): "in 12 min · next in 21 min" clipped mid-number at 390px, and
+both times now fit at every ETA. The bus ETA is computed ONCE at row scope
+(`busEtaLive`) and consumed by both the top line and the departed warning, so
+they cannot disagree.
+
+**No leg is guaranteed EXCEPT the ride.** A walk of 0 s is omitted, the ⏳
+wait line only appears when no live bus is pinned (future mode), and a
+Departed card has no arrival clock at all — the row is built from whatever
+exists, never from a fixed slot per leg. But every collapsed shuttle row draws
+`🚌 {rideSec}`: `legsShown` is `!isExpanded && o.mode === "shuttle"` and
+nothing more. Gating the block on "a walk at one end or the other" left a
+rider already at the stop, bound for a stop on the line, with a blank second
+line — the one card on screen that did not say what the trip was made of.
+That card also puts a bare `🚌 N min` directly under a duration, which is
+where a countdown used to live: `parseBusEtaText` is the arbiter and the ride
+bar has no "in", and the countdown is found in `pre` first regardless.
+
+**The canary reads these cards as TEXT** (`parseOptions` in
+`scripts/canary-metrics.mjs`), so a layout change is a parser change: it
+anchors on the duration line and walks back one countdown and one pill, since
+those now precede it, and prefers a pill found below (the old order) so the
+harness can watch production while a redesign is unmerged. It reads a card as
+a SET of lines around that anchor rather than an ordered one, which is why
+moving the arrival clock below the legs cost it nothing — but #111 "needed no
+change" too and blinded the canary for twelve minutes, so **every layout
+change lands a captured-innerText fixture in `canary-metrics.test.mjs`**
+(`LIVE_LINE_FIRST`, `LIVE_NO_GLYPH`, `LIVE_ARRIVAL_RIGHT`) rather than an
+argument that the parser is fine. It also stops the
+last card at the page footer — "Contribute" is exactly as label-shaped as a
+route name.
+
+**A live ride ends only on evidence** (`web/src/rideEnd.ts`). Three triggers
+retire the "I'm on it" page — a 2 h age cap, the pinned bus gone from the feed
+for 10 min, and the rider ≥300 m from that bus for 3 consecutive checks — and
+the third one used to fire on a rider who had not moved at all. Report #96
+(2026-09-04): "I was riding a bus, submitted feedback and then lost my live
+ride." The two positions it compares are not measured at the same time:
+`/api/buses` keeps polling while the page is hidden (30 s) but the geolocation
+watch is deliberately torn down on `visibilitychange`, so the rider's fix
+FREEZES while the bus's keeps arriving. Composing feedback is exactly that
+minute — 📎 Attach screenshot hands the page to the OS picker outright — and a
+shuttle clears 300 m in under a minute, so three polls retired the ride and
+`saveBoardedRide(null)` deleted its localStorage copy too. **A strike now
+needs both positions current**: no fresh fix (`FIX_MAX_AGE_MS`, 60 s, measured
+from the browser's own `position.timestamp` so the rescue one-shot's
+two-minute-old fix cannot pass as live), or a hidden page, resets the streak
+rather than adding to it, and a poll the bus is missing from no longer carries
+strikes forward. The asymmetry is deliberate: keeping a finished ride a few
+minutes too long costs battery, ending a live one costs the rider the thing
+they opened the app for. The decision is pure and unit-tested because
+`TransitMap` itself cannot be rendered by this repo's harness.
 
 **Reload lives beside the tabs** (right of Issues) and is always rendered,
 including on the ride page where the tabs themselves are hidden. It used to be
@@ -295,8 +416,8 @@ Three layers, local first, and the response shape is v1's
 (`{results:[{display_name,lat,lon,type,class}]}`; the frontend auto-picks on
 class `yale`, type `bus_stop`/`house`, or a single result — keep those values):
 
-1. **Curated landmarks** — `src/server/landmarks.ts`, 148 entries, every one
-   VERIFIED against OpenStreetMap on 2026-09-02 and pinned to the live stop
+1. **Curated landmarks** — `src/server/landmarks.ts`, 152 entries, every one
+   VERIFIED against OpenStreetMap and pinned to the live stop
    that serves it (`anchorStop`). `geocode.test.ts` recomputes the nearest
    stop from the checked-in 172-stop fixture (`src/server/__fixtures__/stops.json`)
    for every entry, so a moved or mistyped coordinate fails the suite. **To add
@@ -306,6 +427,11 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    place; other names go in `aliases` ("kbt", "commons", "med school", the
    former name, the street address) — no misspellings, the fuzzy tier handles
    those. Adjacent-but-distinct places (a cafe inside a museum) stay separate.
+   **What is missing is measured, not guessed**: `node scripts/lookup-sweep.mjs`
+   runs every named Yale/campus place OSM knows about through all three layers
+   and lists the ones NO layer answers — 5 as of 2026-09-03, not the 213 that
+   scoring against this list alone appeared to show (see Verification
+   harnesses).
 2. **The matcher** (`src/server/geocode.ts`) normalises both sides (apostrophes
    deleted, `&` → "and", diacritics stripped), drops query stopwords (yale,
    university, the, at, of, on, in, and, new, haven, st, street) and scores in
@@ -355,6 +481,13 @@ class `yale`, type `bus_stop`/`house`, or a single result — keep those values)
    in `v1compat.geocode.test.ts` is now Photon's real answer, coordinates
    included, precisely so a green test cannot disagree with the live server
    again.
+
+**A curated place can move.** The McDougal Graduate Student Center was in the
+Hall of Graduate Studies; it is now the upper level of Founders Hall, 135
+Prospect Street (Yale GSAS, checked 2026-09-07), a different stop entirely
+(Prospect / Sachem (N), not Wall / York). When the production `search_terms`
+log shows a name returning nothing, check where the place IS before assuming
+which existing entry should answer for it.
 
 The frontend's 8 km radius filter exempts class `yale`/`shuttle` rows — a
 curated destination is by definition reachable, and Trader Joe's (Milford) at
@@ -540,6 +673,56 @@ Do **not** reintroduce a ratio-of-straight-line rule per leg. Purple's West
 Campus out-and-back legitimately doubles back; that rule scored it 72.8%
 on-street and drew a chord across the water.
 
+### When the published stop ORDER disagrees with the published line
+
+`src/network/alignStops.ts`. One route of fifteen — Green — lists its stops in
+an order its own polyline cannot be walked through: the line passes
+`… B800, B900, West Haven station, Bradley (N) …` and the list says
+`… B800, station, B900, Bradley (N) …`, and it names the station once where the
+line passes it twice. `traceStopLegs` bridged three legs with chords, which is
+what made Green's ring `bridged` and made the ETA model decline the line.
+
+**The list is the defect, not the line, and the arrivals record says so**:
+2,943 consecutive B800 → B900 arrivals against 1 for B800 → station; 676
+B900 → station and 666 station → Bradley (N); and the station served on both
+the outbound and the return leg, 676 each way. So the ring's order is read off
+the LINE (a monotone min-offset assignment of each stop occurrence to a pass
+the line makes), which needs no service history — a route new this morning gets
+it.
+
+Three things keep it a correction rather than a rewrite, and all three are
+load-bearing:
+
+- **The trigger is a bridged leg**, and nothing else. The other fourteen rings
+  are byte-identical, cell for cell; a test measures it.
+- **Two occurrences may not stack on one pass.** A small out-and-back bridges
+  its return leg by construction while its order is right.
+- **At most one occurrence in ten may move.** A line published COUNTER to its
+  stop list (the "whole route painted solid" bug) bridges every leg; there the
+  LIST is right and reversing it would run the estimator round the route
+  backwards. Past the bound the route keeps its published order and the legacy
+  arithmetic, and derived geometry is the remedy.
+
+`TransitNetwork.build` applies the repair before anything is built on it and
+keeps upstream's list as `Route.publishedStops`. **`/api/buses` still publishes
+upstream's list** (`routes[r]`), so the map and the planner are untouched; the
+segment rows carry both adjacencies so the legacy arm keeps its keys. The
+client's ring recomputes the identical repair from `routes[r]` + `route_paths[r]`
+(`ring.stops` / `ring.order` / `ring.repaired`), so there is no new payload
+field and no version skew — `src/network/alignStops.ts` is imported by BOTH
+sides and the Docker web stage copies that one file, which is why it must stay
+import-free (a test pins that).
+
+Most of the win is server-side: with the station missing from the outbound, a
+bus that stopped there anchored nine hops ahead and the detector discarded the
+leg for exceeding `MAX_SEGMENT_HOPS`, so **Green's longest hop had no measured
+drive at all** and was priced at the route's downtown pace (11.7 km × 0.134 s/m
+= 1,573 s against a real 675 s). On the repaired order all 24 hops are billed.
+Measured on the 9/4 gps-replay, Green's median error goes **288.8 → 70.1 s**,
+its dangerous tail 56.1 → 12.1%, p90 2,817 → 500 s; every other route moves by
+at most 0.2 s of median (route 9's tables feed the all-routes pools). See
+`docs/eta-ring-posterior.md` §2.
+
 ### Derived route paths (`src/network/derivePath.ts`)
 
 Rebuilds a route's loop from `raw_positions`. **Not served to riders**: the
@@ -576,13 +759,126 @@ These are load-bearing; several rider-visible bugs traced to them:
   statistic** (including the median — on long hops the bad samples were the
   majority). Without it the planner priced an 8.4 km ride at 97 seconds.
 - **Routes 9 and 10 repeat stops** for the West Campus out-and-back. Keep the
-  sequence verbatim and index by position; de-duplicating loses real legs.
+  sequence verbatim and index by position; de-duplicating loses real legs. (Route
+  9's sequence is also in the wrong ORDER upstream, and the network repairs it
+  before use — see "When the published stop ORDER disagrees with the published
+  line". `Route.publishedStops` is what `/api/buses` still serves.)
+- **`arrivals.dwell_sec` is NOT standing time — it is anchor residence time.**
+  `detector.ts` computes one `elapsedSec` per anchor transition and emits it
+  as BOTH the dwell event and the segment event, so `arrivals.dwell_sec` and
+  `segments.travel_sec` are the same number (97.6% byte-identical over 29,179
+  joined rows). Joining the two tables to split dwell from drive returns
+  "drive = 0, dwell = 100%", which is arithmetically correct and meaningless.
+  The split exists only in `raw_positions` (6 h retention). PR #40 rested on
+  the opposite premise and was reverted. See `docs/eta-error-budget.md`.
+- **The feed has a ~30 m position deadband.** Upstream sends a new coordinate
+  only once the bus has moved ~30 m: 2 of 33,118 distinct fixes moved under
+  28 m, and the floor is 30.0 m at Δt = 5 s, 6–10 s and 11–20 s — constant in
+  metres, not in speed. So a repeated fix is a *censored observation*
+  (|Δx| < 30 m, an upper bound on speed), not noise and not missing data. It
+  also puts the velocity quantum at 6 m/s ≈ 13 mph, which is why acceleration
+  and inertia are not estimable from this feed at all.
 - **The feed repeats a position rather than interpolating**: 53.6% of
   consecutive samples are identical coordinates (runs of 15 s typically, up to
   28 min). Anything derived from consecutive positions must account for it —
   naive speed reads 0 mph on 54% of samples and calls a *moving* bus stopped
   on 21% of them. Measured 2026-09-02; see `docs/bus-speed.md`, which also
   records why a Kalman filter is not the answer.
+
+## The ring estimator (every line, and the only one, 2026-09-06)
+
+Arrivals are priced by `web/src/eta/`, one probabilistic model. **There is no
+second arithmetic.** The anchor + gate + stall-credit + approach-zone stack it
+replaced was deleted on 2026-09-07 — `web/src/anchorGate.ts`,
+`web/src/hopPricing.ts`, `findRouteAnchor` and its dials in `web/src/anchor.ts`,
+the fallback half of `web/src/arrivals.ts`, `LEGACY_SPLIT_ROUTE_IDS` /
+`splitServedForRoute`, and with them `MODEL_ROUTE_IDS`, `modelServesRoute` and
+`modelPricesRoute`. `isBusOnRoute` and `registerRoutePaths` stay in `anchor.ts`
+(many callers). The replays keep their OWN copies of the retired code under
+`scripts/eta-replay/legacy/`, because the `MODEL_ROUTES=""` arm is the
+counterfactual baseline every retirement was measured against; it is no longer
+a replica of the client, and the scripts say so.
+
+**Nothing declines any more.** The model used to hand two classes of route to
+that arithmetic, on its own evidence and never by name, and both declines were
+closed by measurement:
+
+- a route with no measured drive (`tables.priced`, the grocery lines) now
+  takes the level above in the hierarchy — hop `dq`/`drive` → the ROUTE's pace
+  → the ALL-ROUTES pooled pace the calibrator serves (`computePooledPace` /
+  `withPooledPace`, flagged `pooled` / `spmPooled`; 0.1363–0.1535 s/m over
+  n = 9,077 on the 9/4 tables), and the stop's table → the ROUTE's class pool
+  → the NETWORK's class pool (`globalClassPools`). Dangerous tail on the
+  untimed line 59.1 → 19.7%, every other route byte-identical (#157).
+- a ring the published line could not trace (`ring.bridged`, Green) was fixed
+  at the source: `src/network/alignStops.ts` reads the stop ORDER off the
+  published polyline, taking Green's replay median 288.8 → 70.1 s and its
+  dangerous tail 56.1 → 12.1% (#160).
+
+**`web/src/eta/no-bridged-ring.test.ts` is what keeps it that way**: it builds
+the ring for every route in the checked-in `/api/buses` payload fixture and
+fails if any is `bridged`, or if `buildTables` cannot price one. An upstream
+sequence change that re-bridges a ring now fails CI, because there is no
+longer a second arithmetic to catch it silently.
+
+The only thing that declines a route now is having **no ring at all** — fewer
+than two stops, or a stop with no coordinate. A route whose polyline has not
+been registered is ringed on its stop CHORDS instead
+(`ringForBus`/`chordPath`), so the first render is not a special case: measured
+on the live payload, all 15 routes carry a path and `registerRoutePaths` runs
+in the same handler as `setBuses`, before React re-renders, so no poll ever
+reaches it — it is there so the deletion is sound rather than nearly sound.
+
+`docs/eta-ring-posterior.md` is the design, the measured decisions and the
+paired numbers. The short form of the model:
+
+- **State** is a distribution over 30 m cells on the published polyline ×
+  {standing, moving} (`ring.ts`, `filter.ts`), an HMM whose observation model
+  IS the feed's deadband: a repeated fix means "same cell", a fresh fix means
+  "new cell, near here", with the measured repeat rates for each mode. Table
+  profile on the ring (`setRingProfile`): per-leg speed, per-stop P(stop),
+  stand table and layover flag. A move off a stand splits departure vs
+  reposition by the STOP'S OWN hazard against a measured shuffle rate; the
+  stand's identity (`restStop`, read off the belief) is what the clamp, the
+  chip and the layover approach all key on. `resolveAnchorIndex` runs the
+  same step, so the map, the cards and the countdown answer from one belief.
+- **Price** is a distribution: every served quantile vector is a CDF with a
+  log-linear survival between knots (`dist.ts`); stands shrink toward the
+  route's layover / ordinary pool, drives toward road metres × pace
+  (`tables.ts`, per-occurrence stands `id#index`); chains are summed with
+  common random numbers over ring prefix sums (`arrival.ts`).
+- **The number is the lead LEG's mixture; the lead leg is a decision.** The
+  leg switches with hysteresis in the filter; the row shows quantile τ (0.5)
+  of that leg's standing + moving variants mixed by mass — so a departure
+  lands on the poll it is seen — and a 10–90 range that widens to the full
+  mixture while the lead holds under 0.8. The #119 clamp stays as a display
+  rule keyed on the rest identity, kept (not applied) across a moving spell.
+  A shown MODE decided with hysteresis was tried and withdrawn: it held the
+  standing number until the bus cleared the rest radius and cost the
+  operator's test case its strands (docs/eta-ring-posterior.md §3).
+- **The rest's clock is its earliest known origin**, never the served clock
+  alone: the collector's clock restarts on ITS 125 m rule and switches source
+  between `at_stop_since` and `stationary_since`; read directly it restarted
+  a layover's residual from zero and flapped every kerb-stop number in the
+  simulator. A rest is attributed to a stop only when the stop's zone holds
+  the majority of the standing mass in the rest mask.
+- **Gate every change** with `gps-replay.ts` per route first (minutes), then
+  the rider simulator's FIXED/INTRODUCED split (`pair-by-route.mjs`), chain
+  block first. Since the arms are no longer switchable in one process
+  (`MODEL_ROUTES=""` now selects the replays' OWN legacy copy, not the
+  client's), run each arm from its own worktree into its own `REPLAY_OUT`
+  (`CLIENT_ROOT` for the rider-sim); `scripts/eta-replay/model-patch.ts`
+  (bounded by `MODEL_NOW`) serves `q/drive/dq/pstop/pace` to a replay. **A
+  full-day rider-sim pins all four of the Pi's cores for three to four
+  hours** — it crashed the machine on 2026-09-06; slice it by route and by
+  `FROM`/`TO`, and `nice` it. In `common.ts`'s metrics, `pessimistic120`
+  (predicted > actual: the bus beat the promise) is the dangerous tail;
+  `optimistic120` is the rider waiting.
+- Constants in `filter.ts` are measured or derived, not tuned, and each
+  carries the measurement it came from (the off-route emission weight is
+  derived from the loop length, not a floor). A case the model gets wrong is
+  fixed by finding which of the kernel, the likelihood, the tables or the
+  display rule is wrong — not by a new rule.
 
 ## ETA accuracy: measure with the replay, not by eye
 
@@ -615,17 +911,214 @@ and run both scripts; a few minutes each). Findings that constrain changes:
 - **A bus's holding so far does not predict its holding ahead** (58,005
   windows): correlation −0.03, and −0.09 once you control for which stops are
   ahead. A perfect oracle would be worth 4.2 s. Not built.
-- **The anchor is the next lever**: where `findRouteAnchor` disagrees with the
-  detector (13.4% of positions, concentrated on Green/Purple/Orange East/Pink)
-  the median error is 367 s vs 99 s. A perfect anchor would take the median to
-  103 s and the mean bias to +2 s.
+- **The anchor WAS the next lever, and it was two defects in the candidate
+  test** (2026-09-04, reports #95 and #126; the write-up is
+  `docs/eta-accuracy.md`, "What the lever was"). Where `findRouteAnchor`
+  disagreed with the detector the median error was 367 s against 99 s, and a
+  perfect anchor would reach 103 s / +2 s bias.
+  - **A leg is the ROAD between two stops, not the chord.** Measuring to the
+    chord loses the leg the bus is on for 19.64% of polls (3.63% measured to
+    the published line): Blue West's Canal / Munson -> Mansfield / Division
+    bows 200 m off its own chord, so the only candidate left was the RETURN
+    down the same road and a bus 33 s from the kerb was re-priced a lap away.
+    Same mistake as the straight diagonals on the map, same fix —
+    `traceStopLegs`. A route with no registered path still uses the chord.
+  - **`last_stop_id` EXCLUDES, it does not rank.** The old sort ordered
+    candidates by forward distance from it and used GPS only as a tiebreak, so
+    it took the earliest in range however far away. Upstream froze that value
+    for seven minutes and five stops on Red #316 and the anchor sat a stop back
+    for whole hops, then caught up in one poll — 10 min to 5 min, the vanished
+    hop being 344 Winchester's layover. Now a candidate more than
+    `ANCHOR_FEED_LEAD_HOPS` (5) ahead is dropped and the GPS decides among the
+    rest, with forward order breaking a tie inside `ANCHOR_NEARER_M` (80 m).
+    **That band is the whole safety of the rule**: at 30 m the GPS overrules
+    forward order between the two anti-parallel legs of an out-and-back and the
+    anchor lands a LAP out of position more often (`branch-lock.ts`: Green 11.1
+    -> 13.7%, Purple 22.2 -> 27.8%); at 80 m both are back exactly where master
+    had them. It is bounded above by #316's own disputes, 113 m and 90 m apart.
+    And without any band a bus jittering at a kerb flips the anchor at 96.7% of
+    the network's stops.
+  - Together on `gps-replay`: mean bias −88.7 -> −61.0 s, moving-bus next-stop
+    median 47.6 -> 45.4 s, and where the anchor disagrees with the detector
+    −431.8 -> −162.5 s. **Do not read the disagreement RATE as the arbiter on a
+    fold** — it rises on Pink and Purple while their rider error does not, it
+    scores against an oracle that is itself a distance to the CHORD, and the
+    operator waived it as a gate on 2026-09-04 (`anchor-sweep.ts`'s header).
+  - **The gate is `rider-sim` paired per route as FIXED/INTRODUCED, never as a
+    total** — and read that way the two halves TRADE BY ROUTE. The window alone
+    is Purple-positive (strand 82 fixed / 28 introduced); adding the selection
+    rule makes it 65/75, while buying Red (strand introduced 48 -> 13) and Pink
+    (50/102 -> 55/67). Purple's headline strand share moves only 12.0 -> 12.3%,
+    so a totals reading calls that clean and it is not. **Shipped both anyway**
+    (operator, 2026-09-04): Red and Blue Day are what riders use and Red is the
+    founding complaint, so Red's 938-jumps-against-12 outweighs half a percent
+    on the West Campus route while totals, Green, departures and the fold count
+    all pass. The trade is GEOMETRIC — Purple's out-and-back puts two
+    candidates on the same physical road facing opposite ways, where forward
+    distance is the right tiebreaker, while Red's disputed candidates are on
+    distinct geometry where GPS should win. **Fix that with a fold-aware
+    selection rule, never with a per-route switch.**
+- **On an out-and-back, direction of travel picks the branch — and only for a
+  bus that is moving.** Green and Purple run out to West Campus and back along
+  the same road, so the same coordinates belong to two legs at once; neither
+  distance nor `last_stop_id` can separate them (a Green bus on I-95 sat 135 m
+  from the outbound chord and 139 m from the inbound one with `last_stop_id`
+  frozen for a 5 km run). `findRouteAnchor` now takes the previous DISTINCT fix
+  (`noteFix` in `anchorGate.ts` remembers it on the same store the gate uses)
+  and drops any candidate leg more than 127° against the step. Strand share on
+  the rider simulator: Green 32.3 → 27.4%, Purple 29.5 → 27.1%, Red unchanged
+  at 18.0 → 18.2%. **Do not loosen the 127°** — at 90° it helps a branch-lock
+  index count on every route and makes riders worse on Purple and Red, because
+  most of their ambiguity sits within 100 m of a stop where a "step" is a bus
+  shuffling at a kerb. And **do not let direction release the anchor gate**:
+  measured, Green improves and Purple ends up worse than master. What is left
+  is the stationary half of the ambiguity, which no geometry can settle —
+  42.8% of Purple's ambiguous polls, 23.2% of Green's; it is the estimator
+  rewrite's job. `scripts/eta-replay/branch-lock.ts` scores the mechanism.
+- **There is ONE estimator now, and there were two until 2026-09-04.** The
+  route cards on the Map tab (`StopList`) carried their own inline arithmetic —
+  nearest stop by squared lat/lon DEGREE delta as the anchor, a bare sum of
+  segment averages as the number, a de-duplicated stop list. Every fix in this
+  section had gone to `computeUpcomingArrivals` only, because rider reports
+  arrive tagged `view=trip`. Measured over a day (`docs/card-vs-trip.md`,
+  948,072 paired rows) the two surfaces printed the same minute on 14.4% of
+  rows and were five or more minutes apart on 36.8%. The number that decided
+  the merge was not accuracy but the SEQUENCE: the card's ETA was not a
+  function of `now` at all, so it was **frozen on 89.3% of polls where the bus
+  had demonstrably moved** and then fell by a whole hop at once — the
+  operator's founding complaint, on the surface nothing had touched. After:
+  10.4% when this was first measured, and **16.7% re-measured on top of #119**
+  — the rise is that PR's non-increasing standing ceiling doing its job, which
+  deliberately HOLDS a number flat rather than letting it climb while a bus
+  sits, so some of what this metric calls "frozen" is now the intended
+  plateau. Read the two together, not as a regression.
+  `StopList` now makes ONE shared `computeUpcomingArrivals` call over
+  every stop (0.93 ms; fifteen per-line calls would be 6.2 ms) and anchors
+  through `anchorIndexOnList`. **Do not add a second estimator back** — if a
+  new surface needs an ETA, it calls that function.
 - **Own-bus "live pace" (report #64) is measurably worse** (+18.5 s median).
   Not built; the numbers are in the doc.
-- `predictions_log` is empty — nothing records what riders were told. The
-  replay is the substitute; the live browser harness
-  (`scripts/eta-accuracy.mjs`, now parametrised by `BOARD_ID`/`DEST_ID`/
+- `predictions_log` now HAS a writer (see "What riders were told" below). Until
+  it does in production, the replay is still the substitute; the live browser
+  harness (`scripts/eta-accuracy.mjs`, parametrised by `BOARD_ID`/`DEST_ID`/
   `ROUTES`/`ROUTE_LABEL`) scores ~10 pairs a run and only the option it can
   see, so it is a sanity check, not a measurement.
+
+### What riders were told (`predictions_log`, `docs/prediction-log.md`)
+
+Every accuracy and stability figure here used to be a RECONSTRUCTION — replay
+the arithmetic over stored positions and assert that is what the screen said.
+That has been wrong expensively: a family of stability numbers turned out to
+have been measured against a client that had not shipped since March, and a
+hotfix's before/after was credited to the wrong PR. The ETA is computed in the
+BROWSER, so only the browser can say what it displayed; a server-side recompute
+would reproduce that failure by construction.
+
+So a sampled share of page loads posts what they showed
+(`web/src/shownLog.ts` → `POST /api/shown`), and **every row names the bundle
+that produced it** (the content hash out of `/assets/index-<hash>.js`).
+
+**The privacy shape is why this table is allowed to exist, and it is different
+from `daily_actives`':** a row is a statement about a BUS — `(bus_name,
+route_id, to_stop_id, stops_ahead, predicted_sec, predicted_at, client_build)`
+— with **no identity accepted at all**, not even the `x-anon-id` the poll
+already carries. Three things hold that:
+
+- **The quantity does not depend on the rider.** `computeUpcomingArrivals`
+  prices (bus → stop); the rider's position enters one layer up, in the walk
+  legs and `pickLiveArrival`. A row cannot encode a location even indirectly.
+- **The server deduplicates before writing.** `(bus_id, to_stop_id,
+  predicted_at)` is UNIQUE with `predicted_at` floored to 15 s, so thirty
+  riders at one stop in one bucket produce ONE row: a row means "at least one
+  client had this on screen", never "a rider was here". Same move bounds the
+  write volume by (buses x stops x buckets), not by traffic.
+- **The client sends an AGE, not a timestamp.** The server subtracts it from
+  its own clock and floors, so a wrong or hostile client clock cannot write a
+  row at an instant that never happened — which is what makes the instants
+  pairable with an arrival at all.
+
+15 s is the canary's and rider-sim's own cadence, so a logged sequence and a
+replayed one line up without resampling. Retention is **30 days**, deliberately
+shorter than the 90 of its neighbours (`arrivals` outlives it, so a row is
+pairable for as long as it exists), swept by the collector's hourly batched
+delete. Cost follows `actives.ts`: nothing writes on a request, a 60 s flush,
+`INSERT OR IGNORE`, every path non-throwing.
+
+`POST /api/shown` is a public write and is validated as hostile: the bus must
+be live now, the stop must be on that bus's route, ranges checked, per-IP rate
+limit, first-writer-wins so a late poster cannot overwrite a bucket.
+`SHUTTLE_PREDICTION_SAMPLE=0` is a kill switch that reaches the fleet — the
+server's reply carries the live rate, so clients stop within a minute with no
+deploy and no extra request.
+
+**The pairing** is the thing nobody could do before: `GET /api/predictions`
+(`npm run predictions`) returns each reading beside the arrival that followed
+it and the signed error, summarised **by client build**. Admin HEADER only, and
+deliberately outside `/api/stats` so the stats cookie's `Path=/api/stats` scope
+is untouched. It pairs on `bus_name` (the identity invariant), not `bus_id`.
+Use it to check `rider-sim` against reality — the procedure is at the end of
+`docs/prediction-log.md`; when the two disagree, the logged row wins.
+
+### The operator's own ETA, in the same table (`surface = "upstream"`)
+
+Every accuracy number here was ours against the arrivals we detected, which
+answers "are we good" and never "are we better than what the rider would
+otherwise have used". The official Downtowner app publishes a prediction for
+the same vehicle at the same stop off the same feed, so
+`src/collector/upstreamEta.ts` records it into `predictions_log` with
+`surface = "upstream"` — same table, same dedup key, same retention, same
+`arrivals` to pair against. A comparison is then a query, not an argument.
+
+- **The endpoint was read, not guessed.** `GET /routes_eta.php?stop=<id>` →
+  `{"etas":{"<id>":{"etas":[{avg,bus_id,bus_name,route},…]}},"calculation_time":…}`,
+  found in the official SPA's own bundle (`assets/index-*.js`). `bus_id`,
+  `bus_name` (`#310`) and `route` are byte-identical to `/routes_buses.php`, so
+  no identifier reconciliation is needed — verified against a live fleet, not
+  assumed.
+- **`avg` is WHOLE MINUTES.** ~±30 s of their error is rounding (~15 s on a
+  median |err|) before any real disagreement. Every reader prints that caveat;
+  do not read a 20 s gap as meaningful.
+- **It is per stop, so this is a SAMPLE, not a census.** No fleet-wide form
+  exists (the official app's own "many stops" path is one request each). We
+  make 12 requests per 30 s — 0.4 req/s, against the buses poll's 0.2 —
+  five focus stops every cycle (Prospect/Canner, Division/Prospect,
+  344 Winchester, 72 LEPH/60 College, 333 Cedar, resolved BY NAME so a
+  renumbering drops out rather than mis-points) plus a rotation over the stops
+  riders have actually watched, because a head-to-head needs a row in both arms
+  and ours only exist where somebody was looking.
+- **`upstream` is NOT on the wire allowlist.** `SHOWN_SURFACES` is what a
+  browser may claim it displayed; `PREDICTION_SURFACES` is what the column may
+  hold. Keep them separate — if a client could post `upstream`, anyone could
+  write into the arm we score ourselves against.
+- **Every reader of "how accurate are WE" must carry `RIDER_SURFACES_SQL`.**
+  This shipped without it for one hour on 2026-09-04 and `/api/predictions`
+  reported n=3056 of which 1586 were the operator's rows; the v1-compat
+  `/api/accuracy`, which is the number RIDERS see, would have done the same.
+  Three readers scan the table (`accuracy.ts`, `v1compat.ts`, `paired()` in
+  `predictions.ts`) and a test pins all three by source. `/api/predictions`
+  takes `?surface=upstream` to read the other arm — never both at once.
+- `from_stop_id` / `stops_ahead` come from OUR live fleet (upstream does not
+  say) and are `-1` / `0` when we cannot see the bus. Never invented.
+- **It is 40x the volume of the rider rows, and that governs two constants.**
+  A row needs no rider, so the poller writes ~120k/day against the surfaces'
+  ~3k. At the table's 30-day window that is ~440 MB on a volume with 427 MB
+  free (measured 2026-09-04), so `upstream` rows get their OWN 7-day sweep
+  (`UPSTREAM_PREDICTION_RETAIN_DAYS_DEFAULT` in `collector.ts`, a second
+  cutoff over the same table), and anything promised further out than 30 min
+  is not recorded at all (`MAX_UPSTREAM_ETA_SEC`) — upstream answers with every
+  bus on every route out to 49 min, which is a third of the rows and none of
+  the value. Raise either and the disk arithmetic moves with it.
+- Failures are invisible: own timer, own in-flight guard, every path
+  non-throwing, a failed cycle costs 30 s of measurement. Off by default
+  whenever a caller injects an `UpstreamClient`, so no test reaches the
+  network; `SHUTTLE_UPSTREAM_ETA=0` disables it in production.
+
+`scripts/eta-replay/compare-upstream.ts` is the controlled read: per-arm by
+horizon, then **head-to-head on shared (bus, stop, minute) pairs that matched
+the same arrival** — the number to quote, because the arms' coverage differs.
+It withholds any cell under 50 paired rows rather than print a median that
+flips sign the next hour. `/stats` shows the one-line version, and `/api/stats`
+sends `etaVsOfficial: null` until both arms clear that floor.
 
 ### The accuracy gate: a recorded pass, before/during/after a dwell
 
@@ -638,6 +1131,14 @@ Prospect/Hillside at each of 115 recorded moments, against when the bus
 actually arrived. `npm run test:accuracy`, and `.github/workflows/accuracy.yml`
 runs it on every PR touching the estimator (it is in `npm test` too, so the
 deploy gate catches it either way).
+
+A second recording joined it on 2026-09-04:
+`web/src/accuracy-approach-rest.test.ts` replays Red #310 taking that same
+344 Winchester layover 147 m SHORT of the marker (see "The layover taken SHORT
+of the marker"). Its two arms are the same client over the same recording,
+differing in one payload field — so "master" there is not a reconstruction of
+the old client, it is this client with `stationary_since` withheld, which is
+exactly what a browser talking to an un-deployed server sees.
 
 It exists because unit tests did not catch the 2026-09-03 defect: each of them
 pinned one contrived moment, and the failure only appears in a bus MOVING
@@ -652,12 +1153,1038 @@ the moment and both numbers.
 Regenerate it (`node scripts/record-layover-pass.mjs`) only when the route
 changes shape, and say in the PR what moved.
 
+### The stand/drive split is served (2026-09-04)
+
+PR #81's first-hop pricing — `median(stand − r | stand > r) + drive` at the
+stop, drive alone prorated en route (`web/src/hopPricing.ts`) — was live and
+INERT for a night: `/api/buses` carried neither `dwells[route][stop].q` nor
+`segments[route]["A-B"].drive`, so every request took the fallback path. The
+calibrator now reads `stop_visits` / `legs` (PR #83's derivation) on its
+5-minute cadence and attaches, on the **`at_stop_since` clock** (the client's
+`r`), pooled over 30 days — a (stop, hour) cell has a median of two samples:
+
+- `q` / `qn` — ten ascending stand quantiles at levels `(i + 0.5) / 10`
+  (`STAND_Q_COUNT` is part of the wire contract) over PINNED visits:
+  `departed_at − pinned_at` for a stopped one, **0 s for a pass-through the
+  detector pinned**. That zero is deliberate and measured: over stopped visits
+  only, the client billed the median stopped stand from the instant `at_stop`
+  appeared to riders whose bus was rolling through — Pink 280 → 431 strands,
+  Blue Day's Prospect / Huntington +28 in the simulator. `qn` counts both.
+- `drive` / `driveN` — the **median** one-hop leg, `at_stop_since(B) −
+  departure(A)`; a drive includes any hold at a light, and one red should
+  not move the number the way it moves a mean.
+
+Three rules to preserve:
+
+- **Serve what is measured with the true counts; never pre-filter.** The
+  client gates (`MIN_STAND_SAMPLES` 20 / `MIN_DRIVE_SAMPLES` 10) and prices a
+  thin hop exactly as before. A server-side floor would drift from the
+  client's and silently hide cells the client would take.
+- **Served only on routes the rider simulator has cleared**
+  (`SPLIT_SERVED_ROUTE_IDS`: Red, Blue Day), and never on a route that repeats
+  a stop (`foldRoutes`: Green 9, Purple 10 — one stop id cannot carry two
+  passes' tables, and the derivation inherits the detector's anchor on the
+  folds). The client's sample gate is NOT sufficient: Pink cleared it on 11
+  hops and went **280 → 431 strands** (LEPH / 60 College +122). The reason is
+  in the arithmetic, not the data — master is *pessimistic* at a layover-ish
+  stop (the stall credit is bounded by the dwell, so a rider at LEPH is
+  promised ~400 s while the bus stands at York / Cedar) and the conditional
+  *median* replaces that with an unbiased number, stranding the half of
+  riders whose bus leaves before its median. Red nets a win (1,041 → 769
+  strands, jumps ≥180 s 39% → 23%, the Winchester departure-poll rise
+  +220 s → +2 s) only because the cliff there was worse; Blue Day's jumps
+  fall 25.6% → 8.6% for +9 strands in 6,470. Served everywhere, Purple went
+  163 → 188 and Green 165 → 173. **Adding a route means running the pair**
+  (`scripts/eta-replay/rider-sim/run.ts`, master vs `PAYLOAD_PATCH`, then
+  `--compare`) and pasting its numbers beside the id. The fold exclusion is
+  interim, not a finding that the folds cannot be helped: a moving bus
+  reveals its branch over two fresh fixes; only a bus stationary on a shared
+  segment with no history is undecidable (`docs/eta-estimator-design.md`). A
+  lower conditional quantile than the median on the client is the obvious
+  next experiment for Pink — measure it there before serving it anywhere.
+- **Whole seconds on the wire, and the payload is not compressed in
+  production** (`content-encoding` is absent), so the cost is the raw one:
+  +3.9 KB per poll (+4.4%) for Red + Blue Day; +12.4 KB (+13.9%) if every
+  line were served. Compressing the cached payload string once per version
+  would be the real fix; not done.
+
+Validated against `docs/data/departure-tables-2026-09-03.json`: Red 344
+Winchester `q` p5/≈p50/p95 = 118/302/598 s over n=24 (reference
+118.1/302.8/598.1), drive 15 s over n=25 (reference median 15.1).
+
+**A bus standing still may not push its own arrival later**
+(`flooredStandSec`, `web/src/hopPricing.ts`). The conditional median RISES
+wherever the stand CDF flattens — on Red's 344 Winchester table it climbs 42 s
+across r = 107..168 s and 15 s across r = 456..473 s — so the app was quietly
+sliding the predicted arrival later while the bus sat. That is what the
+operator caught live on 2026-09-04: #310 parked, the pause chip counting up,
+the board frozen on "5 min". Two things it is NOT:
+
+- **It is not the step bug.** PR #99 already replaced the point-sample median
+  with the interpolated CDF; the curve is continuous (no single second moves
+  it by more than 2.3 s). Continuous is not decreasing, and the rise survived.
+- **It is not the slew limiter the operator rejected** ("it can go 5->1 if it
+  leaves early. but if it is jitter we need a fix"). A rate limiter damps real
+  corrections. A bus standing still produces NO EVENT — the rise is an
+  artifact of conditioning on elapsed time, not news arriving. The ceiling is
+  consulted only on the standing path and is dropped the instant the bus
+  rolls, so the departure collapse is bit-identical to master's.
+
+The ceiling lives per (bus, stop) on the caller's `AnchorStore`, beside
+`standingAt`'s memory and the anchor gate's, and resets on a different stop, a
+restarted hold clock, a stale entry or the departure. **A storeless caller —
+every hypothetical, every pure test — prices exactly as it did before.** The
+chip reads the same ceiling through the same key (`shownStandSec`), because
+the hold shown must be the hold billed.
+
+Do not monotonise the CDF inside `remainingStandSec` instead: the rise is the
+correct conditional median and the estimator's measured bias depends on it
+(dropping the elapsed term costs 203 s MAE / +141 s bias).
+
+`web/src/accuracy-layover.test.ts` now replays the recorded Red pass a second
+time with the split served (`__fixtures__/red-split-tables.json`, route 3's
+own tables from 2026-09-03) and a store open — the first block is storeless
+and had no way to see any of this. It pins the defect as a fixture (unclamped,
+the board climbs 55 s while the bus stands) as well as the fix.
+
+### The stand at a layover is conditioned on the bus's OWN LAP (2026-09-10)
+
+`web/src/eta/lap.ts` + `src/calibrator/lapFit.ts`, written up in
+`docs/stand-lap-covariate.md`. The seconds from a bus's previous DEPARTURE
+from a stop to its next arrival there predict how long it will stand: a bus
+back early carries slack and discharges it. Fitted per cell over 90 days of
+`arrivals`, the slope is about **-0.5 s of stand per second of lap** (-0.50 at
+344 Winchester, -0.77 at Union Station (N) on Red), and held out it takes the
+stand MAE **127.8 -> 113.5 s** over 39 cells.
+
+Five rules, each of which cost a measurement:
+
+- **A lap is not any gap.** Five overnight or depot gaps in ninety flip the
+  correlation at 344 Winchester from **-0.64 to -0.05**. Outside
+  `[LAP_BAND_LO, LAP_BAND_HI]` the factor is exactly 1.
+- **The band is a multiple of the CELL'S OWN LOOP, never minutes.** An
+  absolute 40-80 min window fits Red's 59.8 min loop and keeps 74 of York /
+  Cedar's 2,376 gaps (loop 40.3 min), flipping its correlation to **+0.478**.
+  0.65-1.65 is the held-out MAE optimum of a flat region (116.1 s against
+  116.6 at 0.60-1.80 and 116.3 at 0.70-1.50); **the correlation keeps rising
+  as the band narrows and the MAE does not** — a tighter band keeps a more
+  linear subset, which is not a better estimate.
+- **Apply it to EVERY stand in the chain, continuously.** A bus's previous
+  departure is known 53-56 min before the stand it predicts, so the client
+  prices `lap = (seconds since it left the stop) + (nominal seconds until it
+  gets back)`; both halves move at a second per second in opposite directions
+  and the factor is near-constant through the approach. **PR #184 read the
+  same covariate in one place — the stop the bus stands at NOW — so the whole
+  correction (median 95 s at Winchester, 138 s at Union Station) landed in one
+  poll: 3 jumps fixed, 43 introduced.** The gain and the lurch were the same
+  number.
+- **It buys STABILITY, not accuracy.** Paired on Red over a held-out day, 1,664
+  waits: strand **11 fixed / 5 introduced**, reversal >= 60 s **43 / 7**,
+  jump >= 180 s 25 / 21, drops and pin untouched, worst drift improved 592 /
+  worsened 101 — and first-promise |miss| improved 254 / worsened 256, a dead
+  wash. **The DANGEROUS tail falls with it**: rider-sim's `early > 60 s` is
+  `firstSightMissSec < -60`, i.e. the bus arrived BEFORE the promised window
+  (predicted > actual — the bus beat the promise, the rider strolls down and it
+  has gone), and it goes **22.6 -> 14.8%**. What rises is the mild half, riders
+  waiting longer than told, 26.8 -> 32.4%. Do not read that pair the other way
+  round; the sign convention is `lib.ts`'s own test, `-339 // promised >= 420
+  s, came after 81`.
+- **A fit is SERVED only where it beats what it replaces, per CELL.**
+  `gateCell` cross-validates inside the cell on day-blocked folds and
+  bootstraps the paired absolute-error difference BY DAY; the cell is served
+  only when the upper end of the one-sided 90% interval is below zero.
+  **66 candidates -> 22 served.** Both cells whose ungated fit was worse than
+  pooled drop out (100 Church Street South +4.5 s, 333 Cedar on Blue Day whose
+  interval crosses zero), and so does 300 George St. Red's two cells pass
+  unchanged. **Do not replace this with a route allowlist** — that is the
+  fragile version, and serving a correction at a cell where it is measurably
+  worse is exactly how the split stand tables took Pink 280 -> 431 strands. The
+  gate is agnostic about the SIGN: three survivors fit a positive slope and are
+  served on evidence, not mechanism.
+- **And served only on a ROUTE whose rider table has been watched.**
+  `LAP_SERVED_ROUTE_IDS` = `{3}` (Red). The cell gate proves the fit beats
+  pooled on held-out stand MAE, which is necessary and NOT sufficient — the
+  split stand tables improved Pink's stand estimate and took it 280 -> 431
+  strands, because an unbiased estimate strands the half of riders whose bus
+  leaves before the median. **A better point estimate can be worse for a
+  rider.** So this is a rollout LEDGER, not a per-route tuning knob: the
+  arithmetic is identical everywhere, and adding an id means running the pair
+  and pasting its numbers beside it (a test fails if an id has no evidence line
+  in the source). 66 candidates -> 22 pass the cell gate -> **2 served**; the
+  20 held back are held for want of rider evidence, not merit, and **333 Cedar
+  on Blue Night (13:10, delta -120.9 s held out) is the largest effect on the
+  network** and the next one to unlock.
+- **The stop's own lap wins; a regulator stop does not.** Swept over every
+  upstream stop at nine cells, the stop's own lap ranks first at eight, and the
+  ninth loses by 0.027 to a stop three minutes upstream on the same run. 333
+  Cedar is not on Red at all.
+
+**The lap clock is warm-started, and it has to be.** `Collector.lapClock` is
+in-memory and fed only by dwell events, so without a seed a bus carries no
+`lap` until it completes a loop AND departs a fitted stop — up to an hour on
+Red, after every deploy. Measured minutes after #206 shipped: `lapB` on both
+Red cells, `lap` on **0 of 13** live buses. `seedLapClock` reads the last
+`departed_at` per (bus name, stop) inside the TTL at boot, after the first
+calibration. It is the only in-memory piece of this feature; the fit cache,
+the network's tables and the client's factor all rebuild themselves.
+**`etDay` is not `toLocaleDateString`** — that spelling is 166 us a call and
+put 21 s of `loadLapFits` on the boot path and the six-hourly refresh, both
+synchronous on the loop serving `/api/buses`. A shared `Intl.DateTimeFormat`
+plus an hour-bucket memo take it to 2.4 s. **The 90-day window was kept**: 45
+days is a third of the cost and leaves the served SET identical, but the served
+set is the wrong invariant — the COEFFICIENTS move, by a median 13.0 s of stand
+at 344 Winchester, and the paired rider result the rollout gate rests on was
+measured at 90 d. "Shorter window, more cells served" (30 d admits a third Red
+cell) is the gate qualifying a cell on thinner evidence, not more signal.
+
+The six-hourly refresh is on the serving loop and that was MEASURED, not
+waved through: the median process lives 17 min and only 8% of them reach the
+6 h timer (39 deploy gaps), a stall delays one poll rather than skipping it
+(interval 5 s, staleness already p90 4.4 s, `pollSkipped` 0), and `calibrate`
+itself already stalls **1.0 s every 5 min** against the fit's 2.4 s every 6 h —
+a 30x bigger duty cycle. Chunk `calibrate` before this. **What IS worth fixing:
+`CalibrationStats.durationMs` excludes `lapFitsCache.get()`, so the log line
+read 996 ms while the loop had been held twenty-one seconds. Log the fit's own
+duration.**
+
+Wire cost at the rollout-gated set: **+172 B a poll, +0.13%**. At the 22 cells
+the cell gate passes it would be +1,337 B / +0.98%; ungated, +2,770 B / +2.02%.
+
+**Headway — the gap to the bus in front — is measured and NOT served.**
+Conditioned on lap it is real at the regulated cells (partial -0.30 at Union
+Station (N)/13, -0.21 at 344 Winchester over 1,635 stands, 14 of 27 cells with
+a CI excluding zero) and it REVERSES at seven others; the n-weighted mean
+partial is -0.033 and adding it moves the held-out stand MAE by **0.9 s of
+111.8**. Do not re-add it without a cell-level gate.
+
+### The layover taken SHORT of the marker (2026-09-04)
+
+`at_stop_id` is published only within 75 m of a stop, so a bus that takes its
+rest just short of the layover marker publishes **nothing**, and the client
+prices it as DRIVING with the whole layover still ahead. The operator caught it
+live — Red #310, 13:28 ET — and called what would happen next before it did:
+"It is not driving; it is doing the stand now, in the wrong place. When it
+finally rolls the 140 m to the marker it will stop briefly or not at all, the
+promised 6-minute stand evaporates, and the rider sees the number drop several
+minutes at once."
+
+The recording says he was right on every count. Replayed
+(`web/src/accuracy-approach-rest.test.ts`), the board **froze at 481 s for the
+whole 7-minute rest** while the bus's real remaining time fell 550 → 150 s,
+ending **331 s LATE** — the direction that has a rider stroll down and find the
+bus gone. The detector then logged a stand of **115 s** at a stop whose served
+table says the typical hold is 269 s, so the short sample poisons the table too.
+
+**A bus at rest in the approach zone of a layover stop IS standing at that
+stop.** Elapsed runs from when it stopped, the remainder is conditional on it,
+#119's ceiling applies — the same arithmetic as a bus resting on the marker,
+because it is the same wait. Fixed, the same replay tracks 262 → 117 s, never
+climbing.
+
+⚠️ **The RULE below is gone; the requirement is not.** The zone and its three
+gates lived in `web/src/hopPricing.ts`, which was deleted with the legacy arm
+on 2026-09-06 (the ring estimator reads a rest off the belief instead). On the
+two recorded rests the belief does NOT hold this promise: it ends the rest when
+the bus rolls the last 83–147 m to the marker and charges a second stand there,
+a step of 144–190 s, bounded and recorded in
+`web/src/accuracy-approach-rest.test.ts`. That is shipped behaviour on Red
+since the estimator shipped, not a new defect, and the fix belongs in the
+belief's rest attachment (`eta/filter.ts`) — not in a distance rule bolted back
+on. Everything below is the record of what the retired rule did and why, kept
+because the next attempt must clear the same bar.
+
+`stationary_since` on `/api/buses` is the server half (+0.72% payload): the
+detector already had the clock (`BusState.stationarySince`) and simply never
+published it off a stop. `stationaryStopId` is null exactly when the bus is
+resting somewhere that is not a stop, which is the case in question.
+
+**The gates are a scalpel, and every one is measured** (90,170 production polls,
+all 15 routes, 04:40–13:40 ET). Long rests ≥ 3 min: 203; off-marker at all: 19.
+Adding the three gates, the rule fires on **one episode in nine hours — this one
+— and nothing else**:
+
+- **the NEXT stop in sequence, never the nearest.** This single constraint takes
+  the rule from six episodes to one. Stops 30 m apart can be nine apart in the
+  loop (Orange / Pearl), and a bus resting near a stop it has already served is
+  not waiting for it.
+- **a real rest.** The threshold is where the population separates, and it
+  separates sharply: 45 s → 23 episodes, 60 s → 16, 90 s → 4, **120 s → 1**,
+  150 s → 1, 180 s → 1. Below 120 s it catches Purple and Gold pausing 45–105 s
+  on approach and then taking the layover normally — crediting those cancels a
+  rest still to come, the direction that makes a rider miss the bus.
+  `APPROACH_REST_MIN_SEC` is 150, mid-plateau rather than at its edge.
+- **a layover stop**, judged by the very table the price comes from
+  (`remainingStandSec(q, 0) >= 120` plus `standAdequate`). On the recorded pass
+  344 Winchester scores 269 s and Canal / Munson 64 s, so the rule cannot fire
+  on the approach to the stop the bus just left.
+
+`APPROACH_ZONE_M` is 200 m and **the result is insensitive to it from 150 m to
+300 m** — the episode count is 1 at every radius in that range, because the
+other gates are what bind. Do not treat it as a tuning knob.
+
+**One visit, one stand.** When the bus rolls in, the detector re-pins the clock
+and `at_stop_since` starts fresh — #310's would have restarted after 7 minutes
+of waiting — so the memo keeps the EARLIER start across the roll-in. Without it
+the rider is handed the whole layover a second time and the countdown jumps UP
+at the moment the bus arrives.
+
+**The north end has four observed shapes, and one rule covers three of them.**
+On the marker (11 of 13 rests), short of it on the road (#310, 147 m), at the
+PREVIOUS stop's marker (#310 earlier that day, 7 min 45 s at Canal / Munson),
+and **off-route in the Science Park Garage lot** (#304, report #102). The lot
+is 32 m from a stop of that name which is *not on Red's sequence* and 144 m from
+344 Winchester — inside the zone — so the same rule prices it, and the second
+fixture pins it. Two details make that work and are worth keeping:
+
+- **The candidate comes from the GPS anchor, never from `last_stop_id`.** #304
+  came back from an 18-minute feed absence under a NEW `bus_id` reporting
+  Union Station (N), seventeen hops behind where it actually was. A rule keyed
+  on `last_stop_id + 1` would have aimed at State St Station. A test asserts
+  the published ids through that rest are all far from 344, so nobody
+  "simplifies" the candidate later.
+- **The detector's clock carries across the shuffling.** #304's rest reads as
+  283 s, not the three short ones a naive same-coordinate run would see, which
+  is what carries it past the 150 s gate.
+
+**The chip reads the same answer as the price** (`resolveStandingStop` in
+`liveAnchor.ts`). The pause chip used to derive its hold straight from
+`at_stop_id` / `at_stop_since`, which agreed with the price until the approach
+zone shipped and then stopped: the countdown priced a bus as standing while the
+chip beside it showed nothing and the row read as still rolling. That is report
+#102 — "a bus sitting in a garage lot was counted down as if on its way" — and
+it is the same "two answers, one screen" this module exists to end. The
+standing decision now lives in `liveAnchor.ts` once; `computeUpcomingArrivals`
+and the chip both call it.
+
+An approach hold is marked `nearby` beside the chip, and **it is a word rather
+than a `~` prefix on purpose**: this UI already spends `~` on approximate
+DURATIONS (`/ ~5:00` sits right beside it), so the same mark for an approximate
+PLACE reads as fuzziness about the number. It is also in the canary's
+`NOT_A_ROUTE`, because `isLabelish` matches any lower-case word and `label`
+prefers a match found BELOW the duration — where the expanded stop list lives.
+Un-guarded, an expanded card reported its line as "nearby" instead of "Red";
+`LIVE_HOLDING_NEARBY` in `canary-metrics.test.mjs` is the capture that proves
+the guard, and it fails without it. Same failure as "Contribute", same failure
+as #111, caught before shipping this time.
+
+### Two things measured and NOT built (2026-09-04)
+
+**Attributing the approach rest to the stop's stand table.** The obvious
+follow-up — make `stop_visits` count the rest so 344 stops collecting 115 s
+samples — does not survive measurement, and the cheap version is actively
+dangerous.
+
+The observation is already in the table: `anchored_at` is when the stop became
+the bus's nearest, `pinned_at` when it came within `AT_STOP_PIN_M`, and the
+flagship visit reads `anchored 13:27:48 / pinned 13:34:58 / departed 13:36:53`.
+A normal approach closes that gap in a poll (p50 **10 s**, p90 70 s, p95 110 s);
+a rest leaves it minutes wide (3.12% of pinned visits exceed 150 s). So the gap
+looks like a free discriminator. **It is not.** Counting a wide gap as stand:
+
+- moves the target barely — Red 344 Winchester p50 **270 → 306 s** on 5 of 45
+  visits — because 11 of 13 rests are already taken at the marker, so the table
+  was mostly right;
+- and wrecks stops that are not layovers at all. The wide-gap population is
+  dominated by idle and overnight buses parked near an arbitrary stop: Blue West
+  #126 at 333 Cedar carries gaps of 1263, 1070, 1026 and 989 s between 22:00 and
+  03:00 against a 62 s median there; Purple #332 sits 1356 s near 300 George St
+  (median 70 s). Un-gated it also puts 1065 s and 1054 s onto Red's
+  130 Prospect (N), whose median is 35 s — which would make it *look* like a
+  layover stop and so arm the client's approach rule there. **That is a feedback
+  loop into #130**, and it is the reason not to do this by gap alone.
+
+A `passed` outcome is not enough of a gate either (`RD #316 16:33:41` sat 660 s
+with 344 nearest and then rolled through without stopping). Doing it properly
+means the DETECTOR recording the rest explicitly — where the bus rested, for how
+long, inside the zone — and the CALIBRATOR deciding whether to count it, gated
+on a layover median computed from never-extended samples so the gate cannot feed
+on its own output. That is a schema addition for +36 s on one stop's p50; it is
+designed here and deliberately not built.
+
+**And #132 has since taken most of that ground from a different direction.**
+Merging restart-split arrivals moved 344 Winchester's median 273 → 310 s — the
+same magnitude, from a cause that was corrupting far more rows (1,486 split
+stands in 7 days against 5 approach rests in one). Measure what is left AFTER
+that merge before spending a migration on this.
+
+**Crediting a long hold at the PREVIOUS stop against the layover ahead.** This
+is the `[triage]`-worthy one because it has already been tried: `arrivals.ts`
+records that it shipped on 2026-09-03 and was reverted, because over a week of
+arrivals the layover was still taken as scheduled in 292 of 321 cases (91%).
+Re-measured on 2026-09-04 as fresh evidence, it does **not** overturn that.
+Fleet-wide only 10 cases clear a 150 s hold, 4 of them short — but on the pair
+the operator actually watched, **Red Canal / Munson → 344, three of four buses
+took a normal layover anyway** (145 s, 291 s, and 135 s against a 275 s median).
+Crediting them would make the ETA optimistic in the majority case, which is the
+direction that strands a rider. Green's Orange / Bishop → Orange / Edwards is
+3 for 3 short and looks like a real pattern, but it is one vehicle on one day
+and Green is a fold route excluded from the split. **Do not re-add without a
+week of evidence on the specific pair.**
+
+The **previous-stop** shape therefore stays open by decision, not by oversight:
+`at_stop_id` reports Canal / Munson correctly, so the elapsed is attributed
+correctly — but 344's full stand is still charged ahead, and sometimes the bus
+takes only a token pause there.
+
+Two things this is NOT. It is not a slew limiter: the standing term is dropped
+the instant the bus rolls, so a genuine early departure still collapses at full
+speed (a test pins both arms turning on the same poll). And it is not the
+previous-stop case — #310's *earlier* rest that day was 7 min 45 s at Canal /
+Munson's own marker, which `at_stop_id` reports correctly and which still leaves
+344's stand charged ahead in full. That one, and the detector-side attribution
+so 344 stops collecting 115 s samples, are open.
+
+**Regenerate the fixture** with `node scripts/record-approach-rest.mjs` (the
+sibling of `record-layover-pass.mjs`; it finds an off-marker rest rather than a
+long dwell, and carries `stationary_since` per position so the test feeds the
+client exactly what the wire carries). Do not re-record it to make a change
+pass.
+
+**Backfill from the archive.** `scripts/backfill-departures.ts` runs the
+collector's own reducer over `~/shuttle-captures/positions-*.jsonl` and writes
+rows through the collector's own mapping (`src/collector/visitRows.ts`, shared
+with `persistVisits`), with a cutoff at the earliest live row and exact-key
+dedup (idempotent). `--out rows.json` + `scripts/backfill-departures-apply.cjs`
+(plain CJS, runs on the machine with `/app/node_modules/better-sqlite3`) is the
+production path. Without it the live tables start at 22:21 ET 2026-09-03 and
+Red's 344 Winchester hop needs ~a service day to clear the gates; with it, 60
+hops clear them at once (Red 29, Blue Day 31).
+
+**The cutoff belongs to the TARGET, and an empty backfill is a failure.** The
+first production run of this script emitted `{"visits":[],"legs":[]}` and exited
+0, under a per-route coverage table that looked exactly right — the table counts
+"the target after this backfill", so it reads the same whether the rows came
+from the run or were already there. The `--db` it was given had itself been
+backfilled from this archive, so its earliest `stop_visits` row WAS the
+archive's first sample, and every derived event landed at or after the cutoff
+and was correctly skipped. Two things now make that impossible to miss: `--target
+<path>` names the database the rows are FOR (the cutoff and dedup keys come from
+it; `--db` still supplies the network), and `checkBackfill`
+(`scripts/backfill-guards.ts`, unit-tested) refuses **any** run that keeps zero
+rows, and refuses a cutoff at or before the corpus's first sample even when
+`--allow-empty` is passed — since that one can only ever keep nothing. A failed
+run prints a `=== BACKFILL SUMMARY ===` block with the cutoff and its
+provenance, writes nothing, and exits 1.
+
+### The rider canary (`scripts/rider-canary.mjs`)
+
+Everything above scores predictions **in aggregate** — median error, share
+within two minutes. The canary is the only thing that watches the SEQUENCE one
+rider sees, which is the operator's complaint (2026-09-03): "i'm not worried
+about a few seconds. i'm worried about saying a bus is 10min away and then a
+few seconds later dropping to 1 second." Reports #64 and #32 are riders saying
+the same thing.
+
+**It is the standing watch.** On 2026-09-03 the operator retired the other one
+("remove the cron. the canary agent can do it all"), so this harness inherited
+the whole job. A line counts as running when `/api/buses` shows live buses on
+it — the server already drops out-of-service ghosts, so that is the
+service-hours gate and no schedule table is copied into the harness.
+
+**A route id on a bus is not a bus on that route.** "Live" is a bus ON the
+line by the app's own test (`busOnRoute` in `canary-metrics.mjs` mirrors
+`isBusOnRoute`, web/src/anchor.ts: within 500 m of the published polyline;
+the test pins the constant). On Sun 2026-09-06 at 17:42 Blue Night's #57
+reported route 13 from Whitney Ave in Hamden, 4 km from the nearest Blue
+Night stop, deadheading in for its 18:00 start; the canary counted "1 live
+bus", the rotation picked a ride "1 stop out" from its stale `last_stop_id`,
+and it filed `line-missing` against an app that had rightly left the bus out
+of every plan. The first reading blamed the in-service gate (`isBusInService`,
+a timetable window ± 90 min): measured, it passed #57 the whole time — 18 min
+before the open is inside the grace — and a test in `schedule.test.ts` now
+says so. Do not add live-evidence overrides to that gate on the strength of
+this finding; nothing measured needs them.
+
+**Two riders, two browsers, never more** (operator, 2026-09-06: "one red line
+rider always when its running and also another always that round Robin
+through running lines"). `--loop` runs both in one process, and every log
+line names its author:
+
+- `[red]` rides `CANARY_LINE` (the keepalive passes Red) on the operator's own
+  trip, Prospect/Canner → the School of Public Health, whenever that line has
+  a rideable bus. Otherwise it idles, and says so ONCE — when the reason
+  changes, not every cycle.
+- `[rotation]` rides every OTHER running line in turn: `CANARY_LINES` order,
+  advancing after each ride, skipping lines with nothing rideable
+  (`nextInRotation` in `scripts/canary-rotation.mjs`, unit-tested). Its place
+  is the label last ridden, not a counter — a line dropping out of service
+  must not shift every other line's turn. It never rides the dedicated line;
+  with only that line up it idles. Each ride is a RANDOM trip on that line
+  with a bus on its way (`randomTripForLine`: board 1–6 stops ahead of a
+  bus's `last_stop_id`, alight 4–11 further on, ≥ `MIN_RIDE_M`), the way
+  `~/eta-live/fleet.sh` and map-bot pick theirs, because a fixed pair only
+  ever exercises one pair of segments and the defects found so far live at
+  particular stops. **Only rides the planner would offer** (2026-09-06
+  16:25: on Grocery Ham's 6-stop loop the picker wrapped past the far end
+  and asked for a 5-hop, ~66-min ride for a 1.5 km walk; the app rightly
+  offered Walk and never Grocery Ham, and the canary filed `line-missing`
+  against it). `candidateRides` keeps a ride in one lap, at most half the
+  loop in hops and metres, under the planner's `MAX_RIDE_SEC` priced the
+  planner's way (`seg.avg` when `n ≥ 1`, else crow-flies at
+  `BUS_SPEED_M_S`), and faster than the crow-flies walk at
+  `WALK_EFFECTIVE_M_S` by two minutes — the three constants are parsed out
+  of `web/src` by the test so they cannot drift. No 4–11-hop ride → the
+  longest dominant one; none at all → the line is SKIPPED that cycle with
+  the reason logged, never ridden on a fallback pair.
+
+Before this it rode Red only and logged "nothing rideable" every ten minutes
+from dawn to dusk on a weekend while four lines ran. The second browser is
+launched 20 s after the first (two chromiums starting in the same second is
+the spike that hurts this Pi). Both riders honour the keepalive's restart
+flag between watches and the process exits once BOTH are between watches; a
+flag older than the process is cleared at start. `CANARY_RIDERS=1` runs the
+dedicated rider alone; `CANARY_DRY_RUN=1` writes `runs.dry.jsonl`, which the
+shipper never reads, for test runs beside the live canary. Runs from the two
+riders never collide in `canary_runs`: the key is `<startedAt>-<line>` and
+the riders never share a line.
+
+The fixed trip (`tripForLine`, what `[red]` rides and what the rotation falls
+back to when no bus on the line reports a position) is the operator's own
+whenever the line comes within 700 m of both ends; otherwise one derived from
+the line's published stops (board at the first, ride a quarter of the loop).
+The 700 m is deliberately not `MAX_WALK_M`: at 1500 m fourteen of the fifteen
+lines "serve" this trip, including ones the app is right to bury, and every
+one of them would be reported as a missing line.
+
+It watches the countdown every 15 s until the bus physically reaches the board
+stop it read out of the app's own Directions link. `npm run canary -- --loop`
+keeps both riders going; silent on a healthy run; `--summary` for the digest.
+
+**It never files a report, and a run that read nothing fails.** Both are
+lessons from the watch it replaced: that one auto-filed `[first-rider]` reports
+at `priority: "urgent"` — the behaviour the operator turned off once already —
+and it logged "Purple kept its promises at Building 800" off a ride whose own
+record says `"promises": 0`. A scraper that has silently stopped reading looks
+exactly like a healthy line, so `no-countdown` is a failure here.
+
+**The display is bucketed** (`fmtMin`: "now", "<1 min", "N min"), so every
+comparison in `canary-metrics.mjs` is between INTERVALS and reports the
+smallest movement the two readings permit. A jump it reports is one the app
+provably made; bucket edges cannot invent one. Its unit tests are the spec.
+
+**A reading holds TWO buses, and comparing them by POSITION was wrong**
+(2026-09-04). The countdown is `fmtBusPair(busEtaLive, nextArrLive?.eta)`:
+slot 0 is the pinned vehicle, slot 1 whatever `nextArrivalAfterPinned` found
+behind it. Comparing slot 0 against slot 0 charged any change of cast to the
+bus that stayed — **44 of the archive's 77 "catastrophic" jumps were not one
+bus moving at all**. The mechanism is NOT re-sorting, which was the first
+guess and is measurably rare (2 of 2104 two-bus readings print out of ETA
+order; 1 of the 77 flags). It is SUBSTITUTION: the leader vanishes and
+everything shifts up a slot. `pairBuses` now matches vehicles across a
+transition and `scoreSequence` reports three kinds — `drift` (the same bus
+moved; the ONLY kind the catastrophic/reversal thresholds apply to),
+`dropped` (a bus left the list; `severe` inside 2 min, and the only one that
+fails a run) and `appeared` (a newcomer takes the head of the list).
+Like-for-like the pinned-bus catastrophic count went 77 → 33; the balance of
+the new drift population is the SECOND bus lurching, which is real and was
+never measured before (`leaderCatastrophic` / `secondaryCatastrophic` keep
+them apart). Identity comes from the caller where it exists: `rider-sim`
+passes the pinned `busName` per tick and gets exact slot-0 pairing, so "the
+same bus re-priced a lap later" stays a lap of drift; the live canary has no
+names in the text and falls back to nearest-ETA under `pairWindowSec`
+(600 s — a judgement between two measured landmarks, not a valley in the
+data; the sweep is in the constant's comment).
+
+**A flag with an EVENT behind it is not a defect.** `docs/eta-lurch-
+classification.md` (#71) measured that 92.4% of catastrophic drops have a
+real-world event behind them: the bus reached the stop, pulled away, and the
+card honestly moved to the next one. `departureBetween` asks that question
+from the `buses` array every sample already carries — take the nearest bus in
+the earlier reading, find it BY NAME in the later one, and see which way it
+moved. Every event carries the verdict (`departure` / `closing` / `none` /
+`unknown`) and **only the eventless ones fail a run**; the rest are counted
+(`catastrophicEventful`, `droppedSevereEventful`) and reported. Over the
+archive that explains 8 of 15 severe drops — the population that fails a run
+— and only 1 of 64 catastrophic drifts, because a departure from the BOARD
+stop is a much narrower event than the ones #71 counts; **do not read the two
+as the same measurement.** The `NEAR_STOP_M` (120 m) precondition is
+load-bearing: without it a bus merely driving away on the far side of its
+loop reads as a departure and 23 of the 64 drifts talk themselves away.
+
+**`ARRIVAL_M` is 60 m, not 45** (2026-09-04), and the canary now takes the
+feed's own `at_stop_id` naming the board stop as an arrival regardless of
+distance. A run filed `no-arrival` while #304 sat **49 m out with
+`at_stop_id` naming that very stop** — four metres, on a feed with a ~30 m
+deadband. The old bound was truncating its own distribution: 32 detected
+arrivals at 12..44 m, four in [40,45) and none above. 60 m is where the
+feed's own reckoning stops agreeing — by distance band, at_stop against not:
+[0,30) 42:1, [30,45) 24:2, [45,60) 5:2, [60,80) 6:7, [80,100) 0:10.
+`eta-accuracy.mjs` deliberately KEEPS its own 45 m: its published numbers
+were taken at that bound.
+
+**A bus already at the stop when the rider walks up IS an arrival**
+(2026-09-04). The first poll used to arm `nearFlags` for every bus within
+reach and move on, on the reasoning that such a bus "is not an arrival this
+run watched for". Half right, and it cost **14 of the 23 `no-arrival`
+findings in the log**: the card says "now, then 72 min" *because* a bus is at
+the kerb, it pulls away seconds later, and the run failed for never seeing an
+arrival it was looking straight at (#310 at 38 m under `at_stop 48`; #316 at
+12 m; #304 at 13 m). It is credited now — and the watch does NOT end on it,
+because the interesting question is the next bus. `watchedArrival`, not
+`arrived`, breaks the loop.
+
+**The deadline is re-derived on every reading, not once at first sight.** A
+watch that opens on a bus at the stop takes its promise from the [0, 10)
+bucket, so `deadlineForPromise` gives it the 8-minute floor — and when the
+card re-pinned to a bus 19 min out, the deadline stayed put and the watch
+expired mid-approach. It only ever extends, and is capped at `WATCH_MAX_MIN`
+from the START of the watch so a countdown that keeps re-promising cannot
+hold a browser open for ever. Keying on the READING rather than on the pinned
+vehicle's name is deliberate: the pin is sampled every two minutes at best.
+
+**`no-arrival` and `unfinished` are different things.** `brokenPromise` asks
+whether any promise the app made ELAPSED while the canary was still watching.
+One did → the app said a bus would be here and it was not → `no-arrival`, a
+finding. None did → the 25-minute ceiling stopped us before the bus was ever
+due → `unfinished`, which is counted in `--summary` and fails nothing.
+Together with the fix above, `no-arrival` goes **23 → 4** across the archive.
+**But the `ok` rate barely moves — 17% → 20%** — because `no-arrival` was the
+sole failure on only 2 runs. What actually fails runs is `eta-jump` (88
+occurrences, the sole reason on 12 runs). Do not expect `no-arrival` work to
+move the health number.
+
+**`feed-error` fails nothing** (operator, 2026-09-04). It is `/api/buses`
+timing out on the canary's OWN network — the same class of thing as a blind
+parser, and no rider saw it. It appeared 31 times across 24 of 60 archived
+runs and was the sole reason two of them were not `ok` (both Red, both "the
+operation was aborted due to timeout"); dropping it takes the `ok` rate
+20% → 23%. It is still counted, on the record (`feedErrorCount` / `feedPolls`)
+and in a `--summary` column. **The one exception is total loss**: with every
+poll refused there is no ground truth at all, so `runVerdict` returns
+`unreachable` — neither `ok` nor a finding, the status the `--loop` already
+sleeps on — and the arrival verdict is skipped entirely, because "no bus
+reached the stop" would then be a statement about our network. No archived run
+has ever lost every poll (the worst lost 3 of ~100), so that branch is
+fixtured synthetically and says so.
+
+**A run that parsed zero countdowns is the instrument, not the app.** Eight
+runs in the log were recorded between #111 (which removed the glyph
+`parseOptions` keyed on) and #113 (which fixed it), and one of them filed
+`line-missing` against a perfectly healthy Red. Exclude `readings === 0` runs
+from any before/after over `runs.jsonl` and say how many you dropped.
+
+**What the first live run measured.** Red, 2026-09-03 17:01 ET, bus #304,
+board stop Division/Prospect (#48), on a build that already had #77's
+rest-as-a-spread work:
+
+    17:01:04  "🚌 in 7, 39 min"   #304 386 m out, at_stop_id 11
+    17:01:19  "🚌 in 2, 37 min"   #304 361 m out, moving
+    17:02:10  #304 reaches the stop — 66 s after the "7 min"
+
+The pin never changed and the feed moved 25 m, so the 3.75-minute drop was
+entirely a recompute. 420 s is exactly the served chain from the bus's anchor:
+11→146 (364 s) + 146→49 (33 s) + 49→48 (23 s) — and **11→146 is 112 m**, which
+no bus drives in six minutes. That segment is the 344 Winchester layover,
+billed arrival-to-arrival as the estimator intends; what the canary adds is
+that when a bus takes a SHORT rest the whole billed rest falls out of the
+number in one tick, in front of a rider. It is the same distribution problem
+#77 named, seen from the rider's side rather than the estimator's.
+
+Two things to take from it rather than the anecdote:
+
+- **The gate's blind spot is the rider's whole complaint.**
+  `accuracy-layover.test.ts` bounds a lurch at 180 s using the same arithmetic
+  — and skips "the moment the bus is recorded leaving the stop", because a real
+  discontinuity exists in the data there. It does; the rider still sees 7 min
+  become 2 min in fifteen seconds. The canary's catastrophic bar IS that 180 s
+  (a test pins the two together), applied without the exemption, which is why
+  it caught 225 s on its first run. Do not loosen either bound to match a
+  change — check the canary log first.
+- **The mirror is predicted and unconfirmed**: a bus ARRIVING at a layover
+  should make the countdown jump UP by the same 4–6 min, which is what report
+  #32 ("6 min then it said 16") describes. Look for it in
+  `scripts/.canary/runs.jsonl` before designing against it.
+
+### A bus that is CLOSING is neither dropped nor re-priced away
+
+The canary's worst overnight finding (operator, 2026-09-04): "the bus that is
+about to arrive disappears from the card." The invariant, and the
+discriminator that makes it safe:
+
+**A bus whose distance to the board stop is DECREASING must stay on the row.
+A bus whose distance is increasing may and must vanish instantly** — that is
+the 5 -> 1 -> gone the layover work exists to protect. Three of the five
+transitions handed over as evidence were buses that had reached the kerb and
+pulled away; suppressing those would be the regression. `rider-sim` scores the
+invariant as `droppedApproaching` (`pctDropped`, and a `--compare` row) with
+the board stop's own 45 m visit list as ground truth — not the sign of a
+distance, because a bus can be momentarily closing on a stop it has already
+served.
+
+Every drop is attributed to one of two causes, which need different fixes and
+are never summed:
+
+- **declined** — `computeUpcomingArrivals` still offered the near arrival and
+  the trip card chose something else. This was `pickLiveArrival`: the pinned
+  entry fell past `canCatch` (`walk <= eta + 60`, +90 s buffer) in the last
+  hundred metres of an approach, and the first CATCHABLE arrival was **the
+  same vehicle a lap later**. Swapping a bus for itself is not an alternative
+  — the old code's own tell was that it had to suppress "You can't catch #301"
+  in exactly that case. The pin is now released for uncatchability only in
+  favour of a DIFFERENT vehicle. Departure still clears the row: once the bus
+  really goes, its own soonest entry IS the lap, it is catchable again, and
+  the loyalty branch takes over.
+
+  **`canCatch` also deletes a bus for being TOO CLOSE, and that was the other
+  half** (canary, Red, 2026-09-04 16:03 ET, on the operator's own trip). The
+  rider was at Prospect / Canner, 83 m from the board stop Division /
+  Prospect — a 76 s walk, and just outside `AT_PLACE_M` (80 m), so unlike
+  every default rider-sim rider they HAD a walk. `canCatch` is
+  `walk <= eta + STOP_DWELL_SEC`, so at `eta < 16 s` #304 dropped out of
+  `catchable` while it was 97 m from the kerb and closing; the report-#49
+  dominance branch then compared the pinned vehicle against what survived
+  that filter — #310, twenty-six minutes out — and handed it the row:
+
+      16:03:15  "in <1, 19 min"   #304 235 m out, live [304:23s, 316, 310]
+      16:03:30  "in 26, 46 min"   #304  97 m out, live [304:11s, 310:1580s]
+      16:03:37  #304 at the kerb, 6 m
+
+  `computeUpcomingArrivals` never withdrew it — **the anchor is innocent
+  here**, and the replay pins that: it held Division / Sheffield (slot 16)
+  through the whole approach and offered #304 at 23 / 16 / 11 / 7 / 0 s.
+  The dominance candidate is now the SOONEST arrival rather than the soonest
+  catchable one, bounded by `SWITCH_BUFFER_SEC` so a bus pulling in long
+  before the rider can arrive still does not take the row. `boardable` is
+  untouched, so the wait and the total stay priced on a bus the rider can
+  reach (report #99) — only the vehicle the row FOLLOWS changes.
+  `web/src/accuracy-closing-bus.test.ts` replays the production rows
+  (`__fixtures__/red-closing-bus.json`, `scripts/record-closing-bus.mjs`) and
+  fails on master with the exact card: "in 26, 46 min", total 39 min.
+
+Over 25,585 scored waits on all fifteen lines (2026-09-03), **18% of riders
+saw a drop, 4,853 in all — 66 declined and 4,787 repriced.** The anchor owns
+98.6% of this defect; the trip card owns 1.4%. Beware one artefact: the
+simulator's default riders stand AT the board stop, which makes `canCatch`
+true for every arrival and the catchability branches unreachable, so the
+declined class is only scorable with `ORIGIN_OFFSET_M` set.
+
+- **repriced** — the estimator withdrew the arrival, i.e. the anchor put the
+  bus past the stop. **Open, and it is the large half.** `docs/rider-sim.md` records the case: Blue West
+  (route 16) folds back — Mansfield / Division at index 8, then south to Pauli
+  Murray at index 9 on the same road — and is not in the fold list, so
+  `findRouteAnchor` placed an approaching #126 on the return leg 400 m before
+  the turning stop, `gateAnchor` accepted it on one 30 m deadband step and
+  latched it. The card said 37 min and the bus was at the kerb 33 s later.
+  **Measured, the candidate WINDOW is at fault and the sort is innocent:**
+  `distanceToSegmentM` measures to the straight CHORD between two stops, and
+  Canal / Munson -> Mansfield / Division is a 573 m diagonal whose road bows
+  >200 m off it — so for three polls the leg the bus was actually driving was
+  farther than `ANCHOR_GPS_THRESHOLD_M` (150 m) and never became a candidate,
+  leaving only the return leg that shares the road. Whenever it WAS a
+  candidate it won on forward distance. Same root as the route-drawing bug
+  below — chords and vertices instead of the published polyline — which
+  `traceStopLegs` fixed for drawing and `findRouteAnchor` never got.
+
+## Upstream's own ETAs: the census in `upstream_etas`
+
+The operator's app publishes a per-stop prediction (`routes_eta.php?stop=<id>`,
+whole minutes, one bus per row, `{}` when nothing is coming). Two recorders
+read it and they are NOT redundant:
+
+- `src/collector/upstreamEta.ts` → `predictions_log` (`surface = "upstream"`):
+  a curated, pairable subset (≤ 30 min, stops the route serves, 15 s buckets)
+  at the five focus stops plus stops riders watched — for the head-to-head
+  against what riders were shown. 0.4 req/s, 7-day retention.
+- `src/collector/upstreamEtaSampler.ts` → `upstream_etas`: the VERBATIM
+  census. Every stop of every route with a live bus, round-robin, one call
+  every 3 s (`SHUTTLE_ETA_SAMPLE_MS`, floor 1000; `SHUTTLE_ETA_SAMPLE=0` off),
+  plus once a minute one stop of each route upstream flags active that has
+  no live bus (`probe = 1` — the out-of-service signal). A call that answers
+  nothing writes a MARKER row (`bus_id IS NULL`) so an absence has a
+  timestamp; `raw` holds only fields the schema does not name. Nothing reads
+  it on the request path. It exists to measure, in a few days of data, their
+  error by horizon, whether they know something our posterior does not
+  (direction on a fold, dispatch intent), and what they say in the minutes
+  before a bus leaves service — BEFORE anyone blends their number into ours.
+
+Volume is the constraint, measured not guessed: ~1.6 rows a call on a Sunday,
+~5 on a weekday, 120–155 bytes a row → ~40 MB a weekday, ~900 MB a month, on
+a volume with ~430 MB free. So the table is bounded by age (30 d,
+`SHUTTLE_ETA_RETAIN_DAYS`) AND by count (1.2M rows, `SHUTTLE_ETA_MAX_ROWS`,
+~4 weekdays), swept hourly with the rest. To keep more, snapshot the DB off
+the machine. `node scripts/upstream-eta-report.mjs <db>` prints rows per day
+and the signed error by horizon against `arrivals` (same bus_name + stop,
+first arrival within 45 min); pipe it over stdin to run it on production
+read-only — the recipe is in the script header. Both recorders are OFF
+whenever a test injects `upstream`.
+
+## The closed loop: the scorecard and the archive
+
+`docs/closed-loop.md` is the design. **Stage 1, built:** `src/server/scorecard.ts`
+scores every ETA arm — what sampled browsers showed (`trip`/`ride`/`card`,
+pooled as `ours`), the official app's sampled ETAs (`upstream`) and its
+verbatim census (`census`) — against the detector's arrivals under ONE rule,
+`truthAt` in `predictions.ts` (promises ≤ 30 min only, a bus already standing
+at the stop excluded, first arrival within 45 min; error = promise − actual,
+negative = optimistic). It runs HOURLY at :35 in the server process, scores
+the hour whose truth has settled, replaces the day's rows in `scorecard_days`
+(day / route_id 0 = all / horizon 0–2, 2–5, 5–10, 10–30, all / surface /
+metrics JSON / estimator_version), closes the day from scratch at 03:35 and
+backfills on boot. `GET /api/stats/scorecard?days=N` (token or the stats
+cookie, like `/api/stats`) and the "ETA scorecard" section of `/stats`.
+`estimator_version` is `SHUTTLE_BUILD_SHA`, which `scripts/deploy.mjs` passes
+as a build arg and `/healthz` reports as `build`. **Stage 2, built:**
+`scripts/archive-day.mjs` pulls a day's rows off the volume through
+`GET /api/archive/day` (admin header only) into `~/shuttle-archive/`, 180 days;
+`scripts/archive-check.mjs` says which days are complete; the crontab line is
+in the doc.
+
+**Stages 3–4, built, and DAILY — never hourly** (the parameters are stationary
+over days; hourly is for the scorecard and alerts). Seven of the ring
+estimator's constants are counts over the feed, so they are **served, not
+compiled**: `web/src/eta/params.ts` holds `MP`, whose defaults ARE the literals
+in `filter.ts` (a test pins the two equal and proves a served copy of them
+reproduces every cell mass and every priced row), and the payload's optional
+`model_params` may replace them. An absent, malformed or out-of-range set
+resets to the constants — all or nothing, never half a set. An eighth key,
+`CONFORMAL[horizon]`, widens the shown 10–90 band and is a no-op at its default
+1. **Everything else in `filter.ts` stays compiled on purpose**: a nightly job
+may re-measure the world, it may not redesign the estimator.
+`scripts/reestimate-params.mjs` (Pi cron, reads `~/shuttle-archive` because the
+volume sweeps `raw_positions` after 6 h) counts them on 14 days, replays the
+last 3 through the REAL client (`archive-db.ts` builds the day, `gps-replay.ts`
+takes `MODEL_PARAMS` and `PAIRS_OUT`; **leave `MODEL_ROUTES` unset there** or
+you score the legacy arithmetic), and posts to `POST /api/model-params` —
+admin HEADER only, deliberately outside `/api/stats` so the dashboard cookie
+cannot reach it. A key under its n floor, outside its range, or past its drift
+bound from the compiled constant keeps the champion and says why. Promotion
+needs the challenger no worse on median |error| or held-out band coverage than
+a noise bound taken from the CHAMPION'S OWN day-to-day spread; both arms are
+written as `surface = "replay:<name>"` (which `writeDay` now spares) and shown
+in the "Learning" block of `/stats`. **The 2026-09-07 fit reproduced six of
+seven constants and refused the seventh**: `P_REPEAT_MOVE_ZONE` measures 0.215
+against the compiled 0.5 — which `filter.ts` already calls an estimate, not a
+measurement. Don't just lower it; the number that settles it is a stage-4
+replay, not the emission rate. See docs/closed-loop.md.
+
 ## Investigations that did not become code
 
 - `docs/bus-speed.md` — showing a bus's speed (rider report #63). A 30 s
   trailing window beats a constant-velocity Kalman filter on this feed, and
   the number is only informative about two minutes ahead, so it must never
   feed the ETA. Not built; read it before building it.
+- `docs/eta-ring-posterior.md`, "Velocity on the kernel: measured" — a
+  velocity state on the ring estimator's move kernel (the operator's "u can
+  test if velocity helps?", 2026-09-06). Built behind a switch, measured on
+  the every-line gps-replay, dropped: overall median 60.2 → 60.4 s, moving
+  57.8 → 58.3, the model's lead-disagreement share 12.6 → 12.7% (Blue Night
+  23.6 → 25.1), coverage unchanged. The feed is why: a 5 s chord speed
+  predicts the next pair's speed WORSE than the route median (MAE 4.18 vs
+  4.02 m/s — the deadband is ±3 m/s at 5 s), and the best window gains under
+  3 m a poll against a 20 m emission. Not in the tree; do not rebuild it for
+  this feed.
+- `docs/horizon-bias.md` — a per-horizon CENTRE correction, the companion the
+  conformal widening never had (the operator's "I just want a narrower range").
+  **The mechanism ships inert and the values are refused.** Fitted on 9/3
+  (606,242 pairs) and held out on 9/4 (226,057), the residual conditioned on
+  the number ON SCREEN has a median of −1.2 / +6.0 / +15.8 / −3.4 s in the four
+  scorecard buckets — real, correctly signed, worth 0.8 s of pooled median
+  |error| — and it **cannot narrow the band, because an offset moves both edges
+  of a quantile band by the same amount**. At a fixed 80% coverage the shown
+  band comes out 1–4 s WIDER. The width the operator is looking at is
+  elsewhere: on Red, 9/4, 1,466 scored rider first sights, the band is 1:35 /
+  3:01 / 4:28 / 4:59 wide and centred within a minute at every horizon **for
+  the 86% of waits where the bus the app pinned is the bus that turns up**, and
+  all of the one-sidedness lives in the 14% where another bus of the line
+  arrives first (over-20: 30% of waits, median −15:30). The lever is the
+  plan-time pin, not the number. Do not fit a per-horizon offset to a rider
+  band without splitting it that way first.
+- `docs/eta-error-budget.md` — where the ETA error actually lives, and why the
+  rider-visible problem is **stability, not accuracy**. Decomposes a hop into
+  dwell / hold / drive (standing is 95% of the within-segment variance,
+  driving 5%); measures the *sequence* of numbers a rider sees rather than
+  |predicted − actual|. A mode-switching route-progress filter was built and
+  **lost**: it cuts anchor flips 84% and the catastrophic ETA jumps do not
+  fall, because they are conserved and merely re-labelled. Even a perfect
+  anchor is worth 1.00% → 0.96% of them. It concluded an output-side rate
+  limiter wins (95% fewer catastrophic jumps for 2.7 s of median accuracy);
+  **the operator rejected that** — "it can go 5->1 if it leaves early. but if
+  it is jitter we need a fix" — and the lurch classification below explains
+  why he is right: most of those jumps are real events. Read it before
+  proposing a Kalman filter, a traffic model, or anchor work aimed at
+  stability.
+- `docs/eta-lurch-classification.md` — every ETA jump ≥ 300 s classified by
+  whether a real-world event caused it, on the SHIPPED client (the replica is
+  checked against `computeUpcomingArrivals` on all 444,409 pairs and the run
+  fails on a mismatch). **92.4% of the catastrophic DROPS are eventful** — the
+  bus really departed, arrived or moved — so the 5→1 is information and must
+  arrive instantly. The jitter is the opposite sign: 93% of the eventless jumps
+  are the number going UP, and 250 of 380 are the collector restarting a
+  standing bus's clock, which zeroes the stall credit and re-prices the whole
+  first hop in one poll. **The served-dwell credit cap is NOT the lever**: it
+  binds on 11.5% of standing observations, the median standing bus having
+  served 0.4 of its expected rest. Fix the clock (`stationarySince`), and
+  prorate in both regimes; do not build a slew limiter.
+
+### One of those restarts is OUR restart (report #100, 2026-09-04)
+
+**A deploy restarts a standing bus's wait.** `Collector.states` is in-memory
+only, so a fresh process makes every bus a first sighting: `step` re-anchors,
+`stationaryFields` gets a null `prev`, and a bus that has been sitting at a
+stop for five minutes is published as having just arrived. It also writes an
+`arrivals` row per restart, which is how to spot it after the fact — one stand,
+several arrivals.
+
+The first report from an outside rider caught it: *"Possible that the timer for
+stop at 333 cedar restarted"*. Blue Day #44 stood at 333 Cedar from 15:53:39Z
+to 16:03:34Z on 2026-09-04 without moving a metre; `arrivals` holds four rows
+for that one stand (15:53:39, 15:55:11, 15:56:53, 15:59:14) and six deploys
+landed between 15:48 and 15:58 UTC. Each extra row sits on a 13–17 s hole in
+`raw_positions` — the poll the restarting machine missed — while #44's
+coordinate is byte-identical either side of it. **The duplicate arrival on a
+motionless bus is the fingerprint**: one stand, several arrivals, each at a
+hole.
+
+~~"Two buses at two different stops carried the identical `at_stop_since` to
+the millisecond"~~ — **that was in the first draft of this note and it is not
+evidence.** They did (`15:56:53.903`, #44 at 333 Cedar and #45 at Temple /
+Grove), and it reads like a global reset, but #45 was *driving*: it closed
+196 m → 65 m on that poll and legitimately entered the pin radius there. The
+restart shifted its clock by about five seconds, from the poll that was missed.
+Two buses sharing a stamp is what a missed poll looks like from any cause;
+only #44's own rows carry the finding.
+
+`seedStationaryFromHistory` (`detector.ts`) rebuilds the wait from
+`raw_positions`, which held it the whole time: the earliest sample of an
+unbroken run within `AT_STOP_PIN_M` of that same stop. It is consulted **only
+where `prev` is null** — every other reanchor (a long gap, a route change, an
+id reissue across a layover) restarts the clock deliberately and still does —
+and it stops at a `MAX_HANDOFF_GAP_MS` hole, because a bus that went off the
+air is one the live rules re-anchor anyway.
+
+**`step`'s seed parameter defaults to null**, so every replay and backfill
+harness is byte-identical to master by construction.
+`detector.report100.test.ts` replays the real feed;
+`collector.report100.test.ts` boots a real collector against a database that
+already holds the stand. The feed itself lives in
+`src/collector/__fixtures__/report100-cedar-stand.ts` so the two cannot replay
+different rows and agree with each other about the wrong ones.
+
+#### And the restart also wrote a second arrival row
+
+PR #129 stopped at `stationarySince` deliberately — seeding `enteredAt` moves
+calibration, and it wanted the measurement first. Here it is, from a 2026-09-04
+production snapshot:
+
+| | | |
+|---|---|---|
+| **1,486** split stands in 7 days | 1,719 duplicate arrival rows | 4.3% of every arrival |
+| **1,143** segments | short by a median 98 s | 0.93% of the table |
+| **1,094** dwells | short by a median 101 s | 0.66% of the closed arrivals |
+
+96.8% of the duplicate rows land on a stamp shared by six or more buses — a
+restart re-anchors the whole fleet on one poll, which is the fingerprint that
+identifies one after the fact. The damage concentrates exactly where the
+standing model matters, because `stop_visits.pinned_at` is what the served
+stand table measures from (`departed_at − pinned_at`) and a restart moves it to
+the middle of the stand. Served-route medians, as recorded against merged:
+**344 Winchester (3:11) 273 → 310 s, Winchester / Mansfield (3:121) 383 → 479,
+333 Cedar (1:10) 405 → 475.**
+
+So the seed now also RESUMES the visit. When the recorded run says the bus is
+still standing and the database still holds the `arrivals` row this stand
+opened, `step` takes that row's instant as `enteredAt` and **emits no arrival**
+— one stand, one row, and the departure closes it with the whole stand.
+`at_stop_id` stops being withheld for 15 s with it, since that gate is measured
+from `enteredAt` too.
+
+Four conditions gate the resume, and all four are the safety (`resumeArrival`
+in `collector.ts`):
+
+- **`prev` is null** — a first sighting, exactly as #129.
+- **The bus is demonstrably still at rest**: `obs` repeats the previous fix.
+  A fresh fix means it is moving and there is nothing to resume.
+- **The bus's LATEST arrival is at this stop, on this route, still open.** A row
+  from an earlier lap has arrivals at other stops after it and fails on the
+  first test — which is why no time window has to be guessed at. Walking back
+  over consecutive open rows and taking the earliest is what merges a stand a
+  previous release already split.
+- **It lies inside the unbroken observed run** (`StandRun.unbrokenSince`, a
+  `MAX_HANDOFF_GAP_MS` walk with distance ignored). Deliberately NOT
+  `stationarySince`: that is the first sample inside the pin radius, and the
+  arrival precedes it by a median 10 s and a p95 of 95 s, so gating on it would
+  miss the row for half of all stands.
+
+The visit reducer is seeded from the same run (`openPass`'s `resume`), so
+`pinned_at` and `arrivedAt` are the stand's own instants rather than the
+restart's.
+
+**It moves calibration, and it moves it the right way** — `gps-replay` against
+the snapshot and against a copy with the split stands merged, the estimator
+identical and only the data differing (`docs/eta-accuracy.md`, "A deploy was
+writing short dwells"). Overall median |error| 97.4 → 96.8 s on 433k pairs; six
+of nine routes improve; **and for a bus already standing 300 s+ — the
+population a restart could hide the most of — median error 128.0 → 122.1 s and
+mean bias −159.5 → −150.4 s**, monotonically in the elapsed stand, with the
+moving population unchanged (44.7 → 44.8). Every route's bias moves the same
+way, away from optimism, which is the mechanism showing itself: truncated rows
+under-price standing time.
+
+**What it still does NOT cover, measured on the deploy that shipped it.** Of the
+eleven buses live at 18:44:41Z on 2026-09-04, nine were re-anchored to the stop
+they already had and so still wrote a second `arrivals` row — and every one of
+them was correctly refused: two were inside the pin radius but ROLLING (34 m and
+39 m, a fresh fix, no stand to resume), two were at rest 174 m and 250 m out
+(standing somewhere that is not a stop, so `stationaryStopId` is null), and the
+rest were mid-leg. Zero buses were standing at a stop, so the resume had nothing
+to do on that particular restart.
+
+So the duplicate ROW survives for a bus that is merely anchored to a stop, and
+with it a dwell and a segment short by however long the process was down. That
+is the smaller half by the number that matters: over the window where
+`stop_visits` exists, 248 of 301 split stands had the bus already at the kerb
+and they carry **89% of the recoverable seconds** (39,832 against 4,826). A
+layover truncated by six minutes moves a quantile; a bus 34 m out truncated by
+42 s does not. Extending the resume to an anchored-but-not-pinned bus means
+trusting the anchor a restart re-derives — the global nearest, not the lookahead
+window's — and getting it wrong bills a segment the bus never drove. Measure
+that before building it.
+
+**The historical rows were merged in production on 2026-09-04**, by the operator's
+decision — 4.3% of arrivals feeding every stand table was not worth thirty days
+of self-healing. `scripts/merge-restart-split-arrivals.ts` is the script: dry run
+by default, idempotent, `--target <db> [--apply]`. It fixes `arrivals` and
+`segments` and deliberately does NOT invent a `stop_visits.pinned_at` —
+`raw_positions` is swept at six hours, so for a stand a month old there is
+nothing left to recompute it from, and the arrival instant is not a substitute.
+
+The run, and the shape any repeat of it should have:
+
+- **The undo is a snapshot**, taken first with the `eta-replay/README` backup
+  recipe and kept beside the others:
+  `services/shuttle-v2/store/snap-2026-09-04-pre-merge.db` (114 MB,
+  `PRAGMA integrity_check` ok, counts matching production but for the ~40 s the
+  collector kept working during the copy).
+- **Dry run on the snapshot, then dry run on production, then apply** — and the
+  apply only because its counts matched the production dry run *to the row*:
+  1,843 split stands, 1,843 arrivals rewound, 2,152 superseded rows deleted,
+  1,459 dwells lengthened (2 dropped past `MAX_DWELL_SEC`), 1,432 segments
+  lengthened (1 dropped past `MAX_SEGMENT_SEC`). The table counts moved by
+  exactly those numbers: arrivals 565,082 → 562,930, segments −1, closed
+  arrivals −2. `integrity_check` ok, **175 ms** in one transaction (single-writer
+  SQLite; reads happen before it opens, so the write lock is held for that alone,
+  and a `busy_timeout` waits rather than costing the collector a poll).
+- **`scripts/` does not ship in the image** (the Dockerfile copies `src/`,
+  `drizzle/`, `web/dist` and nothing else), so the run went in as a
+  self-contained CJS port piped to `node -`, the same path
+  `backfill-departures-apply.cjs` uses. Keep the two in step if you touch either.
+- A second dry run afterwards finds **0 chains**. Note the restart-instant count
+  falls with it (217 → 39): the fingerprint is the duplicate rows, so merging
+  them consumes it. That is idempotence, not a lost signal.
+
+**What it moved, and what it did not.** `dwells[route][stop].q` — the served
+stand table — is built from `stop_visits`, which the merge does not touch, so it
+did NOT move: across the calibrator cycle after the run, 344 Winchester and 333
+Cedar changed only where one new visit landed (`qn` 46 → 47 and 50 → 51), and
+Winchester / Mansfield, whose `qn` held at 48, was byte-identical. What moved is
+the arrivals-based half and the segments, which is what was rewritten: dwell
+medians 344 Winchester **380.2 → 397.6 s**, Winchester / Mansfield **535.1 →
+598.3**, 333 Cedar **455.1 → 470**, with the spread TIGHTENING at the first two
+(sd 159 → 138, 356 → 296) because the samples removed were the short outliers;
+the hop out of 333 Cedar 565.5 → 592.6 s. Fleet-wide, 88 of 267 served stops
+moved their dwell median and 103 of 274 served hops moved their average, both
+upward (means 131.9 → 134.3 s and 164.0 → 165.6 s). Five minutes of new data
+cannot move a third of the network; the direction and the breadth are the merge.
 
 ## Verification harnesses
 
@@ -672,6 +2199,10 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `eta-accuracy.mjs` | scores the ETA riders see against real observed arrivals (live, ~10 pairs a run) |
 | `eta-replay/` | offline replay of the ETA arithmetic against a DB snapshot: 100k–450k pairs, time-travelled calibration, anchor/stall/proration variants |
 | `map-bot.mjs` / `map-bot-visual.mjs` | random trip vs `/api/plan`; browser capture |
+| `lookup-sweep.mjs` | every named Yale/campus place in OSM is findable by the pipeline a rider hits (no browser) |
+| `rider-canary.mjs` | two continuous synthetic riders — `[red]` on the operator's trip, `[rotation]` round-robin over every other running line on random trips (`canary-rotation.mjs`) — each watching ONE countdown tick by tick until the bus arrives, scoring the SEQUENCE (jumps, reversals) rather than the aggregate |
+| `record-layover-pass.mjs` | records a real pass through a layover ON the marker as the accuracy fixture |
+| `record-approach-rest.mjs` | records a real layover taken SHORT of the marker (the 2026-09-04 case), with the published `stationary_since` per position |
 
 `eta-accuracy.mjs` reads what the app tells a rider while independently
 watching raw positions for the actual arrival. Last daytime measurement
@@ -684,6 +2215,96 @@ because #38 passed Peabody 297 m away on Whitney and never stopped, while the
 app counted down "3 min" to it and the detector still logged an arrival there
 (no distance gate on arrivals). The offline replay is the measurement; this is
 the sanity check.
+
+`lookup-sweep.mjs` answers "what can a rider NOT find?" without waiting for a
+report to arrive — the Chaplain's Office cost one. It pulls every NAMED
+node/way in the New Haven bbox whose `name` or `operator` mentions Yale, plus
+every place of worship, from Overpass, and runs each name through the lookup
+pipeline. A place counts as answered when a hit within **250 m of it ranks in
+the top 3**: name equality is the wrong test ("Yale University" matches a dozen
+labels) and rank matters because the dropdown is short. Places farther than the
+planner's `MAX_WALK_M` from every stop are set aside before any lookup is spent
+on them — no trip exists to them, so a landmark would answer a search with a
+journey the app cannot plan.
+
+**"Found" has to mean found by the pipeline a rider actually hits.** The first
+cut of this measurement scored against `geocode()` alone — curated landmarks
+plus stop names — and reported **213 of 311 places missing. That number was
+wrong.** Production does not stop at the local layer: `geocodeV1` falls through
+to Photon and then Nominatim, and those know every object Overpass just handed
+us, because it all came out of OSM in the first place. Sampled against the real
+stack, 16 of 18 supposed misses were findable. Curating 200 entries off that
+list would have diluted ranking for nothing — `landmarks.ts` warns about
+exactly that in its own header. So the script scores against `geocodeV1` with a
+real external geocoder and sorts into three buckets that mean three different
+things:
+
+| bucket | meaning | action |
+|---|---|---|
+| `curated` | the local layer answers it | none — the goal state |
+| `uncurated` | only Photon/Nominatim answer it | **not a defect.** Curating buys rank, latency and a better label; it is an improvement |
+| `UNFINDABLE` | no layer answers it | **the defect.** Only a curated entry can fix it |
+
+Measured 2026-09-03 (149 landmarks, 172 stops, 342 places, none out of reach):
+**98 curated (28.7%), 239 uncurated (69.9%), 5 UNFINDABLE (1.5%)** — the Yale
+New Haven Hospital heliport, Harkness Memorial Auditorium, and SHM's I-, L- and
+B-Wings. **Five**, not 213 — and fewer than the 18-place hand sample implied,
+because the sample could not see how many of its misses the local layer catches
+at rank ≤3.
+
+It also reports **8 places we already curate that answer to a name the matcher
+scores at zero** — it reads each landmark's OSM id back out of the trailing
+comment on its own line, so a hit on an id we already hold is a missing ALIAS,
+not a missing place: `Payne Whitney Gymnasium` vs our "Payne Whitney Gym"
+("gymnasium" is 9 letters, "gym" is 3 — past the fuzzy tier's length rule),
+`Yale Police Department` vs "Yale Police (101 Ashmun)", `Ingalls Ice Rink` vs
+"Ingalls Rink" (the same "ice rink" a rider already wrote in about). One line
+each.
+
+Flags: `--sample=N` (with `--seed`) for a quick reproducible check, `--json`,
+`--all` to include the uncurated list, `--max-unfindable=N` as a CI gate,
+`--cache` to reuse the last Overpass answer. `--local-only` skips the network
+entirely and is deliberately reported as `not answered locally / UNCLASSIFIED`,
+never as unfindable — that conflation is the mistake above, and
+`--max-unfindable` refuses to arm on it.
+
+Two constraints the script exists inside. **The external path is throttled to
+one lookup per 1.1 s by design**, to keep our egress IP off Nominatim's block
+list, so the sweep calls `geocodeV1` in-process (the same throttle applies),
+runs strictly sequentially and prints its own ETA. Calling `geocodeV1` rather
+than a server's `/api/geocode` is also what keeps the sweep out of the rider
+data: that route records every query in `search_terms`, and a few hundred
+synthetic OSM names would be indistinguishable from demand.
+
+Overpass answers **406 to Node's default User-Agent**; the script names itself,
+and that is why.
+
+### "5 unfindable" does not mean lookup is 98.5% complete
+
+It means lookup is 98.5% complete **against OpenStreetMap**, which is a
+different and much weaker claim. There are two failure classes, they need
+different instruments, and the sweep can only see one of them:
+
+| failure | instrument | reading, 2026-09-03 |
+|---|---|---|
+| **OSM knows the place, we cannot answer it** | `lookup-sweep.mjs` | 5 of 342 |
+| **The place exists, OSM does not know it** | `search_terms` (`GET /api/stats/searches`) | invisible to any sweep |
+
+The second class is the one that started all of this. **The Chaplain's Office
+does not appear in a sweep run at all** — not as a miss, not as a hit. An
+unbounded Overpass search for `[Cc]haplain` returns **zero objects** — checked
+twice, and the second time across ANY tag rather than `name` alone and over a
+bbox far wider than the sweep's (41.20,-73.05,41.45,-72.80) — and both external
+providers answer with unrelated offices. An OSM-derived sweep can only grade against OSM, so a place OSM has
+never heard of is not scored, not counted, and not in any bucket. The same goes
+for every office, centre and department that a rider knows by a name Yale
+publishes and OSM never imported. "The anchor bar" surfaced this way too.
+
+So do not read a clean sweep as a complete lookup, and do not size the curation
+backlog from it. The sweep says *we answer what OSM knows*; only what riders
+actually typed and got nothing for (PR #49's table) says *we answer what riders
+ask*. Run both, and treat a zero-result search term as the higher-priority
+signal of the two — it is a rider who already failed.
 
 ## Don'ts
 

@@ -1,0 +1,8 @@
+{
+  "caption": "Green and Purple switched off in the chip row: both lines leave the map AND their cards leave the list — one setting, two consumers",
+  "views": ["map"],
+  "actions": [
+    { "click": "^Green$", "on": "map", "settle": 1500 },
+    { "click": "^Purple$", "on": "map", "settle": 3000 }
+  ]
+}

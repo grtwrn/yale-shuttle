@@ -32,6 +32,19 @@ export const RouteSchema = z.object({
   // so a route loaded from the DB fallback simply lacks it. Parsed by
   // server/publishedHours.ts into the `route_hours` riders are shown.
   description: z.string().optional(),
+  // Upstream's "in service right now" flag from routes_routes.php. In-memory
+  // only, like `description`; refreshed every 5 min by the collector and
+  // served as `route_active` so the client can say "not running today"
+  // from the operator's own word rather than from inference.
+  active: z.boolean().optional(),
+  // Upstream's own stop order, kept when `stops` had to be REPAIRED against
+  // upstream's own polyline (src/network/alignStops.ts). In-memory only, like
+  // `description`: the network runs on the repaired order — the detector, the
+  // legs it bills and the hop keys the calibrator fills — while `/api/buses`
+  // keeps publishing this one, so the map and the planner still draw and list
+  // exactly what upstream sent. Absent on every route the line already
+  // describes, which is fourteen of fifteen.
+  publishedStops: z.array(z.number().int()).optional(),
 });
 export type Route = z.infer<typeof RouteSchema>;
 
@@ -46,6 +59,33 @@ export const BusPositionSchema = z.object({
   // Derived state: bus is currently dwelling at this stop since this timestamp.
   atStopId: z.number().int().nullable(),
   atStopSince: EpochMsSchema.nullable(),
+  /**
+   * The detector's stationary clock (`BusState.stationarySince`), published
+   * WHETHER OR NOT the bus is at a stop.
+   *
+   * `atStopSince` only exists inside `AT_STOP_MAX_M` (75 m) of a stop, so a
+   * bus taking its layover SHORT of the marker publishes nothing at all and
+   * the client can only read it as driving. Red #310 did exactly that on
+   * 2026-09-04: 7 min at rest 147 m short of 344 Winchester, then ~2 min
+   * at the marker itself. See `APPROACH_ZONE_M` in web/src/hopPricing.ts.
+   *
+   * This is the same clock, unfiltered. Off a stop it measures time since the
+   * bus last moved more than `STATIONARY_RADIUS_M` (125 m) from where it came
+   * to rest, so a bus in motion resets it every few polls and only a genuine
+   * rest lets it grow.
+   */
+  stationarySince: EpochMsSchema.nullable().optional(),
+  /** The stop the stationary clock is pinned to, or null when resting off-marker. */
+  stationaryStopId: z.number().int().nullable().optional(),
+  /**
+   * When the bus's reported fix last changed (detector.ts `MOVED_M`).
+   *
+   * `stationarySince` is pinned to a stop and therefore keeps running while a
+   * bus drives through that stop's zone; this one is pinned to nothing, so it
+   * is the only thing in the payload that says whether the bus is moving right
+   * now. A client seeing its first frame has no history to infer it from.
+   */
+  lastMovedAt: EpochMsSchema.nullable().optional(),
   collectedAt: EpochMsSchema,
 });
 export type BusPosition = z.infer<typeof BusPositionSchema>;
