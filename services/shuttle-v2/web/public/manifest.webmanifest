@@ -1,7 +1,7 @@
 {
-  "name": "Yale Shuttle",
+  "name": "Shuttle Tracker",
   "short_name": "Shuttle",
-  "description": "Live Yale shuttle positions, arrival times, and trip planning.",
+  "description": "Unofficial live tracker for the Yale shuttles: bus positions, stop ETAs and trip planning.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
