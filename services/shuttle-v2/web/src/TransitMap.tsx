@@ -63,7 +63,8 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
-import { getOffAlertTitle, formatRideEta } from "./rideAlert";
+import { getOffAlertTitle } from "./rideAlert";
+import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
 import { AffiliationDisclaimer, BetaBanner } from "./Banners";
@@ -6245,7 +6246,7 @@ const RideStopList: FC<{
         {ride.routeLabel} · Bus #{normBus(ride.busName)}
         {etaSec !== null && (
           <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
-            {`· ${formatRideEta(etaSec)} to your stop`}
+            {`· ${etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`} to your stop`}
           </span>
         )}
       </div>
@@ -6298,7 +6299,7 @@ const RideStopList: FC<{
                 {isBoard && <span style={{ fontSize: 11, color: "#90a4ae", marginLeft: 6, fontWeight: 400 }}>boarded</span>}
                 {isAlight && etaSec !== null && !isBusCur && (
                   <span style={{ fontSize: 11, color: ride.color, marginLeft: 6, fontWeight: 600 }}>
-                    {formatRideEta(etaSec)}
+                    {etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`}
                   </span>
                 )}
               </span>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getOffAlertTitle, formatRideEta } from "./rideAlert";
+import { getOffAlertTitle } from "./rideAlert";
+import { formatRideEta } from "./format";
 
 describe("an undismissed get-off prompt", () => {
   it("updates through the recorded Red approach instead of retaining two stops", () => {
@@ -23,6 +24,8 @@ describe("Red approach countdown wording", () => {
   });
   it("retains minute estimates outside the final minute", () => {
     expect(formatRideEta(60)).toBe("1 min");
+    expect(formatRideEta(90)).toBe("1 min");
+    expect(formatRideEta(110)).toBe("1 min");
     expect(formatRideEta(780)).toBe("13 min");
   });
 });
