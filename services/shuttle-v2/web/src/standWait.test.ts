@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { fromQuantiles, residual, residualMedian } from "./eta/dist";
 import { fmtMin } from "./format";
 import { fmtBusLine } from "./bunching";
-import { waitLegText } from "./etaBand";
+import { boardArrivalText, chipCountdownText, waitLegText } from "./etaBand";
 import { readFileSync } from "node:fs";
 import { arrivalBand, standChipFor, standLeftText, standWaitFor, standWaitView, stopEtaText } from "./standWait";
 import RED_STAND from "./__fixtures__/red-stand-2026-09-11.json";
@@ -279,6 +279,87 @@ describe("the 2026-09-11 Red card — one belief, four surfaces", () => {
 });
 
 /**
+ * THE BOARD ROW ENDS THE APPROACH WITH THE ROW'S OWN ARRIVAL (operator,
+ * 2026-09-11 13:50 ET: "map says 1-8 but route list says 1-4").
+ *
+ * The expanded card's approach list printed one number, the pause chip's
+ * DEPARTURE from the layover, and never the ARRIVAL at the rider's stop — so
+ * the rider compared the list's only number with the row's and saw two
+ * answers. The BOARD row now carries the arrival. What these pin is that it is
+ * the SAME arrival the collapsed row prints, at the same instant: fed the same
+ * two values, and printing the same numbers.
+ */
+describe("the BOARD row prints the collapsed row's arrival", () => {
+  const CASE = RED_STAND as {
+    standingStopId: number; standingSec: number; etaSec: number; departNowSec: number;
+    shown: { row: string; chip: string; bubble: string };
+    dwells: Record<string, DwellStat>;
+  };
+  const rest = { stopId: CASE.standingStopId, standingSec: CASE.standingSec };
+  const view = standWaitFor(rest, CASE.dwells, undefined)!;
+  const arrival = {
+    eta: CASE.etaSec, departNow: CASE.departNowSec,
+    low: CASE.departNowSec + view.soonSec, high: CASE.departNowSec + view.lateSec,
+  };
+  // The row-scope values TransitMap hands BOTH the top line and the BOARD row.
+  const leadBand = arrivalBand(view, arrival, 0);
+  const busEtaLive = CASE.etaSec;
+
+  it("reads, top to bottom, as a departure and then an arrival", () => {
+    expect(standChipFor(rest, CASE.dwells, undefined)!.text).toBe("leaves in <1-8 min");
+    expect(boardArrivalText(leadBand, busEtaLive)).toBe("arrives in 2-9 min");
+    expect(fmtBusLine({ leadSec: busEtaLive, leadBand })).toBe(CASE.shown.row);
+  });
+
+  it("prints the numbers the row and the map bubble print, off the same arrival", () => {
+    const row = fmtBusLine({ leadSec: busEtaLive, leadBand }).replace(/^in /, "");
+    const board = boardArrivalText(leadBand, busEtaLive)!.replace(/^arrives in /, "");
+    expect(board).toBe(row);
+    expect(board).toBe(stopEtaText(rest, arrival, CASE.dwells, undefined));
+    expect(board).toBe(CASE.shown.bubble);
+  });
+
+  it("is the chip's words for every band and every point, not a formatter of its own", () => {
+    const bands = [null, leadBand, { lowSec: 120, highSec: 540 }, { lowSec: 400, highSec: 1100 }, { lowSec: 30, highSec: 400 }];
+    for (const band of bands) {
+      for (const eta of [15, 45, 117, 300, 700, 1804]) {
+        const chip = chipCountdownText(band, eta)!;
+        const board = boardArrivalText(band, eta)!;
+        if (chip === "now" || chip === "arriving now") expect(board).toBe("arriving now");
+        else expect(board).toBe(`arrives in ${chip}`);
+        // And the row's own line carries the same numbers.
+        const line = fmtBusLine({ leadSec: eta, leadBand: band });
+        if (!/now/.test(line)) expect(board.replace(/^arrives in /, "")).toBe(line.replace(/^in /, ""));
+      }
+    }
+  });
+
+  it("is wired to the row's own values in TransitMap, and composes nothing in the stop list", () => {
+    const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
+    // One value each, declared once at ROW scope: the names below cannot mean
+    // two different arrivals.
+    expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
+    expect(src.match(/const leadBand\b/g)?.length).toBe(1);
+    // The collapsed row prints those two...
+    expect(src).toMatch(/fmtBusLine\(\{\s*leadSec: busEtaLive,\s*leadBand,/);
+    // ...and so does the BOARD row, once, and nowhere else.
+    expect(src.match(/boardArrivalText\(/g)?.length).toBe(1);
+    expect(src).toContain("boardArrivalText(leadBand, busEtaLive)");
+    // Inside the expanded card's stop list nothing composes an arrival of its
+    // own: no second band, no second formatter, no bare point.
+    const from = src.indexOf("// Stop list, two sections.");
+    const to = src.indexOf("{_hidden > 0 && !_detailOpen", from);
+    expect(from).toBeGreaterThan(0);
+    expect(to).toBeGreaterThan(from);
+    const list = src.slice(from, to).replace(/^\s*\/\/.*$/gm, "");
+    for (const f of ["arrivalBand(", "displayBand(", "stopEtaText(", "chipCountdownText(", "fmtBusBand(", "fmtBusLine(", "fmtBusPair(", "fmtMin("]) {
+      expect(list).not.toContain(f);
+    }
+    expect(list).toContain("{isBoard && boardArrival && (");
+  });
+});
+
+/**
  * NEITHER STOP LIST COMPOSES ITS OWN CHIP. Source-level, in the idiom of
  * `mapFilter.test.ts`: the two render sites are 1,100 lines apart in one 8k-line
  * file and have drifted apart twice already (a per-bus dwell beside a route
@@ -290,7 +371,7 @@ describe("the render sites read the shared composition", () => {
 
   it("imports both helpers and calls each twice", () => {
     expect(src).toContain('import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";');
-    expect(src).toContain('import { bandTitle, waitLegText } from "./etaBand";');
+    expect(src).toContain('import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";');
     // The trip card's expanded stop list and the Map tab's route card.
     expect(src.match(/standChipFor\(/g)?.length).toBe(2);
     // The trip card's minimap chip and the Map tab's per-stop countdown.

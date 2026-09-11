@@ -155,6 +155,43 @@ export function chipCountdownText(band: EtaBand | null, etaSec: number | null): 
 }
 
 /**
+ * THE ARRIVAL AT THE RIDER'S OWN STOP, on the BOARD row of the expanded card's
+ * stop list — the row's band and median, in the chip's words, with the verb
+ * that says which quantity it is.
+ *
+ * THE CASE (operator, 2026-09-11 13:50 ET, Red, bus #310 standing near
+ * 344 Winchester): "map says 1-8 but route list says 1-4". Both were right.
+ * The row and the map bubble print the ARRIVAL at the board stop; the list
+ * printed ONE number, on the bus's own row — "⏸ 13:19 · leaves in <1-4 min",
+ * the DEPARTURE from the layover (standWait.ts). Arrival = departure + three
+ * stops of drive, but the list never said when the bus reaches the rider, so
+ * the only number in it was compared with the row and read as a contradiction.
+ *
+ * So the BOARD row carries the arrival, and the list reads as a timeline:
+ *
+ *     🚌 344 Winchester  ⏸ 13:19 · leaves in <1-4 min
+ *        Winchester/Division
+ *        Division/Sheffield
+ *     ●  BOARD Division/Prospect  arrives in 1-8 min
+ *
+ * NOT A SECOND ARITHMETIC. The render site passes the row's own `leadBand` and
+ * `busEtaLive` — the two values `fmtBusLine` prints on the top line — and the
+ * words are `chipCountdownText`'s, the map bubble's. "arrives in" is the
+ * counterpart of the chip's "leaves in": #224 named the departure, this names
+ * the arrival, and neither number is left for a rider to guess the meaning of.
+ *
+ * "now" is an arrival's word, not a bound: the low end of a range is spelled
+ * as the duration it is ("<1"), exactly as `standLeftText` spells it.
+ */
+export function boardArrivalText(band: EtaBand | null, etaSec: number | null): string | null {
+  const t = chipCountdownText(band, etaSec);
+  if (t == null) return null;
+  if (t === "now" || t === "arriving now") return "arriving now";
+  // "now-6 min", and "3 (now-6) min" while the median is still printed.
+  return `arrives in ${t.replace(/(^|\()now-/, "$1<1-")}`;
+}
+
+/**
  * The expanded card's wait leg ("⏳ 2-9 min"): the row's own band, less the
  * walk to the stop, so the leg strip and the countdown above it describe one
  * arrival. Null when there is nothing to wait for.

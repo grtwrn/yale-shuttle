@@ -1,0 +1,53 @@
+[
+ {
+  "name": "standing-at-layover",
+  "note": "Red #310 standing at 344 Winchester (stop 11), three stops before the rider's board stop Division / Prospect (48); #316 driving further back.",
+  "buses": [
+   {
+    "bus_id": 9310,
+    "bus_name": "#310",
+    "route_id": 3,
+    "lat": 41.324661,
+    "lon": -72.928677,
+    "last_stop_id": 11,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9316,
+    "bus_name": "#316",
+    "route_id": 3,
+    "lat": 41.310273699999996,
+    "lon": -72.92537469999999,
+    "last_stop_id": 41,
+    "moveTo": { "lat": 41.3096551, "lon": -72.92374810000001 },
+    "moveSec": 600
+   }
+  ]
+ },
+ {
+  "name": "moving-toward-board",
+  "note": "Control: #310 driving between 344 Winchester and Winchester / Division, no stand anywhere in the list.",
+  "buses": [
+   {
+    "bus_id": 9310,
+    "bus_name": "#310",
+    "route_id": 3,
+    "lat": 41.325368,
+    "lon": -72.9275064,
+    "last_stop_id": 146,
+    "moveTo": { "lat": 41.3253295, "lon": -72.9266888 },
+    "moveSec": 600
+   },
+   {
+    "bus_id": 9316,
+    "bus_name": "#316",
+    "route_id": 3,
+    "lat": 41.3063461,
+    "lon": -72.9263292,
+    "last_stop_id": 30,
+    "moveTo": { "lat": 41.3071123, "lon": -72.9280656 },
+    "moveSec": 600
+   }
+  ]
+ }
+]

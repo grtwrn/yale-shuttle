@@ -2503,3 +2503,143 @@ Not affiliated with or endorsed by Yale University.`;
     ]) expect(parseBusEtaText(l)).toBeNull();
   });
 });
+
+
+/**
+ * THE BOARD ROW CARRIES THE ARRIVAL (2026-09-11, operator: "map says 1-8 but
+ * route list says 1-4").
+ *
+ * The expanded card's approach list printed ONE number — the pause chip's
+ * DEPARTURE from the stop the bus stands at — and never the ARRIVAL at the
+ * rider's own stop, so the only number in the list was read against the row's
+ * and the two looked like a contradiction. The BOARD row that ends the
+ * approach now carries the row's own band, named as the arrival it is.
+ *
+ * A NEW STRING BELOW THE DURATION, which is the one place a layout change has
+ * blinded this parser before (#111, "nearby", the berth labels, "SCL"). It
+ * carries digits and a range — the ingredients of a countdown — so this is a
+ * CAPTURE, not an argument: 390x844, a staged build of this branch (on #237's
+ * range-only countdown and #240's unfloored low end), #310 standing 200 s at
+ * 344 Winchester, rider at Division / Prospect bound for LEPH / 60 College
+ * (pr-preview/approach-board-row). The span is inline inside the BOARD row's
+ * name, so `innerText` keeps it on the BOARD line — which starts with "BOARD",
+ * is cut off the label search by IS_STOP_LIST, and matches no countdown form.
+ *
+ * The card is also PAST its published hours here (captured at 18:52 ET), so
+ * the last-bus warning rides along in the body: more furniture below the
+ * duration for the parser to survive, not less.
+ */
+describe("the expanded card's BOARD row with the arrival on it", () => {
+  const LIVE_BOARD_ROW_ARRIVAL = `YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+← All routes
+RED ROUTE · Runs M–F 7a–6p
+▴
+🚌
+🚌 (R) now-10 min
+🏁 (R) 6:52p
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Red
+now-10, then 17 min
+17 min
+6:52p
+⚠️ Hours ended 6pm — maybe the last loop
+2 buses still out · don't count on a ride back
+⚠️
+Due to Construction the State Street Station has been relocated to Chapel and Union.
+⏳ now-10 min
+›
+🚌 #310 · 12 min
+🧭 Directions to stop
+⚠ 55 m past
+▾
+🚌 I'm on it
+·
+🚩 Report
+📱 Yale tracker
+▾
+🚌 #310 · 3 stops away
+🚌344 Winchester⏸ 3:38 · leaves in <1-7 min
+Winchester/Division
+Division/Sheffield
+BOARDDivision/Prospect arrives in <1-10 min
+Prospect/Hillside
+SCL
+130 Prospect Street (S)
+College/Wall (S)
+Phelps Gate
+College/Crown
+College/George
+GET OFFLEPH/60 College
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+About`;
+
+  it("still reads one Red card, and takes the ROW's countdown rather than the BOARD row's", () => {
+    const opts = parseOptions(LIVE_BOARD_ROW_ARRIVAL);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red"]);
+    expect(opts[0]).toMatchObject({ totalMin: 17, arriveText: "6:52p", departed: false });
+    expect(opts[0].eta.raw).toBe("now-10, then 17 min");
+    // The band as an interval: any moment now, to ten minutes.
+    expect(opts[0].eta.first).toEqual([0, 660]);
+    expect(opts[0].eta.spread).toBe(true);
+    // The stop list is still evidence; the BOARD row is not a 🚌 line and adds
+    // nothing to the record of them.
+    expect(opts[0].busLines).toContain("🚌 #310 · 12 min");
+    expect(opts[0].busLines).toContain("🚌 #310 · 3 stops away");
+    expect(opts[0].busLines.some((l) => l.includes("arrives in"))).toBe(false);
+  });
+
+  it("puts the arrival on the BOARD line, where no countdown form can match it", () => {
+    const lines = LIVE_BOARD_ROW_ARRIVAL.split("\n").map((l) => l.trim());
+    const board = lines.find((l) => l.startsWith("BOARD"));
+    expect(board).toBe("BOARDDivision/Prospect arrives in <1-10 min");
+    // Below the duration: exactly where the label search and the countdown
+    // search both look, and where "SCL" once became a route name.
+    expect(lines.indexOf(board)).toBeGreaterThan(lines.indexOf("17 min"));
+    for (const l of [
+      board,
+      "BOARDDivision/Prospect arrives in 2-10 min",
+      "BOARDDivision/Prospect arrives in 4 min",
+      "BOARDDivision/Prospect arriving now",
+      "BOARD130 Prospect Street (S) arrives in 23-36 min",
+    ]) {
+      expect(parseBusEtaText(l)).toBeNull();
+      expect(/^\d+\s*min$/.test(l)).toBe(false);   // not a card header
+      expect(ARRIVAL_CLOCK_RE.test(l)).toBe(false); // not an arrival clock
+    }
+    // Even split onto a line of its own, every "arrives in" form stays unparsed.
+    for (const l of ["arrives in <1-10 min", "arrives in 2-10 min", "arrives in 4 min"]) {
+      expect(parseBusEtaText(l)).toBeNull();
+    }
+  });
+
+  it("keeps the row's countdown even if the BOARD row's 'arriving now' ever lands on its own line", () => {
+    // "arriving now" IS a countdown form, and it is the one board-row string
+    // that would parse. It can only reach a line of its own through a DOM
+    // change that splits the span off the BOARD row; the row's own countdown
+    // still wins, because it precedes the duration and `body` reads what
+    // precedes it first. Pinned so that change is caught here, not in the log.
+    const split = LIVE_BOARD_ROW_ARRIVAL.replace(
+      "BOARDDivision/Prospect arrives in <1-10 min",
+      "BOARDDivision/Prospect\narriving now",
+    );
+    expect(split).not.toBe(LIVE_BOARD_ROW_ARRIVAL);
+    const opts = parseOptions(split);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red"]);
+    expect(opts[0].eta.raw).toBe("now-10, then 17 min");
+  });
+});
+

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bandTitle, chipCountdownText, displayBand, RANGE_MAX_SHOWN_MIN, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
+import { bandTitle, boardArrivalText, chipCountdownText, displayBand, RANGE_MAX_SHOWN_MIN, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 
 const M = (m: number) => m * 60;
@@ -96,5 +96,47 @@ describe("one belief, one screen — the row, the chip and the wait leg print th
 
   it("the tooltip says what the three numbers are", () => {
     expect(bandTitle(band, M(5))).toBe("Most likely about 5 min. Four arrivals in five fall between 2 min and 9 min; the bus may leave a stop early or hold longer.");
+  });
+});
+
+describe("boardArrivalText — the arrival on the BOARD row, named as one", () => {
+  it("is the map chip's words behind the verb that says ARRIVAL", () => {
+    const band = { lowSec: M(2), highSec: M(9) };
+    expect(boardArrivalText(band, M(5))).toBe(`arrives in ${chipCountdownText(band, M(5))}`);
+    // A median under the band's low end prints the band alone, with or without #237.
+    expect(boardArrivalText(band, M(1))).toBe("arrives in 2-9 min");
+    expect(boardArrivalText(null, M(4))).toBe("arrives in 4 min");
+    expect(boardArrivalText(null, 45)).toBe("arrives in <1 min");
+  });
+
+  it("prints the row's own numbers, spelling a 'now' low end as the duration it is", () => {
+    // #240 stopped flooring a standing bus's low end, so a band that reaches
+    // "now" is the ordinary case again. The row leads with "now" because it is
+    // an ARRIVAL word there; after "arrives in" the same quantity is a
+    // DURATION, and standLeftText spells that "<1" for the same reason. Same
+    // statement, same high end, one number each way.
+    const band = { lowSec: 5, highSec: M(10) };
+    expect(fmtBusLine({ leadSec: M(4), leadBand: band, nextSec: M(17) })).toBe("now-10, then 17 min");
+    expect(chipCountdownText(band, M(4))).toBe("now-10 min");
+    expect(boardArrivalText(band, M(4))).toBe("arrives in <1-10 min");
+  });
+
+  it("never says 'arrives in now'", () => {
+    expect(boardArrivalText(null, 5)).toBe("arriving now");
+    // A band whose low end is inside ten seconds: "now" is an arrival's word,
+    // and as the low end of a range it is spelled as a duration.
+    expect(boardArrivalText({ lowSec: 5, highSec: M(6) }, 15)).toBe("arrives in <1-6 min");
+    const withMedian = boardArrivalText({ lowSec: 5, highSec: M(6) }, M(3))!;
+    expect(withMedian).not.toContain("now");
+    expect(withMedian).toMatch(/^arrives in .*<1-6\)? min$/);
+  });
+
+  it("is nothing when there is no arrival", () => {
+    expect(boardArrivalText(null, null)).toBeNull();
+    expect(boardArrivalText({ lowSec: M(2), highSec: M(9) }, null)).toBeNull();
+  });
+
+  it("does not borrow the departure's verb", () => {
+    for (const eta of [5, 45, M(4), M(12)]) expect(boardArrivalText(null, eta)).not.toMatch(/leav/);
   });
 });
