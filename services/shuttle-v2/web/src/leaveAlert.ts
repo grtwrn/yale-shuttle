@@ -137,6 +137,19 @@ export function notificationsAvailable(): boolean {
 }
 
 /**
+ * Where notification permission stands, without asking — for wording a control
+ * before the tap that asks. Never throws; "unsupported" covers iOS Safari's
+ * page context, which has no Notification constructor at all.
+ */
+export function notifyPermissionState(): NotificationPermission | "unsupported" {
+  try {
+    return notificationsAvailable() ? Notification.permission : "unsupported";
+  } catch {
+    return "unsupported";
+  }
+}
+
+/**
  * Ask for notification permission. Call ONLY from a user gesture (the arm
  * tap) — never on load. Resolves true iff notifications may be shown.
  */
@@ -156,11 +169,25 @@ export async function ensureNotifyPermission(): Promise<boolean> {
  * registration's showNotification (survives backgrounding on Android),
  * falling back to `new Notification`. Resolves true iff a system
  * notification was shown; false → caller should show the in-app banner.
+ *
+ * `tag` REPLACES any earlier notification carrying the same tag. That is what
+ * the leave reminder wants — one arm, at most two pings, the later superseding
+ * the earlier — and it is what a stop alert must NOT share with it: two armed
+ * stop alerts and a leave reminder under one tag means the rider sees whichever
+ * fired last and nothing else. So a caller with its own identity passes its own
+ * tag (stopAlerts.ts `stopAlertTag`), and the default keeps the reminder
+ * byte-identical to what it was.
+ *
+ * TAPPING IT FOCUSES THE APP. The page-context notification does that itself
+ * here; the service-worker one is handled by `notificationclick` in sw.js,
+ * which is the only place that can do it once the tab is backgrounded. A ping
+ * that opens nothing is a dead end on a phone — the rider has to go and find
+ * the app by hand, which is the moment the bus goes past.
  */
-export async function deliverPing(message: string): Promise<boolean> {
+export async function deliverPing(message: string, tag = "leave-reminder"): Promise<boolean> {
   try {
     if (!notificationsAvailable() || Notification.permission !== "granted") return false;
-    const opts = { body: message, tag: "leave-reminder" };
+    const opts = { body: message, tag };
     try {
       const reg = await navigator.serviceWorker?.getRegistration?.();
       if (reg && typeof reg.showNotification === "function") {
@@ -169,7 +196,12 @@ export async function deliverPing(message: string): Promise<boolean> {
       }
     } catch { /* fall through to page-context Notification */ }
     try {
-      new Notification("Yale Shuttle Tracker", opts);
+      const n = new Notification("Yale Shuttle Tracker", opts);
+      try {
+        n.onclick = () => {
+          try { window.focus(); n.close(); } catch { /* nothing to focus */ }
+        };
+      } catch { /* onclick unsettable — the notification still showed */ }
       return true;
     } catch {
       return false;
