@@ -12,6 +12,9 @@ import type React from "react";
  * again; the beta notice is the operator's only standing invitation to send a
  * report, and on a launch that is days old it is worth the one quiet line.
  * Nothing here touches storage, so there is no blocked-storage path to guard.
+ *
+ * The footer also carries the one link to /about — a standalone page, not a
+ * tab, so it is a plain anchor in the same tab rather than any app state.
  */
 
 /**
@@ -62,12 +65,35 @@ const disclaimerStyle: React.CSSProperties = {
   color: MUTED,
 };
 
+/**
+ * The About link, in the footer's own grey. Underlined because at 12 px in a
+ * muted grey, colour alone would not read as a link — and it must clear the
+ * project's 44 px minimum, which `inline-flex` + `minHeight` makes real rather
+ * than nominal (a bare inline anchor's box is only as tall as its text).
+ */
+const aboutLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 44,
+  padding: "0 12px",
+  fontSize: 12,
+  lineHeight: 1.4,
+  color: MUTED,
+  textDecoration: "underline",
+  WebkitTapHighlightColor: "transparent",
+};
+
 /** What the beta strip says. Pinned in a test so it keeps naming the action. */
 export const BETA_LABEL = "In beta — please report any issues";
 
 /** The disclaimer, verbatim. */
 export const DISCLAIMER_TEXT =
   "Not affiliated with or endorsed by Yale University.";
+
+/** The footer's About link: its label and where it goes. */
+export const ABOUT_LABEL = "About";
+export const ABOUT_HREF = "/about";
 
 /**
  * The beta notice. Tapping it opens the footer's feedback composer — a banner
@@ -99,9 +125,17 @@ export function BetaBanner({ onSendFeedback }: { onSendFeedback: () => void }) {
 }
 
 /**
- * The affiliation disclaimer, at the foot of every page. Plain text, not a
- * link and not a control: there is nothing to tap and nothing to dismiss.
+ * The affiliation disclaimer, at the foot of every page, and beside it the
+ * app's one About link. The sentence itself is still plain text — nothing to
+ * tap and nothing to dismiss; the link is the only control here, and it goes
+ * to a standalone page in the same tab (opening a new one for a page a rider
+ * reads once and leaves would strand the app behind it on a phone).
  */
 export function AffiliationDisclaimer() {
-  return <div style={disclaimerStyle}>{DISCLAIMER_TEXT}</div>;
+  return (
+    <div style={disclaimerStyle}>
+      <div>{DISCLAIMER_TEXT}</div>
+      <a href={ABOUT_HREF} style={aboutLinkStyle}>{ABOUT_LABEL}</a>
+    </div>
+  );
 }

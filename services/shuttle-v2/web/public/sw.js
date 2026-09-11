@@ -24,7 +24,12 @@ self.addEventListener("fetch", (e) => {
   if (url.pathname.startsWith("/api/")) return;
   // Nor the operator dashboard: it is a numbers page opened to see NOW, and
   // it is not part of the rider shell this cache exists to keep installable.
-  if (url.pathname === "/stats" || url.pathname === "/stats.html") return;
+  // Nor the About page: it is standalone prose served no-store, read once and
+  // left, so there is nothing for the shell cache to buy by holding a copy.
+  if (
+    url.pathname === "/stats" || url.pathname === "/stats.html"
+    || url.pathname === "/about" || url.pathname === "/about.html"
+  ) return;
 
   e.respondWith(
     fetch(e.request)
