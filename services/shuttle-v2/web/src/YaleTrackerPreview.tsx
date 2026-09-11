@@ -40,7 +40,7 @@ export function YaleTrackerPreview({
   routeLabel: string;
   color: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const url = trackerUrl(routeLabel);
   // A route we cannot map to an upstream id has nothing to open.
   if (!url) return null;

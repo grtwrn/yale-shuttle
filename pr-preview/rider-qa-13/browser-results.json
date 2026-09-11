@@ -1,0 +1,13 @@
+{
+  "errors": [],
+  "checks": [
+    "tracker default expanded below stops; collapse/reopen",
+    "Gold warning clears on fresh movement timestamp",
+    "age expiry preserves destination, clears old ride, replans from current location at Now",
+    "missing bus explanation and dismissal",
+    "off-bus explanation",
+    "manual Done and missing destination recovery"
+  ],
+  "remoteTracker": "Stubbed to avoid remote iframe load on Pi",
+  "replanText": "YALE SHUTTLE\n3:51 PM\nTrip\nMap\nIssues\n↻\nFROM\n📍 Current location\n⇅\nTO\n🏁 School of Public Health (YSPH)\n☆\nWHEN\nNow\nPlan for later…\nOVERVIEW — TOP 2 OF 5 ROUTES\n▴\n🚌\n🚌\n🚌 (R) 4 min\n🏁 (R) 3:59p\n (B) 4:06p\n🚌 (B) 11 min\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\nBlue Day\nRed\nin 4, 18 min\n9 min\n🚶 2 min\n›\n🚌 4 min\n›\n🚶 1 min\n4:00p\n›\nBlue Day\nin 11, 30 min\n15 min\n🚶 5 min\n›\n🚌 3 min\n›\n🚶 1 min\n4:07p\n›\n🚶 Walk\n19 min\n4:11p\n›\nShow 3 more routes\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nNot affiliated with or endorsed by Yale University."
+}
