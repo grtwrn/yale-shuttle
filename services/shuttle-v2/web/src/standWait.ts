@@ -34,9 +34,10 @@
 // run long it can end at ANY second, and the only statement that cannot
 // mislead in that direction is one bounded below by "now". Hence:
 //
-//   * the chip says what is LEFT as a low-high pair ("1-6 min left"), and
-//     collapses to a ceiling ("up to 4 min left") the moment the low end is
-//     inside a minute — which is exactly when the bus can pull out at will;
+//   * the chip says what is LEFT as a low-high pair, named as the DEPARTURE it
+//     is ("leaves in 1-6 min"), and collapses to "leaving any moment" once the
+//     whole range is inside a minute — which is exactly when the bus can pull
+//     out at will;
 //   * the countdown becomes a RANGE whose low end is the DRIVE FLOOR: where
 //     the bus would be if it left this second. It is never earlier than that
 //     (the bus cannot teleport) and never later than the q90 (it may leave
@@ -73,6 +74,14 @@ export const RANGE_MIN_SPREAD_SEC = 120;
  * while the rider reads the line. Saying "0-5 min" invites them to average.
  */
 export const IMMINENT_SEC = 60;
+
+/**
+ * The verb that separates a DEPARTURE from an ARRIVAL. The chip and the
+ * countdown beside it describe the same bus and the same stand, one as when it
+ * goes and one as when it reaches you; without this the chip's bare "N min
+ * left" was read as the second (operator, 2026-09-11).
+ */
+const LEAVES = "leaves in";
 
 export interface StandWaitInput {
   /** Seconds the bus has already stood. */
@@ -126,7 +135,7 @@ export interface StandWaitView {
   departNowSec: number | null;
   /** The countdown's range, or null to leave the point number alone. */
   range: { lowSec: number; highSec: number } | null;
-  /** "1-6 min left" / "up to 4 min left" — the chip's second half. */
+  /** "leaves in 1-6 min" / "leaving any moment" — the chip's second half. */
   leftText: string;
   chipTitle: string;
   rangeTitle: string | null;
@@ -161,6 +170,19 @@ function bare(s: string): string {
  *
  * Only when the WHOLE range is imminent does the range collapse — there the
  * two ends say the same thing and the words are better.
+ *
+ * IT NAMES ITS QUANTITY (operator, 2026-09-11). The chip used to read
+ * "<1-8 min left", which sat in the expanded card's stop list twelve pixels
+ * under a row reading "in 2-9 min" and a map bubble reading "(R) 2-9 min" —
+ * "im seeing different estimates in the route list and the minimap … look down
+ * at the stop list it had different numbers". Both numbers were right and they
+ * came from one belief: reproduced from production (#310 standing at 344
+ * Winchester, 08:26:47 ET) the stand's remainder is q10/q50/q90 = 56/241/487 s
+ * and the model's own drive floor to the board stop is 72 s, so 2-9 IS
+ * (<1-8) + the drive. What the chip never said is what the 8 minutes were
+ * eight minutes OF. "left" reads as "left until it gets here" in a list of
+ * stops; "leaves in" cannot. The row's "in …" is an arrival, this is a
+ * departure, and the two are now distinguishable at a glance.
  */
 export function standLeftText(soonSec: number, lateSec: number): string {
   const high = fmtMin(lateSec);
@@ -169,14 +191,14 @@ export function standLeftText(soonSec: number, lateSec: number): string {
   // end of a WAIT it reads as nonsense ("now-1 min left"). The same quantity
   // spelled as a duration is "<1".
   const low = fmtMin(soonSec).replace(/^now$/, "<1 min");
-  if (low === high) return `~${high} left`;
-  // "<1-1 min left" is not a range, it is two spellings of about a minute
+  if (low === high) return `${LEAVES} ~${high}`;
+  // "<1-1 min" is not a range, it is two spellings of about a minute
   // (operator, 2026-09-10: "reads a little funny"). It is the one adjacent
   // pair that breaks, because the two tokens differ only by the "<" — every
-  // other neighbouring pair reads correctly ("3-4 min left"). Both ends are
+  // other neighbouring pair reads correctly ("3-4 min"). Both ends are
   // inside two minutes here, so the existing collapse is the honest wording.
-  if (low === "<1 min" && high === "1 min") return "~1 min left";
-  return `${bare(low)}-${high} left`;
+  if (low === "<1 min" && high === "1 min") return `${LEAVES} ~1 min`;
+  return `${LEAVES} ${bare(low)}-${high}`;
 }
 
 /**
@@ -272,6 +294,74 @@ export function standWaitFor(
     atBoardStop: standing.stopId === boardStopId,
     driveFloorSec,
   });
+}
+
+/**
+ * THE PAUSE CHIP beside a stop a bus is resting at — one composition, every
+ * stop list.
+ *
+ * There are two stop lists in this app (the expanded trip card's and the Map
+ * tab's route cards') and they used to answer differently about the same bus at
+ * the same instant. The trip card was moved onto the model on 2026-09-04; the
+ * Map tab kept reading `at_stop_since` off the payload and `dwell.med ± sd` off
+ * the served table, so on the live payload it badged West Haven Train Station
+ * "8-9 min" where the model's stand is 23 s, and 344 Winchester "9-13 min"
+ * against 4:59. Both are the arrival-to-arrival median, which CONTAINS DRIVE
+ * TIME — the mistake arrivals.ts documents twice.
+ *
+ * So the chip is built HERE and nowhere else. A render site supplies the belief
+ * (`resolveStandingStop`) and the tables; it does not get to compose the words.
+ */
+export function standChipFor(
+  standing: { stopId: number; standingSec: number; approach?: boolean } | null,
+  routeDwells: Record<string, DwellStat>,
+  dwellsByRoute: DwellTimes | undefined,
+): { clock: string; text: string; title: string; overdue: boolean } | null {
+  if (!standing) return null;
+  // No countdown and the stand's own stop as the "board" stop: this is the chip,
+  // not the row, so there is no arrival to bound and no range to draw. Every
+  // field it does return (`leftText`, `chipTitle`, `overdue`) is independent of
+  // `etaSec` by construction — a test pins that against the row's own view.
+  const view = standWaitFor(standing, routeDwells, dwellsByRoute, null, standing.stopId);
+  if (!view) return null;
+  return {
+    clock: mmss(standing.standingSec),
+    text: view.leftText,
+    title: (standing.approach
+      ? "Waiting for this stop, holding just short of the marker. "
+      : "") + view.chipTitle,
+    overdue: view.overdue,
+  };
+}
+
+/**
+ * THE COUNTDOWN FOR ONE STOP, wherever it is drawn: the trip card's minimap
+ * chip and the Map tab's route-card rows.
+ *
+ * Both read the same `UpcomingArrival`. Until 2026-09-11 only the minimap knew
+ * that a standing bus's arrival is a range, so a bus mid-layover printed
+ * "2-9 min" on the trip card and its minimap and a definitive "1 min" on the
+ * Map tab's own row for the same stop — below the model's own drive floor. That
+ * is the operator's 2026-09-10 complaint ("its a little weird showing a
+ * definitive answer in map and a range in the stop list") on the surface the
+ * fix missed.
+ *
+ * `arrival.eta` is passed already decayed where the caller decays it (report
+ * #48); the range never is, for the reason `chipCountdownText` gives.
+ */
+export function stopEtaText(
+  standing: { stopId: number; standingSec: number } | null,
+  arrival: { eta: number; departNow?: number | undefined },
+  stopId: number,
+  routeDwells: Record<string, DwellStat>,
+  dwellsByRoute: DwellTimes | undefined,
+): string | null {
+  return chipCountdownText(
+    standing
+      ? standWaitFor(standing, routeDwells, dwellsByRoute, arrival.eta, stopId, arrival.departNow)
+      : null,
+    arrival.eta,
+  );
 }
 
 /**

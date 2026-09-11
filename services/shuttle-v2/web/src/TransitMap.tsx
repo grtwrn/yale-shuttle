@@ -31,7 +31,7 @@ import { noteShown } from "./shownLog";
 import { berthFor, type Berth } from "./berths";
 import { BerthInset } from "./BerthInset";
 import { clusterChips } from "./chipCluster";
-import { chipCountdownText, standWaitFor, waitLegText } from "./standWait";
+import { chipCountdownText, standChipFor, standWaitFor, stopEtaText, waitLegText } from "./standWait";
 import { fmtBusLine } from "./bunching";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -3528,12 +3528,15 @@ const TripPlanner: FC<{
               // The stand the lead bus is in — the same resolver, the same
               // tables and the same clock the row below uses, so the chip and
               // the row cannot disagree about a bus they are both describing.
+              const standRest = o.departed || !busMatch
+                ? null
+                : resolveStandingStop(
+                    busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                  );
               const standView = o.departed || !busMatch
                 ? null
                 : standWaitFor(
-                    resolveStandingStop(
-                      busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                    ),
+                    standRest,
                     dwellTimes?.[cfg.routeIds[0]] ?? {},
                     dwellTimes ?? undefined,
                     remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
@@ -3602,9 +3605,17 @@ const TripPlanner: FC<{
                 // line they picked: `berthFor` answers null for all but ten
                 // stop/route cells and the map is unchanged wherever it does.
                 berth: berthFor(o.boardStopId, cfg.busRouteIds),
-                boardEta: o.departed ? null : chipCountdownText(
-                  standView,
-                  remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                boardEta: o.departed ? null : stopEtaText(
+                  // The same composition the Map tab's stop rows use, so a bus
+                  // standing mid-layover cannot read as a range here and a point
+                  // there. `standView` above is the same belief; it stays for
+                  // the row's own range and title.
+                  standRest,
+                  {
+                    eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                    departNow: o.busDepartNowSec,
+                  },
+                  o.boardStopId, dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
@@ -4605,6 +4616,8 @@ const TripPlanner: FC<{
                       )
                     : null;
                   const liveElapsedSec = standing ? standing.standingSec : null;
+                  /** The chip's clock and words — one composition for both stop lists. */
+                  const standChip = standChipFor(standing, routeDwells, dwellTimes ?? undefined);
                   /**
                    * The hold to show at `sid`. `elapsed` is passed only for the
                    * stop the bus is actually standing at — everywhere else
@@ -4666,7 +4679,7 @@ const TripPlanner: FC<{
                                   {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                                   {name}
                                   {showLive && (
-                                    // "⏸ 3:21 · up to 6 min left" — the clock the
+                                    // "⏸ 3:21 · leaves in 1-6 min" — the clock the
                                     // rider watches tick, then WHAT IS LEFT of the
                                     // stand, bounded.
                                     //
@@ -4691,6 +4704,22 @@ const TripPlanner: FC<{
                                     // hold keeps its place in the tooltip, where a
                                     // rider reads it as context instead of subtracting
                                     // from it.
+                                    //
+                                    // AND IT NAMES WHICH QUANTITY IT IS. "<1-8 min
+                                    // left" sat twelve pixels under a row reading "in
+                                    // 2-9 min" and a bubble reading "(R) 2-9 min"
+                                    // (operator, 2026-09-11). Both were right —
+                                    // reproduced from production, the remainder is
+                                    // q10/q50/q90 = 56/241/487 s and the drive floor to
+                                    // the board stop 72 s, so 2-9 IS (<1-8) + the
+                                    // drive — but nothing on screen said the 8 minutes
+                                    // were a DEPARTURE. `standChipFor` says it.
+                                    //
+                                    // Composed in standWait.ts, not here, so the Map
+                                    // tab's route-card rows print the identical string
+                                    // for the identical bus (a source-level test in
+                                    // standWait.test.ts fails if either site composes
+                                    // its own).
                                     <span style={{
                                             fontSize: 10, fontWeight: 700, marginLeft: 6,
                                             // Amber once the stand has outlasted the stop's
@@ -4698,15 +4727,13 @@ const TripPlanner: FC<{
                                             // the chip (it was the misleading half), so this
                                             // is what carries "this is running long" at a
                                             // glance; the tooltip names the figure.
-                                            color: standCtx?.overdue ? "#8a5300" : "#5f6368",
+                                            color: standChip?.overdue ? "#8a5300" : "#5f6368",
                                           }}
-                                          title={(standing?.approach
-                                            ? "Waiting for this stop, holding just short of the marker. "
-                                            : "") + (standCtx
-                                            ? standCtx.chipTitle
-                                            : "Time the bus has been sitting here")}>
-                                      ⏸ {fmtMmss(liveElapsedSec!)}
-                                      {standCtx ? ` · ${standCtx.leftText}` : ""}
+                                          title={standChip
+                                            ? standChip.title
+                                            : "Time the bus has been sitting here"}>
+                                      ⏸ {standChip ? standChip.clock : fmtMmss(liveElapsedSec!)}
+                                      {standChip ? ` · ${standChip.text}` : ""}
                                     </span>
                                   )}
                                   {showLive && standing?.approach && (
@@ -5464,8 +5491,26 @@ const StopList: FC<{
   const busLookups: Record<number, Record<number, BusData>> = {};
   const nextLookups: Record<number, Set<number>> = {};
   const etaLookups: Record<number, Record<number, UpcomingArrival>> = {};
+  /**
+   * WHERE A BUS IS RESTING, off the same belief the countdown reads
+   * (`resolveStandingStop`) — keyed by the stop it is resting at, and by the
+   * vehicle whose arrivals the rest is still ahead of.
+   *
+   * This card used to read `at_stop_id` / `at_stop_since` off the payload and
+   * `dwellTimes[...].med` off the served table, which is BOTH of the two
+   * mistakes arrivals.ts documents: `at_stop_id` is withheld for a bus resting
+   * short of its layover marker (report #102), and `dwell.med` is the
+   * arrival-to-arrival median, which CONTAINS DRIVE TIME. Measured on the live
+   * payload the gap is not cosmetic — West Haven Train Station badged "8-9 min"
+   * where the model's own stand is 23 s, and 344 Winchester "9-13 min" against
+   * 4:59 — so the chip a rider subtracts from disagreed with the number beside
+   * it. One belief, one screen.
+   */
+  const restByStop: Record<number, Record<number, { stopId: number; standingSec: number; approach: boolean }>> = {};
+  const restByBus: Record<number, Record<string, { stopId: number; standingSec: number; approach: boolean }>> = {};
   /** Buses on the line that the estimator will actually price from. */
   const onRouteCounts: Record<number, number> = {};
+  const normBusName = (s: string) => s.replace(/^#/, "");
   {
     // One clock for the whole page: the anchor and the ETA must be answers
     // about the same instant, or the badge and the countdown beside it can
@@ -5487,6 +5532,8 @@ const StopList: FC<{
       busLookups[idx] = {};
       nextLookups[idx] = new Set();
       etaLookups[idx] = {};
+      restByStop[idx] = {};
+      restByBus[idx] = {};
       onRouteCounts[idx] = 0;
       for (const sid of stops) targets.push(sid);
     });
@@ -5527,6 +5574,12 @@ const StopList: FC<{
         if (i < 0) continue;
         busLookups[idx]![stops[i]!] = bus;
         nextLookups[idx]!.add(stops[(i + 1) % stops.length]!);
+        // Same resolver, same store, same clock as the ETA just above.
+        const rest = resolveStandingStop(bus, cfg, routeStops, stopCoords, nowMs, liveAnchorStore);
+        if (rest) {
+          restByStop[idx]![rest.stopId] = rest;
+          restByBus[idx]![normBusName(bus.bus_name)] = rest;
+        }
       }
     });
   }
@@ -5560,6 +5613,8 @@ const StopList: FC<{
         const busMap = busLookups[listIdx] ?? {};
         const nextSet = nextLookups[listIdx] ?? new Set<number>();
         const etaAtStop = etaLookups[listIdx] ?? {};
+        const restAtStop = restByStop[listIdx] ?? {};
+        const restForBus = restByBus[listIdx] ?? {};
         const onRoute = onRouteCounts[listIdx] ?? 0;
         const hasBuses = onRoute > 0;
         const primaryRouteId = cfg.routeIds[0];
@@ -5646,16 +5701,30 @@ const StopList: FC<{
           const bus = busMap[stopId];
           const isNext = nextSet.has(stopId);
           const isSaved = savedStops.has(stopId);
-          const dwell = (dwellTimes[primaryRouteId] ?? {})[String(stopId)];
-          // Only surface significant timing-point dwells (>= 5 min typical).
-          const longDwell = dwell && dwell.n >= 3 && dwell.med >= 300 ? dwell : null;
-          const dwellLabel = longDwell
-            ? (() => {
-                const lo = Math.max(1, Math.round(longDwell.med / 60));
-                const hi = Math.round((longDwell.med + longDwell.sd) / 60);
-                return lo < hi ? `${lo}-${hi} min` : `${lo} min`;
-              })()
+          const routeDwells = dwellTimes[primaryRouteId] ?? {};
+          const dwell = routeDwells[String(stopId)];
+          /**
+           * THE TYPICAL HOLD AT THIS STOP, from the model's own stand table —
+           * `shownStandSec` with no elapsed clock, exactly as the trip card's
+           * stop list asks for it, at the trip card's own 3-minute threshold.
+           *
+           * It used to be `dwell.med` (>= 300 s) with `med + sd` as the upper
+           * end, which is the arrival-to-arrival figure and so counts the drive
+           * into the hop: on the live payload that badged West Haven Train
+           * Station "8-9 min" where the model's stand is 23 s, and 344
+           * Winchester "9-13 min" against 4:59. A badge a rider subtracts from
+           * has to be the number the countdown beside it was billed from.
+           */
+          const typicalStand = dwell && dwell.n >= 3
+            ? shownStandSec(dwell, null, routeDwells, dwellTimes)
             : null;
+          const dwellLabel = typicalStand && typicalStand.sec >= 180
+            ? `~${Math.round(typicalStand.sec / 60)} min`
+            : null;
+          // A bus RESTING here, by the belief rather than by `at_stop_id` — so
+          // a layover taken short of the marker still shows its clock (#102).
+          const restHere = restAtStop[stopId] ?? null;
+          const restChip = standChipFor(restHere, routeDwells, dwellTimes);
 
           return (
             <div
@@ -5696,8 +5765,8 @@ const StopList: FC<{
                 color: isNext ? cfg.color : isSaved ? "#2E7D32" : "#37474f",
               }}>
                 {name}
-                {longDwell && dwellLabel && !(bus && bus.at_stop_id === stopId) && (
-                  <span title={`Often pauses here ~${dwellLabel} (n=${longDwell.n})`}
+                {dwellLabel && !restHere && (
+                  <span title={`Often pauses here ${dwellLabel} (n=${dwell!.n})`}
                         style={{
                           marginLeft: 5, fontSize: 9, color: "#fff",
                           background: "#FFA726", borderRadius: 4, padding: "1px 4px",
@@ -5707,7 +5776,11 @@ const StopList: FC<{
                   </span>
                 )}
               </span>
-              {etaAtStop[stopId] && !bus && (() => {
+              {/* A row with the bus ON it says where the bus is, not when it
+                  arrives — including the case the anchor and the rest disagree
+                  about (a layover taken short of the marker puts the rest one
+                  stop ahead of the lead leg). One claim per row. */}
+              {etaAtStop[stopId] && !bus && !restHere && (() => {
                 const e = etaAtStop[stopId]!;
                 return (
                   <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
@@ -5721,7 +5794,15 @@ const StopList: FC<{
                           at the kerb, which PR #98 already established is not a
                           countdown. The interval has not gone: it is the clock
                           time beside it. */}
-                      {e.estimated ? "~" : ""}{fmtMin(e.eta)}
+                      {/* The RANGE when the bus supplying this arrival is
+                          standing, the point otherwise — `stopEtaText` falls
+                          through to `fmtMin(eta)`, so every non-standing row is
+                          byte-identical to what this printed before. Same
+                          composition as the trip card's minimap chip. */}
+                      {e.estimated ? "~" : ""}{stopEtaText(
+                        restForBus[normBusName(e.busName)] ?? null,
+                        e, stopId, routeDwells, dwellTimes,
+                      )}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
                       {fmtClock(e.eta)}
@@ -5733,21 +5814,22 @@ const StopList: FC<{
                 <span style={{ fontSize: 10, color: "#2E7D32", opacity: 0.6 }}>★</span>
               )}
               {bus && (() => {
-                // If bus is parked at a known-dwell stop, count up how long it's been sitting
-                // and show next to the expected dwell: "X:XX / ~Y min"
-                let countdown: string | null = null;
-                if (longDwell && dwellLabel && bus.at_stop_id === stopId && bus.at_stop_since) {
-                  const elapsedSec = Math.max(0, (Date.now() - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
-                  const totalSec = Math.floor(elapsedSec);
-                  const mm = Math.floor(totalSec / 60);
-                  const ss = totalSec % 60;
-                  const elapsed = mm > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : `${ss}s`;
-                  countdown = `${elapsed} / ~${dwellLabel}`;
-                }
+                /**
+                 * THE HOLD, AND WHAT IS LEFT OF IT — the same string the trip
+                 * card's stop list prints for the same bus at the same instant
+                 * (`standWaitFor` -> `leftText`), because it is the same belief
+                 * and the same stand table.
+                 *
+                 * It used to be `elapsed / ~dwell.med±sd`, i.e. a clock the
+                 * payload published beside a total that contains drive time,
+                 * which is the "3 of 10" shape report #73 filed: a rider
+                 * subtracts and gets a number the countdown never priced.
+                 */
+                const countdown = restChip ? `${restChip.clock} · ${restChip.text}` : null;
                 return (
                   <>
                     {countdown && (
-                      <span title={longDwell ? `Sitting / typical pause (n=${longDwell.n})` : undefined}
+                      <span title={restChip!.title}
                             style={{
                               fontSize: 9.5, fontWeight: 700, color: "#fff",
                               background: "#FFA726", borderRadius: 6, padding: "1px 5px",

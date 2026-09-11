@@ -414,6 +414,30 @@ const NOT_A_ROUTE = new Set([
   "Find next bus", "Clear", "Walk", "Departed", "nearby",
   "published stop", "expected stop",
 ]);
+/**
+ * WHERE THE EXPANDED CARD'S STOP LIST BEGINS (2026-09-11).
+ *
+ * A route pill never appears below this line. 172 upstream stop names do, and a
+ * name with no "/" in it is exactly as label-shaped as a route: on the
+ * operator's own Prospect / Canner -> School of Public Health capture the
+ * parser read the line as "SCL", with "Phelps Gate" next in the queue. Every
+ * earlier expanded-card fixture happened to ride between slash-y names
+ * ("Winchester / Division"), which is why it went unseen for as long as the
+ * expanded view has existed.
+ *
+ * Same family as "Contribute", "nearby" and the berth inset's map labels — and
+ * the reason `NOT_A_ROUTE` cannot be the whole answer here: the stop names come
+ * from upstream, so the set is neither fixed nor ours. `IS_PAGE_CHROME` already
+ * cuts the footer off the last card for the identical reason; this cuts the
+ * stop list off an expanded one.
+ *
+ * The cut may NOT be "the first few lines of the body": measured against the
+ * pre-2026-09-04 capture this file still carries, the pill sat SIX lines into
+ * the body (countdown, arrival clock, chevron, walk leg, chevron, pill), and
+ * bounding the search picked the overview legend above the card instead — the
+ * very mistake the preference for a pill-below exists to avoid.
+ */
+const IS_STOP_LIST = /^(?:🚌 #\S+ · \d+ stops? away$|⏸ |BOARD|GET OFF)/u;
 /** Page furniture below the option list — where the last card stops. */
 const IS_PAGE_CHROME = /^(Show \d+ more route|Clear$|Contribute$|💬|🧪|Not affiliated)/;
 const isLabelish = (l) =>
@@ -486,6 +510,11 @@ export function parseOptions(bodyText) {
     const postAll = lines.slice(h + 1, nextStart);
     const chromeAt = postAll.findIndex((l) => IS_PAGE_CHROME.test(l));
     const post = chromeAt >= 0 ? postAll.slice(0, chromeAt) : postAll;
+    // Where a route pill may still be looked for: everything above the expanded
+    // card's stop list. `body` keeps the whole card — the legs, the ride bar and
+    // the stop list are all evidence, and only the LABEL search is narrowed.
+    const stopListAt = post.findIndex((l) => IS_STOP_LIST.test(l));
+    const postPill = stopListAt >= 0 ? post.slice(0, stopListAt) : post;
     const body = [...pre, ...post];
     // A real card either quotes an arrival clock or is a Departed card. This
     // is what keeps a stray "16 min" in the map overview out of the list.
@@ -513,7 +542,10 @@ export function parseOptions(bodyText) {
     // The pill below the duration (old layout) wins over anything walked back
     // above it, so an overview legend sitting right above the first card
     // cannot be mistaken for that card's line.
-    const label = post.find(isLabelish) ?? pre.find(isLabelish) ?? null;
+    //
+    // BUT NOT INSIDE THE EXPANDED CARD'S STOP LIST (2026-09-11) — see
+    // IS_STOP_LIST. Unbounded, that search read the line as "SCL".
+    const label = postPill.find(isLabelish) ?? pre.find(isLabelish) ?? null;
     cards.push({
       busLines,
       routeLabel: body.includes("🚶 Walk") ? "Walk" : label,
