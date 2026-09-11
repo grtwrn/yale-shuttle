@@ -1348,9 +1348,22 @@ Five rules, each of which cost a measurement:
   arithmetic is identical everywhere, and adding an id means running the pair
   and pasting its numbers beside it (a test fails if an id has no evidence line
   in the source). 66 candidates -> 22 pass the cell gate -> **2 served**; the
-  20 held back are held for want of rider evidence, not merit, and **333 Cedar
-  on Blue Night (13:10, delta -120.9 s held out) is the largest effect on the
-  network** and the next one to unlock.
+  20 held back are held for want of rider evidence, not merit. **Blue Night
+  (13) was measured on 2026-09-10 and REFUSED by the rider table** even though
+  333 Cedar (13:10, delta -115.5 s held out) is the largest cell effect on the
+  network and gps-replay improved on every column: on a one-bus line the card's
+  SECOND slot is the same bus a lap later, its chain carries the full 333
+  Cedar stand as a future stand, and at the departure poll that stand is
+  priced under a lap the served clock has not yet reset — 0 strands fixed / 74
+  introduced, 0 / 555 jumps, all in slot 2, slot 1 unchanged. Fix the lap of a
+  stop the bus is LEAVING before retrying (`docs/stand-lap-covariate.md`
+  section 6b). **gps-replay could not see this covariate until 2026-09-10** —
+  it built its payload without `buses[].lap`, so both arms of any lap A/B priced
+  the factor as 1 and the `PAIRS_OUT` files came out byte-identical; it now
+  serves the lap age from the replayed detector's own departures, the way
+  `rider-sim` does. It still prices only the next 5 stops, so a defect a lap
+  ahead (the second slot) is invisible to it by construction; md5 the pairs
+  AND run the rider pair.
 - **The stop's own lap wins; a regulator stop does not.** Swept over every
   upstream stop at nine cells, the stop's own lap ranks first at eight, and the
   ninth loses by 0.027 to a stop three minutes upstream on the same run. 333
