@@ -31,7 +31,8 @@ import { noteShown } from "./shownLog";
 import { berthFor, type Berth } from "./berths";
 import { BerthInset } from "./BerthInset";
 import { clusterChips } from "./chipCluster";
-import { chipCountdownText, standChipFor, standWaitFor, stopEtaText, waitLegText } from "./standWait";
+import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
+import { bandTitle, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -2160,7 +2161,7 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, busDepartNowSec: 0, computedAtMs: nowMs,
+          busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
 
@@ -2194,7 +2195,7 @@ const TripPlanner: FC<{
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busEtaSec: match.eta, busDepartNowSec: match.departNow, computedAtMs: nowMs,
+        busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3537,19 +3538,6 @@ const TripPlanner: FC<{
                 : resolveStandingStop(
                     busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
                   );
-              const standView = o.departed || !busMatch
-                ? null
-                : standWaitFor(
-                    standRest,
-                    dwellTimes?.[cfg.routeIds[0]] ?? {},
-                    dwellTimes ?? undefined,
-                    remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    o.boardStopId,
-                    // NOT decayed by wall clock: it is the drive AFTER the
-                    // stand ends, and none of it has been served while the bus
-                    // sits. The point number above still is (report #48).
-                    o.busDepartNowSec,
-                  );
               const passedMatch = o.missedBus
                 ? buses.find((b) =>
                     isBusOnRoute(b, allStops, stopCoords) &&
@@ -3612,14 +3600,15 @@ const TripPlanner: FC<{
                 boardEta: o.departed ? null : stopEtaText(
                   // The same composition the Map tab's stop rows use, so a bus
                   // standing mid-layover cannot read as a range here and a point
-                  // there. `standView` above is the same belief; it stays for
-                  // the row's own range and title.
+                  // there: `arrivalBand` off the pinned arrival's own band, the
+                  // standing floor from `standRest`.
                   standRest,
                   {
                     eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    departNow: o.busDepartNowSec,
+                    low: o.busLowSec, high: o.busHighSec,
+                    departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs,
                   },
-                  o.boardStopId, dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
+                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
@@ -3835,10 +3824,15 @@ const TripPlanner: FC<{
                   ),
                   dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
                   dwellTimes ?? undefined,
-                  busEtaLive,
-                  o.boardStopId,
-                  o.busDepartNowSec,
                 )
+              : null;
+            // THE ROW'S RANGE: the pinned arrival's own 10-90 band, when it is
+            // wide enough to print (etaBand.ts) — standing OR moving — through
+            // the one composer every surface reads (`arrivalBand`): decayed
+            // with the point, and for a standing bus floored at departNow +
+            // the shortest stand still left.
+            const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
+              ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
@@ -3870,7 +3864,7 @@ const TripPlanner: FC<{
              * tables and the same clock as slot 1's, so the two cannot answer
              * differently about the same stand.
              */
-            const nextStandCtx = nextArrLive && shuttleCtx && !o.departed
+            const nextBand = nextArrLive && shuttleCtx && !o.departed
               ? (() => {
                   const norm = shuttleCtx.normBus;
                   const nextBus = buses.find((b) =>
@@ -3879,15 +3873,16 @@ const TripPlanner: FC<{
                     isBusOnRoute(b, shuttleCtx.allStops, stopCoords),
                   ) ?? null;
                   if (!nextBus) return null;
-                  return standWaitFor(
-                    resolveStandingStop(
-                      nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                    ),
-                    dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
-                    dwellTimes ?? undefined,
-                    nextArrLive.eta,
-                    o.boardStopId,
-                    nextArrLive.departNow,
+                  // Only a STANDING slot-2 bus contributes its band, exactly
+                  // as #216 gated it; the band itself is the model's own
+                  // (its arrival row) through the same composer as slot 1's.
+                  const standing = resolveStandingStop(
+                    nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                  );
+                  if (!standing) return null;
+                  return arrivalBand(
+                    standWaitFor(standing, dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
+                    { low: nextArrLive.low, high: nextArrLive.high, departNow: nextArrLive.departNow },
                   );
                 })()
               : null;
@@ -4027,7 +4022,7 @@ const TripPlanner: FC<{
                             below spells out this bus's wait; the pair is about
                             the one after it. */}
                         {busEtaLive !== null && !o.departed && (
-                          <span title={standCtx?.rangeTitle ?? undefined} style={{
+                          <span title={leadBand ? bandTitle(leadBand, busEtaLive) : undefined} style={{
                             fontSize: 13, color: "#5f6368", fontWeight: 500,
                             minWidth: 0, overflow: "hidden",
                             textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -4039,9 +4034,9 @@ const TripPlanner: FC<{
                                 band goes in as evidence and is never drawn. */}
                             {fmtBusLine({
                               leadSec: busEtaLive,
-                              leadBand: standCtx?.range ?? null,
+                              leadBand,
                               nextSec: nextArrLive?.eta ?? null,
-                              nextBand: nextStandCtx?.range ?? null,
+                              nextBand,
                             })}
                           </span>
                         )}
@@ -4317,7 +4312,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = waitLegText(standCtx, o.walkToSec, o.waitSec);
+                        const waitText = waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -5809,7 +5804,7 @@ const StopList: FC<{
                           composition as the trip card's minimap chip. */}
                       {e.estimated ? "~" : ""}{stopEtaText(
                         restForBus[normBusName(e.busName)] ?? null,
-                        e, stopId, routeDwells, dwellTimes,
+                        e, routeDwells, dwellTimes,
                       )}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>

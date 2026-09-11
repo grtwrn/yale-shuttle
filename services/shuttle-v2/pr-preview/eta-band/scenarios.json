@@ -1,0 +1,92 @@
+[
+ {
+  "name": "moving-toward-layover",
+  "measure": true,
+  "buses": [
+   {
+    "bus_id": 9304,
+    "bus_name": "#304",
+    "route_id": 3,
+    "lat": 41.313863999999995,
+    "lon": -72.9235388,
+    "last_stop_id": 120,
+    "moveTo": {
+     "lat": 41.315138,
+     "lon": -72.9244236
+    },
+    "moveSec": 600
+   },
+   {
+    "bus_id": 9316,
+    "bus_name": "#316",
+    "route_id": 3,
+    "lat": 41.3063461,
+    "lon": -72.9263292,
+    "last_stop_id": 30,
+    "moveTo": {
+     "lat": 41.3071123,
+     "lon": -72.9280656
+    },
+    "moveSec": 600
+   }
+  ]
+ },
+ {
+  "name": "standing-at-layover",
+  "buses": [
+   {
+    "bus_id": 9304,
+    "bus_name": "#304",
+    "route_id": 3,
+    "lat": 41.324661,
+    "lon": -72.928677,
+    "last_stop_id": 11,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9316,
+    "bus_name": "#316",
+    "route_id": 3,
+    "lat": 41.310273699999996,
+    "lon": -72.92537469999999,
+    "last_stop_id": 41,
+    "moveTo": {
+     "lat": 41.3096551,
+     "lon": -72.92374810000001
+    },
+    "moveSec": 600
+   }
+  ]
+ },
+ {
+  "name": "moving-no-layover-ahead",
+  "buses": [
+   {
+    "bus_id": 9304,
+    "bus_name": "#304",
+    "route_id": 3,
+    "lat": 41.325368,
+    "lon": -72.9275064,
+    "last_stop_id": 146,
+    "moveTo": {
+     "lat": 41.3253295,
+     "lon": -72.9266888
+    },
+    "moveSec": 600
+   },
+   {
+    "bus_id": 9316,
+    "bus_name": "#316",
+    "route_id": 3,
+    "lat": 41.3063461,
+    "lon": -72.9263292,
+    "last_stop_id": 30,
+    "moveTo": {
+     "lat": 41.3071123,
+     "lon": -72.9280656
+    },
+    "moveSec": 600
+   }
+  ]
+ }
+]
