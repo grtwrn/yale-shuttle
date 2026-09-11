@@ -7446,6 +7446,14 @@ const TransitMap: FC = () => {
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
           Yale Shuttle Tracker
         </h1>
+        {/* One small line saying what this is not (operator, 2026-09-11: "add a
+            tagline under the title in smaller font about this being an
+            unnofficial app"). Kept to one line at 360 px and set quiet so the
+            header stays uncrowded; the footer still carries the full
+            "Not affiliated with or endorsed by Yale University." */}
+        <span className="app-tagline" style={{ fontSize: 10.5, color: "#8a8a9a", letterSpacing: 0.2, textAlign: "center", lineHeight: 1.3 }}>
+          Unofficial app · not affiliated with Yale University
+        </span>
         {/* Just the name. The tagline ("Unofficial live tracker for the Yale
             shuttles") and the clock that sat under it were removed on
             2026-09-11 — operator: "I want to keep the page uncrowded". The
