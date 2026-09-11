@@ -4,3 +4,8 @@ export function getOffAlertTitle(stopsRemaining: number | null): string | null {
   if (stopsRemaining <= 0) return "Get off here";
   return stopsRemaining === 1 ? "Get off at the next stop" : "Get off in 2 stops";
 }
+
+/** A short ETA is a prediction, not evidence that the bus reached the stop. */
+export function formatRideEta(seconds: number): string {
+  return seconds < 60 ? "<1 min" : `${Math.round(seconds / 60)} min`;
+}
