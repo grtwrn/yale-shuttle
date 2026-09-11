@@ -1,0 +1,23 @@
+{
+  "caption": "Trip options for Prospect / Sachem to College / Crown. The change is about what happens BETWEEN polls: the third route row now stays put once shown, instead of appearing and vanishing as its gap behind the second wobbles across the 5 min line. A still frame shows the list; the stability is covered by the new planner tests.",
+  "base": "http://127.0.0.1:8096",
+  "trip": {
+    "board": 106,
+    "dest": 38
+  },
+  "views": [
+    "trip"
+  ],
+  "mocked": [],
+  "shots": [
+    "/tmp/feedback-bot-wt-1788452321/pr-preview/76/trip-failed.png"
+  ],
+  "failedViews": [
+    {
+      "view": "trip",
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByPlaceholder(/where do you want to go/i).first()\n"
+    }
+  ],
+  "pageErrors": [],
+  "crashed": false
+}
