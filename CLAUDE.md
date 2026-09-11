@@ -1349,8 +1349,9 @@ Five rules, each of which cost a measurement:
   rider.** So this is a rollout LEDGER, not a per-route tuning knob: the
   arithmetic is identical everywhere, and adding an id means running the pair
   and pasting its numbers beside it (a test fails if an id has no evidence line
-  in the source). 66 candidates -> 22 pass the cell gate -> **5 served** (Red's
-  two, Blue Night's three); the 17 held back are held for want of rider
+  in the source). 66 candidates -> 22 pass the cell gate -> **5 served on the
+  90-day fit** (Red's two, Blue Night's three; a 30-day window adds Red's 3:30,
+  so the count follows the fit window); the 17 held back are held for want of rider
   evidence, not merit. **Blue Night (13) was measured on 2026-09-10 and REFUSED
   by the rider table, then RESOLVED on 2026-09-11** (#217 + #218). 333 Cedar
   (13:10, delta -115.5 s held out) is the largest cell effect on the network
