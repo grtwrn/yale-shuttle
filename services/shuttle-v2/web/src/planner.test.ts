@@ -890,6 +890,7 @@ describe("topVisibleOptions", () => {
     ];
     // E is the most direct; C and D do not each get a row of their own.
     expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "E"]);
+  });
 
   describe("stability of the third row (report #76)", () => {
     // The reported trip: Red, then Blue 26 min, then Orange 31 min — the gap
