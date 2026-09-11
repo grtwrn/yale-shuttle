@@ -1,0 +1,178 @@
+[
+ {
+  "name": "A-22",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.299671,
+    "lon": -72.929425,
+    "last_stop_id": 1,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.305166,
+    "lon": -72.930745,
+    "last_stop_id": 9,
+    "moveTo": {
+     "lat": 41.299671,
+     "lon": -72.929425
+    },
+    "moveSec": 900
+   }
+  ],
+  "measure": false
+ },
+ {
+  "name": "A-21",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.299671,
+    "lon": -72.929425,
+    "last_stop_id": 1,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.306177,
+    "lon": -72.929592,
+    "last_stop_id": 38,
+    "moveTo": {
+     "lat": 41.305166,
+     "lon": -72.930745
+    },
+    "moveSec": 900
+   }
+  ],
+  "measure": false
+ },
+ {
+  "name": "A-20",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.299671,
+    "lon": -72.929425,
+    "last_stop_id": 1,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.308356,
+    "lon": -72.927978,
+    "last_stop_id": 98,
+    "moveTo": {
+     "lat": 41.306177,
+     "lon": -72.929592
+    },
+    "moveSec": 900
+   }
+  ],
+  "measure": false
+ },
+ {
+  "name": "A-19",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.299671,
+    "lon": -72.929425,
+    "last_stop_id": 1,
+    "standSec": 200
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.310836,
+    "lon": -72.926148,
+    "last_stop_id": 42,
+    "moveTo": {
+     "lat": 41.308356,
+     "lon": -72.927978
+    },
+    "moveSec": 900
+   }
+  ],
+  "measure": true
+ },
+ {
+  "name": "B-same-leg",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.305672,
+    "lon": -72.930169,
+    "last_stop_id": 38,
+    "moveTo": {
+     "lat": 41.305166,
+     "lon": -72.930745
+    },
+    "moveSec": 600
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.306177,
+    "lon": -72.929592,
+    "last_stop_id": 38,
+    "moveTo": {
+     "lat": 41.305672,
+     "lon": -72.930169
+    },
+    "moveSec": 600
+   }
+  ],
+  "measure": false
+ },
+ {
+  "name": "B-two-stops",
+  "buses": [
+   {
+    "bus_id": 9049,
+    "bus_name": "#49",
+    "route_id": 14,
+    "lat": 41.305166,
+    "lon": -72.930745,
+    "last_stop_id": 9,
+    "moveTo": {
+     "lat": 41.299671,
+     "lon": -72.929425
+    },
+    "moveSec": 900
+   },
+   {
+    "bus_id": 9051,
+    "bus_name": "#51",
+    "route_id": 14,
+    "lat": 41.306177,
+    "lon": -72.929592,
+    "last_stop_id": 38,
+    "moveTo": {
+     "lat": 41.305166,
+     "lon": -72.930745
+    },
+    "moveSec": 900
+   }
+  ],
+  "measure": false
+ }
+]

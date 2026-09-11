@@ -73,36 +73,67 @@ export function bucketOf(token) {
  * `readings` therefore counts more polls than it did before 2026-09-09.
  * `spreadReadings` is how many of them are ranges, so any before/after over
  * `runs.jsonl` can be split at the boundary rather than compared across it.
+ *
+ * TWO BUSES THAT HAVE BUNCHED print ONE statement and name the cause
+ * (`bunching.ts`, the Orange Night case of 2026-09-10):
+ *
+ *   "🚌 23-36 min · 2 buses"   interval [1380 s, 2220 s], `bunched: true`
+ *   "🚌 25 min · 2 buses"      point bucket, `bunched: true`
+ *
+ * The head loses its "in" there — measured, that is what keeps the widest
+ * form inside the span beside the widest route pill (bunching.ts).
+ *
+ * There is NO SECOND SLOT in that form — deliberately, since slot 2's number
+ * was inside slot 1's own interval — so `second` is null and `pairBuses` sees
+ * one vehicle where it saw two. That is the app telling the truth about what it
+ * knows, not a bus dropping off the row, so the flag is recorded and
+ * `scoreSequence` marks the drop it causes `event: "bunched"` — counted like
+ * an arrival or a departure, and not a `bus-vanished` failure.
  */
 export function parseBusEtaText(line) {
-  const t = String(line).replace(/^🚌\s*/u, "").trim();
-  const mk = (a, b, raw) => {
+  let t = String(line).replace(/^🚌\s*/u, "").trim();
+  // Strip the cause before matching, so every form above parses exactly as it
+  // did — the suffix is a marker on the line, not a new grammar for it.
+  let bunched = false;
+  // `raw` stays the WHOLE line, suffix included: it is what the canary logs and
+  // what `--summary` quotes, and a log that silently dropped half the reading
+  // is how a layout change goes unnoticed for twelve minutes (#111).
+  const full = t;
+  const suffix = t.match(/\s*·\s*2 buses$/);
+  if (suffix) {
+    bunched = true;
+    t = t.slice(0, suffix.index).trim();
+    // The bunched head drops its "in" for width; put it back so the forms
+    // below stay ONE grammar rather than eight regexes and then sixteen.
+    if (/^(<1|\d)/.test(t)) t = `in ${t}`;
+  }
+  const mk = (a, b) => {
     const first = bucketOf(a);
     const second = b == null ? null : bucketOf(b);
-    return first ? { first, second, raw, spread: false } : null;
+    return first ? { first, second, raw: full, spread: false, bunched } : null;
   };
   // A range spans from the low bucket's floor to the high bucket's ceiling.
-  const range = (lo, hi, b, raw) => {
+  const range = (lo, hi, b) => {
     const a = bucketOf(lo), z = bucketOf(hi);
     if (!a || !z || z[1] < a[0]) return null;
-    return { first: [a[0], z[1]], second: b == null ? null : bucketOf(b), raw, spread: true };
+    return { first: [a[0], z[1]], second: b == null ? null : bucketOf(b), raw: full, spread: true, bunched };
   };
-  if (t === "arriving now") return mk("now", null, t);
+  if (t === "arriving now") return mk("now", null);
   let m = t.match(/^now, then (<1|\d+)\s*min$/);
-  if (m) return mk("now", m[1], t);
+  if (m) return mk("now", m[1]);
   m = t.match(/^in (<1|\d+),\s*(<1|\d+)\s*min$/);
-  if (m) return mk(m[1], m[2], t);
+  if (m) return mk(m[1], m[2]);
   m = t.match(/^in (<1|\d+)\s*min$/);
-  if (m) return mk(m[1], null, t);
+  if (m) return mk(m[1], null);
   // fmtBusRange: "now-7 min", "in 3-7 min", each optionally ", then N min".
   m = t.match(/^now-(<1|\d+),\s*then (<1|\d+)\s*min$/);
-  if (m) return range("now", m[1], m[2], t);
+  if (m) return range("now", m[1], m[2]);
   m = t.match(/^now-(<1|\d+)\s*min$/);
-  if (m) return range("now", m[1], null, t);
+  if (m) return range("now", m[1], null);
   m = t.match(/^in (<1|\d+)-(<1|\d+),\s*then (<1|\d+)\s*min$/);
-  if (m) return range(m[1], m[2], m[3], t);
+  if (m) return range(m[1], m[2], m[3]);
   m = t.match(/^in (<1|\d+)-(<1|\d+)\s*min$/);
-  if (m) return range(m[1], m[2], null, t);
+  if (m) return range(m[1], m[2], null);
   return null;
 }
 
@@ -592,11 +623,22 @@ export function scoreSequence(samples, thresholds = THRESHOLDS, { pins = null, b
           };
           transitions.push(t); events.push(t);
         }
+        // THE APP FOLDING TWO BUNCHED BUSES INTO ONE STATEMENT IS NOT A BUS
+        // VANISHING. When the line reads "in 23-36 min · 2 buses" the second
+        // slot is gone from the TEXT because its number was inside the first's
+        // interval (bunching.ts, the Orange Night case of 2026-09-10) — the
+        // bus is still on the row, named by the suffix. Pairing sees one
+        // vehicle where it saw two and would report a `dropped`; without this
+        // the canary would file `bus-vanished` against the app being honest,
+        // which is the same mistake as reading a real departure as a defect.
+        // Counted, like an arrival or a departure, and not a failure.
+        const bunched = !!s.eta.bunched && !prev.eta.bunched;
         for (const d of paired.dropped) {
           const e = {
             kind: "dropped", ...ctx,
-            event: arrived && ctx.event !== "departure" ? "arrival" : ctx.event,
-            eventful: ctx.eventful || arrived,
+            event: bunched && ctx.event !== "departure" ? "bunched"
+              : arrived && ctx.event !== "departure" ? "arrival" : ctx.event,
+            eventful: ctx.eventful || arrived || bunched,
             lastShownEtaSec: d.bucket[0], leader: d.leader,
             severe: d.bucket[0] <= thresholds.droppedSevereSec,
             pinAnnouncedChange: announced,
