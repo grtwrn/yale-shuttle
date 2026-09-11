@@ -741,6 +741,43 @@ agreement cannot catch it).
 all 15 routes and exits non-zero on a genuine defect; run it after touching any
 of this.
 
+### Where the bus actually pulls up (`web/src/berths.ts`, 2026-09-10)
+
+The published dot is where the map draws the stop; at a handful of cells it is
+not where the bus opens its doors, and a first-time rider stands in the wrong
+place (the operator's ask). `BERTHS` is **ten hand-checked entries, keyed by
+(stop, route)** — the shape of `landmarks.ts`, for the same reason: a human
+reads the diff, it costs no payload byte and no calibrator work. `berthFor()`
+returns null for every other cell and the map is unchanged there.
+
+**The coordinates are MEASURED, and the measurement is
+`scripts/berth-offsets.mjs` + `docs/berth-offsets.md`.** Read that before
+adding a row; four separate things look like "the bus stops somewhere else" and
+only one of them is:
+
+- **Never the mean of the fixes.** The ~30 m deadband means the last fix before
+  a bus comes to rest was taken behind where it stopped, so a mean reports
+  every stop ~15 m short — network-wide, which would have had us redraw the
+  whole map. The berth is a high quantile of the along-path cloud.
+- **One observation per visit, the LAST STAND** (a frozen run ≥ 10 s), not the
+  last fix. Red queues at the Division / Prospect signal and berths 55 m down
+  Prospect; in all 24 visits showing both, the corner comes first, and
+  duration cannot separate them (24.9 s median at each).
+- **A stand SHORT of the berth is not evidence against it** (a queue on the
+  way in, or nobody boarding), so the mode window is scored against the visits
+  not behind it; a stand PAST it could be, and is capped at 10% instead.
+- **A rival stop within 1.5× kills the row.** Five of the first twelve
+  candidates were the `(N)/(S)` invariant again — a visit booked against the
+  neighbouring half of a stop pair.
+- **The stop can differ PER LINE, so cells are never pooled**: 14 of 53
+  multi-route stops berth more than a bus length apart, and 10 of those 14 are
+  lines travelling the same way.
+
+Ten of 235 cells cleared those gates over 3–9 Sep. **What is still not
+separable is a signal PAST a stop**, which the last-stand rule would call a
+kerb — `aheadOfWindow` bounds the damage rather than detecting it — so no row
+goes in on the strength of the script alone.
+
 ## Data-quality invariants
 
 These are load-bearing; several rider-visible bugs traced to them:
@@ -2203,6 +2240,7 @@ Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 | `rider-canary.mjs` | two continuous synthetic riders — `[red]` on the operator's trip, `[rotation]` round-robin over every other running line on random trips (`canary-rotation.mjs`) — each watching ONE countdown tick by tick until the bus arrives, scoring the SEQUENCE (jumps, reversals) rather than the aggregate |
 | `record-layover-pass.mjs` | records a real pass through a layover ON the marker as the accuracy fixture |
 | `record-approach-rest.mjs` | records a real layover taken SHORT of the marker (the 2026-09-04 case), with the published `stationary_since` per position |
+| `berth-offsets.mjs` | where each line actually berths, per (stop, route), from the daily archive — the measurement behind `web/src/berths.ts`, and the way to audit it (no browser; `scripts/berth-preview/` maps a cell) |
 
 `eta-accuracy.mjs` reads what the app tells a rider while independently
 watching raw positions for the actual arrival. Last daytime measurement
