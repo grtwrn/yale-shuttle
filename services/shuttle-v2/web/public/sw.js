@@ -47,3 +47,25 @@ self.addEventListener("fetch", (e) => {
       ),
   );
 });
+
+// Tapping a notification opens the app rather than nothing.
+//
+// A notification shown through the registration (`showNotification`) has no
+// page behind it — that is the point, it survives a backgrounded tab — so the
+// click has to be handled HERE. Focus a window that is already open, otherwise
+// open one. Both stop-arrival alerts and the leave-now reminder come through
+// this path, and neither is any use if the rider has to go and find the app by
+// hand while the bus pulls in.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then((list) => {
+        for (const c of list) {
+          if ("focus" in c) return c.focus();
+        }
+        return self.clients.openWindow ? self.clients.openWindow("/") : undefined;
+      })
+      .catch(() => {}),
+  );
+});

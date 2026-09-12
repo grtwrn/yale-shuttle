@@ -50,13 +50,21 @@ import { RESCUE_OPTIONS, startGeoWatch, type GeoWatchHandle } from "./geoWatch";
 import {
   AT_STOP_WALK_SEC, computeLeaveAlert, deliverPing, ensureNotifyPermission,
   findReminderOption, leaveAlertMessage, markFired, NO_PINGS_FIRED,
-  vibrateAlert, type FiredPings,
+  notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
   directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
+// "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
+// decision, the words, storage) lives in stopAlerts.ts; this file places the 🔔
+// and hands the module the arrival the row already prints.
+import {
+  DEFAULT_LEAD_MIN, LEAD_CHOICES, alertKey, armStopAlert, disarmStopAlert, expireStopAlerts,
+  findStopAlert, loadStopAlerts, saveStopAlerts, stepStopAlerts, stopAlertPermissionHint,
+  type StopAlert,
+} from "./stopAlerts";
 import { rideEndDecision, type RideEndReason } from "./rideEnd";
 import { liveUpdateMessage } from "./liveUpdates";
 import { planningTimeError } from "./planningTime";
@@ -75,7 +83,7 @@ import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports"
 import { YaleTrackerPreview } from "./YaleTrackerPreview";
 import {
   ROUTE_ID_LABEL,
-  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
+  BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
 import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
@@ -5482,13 +5490,24 @@ const StopList: FC<{
   onToggleSavedStop: (stopId: number) => void;
   userLatLon?: LatLon | null;
   onRequestLocate?: () => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate }) => {
+  // Stop-arrival alerts (stopAlerts.ts). The arms live in the page shell, not
+  // here: this list unmounts on a tab switch and an armed alert must not.
+  stopAlerts?: readonly StopAlert[];
+  onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number) => void;
+  onDisarmStopAlert?: (routeLabel: string, stopId: number) => void;
+}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
   // purpose: leaving the tab unmounts this list, so isolation never survives a
   // visit. The effect covers the case where the view changes underneath us
   // without an unmount.
   const [isolatedRouteId, setIsolatedRouteId] = useState<string | null>(null);
   useEffect(() => { setIsolatedRouteId(null); }, [listView]);
+  /**
+   * Which row's lead-time chooser is open, as `${listIdx}:${stopId}` — local
+   * state, because it is a transient half-tap and nothing should survive a tab
+   * switch. One at a time: opening a second closes the first.
+   */
+  const [alertChooserFor, setAlertChooserFor] = useState<string | null>(null);
 
   // ── ONE estimator, one anchor, for the whole page ──────────────────────
   //
@@ -5767,10 +5786,15 @@ const StopList: FC<{
           // a layover taken short of the marker still shows its clock (#102).
           const restHere = restAtStop[stopId] ?? null;
           const restChip = standChipFor(restHere, routeDwells, dwellTimes);
+          // The 🔔's own state for this row: armed, and whether this row's
+          // lead-time chooser is the open one.
+          const armedAlert = stopAlerts ? findStopAlert(stopAlerts, cfg.label, stopId) : undefined;
+          const chooserKey = `${listIdx}:${stopId}`;
+          const chooserOpen = alertChooserFor === chooserKey;
 
           return (
+            <Fragment key={key}>
             <div
-              key={key}
               onClick={() => onToggleSavedStop(stopId)}
               title={isSaved ? "Remove from saved stops" : "Save this stop"}
               style={{
@@ -5899,7 +5923,102 @@ const StopList: FC<{
                   NEXT
                 </span>
               )}
+              {/* 🔔 ALERT ME WHEN THIS LINE REACHES THIS STOP.
+                  One glyph, two states: dim and grey is "you could", filled in
+                  the line's own colour is "you have" — never 🔕, which reads as
+                  "muted" rather than "not set". The row itself toggles the saved
+                  star, so every tap here stops propagating; 44 px square, and
+                  the whole thing is rendered only when the page shell handed
+                  down an arm callback (so the favourites list, which does not,
+                  is untouched). */}
+              {onArmStopAlert && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (armedAlert) {
+                      setAlertChooserFor(null);
+                      onDisarmStopAlert?.(cfg.label, stopId);
+                      return;
+                    }
+                    setAlertChooserFor(chooserOpen ? null : chooserKey);
+                  }}
+                  aria-label={armedAlert
+                    ? `Cancel the alert for ${cfg.label} at ${name}`
+                    : `Alert me when ${cfg.label} reaches ${name}`}
+                  title={armedAlert
+                    ? `Alerting you ${armedAlert.leadMin} min before ${cfg.label} reaches ${name} — tap to cancel`
+                    : `Alert me when ${cfg.label} reaches ${name}`}
+                  style={{
+                    flexShrink: 0, width: 44, minHeight: 44,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    border: "none", background: "transparent", padding: 0,
+                    cursor: "pointer", fontFamily: "inherit", fontSize: 15,
+                  }}
+                >
+                  <span style={{
+                    width: 26, height: 26, borderRadius: "50%",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    background: armedAlert ? cfg.color : chooserOpen ? `${cfg.color}22` : "transparent",
+                    // Grey out the glyph when it is an offer rather than a
+                    // state — a full-colour bell on every row is a page that
+                    // looks like it is already alerting about everything.
+                    filter: armedAlert ? "none" : "grayscale(1)",
+                    opacity: armedAlert ? 1 : 0.45,
+                  }}>🔔</span>
+                </button>
+              )}
             </div>
+            {/* THE LEAD-TIME CHOOSER, one row under the stop it belongs to.
+                Three choices, because the useful question is "how much warning
+                do you want" and five buttons is a menu. The second line is the
+                honest limit of phase 1 — the ping needs this page alive. */}
+            {chooserOpen && !armedAlert && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  padding: "8px 10px 10px 26px", background: `${cfg.color}0D`,
+                  borderLeft: `4px solid ${cfg.color}`, borderRadius: 4,
+                  display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 12.5, color: "#37474f", lineHeight: 1.3 }}>
+                  Alert me when <strong style={{ color: cfg.color }}>{cfg.label}</strong> reaches {name}
+                </span>
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {LEAD_CHOICES.map((m) => (
+                    <button
+                      key={m}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAlertChooserFor(null);
+                        onArmStopAlert?.(primaryRouteId!, cfg.label, stopId, name, m);
+                      }}
+                      title={`Ping me ${m} min before it arrives, and again when it gets here`}
+                      style={{
+                        minHeight: 44, padding: "0 12px", borderRadius: 12,
+                        border: `1px solid ${cfg.color}`,
+                        background: m === DEFAULT_LEAD_MIN ? cfg.color : "#fff",
+                        color: m === DEFAULT_LEAD_MIN ? "#fff" : cfg.color,
+                        fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                    >{m} min</button>
+                  ))}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setAlertChooserFor(null); }}
+                    aria-label="Cancel"
+                    style={{
+                      minHeight: 44, width: 44, border: "none", background: "transparent",
+                      color: "#78909c", fontSize: 15, cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >✕</button>
+                </span>
+                <span style={{ fontSize: 11, color: "#78909c", lineHeight: 1.35, flexBasis: "100%" }}>
+                  {stopAlertPermissionHint(notifyPermissionState())}
+                </span>
+              </div>
+            )}
+            </Fragment>
           );
         };
 
@@ -6750,6 +6869,84 @@ const TransitMap: FC = () => {
   const mapDrawnHidden = useMemo(
     () => drawnHidden(LEGEND_TOGGLES, mapHidden, activeOnly, buses.length > 0, runningToggles),
     [mapHidden, activeOnly, buses.length, runningToggles]);
+
+  // ── STOP-ARRIVAL ALERTS: "ping me when Red gets to 344 Winchester" ───────
+  //
+  // The rider's ask (operator, 2026-09-11). PHASE 1 IS THIS PAGE: the arm is
+  // stored in this browser and the decision runs on the `/api/buses` poll the
+  // page already makes, so a ping needs the page to be alive — foreground, a
+  // backgrounded tab, or the installed app (the poll keeps going at 30 s while
+  // hidden). Real push, which fires with the app closed, needs a server-side
+  // subscription store and is a separate decision; the arm button says as much
+  // rather than implying otherwise.
+  //
+  // Declared HERE, above every effect that reads it, and the arms are kept out
+  // of `hiddenRoutes` — which every view change resets — for the same reason
+  // the Map tab's own filter is (a tab switch must not silently cancel what a
+  // rider armed). All state is in this component, not StopList, because
+  // StopList unmounts the moment the rider leaves the Map tab and the alert
+  // must keep watching from any tab.
+  const [stopAlerts, setStopAlerts] = useState<StopAlert[]>(() => loadStopAlerts());
+  useEffect(() => { saveStopAlerts(stopAlerts); }, [stopAlerts]);
+  /**
+   * The in-app fallback line, for the case the OS will not show a notification
+   * (iOS Safari has no page-context Notification at all; permission may be
+   * denied). Same fallback the leave reminder takes, same reason: the rider
+   * asked to be told, so being unable to use the OS channel is not a reason to
+   * say nothing.
+   */
+  const [stopAlertBanner, setStopAlertBanner] = useState<string | null>(null);
+  const armStopAlertFor = (
+    routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number,
+  ) => {
+    // The permission ask must come from this tap — never on load. Fire and
+    // forget: denied, the banner below carries the ping instead.
+    void ensureNotifyPermission();
+    setStopAlertBanner(null);
+    setStopAlerts((prev) => armStopAlert(prev, {
+      routeId, routeLabel, stopId, stopName, leadMin, createdAt: Date.now(),
+    }));
+  };
+  const disarmStopAlertFor = (routeLabel: string, stopId: number) => {
+    setStopAlerts((prev) => disarmStopAlert(prev, routeLabel, stopId));
+  };
+  /**
+   * THE ENGINE — one pass per poll, and it asks the ONE estimator.
+   *
+   * `computeUpcomingArrivals` over just the armed stops, with the shared
+   * `liveAnchorStore` (a second call inside one poll is a query, not an
+   * observation — eta/filter.ts), and `stepStopAlerts` takes the FIRST entry
+   * per (line, stop): eta-ascending output means that is this lap, which is
+   * precisely the arrival the route card's row prints. So the ping and the
+   * number on screen are the same number, by construction — there is no second
+   * arithmetic here, and `noteShown` is deliberately NOT called, because
+   * nothing on this path was shown to anybody.
+   */
+  useEffect(() => {
+    if (stopAlerts.length === 0) return;
+    const nowMs = Date.now();
+    // Aged out, or the line has closed. Re-runs this effect with the survivors.
+    const live = expireStopAlerts(stopAlerts, nowMs);
+    if (live !== stopAlerts) { setStopAlerts(live); return; }
+    const targets = [...new Set(live.map((a) => a.stopId))];
+    const arrivals = computeUpcomingArrivals(
+      targets, buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+    );
+    // Which pings fire and what is left armed: stopAlerts.ts, pure, and the
+    // same function the recorded-pass replay runs.
+    const step = stepStopAlerts(live, arrivals, nowMs);
+    for (const ping of step.pings) {
+      // Same delivery as the leave reminder, under this alert's OWN tag so two
+      // arms cannot overwrite each other's ping. Never throws.
+      void deliverPing(ping.message, ping.tag).then((shown) => {
+        if (!shown) {
+          setStopAlertBanner(ping.message);
+          vibrateAlert();
+        }
+      });
+    }
+    if (step.alerts !== live) setStopAlerts(step.alerts);
+  }, [stopAlerts, buses, routeStops, stopCoords, segmentTimes, dwellTimes]);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   // Footer feedback form: collapsed by default. Posts to the same
   // /api/report endpoint as the per-route report button, tagged
@@ -7577,6 +7774,27 @@ const TransitMap: FC = () => {
         </div>
       )}
 
+      {/* A STOP ALERT THE OS WOULD NOT SHOW (iOS Safari has no page-context
+          Notification; permission may be denied). Above the tab content, on
+          EVERY tab and on the ride page — the engine watches from all of them,
+          so the fallback has to be seen from all of them. Tap to dismiss. */}
+      {stopAlertBanner && (
+        <div style={{
+          width: "100%", maxWidth: 560, padding: "0 16px", boxSizing: "border-box",
+          margin: "2px auto 6px", display: "flex",
+        }}>
+          <button
+            onClick={() => setStopAlertBanner(null)}
+            title="Dismiss"
+            style={{
+              flex: 1, minHeight: 44, padding: "8px 12px", borderRadius: 10,
+              background: "#fff8e1", border: "1px solid #ffe082", textAlign: "left",
+              fontSize: 14, fontWeight: 600, color: "#5d4037", cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >🔔 {stopAlertBanner}</button>
+        </div>
+      )}
       {!boardedRide && issuesBadge && !issuesBannerDismissed && listView !== "issues" && (
         <div style={{
           width: "100%", maxWidth: 560, padding: "0 16px", boxSizing: "border-box",
@@ -7651,6 +7869,53 @@ const TransitMap: FC = () => {
         </>
       ) : listView === "map" ? (
         <>
+          {/* ARMED STOP ALERTS — the strip that makes the arm visible.
+              A 🔔 tapped twenty stops down a card is invisible from anywhere
+              else, so every armed alert is listed here with its own ✕. It sits
+              above the line filter because it is the thing a rider came back to
+              check, and it disappears entirely when nothing is armed. */}
+          {stopAlerts.length > 0 && (
+            <div style={{
+              width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
+              padding: "0 12px 8px",
+              display: "flex", gap: 6, alignItems: "center",
+              // One scrolling row, like the filter chips below it: three
+              // armed alerts wrapped would push the map off the screen.
+              flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch",
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#78909c", flexShrink: 0 }}>
+                ALERTS
+              </span>
+              {stopAlerts.map((a) => (
+                <span
+                  key={alertKey(a.routeLabel, a.stopId)}
+                  title={`Alerting you ${a.leadMin} min before ${a.routeLabel} reaches ${a.stopName}, and again when it gets there`}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
+                    padding: "2px 2px 2px 8px", borderRadius: 12, whiteSpace: "nowrap",
+                    border: `1px solid ${ROUTE_COLOR[a.routeLabel] ?? "#546e7a"}`,
+                    background: `${ROUTE_COLOR[a.routeLabel] ?? "#546e7a"}14`,
+                    fontSize: 11.5, color: "#37474f",
+                  }}
+                >
+                  🔔
+                  <strong style={{ color: ROUTE_COLOR[a.routeLabel] ?? "#546e7a" }}>{a.routeLabel}</strong>
+                  <span>at {a.stopName}</span>
+                  <span style={{ color: "#90a4ae" }}>· {a.leadMin} min</span>
+                  <button
+                    onClick={() => disarmStopAlertFor(a.routeLabel, a.stopId)}
+                    aria-label={`Cancel the alert for ${a.routeLabel} at ${a.stopName}`}
+                    title="Cancel this alert"
+                    style={{
+                      width: 44, minHeight: 44, border: "none", background: "transparent",
+                      color: "#78909c", fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >✕</button>
+                </span>
+              ))}
+            </div>
+          )}
           {/* Line filter, remembered between visits. Above the map, not on it:
               a rider hunting one route should not have to find a control
               floating over the thing they are trying to read. */}
@@ -7800,6 +8065,9 @@ const TransitMap: FC = () => {
               favorites={favorites} onToggleFavorite={toggleFavorite}
               savedStops={savedStops} onToggleSavedStop={toggleSavedStop}
               userLatLon={userLatLon} onRequestLocate={startLocating}
+              stopAlerts={stopAlerts}
+              onArmStopAlert={armStopAlertFor}
+              onDisarmStopAlert={disarmStopAlertFor}
             />
           </div>
         </>

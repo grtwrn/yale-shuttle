@@ -2643,3 +2643,159 @@ About`;
   });
 });
 
+
+describe("a stop alert's fallback banner on the trip page", () => {
+  /**
+   * WHY THIS CAPTURE EXISTS. The 🔔 stop alerts (web/src/stopAlerts.ts) ping
+   * through the OS where they can. Where they cannot — iOS Safari has no
+   * page-context `Notification` at all, and permission may simply be denied —
+   * the app falls back to an in-app line, and that line renders ABOVE THE TAB
+   * CONTENT ON EVERY TAB, because the engine watches from every tab. So it can
+   * appear on this page: the one `parseOptions` reads.
+   *
+   * That is the same shape as "Contribute", as `nearby`, and as #111: a string
+   * that is not a card, sitting where cards are read. The convention here is a
+   * capture, not an argument, so this is a real run — a staged build at 390 px
+   * with an alert armed on Blue Night and no `Notification` constructor, so the
+   * ping took the banner path (2026-09-11, 7:04p ET).
+   *
+   * The banner is safe by construction and both halves matter: it opens with 🔔,
+   * so `isLabelish` (letters only) can never read it as a route pill, and its
+   * text carries no bare "in N min" countdown for `parseBusEtaText` to take. The
+   * assertions below hold it to that in four positions, including directly above
+   * a card, and for BOTH strings the banner can hold.
+   */
+  const LIVE_ALERT_BANNER = `YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+🔔 Blue Night reaches 180 York (A&A) in about 1 min
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.310836, -72.926148
+☆
+WHEN
+Now
+Plan for later…
+☀️
+71°F · Clear · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 2 ROUTES
+▴
+🚌
+🚌
+🚌 (B) 1-4 min
+🏁 (B) 7:07p
+ (O) 7:09p
+🚌 (O) 5-9 min
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue Night
+Orange Night
+🚶 Walk
+4 min
+7:05p
+›
+Blue Night
+in 1-4, then 40 min
+6 min
+🚌 2 min
+›
+🚶 1 min
+7:07p
+›
+Orange Night
+in 5-9, then 34 min
+8 min
+🚶 3 min
+›
+🚌 <1 min
+›
+🚶 1 min
+7:10p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+About`;
+
+  const BANNER_LEAD = "🔔 Blue Night reaches 180 York (A&A) in about 1 min";
+  // The other string the same banner shows, one poll later (stopAlerts.ts).
+  const BANNER_ARRIVAL = "🔔 Blue Night is at 180 York (A&A) now";
+
+  const lines = LIVE_ALERT_BANNER.split("\n");
+  const withoutBanner = lines.filter((l) => l !== BANNER_LEAD).join("\n");
+  /** Directly above a card: the pill line whose next line is that card's countdown. */
+  const pillIndex = (label) =>
+    lines.findIndex((l, i) => l === label && /^in [<\d]/.test(lines[i + 1] ?? ""));
+  const inject = (banner, at) => {
+    const base = lines.filter((l) => l !== BANNER_LEAD);
+    const idx = at === "top" ? 0
+      : at === "end" ? base.length
+      : base.indexOf(lines[pillIndex(at)]);
+    return [...base.slice(0, idx), banner, ...base.slice(idx)].join("\n");
+  };
+
+  it("is a real capture: the banner, and three real cards under it", () => {
+    expect(lines).toContain(BANNER_LEAD);
+    // Where the app actually puts it: above the tab content, under the tabs.
+    expect(lines[lines.indexOf(BANNER_LEAD) - 1]).toBe("↻");
+    expect(pillIndex("Blue Night")).toBeGreaterThan(0);
+    expect(pillIndex("Orange Night")).toBeGreaterThan(0);
+    const opts = parseOptions(LIVE_ALERT_BANNER);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Walk", "Blue Night", "Orange Night"]);
+    expect(opts[1].eta?.raw).toBe("in 1-4, then 40 min");
+    expect(opts[1].totalMin).toBe(6);
+    expect(opts[2].totalMin).toBe(8);
+  });
+
+  it("parses byte-identically with the banner and without it", () => {
+    expect(JSON.stringify(parseOptions(LIVE_ALERT_BANNER)))
+      .toBe(JSON.stringify(parseOptions(withoutBanner)));
+  });
+
+  it("...and from any position, including directly above a card", () => {
+    const expected = JSON.stringify(parseOptions(withoutBanner));
+    for (const banner of [BANNER_LEAD, BANNER_ARRIVAL]) {
+      for (const at of ["top", "Blue Night", "Orange Night", "end"]) {
+        expect(JSON.stringify(parseOptions(inject(banner, at))), `${banner} @ ${at}`)
+          .toBe(expected);
+      }
+    }
+  });
+
+  it("is never read as a route label", () => {
+    // The same test `isLabelish` applies: letters and spaces only. A leading
+    // glyph is what keeps every one of these off the route-pill path.
+    for (const banner of [BANNER_LEAD, BANNER_ARRIVAL]) {
+      expect(/^[A-Za-z][A-Za-z ]{0,19}$/.test(banner)).toBe(false);
+      for (const at of ["top", "Blue Night", "Orange Night", "end"]) {
+        expect(parseOptions(inject(banner, at)).map((o) => o.routeLabel))
+          .toEqual(["Walk", "Blue Night", "Orange Night"]);
+      }
+    }
+  });
+
+  it("is never read as a countdown", () => {
+    for (const banner of [BANNER_LEAD, BANNER_ARRIVAL]) {
+      expect(parseBusEtaText(banner)).toBeNull();
+      expect(parseWaitFallback(banner)).toBeNull();
+    }
+    // The lead wording names minutes, which is exactly why it is worth pinning:
+    // the card's countdown is still the card's.
+    const [, blue] = parseOptions(inject(BANNER_LEAD, "Blue Night"));
+    expect(blue.eta?.raw).toBe("in 1-4, then 40 min");
+  });
+});
