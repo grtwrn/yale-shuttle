@@ -369,4 +369,30 @@ console.log(`stuck readings: ${stuck.length} · page errors: ${pageErrors.length
 console.log(`screenshots: ${SHOTS}\nfull record: ${OUT}`);
 
 await ctx.close();
-if (!cdp) await browser.close(); else await browser.close().catch(() => {});
+if (!cdp) await browser.close();
+
+// A RUN THAT PARSED NOTHING IS THE INSTRUMENT, NOT THE APP.
+//
+// This harness required the literal "arrive " on the line after a duration.
+// #123 dropped that word on 2026-09-04 and nothing noticed until 2026-09-12,
+// because a run that recognises no options still prints a tidy summary and
+// exits 0 — indistinguishable from a quiet window with nothing to score.
+//
+// `rider-canary.mjs` settled this convention already: it FAILS a run on
+// `readings === 0`, on the reasoning that a scraper which has silently stopped
+// reading looks exactly like a healthy line. So does this now.
+//
+// The test is ZERO PREDICTIONS PARSED, not zero pairs scored. Zero pairs is a
+// legitimate outcome — the window may simply have held no arrival to pair
+// against — and failing on it would cry wolf on quiet runs. Zero predictions
+// means the page was read and no option was recognised on it, which is only
+// ever a broken reader or a changed layout. Both need a human.
+if (predictions.length === 0) {
+  console.error(
+    "FAILED: parsed 0 predictions from the page. The app renders options; this "
+    + "harness recognised none, so the parser is broken or the card layout "
+    + "changed. Do NOT read this run as 'the ETA scored fine'.",
+  );
+  process.exit(1);
+}
+ else await browser.close().catch(() => {});
