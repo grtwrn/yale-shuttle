@@ -1003,3 +1003,30 @@ retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
 scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
+
+## Charging the in-rest rates from a rest's SECOND fresh fix: measured, inert (#247, 2026-09-11)
+
+#246 measured the kerb shuffle's own departure share — 33.5% for a fresh fix
+still inside the rest radius (n=7,116) against 74.2% beyond it (n=581) — and
+refused the flat form, because a real departure's first step is inside that
+radius too, so charging it the in-rest rate delays the collapse
+`accuracy-layover.test.ts` guards (84.3 s against an 83.1 s bound). #247 tried
+the obvious way round that: keep full pooled evidence for the FIRST in-rest
+fresh fix of a rest and charge the measured in-rest pair from the second
+consecutive one onward, on the reasoning that by its second fresh fix a
+departing bus is beyond `REST_RADIUS_M` and a shuffling bus is not. The rule is
+sound and it fires — 134,988 rows, 16.2%, of the held-out 2026-09-10 gps-replay
+(835,524 pairs, 0 key mismatches, `accuracy-layover.test.ts` 143/143 in both
+switch positions) — and it is INERT: Red `standing 300 s+` (n=10,975) moves from
+−65.4 to −63.6 s signed and 87.2 → 86.4 s |error|, 1–3 s against the 171 s
+median deficit #245 measured in the shown number, with the dangerous tail
+unchanged at 2.7%. The sign is right everywhere it matters and the size is not
+worth a rider-sim. The reason is arithmetic rather than data: measured in the
+unit harness the FIRST in-rest fresh fix already moves **62–77%** of the mass
+out of the stand (moving mass 0.6173 with a layover table, 0.7654 without), and
+once that fix is 32 m from the rest point the position emission keeps it there,
+so the second fix is worth 0.8% of moving mass (0.9153 → 0.9081). An ordinal
+counter therefore exempts exactly the poll that does the damage. #247 was closed
+rather than merged; #248 (direction along the ring) and #250 (an outward run)
+close the remaining single-poll discriminators, and this family's verdict is
+that the information is not in one poll.
