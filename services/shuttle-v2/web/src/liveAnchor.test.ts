@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { type AnchorStore } from "./eta";
 import { computeUpcomingArrivals } from "./arrivals";
+import green from "./__fixtures__/green-published-order.json";
+import { registerRoutePaths } from "./anchor";
+import { ringForBus } from "./eta";
 import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
-import { anchorIndexOnList, anchorKeyFor, resolveAnchorIndex } from "./liveAnchor";
+import { anchorIndexOnList, anchorKeyFor, resolveAnchorIndex, resolveStandingStop } from "./liveAnchor";
 import type { RouteListConfig } from "./routes";
 import {
   at, BLUE_WEEKEND, dwellTimes, makeBus, routeStops, segmentTimes, STOP, stopCoords,
@@ -206,5 +209,61 @@ describe("the index space is the store's, not the caller's", () => {
       makeBus({ route_id: 99, lat: here.lat, lon: here.lon }),
       { ...fold, routeIds: ["missing"] }, rs, coords, [], T0, store(),
     )).toBe(-1);
+  });
+});
+
+describe("a repaired ring's rest is named in the ring's own sequence", () => {
+  // THE CASE (production, 2026-09-12 10:16-10:24 ET, Green #331). The bus stood
+  // 435 s at Building 800 on its OUTBOUND pass — `stop_visits` stop 25, ring
+  // index 13 — and the Map tab drew the pause chip on WEST HAVEN TRAIN STATION,
+  // pricing the hold from that stop's stand table.
+  //
+  // Green's published order is one its own polyline cannot be walked through,
+  // so the ring repairs it (src/network/alignStops.ts) and every index the
+  // belief holds — `restStop` included — is a position in `ring.stops`, which
+  // from slot 11 onward is NOT upstream's list. `arrivalsForBus`/`beliefFor`
+  // already take `ring.stops` (eta/index.ts's `seq`); this resolver was reading
+  // `restStop` out of the published list, so ring 13 (Building 800) came back
+  // as published[13] (Building 600) and ring 18 (Building 800 again) as
+  // published[18] — the station, 2.4 km away.
+  const stops = green.stops as number[];
+  const coords: Record<number, LatLon> = {};
+  for (const [id, c] of Object.entries(green.stopCoords as unknown as Record<string, number[]>)) {
+    coords[Number(id)] = { lat: c[0]!, lon: c[1]! };
+  }
+  const GREEN: RouteListConfig = { routeIds: ["9"], busRouteIds: [9], label: "Green", color: "#43A047" };
+  const rs = { 9: stops };
+  const B800 = 25, STATION = 127;
+  // The recorded fix: 39 m short of Building 800's marker, stationary, with
+  // upstream's `last_stop_id` frozen at 92 (Orange / Pearl (S)) the whole spur.
+  const fix = { lat: 41.258130, lon: -72.988639 };
+  const T = Date.parse("2026-09-12T14:20:00Z");
+  const since = new Date(Date.parse("2026-09-12T14:16:23.669Z")).toISOString().replace(/Z$/, "");
+  const bus = () => ({
+    bus_id: 66263, bus_name: "#331", route_id: 9, lat: fix.lat, lon: fix.lon, heading: 230,
+    last_stop_id: 92, stationary: true, at_stop_id: B800, at_stop_since: since, stationary_since: since,
+  });
+
+  it("the fixture is the pathology: the two orders disagree at the rest's slot", () => {
+    registerRoutePaths({ 9: green.path as [number, number][] });
+    const ring = ringForBus({ route_id: 9 }, stops, coords)!;
+    expect(ring.repaired).toBe(true);
+    expect(ring.stops.length).toBe(24);
+    expect(stops.length).toBe(23);
+    // Building 800's two passes in the ring, and what the published list holds there.
+    expect(ring.stops[13]).toBe(B800);
+    expect(ring.stops[18]).toBe(B800);
+    expect(stops[13]).not.toBe(B800);
+    expect(stops[18]).toBe(STATION);
+  });
+
+  it("names the stop the bus is actually standing at, not the published list's slot", () => {
+    registerRoutePaths({ 9: green.path as [number, number][] });
+    const s = store();
+    const answer = resolveStandingStop(bus(), GREEN, rs, coords, T, s);
+    expect(answer).not.toBeNull();
+    // Whichever pass the belief picks, a rest at this fix is Building 800 —
+    // never the station, and never Building 600.
+    expect(answer!.stopId).toBe(B800);
   });
 });
