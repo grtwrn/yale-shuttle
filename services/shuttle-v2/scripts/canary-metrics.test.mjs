@@ -2811,15 +2811,15 @@ About`;
  * exactly #111 and #123, twice over, which is why CLAUDE.md asks for a capture
  * rather than an argument.
  *
- * PROVENANCE, stated because it matters: this is `LIVE_ARRIVAL_RIGHT`'s own
- * captured innerText with the arrival lines rewritten by the transformation
- * this change makes — a fresh browser capture was not possible in the session
- * that wrote it (another job held the machine's only chromium slot) and is
- * owed alongside the PR screenshot. The MIXED page is the realistic one and is
- * the point of the fixture: the app prints "by" only where it has an alight
- * forecast wide enough to promise against, so the bare clock goes on appearing
- * beside it — Orange Day below keeps it, and the Walk card never had a bus at
- * all.
+ * PROVENANCE, stated because it matters: this one is CONSTRUCTED —
+ * `LIVE_ARRIVAL_RIGHT`'s captured innerText with the arrival lines rewritten by
+ * the transformation this change makes. It earns its place by covering what a
+ * single real capture could not: a MIXED page (the app prints "by" only where
+ * it has an alight forecast to promise against, so Orange Day below keeps the
+ * bare clock and the Walk card never had a bus at all) and the page footer,
+ * where "Contribute" is exactly as label-shaped as a route name. The REAL
+ * capture from a staged build of this branch is `CAPTURED_ARRIVE_BY` below,
+ * and it is the one that proves the parser reads the shipped layout.
  */
 const LIVE_ARRIVE_BY = `YALE SHUTTLE
 11:22 AM
@@ -2922,5 +2922,90 @@ describe("the promised arrival clock (\"by 2:23p\", 2026-09-12)", () => {
     // "by" is a whole word, not a loose prefix.
     expect(ARRIVAL_CLOCK_RE.test("byte 2:23p")).toBe(false);
     expect(hasArrivalClock(LIVE_ARRIVE_BY)).toBe(true);
+  });
+});
+
+/**
+ * THE REAL THING: innerText captured from a staged build of THIS branch in
+ * headless chromium at 390x844 (2026-09-12 12:1x ET, live weekend buses —
+ * Blue Weekend and Green were the routes in service). Not edited, not
+ * constructed. This is what CLAUDE.md means by landing a captured fixture with
+ * a layout change, and it is the evidence that the three-spelling regex reads
+ * the page the branch actually renders.
+ *
+ * Two things in it are worth noticing beyond the parse:
+ *
+ *   * the OVERVIEW's own clock lines — "🏁 (B) 12:13p" and "(G) 12:41p" — are
+ *     the map chips, deliberately left on their median instant, and they must
+ *     NOT read as cards. That is what `ARRIVAL_CLOCK_RE`'s anchoring at both
+ *     ends buys, and this capture tests it against real text rather than an
+ *     argument.
+ *   * the chip says 12:13p while the card beside it says "by 12:15p". That is
+ *     the documented residual, not a defect: the chip is the median instant at
+ *     the alight stop and the card is the promised ceiling at the destination.
+ */
+const CAPTURED_ARRIVE_BY = `YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.323538, -72.923285
+☆
+WHEN
+Now
+Plan for later…
+☀️
+71°F · Clear · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 2 ROUTES
+▴
+🚌
+🚌
+🚌 (B) 1 min
+🏁 (B) 12:13p
+(G) 12:41p
+🚌 (G) 23-32 min
++
+−
+Leaflet | © OpenStreetMap contributors
+⛶
+Blue Weekend
+Green
+Blue Weekend
+in 1, 61 min
+5 min
+🚌 4 min
+by 12:15p
+›
+🚶 Walk
+22 min
+12:29p
+›`;
+
+describe("the captured page from the staged branch", () => {
+  it("reads both cards — the promise and the bare fallback beside it", () => {
+    const opts = parseOptions(CAPTURED_ARRIVE_BY);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue Weekend", "Walk"]);
+    expect(opts.map((o) => o.arriveText)).toEqual(["12:15p", "12:29p"]);
+    expect(opts[0]).toMatchObject({ totalMin: 5 });
+    expect(opts[0].eta.raw).toBe("in 1, 61 min");
+    expect(opts[1]).toMatchObject({ mode: "walk", totalMin: 22 });
+  });
+
+  it("does not mistake the overview's own chip clocks for cards", () => {
+    // Three clock-shaped lines sit in the map overview; none is a card, and
+    // the two-ended anchor is the only thing keeping them out.
+    const chipLines = CAPTURED_ARRIVE_BY.split("\n").map((l) => l.trim())
+      .filter((l) => /\d{1,2}:\d{2}[ap]/.test(l) && !ARRIVAL_CLOCK_RE.test(l));
+    expect(chipLines).toEqual(["🏁 (B) 12:13p", "(G) 12:41p"]);
+    expect(parseOptions(CAPTURED_ARRIVE_BY)).toHaveLength(2);
   });
 });

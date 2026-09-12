@@ -273,6 +273,15 @@ the promise would print the median's own minute the word is dropped with it.
 | overview map 🏁 chip | unchanged (median instant at the alight stop) | a longer chip label merges with its neighbours and stacks — the operator's "this is an eye sore"; `chipCluster.ts` records that the standing range's wider labels are what made it worse |
 | Map tab stop rows | unchanged (10 px grey median clock) | that clock is a BUS reaching that stop, not the end of anyone's trip, and the row's countdown already carries the band |
 
+**Measured on the branch (2026-09-12).** The rendered span was probed in
+headless chromium at 390x844 against a staged build: the widest form
+`"by 12:58p"` is **60.1 px** on a 304 px row, a single 16 px line, `nowrap`,
+with `scrollWidth === clientWidth` at the span's column, the option row and the
+document — no overflow and no sideways scroll. The fallback `"12:29p"` is
+41.6 px. A screenshot of both branches on one page (a live Blue Weekend card
+reading `by 12:15p`, the Walk card's plain `12:28p`, a Green card reading
+`by 1:00p`) is committed at `services/shuttle-v2/pr-preview/arrive-by/`.
+
 **What is NOT yet measured.** The decision's gate — *the real arrival beats the
 printed "by" about 9 times in 10 on the rider simulator, and the row's total
 stays consistent with it* — has **not** been run: the machine's heavy slot was

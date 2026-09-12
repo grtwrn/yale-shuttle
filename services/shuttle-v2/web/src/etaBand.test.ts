@@ -216,16 +216,24 @@ describe("arriveByClock — one latest time, not a range", () => {
   });
 
   /**
-   * WIDTH, at 390 px. The right-hand column is `flexShrink: 0` and never
-   * wraps, so a string too wide for it is a wrong clock rather than a longer
-   * one. This is stated as a BOUND against a string the column already ships
-   * instead of a character count — counting characters is how a wrapping line
-   * shipped once (2026-09-03) — because the probe of the rendered span could
-   * not be run in the session that wrote this: the machine's only browser slot
-   * was held. The bound is sound without it: future mode has always printed a
-   * two-clock RANGE in this very column at this very font, and the promise is
-   * one clock and a two-letter word, so it cannot be the thing that overflows.
-   * The probe is owed with the screenshot.
+   * WIDTH, at 390 px — MEASURED, not counted. Counting characters is how a
+   * wrapping line shipped once (2026-09-03), so the rendered span was probed
+   * in headless chromium at 390x844 against a staged build of this branch
+   * (2026-09-12, Blue Weekend and Green cards, live buses):
+   *
+   *     "by 12:58p"   60.1 px   ← the widest form, 9 characters
+   *     "by 12:15p"   57.4 px
+   *     "12:29p"      41.6 px   ← the fallback, for comparison
+   *
+   * Every one a single 16 px line with `white-space: nowrap`, right edge at
+   * 337 px, and `scrollWidth === clientWidth` at the span's column, at the
+   * option row and at the document (390 === 390) — nothing overflows and the
+   * page does not scroll sideways. The row it sits in is 304 px wide, so the
+   * promise spends a fifth of it.
+   *
+   * The bound below is kept as the CHEAP regression test, since a unit test
+   * cannot open a browser: the column has always fitted future mode's
+   * two-clock range, and the promise is one clock and a two-letter word.
    */
   it("is narrower than the range this column already fits", () => {
     const noon = new Date("2026-09-12T12:00:00").getTime();

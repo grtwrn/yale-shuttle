@@ -1,0 +1,5 @@
+{
+  "caption": "The arrival clock promises the LATEST time — \"by H:MMp\" on a live Blue Weekend card, with the Walk card's plain median clock below it for contrast. Real buses, real bands: no /api/buses mock.",
+  "views": ["trip"],
+  "trip": { "board": 41, "dest": 47 }
+}
