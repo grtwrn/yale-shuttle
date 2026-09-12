@@ -2291,6 +2291,34 @@ cannot move a third of the network; the direction and the breadth are the merge.
 
 ## Verification harnesses
 
+**Make an instrument report HOW MUCH it found, never just whether it succeeded.**
+On 2026-09-12 the same failure appeared in seven costumes in one day, and every one
+looked like success: `eta-accuracy.mjs` matched NOTHING for eight days and exited 0;
+`gh pr edit --body-file` aborted on a deprecated GraphQL path while exiting like a
+success, leaving a PR body unchanged; a `perl` substitution matched nothing and exited
+0; a `git ls-files` on this tree's long-lived branch reported a file absent that exists
+on `master`; a process search used a pattern drawn from a DIFFERENT process's shape; a
+regex ran over an invented token-split; and `FETCH_HEAD` was clobbered by a second
+fetch, so two checks silently examined the wrong branch. Several came within one
+command of shipping a wrong conclusion.
+
+The countermeasures that work all share one shape — the instrument states its own
+coverage, so silence is distinguishable from blindness:
+
+- `rider-canary.mjs` FAILS a run with `readings === 0`: a scraper that has quietly
+  stopped reading looks exactly like a healthy line.
+- `eta-accuracy.mjs` and `route-tester.mjs` fail on **zero predictions PARSED**, and
+  deliberately do NOT fail on zero pairs scored — zero parsed means a broken reader,
+  zero scored is legitimately quiet and failing on it cries wolf.
+- A guard asserting ABSENCES carries a **positive control** that its own patterns still
+  match something real; otherwise "nothing makes the claim" and "the test no longer
+  looks for the claim" are indistinguishable.
+- Count occurrences BEFORE and AFTER an edit rather than trusting the editor's exit.
+- A control must come from the TARGET's population, not the searcher's. For "does X
+  exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
+  rather than grepping a pattern guessed in advance.
+- Verify a PR-body edit by READ-BACK, never by exit status.
+
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 `BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/<name>.mjs`):
 
