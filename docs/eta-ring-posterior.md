@@ -358,66 +358,73 @@ at Building 600 bound for Orange / Humphrey (N)):
 
 ### Green: a rest on the fold was attached to the wrong occurrence (2026-09-12)
 
-The repaired order above fixed which stops the ring passes and in what sequence.
-It did not settle **which pass a bus is on**, and on the one route that repeats a
-stop at the same kerb the belief can attach a rest to the wrong occurrence. The
-operator caught it live — "green just flicked from 22 to 34 minutes as I was
-watching" — and the rise he saw was the app finding out, not the defect. The
-eight minutes before it were the defect.
+The operator watched Green flick from "22" to "34 min" and asked what happened.
+The flick was the app RECOVERING; the eight minutes before it were the defect.
+Green #331, the line's only bus that morning, stood at Building 800 from 10:16:08
+to 10:24:43 ET — the detector's `stop_visits` names **`stop_index 13`**, the
+OUTBOUND pass, and the bus then called at 600 / 400 / 600 / 750 / 800 again
+(index 18, a 20 s call) / 900 / the station. The belief instead held the RETURN
+occurrence, ring 18, for the whole stand:
 
-Green #331, the line's only bus that morning, stood at Building 800 from
-10:16:08 to 10:24:43 ET (`stop_visits` stop 25, **ring index 13**, a 435 s
-stand). Building 800 sits at ring 13 outbound and **ring 18** on the return, the
-same kerb both times. Tracked warm from 10:05:
-
-    10:16:18  lead 12, restStop 13        legMass 12=1.000
-    10:16:23  at_stop_id=25 appears       legMass 12=0.976 13=0.016 18=0.004
+    10:16:18  lead 12, restStop 13           legMass 12=1.000
+    10:16:23  at_stop_id=25 appears          legMass 12=0.976 13=0.016 18=0.004
     10:16:28  97% of the mass moves 5 legs   legMass 17=0.352 18=0.630
     10:16:38  the lead follows to 18, ratchets to 0.994, and holds the stand
     10:24:38  the rest ends -> every Green stop rises +7..+9 printed min at once
-
-**Nothing in the likelihood could separate the two occurrences.** Both passes put
-a stop cell on the same coordinates, so the position emission is equally strong
-on each; `ring.layover` is all zeros for Green, because the served `25#13` table
-reads a 25 s median against the 435 s the bus actually stood (and 915 s at
-09:08). That leaves `applyLastStop` as the only tiebreaker, and upstream had
-**frozen `last_stop_id` at 92** (Orange / Pearl (S), left at 10:01:17) for the
-whole spur: measured from ring 9 the offsets are 4 and 9, and
-`lastStopLikelihood` returns `0.14/19` for both, **identically**. A fresh value
-(26, ring 12) would have given ring 13 offset 1 = 0.14 against ring 18's
-0.00737 — a 19:1 ratio, and the right occurrence. Read that ratio as a LIKELIHOOD rather than as
-mass: `filter.ts` applies `w[i] = Math.sqrt(best)` before multiplying it in, so
-what actually reaches the belief is **sqrt(19) ~= 4.4:1**. The distinction
-matters here because this section is read by people asking how much evidence
-would have been needed to move the rest onto the right pass.
-
 
 **It is a defect, and its sign is the dangerous one.** Against the arrivals that
 followed (West Haven station 10:31:58, Bradley (N) 10:39:58, Willow (N)
 10:46:23), the signed error of the shown median mid-stand (10:20:03) is
 **−382 s, worst −533 s** — every northbound stop promised 2.5 to 9 minutes
-EARLIER than the bus came, the direction that has a rider stroll down and find
-it gone. The station row held "3-11 min" for eight minutes while the truth fell
+EARLIER than the bus came, the direction that has a rider stroll down and find it
+gone. The station row held "3-11 min" for eight minutes while the truth fell
 924 → 474 s. After the correction it is +351 s, i.e. pessimistic. The later
 `now → 36 min` on that row at 10:33:40 is honest: the bus had just left, so the
 next arrival is a lap away.
 
-**What shipped from this is the display half only.** `resolveStandingStop`
-indexed UPSTREAM's list with a RING index, which every other reader of the
-belief does not (`eta/index.ts`'s `seq`). So a rest at ring 18 was named
-`published[18]` — West Haven Train Station, 2.4 km from the bus — and the pause
-chip was drawn on that row and priced from that stop's stand table. Measured over
-95 polls, the fix changes **0 priced fields and 0 printed countdowns**; it moves
-47 chips and relabels the rest 127 → 25.
+**Two explanations were written in this section first and BOTH were wrong.** They
+are kept, struck through, because each looked convincing and the measurement that
+killed them is the useful part:
 
-**The occurrence mis-attribution itself is open, and it is an estimator rule.**
-The smallest candidate: standing mass may not jump between two occurrences of
-one physical stop in a single poll. At 10:16:23 → 10:16:28 it moved five legs
-with the bus stationary, which the transition kernel cannot produce — only the
-rest mask's argmax over coincident cells can. Gate it the usual way (unit tests,
-`test:accuracy`, held-out `gps-replay`, then a **paired rider-sim by route** on
-Green and Purple, the two folds), and do not reach for a per-route switch.
-`scripts/eta-replay/greenfold/` holds the harnesses and the captured sequence.
+1. ~~"Nothing in the likelihood could separate the two occurrences: both passes
+   put a stop cell on the same kerb, so the position emission is equally strong
+   on each."~~ **False.** The two occurrences' cells are **92.6 m apart**. The
+   emission separates them decisively, and it does so the WRONG way.
+2. ~~"Standing mass may not jump between two occurrences of one physical stop in a
+   single poll: the transition kernel cannot produce a five-leg move for a
+   stationary bus, only the rest mask's argmax over coincident cells can."~~
+   **False on both premises.** The mass moves at 10:16:28 while `rested` is
+   **false**, through the ordinary transition and emission, and `restStop` follows
+   a poll LATER — so no rest-mask argmax is involved. And the cells are not
+   coincident. A rule forbidding that jump would have fixed nothing.
+
+**The measured cause is the RING, not the rest rule.** Green's published line
+serves Building 800's kerb on the **return pass only**: the outbound pass never
+comes within **99 m** of it, against 27 m on the return. So occurrence 13's cell
+sat 99 m from the stop it represents, and at σ = 20 m that state is roughly
+**180,000 : 1** less likely than the return occurrence sitting on the same kerb.
+So *every* bus resting there is relocated, not merely this one. And **no cell of
+the ring lay inside occurrence 13's zone at all**, so even had the mass stayed,
+the 435 s layover would have been priced as a hold on the open road.
+
+**Network-wide sizing, so nobody widens this into a general rewrite:** over 280
+stop occurrences the cell-to-marker offset is p50 **5.8 m** and p90 **20 m**; ten
+exceed 40 m; and **exactly one** occurrence has no cell inside its own zone —
+`9:13:25`, this one.
+
+**What shipped from this is the display half only.** `resolveStandingStop`
+indexed UPSTREAM's list with a RING index, which every other reader of the belief
+does not (`eta/index.ts`'s `seq`). So a rest at ring 18 was named `published[18]`
+— West Haven Train Station, 2.4 km from the bus — and the pause chip was drawn on
+that row and priced from that stop's stand table. Measured over 95 polls, the fix
+changes **0 priced fields and 0 printed countdowns**; it moves 47 chips and
+relabels the rest 127 → 25.
+
+**The ring fix is a separate PR** (`fix/green-fold-stand-emission`) and is gated on
+a paired rider-sim on Green AND Purple. It may still be refused: the departure poll
+remains mis-branched, the station moving **−467 s** where master moved +438 s a
+minute later, and that drop is strand-shaped. `scripts/eta-replay/greenfold/` holds
+the harnesses and the captured sequence.
 
 ### The legacy arithmetic is deleted (2026-09-07)
 
