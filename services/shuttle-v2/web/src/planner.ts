@@ -289,24 +289,31 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
   return pick(pinned ?? live[0], true);
 }
 
-/** A pickup visit must reach the destination before returning to that pickup.
- * The model's canonical occurrence counts preserve direction at shared curbs. */
-export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): UpcomingArrival[] {
-  return arrivals.filter(board => {
-    if (board.stopId !== boardStopId) return false;
-    const sameBus = arrivals.filter(a => a.busName === board.busName && a.routeLabel === board.routeLabel && a.stopsAhead > board.stopsAhead);
-    const destination = sameBus.filter(a => a.stopId === alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
-    if (!destination) return false;
-    const nextBoard = sameBus.filter(a => a.stopId === boardStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
-    return (!nextBoard || destination.stopsAhead < nextBoard.stopsAhead) && destination.eta >= board.eta;
-  });
+/** Positive evidence that this visit returns to pickup before reaching the
+ * destination. Missing destination/horizon data is unknown, not rejection. */
+export function boardingVisitConflict(board: UpcomingArrival, arrivals: readonly UpcomingArrival[], alightStopId: number) {
+  const ahead = arrivals.filter(a => a.busName === board.busName && a.routeLabel === board.routeLabel && a.stopsAhead > board.stopsAhead);
+  const destination = ahead.filter(a => a.stopId === alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  const nextPickup = ahead.filter(a => a.stopId === board.stopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return destination && nextPickup && nextPickup.stopsAhead < destination.stopsAhead
+    && nextPickup.eta >= board.eta && destination.eta >= nextPickup.eta
+    ? {nextPickup, destination} : null;
 }
 
-/** Raw proximity can mark an opposite-direction pass at the same curb.
- * Only the estimator's current arrival may authorize a board-now shortcut. */
-export function boardingArrivalNow(busName: string, stopId: number, arrivals: readonly Pick<UpcomingArrival, "stopId" | "busName" | "eta">[]): boolean {
-  const norm = (name: string) => name.replace(/^#/, "");
-  return arrivals.some(a => a.stopId === stopId && norm(a.busName) === norm(busName) && a.eta === 0);
+/** Skip only a proven wrong visit. Unknown/missing destination evidence keeps
+ * the existing recommendation. A rejected visit may select a later bus; if
+ * no retained arrival exists the usual unavailable/departed UI is used. */
+export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): UpcomingArrival[] {
+  return arrivals.filter(a => a.stopId === boardStopId && !boardingVisitConflict(a, arrivals, alightStopId));
+}
+
+/** A raw at-stop flag cannot restore a pickup visit rejected above. No ETA
+ * equality/epsilon is used: the evidence is canonical visit ordering. */
+export function boardingVisitAllowed(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const first = arrivals.filter(a => a.stopId === boardStopId && norm(a.busName) === norm(busName))
+    .sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return !first || !boardingVisitConflict(first, arrivals, alightStopId);
 }
 
 export function planTrip(
@@ -417,7 +424,7 @@ export function planTrip(
           // fastest route entirely (report #28: bus parked 13 m from the
           // board stop, every pair boarding there discarded).
           const arrivals = rideBoardArrivals(boardArrivals, b, cur);
-          if (hereBus && boardingArrivalNow(hereBus.bus_name, b, arrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+          if (hereBus && boardingVisitAllowed(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;

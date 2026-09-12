@@ -194,6 +194,7 @@ type TripOption = import("../../../web/src/planner").TripOption;
 const arrivalsMod = await fromClient<ArrivalsMod>("web/src/arrivals.ts");
 const anchorMod = await fromClient<AnchorMod>("web/src/anchor.ts");
 const plannerMod = await fromClient<PlannerMod>("web/src/planner.ts");
+const supportsBoardingVisits = typeof plannerMod.rideBoardArrivals === "function" && typeof plannerMod.boardingVisitAllowed === "function";
 const formatMod = await fromClient<FormatMod>("web/src/format.ts");
 const routesMod = await fromClient<RoutesMod>("web/src/routes.ts");
 const scheduleMod = await fromClient<ScheduleMod>("web/src/schedule.ts");
@@ -657,7 +658,8 @@ function finish(a: Active, outcome: WaitResult["outcome"]) {
 function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t: number): Tick {
   const o = a.o;
   const cfg = cfgByLabel.get(o.routeLabel)!;
-  const live = arr.filter((x) => x.stopId === o.boardStopId && x.routeLabel === o.routeLabel);
+  const visits = arr.filter((x) => x.routeLabel === o.routeLabel);
+  const live = supportsBoardingVisits ? plannerMod.rideBoardArrivals(visits, o.boardStopId, o.alightStopId) : visits.filter(x => x.stopId === o.boardStopId);
   // What the estimator still offers for the vehicle the row followed last
   // poll — the thing that says whether a drop was the card's choice or the
   // estimator's. Read BEFORE the pick, from the same list the pick sees.
@@ -670,7 +672,7 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
     }
   }
   const effectiveWalkToSec = walkToSecFor(a.spec);
-  const busesAtBoard = buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId);
+  const busesAtBoard = buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && (!supportsBoardingVisits || plannerMod.boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits)));
   const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
   let u: { busName: string; departed: boolean; missedBus?: string; busEtaSec?: number; computedAtMs?: number };
   if (hereBus && effectiveWalkToSec <= plannerMod.dwellBoardWindowSec(hereBus, cfg.routeIds[0]!, o.boardStopId, dw, t)) {
@@ -759,7 +761,7 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
     // every live cohort: one call, the rider's own anchor memory
     for (const [key, cohort] of cohorts) {
       if (cohort.riders.size === 0) { cohorts.delete(key); continue; }
-      const targets = [...new Set([...cohort.riders].map((a) => a.spec.boardStopId))];
+      const targets = [...new Set([...cohort.riders].flatMap((a) => supportsBoardingVisits ? [a.o.boardStopId, a.o.alightStopId] : [a.spec.boardStopId]))];
       const arr = (arrivalsMod.computeUpcomingArrivals as any)(targets, buses, net.routeStops, net.stopCoords, segs, t, dw, cohort.store) as UpcomingArrival[];
       for (const a of [...cohort.riders]) {
         const tick = tickFor(a, arr, buses, dw, t);

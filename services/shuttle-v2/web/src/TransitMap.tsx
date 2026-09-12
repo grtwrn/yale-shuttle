@@ -53,7 +53,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, boardingArrivalNow, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
+  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -2035,7 +2035,7 @@ const TripPlanner: FC<{
 
   const stableOptions = useMemo(
     () => (effectiveFromLL && toLL)
-      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate, Date.now(), liveAnchorStore)
+      ? planTrip(effectiveFromLL, toLL, buses, routeStops, stopCoords, segmentTimes, dwellTimes, targetDate)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), refreshKey],
@@ -2096,16 +2096,17 @@ const TripPlanner: FC<{
       // the loop coming toward you). We only flag departed when NO
       // bus on the route is catchable.
       const nowMs = Date.now();
-      const live = rideBoardArrivals(computeUpcomingArrivals(
+      const visits = computeUpcomingArrivals(
         [o.boardStopId, o.alightStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
-      ).filter((a) => a.routeLabel === o.routeLabel), o.boardStopId, o.alightStopId);
+      ).filter((a) => a.routeLabel === o.routeLabel);
+      const live = rideBoardArrivals(visits, o.boardStopId, o.alightStopId);
       // THE countdown — the number every accuracy and stability finding is
       // about, and until now the one nothing recorded. Sampled and dedup'd
       // inside noteShown; this call allocates nothing on an unsampled load.
       noteShown(live, "trip", nowMs);
-      // The current estimator emits zero for its own standing stop. Raw
-      // at_stop_id may describe a pass in the other direction, so it cannot
-      // override that route-aware arrival with a fabricated zero.
+      // Raw at_stop_id can describe the wrong visit on a folded route.
+      // Reject its board-now override only when the modeled visit order
+      // positively shows another pickup before the destination.
       // If the user's GPS puts them within AT_PLACE_M of the board stop, treat
       // them as already there (walkToSec = 0). Stale GPS commonly reports a
       // position 30-100 m off, which makes an arriving bus look uncatchable when
@@ -2136,7 +2137,7 @@ const TripPlanner: FC<{
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingArrivalNow(b.bus_name, o.boardStopId, live))
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2334,11 +2335,11 @@ const TripPlanner: FC<{
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
-      const arrivals = rideBoardArrivals(computeUpcomingArrivals([o.boardStopId, o.alightStopId], buses, routeStops, stopCoords,
-        segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel), o.boardStopId, o.alightStopId);
+      const arrivals = computeUpcomingArrivals([o.boardStopId, o.alightStopId], buses, routeStops, stopCoords,
+        segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
-        && boardingArrivalNow(b.bus_name, o.boardStopId, arrivals)
+        && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
