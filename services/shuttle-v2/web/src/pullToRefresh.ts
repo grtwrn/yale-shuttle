@@ -75,6 +75,13 @@ export function installPullToRefresh(
 
   let state: PullState | null = null;
 
+  // KNOWN, UNREPRODUCED, deliberately not fixed here (2026-09-12): this asks
+  // the DOCUMENT scroller only, so a drag that begins inside an inner
+  // scrollable list while the document sits at top can arm the pull and
+  // reload mid-list. It wants its own reproduction and its own capture rather
+  // than riding along in a PR whose value is a tight measured before/after;
+  // `inMap()` below is the precedent for the fix — walk up from e.target for a
+  // scrollable ancestor.
   const atTop = () => (doc.scrollingElement?.scrollTop ?? 0) <= 0;
   const inMap = (t: EventTarget | null) =>
     t instanceof Element && t.closest(".leaflet-container") !== null;

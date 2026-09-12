@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
   installPullToRefresh,
@@ -138,5 +139,27 @@ describe("pull-to-refresh gesture ownership", () => {
     listeners.get("touchmove")!(touchAt(120));
     listeners.get("touchend")!(touchAt(120));
     expect(reloads).toBe(0);
+  });
+});
+
+describe("the gesture clears the trip, like the header's refresh (#222)", () => {
+  // main.tsx is the call site and cannot be rendered by this harness, so the
+  // wiring is pinned at source — the same pattern walk.test.ts and
+  // mapFilter.test.ts use for cross-module contracts.
+  const main = readFileSync(new URL("./main.tsx", import.meta.url), "utf8");
+
+  it("passes a reload that wipes the saved trip before reloading", () => {
+    expect(main).toMatch(/installPullToRefresh\(document,\s*\(\)\s*=>\s*\{[\s\S]{0,200}saveTripDraft\(null\)[\s\S]{0,200}location\.reload\(\)/);
+  });
+
+  it("imports saveTripDraft, so the call cannot be a no-op", () => {
+    expect(main).toMatch(/import \{ saveTripDraft \} from "\.\/tripDraft";/);
+  });
+
+  it("clears BEFORE reloading — the other order would restore the trip", () => {
+    const clear = main.indexOf("saveTripDraft(null)");
+    const reload = main.indexOf("window.location.reload()", clear);
+    expect(clear).toBeGreaterThan(-1);
+    expect(reload).toBeGreaterThan(clear);
   });
 });
