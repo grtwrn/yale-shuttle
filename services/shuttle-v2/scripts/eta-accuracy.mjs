@@ -103,11 +103,18 @@ function parsePlan(text) {
   const opts = [];
   for (let i = 0; i < lines.length - 1; i++) {
     const m = lines[i].match(/^(\d+)\s*min$/);
-    const a = lines[i + 1].match(/^arrive\s+(\d{1,2}:\d{2}[ap])$/i);
+    // All three spellings of the clock (canary-metrics.mjs ARRIVAL_CLOCK_RE):
+    // "arrive 1:01p" until 2026-09-04, a bare "1:01p" after #123, and
+    // "by 1:01p" from 2026-09-12. This harness required the word and so had
+    // been matching nothing at all since #123 shipped — it is a sanity check
+    // rather than a gate, which is why that went unnoticed; the offline replay
+    // is the measurement.
+    const a = lines[i + 1].match(/^(?:arrive\s+|by\s+)?(\d{1,2}:\d{2}[ap])$/i);
     if (!m || !a) continue;
     const block = lines.slice(i + 2, i + 12);
     // Stop the block at the next option header.
-    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && /^arrive/i.test(block[j + 1] ?? ""));
+    const CLOCK_LINE = /^(?:arrive\s+|by\s+)?\d{1,2}:\d{2}[ap]$/i;
+    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && CLOCK_LINE.test(block[j + 1] ?? ""));
     const body = (end === -1 ? block : block.slice(0, end)).join(" | ");
     // "🚌 in 0:52 · next in 5 min"  or  "🚌 in 7 min · next in 22 min"
     //

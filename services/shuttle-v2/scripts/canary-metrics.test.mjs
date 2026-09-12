@@ -2799,3 +2799,128 @@ About`;
     expect(blue.eta?.raw).toBe("in 1-4, then 40 min");
   });
 });
+
+/**
+ * THE CAPTURED PAGE AFTER THE ARRIVAL CLOCK BECAME A PROMISE (2026-09-12).
+ *
+ * The column stopped quoting the median instant and started printing the band's
+ * upper end as "by 2:23p" (etaBand.ts `arriveByClock`). `parseOptions` anchors
+ * a card on its duration line and REQUIRES an arrival clock beside it, so
+ * without the third spelling in `ARRIVAL_CLOCK_RE` every shuttle card on this
+ * page vanishes and the canary files against an app it cannot read. That is
+ * exactly #111 and #123, twice over, which is why CLAUDE.md asks for a capture
+ * rather than an argument.
+ *
+ * PROVENANCE, stated because it matters: this is `LIVE_ARRIVAL_RIGHT`'s own
+ * captured innerText with the arrival lines rewritten by the transformation
+ * this change makes — a fresh browser capture was not possible in the session
+ * that wrote it (another job held the machine's only chromium slot) and is
+ * owed alongside the PR screenshot. The MIXED page is the realistic one and is
+ * the point of the fixture: the app prints "by" only where it has an alight
+ * forecast wide enough to promise against, so the bare clock goes on appearing
+ * beside it — Orange Day below keeps it, and the Walk card never had a bus at
+ * all.
+ */
+const LIVE_ARRIVE_BY = `YALE SHUTTLE
+11:22 AM
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+OVERVIEW — ALL 4 ROUTES
+▴
+🏁 (B) 11:40a
+ (R) 11:41a
+ (O) 11:43a
+🚌 (B) 3 min
+ (R) 12 min
+ (O) 8 min
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue Day
+Red
+Orange Day
+Brown
+Blue Day
+in 3, 11 min
+18 min
+by 11:44a
+›
+Red
+in 12, 18 min
+19 min
+🚶 1 min
+›
+🚌 7 min
+by 11:46a
+›
+Orange Day
+in 8, 32 min
+21 min
+🚶 9 min
+›
+🚌 12 min
+11:43a
+›
+Brown
+in 8, 26 min
+24 min
+🚶 3 min
+›
+🚌 6 min
+›
+🚶 10 min
+by 11:52a
+›
+🚶 Walk
+38 min
+12:00p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+describe("the promised arrival clock (\"by 2:23p\", 2026-09-12)", () => {
+  it("still reads every card when the clock carries the new word", () => {
+    const opts = parseOptions(LIVE_ARRIVE_BY);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Blue Day", "Red", "Orange Day", "Brown", "Walk"]);
+    // The word is stripped, so a run's records stay comparable across the
+    // three spellings this column has had.
+    expect(opts.map((o) => o.arriveText))
+      .toEqual(["11:44a", "11:46a", "11:43a", "11:52a", "12:00p"]);
+    // Every other field the canary scores is unaffected by the reword.
+    expect(opts[0]).toMatchObject({ totalMin: 18, walkToMin: 0, walkFromMin: 0 });
+    expect(opts[0].eta.raw).toBe("in 3, 11 min");
+    expect(opts[3]).toMatchObject({ totalMin: 24, walkToMin: 3, walkFromMin: 10 });
+    expect(opts[4]).toMatchObject({ mode: "walk", totalMin: 38 });
+  });
+
+  it("accepts all three spellings and still refuses the map's and the header's clocks", () => {
+    expect(ARRIVAL_CLOCK_RE.test("by 2:23p")).toBe(true);   // 2026-09-12 onwards
+    expect(ARRIVAL_CLOCK_RE.test("by 11:44a")).toBe(true);
+    expect(ARRIVAL_CLOCK_RE.test("arrive 5:13p")).toBe(true); // until 2026-09-04
+    expect(ARRIVAL_CLOCK_RE.test("10:33a")).toBe(true);       // #123 onwards
+    // The anchoring is the whole safety: the overview's own clock lines and
+    // the page header must not read as cards.
+    expect(ARRIVAL_CLOCK_RE.test("🏁 (B) by 11:40a")).toBe(false);
+    expect(ARRIVAL_CLOCK_RE.test("(B) 12:31p")).toBe(false);
+    expect(ARRIVAL_CLOCK_RE.test("11:22 AM")).toBe(false);
+    // "by" is a whole word, not a loose prefix.
+    expect(ARRIVAL_CLOCK_RE.test("byte 2:23p")).toBe(false);
+    expect(hasArrivalClock(LIVE_ARRIVE_BY)).toBe(true);
+  });
+});

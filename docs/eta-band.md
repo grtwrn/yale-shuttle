@@ -225,3 +225,61 @@ The 0-2 min band, moving: 65% of arrivals come before its low end, median
 horizon bias (b = +1 s at 0-2) cannot see because it pools standing with
 moving. A per-mode (or per-route) 0-2 offset is one number, and it is the
 bucket every rider is looking at when they decide to run.
+
+## F. The arrival clock as a promise — "by 2:23p" (2026-09-12)
+
+The operator, reading a card whose countdown had just become a range: *"do we
+need ranges on the arrival time too? or just put latest time?"* The answer is
+the latest time, and the reason is that the two numbers in the right-hand
+column answer different questions. A countdown answers *how long from now*, and
+for that both ends of the band matter. An absolute clock answers *do I make my
+2:30* — and there only the upper end is load-bearing, because arriving early
+costs the rider nothing.
+
+**Where the number comes from.** Not `totalSec` with the board band's high end
+swapped in. That would be a ceiling on the WAIT with a mean for everything
+after it: `rideSec` is a sum of segment averages (`planner.ts`) and carries no
+uncertainty at all, so such a "ceiling" is missed whenever the ride runs long —
+which, on a line with a layover between the two stops, is most of the time.
+Instead the clock is the SAME bus's own forecast at the ALIGHT stop, an
+`UpcomingArrival` the estimator has already priced, whose `high` is a q90 of
+the whole chain with the stands in it, plus the trailing walk (deterministic,
+`walk.ts`). The estimator pass that produces it is the one the card already
+makes: `computeUpcomingArrivals([boardStopId, alightStopId], …)` asks for both
+stops, so the alight row is in hand and no second arithmetic exists.
+
+**It is a fixed instant.** The seconds are decayed off `computedAtMs` exactly
+as the point and the band are (report #48). For an absolute clock that has the
+opposite and better effect: `nowMs + sec` comes to `computedAtMs + high + walk`
+at every render, so the promise does not creep forward between polls. A rider
+can look twice and read the same time.
+
+**It declines rather than degrade** — three ways, each falling back to the
+median clock the column printed before, never to a worse promise: no forecast
+(walk option, future-dated plan, or a pin whose alight row is absent); a
+promised instant EARLIER than the median total, which means the estimator's
+chain and the planner's segment-average sum disagree and the ceiling is not one
+(this also retires an elapsed promise, since `remainingSec` clamps at zero);
+and anything past `RANGE_MAX_SHOWN_MIN` printed minutes beyond the median, for
+the same measured reason the band caps there (Green's undecided out-and-back
+branch is a 43-minute span, and a preposition does not make it usable). When
+the promise would print the median's own minute the word is dropped with it.
+
+**Drawn in exactly one place**, and the exclusions are decisions:
+
+| surface | what it prints | why |
+|---|---|---|
+| trip card, right column | **"by 2:23p"** (replaces the median clock) | the operator's "the arrival time"; the column is `flexShrink: 0` and already fits future mode's wider range |
+| overview map 🏁 chip | unchanged (median instant at the alight stop) | a longer chip label merges with its neighbours and stacks — the operator's "this is an eye sore"; `chipCluster.ts` records that the standing range's wider labels are what made it worse |
+| Map tab stop rows | unchanged (10 px grey median clock) | that clock is a BUS reaching that stop, not the end of anyone's trip, and the row's countdown already carries the band |
+
+**What is NOT yet measured.** The decision's gate — *the real arrival beats the
+printed "by" about 9 times in 10 on the rider simulator, and the row's total
+stays consistent with it* — has **not** been run: the machine's heavy slot was
+held by another paired rider-sim when this shipped to a branch. In-model the
+claim is q90 by construction, and §A's held-out coverage (82–91% for the band
+as a whole from 2 min out) is the nearest evidence, but that is measured on the
+BOARD stop's band and this promise is the ALIGHT stop's plus a walk. Until the
+pair is run, treat the 9-in-10 as the model's claim and not a measurement —
+which is why the tooltip says what the number IS ("the 90th percentile of this
+bus's own forecast at your stop, plus the walk") and never how often it holds.

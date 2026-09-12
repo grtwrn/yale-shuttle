@@ -371,7 +371,9 @@ describe("the render sites read the shared composition", () => {
 
   it("imports both helpers and calls each twice", () => {
     expect(src).toContain('import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";');
-    expect(src).toContain('import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";');
+    // `arriveByClock` joined the list on 2026-09-12 (the "by 2:23p" arrival
+    // clock); its own placement is pinned in etaBand.test.ts.
+    expect(src).toContain('import { arriveByClock, bandTitle, boardArrivalText, waitLegText } from "./etaBand";');
     // The trip card's expanded stop list and the Map tab's route card.
     expect(src.match(/standChipFor\(/g)?.length).toBe(2);
     // The trip card's minimap chip and the Map tab's per-stop countdown.

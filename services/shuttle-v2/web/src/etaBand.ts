@@ -58,7 +58,7 @@
 // distribution shifted by the time elapsed, and decaying one without the
 // others would let the point walk out of its own band.
 
-import { fmtBusBand, fmtMin, fmtWait, remainingSec } from "./format";
+import { fmtBusBand, fmtClock, fmtMin, fmtWait, remainingSec } from "./format";
 
 /** Below this many printed minutes between the ends, a range says nothing a point does not. */
 export const RANGE_MIN_SHOWN_MIN = 3;
@@ -204,4 +204,96 @@ export function waitLegText(band: EtaBand | null, etaSec: number | null, walkSec
     return high < 60 ? null : fmtBusBand(low, mid, high).replace(/^in /, "");
   }
   return waitSec < 60 ? null : fmtWait(waitSec);
+}
+
+/**
+ * THE ARRIVAL CLOCK, AS A PROMISE — "by 2:23p".
+ *
+ * THE ASK (operator, 2026-09-12, of the arrival time beside the duration):
+ * "do we need ranges on the arrival time too? or just put latest time?" — the
+ * latest time. A destination clock answers a different question from a
+ * countdown: "in 1-8 min" answers "how long from now", and a rider reading the
+ * right-hand column is asking "do I make my 2:30". For that only ONE end of
+ * the band is load-bearing, because arriving early costs nothing, so the
+ * honest number to print is the one that can be planned against.
+ *
+ * WHERE THE NUMBER COMES FROM, and the one arithmetic this must not be. The
+ * tempting construction is `totalSec` with the board band's high end swapped
+ * in — walk + (this bus's q90 at the BOARD stop) + ride + walk. That is a
+ * ceiling on the WAIT wearing a mean for everything after it: `rideSec` is a
+ * sum of segment averages (planner.ts) and carries no uncertainty at all, so
+ * such a "ceiling" would be missed whenever the ride itself ran long — which,
+ * on a route with a layover between the two stops, is most of the time. So
+ * this reads the SAME bus's own forecast at the ALIGHT stop instead: an
+ * `UpcomingArrival` the estimator already priced, whose `high` is a q90 of the
+ * whole chain with the stands in it (arrivals.ts), plus only the trailing
+ * walk, which this app models deterministically (walk.ts). Nothing is priced
+ * here — the number is one already-computed field plus a walk.
+ *
+ * IT IS A FIXED INSTANT, not a countdown in disguise. The seconds are decayed
+ * off `computedAtMs` exactly as the point and the band are (report #48), which
+ * for an ABSOLUTE clock has the opposite and better effect: `nowMs + sec`
+ * comes to `computedAtMs + high + walk` at every render, so the promise does
+ * not slide forward a second at a time between polls. A rider can look twice
+ * and read the same time.
+ *
+ * THREE WAYS IT DECLINES, each falling back to the bare median clock the
+ * column printed before — never to a worse promise:
+ *
+ *   * NO FORECAST. A walk option, a future-dated plan, or a bus whose alight
+ *     row is not in hand. The column is byte-identical to today's.
+ *   * AN INCOHERENT CEILING. If the promised instant lands EARLIER than the
+ *     median total the column already shows, then two arithmetics disagree
+ *     (the estimator's chain to the alight stop against the planner's
+ *     segment-average sum) and the "ceiling" is not one. This also retires a
+ *     promise that has already elapsed: `remainingSec` clamps at zero, so a
+ *     passed instant sinks below `totalSec` and the word goes with it.
+ *   * TOO FAR OUT TO BE USED. Past `RANGE_MAX_SHOWN_MIN` printed minutes
+ *     beyond the median, for the same measured reason the band itself caps
+ *     there: Green's undecided out-and-back branch produced a 43-minute span,
+ *     and "by 3:06p" on a trip the model calls 23 minutes is that span with a
+ *     preposition on it.
+ *
+ * And when the promise prints the SAME MINUTE as the median clock, the word is
+ * dropped with it: "by 2:19p" above a median of 2:19p promises nothing the
+ * number alone did not, and a rider who beats it half the time learns to
+ * distrust the word everywhere else.
+ */
+export interface ArriveBy {
+  /** Seconds from `nowMs` to the promised instant. */
+  sec: number;
+  /** "by 2:23p" — `fmtClock`'s spelling, the column's existing idiom. */
+  text: string;
+  title: string;
+}
+
+export function arriveByClock(
+  input: {
+    /** `UpcomingArrival.high` for the SAME bus at the ALIGHT stop, as of `computedAtMs`. */
+    alightHighSec?: number | undefined;
+    /** The trailing walk to the destination, deterministic in the walk model. */
+    walkFromSec: number;
+    /** What the column prints today: `now + totalSec`. */
+    totalSec: number;
+    computedAtMs?: number | undefined;
+  },
+  nowMs: number = Date.now(),
+): ArriveBy | null {
+  const { alightHighSec, walkFromSec, totalSec, computedAtMs } = input;
+  if (alightHighSec == null || !Number.isFinite(alightHighSec)) return null;
+  if (!Number.isFinite(walkFromSec) || !Number.isFinite(totalSec)) return null;
+  const sec = remainingSec(alightHighSec, computedAtMs, nowMs) + Math.max(0, walkFromSec);
+  // A ceiling earlier than the median the column already prints is not a
+  // ceiling — and an elapsed promise arrives here too, clamped to the walk.
+  if (sec < totalSec) return null;
+  if (shownMinutes(sec - totalSec) > RANGE_MAX_SHOWN_MIN) return null;
+  const from = new Date(nowMs);
+  const clock = fmtClock(sec, from);
+  // The same printed minute as the median: the preposition buys nothing.
+  if (clock === fmtClock(totalSec, from)) return null;
+  return {
+    sec,
+    text: `by ${clock}`,
+    title: `The latest this trip is likely to take: the 90th percentile of this bus's own forecast at your stop, plus the walk. About ${fmtClock(totalSec, from)} is typical.`,
+  };
 }

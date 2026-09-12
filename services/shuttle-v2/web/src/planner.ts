@@ -56,6 +56,18 @@ export type TripOption = {
    */
   busLowSec?: number;
   busHighSec?: number;
+  /**
+   * The q90 of the SAME pinned bus's arrival at the ALIGHT stop
+   * (arrivals.ts `UpcomingArrival.high` for `alightStopId`), as of
+   * `computedAtMs`. The card's "by 2:23p" arrival clock is promised from THIS
+   * and the trailing walk, never from `busHighSec` plus `rideSec`: the ride is
+   * a sum of segment AVERAGES and carries no uncertainty, so a ceiling built
+   * that way bounds only the wait and is missed whenever the ride runs long
+   * (etaBand.ts `arriveByClock`). Undefined for walk options, future-mode
+   * plans, and any pin whose alight row the estimator pass did not return —
+   * there the column prints the median clock exactly as it did before.
+   */
+  busAlightHighSec?: number;
   computedAtMs?: number;
 };
 

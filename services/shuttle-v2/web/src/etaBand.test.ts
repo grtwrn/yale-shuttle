@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bandTitle, boardArrivalText, chipCountdownText, displayBand, RANGE_MAX_SHOWN_MIN, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
+import { arriveByClock, bandTitle, boardArrivalText, chipCountdownText, displayBand, RANGE_MAX_SHOWN_MIN, RANGE_MIN_SHOWN_MIN, shownMinutes, standingLowFloor, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
+import { readFileSync } from "node:fs";
+import { fmtClock } from "./format";
 
 const M = (m: number) => m * 60;
 
@@ -138,5 +140,152 @@ describe("boardArrivalText — the arrival on the BOARD row, named as one", () =
 
   it("does not borrow the departure's verb", () => {
     for (const eta of [5, 45, M(4), M(12)]) expect(boardArrivalText(null, eta)).not.toMatch(/leav/);
+  });
+});
+
+/**
+ * "by 2:23p" — the promised arrival clock (operator, 2026-09-12: "do we need
+ * ranges on the arrival time too? or just put latest time?").
+ *
+ * A fixed LOCAL wall time, built without a `Z` so the expectations hold in any
+ * timezone the suite runs in — the same idiom as `format.test.ts`'s clock
+ * block. 2:00p, so a 23-minute promise reads as the operator's own example.
+ */
+const TWO_PM = new Date("2026-09-12T14:00:00").getTime();
+const MIN = 60;
+
+describe("arriveByClock — one latest time, not a range", () => {
+  const base = { walkFromSec: 0, totalSec: 19 * MIN, computedAtMs: TWO_PM };
+
+  it("prints the alight q90 as an absolute clock, with the word", () => {
+    const by = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
+    expect(by?.text).toBe("by 2:23p");
+    // The spelling the canary's ARRIVAL_CLOCK_RE must accept — pinned there
+    // too (canary-metrics.test.mjs), because a card it cannot recognise is a
+    // blind harness, which is how #111 and #123 each cost real watching time.
+    expect(by!.text).toMatch(/^by \d{1,2}:\d{2}[ap]$/);
+    expect(by?.sec).toBe(23 * MIN);
+  });
+
+  it("adds the trailing walk, because the q90 is the BUS at the alight stop", () => {
+    expect(arriveByClock({ ...base, alightHighSec: 20 * MIN, walkFromSec: 3 * MIN }, TWO_PM)?.text)
+      .toBe("by 2:23p");
+  });
+
+  it("is a FIXED instant — it does not slide forward between polls", () => {
+    // Same payload, read a minute later: the countdown beside it has ticked
+    // down by 60 s and the promise has not moved at all.
+    const first = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
+    const later = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM + 60_000);
+    expect(first?.text).toBe("by 2:23p");
+    expect(later?.text).toBe("by 2:23p");
+    expect(later?.sec).toBe(22 * MIN);
+  });
+
+  it("declines with no forecast — the column prints its median clock as before", () => {
+    expect(arriveByClock({ ...base, alightHighSec: undefined }, TWO_PM)).toBeNull();
+    expect(arriveByClock({ ...base, alightHighSec: NaN }, TWO_PM)).toBeNull();
+  });
+
+  it("declines a ceiling EARLIER than the median total — that is not a ceiling", () => {
+    // The estimator's chain to the alight stop and the planner's
+    // segment-average sum are different arithmetics; when they disagree this
+    // way the promise would undercut the number printed beside it.
+    expect(arriveByClock({ ...base, alightHighSec: 10 * MIN }, TWO_PM)).toBeNull();
+  });
+
+  it("retires a promise that has already elapsed", () => {
+    // `remainingSec` clamps at zero, so a passed instant sinks below totalSec
+    // and falls out through the coherence guard rather than printing a time in
+    // the past.
+    expect(arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM + 40 * 60_000)).toBeNull();
+  });
+
+  it("declines past RANGE_MAX_SHOWN_MIN beyond the median, as the band itself does", () => {
+    // Exactly at the cap still promises...
+    expect(arriveByClock({ ...base, alightHighSec: 34 * MIN }, TWO_PM)?.text).toBe("by 2:34p");
+    // ...one printed minute past it does not: Green's undecided out-and-back
+    // branch is a 43-minute span, and a preposition does not make it usable.
+    expect(arriveByClock({ ...base, alightHighSec: 35 * MIN }, TWO_PM)).toBeNull();
+    expect(arriveByClock({ ...base, alightHighSec: 60 * MIN }, TWO_PM)).toBeNull();
+  });
+
+  it("drops the word when it would print the median's own minute", () => {
+    // "by 2:19p" over a median of 2:19p promises nothing the bare number did.
+    expect(arriveByClock({ ...base, alightHighSec: 19 * MIN + 20 }, TWO_PM)).toBeNull();
+  });
+
+  /**
+   * WIDTH, at 390 px. The right-hand column is `flexShrink: 0` and never
+   * wraps, so a string too wide for it is a wrong clock rather than a longer
+   * one. This is stated as a BOUND against a string the column already ships
+   * instead of a character count — counting characters is how a wrapping line
+   * shipped once (2026-09-03) — because the probe of the rendered span could
+   * not be run in the session that wrote this: the machine's only browser slot
+   * was held. The bound is sound without it: future mode has always printed a
+   * two-clock RANGE in this very column at this very font, and the promise is
+   * one clock and a two-letter word, so it cannot be the thing that overflows.
+   * The probe is owed with the screenshot.
+   */
+  it("is narrower than the range this column already fits", () => {
+    const noon = new Date("2026-09-12T12:00:00").getTime();
+    // The widest the promise gets: a two-digit hour, both digits of the minute.
+    const widest = arriveByClock(
+      { walkFromSec: 0, totalSec: 32 * MIN, alightHighSec: 44 * MIN, computedAtMs: noon }, noon,
+    );
+    expect(widest?.text).toBe("by 12:44p");
+    // What future mode prints in the same column today, at its widest.
+    const futureRange = `${fmtClock(0, new Date(noon))} \u2013 ${fmtClock(38 * MIN, new Date(noon))}`;
+    expect(futureRange).toBe("12:00p \u2013 12:38p");
+    expect(widest!.text.length).toBeLessThan(futureRange.length);
+  });
+
+  it("says what it is in the tooltip, without claiming a frequency it has not measured", () => {
+    const by = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
+    expect(by?.title).toContain("90th percentile");
+    expect(by?.title).toContain("2:19p"); // the median, for contrast
+  });
+});
+
+/**
+ * WHERE IT IS DRAWN, pinned at the source. `TransitMap.tsx` cannot be rendered
+ * by this repo's harness, so the call sites are asserted as text — the accepted
+ * substitute here, and the only way to state that the placement is a DECISION
+ * rather than an omission.
+ *
+ * The promise replaces the trip card's right-column clock and goes NOWHERE
+ * ELSE. Two surfaces also print a clock and are deliberately untouched:
+ *
+ *   * the overview map's 🏁 chip, because a chip label that grows merges with
+ *     its neighbours and stacks — the operator's "this is an eye sore", and
+ *     `chipCluster.ts` records that the standing range's wider labels are what
+ *     made it worse. Three characters there cost more than they buy.
+ *   * the Map tab's stop rows, whose 10 px grey clock is the arrival of a BUS
+ *     at that stop rather than the end of anyone's trip, and whose countdown
+ *     already carries the band.
+ */
+describe("the promised clock is drawn in exactly one place", () => {
+  const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
+
+  it("is the trip card's right-hand column, falling back to the median clock", () => {
+    expect(src).toContain("(arriveBy?.text ?? fmtClock(o.totalSec))");
+  });
+
+  it("is priced from the alight stop's q90 on the pinned bus, never from the ride average", () => {
+    expect(src).toContain("alightHighSec: o.busAlightHighSec");
+    expect(src).toContain("busAlightHighSec: alightHighFor(match.busName, match.stopsAhead)");
+  });
+
+  it("is called ONCE — a new surface has to come back and read the note above", () => {
+    expect(src.match(/arriveByClock\(/g)?.length).toBe(1);
+  });
+
+  it("leaves the overview map chip and the Map tab's stop rows on their median clocks", () => {
+    expect(src).toContain("arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec");
+    expect(src).toContain("{fmtClock(e.eta)}");
+  });
+
+  it("leaves future mode's departure range alone — there is no live bus to promise from", () => {
+    expect(src).toContain("`${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`");
   });
 });
