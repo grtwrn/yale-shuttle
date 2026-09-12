@@ -248,10 +248,17 @@ describe("arriveByClock — one latest time, not a range", () => {
     expect(widest!.text.length).toBeLessThan(futureRange.length);
   });
 
-  it("says what it is in the tooltip, without claiming a frequency it has not measured", () => {
+  it("says what it is in the tooltip, without claiming a percentile or a frequency", () => {
     const by = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
-    expect(by?.title).toContain("90th percentile");
+    expect(by?.title).toContain("top of the range");
     expect(by?.title).toContain("2:19p"); // the median, for contrast
+    // NOT a percentile. `high` has been through `widenBand` (eta/params.ts),
+    // whose served CONFORMAL factors are 1.25-1.47 at every horizon this clock
+    // prints, so it sits ABOVE the chain's q90 and calling it one is false.
+    // An earlier draft of this line did exactly that.
+    expect(by?.title).not.toMatch(/percentile|90th/i);
+    // And no claim about how often it holds — that is unmeasured.
+    expect(by?.title).not.toMatch(/9 (times|in)|nine|usually|always/i);
   });
 });
 

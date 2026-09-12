@@ -2144,7 +2144,8 @@ const TripPlanner: FC<{
       // is its current boarding visit, not another pass by the same curb.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
-      // THE Q90 AT THE ALIGHT STOP for the SAME bus — what the card's
+      // THE BAND'S UPPER END AT THE ALIGHT STOP for the SAME bus (widened by
+      // CONFORMAL, so above the chain's own q90) — what the card's
       // "by 2:23p" is promised from (etaBand.ts `arriveByClock`). `visits`
       // already holds it: the pass above asks for the alight stop as well as
       // the board one, so this costs no extra estimator call and cannot be a

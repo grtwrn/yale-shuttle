@@ -242,11 +242,23 @@ after it: `rideSec` is a sum of segment averages (`planner.ts`) and carries no
 uncertainty at all, so such a "ceiling" is missed whenever the ride runs long —
 which, on a line with a layover between the two stops, is most of the time.
 Instead the clock is the SAME bus's own forecast at the ALIGHT stop, an
-`UpcomingArrival` the estimator has already priced, whose `high` is a q90 of
+`UpcomingArrival` the estimator has already priced, whose `high` is the upper end of the band over
 the whole chain with the stands in it, plus the trailing walk (deterministic,
 `walk.ts`). The estimator pass that produces it is the one the card already
 makes: `computeUpcomingArrivals([boardStopId, alightStopId], …)` asks for both
 stops, so the alight row is in hand and no second arithmetic exists.
+
+**`high` is NOT a q90, and must never be described as one.** The chain's own
+upper quantile is the 90th percentile, but `eta/arrival.ts:779` applies
+`widenBand` LAST: the upper half-width is multiplied by the learned per-horizon
+`CONFORMAL` factor, which is fitted against what riders were actually shown and
+targets EIGHTY percent TWO-SIDED coverage. Production serves `fit-2026-09-11` —
+`{"0-2": 1, "2-5": 1.47, "5-10": 1.271, "10-30": 1.251}` — so at every horizon
+this clock can print (it declines under a printed minute of margin), `high` sits
+25-47% further above the median than q90 does. The direction favours the rider,
+which is why it ships without a gate; but the tooltip says "the top of the range
+the countdown shows" and names no percentile and no frequency. An earlier draft
+of this section and of the tooltip called it a q90. That was wrong.
 
 **It is a fixed instant.** The seconds are decayed off `computedAtMs` exactly
 as the point and the band are (report #48). For an absolute clock that has the
@@ -282,13 +294,27 @@ document — no overflow and no sideways scroll. The fallback `"12:29p"` is
 reading `by 12:15p`, the Walk card's plain `12:28p`, a Green card reading
 `by 1:00p`) is committed at `services/shuttle-v2/pr-preview/arrive-by/`.
 
-**What is NOT yet measured.** The decision's gate — *the real arrival beats the
-printed "by" about 9 times in 10 on the rider simulator, and the row's total
-stays consistent with it* — has **not** been run: the machine's heavy slot was
-held by another paired rider-sim when this shipped to a branch. In-model the
-claim is q90 by construction, and §A's held-out coverage (82–91% for the band
-as a whole from 2 min out) is the nearest evidence, but that is measured on the
-BOARD stop's band and this promise is the ALIGHT stop's plus a walk. Until the
-pair is run, treat the 9-in-10 as the model's claim and not a measurement —
-which is why the tooltip says what the number IS ("the 90th percentile of this
-bus's own forecast at your stop, plus the walk") and never how often it holds.
+**What is NOT yet measured, and the exact recipe for it.** The decision set a
+gate — *the real arrival beats the printed "by" about 9 times in 10 on the
+rider-sim*. It has not been run, and two corrections to how it was framed:
+
+- **The rider-sim is the wrong instrument for it.** The estimator is untouched
+  by this change, so strands, reversals and `pessimistic120` are byte-identical
+  by construction; a pass there would be a result with no mechanism behind it.
+- **The promise is ONE-SIDED** (the bus arrives at or before the printed
+  instant). Section A's 82-91% held-out figure is TWO-SIDED interval coverage,
+  so it is not the nearest evidence for this and should not be quoted as
+  though it were. The statistic that settles it is the **late share** — how
+  often the arrival falls after the band's high end — which `band-coverage.mjs`
+  already computes and prints, and which section A's table never recorded.
+
+Recipe, cheap, and owed rather than skipped: one `gps-replay` with `PAIRS_OUT`
+set, then `band-coverage.mjs` over those pairs, reading the late share rather
+than the two-sided coverage.
+
+**And one residual that a free machine does not fix.** Every scorer here pairs
+a promise at the BOARD stop; nothing scores a promise at the ALIGHT stop, which
+is what this clock makes. Measuring the promise as riders actually see it needs
+a scorer BUILT, not merely a slot: pair `high` at the alight stop (plus the
+walk) against the detector's arrival there. Until then, treat the in-model
+claim as a claim.

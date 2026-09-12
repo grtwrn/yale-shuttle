@@ -225,10 +225,23 @@ export function waitLegText(band: EtaBand | null, etaSec: number | null, walkSec
  * such a "ceiling" would be missed whenever the ride itself ran long — which,
  * on a route with a layover between the two stops, is most of the time. So
  * this reads the SAME bus's own forecast at the ALIGHT stop instead: an
- * `UpcomingArrival` the estimator already priced, whose `high` is a q90 of the
- * whole chain with the stands in it (arrivals.ts), plus only the trailing
- * walk, which this app models deterministically (walk.ts). Nothing is priced
- * here — the number is one already-computed field plus a walk.
+ * `UpcomingArrival` the estimator already priced, over the whole chain with
+ * the stands in it (arrivals.ts), plus only the trailing walk, which this app
+ * models deterministically (walk.ts). Nothing is priced here — the number is
+ * one already-computed field plus a walk.
+ *
+ * WHAT `high` ACTUALLY IS, because it is tempting to call it a q90 and that is
+ * wrong. The chain's own upper quantile IS the 90th percentile, but
+ * `eta/arrival.ts` applies `widenBand` LAST (params.ts): the upper half-width
+ * is multiplied by the learned per-horizon `CONFORMAL` factor, fitted against
+ * what riders were actually shown and targeting EIGHTY percent TWO-SIDED
+ * coverage. Production serves `fit-2026-09-11` — 2-5 min 1.47, 5-10 1.271,
+ * 10-30 1.251 — so at every horizon this clock can print, `high` sits 25-47%
+ * further above the median than the model's own q90 does. The direction
+ * favours the rider (a promise later than q90 is beaten more often, not less),
+ * which is why it does not need a gate to ship; but nothing here may DESCRIBE
+ * it to a rider as a percentile, and the tooltip does not. The share of
+ * arrivals that actually beat it is unmeasured — see docs/eta-band.md section F.
  *
  * IT IS A FIXED INSTANT, not a countdown in disguise. The seconds are decayed
  * off `computedAtMs` exactly as the point and the band are (report #48), which
@@ -294,6 +307,11 @@ export function arriveByClock(
   return {
     sec,
     text: `by ${clock}`,
-    title: `The latest this trip is likely to take: the 90th percentile of this bus's own forecast at your stop, plus the walk. About ${fmtClock(totalSec, from)} is typical.`,
+    // No percentile and no frequency: `high` has been through the learned
+    // per-horizon widening (see above), so it is NOT the q90 an earlier draft
+    // of this line claimed, and the share of arrivals that beat it has never
+    // been measured. What is true and useful is that it is the top of the very
+    // range the countdown beside it prints.
+    title: `The latest this trip is likely to take — the top of the range the countdown shows. About ${fmtClock(totalSec, from)} is typical.`,
   };
 }
