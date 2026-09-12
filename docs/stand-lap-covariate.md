@@ -765,6 +765,155 @@ waits identical (primary 4, secondary 29). Red's first departure of a block from
 344 Winchester is the same shape, but the second slot there is a different
 vehicle, so the moving variant's seed prices nothing a rider sees.
 
+## 6e. Route 19 (Brown): measured and REFUSED by the rider table (2026-09-12)
+
+Brown was the ranked next candidate after Blue Night: three cells through the
+cell gate, non-fold, the fourth-busiest line. It is refused, and the reason is
+not the cell gate — it is the same rule that has decided every widening: **a
+better point estimate can be a worse promise.**
+
+### Ground truth: exactly ONE usable day
+
+`raw_positions` is swept at 6 h, so only a day the Pi's capture supplemented
+holds a full service day of Brown:
+
+| day | route 19 positions | ET span | buses |
+|---|---|---|---|
+| 2026-09-08 | 1,129 | 17:14-18:49 | 1 (#308) |
+| 2026-09-09 | 2,796 | 06:02-09:55 | 1 (#309) |
+| **2026-09-10** | **9,447** | **05:51-19:16** | **2 (#306, #308)** |
+| 2026-09-11 | none archived | - | - |
+
+So 2026-09-10 is the held-out day, and `snap909.db` (arrivals end 09-09 09:45
+ET) is what the fit and the replay's calibration come from — the day cannot
+leak into either.
+
+### The cell gate passes, and by a wide margin at one cell
+
+`FIT_BEFORE=2026-09-10`, 187,499 closed visits, 66 candidate cells:
+
+| rt | stop | | n | days | pooled | lap | delta | upper | served |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|
+| 19 | 145 | Science Park Garage | 633 | 62 | 169.7 | 128.3 | **-41.4** | -35.1 | yes |
+| 19 | 115 | State St Station | 620 | 56 | 87.4 | 69.6 | -17.8 | -10.9 | yes |
+| 19 | 121 | Union Station (N) | 504 | 62 | 138.7 | 126.6 | -12.1 | -8.3 | yes |
+| 19 | 172 | Humphrey / Whitney | 698 | 62 | 48.5 | 48.3 | -0.2 | 0.0 | no |
+| 19 | 47 | Divinity / 409 Prospect | 725 | 62 | 27.4 | 27.4 | 0.0 | 0.1 | no |
+| 19 | 98 | Phelps Gate | 668 | 62 | 50.4 | 50.4 | 0.1 | 0.1 | no |
+
+Red's and Blue Night's cells reproduce their recorded values on the same run,
+so the fitter is the one the ledger already rests on.
+
+### The per-cell layover table looked harmless. It was SILENT.
+
+`scripts/eta-replay/postlap/`, served vs withheld on the same polls (a payload
+patch, never a code change), rests >= 300 s, read from the stop three hops past
+each cell:
+
+| day | arm | n | signed | \|err\| | wait>=120 | early>=120 |
+|---|---|---:|---:|---:|---:|---:|
+| 09-10 | withheld | 1,907 | 0 | 121 | 19.6% | 30.8% |
+| 09-10 | **served** | 1,907 | +8 | **112** | **16.9%** | 30.5% |
+| 09-09 | withheld | 809 | -232 | 233 | 67.2% | 7.4% |
+| 09-09 | **served** | 809 | **-246** | **247** | **68.2%** | 7.4% |
+
+Two things to read here, and the second one is why this table cannot be the
+verdict:
+
+- **The two days disagree in sign.** All of the 09-10 movement is at 19:121
+  (\|err\| 112 -> 94 s); 09-09 goes the other way. The dangerous tail is flat on
+  both (30.8 -> 30.5%, 7.4 -> 7.4%).
+- **19:145 and 19:115 come out BYTE-IDENTICAL**, `lapF` exactly 1.0000 on all
+  327 and 182 rows. That is not the factor being ~1. The three 19:145 rests the
+  harness can score (05:51:32, 12:57:35, 15:50:05 ET) are exactly the three
+  whose served lap age is **ABSENT** — each a bus's first rest of a block or its
+  return to the feed, #218's case. At the other eleven rests the age is
+  1,750-3,491 s against `lapM` 2,666 inside the [0.65, 1.65] band, so the factor
+  would have run **0.42 to 1.64**. The flagship cell was unmeasured, not
+  unmoved.
+
+Payload fidelity against `predictions_log` (the withheld arm is what production
+served, since route 19 has never carried a fit): median +19 s, 63.9% within
+30 s on 09-10; -17 s and 82.9% on 09-09.
+
+### The window matters, and the obvious one would have scored a no-op
+
+Brown's factor is near 1 through the middle of the day (the 19:145 rests at
+09:45, 10:46 and 11:43 ET give 1.045, 0.997, 1.077) and bites at the ends:
+06:34 -> **1.493**, 07:12 -> **1.639**, 07:59 -> 1.287, then 16:56 -> 0.710 and
+18:00 -> 0.424. Red's precedent window (13:00-19:00Z) sits in the flat middle.
+The pair below is therefore run at **10:00-15:00Z (06:00-11:00 ET)**, where the
+correction is largest and in the direction that hurts.
+
+### The gate: the paired rider table
+
+`rider-sim`, one pristine master client for both arms (`9a31d12`), the arms
+differing in exactly one thing — whether `PAYLOAD_PATCH` carries route 19's
+three lap cells (non-19 dwells and all segments verified byte-identical).
+`ROUTES=Brown`, `CHAIN=Brown:145:6`, `POP=uniform`, `snap909.db`,
+`positions-20260910.jsonl`.
+
+**fixed / introduced, per route** (`pair-by-route.mjs`, 1,061 paired waits):
+
+| route | n | strand | jump>=180 s | reversal>=60 s | dropped |
+|---|---:|---|---|---|---|
+| **Brown** | 426 | **0 / 3** | **0 / 88** | 3 / 6 | 0 / 0 |
+| Green | 315 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Purple | 320 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+The holdout lines are 0 / 0 on every flag, which is what says the movement is
+route 19's and nothing else's. Per arm, Brown's own table:
+
+| | withheld | served |
+|---|---:|---:|
+| scored waits | 218 | 212 |
+| jump >= 180 s | 4.6% | **27.8%** |
+| jump >= 300 s | 0.5% | **8.0%** |
+| reversal >= 60 s | 0.5% | 2.8% |
+| STRAND | 0% | **1.4%** |
+| first-promise \|miss\| median | 0 s | **82 s** |
+| dangerous tail (`early > 60 s`) | 25.7% | **34.9%** |
+| interval coverage | 66.1% at 811 s | 65.1% at 895 s |
+| worst drift p90 | 170 s | 290 s |
+
+Nothing is fixed anywhere: master is already clean on Brown in this window, so
+the covariate has nothing to repair and 88 riders' countdowns to break. The
+CHAIN block localises it — riders downstream of Science Park Garage while a bus
+is parked there, `jump >= 180 s` by stop, withheld -> served: Winchester /
+Sachem 8.3 -> 33.3%, 130 Prospect 16.7 -> 33.3%, College / Wall 16.7 -> 33.3%,
+Phelps Gate 8.3 -> 33.3%, Union Station 9.1 -> 71.4%, State St 18.2 -> 33.3%.
+The three introduced strands are all at Winchester / Sachem (11:30, 11:40,
+11:50Z).
+
+### It is NOT the departure poll, and that is the point
+
+The obvious suspicion is #217/#218 — a future stand priced under a lap the
+served clock has not reset. It is not: **displayed drift at the departure poll
+is >= 180 s on ZERO riders in BOTH arms** (max 50 -> 55 s), and the departure
+collapse is unchanged. The defect is the factor itself, mid-rest. A 1.49 or
+1.64 inflates a 700-1,000 s layover stand by minutes, the row promises a later
+bus, and the number collapses when the bus leaves on its usual schedule. One
+paired sequence, Brown|147 at 10:10:02Z: worst drift **115 s withheld, 230 s
+served**.
+
+So the cell gate's -41.4 s at Science Park Garage is real as a stand estimate
+and still wrong as a promise, which is exactly the Pink lesson the rollout
+ledger exists to enforce. `LAP_SERVED_ROUTE_IDS` stays `{3, 13}`.
+
+### What the next attempt should try
+
+- **Serve 19:121 alone.** It is the only Brown cell that moved a number
+  favourably (\|err\| 112 -> 94 s on 09-10) and its factor range that day is
+  0.86-1.20 — no 1.6 spikes. It needs its own pair; the run above cannot be
+  reinterpreted as that experiment, because all three cells were served at once.
+- **A magnitude bound on the factor** is the obvious dial and must be measured,
+  not chosen: the harm here is concentrated in factors > 1.3, which is also
+  where the held-out stand-MAE gain at 19:145 comes from. A bound that keeps the
+  estimate and drops the promise damage may not exist.
+- **A second Brown day.** One day of positions cannot establish master's own
+  day-to-day noise on this line, which is the bar the introduced column is
+  judged against. Brown needs capture coverage before it can be judged again.
+
 ## 7. The warm start, and what else a restart loses
 
 `Collector.lapClock` is in-memory and fed only by the detector's dwell events,
