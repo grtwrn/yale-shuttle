@@ -735,7 +735,7 @@ export function stepBelief(
     // departure's own first step is 65 m — the shuffle moves further than the
     // departure, so no displacement threshold separates them. What does
     // separate them is that a shuffle comes BACK, which is only visible a poll
-    // or two later, i.e. after the gate's two-poll window. The switch stays off
+    // or two later, i.e. after the two-poll window the gate measures; the switch stays off
     // and every other caller prices exactly as before.
     //
     // Restricted to a rest with an IDENTITY (`restStop >= 0`), exactly as the
