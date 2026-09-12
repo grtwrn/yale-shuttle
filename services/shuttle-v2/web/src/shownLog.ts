@@ -121,11 +121,24 @@ let installed = false;
 export function clientBuild(): string {
   try {
     const url = typeof import.meta !== "undefined" ? String(import.meta.url ?? "") : "";
-    const m = /index-([A-Za-z0-9_-]{4,24})\./.exec(url);
-    return m ? m[1]! : "dev";
+    return buildFromModuleUrl(url);
   } catch {
     return "dev";
   }
+}
+
+/**
+ * The bundle hash out of this module's own URL. The rider entry was renamed
+ * from `index` to `rider` when the operator's stop-data page became a second
+ * Vite input (web/vite.config.ts), and the old pattern matched `index-` only —
+ * so from 2026-09-09 14:28 ET every `predictions_log` row read "dev" and the
+ * per-build split of `/api/predictions` and the scorecard went blind. Both
+ * spellings are accepted so rows written by an older cached bundle still name
+ * it. Pure, so it is testable without a build.
+ */
+export function buildFromModuleUrl(url: string): string {
+  const m = /\/assets\/(?:rider|index)-([A-Za-z0-9_-]{4,24})\.js/.exec(url);
+  return m ? m[1]! : "dev";
 }
 
 /** Test seam: forget the sampling decision, the batch and the timer. */

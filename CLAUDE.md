@@ -1053,7 +1053,7 @@ would reproduce that failure by construction.
 
 So a sampled share of page loads posts what they showed
 (`web/src/shownLog.ts` → `POST /api/shown`), and **every row names the bundle
-that produced it** (the content hash out of `/assets/index-<hash>.js`).
+that produced it** (the content hash out of `/assets/rider-<hash>.js`; `index-` before 2026-09-09, and every row from 2026-09-09 14:28 ET until this fix reads `dev` because the pattern still expected `index-`).
 
 **The privacy shape is why this table is allowed to exist, and it is different
 from `daily_actives`':** a row is a statement about a BUS — `(bus_name,
