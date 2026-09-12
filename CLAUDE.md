@@ -2318,9 +2318,15 @@ coverage, so silence is distinguishable from blindness:
   exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
   rather than grepping a pattern guessed in advance.
 - Verify a PR-body edit by READ-BACK, never by exit status.
-- **"No CI runs" is itself a silence that must be told apart from blindness.** All three
-  workflows are path-filtered to `services/shuttle-v2/`, so a change touching only root
-  files (this file included) triggers NOTHING — by mechanism, not by failure. A reviewer
+- **"No CI runs" is itself a silence that must be told apart from blindness.** Every
+  workflow here is path-filtered, and NOT uniformly: `pr-checks.yml` and `deploy.yml`
+  take `services/shuttle-v2/**` PLUS their own workflow file, while `accuracy.yml` takes
+  an explicit list of individual estimator sources plus `web/src/__fixtures__/**`,
+  `src/calibrator/**` and `src/network/**`. So a change touching none of those paths —
+  this file included — triggers NOTHING, by mechanism rather than by failure, while a
+  change to a workflow file itself DOES trigger a run despite living outside the service
+  tree. That non-uniformity is exactly why the rule is to READ the filters rather than
+  assume a subtree. A reviewer
   applying "CI green on each head" literally then waits forever; one who shrugs has
   accepted an empty result with no mechanism behind it. Establish the mechanism instead:
   ENUMERATE the workflow files on a named ref so a fourth cannot be hiding, read their
