@@ -36,6 +36,16 @@ const TRUTH = opt("--truth", "det");
 const ROUTES = opt("--routes", "3,1").split(",").map(Number);
 const FIT = args.includes("--fit");
 const BY_WIDTH = args.includes("--by-width");
+/**
+ * `--by-margin`: bucket by the PRINTED MARGIN, `high - eta` after widening —
+ * the quantity a "by HH:MM" promise actually gates on (etaBand.ts
+ * `arriveByClock`), as opposed to `--by-width`'s `high - low`. They are
+ * adjacent questions and only this one answers "how often is the promise
+ * late, among the rows where the promise is even printed". Prints both the
+ * per-bucket rows and the CUMULATIVE `>=T` rows, which are the decision table
+ * for choosing T.
+ */
+const BY_MARGIN = args.includes("--by-margin");
 const MIN_SHOWN = Number(opt("--min-shown-min", "3"));
 const H = ["0-2", "2-5", "5-10", "10-30"];
 
@@ -96,6 +106,22 @@ for await (const line of rl) {
     c.shown.push(fmtMinN(high) - fmtMinN(low));
     c.need.push(need);
   }
+  if (BY_MARGIN) {
+    const marginSec = Math.max(0, high - p.eta);
+    const b = Math.min(8, Math.floor(marginSec / 60));
+    for (const r of routes) for (const m of [mode, "all"]) {
+      const c = cell(r, `margin=${b}`, m);
+      c.n++; if (a < low) c.early++; else if (a > high) c.late++; else c.inside++;
+      c.widths.push(high - low); c.shown.push(fmtMinN(high) - fmtMinN(low)); c.need.push(need);
+      // Cumulative: every threshold this pair would clear.
+      for (let T = 1; T <= 8; T++) {
+        if (b < T) continue;
+        const cc = cell(r, `ge${T}`, m);
+        cc.n++; if (a < low) cc.early++; else if (a > high) cc.late++; else cc.inside++;
+        cc.widths.push(high - low); cc.shown.push(fmtMinN(high) - fmtMinN(low)); cc.need.push(need);
+      }
+    }
+  }
   if (BY_WIDTH) {
     const shown = fmtMinN(high) - fmtMinN(low);
     const wb = shown < 1 ? "<1" : shown < 2 ? "1" : shown < 3 ? "2" : shown < 4 ? "3" : shown < 6 ? "4-5" : "6+";
@@ -104,6 +130,20 @@ for await (const line of rl) {
       c.n++; if (a < low) c.early++; else if (a > high) c.late++; else c.inside++;
       c.widths.push(high - low); c.shown.push(shown); c.need.push(need);
     }
+  }
+}
+if (BY_MARGIN) {
+  console.log(`late share by PRINTED MARGIN (high - eta, after widening) — the gate a "by" promise uses, ${FLOOR}:`);
+  for (const r of order) for (const b of [0, 1, 2, 3, 4, 5, 6, 7, 8]) for (const m of ["all"]) {
+    const c = cells.get(`${r}|margin=${b}|${m}`);
+    if (!c) continue;
+    console.log(`  ${r.padEnd(7)} margin ${String(b).padEnd(2)}${b === 8 ? "+" : " "} ${m.padEnd(9)} n=${String(c.n).padStart(6)}  late ${pc(c.late, c.n).padStart(5)}%  cover ${pc(c.inside, c.n).padStart(5)}%`);
+  }
+  console.log(`\nCUMULATIVE — late share among pairs the promise WOULD print at margin >= T:`);
+  for (const r of order) for (let T = 1; T <= 8; T++) for (const m of ["all"]) {
+    const c = cells.get(`${r}|ge${T}|${m}`);
+    if (!c) continue;
+    console.log(`  ${r.padEnd(7)} >=${T}min ${m.padEnd(9)} n=${String(c.n).padStart(6)}  late ${pc(c.late, c.n).padStart(5)}%  cover ${pc(c.inside, c.n).padStart(5)}%`);
   }
 }
 if (BY_WIDTH) {

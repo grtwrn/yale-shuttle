@@ -373,3 +373,95 @@ it is to be reworked: promise only where the margin is genuinely wide (the 6+
 bucket is late 2.0-2.6%) and otherwise print the plain clock — which is the
 same shape of rule as `RANGE_MIN_SHOWN_MIN`, and would need its own
 measurement on the `high - eta` gate rather than this one.
+
+### The rework: held out on a second day, and REFUSED again (2026-09-12)
+
+**Name the defect first, because it is not a missing feature — it is a missing
+safeguard.** `arriveByClock` has five declines: two malformed-input guards,
+an incoherent-ceiling guard, a MAXIMUM (`> RANGE_MAX_SHOWN_MIN`), and the
+degenerate same-printed-minute case. **There is no minimum-margin decline at
+all.** Its neighbour in the same module has had one since 2026-09-11 —
+`displayBand` returns null below `RANGE_MIN_SHOWN_MIN` — so the promised clock
+printed in exactly the regime the band composer beside it refuses to print in.
+
+**And section C already measured that regime.** Containment of the printed band
+by printed width, 9/10: 3 min holds at Red 82/77 and Blue Day 78/71 (st/mv);
+2 min does not (58-79%); 1 min does not (59-73%); under a minute collapses
+(19-61%). Section C's own sentence is "a 1-2 minute band ... is a point wearing
+a dash". That is a two-sided statistic and this promise is one-sided, so it is
+not the same measurement — but the direction was in the tree, quoted in the
+header of the very module the clock was added to. The design prediction that
+the clock would only speak when confident was contradicted by evidence sitting
+a few lines above it.
+
+So the rework is not an invention; it restores a safeguard its neighbour
+already has. It was measured on the gate the clock actually uses — `high - eta`
+after widening (`band-coverage.mjs --by-margin`, added for this) — and NOT on
+`high - low`, the width bucket, which was flagged above as an adjacent
+question. The difference decides the answer.
+
+**Chosen on one day, reported on the other**, because two days bounds stability
+and does nothing about selection bias: the cell that swings 16.7% -> 8.1% looks
+good on whichever day it is picked from. This is the held-out shape the
+closed-loop work already uses.
+
+Late share among the pairs the promise WOULD print, at threshold T (n):
+
+| T (min) | Red 9/09 | Red 9/10 | Blue Day 9/09 | Blue Day 9/10 |
+|---|---|---|---|---|
+| >=1 | 16.7% (15,613) | 11.3% (96,708) | 6.1% (22,927) | 9.8% (89,163) |
+| >=2 | 12.4% (10,498) | 13.2% (75,129) | 5.9% (16,189) | 11.5% (60,728) |
+| >=3 | **8.0%** (5,984) | **16.0%** (42,063) | **6.6%** (8,680) | **12.3%** (29,223) |
+| >=4 | 8.1% (4,681) | 16.0% (34,682) | 7.2% (7,251) | 10.9% (26,052) |
+| >=5 | 7.4% (3,762) | 14.1% (25,180) | 7.2% (7,139) | 10.9% (25,304) |
+| >=6 | 6.2% (1,978) | 14.3% (14,148) | 7.5% (6,090) | 10.6% (20,823) |
+| >=7 | 5.1% (297) | 14.7% (3,789) | 8.4% (2,732) | 8.8% (6,645) |
+| >=8 | 1.4% (210) | 7.8% (956) | 3.7% (189) | 0.2% (816) |
+
+**Chosen on 9/09: T = 3 min**, the smallest cut where both binding routes clear
+ten percent (Red 8.0%, Blue Day 6.6%), with the neighbours either side quoted
+as the convention requires — T = 2 gives Red 12.4% and T = 4 gives Red 8.1%.
+
+**Held out on 9/10, it fails: Red 16.0% (n = 42,063), Blue Day 12.3%
+(n = 29,223).** Not a thin cell, not a boundary case — twice the chosen
+threshold's own number, on sixty thousand pairs.
+
+**Reversed, there is no cut to choose.** On 9/10 no threshold from 1 to 7
+clears Red at all (11.3-16.0%); only `>=8` does, at 7.8% on n = 956 with
+coverage collapsed to 51.6%, and its Blue Day partner is n = 816 at 35.0%.
+Held out on 9/09 those become n = 210 and n = 189. Those are the thin cells
+this document's own rule says to withhold rather than print.
+
+**Raising the threshold does not buy safety** — on 9/10 Red it RISES with T,
+11.3% -> 16.0%, holding 14-15% out to `>=7`. The mechanism is coherent: a wide
+upper margin is not a buffer, it is the model reporting that it does not know,
+and those rows are the ones with long stands ahead. Selecting for wide margins
+selects for hard cases.
+
+**The rule tested is per-row and route-agnostic on purpose.** A table of
+per-route cuts would have fitted each line's noise and would not generalise to
+a route added next month, and this repo has two standing precedents against
+that shape — CLAUDE.md's "fix that with a fold-aware selection rule, never with
+a per-route switch", and section A's note that a per-route `CONFORMAL` is a
+schema change to put to the operator rather than ship on two days. The rule
+fails on its own terms, per-row, so no per-route escape hatch is on the table.
+
+Only the 9/04 corpus supports a threshold (Red 0.3% at `>=3`), and it is the
+one predating #132's restart-split merge, pooled coverage 56-72% against 79-84%
+on the other days. Letting it decide would be letting the worst data carry the
+verdict because it flatters.
+
+**Verdict: the minimum-margin decline is NECESSARY BUT NOT SUFFICIENT.** It
+should exist regardless — the asymmetry with `displayBand` is a real defect and
+any revival of this clock must carry it — but it does not make the promise
+honest, so the clock stays refused on a second, independently chosen and
+held-out measurement rather than on the first one's authority. What would
+change the answer is not a display threshold: it is the STAND ESTIMATE, where
+the upper tail comes from, which section E already names as the dominant
+defect. Fix the chain, not the promise.
+
+**The alight-stop limit, narrowed.** Every number here is the band's high end
+at stops 1-5 ahead; nothing scores a promise at an alight stop and that scorer
+is still unbuilt. The WALK is not part of that gap — it is deterministic and
+adds to the promise and to the rider's real arrival alike, so it cancels
+exactly. What does not transfer is WHICH stops and HOW FAR ahead.
