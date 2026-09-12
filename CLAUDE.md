@@ -2318,20 +2318,21 @@ coverage, so silence is distinguishable from blindness:
   exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
   rather than grepping a pattern guessed in advance.
 - Verify a PR-body edit by READ-BACK, never by exit status.
-- **"No CI runs" is itself a silence that must be told apart from blindness.** Every
-  workflow here is path-filtered, and NOT uniformly: `pr-checks.yml` and `deploy.yml`
-  take `services/shuttle-v2/**` PLUS their own workflow file, while `accuracy.yml` takes
-  an explicit list of individual estimator sources plus `web/src/__fixtures__/**`,
-  `src/calibrator/**` and `src/network/**`. So a change touching none of those paths —
-  this file included — triggers NOTHING, by mechanism rather than by failure, while a
-  change to a workflow file itself DOES trigger a run despite living outside the service
-  tree. That non-uniformity is exactly why the rule is to READ the filters rather than
-  assume a subtree. A reviewer
-  applying "CI green on each head" literally then waits forever; one who shrugs has
-  accepted an empty result with no mechanism behind it. Establish the mechanism instead:
-  ENUMERATE the workflow files on a named ref so a fourth cannot be hiding, read their
-  `paths:` filters, and prove the query works by running `gh run list --branch` against a
-  branch that SHOULD have rows. Then the exemption is reasoned rather than waved. This
+- **"No CI runs" is itself a silence that must be told apart from blindness.** The
+  workflows here are path-filtered and the filters are NOT uniform: different workflows
+  watch different paths, and at least one behaves differently on a pull request than on
+  a push to master. So a change touching none of the paths that apply triggers NOTHING,
+  by mechanism rather than by failure — while a change that looks peripheral may still
+  trigger a run. **Do not restate the filters here or anywhere else.** An enumeration of
+  them is a survey that drifts silently the first time a workflow is edited, which is
+  the exact failure this section warns about; the robust form is SHORTER than the
+  complete one. Read them at the time, on a named ref, and read them IN FULL — a
+  truncated read of a `paths:` list looks exactly like a complete one, and that mistake
+  was made twice within an hour of this bullet being written, once by its author and
+  once by its reviewer, both of whom capped the output. Counting the entries is what
+  makes a truncation visible. Then prove the query works by running `gh run list
+  --branch` against a branch that SHOULD have rows. Only then is an exemption reasoned
+  rather than waved.
   gap was hit within an hour of writing the rule above.
 
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
