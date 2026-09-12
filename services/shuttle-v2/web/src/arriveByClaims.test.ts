@@ -27,6 +27,21 @@ import { readFileSync } from "node:fs";
  * So the ban is checked at the SOURCE, across every file that carries the
  * explanation. Retired wordings are paraphrased in those files rather than
  * quoted, precisely so this stays a simple, absolute pattern match.
+ *
+ * This is an established shape in this repo, not a new invention. Three
+ * precedents, each reading source and asserting on what it finds:
+ *
+ *   * `src/server/serverEta.closure.test.ts` walks the real import graph out
+ *     of `serverEta.ts` and fails if the Dockerfile has stopped copying a
+ *     `web/` file it reaches — the failure that would otherwise pass every
+ *     gate and crash on boot;
+ *   * `walk.test.ts` parses `WALK_M_PER_S` out of the SERVER's own source, so
+ *     the client's mirror cannot drift from it;
+ *   * `mapFilter.test.ts` asserts at the source that both consumers read the
+ *     one shared set.
+ *
+ * Same idea here — a fact that lives in prose across several files, held by a
+ * test that reads them.
  */
 const ROOT = new URL("./", import.meta.url);
 const FILES = [
@@ -91,9 +106,28 @@ describe("no file re-acquires a claim the promised clock cannot keep", () => {
     }
   });
 
-  it("would catch the exact sentences that shipped, if they came back", () => {
-    // A positive control on the patterns themselves, so this file cannot
-    // silently degrade into matching nothing.
+  /**
+   * POSITIVE CONTROL — DO NOT DELETE AS REDUNDANT.
+   *
+   * Every other assertion in this file is an ABSENCE, and absence assertions
+   * are all trivially satisfied by patterns that match NOTHING. A typo in a
+   * regex, an over-eager tidy-up, or a rename that empties `RETIRED_CLAIMS`
+   * would leave this suite bright green while checking precisely nothing —
+   * "no file makes the claim" and "this test no longer looks for the claim"
+   * are indistinguishable from the outside.
+   *
+   * That is the exact failure this project keeps paying for: #111 and #123
+   * (a canary parser that silently stopped recognising cards), and
+   * `eta-accuracy.mjs`, which matched nothing for eight days and exited 0
+   * throughout. So the patterns are fed the two sentences that REALLY shipped
+   * and must still catch them.
+   *
+   * The strings are assembled from pieces on purpose: this file is not in
+   * `FILES` today, but if a future reader adds it, a verbatim copy of a banned
+   * claim would make the guard fail on itself. Do not "simplify" them into one
+   * literal.
+   */
+  it("positive control: the patterns still match the two sentences that really shipped", () => {
     const first = "the 90th percentile of this bus" + "'s own forecast at your stop";
     const second = "the " + "top of the range the countdown shows";
     expect(RETIRED_CLAIMS.some((c) => c.pattern.test(first))).toBe(true);
