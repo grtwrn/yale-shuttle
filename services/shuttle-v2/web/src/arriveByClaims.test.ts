@@ -31,10 +31,16 @@ import { readFileSync } from "node:fs";
  * This is an established shape in this repo, not a new invention. Three
  * precedents, each reading source and asserting on what it finds:
  *
- *   * `src/server/serverEta.closure.test.ts` walks the real import graph out
- *     of `serverEta.ts` and fails if the Dockerfile has stopped copying a
- *     `web/` file it reaches — the failure that would otherwise pass every
- *     gate and crash on boot;
+ *   * `src/server/serverEta.closure.test.ts` (#188) is the closest relative,
+ *     and it does two things: it walks the real import graph out of
+ *     `serverEta.ts` and fails if the Dockerfile has stopped copying a `web/`
+ *     file it reaches — the failure that would otherwise pass every gate and
+ *     crash on boot — and it then scans those files for browser-only globals
+ *     with a raw `src.includes`. That second half shares this file's central
+ *     constraint: a substring scan CANNOT TELL CODE FROM COMMENT, so prose
+ *     that merely quotes a banned string trips it. That is exactly why the
+ *     retired wordings are paraphrased in the files below rather than quoted,
+ *     and why the positive control assembles its own strings from pieces;
  *   * `walk.test.ts` parses `WALK_M_PER_S` out of the SERVER's own source, so
  *     the client's mirror cannot drift from it;
  *   * `mapFilter.test.ts` asserts at the source that both consumers read the
