@@ -19,6 +19,24 @@ export type TripOption = {
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
+  /**
+   * THE WALK THE TOTAL WAS ACTUALLY PRICED ON, when that is not `walkToSec`.
+   *
+   * `planTrip` measures the walk from the origin the rider searched from; the
+   * per-poll live recompute re-measures it from where they are standing NOW
+   * and builds `waitSec` and `totalSec` on THAT. Report #108 (operator,
+   * 2026-09-12, "This is horrible") is the two disagreeing on one card: the
+   * priced walk was ~46 min, every chip printed the planned 17, and four legs
+   * summing to 44 sat under a 73-minute headline with no visible reason.
+   *
+   * It is a SECOND FIELD rather than an overwrite on purpose. `commuteSec`,
+   * `slowerThanWalk`, `directPromotion` and the tier sort are all functions of
+   * `walkToSec`, which is held constant for a given plan (see `commuteSec`)
+   * exactly so card ORDER cannot flicker on GPS jitter; rewriting it would
+   * reorder the list underneath a walking rider. Display-only, and read
+   * through `displayWalkToSec` (optionLegs.ts) at every site that prints it.
+   */
+  liveWalkToSec?: number;
   totalSec: number; busName: string;
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
@@ -748,9 +766,12 @@ export function findPotentialRoutes(
  *
  * Unlike `totalSec`, every term here is fixed by the plan's geometry and the
  * calibrated segment times. The per-poll live recompute rewrites `waitSec`,
- * `totalSec`, `busName`, `departed` and `busEtaSec` and nothing else, so this
- * number is CONSTANT for a given (origin, destination) plan. Anything decided
- * by it therefore cannot flicker poll to poll.
+ * `totalSec`, `busName`, `departed`, `busEtaSec` and `liveWalkToSec` and
+ * nothing else, so this number is CONSTANT for a given (origin, destination)
+ * plan. Anything decided by it therefore cannot flicker poll to poll — which
+ * is why report #108's fix added `liveWalkToSec` beside `walkToSec` instead of
+ * writing over it: the walk the card PRINTS follows the rider, the walk the
+ * list is ORDERED by does not.
  */
 export function commuteSec(o: TripOption): number {
   return o.walkToSec + o.rideSec + o.walkFromSec;

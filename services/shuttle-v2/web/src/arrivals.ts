@@ -327,6 +327,23 @@ export function nextArrivalAfterPinned<A extends { eta: number; busName: string 
     ? sorted.findIndex((a) => norm(a.busName) === norm(pinnedBusName))
     : -1;
   const shown = sorted[shownIdx];
-  const shownEta = shown ? shown.eta : fallbackShownEta;
+  /**
+   * BOTH NUMBERS, NOT THE IDENTIFIED ONE ALONE (report #108).
+   *
+   * `shownIdx` is the pinned vehicle's FIRST (soonest) entry, but slot 0 of the
+   * countdown prints `busEtaLive` — `pickLiveArrival`'s `match`, which for a
+   * bus the rider can no longer catch this lap is that same vehicle's NEXT LAP
+   * (TransitMap: `remainingSec(o.busEtaSec …)`, handed in here as
+   * `fallbackShownEta`). Comparing against `shown.eta` alone therefore
+   * compared against a number that is not on screen, and slot 1 was free to
+   * print sooner than slot 0: the reported card read "in 51, 35 min".
+   *
+   * So the test is against whichever is later — the entry this function
+   * identified, and the entry the row is actually displaying. Still no margin:
+   * the identity exclusion does the "skip the pinned bus" job and this does the
+   * "genuinely later than what the rider can see" job, which is what the
+   * reverted `shown + 30` rule conflated.
+   */
+  const shownEta = Math.max(shown ? shown.eta : fallbackShownEta, fallbackShownEta);
   return sorted.find((a, i) => i !== shownIdx && a.eta > shownEta) ?? null;
 }
