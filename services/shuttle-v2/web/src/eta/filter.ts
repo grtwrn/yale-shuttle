@@ -681,11 +681,69 @@ export function stepBelief(
     // = 1 - P_REPEAT_MOVE. Without the first factor a single crawl repeat
     // left a standing ghost that fresh fixes never cancelled (review, 9).
     const stood = prev.rested ? standingSec(prev, prev.seenAt) : 0;
-    // The fix moved but stayed where the bus came to rest: the kerb shuffle,
-    // whose measured departure share is half the pooled one. `leftRest` is the
-    // discriminator already computed above, so this costs no new geometry.
-    const inRestFix = kerbShuffleEvidence && prev.rested && !leftRest;
-    const shufflePoll = (inRestFix ? SHUFFLE_PER_POLL_IN_REST : MP.SHUFFLE_PER_POLL) * (dt / 5);
+    // THE FIX MOVED BUT THE BUS HAS NOT LEFT THE REST.
+    //
+    // `leftRest` above is the collector's own standing rule
+    // (STATIONARY_RADIUS_M): inside the radius the bus is still where it came
+    // to rest, whatever the published line says. The emission already honours
+    // that — a cell outside `restMask` gets no stray floor while the rest
+    // holds — but the TRANSITION did not: the departure kernel walked standing
+    // mass forward out of the rest, into MOVE, on a fix that was still inside
+    // it. So a bus shuffling at a kerb mid-layover was re-read as a bus
+    // pulling out: the lead cluster split, the mixture median fell into the
+    // standing tail, and #119's ceiling then held that trough for the whole
+    // stand (Red #310, 12:21 ET 2026-09-11: 466 -> 169 s held ten minutes
+    // while the truth fell 795 -> 195 s; median shown deficit on layover rests
+    // 171 s, 59.5% of it the estimate rather than the ratchet).
+    //
+    // The rule is the collector's rule applied to the kernel: while the fix is
+    // inside the rest, standing mass inside the rest's extent does not depart,
+    // it repositions. It is NOT a rate — two rate-based forms were measured
+    // and refused (P_DEPART_ON_FRESH_IN_REST below, PR #246: applying the
+    // measured 33.5% flatly still collapses the number a poll early and fails
+    // `accuracy-layover.test.ts`; correcting only from the SECOND consecutive
+    // in-rest fresh fix, PR #247, is inert because the first fix has already
+    // moved 62-77% of the mass out of the stand). A rate cannot be right here:
+    // a genuine departure's own first step is 30-35 m, which is inside the
+    // radius too (docs/departure-derivation.md), so any rate splits the
+    // cluster on exactly the poll it should not.
+    //
+    // The case for it: P(departure | fresh fix still inside the rest radius) is
+    // 33.5% over 7,116 such fixes on Red and Blue Day, against 74.2% beyond it,
+    // and 91-93% of all fresh fixes during a stand are inside. The argument for
+    // its safety was that it cannot delay a real departure past the rest — the
+    // first fix beyond REST_RADIUS_M sets `leftRest`, which ends the rest by
+    // construction (`moved` below) and prices the bus as driving on that poll.
+    //
+    // MEASURED AND REFUSED, 2026-09-11, and that argument is why: the bound
+    // arrives three polls late. `accuracy-layover.test.ts`'s departure-collapse
+    // assertion fails — on the recorded Red #309 pass the board must fall to
+    // 0.7x its standing value within two polls of the departure, and it reads
+    // 88.3 s against an 83.1 s bound (master 41.4 s). A departing bus is still
+    // INSIDE the radius for its first three polls:
+    //
+    //   poll (ET)   d from rest   truth    master   this rule
+    //   12:33:18         0 m       70 s     118.7       118.7
+    //   12:33:33        65 m       55 s      41.4        88.8
+    //   12:33:48        65 m       40 s      85.7        88.3   (repeat fix)
+    //   12:34:03       101 m       25 s      34.8        76.1
+    //   12:34:18       167 m       10 s      20.4        21.8   (rest ends)
+    //
+    // so the worst moment costs a rider +51 s of pessimism where master costs
+    // +10 s. And step SIZE cannot rescue it: on that same pass the kerb
+    // shuffles DURING the stand are 103-155 m from the rest point while the
+    // departure's own first step is 65 m — the shuffle moves further than the
+    // departure, so no displacement threshold separates them. What does
+    // separate them is that a shuffle comes BACK, which is only visible a poll
+    // or two later, i.e. after the gate's two-poll window. The switch stays off
+    // and every other caller prices exactly as before.
+    //
+    // Restricted to a rest with an IDENTITY (`restStop >= 0`), exactly as the
+    // emission's `held` is and for the same measured reason: a rest the belief
+    // cannot name is where the branch is least certain (Purple's fold detour),
+    // and it keeps its escape hatch.
+    const heldRest = kerbShuffleEvidence && prev.rested && prev.restStop >= 0 && !leftRest;
+    const shufflePoll = MP.SHUFFLE_PER_POLL * (dt / 5);
     const fromStand = 1 - MP.P_REPEAT_STAND;
     const departKern = Float64Array.from(DEPART_KERNEL);
     for (let c = 0; c < C; c++) {
@@ -703,20 +761,26 @@ export function stepBelief(
         // along the inbound branch of a shared road (Red #316, 9/3).
         const canShuffle = (prev.rested && prev.restMask[c] === 1) || ring.nearStop[c]! >= 0 || ring.approachOf[c]! >= 0;
         let pDepart = 1;
-        if (canShuffle) {
+        // Inside the rest, with the fix inside it too: no walk out of the mask
+        // (see above). The mass spreads through the shuffle kernel and stays
+        // STANDING, which is what `standZone` prices as the rest stop's own
+        // remaining stand.
+        if (heldRest && prev.restMask[c] === 1) {
+          pDepart = 0;
+        } else if (canShuffle) {
           const z = standZone(prev, ring, c);
           const table = z.stop >= 0 ? ring.stand[z.stop] : null;
           if (table) {
             const hd = hazard(table, stood) * dt;
             pDepart = hd / (hd + shufflePoll);
           } else {
-            pDepart = inRestFix ? P_DEPART_ON_FRESH_IN_REST : MP.P_DEPART_ON_FRESH;
+            pDepart = MP.P_DEPART_ON_FRESH;
           }
         }
         // Through `advance`, so a first step that lands ON a stop cell is
         // captured as an arrival there (an arriving bus that paused 40 m
         // short of the marker read as departing when this landed directly).
-        advance(q, ring, c, mStand * pDepart, departKern, hIn);
+        if (pDepart > 0) advance(q, ring, c, mStand * pDepart, departKern, hIn);
         if (canShuffle) {
           for (const [dj, w] of SHUFFLE_KERNEL) {
             const x = ((c + dj) % C + C) % C;
