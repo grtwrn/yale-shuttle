@@ -2,7 +2,8 @@
 // for the walk model, which now matches the server (see walk.ts).
 
 import { computeUpcomingArrivals } from "./arrivals";
-import type { DwellTimes, SegmentTimes } from "./arrivals";
+import type { AnchorStore } from "./eta";
+import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
 import { haversineMeters } from "./geo";
 import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
@@ -288,6 +289,33 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
   return pick(pinned ?? live[0], true);
 }
 
+/** Positive evidence that this visit returns to pickup before reaching the
+ * destination. Missing destination/horizon data is unknown, not rejection. */
+export function boardingVisitConflict(board: UpcomingArrival, arrivals: readonly UpcomingArrival[], alightStopId: number) {
+  const ahead = arrivals.filter(a => a.busName === board.busName && a.routeLabel === board.routeLabel && a.stopsAhead > board.stopsAhead);
+  const destination = ahead.filter(a => a.stopId === alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  const nextPickup = ahead.filter(a => a.stopId === board.stopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return destination && nextPickup && nextPickup.stopsAhead < destination.stopsAhead
+    && nextPickup.eta >= board.eta && destination.eta >= nextPickup.eta
+    ? {nextPickup, destination} : null;
+}
+
+/** Skip only a proven wrong visit. Unknown/missing destination evidence keeps
+ * the existing recommendation. A rejected visit may select a later bus; if
+ * no retained arrival exists the usual unavailable/departed UI is used. */
+export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): UpcomingArrival[] {
+  return arrivals.filter(a => a.stopId === boardStopId && !boardingVisitConflict(a, arrivals, alightStopId));
+}
+
+/** A raw at-stop flag cannot restore a pickup visit rejected above. No ETA
+ * equality/epsilon is used: the evidence is canonical visit ordering. */
+export function boardingVisitAllowed(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const first = arrivals.filter(a => a.stopId === boardStopId && norm(a.busName) === norm(busName))
+    .sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return !first || !boardingVisitConflict(first, arrivals, alightStopId);
+}
+
 export function planTrip(
   from: LatLon, to: LatLon,
   buses: BusData[],
@@ -297,6 +325,7 @@ export function planTrip(
   dwellTimes: DwellTimes,
   targetDate?: Date | null,
   now = Date.now(),
+  anchorStore?: AnchorStore,
 ): TripOption[] {
   // Future-plan mode: the user picked a date/time >60s away. We can't
   // rely on live buses, so we filter by published operating hours and
@@ -345,7 +374,7 @@ export function planTrip(
         (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
       );
       const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
-        [b], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes,
+        [b, ...stops.filter(s => toDist[s] !== undefined && toDist[s]! <= MAX_WALK_M)], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes, anchorStore,
       ).filter((a) => a.routeLabel === cfg.label);
       let cumRide = 0;
       for (let step = 1; step < stops.length; step++) {
@@ -394,8 +423,8 @@ export function planTrip(
           // ETA for its own stop), which is how the planner missed a 10-min
           // fastest route entirely (report #28: bus parked 13 m from the
           // board stop, every pair boarding there discarded).
-          const arrivals = boardArrivals;
-          if (hereBus && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+          const arrivals = rideBoardArrivals(boardArrivals, b, cur);
+          if (hereBus && boardingVisitAllowed(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;

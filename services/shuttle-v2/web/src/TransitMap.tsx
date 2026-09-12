@@ -53,7 +53,7 @@ import {
   vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
+  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
@@ -2096,22 +2096,17 @@ const TripPlanner: FC<{
       // the loop coming toward you). We only flag departed when NO
       // bus on the route is catchable.
       const nowMs = Date.now();
-      const live = computeUpcomingArrivals(
-        [o.boardStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
+      const visits = computeUpcomingArrivals(
+        [o.boardStopId, o.alightStopId], buses, routeStops, stopCoords, segmentTimes, nowMs, dwellTimes, liveAnchorStore,
       ).filter((a) => a.routeLabel === o.routeLabel);
+      const live = rideBoardArrivals(visits, o.boardStopId, o.alightStopId);
       // THE countdown — the number every accuracy and stability finding is
       // about, and until now the one nothing recorded. Sampled and dedup'd
       // inside noteShown; this call allocates nothing on an unsampled load.
       noteShown(live, "trip", nowMs);
-      // No live arrival = planTrip saw a bus on this route but the
-      // anchor math can't produce a future ETA for the board stop.
-      // This has two distinct causes:
-      //   (a) The bus is dwelling AT the board stop — computeUpcomingArrivals's
-      //       step loop runs 1..N-1 and never wraps back to the bus's own
-      //       anchor, so no ETA is emitted. The bus is RIGHT THERE; do NOT
-      //       flag departed. Instead treat it as waitSec=0 so the card shows
-      //       "arriving now" / "0 min". Fixes reports #36, #37, #38.
-      //   (b) Genuinely no catchable bus — flag departed as before.
+      // Raw at_stop_id can describe the wrong visit on a folded route.
+      // Reject its board-now override only when the modeled visit order
+      // positively shows another pickup before the destination.
       // If the user's GPS puts them within AT_PLACE_M of the board stop, treat
       // them as already there (walkToSec = 0). Stale GPS commonly reports a
       // position 30-100 m off, which makes an arriving bus look uncatchable when
@@ -2137,20 +2132,12 @@ const TripPlanner: FC<{
         ? 0
         : (usingLive ? walkSecFromMeters(distToBoard) : o.walkToSec);
 
-      // Before any "catchable / just passed" arithmetic: if a bus on this
-      // route is physically sitting at the board stop right now and the
-      // rider can still reach it, it's boardable this instant. Keep it
-      // (wait = 0) — a dwelling bus hasn't left yet, so never flag "#X just
-      // passed" or skip to a later bus while one is parked at your stop.
-      // Prefer the planned bus if it's the one parked there. NOTE: a bus
-      // parked at its stop emits no ETA from computeUpcomingArrivals (the
-      // step loop never wraps to its own anchor), so without this guard the
-      // planned bus silently drops out of `live` and the card jumps to the
-      // next bus even though you could board the one right in front of you.
+      // Prefer the planned dwelling bus only when the estimator agrees this
+      // is its current boarding visit, not another pass by the same curb.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId)
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2348,8 +2335,11 @@ const TripPlanner: FC<{
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
+      const arrivals = computeUpcomingArrivals([o.boardStopId, o.alightStopId], buses, routeStops, stopCoords,
+        segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
+        && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
