@@ -116,6 +116,17 @@ const GATE_MIN_DAYS = 10;
  * the rider boards is untouched (slot-1 jumps 851 -> 842). gps-replay cannot
  * see it (k <= 5). Fix the lap of a stop the bus is LEAVING before adding
  * this id; `docs/stand-lap-covariate.md` section 6b has the numbers.
+ *
+ * **The stop-being-left defect above is fixed (2026-09-11).** The served
+ * departure clock had not reset at the poll the belief saw the bus leave, so
+ * the next visit was priced under a lap two laps long and the correction
+ * switched OFF for the departure polls. `ownDeparture` (web/src/eta/arrival.ts)
+ * now seeds that stop's departure from the belief's own rest identity — only
+ * for a rest in the stop's own zone, never its approach; re-run on the same two
+ * evenings the pair reads STRAND 0 / 0 and 0 / 8, jump >= 180 s 0 / 76 and
+ * 34 / 60, reversal 38 / 101 and 22 / 75 (from 0 / 555, 24 / 556 unfixed),
+ * with the first-sight columns byte-identical to #215's. The residual is one
+ * unexplained episode an evening; `docs/stand-lap-covariate.md` section 6c.
  */
 export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3]);
 
