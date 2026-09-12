@@ -1003,3 +1003,250 @@ retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
 scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
+
+## Direction along the ring: measured (2026-09-11)
+
+**Status: measured, NOT built.** Nothing in `filter.ts` changed; the only code
+is the measurement, `scripts/eta-replay/kerb-direction.mjs`, kept so the next
+attempt starts from the numbers rather than the idea.
+
+The standing trough has one cause and it is an evidence error (#246): a
+standing bus that publishes a fresh fix is charged the pooled — i.e. the
+BEYOND-rest — departure probability, half the lead cluster leaves the stand on
+the first kerb shuffle, the mixture median lands in the standing tail, and
+#119's ratchet keeps it for the rest of the stand. Two display rules were
+refused (#244, #245); charging the measured in-rest rate to every in-rest fresh
+fix fails the recorded pass's departure collapse (#246); charging it from the
+SECOND fresh fix is inert, because the first one has already moved 62-77% of
+the mass and the emission keeps it out (#247). The step size cannot separate
+the two classes — 32 m at the median either way.
+
+So: **direction.** A bus that has genuinely pulled out steps FORWARD along the
+published line; a bus shuffling at the kerb should not. The displacement of the
+fresh fix, projected onto the line's own forward tangent at the bus's
+position — no new geometry, the ring already has the line.
+
+Truth and population are #246's, unchanged, so its split reproduces as a
+self-check: a fresh fix while the detector still says standing is a SHUFFLE,
+the first fresh fix after `departed_at` (== `last_at_rest_at`) is the
+DEPARTURE. Archive 2026-09-03..09-09, Red (3) and Blue Day (1), 09-10 held out.
+2,833 stopped visits, 41,769 standing polls, 7,697 fresh fixes; in-rest 31.2%
+(n=3,282) Red and 35.5% (n=3,834) Blue Day against 74.2% (n=581) beyond the
+radius — #246's numbers to the row.
+
+### The trough poll: the FIRST in-rest fresh fix of each rest
+
+n / departures / P(departure):
+
+| forward projection | Red | Blue Day | pooled |
+|---|---|---|---|
+| ≤ 0 m | 99 / 33 / **33.3%** | 62 / 1 / **1.6%** | 161 / 34 / 21.1% |
+| 0-10 m | 0 | 3 / 1 / 33.3% | 3 / 1 / 33.3% |
+| 10-20 m | 0 | 1 / 1 / 100% | 1 / 1 / 100% |
+| 20-30 m | 41 / 9 / 22.0% | 73 / 8 / 11.0% | 114 / 17 / 14.9% |
+| ≥ 30 m | 1,058 / 126 / **11.9%** | 1,496 / 169 / **11.3%** | 2,554 / 295 / 11.6% |
+| ALL | 1,198 / 168 / 14.0% | 1,635 / 180 / 11.0% | 2,833 / 348 / 12.3% |
+
+By signed angle to that tangent the table is the same table: |angle| 0-30° is
+2,620 / 306 / 11.7% pooled, and 120-180° — the backward bucket again — is
+157 / 35 / 22.3%, Red 32.7% against Blue Day 5.1%.
+
+**The populations do not separate.** Three facts, in the order that matters:
+
+- **The bands the hypothesis needs are EMPTY.** The feed's ~30 m deadband means
+  a fresh fix has moved about 30 m or it is not a fresh fix: 3 rows of 2,833
+  land in 0-10 m and 1 in 10-20 m. A forward-projection threshold therefore has
+  only two reachable states, forward (≥ 20 m) and backward (≤ 0), and every cut
+  from 5 m to 25 m selects the identical 99 Red rows.
+- **The forward bucket carries no information.** It is 94% of the population
+  and it sits on the base rate on both lines — 11.9% against Red's own 14.0%,
+  11.3% against Blue Day's 11.0%.
+- **The one bucket that moves, moves opposite ways by route.** Backward is
+  Red 33.3% (n=99) and Blue Day 1.6% (n=62). A discriminator whose sign flips
+  between the two busiest lines is not a discriminator; Red's berth geometry at
+  its termini is the likeliest reading, and Blue Day has no such berths.
+
+What a rule would do, at the trough poll, pooled: keeping full evidence on a
+forward step weakens 161 rows (5.7%) — correcting 5.1% of shuffles while
+**withholding 9.8% of departures**, which is the direction the operator
+protects. Its inverse — weaken the forward step — weakens 94.3% of rows and
+withholds 90.2% of departures, i.e. it IS #246's flat form, which the recorded
+pass already refused.
+
+Direction carries no more than the step did. At the trough poll, departures
+against shuffles: step p50 32 m vs 33 m, |forward| p50 32 m vs 32 m, and
+perpendicular distance to the line 3 m vs 2 m — the projection is meaningful
+(both classes sit on the line), it simply says nothing. On the layover subset
+(n=191, 24 departures) the bands are flat or empty: Red's only lift is 6 rows
+in 20-30 m.
+
+Why, mechanically: **both classes move along the road, because the road is
+where the bus is.** A bus shuffling at a kerb shuffles ALONG the kerb, and a
+departing bus's first 30 m is the same 30 m of the same street. The question
+"has it left?" is not answered by the direction of a 30 m step at all — it is
+answered by whether the bus keeps going, which is the SECOND fix, and #247
+measured that the emission has already made the first one decisive.
+
+Nothing downstream was run: no unit tests, no `npm run test:accuracy`, no
+gps-replay on the held-out 09-10, no rider-sim. The measurement gate ahead of
+them failed, and running a replay on a rule this thin would only spend three
+hours of the Pi's cores to confirm a 1-3 s move.
+
+### What the next attempt should do instead
+
+The remaining lever is the **emission, not `pDepart`.** The belief already
+knows the fix is still inside the rest (`leftRest` is false) and already uses
+that to withhold the stray floor from cells outside `restMask` (`held`). What
+it does NOT do is stop the departure kernel from walking standing mass OUT of
+that mask on a fix that is still inside it — which is exactly the statement
+"the bus is still where it came to rest", the collector's own rule, applied to
+the transition instead of only to the likelihood. That form cannot delay a
+genuine departure past the radius (the first fix beyond it ends the rest by
+construction, so the recorded pass's collapse is untouched), which is the bound
+both #246 and #247 broke. Measure it on `accuracy-approach-rest.test.ts` and
+`accuracy-layover.test.ts` first, then the 09-10 gps-replay cell Red
+`standing 300 s+` (baseline −65.4 s signed / 87.2 s |err|).
+
+The warm artifacts for that replay are worth keeping: an archive-built
+`r0910.db` and the OFF-arm `PAIRS_OUT` baseline pair with a streaming
+comparator, which together save ~10 minutes and the memory headroom on this
+Pi.
+
+## An outward RUN: measured (2026-09-11) — and it closes the family
+
+Four single-poll discriminators between a kerb shuffle and a departure have now
+been measured and refused: the flat in-rest departure rate (#246), charging it
+from the second fresh fix (#247), direction along the ring (#248), and
+forbidding the departure kernel from walking standing mass out of `restMask`
+(#249). Their common conclusion is that **no single-poll discriminator exists** —
+the only real difference is that a shuffle comes back and a departure does not,
+which is visible one or two polls later. So the question left was the obvious
+one: does an outward RUN discriminate, and **how fast**?
+
+`scripts/eta-replay/kerb-run.mjs` answers it on #246's population and truth
+(archive 2026-09-03..09-09, Red and Blue Day, 09-10 held out; the detector's own
+`stop_visits.departed_at`, equal to `last_at_rest_at`). With
+`REST_POINT=arrival` — kerb-direction's own choice of rest point — its split
+reproduces to the row: in-rest **31.2%** (n=3,282) Red, **35.5%** (n=3,834) Blue
+Day, pooled **33.5%** (n=7,116), against **74.2%** (n=581) beyond the radius.
+
+**The rest point has to be the belief's, and it is not the pin.** `restPoint` in
+`filter.ts` is the fix at which the rest was ESTABLISHED — a repeated
+coordinate — frozen while the bus stays inside `REST_RADIUS_M`, re-anchored when
+a fix leaves it. On the recorded 344 Winchester pass the pin position is **155 m**
+from where the bus actually stood, so distances measured from the pin describe a
+different bus. `REST_POINT=belief` is faithful and is what every number below
+uses; the default.
+
+### 1-2. The run carries no information where it would have to
+
+P(departure | an in-rest fresh fix), over the fixes a standing bus publishes
+plus the one fix that reveals the departure:
+
+| condition | Red | Blue Day | pooled |
+|---|---|---|---|
+| no condition (master) | 2,181 / 1,089 / **49.9%** | 2,499 / 1,568 / **62.7%** | 4,680 / 2,657 / 56.8% |
+| outward run ≥ 2 | 912 / 407 / **44.6%** | 852 / 502 / **58.9%** | 1,764 / 909 / 51.5% |
+| outward run ≥ 3 | 333 / 180 / 54.1% | 277 / 190 / 68.6% | 610 / 370 / 60.7% |
+| outward run ≥ 4 | 49 / 39 / 79.6% | 28 / 16 / 57.1% | 77 / 55 / 71.4% |
+
+**A run of two is anti-informative**: it LOWERS P(departure) on both lines
+(Red 49.9 → 44.6%, Blue Day 62.7 → 58.9%). A run of three buys four points
+pooled. Only a run of four separates, on 77 fixes — 1.6% of the population.
+Requiring each step to exceed 20 m changes nothing (run ≥ 2 pooled 53.9%).
+
+The mechanism is the same one #248 found: measured from where the bus actually
+stood, **a kerb shuffle's first steps are outward too**, because the bus is
+leaving the spot it was parked on. And the fix that reveals a real departure
+frequently follows an INWARD shuffle step, which resets the run — exactly what
+the recorded pass does (fix 4 at 30 m, then the departure at 95 m: run 1).
+
+### 3. Latency, which is the whole point
+
+First firing at or after the true departure instant. The archive polls at 5.0 s
+(p50, n=139,731), which is the production cadence:
+
+| rule | p50 s | p90 s | p50 / p90 polls | later than master |
+|---|---|---|---|---|
+| master (the first fresh fix) | 5 | 5 | 1 / 1 | — |
+| outward run ≥ 2 | 10 | 15 | 2 / 3 | **63.7%** |
+| outward run ≥ 3 | 15 | 20 | 3 / 4 | 83.0% |
+| outward run ≥ 4 | 20 | 85 | 4 / 17 | 94.8% (4.8% never) |
+| beyond 125 m (`leftRest`, #249's restore) | 20 | 45 | 4 / 9 | 95.7% |
+
+On layover rests alone (n=191) every row is worse: run ≥ 2 is 10 / 20 s,
+run ≥ 3 15 / 30 s, run ≥ 4 30 / 85 s, `leftRest` 25 / **60** s — the last
+reproducing the 45 s late collapse #249 was refused for.
+
+**On the gate's own recording it is no better than #249.** `red-layover-pass`
+samples at 15 s, and there master collapses on the fix **+10 s** after the
+departure instant while a run ≥ 2 first completes at **+40 s** — the very fix at
+which the bus also passes 125 m (130 m). The rule fires at the same poll as
+#249's, so `accuracy-layover.test.ts`'s departure-collapse assertion reads the
+same **88.3 s against an 83.1 s bound** by construction.
+
+### 4. False fires, and they land on the population that has the defect
+
+Share of rests in which an outward run completes WHILE THE BUS STANDS (one is
+enough: #119's ratchet keeps a trough for the rest of the stand). "master" is
+its own exposure — the share of rests with any standing fresh fix, each of
+which it charges full departure evidence:
+
+| population | rests | master | run ≥ 2 | run ≥ 3 | run ≥ 4 |
+|---|---|---|---|---|---|
+| Red | 1,196 | 44.1% | 25.5% | 11.8% | 1.3% |
+| Blue Day | 1,633 | 35.6% | 16.1% | 4.7% | 1.7% |
+| pooled | 2,829 | 39.2% | 20.1% | 7.7% | 1.6% |
+| **layover rests** | 191 | 76.4% | **59.2%** | **44.0%** | 8.9% |
+| rests ≥ 150 s | 200 | 80.5% | 60.5% | 42.0% | 11.0% |
+
+The first false fire lands at the rest's SECOND fresh fix, a median 40 s into a
+layover stand (70 s for rests ≥ 150 s). For the record, master's own hard
+evidence false-fires too: a standing bus's fix passes 125 m on 0.9% of rests
+pooled, 3.7% of layover rests, 5.0% of rests ≥ 150 s.
+
+### 5. And no radius is faster, because the classes overlap
+
+Distance from the rest point (metres, belief rest point):
+
+| population | p50 | p90 | p95 | max |
+|---|---|---|---|---|
+| departure, 1st fix | 34 | 97 | 118 | 189 |
+| departure, 2nd fix | 69 | 128 | 134 | 231 |
+| shuffle, max over a whole rest | 0 | 66 | 93 | 142 |
+
+A departing bus's first fix is a median 34 m from where it stood and a shuffle
+reaches 142 m, so there is no radius above the shuffles and below the
+departures. That is why `leftRest` is four polls late and why lowering it cannot
+help.
+
+### Verdict: NO on both halves, and the family is closed
+
+- **(a) leave the departure collapse no later than master's — no.** Run ≥ 2 is
+  later on 63.7% of departures (p50 +5 s, p90 +10 s; layovers p90 +15 s) and on
+  the recorded pass it fires at the same poll as the rule already refused.
+- **(b) suppress the first-shuffle trough — only partly, and not where it
+  matters.** By construction a run ≥ 2 cannot fire on a rest's first fresh fix,
+  but 59.2% of layover rests still complete an outward run while standing
+  (44.0% at run ≥ 3) against master's 76.4% exposure. The trough survives on the
+  majority of the rests that have it.
+- The two cannot be traded into a pass: the only setting that suppresses the
+  trough (run ≥ 4, 8.9% of layover rests) is SLOWER than the 125 m rule #249
+  died on (p50 30 s vs 25 s, p90 85 s vs 60 s, 4.8% never firing).
+
+So **no rule that is a function of the bus's own position sequence inside the
+rest can fix the standing trough**, and that is now measured rather than argued:
+#246 the rate, #247 the ordinal, #248 the direction, #249 the transition, and
+this the run. The one run-based form left is not a gate at all — let the first
+fresh fix keep full evidence and RESTORE the standing belief a poll later when
+the shuffle comes back — and that rule raises the shown number, which is what
+#245 measured as reversals 3 → 12.1% on the rider simulator.
+
+What remains is the other 59.5% of the trough's deficit, which the harness's own
+decomposition (`scripts/eta-replay/trough/README.md`) attributes not to the
+ratchet but to **the estimate at that poll being low — the pooled stand median**,
+the known dominant defect. That is where the next attempt belongs.
+
+Nothing downstream was run: no unit tests, no `npm run test:accuracy`, no
+gps-replay, no rider-sim. `filter.ts` is untouched; the measurement gate ahead
+of them failed.
