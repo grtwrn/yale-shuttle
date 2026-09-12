@@ -27,6 +27,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerRoutePaths } from "../anchor";
 import type { LatLon } from "../geo";
 import { globalPoolsFor, ringForBus } from "./index";
+import { buildRing } from "./ring";
+import { haversineMeters } from "../geo";
 import { buildTables, type DwellLike, type SegmentLike } from "./tables";
 
 import payload from "../__fixtures__/buses-payload.json";
@@ -105,6 +107,74 @@ describe("every route the payload serves is priced by the model", () => {
       return ring.unreached.map((i) => `${rid}:${i}:${ring.stops[i]}`);
     });
     expect(moved).toEqual(["9:13:25"]);
+  });
+
+  it("picks up a SECOND such occurrence on its own, and trips CI when it does", () => {
+    // The blast radius, measured rather than assumed. Any stop whose kerb the
+    // line serves on one pass only is exposed to this, and today exactly one
+    // occurrence in 280 is. If upstream republishes a line so that a second one
+    // appears, four things must be true, and this is what they are.
+    //
+    // Measured on a NON-FOLD route on purpose: route 3 is neither bridged nor
+    // repaired, so `traceStopLegs` alone decides its legs and displacing one
+    // marker cannot move the aligner under the measurement. (Displacing a marker
+    // on GREEN does move it — an earlier attempt took the ring to N=25, and
+    // another to `bridged`, which is a different geometry and not this question.)
+    //
+    // NOTE `buildRing` directly, never `ringForBus`: `ringFor`'s cache key is
+    // route + stops + path hash and does NOT include the stop coordinates, so a
+    // perturbed lookup would be answered from the cache.
+    const coords: Record<number, { lat: number; lon: number }> = {};
+    for (const [k, v] of Object.entries(P.stop_coords)) coords[Number(k)] = v as LatLon;
+
+    const survey = (tag: string, cs: Record<number, LatLon>) => {
+      const moved: string[] = [];
+      const shape: Record<string, number> = {};
+      let zoneless = 0, clashes = 0;
+      const bridged: string[] = [];
+      for (const rid of ROUTE_IDS) {
+        const r = buildRing(`${tag}|${rid}`, P.route_paths[rid]!, P.routes[rid]!, cs)!;
+        shape[rid] = r.N;
+        if (r.bridged) bridged.push(rid);
+        for (const i of r.unreached) moved.push(`${rid}:${i}:${r.stops[i]}`);
+        const claimed = new Set(Array.from(r.nearStop).filter((i) => i >= 0));
+        for (let i = 0; i < r.N; i++) if (!claimed.has(i)) zoneless++;
+        // Two unreached occurrences of ONE stop id would put two standing points
+        // on one marker, and the emission could not separate them — the very
+        // ambiguity this change fixes. It does not happen today.
+        for (let a = 0; a < r.unreached.length; a++) {
+          for (let b = a + 1; b < r.unreached.length; b++) {
+            const ca = r.stopCell[r.unreached[a]!]!, cb = r.stopCell[r.unreached[b]!]!;
+            const d = haversineMeters({ lat: r.standLat[ca]!, lon: r.standLon[ca]! }, { lat: r.standLat[cb]!, lon: r.standLon[cb]! });
+            if (d < 5) clashes++;
+          }
+        }
+      }
+      return { moved, shape, zoneless, clashes, bridged };
+    };
+
+    const before = survey("today", coords);
+    expect(before.moved).toEqual(["9:13:25"]);
+    expect(before.zoneless).toBe(0);
+    expect(before.clashes).toBe(0);
+
+    // Republish route 3's line so it no longer runs past one of its own kerbs.
+    const stopId = P.routes["3"]![4]!;
+    const after = survey("republished", { ...coords, [stopId]: { lat: coords[stopId]!.lat + 0.00135, lon: coords[stopId]!.lon } });
+
+    // 1. It is picked up automatically — no per-route list to edit.
+    expect(after.moved).toEqual([`3:4:${stopId}`, "9:13:25"]);
+    // 2. Nothing else about any ring moves: same cells, same legs, same N.
+    expect(after.shape).toEqual(before.shape);
+    expect(after.bridged).toEqual(before.bridged);
+    // 3. The invariant still holds everywhere: every occurrence has a zone.
+    expect(after.zoneless).toBe(0);
+    // 4. And no two standing points collide, which is the one case the fix
+    //    could not disambiguate.
+    expect(after.clashes).toBe(0);
+    // 5. CI notices: the pin above compares against ["9:13:25"] and would fail,
+    //    so a republished line reaches a human instead of changing prices quietly.
+    expect(after.moved).not.toEqual(before.moved);
   });
 
   it("repairs the three out-and-backs the evidence names, and nothing else", () => {

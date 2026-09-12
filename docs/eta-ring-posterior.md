@@ -1118,6 +1118,40 @@ side effect of where a point was put. That is worth stating plainly because it
 closes off the obvious "can't we have the fix without the cost" — not on this
 geometry.
 
+#### If upstream republishes a line and creates a second one
+
+Any stop whose kerb the line serves on **one pass only** is exposed to this, so
+the guard's blast radius belongs on the record rather than in an assumption.
+Measured by displacing one marker 150 m on route 3 — chosen because it is
+neither bridged nor repaired, so `traceStopLegs` alone decides its legs and the
+aligner cannot move under the measurement (displacing a marker on GREEN does
+move it: one attempt took the ring to N = 25 and another to `bridged`, which is a
+different geometry and a different question):
+
+    today:       moved=[9:13:25]              zone-less=0  clashes=0
+    republished: moved=[3:4:30, 9:13:25]      zone-less=0  clashes=0
+    ring shape (N per route) unchanged: true
+
+So: it is **picked up automatically** — there is no per-route list to edit — and
+nothing else about any ring moves. The cost does not compound either, because the
+guard is a boolean: route 3 would begin paying the one extra O(C) distance sweep
+it does not pay today, and a second occurrence on a route that already has one is
+free.
+
+And **CI fails rather than repricing quietly**: the pin in
+`no-bridged-ring.test.ts` compares the whole list against `["9:13:25"]`, so a
+republished line reaches a human. That is deliberate — a line that stopped running
+past a stop it serves is news about upstream, not a number to absorb.
+
+**The one case the fix could not disambiguate** is two occurrences of the SAME
+stop id both unreached: their standing points would land on one marker and the
+emission would be back to separating two identical states, which is exactly the
+defect this section is about. It does not happen today (clashes = 0 in both
+surveys), and on Green's real geometry it cannot be reached by accident — forcing
+both passes to miss that kerb produced a **`bridged`** ring instead, which
+`no-bridged-ring.test.ts` already fails on. So that pathology is caught by an
+existing gate rather than mispriced.
+
 #### Refused: the emission split does not pay for itself on the numbers
 
 Two versions were built and paired against master on the same replay: one that
@@ -1229,6 +1263,13 @@ Paired, **521 of 184,138 pairs change (0.283%), every one of them on Green**:
 | Brown | 11,446 | 226.6 | 575.6 | 53.4 | 37.9 | 32.3 |
 | Orange Night | 4,860 | 89.8 | 501.3 | 120.5 | 31.1 | 8.9 |
 | ALL | 184,138 | 107.6 → 107.6 | 597.4 → 597.5 | 102.1 → 102.2 | 29.5 → 29.5 | 17.5 → 17.5 |
+
+**The guard is inert, proved rather than argued.** `ring.unreached.length` picks
+between two distance arrays, and where no occurrence has its own standing point
+the two are the same array by construction — so the replay was run again against
+the guarded tree and its pairs file is **byte-identical**: 194,612 pairs,
+37,954,620 bytes, md5 `5020c5a37b5cf1cf2a6adb65cfdbef1b` either way. The numbers
+below therefore describe the code that ships, not a pre-guard ancestor of it.
 
 The fourteen other lines are byte-identical, which the trigger guarantees by
 construction. Green's aggregate is a **wash**, and on the 521 pairs that moved it
