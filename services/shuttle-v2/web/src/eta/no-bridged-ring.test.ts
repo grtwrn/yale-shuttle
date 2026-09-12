@@ -80,6 +80,33 @@ describe("every route the payload serves is priced by the model", () => {
     expect(t.stops).toHaveLength(P.routes[rid]!.length);
   });
 
+  it.each(ROUTE_IDS)("route %s can be stood at every stop it serves", (rid) => {
+    // The other half of "no route declines": a route can be priced and STILL
+    // have an occurrence the belief cannot occupy. `traceStopLegs` projects a
+    // stop onto the line, so where the line does not run past its own marker the
+    // cell does not either — and a stop with no cell inside its zone is a stand
+    // the estimator has no state for. Green's Building 800 outbound was exactly
+    // that (99 m, the only one of 280 occurrences), and a bus parking there was
+    // relocated five legs onto the RETURN occurrence of the same stop id.
+    const ring = ringForBus({ route_id: rid }, P.routes[rid]!, P.stop_coords)!;
+    const claimed = new Set(Array.from(ring.nearStop).filter((i) => i >= 0));
+    for (let i = 0; i < ring.N; i++) {
+      expect(claimed.has(i), `route ${rid} ring ${i} (stop ${ring.stops[i]}) has no cell in its own zone`).toBe(true);
+    }
+  });
+
+  it("needs the stand-point correction on exactly one occurrence of one line", () => {
+    // Pinned so it cannot start firing quietly on a line whose geometry is fine:
+    // it is a correction, not a normalisation. If an upstream polyline change
+    // adds one, say so in the PR — it means a line stopped running past a stop
+    // it serves.
+    const moved = ROUTE_IDS.flatMap((rid) => {
+      const ring = ringForBus({ route_id: rid }, P.routes[rid]!, P.stop_coords)!;
+      return ring.unreached.map((i) => `${rid}:${i}:${ring.stops[i]}`);
+    });
+    expect(moved).toEqual(["9:13:25"]);
+  });
+
   it("repairs the three out-and-backs the evidence names, and nothing else", () => {
     // Pinned so the repair cannot silently start firing on a line whose
     // published order is right: it is a correction, not a normalisation.

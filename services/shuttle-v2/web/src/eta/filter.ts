@@ -44,10 +44,23 @@
 import { haversineMeters, type LatLon } from "../geo";
 import { hazard } from "./dist";
 import { MP } from "./params";
-import { distancesTo, NEAR_STOP_M, type Ring } from "./ring";
+import { distancesTo, standDistancesTo, NEAR_STOP_M, type Ring } from "./ring";
 
 /** Position noise on a fresh fix, metres. Deadband-scale, deliberately not 10 m (#88's overconfidence). */
 export const SIGMA_M = 20;
+/**
+ * The position emission's Gaussian at `m` metres.
+ *
+ * It is asked TWICE per cell per poll, with two different distances, because
+ * "where would the bus be in this state" is not one place: a MOVING bus is on
+ * the published line (the cell's own point) and a STANDING bus is at the kerb
+ * (`Ring.standLat`, the stop's marker). Those coincide on 279 of the network's
+ * 280 stop occurrences and on every non-stop cell; the one exception is what
+ * `buildRing`'s `unreached` names.
+ */
+function posWeight(m: number): number {
+  return Math.exp(-(m * m) / (2 * SIGMA_M * SIGMA_M));
+}
 /**
  * SEVEN OF THE CONSTANTS BELOW ARE RE-ESTIMABLE FROM THE FEED and are served,
  * not compiled: the step reads them through `MP` (./params), whose defaults
@@ -388,11 +401,17 @@ function lastStopLikelihood(offset: number, N: number): number {
 /** The published coordinate of stop `i` — the cell the ring puts on the marker. */
 function stopPoint(ring: Ring, i: number): LatLon {
   const c = ring.stopCell[i]!;
-  return { lat: ring.lat[c]!, lon: ring.lon[c]! };
+  // The STANDING point: every caller here asks "how far is the bus from this
+  // stop" (STOOD_HERE_M, NEAR_STOP_M), and those constants were measured
+  // against the stop's own coordinate, not against its projection onto a line.
+  return { lat: ring.standLat[c]!, lon: ring.standLon[c]! };
 }
 
 function restMaskFor(ring: Ring, point: LatLon): Uint8Array {
-  const d = distancesTo(ring, point);
+  // Stand distances: the mask is the extent of a REST, so a stop whose kerb the
+  // line misses must have its kerb inside its own mask. Same guard as the
+  // emission: identical arrays where no occurrence has its own standing point.
+  const d = ring.unreached.length ? standDistancesTo(ring, point) : distancesTo(ring, point);
   const mask = new Uint8Array(ring.C);
   for (let c = 0; c < ring.C; c++) if (d[c]! <= REST_RADIUS_M) mask[c] = 1;
   return mask;
@@ -429,6 +448,12 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   const C = ring.C;
   const p = new Float64Array(2 * C);
   const d = distancesTo(ring, bus);
+  // Where no occurrence has a standing point of its own — fourteen of the
+  // fifteen published lines — `standLat` IS `lat`, so the second distance array
+  // would be a duplicate. This is what keeps the correction free on the routes
+  // that do not need it: one extra O(C) haversine sweep per bus per poll is a
+  // real cost in a client budgeted at 0.93 ms for the whole call.
+  const ds = ring.unreached.length ? standDistancesTo(ring, bus) : d;
   const since = serverClockMs(bus);
   const age = since === null ? 0 : (now - since) / 1000;
   // A warm belief decides this from its own fixes — it watches the bus and
@@ -451,9 +476,8 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   // No off-route floor on a cold start: there is no prior for it to protect,
   // and a flat weight over three hundred cells would outweigh the fix itself.
   for (let c = 0; c < C; c++) {
-    const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M)) + 1e-9;
-    p[c] = e * pStand;
-    p[C + c] = e * (1 - pStand);
+    p[c] = (posWeight(ds[c]!) + 1e-9) * pStand;
+    p[C + c] = (posWeight(d[c]!) + 1e-9) * (1 - pStand);
   }
   const restMask = restMaskFor(ring, bus);
   const b: Belief = {
@@ -678,6 +702,7 @@ export function stepBelief(
     const tp = TELEPORT / (2 * C);
     for (let i = 0; i < 2 * C; i++) q[i] = q[i]! * (1 - TELEPORT) + tp;
     const d = distancesTo(ring, bus);
+    const ds = ring.unreached.length ? standDistancesTo(ring, bus) : d;
     const off = offRouteWeight(ring);
     // A fix that is off the line carries almost no positional weight: at
     // 93 m the Gaussian is 2e-5, barely above the stray floor, so the
@@ -708,10 +733,13 @@ export function stepBelief(
     // and Blue Night's p90 comes down.
     const held = prev.rested && prev.restStop >= 0 && !leftRest;
     for (let c = 0; c < C; c++) {
-      const e = Math.exp(-(d[c]! * d[c]!) / (2 * SIGMA_M * SIGMA_M))
-        + (held && prev.restMask[c] !== 1 ? 0 : off);
-      q[c] = q[c]! * e;
-      q[C + c] = q[C + c]! * e;
+      const stray = held && prev.restMask[c] !== 1 ? 0 : off;
+      // STANDING mass is scored against the kerb, MOVING mass against the road.
+      // Identical on every cell but one in the network; there it is the whole
+      // correction, and keeping the moving half on the line is what stops a bus
+      // driving the return pass being pulled five legs backwards.
+      q[c] = q[c]! * (posWeight(ds[c]!) + stray);
+      q[C + c] = q[C + c]! * (posWeight(d[c]!) + stray);
     }
   } else {
     // Same cell. A standing bus stays (P_REPEAT_STAND); a moving bus crawled
