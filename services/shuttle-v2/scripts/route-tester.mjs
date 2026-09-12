@@ -215,10 +215,17 @@ function parsePlan(text) {
   const opts = [];
   for (let i = 0; i < lines.length - 1; i++) {
     const m = lines[i].match(/^(\d+)\s*min$/);
-    const a = lines[i + 1].match(/^arrive\s+(\d{1,2}:\d{2}[ap])$/i);
+    // BOTH spellings of the card's arrival clock, matching the canary's own
+    // ARRIVAL_CLOCK_RE (canary-metrics.mjs): "arrive 1:01p" until 2026-09-04,
+    // and the bare "1:01p" after #123 dropped the word. Requiring the word is
+    // why this harness matched NOTHING from 2026-09-04 to 2026-09-12 — see the
+    // header note. A future third spelling must be added here deliberately;
+    // #111 and #123 are both cases of a reader that silently stopped reading.
+    const a = lines[i + 1].match(/^(?:arrive\s+)?(\d{1,2}:\d{2}[ap])$/i);
     if (!m || !a) continue;
     const block = lines.slice(i + 2, i + 14);
-    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && /^arrive/i.test(block[j + 1] ?? ""));
+    const CLOCK_LINE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
+    const end = block.findIndex((l, j) => /^\d+\s*min$/.test(l) && CLOCK_LINE.test(block[j + 1] ?? ""));
     const body = (end === -1 ? block : block.slice(0, end)).join(" | ");
     // "🚌 in 7 min · next in 22 min" | "🚌 in <1 min" | "🚌 arriving now"
     const w = body.match(/🚌\s*(?:in\s*(?:(\d+):(\d{2})|<\s*1\s*min|(\d+)\s*min)|arriving now)/);
@@ -362,4 +369,30 @@ console.log(`stuck readings: ${stuck.length} · page errors: ${pageErrors.length
 console.log(`screenshots: ${SHOTS}\nfull record: ${OUT}`);
 
 await ctx.close();
-if (!cdp) await browser.close(); else await browser.close().catch(() => {});
+if (!cdp) await browser.close();
+
+// A RUN THAT PARSED NOTHING IS THE INSTRUMENT, NOT THE APP.
+//
+// This harness required the literal "arrive " on the line after a duration.
+// #123 dropped that word on 2026-09-04 and nothing noticed until 2026-09-12,
+// because a run that recognises no options still prints a tidy summary and
+// exits 0 — indistinguishable from a quiet window with nothing to score.
+//
+// `rider-canary.mjs` settled this convention already: it FAILS a run on
+// `readings === 0`, on the reasoning that a scraper which has silently stopped
+// reading looks exactly like a healthy line. So does this now.
+//
+// The test is ZERO PREDICTIONS PARSED, not zero pairs scored. Zero pairs is a
+// legitimate outcome — the window may simply have held no arrival to pair
+// against — and failing on it would cry wolf on quiet runs. Zero predictions
+// means the page was read and no option was recognised on it, which is only
+// ever a broken reader or a changed layout. Both need a human.
+if (predictions.length === 0) {
+  console.error(
+    "FAILED: parsed 0 predictions from the page. The app renders options; this "
+    + "harness recognised none, so the parser is broken or the card layout "
+    + "changed. Do NOT read this run as 'the ETA scored fine'.",
+  );
+  process.exit(1);
+}
+ else await browser.close().catch(() => {});
