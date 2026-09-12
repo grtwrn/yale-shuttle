@@ -728,9 +728,17 @@ export function setClampTrace(fn: ((ev: ClampEvent) => void) | null): void { cla
  *
  * The switch exists so both arms run from one tree in the replay; the
  * measurement is in `scripts/eta-replay/trough/README.md`.
+ *
+ * WITH THE SWITCH OFF AND NO TRACE SET this is dead code at run time, and
+ * deliberately so: nothing extra is allocated per priced row and the clamp is
+ * master's `min(ceiling, mixture)` exactly. `arrival.test.ts` pins both — the
+ * import-time default, and every row of a stand against `min` recomputed from
+ * an unclamped pricing of the same belief.
  */
 let ceilingHoldsUnderDeparture = false;
 export function setCeilingHoldsUnderDeparture(on: boolean): void { ceilingHoldsUnderDeparture = on; }
+/** The shipped default is OFF (measured and refused); `arrival.test.ts` pins it at import time. */
+export function ceilingHoldsUnderDepartureOn(): boolean { return ceilingHoldsUnderDeparture; }
 
 /**
  * ONE PRICED ROW, decomposed — for the replays that count the standing trough;
@@ -988,7 +996,7 @@ export function priceRoute(
         if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: null, action: armed ? "arm" : "provisional" });
         floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed });
       }
-      if (priceTrace) {
+      if (priceTrace && standParts !== null && moveParts !== null) {
         const f = lap ? lap.fStand[clampAt]! : 1;
         const standDist = tables.stops[clampAt]!.stand;
         priceTrace({
