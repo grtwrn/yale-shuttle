@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
 import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
-import { K, priceRoute, type Floors } from "./arrival";
+import { K, priceRoute, ceilingHoldsUnderDepartureOn, setCeilingHoldsUnderDeparture, setPriceTrace, type Floors } from "./arrival";
 import type { LatLon } from "../geo";
 
 // The same rectangular loop as filter.test.ts.
@@ -155,6 +155,57 @@ describe("arrival: the sum of the chain", () => {
     const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0)!;
     expect(row.standingAt).toBe(-1);
     expect(row.eta).toBeLessThan(quantile(tables.hops[0]!.drive, 0.9) + 5);
+  });
+
+  it("a poll that half-believes the bus has left does not lower the ceiling", () => {
+    // THE CEILING'S EVIDENCE. The bus stands at stop 1 and shuffles once at the
+    // kerb: the ~30 m deadband publishes a FRESH fix, which is departure
+    // evidence, so for a poll or two about half the lead cluster prices the rest
+    // as over and the mixture's median falls into the standing part's lower
+    // tail — 169 s against the 351 s the stand was showing. Master records that
+    // as the ceiling and shows it for the rest of the stand; on a real Red
+    // layover the plateau it creates holds 46-98% of the wait.
+    const { ring, tables } = setup();
+    const run = (hold: boolean): { eta: number; standing: boolean }[] => {
+      setCeilingHoldsUnderDeparture(hold);
+      try {
+        const floors: Floors = { map: new Map() };
+        let b: Belief | undefined;
+        const out: { eta: number; standing: boolean }[] = [];
+        for (let r = 30; r <= 300; r += 5) {
+          const now = r * 1000;
+          // One shuffle, 25 m on, then the bus is back at rest at the same stop:
+          // the rest identity (stop and clock) never changes.
+          const obs = r === 120 ? { lat: at(25, 0).lat, lon: at(25, 0).lon, stationary_since: since } : standAt1(0);
+          b = stepBelief(b, ring, obs, now, STOPS);
+          const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors)
+            .find((x) => x.stopId === 2 && x.occurrence === 0)!;
+          out.push({ eta: row.eta, standing: row.standingAt >= 0 });
+        }
+        return out;
+      } finally { setCeilingHoldsUnderDeparture(false); } // the shipped default: measured and refused
+    };
+    const off = run(false), on = run(true);
+    // Neither arm climbs while the bus is priced as standing: #119 is intact
+    // either way. (Across the moving polls the clamp stands down by design —
+    // "the number it showed before the pull-out is the ceiling again".)
+    for (const arm of [off, on]) {
+      for (let i = 1; i < arm.length; i++) {
+        if (!arm[i]!.standing || !arm[i - 1]!.standing) continue;
+        expect(arm[i]!.eta).toBeLessThanOrEqual(arm[i - 1]!.eta + 1e-9);
+      }
+    }
+    const last = (a: { eta: number; standing: boolean }[]) => a.filter((x) => x.standing).at(-1)!.eta;
+    const iBack = off.findIndex((x, i) => i > (120 - 30) / 5 && x.standing); // the first standing poll after the shuffle
+    // Master troughs on that poll and is still showing the trough five minutes later.
+    expect(off[iBack]!.eta).toBeLessThan(off[iBack - 3]!.eta - 100);
+    expect(last(off)).toBeGreaterThan(off[iBack]!.eta - 10);
+    // With the rule, that poll shows what the stand was already showing, and the
+    // number goes on decaying with the stand instead of with the trough.
+    expect(on[iBack]!.eta).toBeGreaterThan(off[iBack]!.eta + 100);
+    expect(last(on)).toBeGreaterThan(last(off) + 90);
+    // Every poll before the shuffle prices identically in the two arms.
+    for (let i = 0; i < (120 - 30) / 5; i++) expect(on[i]!.eta).toBeCloseTo(off[i]!.eta, 6);
   });
 
   it("gives two entries per stop: this lap and the next", () => {
@@ -317,5 +368,79 @@ describe("the band's floor (lowFloor) — the rest-less chain at the band's own 
       expect(row.lowFloor).toBeLessThanOrEqual(row.departNow + 1e-9);
     }
     expect(rows).toBeGreaterThan(50);
+  });
+});
+
+/**
+ * THE INSTRUMENT'S COST (review, 2026-09-12). This branch is a measured
+ * refusal, kept as the record — so the one thing it may not do is cost the
+ * fleet anything. With `ceilingHoldsUnderDeparture` off and no price trace set
+ * (production, permanently) `priceRoute` allocates nothing extra per row and
+ * prices every row by master's rule, the running `min(ceiling, mixture)` over
+ * one rest identity. Captured at IMPORT time so no test ordering can make the
+ * default assertion pass.
+ */
+const DEFAULT_HOLDS_UNDER_DEPARTURE = ceilingHoldsUnderDepartureOn();
+
+describe("the refused rule is off by default, and costs nothing when it is (2026-09-12)", () => {
+  afterEach(() => { setCeilingHoldsUnderDeparture(false); setPriceTrace(null); });
+
+  /**
+   * The 4 -> 1 leg driven in on fresh fixes, then a stand at the marker. Each
+   * poll is priced TWICE: once into a throwaway `Floors` (no held entry, so
+   * master's else-branch runs and the number IS the mixture — the raw one), and
+   * once into the running floors. The pair is what makes "master's rule" a
+   * measurement rather than a reading of the source.
+   */
+  function series(ring: Ring, tables: RouteTables, standPolls: number, trace: boolean) {
+    const floors: Floors = { map: new Map() };
+    if (trace) setPriceTrace(() => {});
+    const out: { shown: number; raw: number; standingAt: number }[] = [];
+    let b: Belief | undefined;
+    let now = 0;
+    const poll = (pos: LatLon) => {
+      now += 5000;
+      b = stepBelief(b, ring, { lat: pos.lat, lon: pos.lon }, now, STOPS);
+      const raw = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, { map: new Map() }).find((x) => x.stopId === 2 && x.occurrence === 0);
+      const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (row && raw) out.push({ shown: row.eta, raw: raw.eta, standingAt: row.standingAt });
+    };
+    for (let y = 9 * 35; y >= 0; y -= 35) poll(at(0, y));
+    for (let i = 0; i < standPolls; i++) poll(at(0, 0));
+    setPriceTrace(null);
+    return out;
+  }
+
+  it("is off by default, so every other caller prices exactly as before", () => {
+    expect(DEFAULT_HOLDS_UNDER_DEPARTURE).toBe(false);
+  });
+
+  it("with the switch off every row is master's rule exactly: min(ceiling, mixture)", () => {
+    const { ring, tables } = setup();
+    setCeilingHoldsUnderDeparture(false);
+    const rows = series(ring, tables, 30, false);
+    expect(rows.length).toBeGreaterThan(30);
+    let clamped = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!;
+      if (Math.abs(r.shown - r.raw) < 1e-9) continue; // no ceiling in force, or it did not bind
+      // The only other thing the shown number may be is the running minimum
+      // over this rest — master's `min(prev, eta)`, and never a rise.
+      expect(i).toBeGreaterThan(0);
+      expect(r.shown).toBeCloseTo(Math.min(rows[i - 1]!.shown, r.raw), 9);
+      expect(r.shown).toBeLessThan(r.raw);
+      clamped++;
+    }
+    // The path was really exercised: this stand does bind the ceiling.
+    expect(clamped).toBeGreaterThan(5);
+  });
+
+  it("setting the price trace changes no number — it is an observation, not a rule", () => {
+    const { ring, tables } = setup();
+    setCeilingHoldsUnderDeparture(false);
+    const off = series(ring, tables, 30, false);
+    const on = series(ring, tables, 30, true);
+    expect(on.length).toBe(off.length);
+    for (let i = 0; i < off.length; i++) expect(on[i]!.shown).toBe(off[i]!.shown);
   });
 });

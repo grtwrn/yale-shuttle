@@ -1003,3 +1003,138 @@ retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
 scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
+
+## The standing trough: diagnosed, and the display rule it suggests REFUSED (2026-09-11)
+
+The complaint is one a rider can state: while a bus stands at Red's 344
+Winchester layover the card freezes minutes too low and stays there. #310,
+2026-09-11 12:21 ET, an 805 s stand — the board read **169 s for thirteen
+minutes** while the true remainder fell 780 → 60 s.
+
+A previous reading blamed #119's ceiling **arming on the arrival poll's
+standing+moving mixture** and was refuted by measurement (PR #244, branch
+`eta/ceiling-arms-on-standing`): the standing mass usually clears
+`LEAD_SWITCH_MASS` on the arrival poll itself, so arming later changes almost
+nothing, buys 3 s of standing median and costs four rider-visible rises ≥ 180 s
+per 400 rests. The trough is real; the poll it comes from is not the first one.
+
+### The decomposition (`scripts/eta-replay/trough`, Red 9/04, 9/10, 9/11)
+
+The harness traces every priced row: the rest identity and clock, the elapsed
+`r`, the lead cluster's mass split into variants that price the rest as
+CONTINUING and as OVER, each half's own quantile, the mixture the display uses,
+the rest-less chain, the residual stand and its lap factor, the ceiling, the
+shown number, and the detector's next arrival. At the poll that sets the
+plateau a rider then reads:
+
+| term | value | verdict |
+|---|---|---|
+| served stand table (3:11) | `q50` 355 s, `qn` 159 | right |
+| the residual it bills given `r` | 350–380 s, tracking `r` | right |
+| lap factor | 1.00–1.23 | RAISES these stands |
+| rest-less chain (`departNow`) | 73 s, flat | not the drive |
+| the standing variants' own quantile | 259–466 s | right |
+| **the lead cluster's MIXTURE** | **109–217 s** | **the trough** |
+
+Within the first minute of a stand the feed's ~30 m deadband publishes a FRESH
+fix (a bus shuffling at the kerb); a fresh fix is departure evidence
+(`P_DEPART_ON_FRESH` 0.71); the lead cluster splits about half and half between
+"standing, ~450 s left" and "pulled out, ~70 s of drive"; and the MEDIAN of that
+bimodal mixture lands in the standing part's lower tail. One poll later the mass
+is 0.96 standing and the mixture is 393 s again — but `min(prev, eta)` has kept
+the 169. Of 53 layover rests seen from a rider's stop the plateau holds **46–98%
+of the wait**, and on 9/11 **14 of 15** were set by a poll with a live departure
+hypothesis.
+
+**The split of the frozen error**, over the layover rests' deficit seconds: the
+ratchet holds **40.5%**, and the estimate at that poll is low by **59.5%** — the
+second half is the pooled stand median, the known dominant defect
+(docs/eta-accuracy.md). Pooled per row: shown −171 s median signed; the same
+polls' own un-ratcheted mixture −91 s; the standing variant alone −77 s.
+
+### The rule
+
+A poll on which the departure hypothesis holds more than `1 - LEAD_SWITCH_MASS`
+of the lead cluster is not evidence about the stand: it neither sets the ceiling
+nor moves the number. Every other poll is unchanged, so a rest's first poll
+still records a ceiling and the shown remainder is still non-increasing. No new
+constant — "half" is the lead hysteresis's own gate.
+
+### Paired, three Red service days, 18,218 standing rows
+
+Scored offline from one replay (the ceiling changes only the number a row shows,
+never the belief or the tables) and checked against the replayed arm row for row
+— 0 of 18,218 disagree.
+
+| population | arm | med signed | median \|err\| | waits ≥120 s | bus beats ≥120 s | rises/rest | rises ≥180 s | rows changed |
+|---|---|---|---|---|---|---|---|---|
+| layover rests ≥300 s (5,490 rows) | master | −154 | 154 | 57.4% | 0.0% | 0 | 0 | — |
+| | fixed | **−81** | **101** | **40.4%** | 2.7% | **0** | **0** | 79.8% |
+| every rest (18,218 rows) | master | −122 | 139 | 50.5% | 5.0% | 0 | 0 | — |
+| | fixed | **−99** | **125** | **45.0%** | 6.7% | **0** | **0** | 33.7% |
+
+**Within a rest identity the rise cost is zero** — holding the number rather
+than showing the trough and taking it back keeps the shown remainder
+non-increasing across all 18,218 standing rows. **That population is not a
+rider's wait, and reading it as one was this attempt's error**: see the refusal
+below, where the same rule costs 143 reversals. Every
+variant that shows the trough is no more accurate and rises 4–16 times a rest
+(largest 239 s, and 301 s for the ceiling read off the standing variant alone,
+which also fails `accuracy-layover.test.ts` by climbing 28 s while the bus
+stands). **The cost is the departure**: the collapse a real departure produces
+arrives a median of ONE poll (5 s) later, p90 two, max three, on 48 of 1,308
+rests — the rest identity itself ends when the belief drops the rest, and that
+releases the ceiling whatever this rule says.
+
+### REFUSED by the paired rider simulator (Red, 2026-09-10)
+
+One pair, each arm from its own worktree so only the commit differs: arm A's
+client `~/wt/ceiling-master @ 6e0fb79` (origin/master, fast-forwarded past #240
+and #241 first, so the arms cannot differ in the standing display itself), arm
+B's `~/wt/trough @ ba869ef`; same capture, snapshot, `MODEL_PARAMS`, payload
+patch and 1,659 riders, and both arms scored the identical population — 1,501
+waits, 1,441 arrived, 3 gave up, 57 boarded on arrival.
+
+| | master | this rule |
+|---|---|---|
+| reversal >= 60 s | 3% | **12.1%** |
+| jump >= 180 s | 1.8% | **4%** |
+| jump >= 300 s | 0.3% | **1%** |
+| dropped while approaching | 0.3% (4) | **1% (15)** |
+| interval coverage at first sight | 83.4% | **72.3%** |
+| first promise abs(miss) p90 | 75 s | **105 s** |
+| worst drift per wait p50 / p90 | 0 / 45 s | **15 / 80 s** |
+| STRAND | 0% | 0% |
+
+Paired per flag — the acceptance criterion, never the totals: **strand 0 fixed /
+0 introduced, jump >= 180 s 2 / 50, reversal >= 60 s 2 / 143, dropped 0 / 19**;
+worst drift improved 90, worsened 484, same 867; first-promise abs(miss)
+improved 35, worsened 240.
+
+**The predicted cost is not the cost.** The departure poll stays clean (displayed
+drift p50 0 s, p90 0 s, >= 180 s on 0; max 55 -> 115 s) and strand stays at
+zero, so the median one-poll delay this rule puts on a real departure is NOT
+what fails. What fails is the rest of the wait: a number held through a
+departure-hypothesis poll is released later — at a rest-identity change, or when
+the lead leg moves — and the release IS a reversal. In the CHAIN block they land
+downstream, where the chain carries more held stands: SCL 0 -> 20.5%, 130
+Prospect Street (S) 0 -> 19.8%, Prospect / Hillside 0 -> 9.3%. The narrower
+shown band (median width 445 -> 321 s) is the same mechanism from the coverage
+side.
+
+**The lesson for the next attempt**: a display rule for a standing bus must be
+scored on the WAIT, not on the rest. Monotonicity inside a rest identity is
+cheap to buy and does not survive the boundaries. The diagnosis above stands —
+the trough is the mixture's median under a departure hypothesis, and the ratchet
+holds 40.5% of the frozen error — but a fix has to leave the released number
+somewhere a rider can follow.
+
+### What it does NOT fix, measured
+
+On the two worst episodes the trough poll ALSO restarts the rest clock
+(`r` 40 → 35 s at 12:21:00), so the identity changes, there is no ceiling to
+fall back on, and the contaminated poll writes the first one: #310 12:21 goes
+−266 → −241 s and #310 07:22 −318 → −258 s, against −154 → −81 s for the
+population. The next lever is therefore the REST IDENTITY surviving a kerb
+shuffle (`filter.ts` `restSince`, which takes the served clock whenever the fix
+moved), not another display rule — and after that, the stand estimate itself.

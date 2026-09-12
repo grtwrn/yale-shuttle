@@ -578,6 +578,154 @@ export interface Floors {
   map: Map<number, { eta: number; standingAt: number; since: number }>;
 }
 
+/**
+ * THE CEILING'S EVIDENCE (2026-09-11). #119's ceiling is a running minimum, so
+ * whatever the lowest poll of a stand showed is what the rider sees for the
+ * REST of that stand. Until now any poll could set it — including a poll on
+ * which the model half-believed the bus had already left.
+ *
+ * That is not a rare corner; on Red's 344 Winchester layover it is the norm.
+ * The feed's ~30 m deadband means a bus shuffling at the kerb publishes a
+ * FRESH fix, and a fresh fix is the departure evidence (`P_DEPART_ON_FRESH`,
+ * 0.71): the lead cluster's mass splits about half and half between "standing,
+ * ~450 s of stand left" and "just pulled out, ~70 s of drive", and the
+ * MEDIAN of that bimodal mixture lands in the standing part's lower tail —
+ * 169 s. One poll later the mass is back at 0.96 standing and the mixture is
+ * 393 s again, but the ceiling has kept the 169 and shows it for thirteen
+ * minutes (#310, 2026-09-11 12:21 ET, an 805 s stand: shown 169 s while the
+ * true remainder fell 780 -> 60 s). Measured over three Red service days,
+ * every rest of 300 s or more at that stop troughs this way, and the trough
+ * poll's standing mass is below LEAD_SWITCH_MASS in 19 of 20 of them.
+ *
+ * So the ceiling is set only by a poll that is SURE the rest continues —
+ * the standing variants carrying `LEAD_SWITCH_MASS` of the lead cluster, the
+ * same gate the lead hysteresis uses, not a new constant. A poll that is not
+ * sure still SHOWS `min(ceiling, mixture)`, so a real departure still
+ * collapses the number on the poll it is seen (that is the whole point of
+ * pricing the mixture, and a shown MODE decided with hysteresis was tried and
+ * withdrawn — docs/eta-ring-posterior.md 3); it simply may not commit its
+ * guess to the rider for the next quarter of an hour.
+ *
+ * The consequence, and the cost: the shown number may RISE when a departure
+ * hypothesis is withdrawn. #119 forbids a rise caused by TIME PASSING (the
+ * conditional median climbing where the stand CDF flattens — the inspection
+ * paradox, real and measured) and that is untouched: the ceiling is still a
+ * running minimum over the polls that set it. A rise because the bus turned
+ * out not to have left is news, not an artifact.
+ */
+/**
+ * THE CEILING'S EVIDENCE (2026-09-11). The ceiling is a running MINIMUM, so
+ * whatever the lowest poll of a stand showed is what the rider reads for the
+ * rest of that stand. Any poll could set it — including a poll on which the
+ * model half-believed the bus had already left.
+ *
+ * That is not a corner case, it is every long layover. The feed's ~30 m
+ * deadband means a bus shuffling at the kerb publishes a FRESH fix, and a
+ * fresh fix is departure evidence (`P_DEPART_ON_FRESH`, 0.71): within the
+ * first minute of a stand the lead cluster's mass splits about half and half
+ * between "standing, ~450 s of stand left" and "pulled out, ~70 s of drive",
+ * and the MEDIAN of that bimodal mixture lands in the standing part's lower
+ * tail — 169 s. One poll later the mass is 0.96 standing and the mixture is
+ * 393 s again, but the ceiling has kept the 169 and shows it for thirteen
+ * minutes. Measured on three Red service days (`scripts/eta-replay/trough`):
+ * of 53 layover rests seen from a rider's stop, the plateau a rider reads
+ * holds 46-98% of the stand, and in 14 of 15 on 9/11 the poll that set it had
+ * a live departure hypothesis. #310, 9/11 12:21 ET, an 805 s stand: 169 s
+ * shown while the true remainder fell 780 -> 60 s.
+ *
+ * So a poll that half-believes the bus has GONE is not evidence about the
+ * stand: it neither sets the ceiling nor moves the number. "Half" is the lead
+ * hysteresis's own `LEAD_SWITCH_MASS`, read as the departure hypothesis
+ * holding more than `1 - LEAD_SWITCH_MASS` of the lead cluster — not a new
+ * constant. Every other poll behaves exactly as before, so the shown number is
+ * still non-increasing through a stand (#119 in full: the conditional median
+ * climbs wherever the stand CDF flattens, and that rise stays suppressed), and
+ * a rest's first poll still records a ceiling.
+ *
+ * Holding the number rather than showing the trough and recovering from it is
+ * what keeps the shown remainder NON-INCREASING: measured over 18,218 standing
+ * rows there is not one rise, of any size. The variants that show the trough
+ * and let the next poll take it back are no more accurate and rise 4 to 16
+ * times a rest, one of them by 239 s and one by 301 s — and one of those
+ * (the ceiling read off the standing variant alone) fails
+ * `accuracy-layover.test.ts` by climbing 28 s while the bus stands.
+ *
+ * THE COST IS THE DEPARTURE, and it is bounded: the collapse a real departure
+ * produces arrives a median of ONE poll (5 s) later, p90 two, max three, on 48
+ * of 1,308 rests — because the rest identity itself ends when the belief drops
+ * the rest, and that releases the ceiling whatever this rule says. Against
+ * master over the same rows: median signed error -122 -> -99 s, |error| 139 ->
+ * 125 s, the rider-waits-longer tail (>= 120 s) 50.5 -> 45.0%, and the
+ * dangerous tail — the bus beating the promise by 120 s — 5.0 -> 6.7%, because
+ * a number no longer pinned two minutes low is sometimes two minutes high. On
+ * the layover rests alone: -154 -> -81 s, 154 -> 101 s, 57.4 -> 40.4%, and
+ * 0.0 -> 2.7%.
+ *
+ * MEASURED AND REFUSED (2026-09-11), so this defaults OFF and a merge cannot
+ * ship it by accident. The paired rider simulator on Red 9/10 (1,441 scored
+ * waits, both arms from their own worktree) rejects it: reversal >= 60 s 2
+ * fixed / 143 INTRODUCED, jump >= 180 s 2 / 50, dropped-while-approaching
+ * 0 / 19, interval coverage at first sight 83.4 -> 72.3%. Strand stays 0% and
+ * the departure poll stays clean, so the risk this docstring predicted is NOT
+ * what killed it. The "no rise of any size" claim below is the mistake: it was
+ * measured WITHIN a rest identity, and a rider's wait spans rest-identity
+ * changes and moving spells, where the held number is released and reverses.
+ * The accuracy win on a parked bus is real; the sequence cost to everyone else
+ * is 25x larger. See docs/eta-ring-posterior.md.
+ *
+ * The switch exists so both arms run from one tree in the replay; the
+ * measurement is in `scripts/eta-replay/trough/README.md`.
+ *
+ * WITH THE SWITCH OFF AND NO TRACE SET this is dead code at run time, and
+ * deliberately so: nothing extra is allocated per priced row and the clamp is
+ * master's `min(ceiling, mixture)` exactly. `arrival.test.ts` pins both — the
+ * import-time default, and every row of a stand against `min` recomputed from
+ * an unclamped pricing of the same belief.
+ */
+let ceilingHoldsUnderDeparture = false;
+export function setCeilingHoldsUnderDeparture(on: boolean): void { ceilingHoldsUnderDeparture = on; }
+/** The shipped default is OFF (measured and refused); `arrival.test.ts` pins it at import time. */
+export function ceilingHoldsUnderDepartureOn(): boolean { return ceilingHoldsUnderDeparture; }
+
+/**
+ * ONE PRICED ROW, decomposed — for the replays that count the standing trough;
+ * null in production, so nothing is computed and nothing is paid for. Every
+ * field is what the row was priced FROM, at the poll it was priced.
+ */
+export interface PriceEvent {
+  stopIdx: number;
+  occurrence: number;
+  /** The rest identity the clamp keys on: the ring index the lead stands at, and the rest's clock origin. */
+  clampAt: number;
+  since: number;
+  /** Seconds the rest has run (`standingSec`, i.e. the clock the residual conditions on). */
+  r: number;
+  leadLeg: number;
+  /** Mass of the lead cluster, of its standing variants, and of the rest (a departed/moving variant on the lead leg). */
+  leadMass: number;
+  standMass: number;
+  moveMass: number;
+  /** Quantile tau of: the lead cluster (what the clamp sees), its standing variants alone, its moving ones alone. */
+  mixture: number;
+  standing: number;
+  moving: number;
+  /** The same chain with the rest in progress ended (`departNow`, pre-correction). */
+  departNow: number;
+  /** The residual stand the standing chain bills: conditional median of the stand at `clampAt` given `r`, lap-scaled. */
+  residualMed: number;
+  /** The unconditional median of that stand table, and the lap factor applied to it. */
+  standMed: number;
+  lapF: number;
+  /** The ceiling in force before this poll, and the number after the clamp. */
+  prevCeiling: number | null;
+  shown: number;
+  action: "hold" | "set";
+  /** This poll was sure enough of the rest to write the ceiling. */
+  sure: boolean;
+}
+let priceTrace: ((ev: PriceEvent) => void) | null = null;
+export function setPriceTrace(fn: ((ev: PriceEvent) => void) | null): void { priceTrace = fn; }
+
 export function priceRoute(
   belief: Belief,
   ring: Ring,
@@ -661,6 +809,20 @@ export function priceRoute(
     const parts: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     const all: { s: Float64Array; w: number }[] = [{ s: leadBuf, w: lead.sit.mass }];
     let mass = lead.sit.mass;
+    // The lead cluster's mass and parts that price the rest at `clampAt` as
+    // still going — what the ceiling below is measured from and gated on (THE
+    // CEILING'S EVIDENCE). The lead itself stands at `clampAt` by definition
+    // (`clampAt` IS its `standingAt`), so it starts the tally.
+    //
+    // The tally runs only when somebody reads it: the switch is off by
+    // default and no production caller sets the trace, so on every row a
+    // rider's browser prices this is two boolean reads and NO allocation.
+    // (Review, 2026-09-12: the two arrays were built on every priced row
+    // even though the pushes into them were already guarded.)
+    const needSplit = ceilingHoldsUnderDeparture || priceTrace !== null;
+    let standMass = needSplit && clampAt >= 0 ? lead.sit.mass : 0;
+    const standParts: { s: Float64Array; w: number }[] | null = priceTrace ? [] : null;
+    const moveParts: { s: Float64Array; w: number }[] | null = priceTrace ? [] : null;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
       if (c === lead) continue;
@@ -689,6 +851,11 @@ export function priceRoute(
       if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
+      if (needSplit) {
+        const standsHere = clampAt >= 0 && c.standingAt === clampAt;
+        if (standsHere) standMass += c.sit.mass;
+        if (standParts !== null && moveParts !== null) (standsHere ? standParts : moveParts).push({ s: bufs[i]!, w: c.sit.mass });
+      }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
@@ -721,13 +888,34 @@ export function priceRoute(
     const key = chainKey(cur, o);
     if (floors && clampAt >= 0) {
       const prev = floors.map.get(key);
-      if (prev && prev.standingAt === clampAt && prev.since === clockSince) {
-        const shown = Math.min(prev.eta, eta);
+      const held = prev && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
+      const mixture = eta;
+      // A live departure hypothesis on the lead leg: this poll says nothing
+      // about the stand (THE CEILING'S EVIDENCE).
+      const departing = ceilingHoldsUnderDeparture && mass - standMass > 1 - LEAD_SWITCH_MASS;
+      if (held && departing) {
+        const delta = held.eta - eta;
+        eta = held.eta; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
+      } else {
+        const shown = held ? Math.min(held.eta, eta) : eta;
         const delta = shown - eta;
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
         floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince });
-      } else {
-        floors.map.set(key, { eta, standingAt: clampAt, since: clockSince });
+      }
+      if (priceTrace && standParts !== null && moveParts !== null) {
+        const f = lap ? lap.fStand[clampAt]! : 1;
+        const standDist = tables.stops[clampAt]!.stand;
+        standParts.unshift({ s: leadBuf, w: lead.sit.mass });
+        priceTrace({
+          stopIdx: cur, occurrence: o, clampAt, since: clockSince, r,
+          leadLeg: lead.leg, leadMass: mass, standMass, moveMass: mass - standMass,
+          mixture, standing: (mixedQuantiles(standParts, [tau]) as [number])[0]!,
+          moving: moveParts.length ? (mixedQuantiles(moveParts, [tau]) as [number])[0] : NaN,
+          departNow,
+          residualMed: tables.hops[clampAt]!.includesStand ? 0 : f * residualMedian(standDist, r / f),
+          standMed: quantile(standDist, 0.5), lapF: f,
+          prevCeiling: held ? held.eta : null, shown: eta, action: held ? "hold" : "set", sure: !departing,
+        });
       }
     }
     // The learned per-ROUTE correction (params.ts, docs/route-bias.md). The
