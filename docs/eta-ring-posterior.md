@@ -1312,3 +1312,87 @@ roughly once a morning; drive-pasts and 20-second calls are most of the
 population, so a held-out aggregate over these five hours cannot show the benefit
 at anything like its true weight. That is an argument for reading the recorded
 pass and the rider simulator beside it — not for discounting the cost.
+
+#### rider-sim, both folds, 9/10 capture — PASSED (2026-09-12)
+
+Method and population first, because they are what the verdict has to be read
+against.
+
+Two arms, one harness, one capture, one snapshot, differing in **one thing**: the
+client tree. `ROUTES=Green,Purple`, `CHAIN=none`, capture
+`positions-20260910.jsonl` sliced 13:00–19:00Z (`DETECTOR_FROM` 12:00Z),
+`REPLAY_DB=snap909.db`, no `PAYLOAD_PATCH` in either arm.
+
+- **base** — `CLIENT_ROOT` = a worktree at `b5c2c2b`, i.e. origin/master. Its
+  stamp reads `dirty: true`, and that is accounted for rather than waved past:
+  `git diff HEAD -- web/src src` is EMPTY, and the dirt is four untracked
+  files (a replay output directory, one harness script, and the fixture plus
+  test this PR adds, which only vitest ever loads). The estimator is master's.
+  `base.waits.jsonl` md5 `3427b9484c4f93ae97a06aa4f4c31a18`.
+- **split** — `CLIENT_ROOT` = this branch, committed and clean.
+
+Population actually scored, and it is not thin on either fold — 2,467 waits,
+**Green 959** and **Purple 1,508**. Master's own defect counts, which are the
+denominator every FIXED/INTRODUCED number below is a movement against:
+
+| arm: master | waits | strand | jump >= 180 s | reversal >= 60 s | dropped while approaching |
+|---|---:|---:|---:|---:|---:|
+| Green | 959 | 50 | 323 | 222 | 75 |
+| Purple | 1,508 | 74 | 753 | 634 | 351 |
+
+Purple is the control: this change cannot reach it (`unreached` is empty there, so
+its ring is byte-identical), so any movement in Purple's column is simulator
+noise and calibrates how much of Green's movement to believe.
+
+`split.waits.jsonl` md5 `aa9ebe0eb78780f661620cc8d02096a2` against base's
+`3427b948…`, so the arms are two runs and not one file compared with itself.
+Trees as stamped: base `b5c2c2b` (origin/master), split `b8c2051` on this branch,
+`dirty: false`.
+
+**The gate, `pair-by-route.mjs`, all 2,467 paired waits:**
+
+| route | n | strand | jump >= 180 s | reversal >= 60 s | dropped |
+|---|---:|---:|---:|---:|---:|
+| | | fixed / intro | fixed / intro | fixed / intro | fixed / intro |
+| **Green** | 959 | **31 / 1** | 36 / 6 | 11 / 10 | 0 / 0 |
+| Purple | 1,508 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+In absolutes, Green goes strand **50 -> 20**, jump >= 180 s 323 -> 293, reversal
+222 -> 221, dropped 75 -> 75 (drop events 459 -> 451, every one repriced, none
+declined). **Purple does not move by a single wait on any flag** — the control
+behaving exactly as the trigger predicts, which is what licenses reading Green's
+column as signal rather than simulator noise.
+
+**Every one of the 31 fixed strands is at board stop 25, Building 800.** The fix
+is not diffusely better; it is better at the kerb it is about.
+
+**Two instruments, two numbers, and the difference is a house rule rather than a
+discrepancy.** `--compare` reports the strand column as 31 fixed / **0**
+introduced over 2,284 waits, because `compareRuns` scores only waits that
+`arrived` in both arms, were shown something, and did NOT have a bus at the stop
+when the rider walked up. That excludes 183 of 2,467: 66 for outcome, **117 for
+`busAtStopOnArrival`**, 0 for `neverShown`. The one introduced strand is one of
+the 117 — bus #325 was already at the kerb — so the house rule excludes it for the
+documented reason that the app is right to say "arriving now" to such a rider.
+**The 31 / 1 above is the complete count and is the one to quote**; the 0 is the
+flattering one.
+
+**What the introduced defects actually are, read rather than summarised.** All
+three populations are one-poll display differences in which this branch is the
+LESS optimistic arm:
+
+- the single introduced strand (`Green|25|14:10:04.903Z`): 29 of its 31 readings
+  are identical to master's, and the sole difference is one poll at 14:16:39 —
+  master `now-10, then 47 min`, this branch `in 3-10, then 47 min` — with both
+  printing `now` five seconds later. Worst drift 50 -> 165 s.
+- five of the six introduced jumps are ONE episode (14:17:35, five stops at once)
+  in which **slot 1 is byte-identical and only slot 2 moves** (44 -> 36, 44 -> 36,
+  48 -> 41, 48 -> 41, 49 -> 41 min): the NEXT bus's estimate, not the pinned one.
+- the sixth (`Green|26|15:59:14`) is slot 1's band low going `<1-11` -> `7-13` for
+  a single poll, identical again at the next reading.
+
+So the −467 s departure move did **not** become a strand epidemic, which was the
+open question this gate existed to answer. Elsewhere: first promise |miss|
+unchanged (p50 0 s, improved 0, worsened 0 — the change cannot reach first sight),
+pin wrong unchanged (491 both arms, 0 / 0), worst drift p10/p50/p90 all 0 s with
+62 improved and 32 worsened.
