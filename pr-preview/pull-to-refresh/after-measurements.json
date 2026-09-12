@@ -1,0 +1,264 @@
+[
+  {
+    "name": "tab-top-pull",
+    "standalone": false,
+    "before": {
+      "indicator": false,
+      "indTop": null,
+      "indText": null,
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "auto",
+      "osBody": "auto",
+      "osScroller": "auto",
+      "loads": 1,
+      "standalone": false
+    },
+    "after": {
+      "indicator": false,
+      "indTop": null,
+      "indText": null,
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "auto",
+      "osBody": "auto",
+      "osScroller": "auto",
+      "loads": 1,
+      "standalone": false
+    },
+    "consoleErrors": []
+  },
+  {
+    "name": "standalone-top-pull",
+    "standalone": true,
+    "before": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "midPull": {
+      "indicator": true,
+      "indTop": "46px",
+      "indText": "↻",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "trace": [
+      {
+        "top": "-44px",
+        "txt": "↓",
+        "sy": 0
+      },
+      {
+        "top": "-39.6401px",
+        "txt": "↓",
+        "sy": 0
+      },
+      {
+        "top": "-25.2316px",
+        "txt": "↓",
+        "sy": 0
+      },
+      {
+        "top": "-12.8304px",
+        "txt": "↓",
+        "sy": 0
+      },
+      {
+        "top": "-2.80851px",
+        "txt": "↓",
+        "sy": 0
+      },
+      {
+        "top": "9.76728px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "22.3228px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "34.921px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "41.301px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "45.1671px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "46px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "46px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "46px",
+        "txt": "↻",
+        "sy": 0
+      },
+      {
+        "top": "46px",
+        "txt": "↻",
+        "sy": 0
+      }
+    ],
+    "after": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 2,
+      "standalone": true
+    },
+    "consoleErrors": []
+  },
+  {
+    "name": "standalone-map-scroll",
+    "standalone": true,
+    "before": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "mapOpened": true,
+    "metrics": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 3006,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "scrollYAfter": 822,
+    "after": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 822,
+      "scrollHeight": 3006,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "consoleErrors": []
+  },
+  {
+    "name": "standalone-inner-list",
+    "standalone": true,
+    "before": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "innerFound": [],
+    "after": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 3006,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "consoleErrors": []
+  },
+  {
+    "name": "standalone-leaflet",
+    "standalone": true,
+    "before": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 844,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "mapBox": {
+      "x": 195,
+      "y": 359
+    },
+    "loadsBefore": 1,
+    "loadsAfter": 1,
+    "after": {
+      "indicator": true,
+      "indTop": "-44px",
+      "indText": "↓",
+      "scrollY": 0,
+      "scrollHeight": 3006,
+      "innerHeight": 844,
+      "osHtml": "contain",
+      "osBody": "auto",
+      "osScroller": "contain",
+      "loads": 1,
+      "standalone": true
+    },
+    "consoleErrors": []
+  }
+]

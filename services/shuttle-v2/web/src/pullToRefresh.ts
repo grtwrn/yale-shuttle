@@ -51,6 +51,17 @@ export function installPullToRefresh(
 ): () => void {
   if (!isStandalone()) return () => {};
 
+  // Claim the gesture exclusively. Android's Chrome keeps its OWN
+  // pull-to-refresh in an INSTALLED app — unlike iOS Safari, which is the case
+  // this module was written for — so without this both arm on one drag: the
+  // browser draws its spinner while we draw ours, and releasing reloads twice.
+  // `contain` turns the browser's overscroll ACTION off and leaves ordinary
+  // scrolling untouched. Reached only in standalone mode, so a browser TAB
+  // keeps its native gesture and we stay uninstalled there.
+  const root = doc.documentElement;
+  const prevOverscroll = root.style.getPropertyValue("overscroll-behavior-y");
+  root.style.setProperty("overscroll-behavior-y", "contain");
+
   const indicator = doc.createElement("div");
   indicator.setAttribute("aria-hidden", "true");
   indicator.style.cssText =
@@ -121,6 +132,8 @@ export function installPullToRefresh(
     doc.removeEventListener("touchmove", onMove);
     doc.removeEventListener("touchend", onEnd);
     doc.removeEventListener("touchcancel", reset);
+    if (prevOverscroll) root.style.setProperty("overscroll-behavior-y", prevOverscroll);
+    else root.style.removeProperty("overscroll-behavior-y");
     indicator.remove();
   };
 }
