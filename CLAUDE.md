@@ -2031,8 +2031,17 @@ in `filter.ts` (a test pins the two equal and proves a served copy of them
 reproduces every cell mass and every priced row), and the payload's optional
 `model_params` may replace them. An absent, malformed or out-of-range set
 resets to the constants — all or nothing, never half a set. An eighth key,
-`CONFORMAL[horizon]`, widens the shown 10–90 band and is a no-op at its default
-1. **Everything else in `filter.ts` stays compiled on purpose**: a nightly job
+`CONFORMAL[horizon]`, widens the shown 10–90 band. It defaults to 1, and
+**production has not been at that default since 2026-09-09**: the nightly job
+has served it every night since, and as of 9/11 it is `0-2: 1, 2-5: 1.529,
+5-10: 1.325, 10-30: 1.376` — so a band reasoned out of the compiled constants
+is about a third too narrow at 2–5 min. The job fits it pooled per horizon to
+80% and reproduces **82–91% held-out coverage on Red and Blue Day from 2 min
+out**, against **56–80% unwidened** on the same cells. **0–2 min is not a band
+at any widening** — 32–34% coverage on a moving bus, with 65% of arrivals
+earlier than its low end — and the fit's own range refused the `w = 4.76` it
+asked for there. `docs/eta-band.md` is the measurement.
+**Everything else in `filter.ts` stays compiled on purpose**: a nightly job
 may re-measure the world, it may not redesign the estimator.
 `scripts/reestimate-params.mjs` (Pi cron, reads `~/shuttle-archive` because the
 volume sweeps `raw_positions` after 6 h) counts them on 14 days, replays the
