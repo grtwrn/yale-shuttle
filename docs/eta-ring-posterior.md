@@ -1004,7 +1004,7 @@ scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
 
-## The standing trough: the ceiling was set by polls that thought the bus had left (2026-09-11)
+## The standing trough: diagnosed, and the display rule it suggests REFUSED (2026-09-11)
 
 The complaint is one a rider can state: while a bus stands at Red's 344
 Winchester layover the card freezes minutes too low and stays there. #310,
@@ -1073,8 +1073,11 @@ never the belief or the tables) and checked against the replayed arm row for row
 | every rest (18,218 rows) | master | −122 | 139 | 50.5% | 5.0% | 0 | 0 | — |
 | | fixed | **−99** | **125** | **45.0%** | 6.7% | **0** | **0** | 33.7% |
 
-**The rise cost is zero** — holding the number rather than showing the trough
-and taking it back is what keeps the shown remainder non-increasing. Every
+**Within a rest identity the rise cost is zero** — holding the number rather
+than showing the trough and taking it back keeps the shown remainder
+non-increasing across all 18,218 standing rows. **That population is not a
+rider's wait, and reading it as one was this attempt's error**: see the refusal
+below, where the same rule costs 143 reversals. Every
 variant that shows the trough is no more accurate and rises 4–16 times a rest
 (largest 239 s, and 301 s for the ceiling read off the standing variant alone,
 which also fails `accuracy-layover.test.ts` by climbing 28 s while the bus
@@ -1082,6 +1085,49 @@ stands). **The cost is the departure**: the collapse a real departure produces
 arrives a median of ONE poll (5 s) later, p90 two, max three, on 48 of 1,308
 rests — the rest identity itself ends when the belief drops the rest, and that
 releases the ceiling whatever this rule says.
+
+### REFUSED by the paired rider simulator (Red, 2026-09-10)
+
+One pair, each arm from its own worktree so only the commit differs: arm A's
+client `~/wt/ceiling-master @ 6e0fb79` (origin/master, fast-forwarded past #240
+and #241 first, so the arms cannot differ in the standing display itself), arm
+B's `~/wt/trough @ ba869ef`; same capture, snapshot, `MODEL_PARAMS`, payload
+patch and 1,659 riders, and both arms scored the identical population — 1,501
+waits, 1,441 arrived, 3 gave up, 57 boarded on arrival.
+
+| | master | this rule |
+|---|---|---|
+| reversal >= 60 s | 3% | **12.1%** |
+| jump >= 180 s | 1.8% | **4%** |
+| jump >= 300 s | 0.3% | **1%** |
+| dropped while approaching | 0.3% (4) | **1% (15)** |
+| interval coverage at first sight | 83.4% | **72.3%** |
+| first promise abs(miss) p90 | 75 s | **105 s** |
+| worst drift per wait p50 / p90 | 0 / 45 s | **15 / 80 s** |
+| STRAND | 0% | 0% |
+
+Paired per flag — the acceptance criterion, never the totals: **strand 0 fixed /
+0 introduced, jump >= 180 s 2 / 50, reversal >= 60 s 2 / 143, dropped 0 / 19**;
+worst drift improved 90, worsened 484, same 867; first-promise abs(miss)
+improved 35, worsened 240.
+
+**The predicted cost is not the cost.** The departure poll stays clean (displayed
+drift p50 0 s, p90 0 s, >= 180 s on 0; max 55 -> 115 s) and strand stays at
+zero, so the median one-poll delay this rule puts on a real departure is NOT
+what fails. What fails is the rest of the wait: a number held through a
+departure-hypothesis poll is released later — at a rest-identity change, or when
+the lead leg moves — and the release IS a reversal. In the CHAIN block they land
+downstream, where the chain carries more held stands: SCL 0 -> 20.5%, 130
+Prospect Street (S) 0 -> 19.8%, Prospect / Hillside 0 -> 9.3%. The narrower
+shown band (median width 445 -> 321 s) is the same mechanism from the coverage
+side.
+
+**The lesson for the next attempt**: a display rule for a standing bus must be
+scored on the WAIT, not on the rest. Monotonicity inside a rest identity is
+cheap to buy and does not survive the boundaries. The diagnosis above stands —
+the trough is the mixture's median under a departure hypothesis, and the ratchet
+holds 40.5% of the frozen error — but a fix has to leave the released number
+somewhere a rider can follow.
 
 ### What it does NOT fix, measured
 

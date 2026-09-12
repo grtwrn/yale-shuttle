@@ -183,7 +183,7 @@ describe("arrival: the sum of the chain", () => {
           out.push({ eta: row.eta, standing: row.standingAt >= 0 });
         }
         return out;
-      } finally { setCeilingHoldsUnderDeparture(true); }
+      } finally { setCeilingHoldsUnderDeparture(false); } // the shipped default: measured and refused
     };
     const off = run(false), on = run(true);
     // Neither arm climbs while the bus is priced as standing: #119 is intact

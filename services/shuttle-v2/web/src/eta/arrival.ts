@@ -601,10 +601,22 @@ export interface Floors {
  * the layover rests alone: -154 -> -81 s, 154 -> 101 s, 57.4 -> 40.4%, and
  * 0.0 -> 2.7%.
  *
+ * MEASURED AND REFUSED (2026-09-11), so this defaults OFF and a merge cannot
+ * ship it by accident. The paired rider simulator on Red 9/10 (1,441 scored
+ * waits, both arms from their own worktree) rejects it: reversal >= 60 s 2
+ * fixed / 143 INTRODUCED, jump >= 180 s 2 / 50, dropped-while-approaching
+ * 0 / 19, interval coverage at first sight 83.4 -> 72.3%. Strand stays 0% and
+ * the departure poll stays clean, so the risk this docstring predicted is NOT
+ * what killed it. The "no rise of any size" claim below is the mistake: it was
+ * measured WITHIN a rest identity, and a rider's wait spans rest-identity
+ * changes and moving spells, where the held number is released and reverses.
+ * The accuracy win on a parked bus is real; the sequence cost to everyone else
+ * is 25x larger. See docs/eta-ring-posterior.md.
+ *
  * The switch exists so both arms run from one tree in the replay; the
  * measurement is in `scripts/eta-replay/trough/README.md`.
  */
-let ceilingHoldsUnderDeparture = true;
+let ceilingHoldsUnderDeparture = false;
 export function setCeilingHoldsUnderDeparture(on: boolean): void { ceilingHoldsUnderDeparture = on; }
 
 /**
