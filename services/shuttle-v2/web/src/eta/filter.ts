@@ -244,6 +244,15 @@ export interface Belief {
   leadDisagreeSince: number | null;
   /** True when this step saw a fresh fix. */
   fresh: boolean;
+  /**
+   * Consecutive fresh fixes this rest has published WITHOUT leaving the rest
+   * radius. The first one carries full departure evidence (a bus that really
+   * pulled out publishes it too); from the second onward the measured in-rest
+   * rates apply, because by its second fresh fix a departing bus is beyond
+   * the radius and a shuffling one is not. Reset on a rest-identity change
+   * and on any fix beyond the radius.
+   */
+  inRestFresh: number;
   /** Per cell: the anchor leg of standing mass (`anchorLeg(.., true)`), cached once per step. */
   standLeg: Int32Array;
   /** Per cell: the standing zone key (stop, 1000 + stop for its approach, -1), cached once per step. */
@@ -498,7 +507,7 @@ function initBelief(ring: Ring, bus: FilterBus, now: number, stops: readonly num
   const b: Belief = {
     ringKey: ring.key, p, seenAt: now, lastObs: bus, lastFix: { lat: bus.lat, lon: bus.lon },
     fixAt: now, restPoint: { lat: bus.lat, lon: bus.lon }, restSince: since ?? now,
-    rested: standing, restStop: -1, restApproach: false, restMask,
+    rested: standing, restStop: -1, restApproach: false, restMask, inRestFresh: 0,
     serverSince: since, lastStopId: null, lead: -1, leadDisagreeSince: null, fresh: true,
     standLeg: new Int32Array(C), zoneKey: new Int32Array(C),
   };
@@ -670,7 +679,12 @@ export function stepBelief(
     // The fix moved but stayed where the bus came to rest: the kerb shuffle,
     // whose measured departure share is half the pooled one. `leftRest` is the
     // discriminator already computed above, so this costs no new geometry.
-    const inRestFix = kerbShuffleEvidence && prev.rested && !leftRest;
+    // The FIRST fresh fix of a rest is not conditioned: a bus that really
+    // pulled out publishes one too, and withholding the evidence there costs
+    // the 5 -> 1 collapse the operator protects. From the SECOND consecutive
+    // in-rest fresh fix on, the bus is still where it rested after a step it
+    // should have used to leave the radius, which is the kerb shuffle.
+    const inRestFix = kerbShuffleEvidence && prev.rested && !leftRest && prev.inRestFresh >= 1;
     const shufflePoll = (inRestFix ? SHUFFLE_PER_POLL_IN_REST : MP.SHUFFLE_PER_POLL) * (dt / 5);
     const fromStand = 1 - MP.P_REPEAT_STAND;
     const departKern = Float64Array.from(DEPART_KERNEL);
@@ -814,6 +828,10 @@ export function stepBelief(
     restMask: moved || closedIn ? restMaskFor(ring, bus) : prev.restMask,
     serverSince: since,
     lastStopId: prev.lastStopId, lead: prev.lead, leadDisagreeSince: prev.leadDisagreeSince, fresh,
+    // A repeated fix does not break the run: a shuffling bus publishes one
+    // fresh fix and then repeats for polls, so "consecutive" is over the
+    // rest's fresh fixes. `moved`/`closedIn` are the rest-identity changes.
+    inRestFresh: moved || closedIn ? 0 : fresh ? (leftRest ? 0 : prev.inRestFresh + 1) : prev.inRestFresh,
     standLeg: moved || closedIn ? new Int32Array(C) : prev.standLeg,
     zoneKey: moved || closedIn ? new Int32Array(C) : prev.zoneKey,
   };
@@ -832,6 +850,9 @@ export function stepBelief(
     && !leavingLastStop(bus, ring, stops, now);
   if (!b.rested && (!fresh || servedSaysStanding)) {
     b.rested = true;
+    // The rest begins here, so its fresh-fix run does too: the fix that
+    // established it belongs to no rest.
+    b.inRestFresh = 0;
     Object.assign(b, restStopFromBelief(ring, b.p, b.restMask));
     restChanged = true;
   }

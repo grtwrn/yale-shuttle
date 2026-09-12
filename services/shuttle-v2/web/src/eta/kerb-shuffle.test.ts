@@ -11,7 +11,7 @@ import {
   stepBelief,
   type Belief,
 } from "./filter";
-import type { LatLon } from "../geo";
+import { haversineMeters, type LatLon } from "../geo";
 
 // filter.test.ts's loop: four stops at the corners of a ~900 x 450 m block.
 const LAT0 = 41.31, LON0 = -72.93;
@@ -29,6 +29,31 @@ function ring(): Ring {
 function onLeg0(xm: number): LatLon { return at(xm, 0); }
 function bus(pos: LatLon, since: string) { return { lat: pos.lat, lon: pos.lon, stationary_since: since }; }
 function standMass(b: Belief, r: Ring): number { let s = 0; for (let c = 0; c < r.C; c++) s += b.p[c]!; return s; }
+
+/**
+ * A bus standing at stop 1 for `standSec`, then the given steps in metres
+ * along leg 0 (one poll each, 5 s apart): 0 repeats the fix, anything else is
+ * a fresh one. Returns the belief after each step.
+ */
+function afterSteps(opts: { standSec: number; steps: number[]; table?: boolean }): { r: Ring; each: Belief[] } {
+  const r = ring();
+  if (opts.table) {
+    r.stand[0] = fromQuantiles([83, 129, 145, 191, 288, 333, 437, 473, 543, 674]);
+    r.layover[0] = 1;
+  }
+  const t0 = 600_000;
+  const since = new Date(t0 - opts.standSec * 1000).toISOString();
+  let b = stepBelief(undefined, r, bus(onLeg0(0), since), t0, STOPS);
+  for (let t = 1; t <= 6; t++) b = stepBelief(b, r, bus(onLeg0(0), since), t0 + t * 5000, STOPS);
+  const each: Belief[] = [];
+  let x = 0;
+  for (let i = 0; i < opts.steps.length; i++) {
+    x += opts.steps[i]!;
+    b = stepBelief(b, r, bus(onLeg0(x), since), t0 + (7 + i) * 5000, STOPS);
+    each.push(b);
+  }
+  return { r, each };
+}
 
 /** A bus standing at stop 1 for `standSec`, then one fresh fix `stepM` along the leg. */
 function afterOneFreshFix(opts: { standSec: number; stepM: number; table?: boolean }): { moving: number; b: Belief; r: Ring } {
@@ -66,29 +91,35 @@ describe("the kerb shuffle as departure evidence", () => {
     expect(SHUFFLE_PER_POLL_IN_REST).toBeCloseTo(0.117, 3);
   });
 
-  it("moves the measured share of a kerb shuffle into MOVE, not the beyond-rest share", () => {
-    // No stand table on this stop, so the fallback prior decides. The arms do
-    // NOT land on the bare ratio of the two priors (0.44): the moving mass
-    // also holds what was already moving, the hold leak and the move kernel,
-    // and the position emission renormalises over all of it. Measured in this
-    // harness the shuffle keeps a quarter of the departure mass at the kerb.
-    const off = afterOneFreshFix({ standSec: 60, stepM: 32 });
+  it("keeps standing mass off a SECOND kerb shuffle, where the fallback prior decides", () => {
+    // No stand table on this stop, so the fallback prior decides. The first
+    // fresh fix is deliberately unconditioned, and by then the position
+    // emission and the pooled prior have already taken most of the stand:
+    // moving mass 0.7654 after fix 1 in both arms, so what is left for the
+    // second fix to keep is small — 0.9153 -> 0.9081 moving, i.e. standing
+    // 0.0847 -> 0.0919, measured in this harness. Direction, not magnitude, is
+    // what this pins; the magnitude is the finding in the PR.
+    setKerbShuffleEvidence(false);
+    const off = afterSteps({ standSec: 60, steps: [32, 25] });
     setKerbShuffleEvidence(true);
-    const on = afterOneFreshFix({ standSec: 60, stepM: 32 });
-    expect(on.moving).toBeLessThan(off.moving);
-    expect(on.moving / off.moving).toBeGreaterThan(0.6);
-    expect(on.moving / off.moving).toBeLessThan(0.85);
+    const on = afterSteps({ standSec: 60, steps: [32, 25] });
+    const moving = (b: Belief, r: Ring) => { let s = 0; for (let c = 0; c < r.C; c++) s += b.p[c]!; return 1 - s; };
+    expect(moving(on.each[1]!, on.r)).toBeLessThan(moving(off.each[1]!, off.r));
+    expect(moving(on.each[1]!, on.r) / moving(off.each[1]!, off.r)).toBeGreaterThan(0.95);
   });
 
-  it("halves the departure mass a 32 m shuffle takes off a LAYOVER stand", () => {
+  it("does the same on a LAYOVER stand, where the served hazard competes with the reposition rate", () => {
     // The dominant path in production: the stop has a table, so the hazard
-    // competes against the reposition rate. Instrumented on the 9/10 replay
-    // the standing mass's mean pDepart at a layover was 0.61 against a
-    // measured 0.17, and the rate is what corrects it.
-    const off = afterOneFreshFix({ standSec: 300, stepM: 32, table: true });
+    // competes against the reposition rate. Same shape, same size (0.8956 ->
+    // 0.8889 moving on the second fix) — and the same reason it is small: the
+    // first fix, which this rule exempts to keep the departure's collapse,
+    // is the one that empties the stand (0.6173 moving on both arms).
+    setKerbShuffleEvidence(false);
+    const off = afterSteps({ standSec: 300, steps: [32, 25], table: true });
     setKerbShuffleEvidence(true);
-    const on = afterOneFreshFix({ standSec: 300, stepM: 32, table: true });
-    expect(on.moving).toBeLessThan(off.moving * 0.75);
+    const on = afterSteps({ standSec: 300, steps: [32, 25], table: true });
+    const moving = (b: Belief, r: Ring) => { let s = 0; for (let c = 0; c < r.C; c++) s += b.p[c]!; return 1 - s; };
+    expect(moving(on.each[1]!, on.r)).toBeLessThan(moving(off.each[1]!, off.r));
   });
 
   it("leaves a fix that has LEFT the rest radius exactly as it was", () => {
@@ -99,5 +130,68 @@ describe("the kerb shuffle as departure evidence", () => {
     setKerbShuffleEvidence(true);
     const on = afterOneFreshFix({ standSec: 300, stepM: 300, table: true });
     expect(Array.from(on.b.p)).toEqual(Array.from(off.b.p));
+  });
+});
+
+describe("the in-rest rates apply from the SECOND consecutive fresh fix, never the first", () => {
+  // A bus that really pulled out publishes a first fresh fix inside the rest
+  // radius too — its first step off a stand is 30-35 m, the same as a
+  // shuffle's (docs/departure-derivation.md) — so conditioning that fix is
+  // what withheld a real 5 -> 1 collapse for two polls and failed
+  // accuracy-layover.test.ts. By its SECOND fresh fix a departing bus is
+  // beyond REST_RADIUS_M (125 m) and a shuffling one is not, so that is where
+  // the measured in-rest evidence is charged.
+
+  it("prices the first in-rest fresh fix of a rest exactly as master does", () => {
+    const off = afterSteps({ standSec: 300, steps: [32], table: true });
+    setKerbShuffleEvidence(true);
+    const on = afterSteps({ standSec: 300, steps: [32], table: true });
+    expect(Array.from(on.each[0]!.p)).toEqual(Array.from(off.each[0]!.p));
+    expect(on.each[0]!.inRestFresh).toBe(1);
+  });
+
+  it("conditions the second consecutive in-rest fresh fix", () => {
+    const off = afterSteps({ standSec: 300, steps: [32, 25], table: true });
+    setKerbShuffleEvidence(true);
+    const on = afterSteps({ standSec: 300, steps: [32, 25], table: true });
+    const mass = (b: Belief, r: Ring) => { let s = 0; for (let c = 0; c < r.C; c++) s += b.p[c]!; return 1 - s; };
+    // The first poll is identical (above); the second keeps standing mass the
+    // pooled rates would have walked out of the stand.
+    expect(mass(on.each[1]!, on.r)).toBeLessThan(mass(off.each[1]!, off.r));
+    expect(on.each[1]!.inRestFresh).toBe(2);
+  });
+
+  it("counts over the rest's FRESH fixes: a repeated fix between two shuffles does not restart the run", () => {
+    // A shuffling bus publishes one fresh fix and then repeats for polls; if a
+    // repeat reset the counter, every shuffle would be a "first" and the rule
+    // would be inert exactly where the trough is.
+    setKerbShuffleEvidence(true);
+    const on = afterSteps({ standSec: 300, steps: [32, 0, 0, 25], table: true });
+    expect(on.each[0]!.inRestFresh).toBe(1);
+    expect(on.each[1]!.inRestFresh).toBe(1);
+    expect(on.each[2]!.inRestFresh).toBe(1);
+    expect(on.each[3]!.inRestFresh).toBe(2);
+  });
+
+  it("resets the run on a fix beyond the rest radius, so a returning bus's first fix is unconditioned again", () => {
+    setKerbShuffleEvidence(true);
+    const on = afterSteps({ standSec: 300, steps: [32, 25, 300], table: true });
+    // 357 m along the leg is past REST_RADIUS_M: the rest moves to where the
+    // bus now is and the counter starts again. (`rested` is true again on the
+    // same poll only because this harness serves an ancient
+    // `stationary_since`; what matters is that the rest is a NEW one.)
+    expect(on.each[2]!.inRestFresh).toBe(0);
+    expect(haversineMeters(on.each[1]!.restPoint, on.each[2]!.restPoint)).toBeGreaterThan(100);
+  });
+
+  it("resets the run when the rest identity changes", () => {
+    // The rest is re-established at the new point (`moved`), so the next fresh
+    // fix there is a first one.
+    setKerbShuffleEvidence(true);
+    const on = afterSteps({ standSec: 300, steps: [32, 300, 0, 20], table: true });
+    expect(on.each[1]!.inRestFresh).toBe(0);
+    expect(on.each[2]!.rested).toBe(true);   // a repeat re-establishes the rest
+    expect(on.each[2]!.inRestFresh).toBe(0);
+    expect(on.each[3]!.inRestFresh).toBe(1); // first fresh fix of the NEW rest
   });
 });
