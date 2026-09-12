@@ -102,7 +102,8 @@ const GATE_MIN_DAYS = 10;
  *   dangerous tail (`firstSightMissSec < -60`) 22.6 -> 14.8%.
  *   `docs/stand-lap-covariate.md` section 6.
  *
- * **13 (Blue Night) was measured on 2026-09-10 and is NOT served.** Its cells
+ * **13 (Blue Night) was measured on 2026-09-10 and REFUSED; served since
+ * 2026-09-11 (the two paragraphs below record why and the numbers).** Its cells
  * pass the cell gate by the widest margin on the network (333 Cedar -115.5 s
  * held out) and the covariate moves the stand the right way on every evening
  * replayed, but the paired rider table on the held-out Sat 09/06 evening
@@ -114,8 +115,9 @@ const GATE_MIN_DAYS = 10;
  * has not yet reset: the number drops ~4 min and comes back a poll later
  * (CHAIN block: +185 s at the departure poll on 184 of 270 riders). The bus
  * the rider boards is untouched (slot-1 jumps 851 -> 842). gps-replay cannot
- * see it (k <= 5). Fix the lap of a stop the bus is LEAVING before adding
- * this id; `docs/stand-lap-covariate.md` section 6b has the numbers.
+ * see it (k <= 5). The lap of the stop being left is now seeded from the
+ * belief (next paragraph); `docs/stand-lap-covariate.md` section 6b has the
+ * refusal's numbers.
  *
  * **The stop-being-left defect above is fixed (2026-09-11).** The served
  * departure clock had not reset at the poll the belief saw the bus leave, so
@@ -125,10 +127,30 @@ const GATE_MIN_DAYS = 10;
  * for a rest in the stop's own zone, never its approach; re-run on the same two
  * evenings the pair reads STRAND 0 / 0 and 0 / 8, jump >= 180 s 0 / 76 and
  * 34 / 60, reversal 38 / 101 and 22 / 75 (from 0 / 555, 24 / 556 unfixed),
- * with the first-sight columns byte-identical to #215's. The residual is one
- * unexplained episode an evening; `docs/stand-lap-covariate.md` section 6c.
+ * with the first-sight columns byte-identical to #215's. The residual one
+ * episode an evening was the bus's FIRST departure of the block, where the
+ * served age is ABSENT rather than stale — closed in the evidence entry below
+ * (`docs/stand-lap-covariate.md` sections 6c–6d).
+ *
+ * - **13 (Blue Night)** — Sat 2026-09-06 and Mon 2026-09-08, both held out
+ *   (`FIT_BEFORE=2026-09-06`), 1,349 and 1,196 paired waits against master
+ *   with the departure seed above: STRAND 0 fixed / 0 introduced and 0 / 8,
+ *   jump >= 180 s 0 / 76 and 34 / 60, reversal >= 60 s 38 / 101 and 22 / 75,
+ *   drops and pin 0 / 0; first-promise |miss| 110 -> 85 s and 105 -> 90 s,
+ *   interval coverage 74.5 -> 77.6% at 637 -> 575 s and 82.6 -> 82.0% at
+ *   699 -> 625 s, the dangerous tail (`early > 60 s`) 11.9 -> 10.7% and
+ *   17.1 -> 14.2%; stand MAE at 333 Cedar 268 -> 175 and 166 -> 152 s.
+ *   gps-replay median |err| 78.8 -> 70.3 and 72.5 -> 71.9 s at coverage
+ *   73.9 -> 78.2% and 75.5 -> 76.3%. The residual two-reading episode was
+ *   the bus's FIRST departure from Cedar of the evening, where the served
+ *   clock has no age for the stop and `ownDeparture` seeded nothing
+ *   (section 6d); with an absent age treated as a stale one the same pair
+ *   reads STRAND 0 / 0 and 0 / 0, jump >= 180 s 0 / 0 and
+ *   34 / 0, reversal >= 60 s 48 / 20 and 24 / 10, the
+ *   first-sight columns unchanged; gps-replay median |err| 70.0 and 71.8 s.
+ *   Red 9/4 against master: 0 / 0 on every column over 1,374 paired waits, 1,373 sequences byte-identical.
  */
-export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3]);
+export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3, 13]);
 
 const median = (a: number[]): number => {
   if (!a.length) return NaN;

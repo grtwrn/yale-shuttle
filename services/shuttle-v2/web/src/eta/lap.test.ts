@@ -314,6 +314,76 @@ describe("the lap correction in the chain", () => {
     expect(etaTo(ring, tables, asDeparture, 2, t1, { 1: short })).toBeLessThan(kept - 120);
   });
 
+  it("seeds the departure it has seen when the served clock has NO age for the stop (the first visit, Blue Night 9/6 and 9/8)", () => {
+    // `buses[].lap` names only stops the bus has already departed, so on its
+    // first visit of the service block the stop it is leaving has no served
+    // age at all. The standing variant seeds the next visit's lap from the
+    // residual regardless; left unseeded, the moving variant of the SAME leg
+    // priced that visit with no lap, and the lead flipping between the two
+    // over a shuffling pull-out was the residual two-reading dip of #217:
+    // 333 Cedar "then 64 | 59 | 63 min", -266 s in slot 2 for six polls,
+    // the served age first appearing 80 s after the belief's departure.
+    const { ring, tables } = build({ ...PLAIN, "1": { ...PLAIN["1"]!, lapB: -5e-3, lapM: 580, lapN: 1667 } });
+    const plain = build(PLAIN);
+    const now0 = 1_700_000_000_000;
+    const r = 400;
+    // Another stop's age keeps the served set non-empty; stop 1's is absent.
+    const NO_AGE = { 3: 100 };
+    const occ1 = (b: Belief, bp: Belief, t: number, ages?: Record<number, number>) => {
+      const f = priceRoute(b, ring, tables, STOPS, new Set([2]), t, 0.5, undefined, ages).find((x) => x.stopId === 2 && x.occurrence === 1)!;
+      const p = priceRoute(bp, plain.ring, plain.tables, STOPS, new Set([2]), t, 0.5, undefined, undefined).find((x) => x.stopId === 2 && x.occurrence === 1)!;
+      return f.eta - p.eta;
+    };
+    const stood = (rg: Ring): Belief => {
+      let b: Belief | undefined;
+      for (let t = now0 - r * 1000; t <= now0; t += 15_000) {
+        b = stepBelief(b, rg, { lat: corners[0]!.lat, lon: corners[0]!.lon, stationary_since: since(now0 - r * 1000) }, t, STOPS);
+      }
+      return b!;
+    };
+    let bf = stood(ring), bp = stood(plain.ring);
+    expect(bf.restStop).toBe(0);
+    // Standing: the next visit's lap is seeded from the residual, and it is
+    // short of the reference, so the stand ahead is priced longer.
+    const gapStanding = occ1(bf, bp, now0, NO_AGE);
+    expect(gapStanding).toBeGreaterThan(120);
+    // The departure poll, rest still held, lead on the moving variant.
+    const t0 = now0 + 10_000;
+    for (const [xm, dt] of [[45, 5_000], [100, 10_000]] as const) {
+      const f0 = at(xm, 0);
+      bf = stepBelief(bf, ring, { lat: f0.lat, lon: f0.lon }, now0 + dt, STOPS);
+      bp = stepBelief(bp, plain.ring, { lat: f0.lat, lon: f0.lon }, now0 + dt, STOPS);
+    }
+    expect(bf.rested).toBe(true);
+    const gapHeld = occ1(bf, bp, t0, NO_AGE);
+    // The defect, for the record: with no rest identity to seed from, the
+    // same poll prices the next visit with no lap at all.
+    expect(Math.abs(occ1({ ...bf, restStop: -1, leftStop: -1 }, bp, t0, NO_AGE))).toBeLessThan(30);
+    // Released, the served age still absent.
+    const t1 = now0 + 15_000;
+    const f1 = at(140, 0);
+    bf = stepBelief(bf, ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    bp = stepBelief(bp, plain.ring, { lat: f1.lat, lon: f1.lon }, t1, STOPS);
+    expect(bf.rested).toBe(false);
+    expect(bf.leftStop).toBe(0);
+    const gapDeparture = occ1(bf, bp, t1, NO_AGE);
+    expect(Math.abs(occ1({ ...bf, leftStop: -1 }, bp, t1, NO_AGE))).toBeLessThan(30);
+    // Then the collector fires and the age counts from now.
+    const t2 = now0 + 30_000;
+    const f2 = at(220, 0);
+    bf = stepBelief(bf, ring, { lat: f2.lat, lon: f2.lon }, t2, STOPS);
+    bp = stepBelief(bp, plain.ring, { lat: f2.lat, lon: f2.lon }, t2, STOPS);
+    const gapNext = occ1(bf, bp, t2, { 1: 20, 3: 130 });
+    expect(gapNext).toBeGreaterThan(120);
+    // One correction, all the way through: held and released price what the
+    // served clock prices once it fires, and the standing chain — whose lap
+    // is the nominal loop, a poll or two short of a clock that starts at the
+    // pull-out — is within a minute of it, not the four the dip was.
+    expect(Math.abs(gapHeld - gapNext)).toBeLessThan(30);
+    expect(Math.abs(gapDeparture - gapNext)).toBeLessThan(30);
+    expect(Math.abs(gapStanding - gapNext)).toBeLessThan(60);
+  });
+
   it("scales the RESIDUAL of a stand in progress by the identity the code relies on", () => {
     // A stand scaled by f is the variable f x X, so the remaining time given r
     // seconds already stood is f x (X's remainder given r / f). `addResidual`
