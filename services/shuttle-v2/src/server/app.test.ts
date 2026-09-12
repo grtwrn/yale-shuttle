@@ -9,6 +9,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 
 import type { BusPosition, Route, Stop } from "../schema/api.js";
 
@@ -1493,6 +1494,7 @@ describe("static routes", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shuttle-v2-static-"));
     fs.writeFileSync(path.join(dir, "index.html"), "<html>rider app</html>");
     fs.writeFileSync(path.join(dir, "stats.html"), "<html>operator dashboard</html>");
+    fs.writeFileSync(path.join(dir, "about.html"), "<html>about page</html>");
     fs.writeFileSync(path.join(dir, "stop-data.html"), "<html>operator stop data</html>");
     return {
       dir,
@@ -1519,6 +1521,39 @@ describe("static routes", () => {
       expect(await explicit.text()).toContain("operator dashboard");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves the About page at both /about and /about.html, no-store", async () => {
+    // The footer links the extensionless spelling; the .html one would
+    // otherwise reach serveStatic with no Cache-Control and be heuristically
+    // cached, so a bookmark could show a pre-deploy copy.
+    const { dir, app: withDir } = withStatic();
+    try {
+      const bare = await withDir.request("/about");
+      expect(bare.status).toBe(200);
+      expect(await bare.text()).toContain("about page");
+      expect(bare.headers.get("cache-control")).toBe("no-store");
+
+      const explicit = await withDir.request("/about.html");
+      expect(explicit.status).toBe(200);
+      expect(await explicit.text()).toContain("about page");
+      expect(explicit.headers.get("cache-control")).toBe("no-store");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps both standalone pages out of the service worker's cache", () => {
+    // Source-level because the worker is plain JS in web/public that no test
+    // can import: it is network-first for everything, and these two pages are
+    // served no-store and skipped outright, so a stale copy of either can
+    // never be handed back from the shell cache.
+    const src = fs.readFileSync(
+      fileURLToPath(new URL("../../web/public/sw.js", import.meta.url)), "utf8",
+    );
+    for (const p of ["/stats", "/stats.html", "/about", "/about.html"]) {
+      expect(src).toContain(`url.pathname === "${p}"`);
     }
   });
 

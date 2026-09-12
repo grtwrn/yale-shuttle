@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
-  AffiliationDisclaimer, BETA_LABEL, BetaBanner, DISCLAIMER_TEXT,
+  ABOUT_HREF, ABOUT_LABEL, AffiliationDisclaimer, BETA_LABEL, BetaBanner,
+  DISCLAIMER_TEXT,
 } from "./Banners";
 
 // Rendered without a DOM library: these are a handful of elements, so
@@ -88,18 +90,56 @@ describe("BetaBanner", () => {
 });
 
 describe("AffiliationDisclaimer", () => {
-  it("disclaims both affiliation and endorsement", () => {
+  it("no longer repeats the disclaimer in the footer — the header carries it", () => {
     const text = textOf(flatten(AffiliationDisclaimer() as unknown));
-    expect(text).toContain(DISCLAIMER_TEXT);
-    expect(text).toMatch(/not affiliated/i);
-    expect(text).toMatch(/endorse/i);
-    expect(text).toMatch(/Yale University/);
+    expect(text).not.toContain(DISCLAIMER_TEXT);
+    // The sentence is rendered under the title from the same constant, so the
+    // two cannot drift; TransitMap cannot be rendered here, so pin it at source.
+    const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/className="app-tagline"[\s\S]{0,400}\{DISCLAIMER_TEXT\}/);
+    expect(DISCLAIMER_TEXT).toMatch(/not affiliated/i);
+    expect(DISCLAIMER_TEXT).toMatch(/endorse/i);
   });
 
-  it("is plain text — nothing to tap and nothing to dismiss", () => {
+  it("has nothing to dismiss, and no control but the About link", () => {
+    // The sentence is a standing fact, so it is still plain text: no button,
+    // no handler, nothing that could hide it. The one anchor is the About
+    // link added below, which navigates rather than changing app state.
     const els = flatten(AffiliationDisclaimer() as unknown);
-    expect(els.some((e) => e.type === "button" || e.type === "a")).toBe(false);
+    expect(els.some((e) => e.type === "button")).toBe(false);
     expect(els.some((e) => "onClick" in e.props)).toBe(false);
+    expect(els.filter((e) => e.type === "a")).toHaveLength(1);
+  });
+
+  it("renders the About link to the standalone page", () => {
+    const link = flatten(AffiliationDisclaimer() as unknown)
+      .find((e) => e.type === "a");
+    expect(link).toBeTruthy();
+    expect(link!.props.href).toBe(ABOUT_HREF);
+    expect(link!.props.href).toBe("/about");
+    expect(link!.props.children).toBe(ABOUT_LABEL);
+    expect(ABOUT_LABEL).toBe("About");
+    // Same tab: /about is a page a rider reads once and backs out of, and a
+    // new tab would leave the app stranded behind it on a phone.
+    expect(link!.props.target).toBeUndefined();
+  });
+
+  it("gives the About link the project's 44 px minimum touch target", () => {
+    const link = flatten(AffiliationDisclaimer() as unknown)
+      .find((e) => e.type === "a")!;
+    const style = link.props.style as Record<string, unknown>;
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+    // A bare inline anchor's box is only as tall as its text, so the height
+    // is only real with a flex/block display.
+    expect(String(style.display)).toMatch(/flex|block/);
+    // Colour alone does not read as a link at 12 px in a muted grey.
+    expect(style.textDecoration).toBe("underline");
+    expect(style.color).toBeTruthy();
+  });
+
+  it("keeps the disclaimer sentence byte-identical", () => {
+    expect(DISCLAIMER_TEXT)
+      .toBe("Not affiliated with or endorsed by Yale University.");
   });
 
   it("stays quiet: small and muted, with an explicit colour", () => {

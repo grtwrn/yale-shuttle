@@ -29,9 +29,10 @@ import { noteShown } from "./shownLog";
 // countdown's range, both read off the stand table the countdown is billed
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
-import { BerthInset } from "./BerthInset";
+import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
-import { chipCountdownText, standChipFor, standWaitFor, stopEtaText, waitLegText } from "./standWait";
+import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
+import { bandTitle, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -67,7 +68,7 @@ import { getOffAlertTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
-import { AffiliationDisclaimer, BetaBanner } from "./Banners";
+import { AffiliationDisclaimer, BetaBanner, DISCLAIMER_TEXT } from "./Banners";
 import { ContributeButton } from "./ContributeButton";
 import IssuesPanel from "./IssuesPanel";
 import { fetchMyReports, hasUnseenChanges, loadSeenStatuses } from "./myReports";
@@ -2146,7 +2147,7 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, busDepartNowSec: 0, computedAtMs: nowMs,
+          busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
 
@@ -2180,7 +2181,7 @@ const TripPlanner: FC<{
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busEtaSec: match.eta, busDepartNowSec: match.departNow, computedAtMs: nowMs,
+        busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3526,19 +3527,6 @@ const TripPlanner: FC<{
                 : resolveStandingStop(
                     busMatch, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
                   );
-              const standView = o.departed || !busMatch
-                ? null
-                : standWaitFor(
-                    standRest,
-                    dwellTimes?.[cfg.routeIds[0]] ?? {},
-                    dwellTimes ?? undefined,
-                    remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    o.boardStopId,
-                    // NOT decayed by wall clock: it is the drive AFTER the
-                    // stand ends, and none of it has been served while the bus
-                    // sits. The point number above still is (report #48).
-                    o.busDepartNowSec,
-                  );
               const passedMatch = o.missedBus
                 ? buses.find((b) =>
                     isBusOnRoute(b, allStops, stopCoords) &&
@@ -3601,14 +3589,15 @@ const TripPlanner: FC<{
                 boardEta: o.departed ? null : stopEtaText(
                   // The same composition the Map tab's stop rows use, so a bus
                   // standing mid-layover cannot read as a range here and a point
-                  // there. `standView` above is the same belief; it stays for
-                  // the row's own range and title.
+                  // there: `arrivalBand` off the pinned arrival's own band, the
+                  // standing floor from `standRest`.
                   standRest,
                   {
                     eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    departNow: o.busDepartNowSec,
+                    low: o.busLowSec, high: o.busHighSec,
+                    departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs,
                   },
-                  o.boardStopId, dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
+                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
                 ),
                 arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
@@ -3824,10 +3813,15 @@ const TripPlanner: FC<{
                   ),
                   dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
                   dwellTimes ?? undefined,
-                  busEtaLive,
-                  o.boardStopId,
-                  o.busDepartNowSec,
                 )
+              : null;
+            // THE ROW'S RANGE: the pinned arrival's own 10-90 band, when it is
+            // wide enough to print (etaBand.ts) — standing OR moving — through
+            // the one composer every surface reads (`arrivalBand`): decayed
+            // with the point, and for a standing bus floored at departNow +
+            // the shortest stand still left.
+            const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
+              ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
               : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
@@ -3859,7 +3853,7 @@ const TripPlanner: FC<{
              * tables and the same clock as slot 1's, so the two cannot answer
              * differently about the same stand.
              */
-            const nextStandCtx = nextArrLive && shuttleCtx && !o.departed
+            const nextBand = nextArrLive && shuttleCtx && !o.departed
               ? (() => {
                   const norm = shuttleCtx.normBus;
                   const nextBus = buses.find((b) =>
@@ -3868,15 +3862,16 @@ const TripPlanner: FC<{
                     isBusOnRoute(b, shuttleCtx.allStops, stopCoords),
                   ) ?? null;
                   if (!nextBus) return null;
-                  return standWaitFor(
-                    resolveStandingStop(
-                      nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                    ),
-                    dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
-                    dwellTimes ?? undefined,
-                    nextArrLive.eta,
-                    o.boardStopId,
-                    nextArrLive.departNow,
+                  // Only a STANDING slot-2 bus contributes its band, exactly
+                  // as #216 gated it; the band itself is the model's own
+                  // (its arrival row) through the same composer as slot 1's.
+                  const standing = resolveStandingStop(
+                    nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                  );
+                  if (!standing) return null;
+                  return arrivalBand(
+                    standWaitFor(standing, dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
+                    { low: nextArrLive.low, high: nextArrLive.high, departNow: nextArrLive.departNow },
                   );
                 })()
               : null;
@@ -4016,7 +4011,7 @@ const TripPlanner: FC<{
                             below spells out this bus's wait; the pair is about
                             the one after it. */}
                         {busEtaLive !== null && !o.departed && (
-                          <span title={standCtx?.rangeTitle ?? undefined} style={{
+                          <span title={leadBand ? bandTitle(leadBand, busEtaLive) : undefined} style={{
                             fontSize: 13, color: "#5f6368", fontWeight: 500,
                             minWidth: 0, overflow: "hidden",
                             textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -4028,9 +4023,9 @@ const TripPlanner: FC<{
                                 band goes in as evidence and is never drawn. */}
                             {fmtBusLine({
                               leadSec: busEtaLive,
-                              leadBand: standCtx?.range ?? null,
+                              leadBand,
                               nextSec: nextArrLive?.eta ?? null,
-                              nextBand: nextStandCtx?.range ?? null,
+                              nextBand,
                             })}
                           </span>
                         )}
@@ -4306,7 +4301,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = waitLegText(standCtx, o.walkToSec, o.waitSec);
+                        const waitText = waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -4330,26 +4325,33 @@ const TripPlanner: FC<{
                         );
                       })()}
                       {/* Where the bus really pulls up, when that is not the
-                          stop's own dot. The sentence, not the marker, is what
-                          makes this usable: a second dot on its own reads as
-                          the map being wrong, and the count is what turns it
-                          into advice. Sits directly above Directions because
-                          that is the thing it corrects. The picture, the copy
-                          and the hooks it needs live in BerthInset.tsx. */}
-                      {berth && (
-                        <BerthInset
+                          stop's own dot — FOLDED by default since 2026-09-11
+                          (operator: "maybe we can collapse the stop location by
+                          default and put a drop-down button next to directions
+                          to published stop that has an ! alert"). The warning
+                          beside Directions is the summary; the map, the heading
+                          and the count are behind it, and are not mounted until
+                          the rider asks. BerthDisclosure.tsx owns the fold and
+                          the row; BerthInset.tsx the picture and the copy.
+
+                          A card with no berth takes the branch below and is
+                          unchanged, down to the button's own words. */}
+                      {berth ? (
+                        <BerthDisclosure
                           berth={berth}
                           published={stopCoords[o.boardStopId]}
                           routeLabel={o.routeLabel}
                           color={o.color}
                           stopName={boardName}
                           path={routePaths[String(berth.routeId)] ?? []}
+                          navHref={navHref}
+                          boardName={boardName}
                         />
-                      )}
-                      {/* Directions is the card's one prominent action
-                          (user request 2026-07-17: "make it more
-                          obvious"). */}
-                      {navHref && (
+                      ) : (
+                      /* Directions is the card's one prominent action
+                         (user request 2026-07-17: "make it more
+                         obvious"). */
+                      navHref && (
                         <a
                           href={navHref}
                           target="_blank"
@@ -4363,8 +4365,8 @@ const TripPlanner: FC<{
                             fontWeight: 600, fontSize: 14,
                             textDecoration: "none", fontFamily: "inherit",
                           }}
-                        >{`🧭 Directions to ${berth ? "published stop" : "stop"}`}</a>
-                      )}
+                        >🧭 Directions to stop</a>
+                      ))}
                       {/* One flat row of quiet secondary links — the old
                           nested disclosures (More ▾ → Stops ▾ → Route ▾)
                           made riders dig three levels for a stop list. The
@@ -5798,7 +5800,7 @@ const StopList: FC<{
                           composition as the trip card's minimap chip. */}
                       {e.estimated ? "~" : ""}{stopEtaText(
                         restForBus[normBusName(e.busName)] ?? null,
-                        e, stopId, routeDwells, dwellTimes,
+                        e, routeDwells, dwellTimes,
                       )}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
@@ -7435,13 +7437,11 @@ const TransitMap: FC = () => {
         <h1 style={{ fontSize: 14, fontWeight: 700, letterSpacing: 5, textTransform: "uppercase", margin: 0, textAlign: "center" }}>
           Yale Shuttle Tracker
         </h1>
-        {/* One small line saying what this is not (operator, 2026-09-11: "add a
-            tagline under the title in smaller font about this being an
-            unnofficial app"). Kept to one line at 360 px and set quiet so the
-            header stays uncrowded; the footer still carries the full
-            "Not affiliated with or endorsed by Yale University." */}
+        {/* The affiliation disclaimer, under the title (operator, 2026-09-11:
+            the header line IS the disclaimer now and the footer copy is gone).
+            One source, Banners.DISCLAIMER_TEXT; one line at 360 px. */}
         <span className="app-tagline" style={{ fontSize: 10.5, color: "#8a8a9a", letterSpacing: 0.2, textAlign: "center", lineHeight: 1.3 }}>
-          Unofficial app · not affiliated with Yale University
+          {DISCLAIMER_TEXT}
         </span>
         {/* Just the name. The tagline ("Unofficial live tracker for the Yale
             shuttles") and the clock that sat under it were removed on

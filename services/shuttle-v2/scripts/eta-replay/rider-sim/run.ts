@@ -211,6 +211,17 @@ if (storeKind === "none") { try { await fromClient<any>("web/src/anchorGate.ts")
 const findRouteAnchor: ((b: BusData, stops: number[], coords: Record<number, { lat: number; lon: number }>) => number) | null =
   typeof (anchorMod as any).findRouteAnchor === "function" ? (anchorMod as any).findRouteAnchor : null;
 const hasNextRule = typeof (arrivalsMod as any).nextArrivalAfterPinned === "function";
+// The row's RANGE (web/src/etaBand.ts, trees from 2026-09-11): the pinned
+// arrival's own band, printed with its median when wide enough, and folded
+// with slot 2 by bunching.ts. Older trees print the bare pair.
+let bandMod: { displayBand: (low: number, high: number, at: number | undefined, now: number) => { lowSec: number; highSec: number } | null } | null = null;
+let bunchingMod: { fmtBusLine: (i: { leadSec: number; leadBand: { lowSec: number; highSec: number } | null; nextSec: number | null }) => string } | null = null;
+let standWaitMod: { standWaitFor: (standing: unknown, routeDwells: unknown, dwellsByRoute: unknown) => { soonSec: number } | null } | null = null;
+let liveAnchorMod: { resolveStandingStop: (bus: unknown, cfg: unknown, routeStops: unknown, stopCoords: unknown, now: number, store: unknown) => unknown } | null = null;
+try {
+  bandMod = await fromClient<any>("web/src/etaBand.ts"); bunchingMod = await fromClient<any>("web/src/bunching.ts");
+  standWaitMod = await fromClient<any>("web/src/standWait.ts"); liveAnchorMod = await fromClient<any>("web/src/liveAnchor.ts");
+} catch { /* older tree */ }
 
 function treeInfo() {
   const git = (cmd: string) => { try { return execSync(`git -C "${CLIENT_ROOT}" ${cmd}`, { encoding: "utf8" }).trim(); } catch { return "?"; } };
@@ -688,12 +699,21 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   const nextArr: UpcomingArrival | null = hasNextRule
     ? arrivalsMod.nextArrivalAfterPinned(live, u.busName, busEtaLive)
     : (live.filter((x) => x.eta > busEtaLive + 30).sort((x, y) => x.eta - y.eta)[0] ?? null);
-  const token = formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
   // The estimator's own interval for the pinned arrival, for the coverage
   // score: the entry the card is following, or 0-0 for a bus at the kerb.
   const pinnedEntry = live.filter((x) => norm(x.busName) === norm(u.busName)).sort((x, y) => x.eta - y.eta)[0];
   const lowSec = hereBus ? 0 : pinnedEntry ? pinnedEntry.low : null;
   const highSec = hereBus ? 0 : pinnedEntry ? pinnedEntry.high : null;
+  // The token as the client prints it. Slot 2's own band (the standing-bus
+  // evidence of #216's third rule) is not reproduced here.
+  // No standing floor: the card stopped applying it (standWait.ts
+  // `arrivalBand`, refused on measurement 2026-09-11), so the simulator
+  // must not either or it would score a client that no longer exists.
+  const floorSec: number | undefined = undefined;
+  const leadBand = bandMod && lowSec != null && highSec != null ? (bandMod.displayBand as any)(lowSec, highSec, t, t, floorSec) : null;
+  const token = bunchingMod && leadBand
+    ? bunchingMod.fmtBusLine({ leadSec: busEtaLive, leadBand, nextSec: nextArr ? nextArr.eta : null })
+    : formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
   return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest, lowSec, highSec };
 }
 

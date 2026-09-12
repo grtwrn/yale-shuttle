@@ -12,6 +12,7 @@
 // the operator asked for three different things (2026-09-11: "a real map area so
 // I can see the street name and zoom out if needed"):
 //
+//   <cell>-collapsed.png   the folded row a rider meets first — no map mounted
 //   <cell>-initial.png     the opening view, capped at the static inset's scale
 //   <cell>-zoomout.png     one step out, where the street names arrive
 //   <cell>-fullscreen.png  the app's own expanded map, opened with ⤢
@@ -102,6 +103,20 @@ let bad = [];
 
 for (const cell of CELLS) {
   await page.goto(`${BASE}/?review=berth&cell=${cell}`, { waitUntil: "domcontentloaded" });
+  // The block is FOLDED by default since 2026-09-11, so the first shot is the
+  // state a rider actually meets: the Directions button and the ⚠ chip beside
+  // it, and no map mounted at all.
+  const fold = page.locator("button[aria-expanded]");
+  await fold.waitFor({ timeout: 30_000 });
+  await sleep(600);
+  const collapsedContainers = await page.evaluate(() => document.querySelectorAll(".leaflet-container").length);
+  if (collapsedContainers !== 0) bad.push(`${cell}: ${collapsedContainers} .leaflet-container while folded, expected 0`);
+  const filesCollapsed = await shot(`${cell}-collapsed`);
+  // The canary reads the card as TEXT and BOTH states now exist, so both are
+  // captured: the folded row is what the parser meets on almost every card.
+  fs.writeFileSync(path.join(OUT, `${cell}-innertext-collapsed.txt`),
+    await page.evaluate(() => document.body.innerText));
+  await fold.click({ timeout: 10_000 });
   // Tiles come off openstreetmap.org; give them time or the shot is grey.
   await page.locator(".berth-map-wrap .leaflet-container").waitFor({ timeout: 30_000 });
   await page.waitForFunction(
@@ -110,7 +125,7 @@ for (const cell of CELLS) {
   ).catch(() => {});
   await sleep(2500);
 
-  const files = { initial: await shot(`${cell}-initial`) };
+  const files = { collapsed: filesCollapsed, initial: await shot(`${cell}-initial`) };
   const before = await mapState();
 
   // One step out — the operator's "zoom out if needed", and the step at which
@@ -141,11 +156,11 @@ for (const cell of CELLS) {
   // `innerText` exactly as an SVG <text> did. So the capture is dumped here and
   // spliced into the fixture in `scripts/canary-metrics.test.mjs` — #111
   // "needed no change" too, and blinded the canary for twelve minutes.
-  fs.writeFileSync(path.join(OUT, `${cell}-innertext.txt`),
+  fs.writeFileSync(path.join(OUT, `${cell}-innertext-expanded.txt`),
     await page.evaluate(() => document.body.innerText));
 
   report.cells.push({
-    cell, files,
+    cell, files, collapsedContainers,
     inertTouchAction: before?.touchAction,
     inertClasses: before?.classes,
     fullscreenHeight: fs2?.box.h,
@@ -163,6 +178,7 @@ for (const cell of CELLS) {
 // somewhere to go — the map's own behaviour is what is under test, not the
 // page's height.
 await page.goto(`${BASE}/?review=berth&cell=${CELLS[0]}`, { waitUntil: "domcontentloaded" });
+await page.locator("button[aria-expanded]").click({ timeout: 30_000 });
 await page.locator(".berth-map-wrap .leaflet-container").waitFor({ timeout: 30_000 });
 await sleep(3000);
 await page.evaluate(() => {

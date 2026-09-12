@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   fmtBusPair,
+  fmtBusBand,
   fmtBusRange,
   fmtClock,
   fmtMin,
@@ -349,6 +350,38 @@ describe("a malformed geocode result never crashes the dropdown", () => {
       expect(typeof suggIcon(g)).toBe("string");
     }
     expect(suggLabel({ display_name: undefined } as unknown as GeocodeResult)).toBe("");
+  });
+});
+
+describe("fmtBusBand — the range alone (operator, 2026-09-11)", () => {
+  it("prints the range and nothing in front of it", () => {
+    // "just show 1-8, no need to show 2 (1-8)" — the median is the tooltip's.
+    expect(fmtBusBand(1 * 60 + 5, 2 * 60 + 10, 8 * 60 + 30, 14 * 60)).toBe("in 1-8, then 14 min");
+    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60)).toBe("in 2-9 min");
+    expect(fmtBusBand(2 * 60, 5 * 60, 9 * 60, 17 * 60)).toBe("in 2-9, then 17 min");
+    expect(fmtBusBand(6 * 60 + 20, 10 * 60 + 5, 18 * 60 + 40, 26 * 60)).toBe("in 6-18, then 26 min");
+  });
+
+  it("keeps fmtBusRange's spelling when the median is inside a minute", () => {
+    expect(fmtBusBand(5, 40, 6 * 60)).toBe("now-6 min");
+    expect(fmtBusBand(5, 8, 6 * 60, 11 * 60)).toBe("now-6, then 11 min");
+    expect(fmtBusBand(45, 50, 7 * 60)).toBe("in <1-7 min");
+  });
+
+  it("spells a sub-minute low end the way the range does", () => {
+    expect(fmtBusBand(5, 3 * 60, 6 * 60)).toBe("now-6 min");
+    expect(fmtBusBand(45, 3 * 60, 6 * 60)).toBe("in <1-6 min");
+  });
+
+  it("prints the band alone when the shown number is held under its low end", () => {
+    // The 2026-09-11 Red card: eta 117 s (clamped), band floored at 128-559.
+    expect(fmtBusBand(128, 117, 559)).toBe("in 2-9 min");
+    expect(fmtBusBand(128, 117, 559, 14 * 60)).toBe("in 2-9, then 14 min");
+  });
+
+  it("collapses to the median when the two ends print the same minute", () => {
+    expect(fmtBusBand(200, 215, 230)).toBe("in 3 min");
+    expect(fmtBusBand(200, 215, 230, 900)).toBe("in 3, 15 min");
   });
 });
 

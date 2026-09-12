@@ -48,6 +48,14 @@ export type TripOption = {
    * Equal to `busEtaSec` for a bus that is not resting.
    */
   busDepartNowSec?: number;
+  /**
+   * The same pinned arrival's 10-90 band (arrivals.ts `UpcomingArrival.low` /
+   * `.high`), carried beside `busEtaSec` for the same reason as the floor:
+   * the row's range must be the band of the very row its point came from.
+   * etaBand.ts decides whether it is wide enough to print.
+   */
+  busLowSec?: number;
+  busHighSec?: number;
   computedAtMs?: number;
 };
 
@@ -395,6 +403,8 @@ export function planTrip(
         let waitSec: number; let busName: string;
         let busEtaSec: number | undefined;
         let busDepartNowSec: number | undefined;
+        let busLowSec: number | undefined;
+        let busHighSec: number | undefined;
         if (futureMode) {
           waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
           busName = "";
@@ -411,6 +421,7 @@ export function planTrip(
             waitSec = 0;
             busEtaSec = 0; // it is AT the stop
             busDepartNowSec = 0;
+            busLowSec = 0; busHighSec = 0;
             busName = hereBus.bus_name.replace(/^#/, "");
           } else if (arrivals.length === 0) {
             continue;
@@ -428,6 +439,7 @@ export function planTrip(
             waitSec = Math.max(0, next.eta - walkToSec);
             busEtaSec = next.eta;
             busDepartNowSec = next.departNow;
+            busLowSec = next.low; busHighSec = next.high;
             busName = next.busName;
           }
         }

@@ -51,15 +51,15 @@
 // twice. The same choice on the other side makes an equal pair of points
 // ("in 25, 25 min") bunched, which is the 22:28 card.
 
-import { fmtBusPair, fmtBusRange, fmtMin } from "./format";
+import { fmtBusBand, fmtBusPair, fmtMin } from "./format";
 
-/** Slot 1's displayed interval when its bus is standing (standWait.ts). */
+/** Slot 1's displayed interval — the estimator's own band, when it is wide enough to print (etaBand.ts). */
 export interface EtaBand { lowSec: number; highSec: number }
 
 export interface BunchInput {
   /** Slot 1, the PINNED bus: the point number, seconds. */
   leadSec: number;
-  /** Slot 1's range, when it is standing. Displayed. */
+  /** Slot 1's range, when the band is wide enough to print (etaBand.ts `displayBand`). Displayed. */
   leadBand?: EtaBand | null;
   /** Slot 2, the bus behind it: its point, seconds, or null when there is none. */
   nextSec?: number | null;
@@ -110,14 +110,15 @@ export function bunchDecision(input: BunchInput): BunchDecision {
   const none: BunchDecision = { bunched: false, reason: null };
   if (!finite(leadSec) || !finite(nextSec)) return none;
 
-  // What slot 1 actually PRINTS. `fmtBusRange` collapses a range whose two
+  // What slot 1 actually PRINTS. `fmtBusBand` collapses a range whose two
   // ends round to one minute back to a point ("a range of one number is just a
-  // number wearing a dash"), and when it does, the number shown is the band's
-  // LOW end, not the median — so the comparison has to follow it there.
-  const bandLow = leadBand ? leadBand.lowSec : leadSec;
-  const bandHigh = leadBand ? leadBand.highSec : leadSec;
+  // number wearing a dash"), and when it does, the number shown is the median
+  // — so the comparison has to follow it there.
+  const collapsed = leadBand != null && shownMin(leadBand.lowSec) === shownMin(leadBand.highSec);
+  const bandLow = leadBand && !collapsed ? leadBand.lowSec : leadSec;
+  const bandHigh = leadBand && !collapsed ? leadBand.highSec : leadSec;
   const lo = shownMin(bandLow), hi = shownMin(bandHigh);
-  const isInterval = leadBand != null && lo !== hi;
+  const isInterval = leadBand != null && !collapsed;
   const next = shownMin(nextSec);
 
   if (isInterval && next <= hi) return { bunched: true, reason: "inside-band" };
@@ -172,12 +173,12 @@ export function fmtBusLine(input: BunchInput): string {
   const decision = bunchDecision(input);
   if (decision.bunched) {
     const head = leadBand
-      ? fmtBusRange(leadBand.lowSec, leadBand.highSec)
+      ? fmtBusBand(leadBand.lowSec, leadSec, leadBand.highSec)
       : fmtBusPair(leadSec);
     // "arriving now" and "now-6 min" have no "in" to lose and keep their words.
     return `${head.replace(/^in /, "")} ${BUNCHED_SUFFIX}`;
   }
   return leadBand
-    ? fmtBusRange(leadBand.lowSec, leadBand.highSec, second)
+    ? fmtBusBand(leadBand.lowSec, leadSec, leadBand.highSec, second)
     : fmtBusPair(leadSec, second);
 }

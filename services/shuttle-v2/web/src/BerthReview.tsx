@@ -9,8 +9,14 @@
 // `/api/buses` payload, and a screenshot at 390 px is the before/after evidence
 // (the sibling of `?review=minimap`).
 //
+// It renders the card's whole berth block — `BerthDisclosure`, i.e. the
+// Directions button, the ⚠ toggle beside it and whatever that reveals — and not
+// `BerthInset` alone, because since 2026-09-11 the folded row is what a rider
+// meets first and a preview of the open state only would measure a screen the
+// app no longer has.
+//
 // It also carries a Collapse/Expand button, which the rider's card does not
-// need one of: in the app the inset is mounted and unmounted by `expandedKey`,
+// need one of: in the app the block is mounted and unmounted by `expandedKey`,
 // and the only way to watch a Leaflet TEARDOWN from outside is to make that
 // lifecycle drivable. `scripts/berth-teardown-check.mjs` uses it to prove the
 // map really goes — no container left in the DOM, no tile requests afterwards,
@@ -27,7 +33,7 @@
 
 import { useEffect, useState } from "react";
 
-import { BerthInset } from "./BerthInset";
+import { BerthDisclosure } from "./BerthDisclosure";
 import { BERTHS } from "./berths";
 import { ROUTE_LISTS } from "./routes";
 import type { LatLon } from "./geo";
@@ -103,31 +109,23 @@ export default function BerthReview() {
             fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#3c4043",
           }}
         >{open ? "Collapse card" : "Expand card"}</button>
+        {/* The card's WHOLE berth block, fold and all — the Directions button,
+            the ⚠ toggle beside it, and whatever the toggle reveals. Rendering
+            `BerthInset` straight here would measure a state the app no longer
+            has: since 2026-09-11 the rider meets the folded row first. */}
         {open && (
-          <BerthInset
+          <BerthDisclosure
             berth={b}
             published={asLatLon(p.stop_coords?.[String(b.stopId)])}
             routeLabel={cfg?.label ?? `route ${b.routeId}`}
             color={cfg?.color ?? "#5f6368"}
             stopName={name}
             path={p.route_paths?.[String(b.routeId)] ?? []}
+            navHref={`https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lon}&travelmode=walking`}
+            boardName={name}
           />
         )}
       </div>
-      {/* The button the card carries under the inset, so its relabelled text is
-          in the same capture as the map it belongs to (operator, 2026-09-11:
-          "the directions to stop button should now say directions to published
-          stop since we show two"). */}
-      <a
-        href="#"
-        onClick={(e) => e.preventDefault()}
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          gap: 6, marginTop: 12, minHeight: 44, borderRadius: 8,
-          border: "1.5px solid #1a73e8", color: "#1a73e8",
-          fontWeight: 600, fontSize: 14, textDecoration: "none", fontFamily: "inherit",
-        }}
-      >🧭 Directions to published stop</a>
     </div>
   );
 }

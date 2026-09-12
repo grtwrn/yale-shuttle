@@ -70,6 +70,22 @@ describe("parseBusEtaText", () => {
     });
     // And every unbunched form says so, rather than leaving the flag undefined.
     expect(parseBusEtaText("🚌 in 8, 16 min").bunched).toBe(false);
+  });
+
+  it("reads the median-with-band form (etaBand.ts, 2026-09-11) as the band's interval, median beside it", () => {
+    // "in 10 (6-18), 26 min": the interval is [6:00, 19:00) exactly as
+    // "in 6-18, then 26 min" reads, and the median bucket rides alongside.
+    expect(parseBusEtaText("🚌 in 10 (6-18), 26 min")).toMatchObject({
+      first: [360, 1140], second: [1560, 1620], spread: true, bunched: false, median: [600, 660],
+    });
+    expect(parseBusEtaText("🚌 in 5 (2-9) min")).toMatchObject({ first: [120, 600], second: null, spread: true, median: [300, 360] });
+    expect(parseBusEtaText("🚌 in 3 (now-6) min")).toMatchObject({ first: [0, 420], median: [180, 240] });
+    expect(parseBusEtaText("🚌 in 3 (<1-6) min")).toMatchObject({ first: [10, 420] });
+    // Bunched: the head drops its "in" like every other head.
+    expect(parseBusEtaText("🚌 29 (23-36) min · 2 buses")).toMatchObject({
+      first: [1380, 2220], second: null, spread: true, bunched: true, median: [1740, 1800],
+    });
+    expect(parseBusEtaText("🚌 in 5 (2-9) min").raw).toBe("in 5 (2-9) min");
     expect(parseBusEtaText("🚌 in 3-7, then 19 min").bunched).toBe(false);
   });
 
@@ -1015,6 +1031,137 @@ Not affiliated with or endorsed by Yale University.`;
   });
 });
 
+describe("the median-with-band form on a captured page (etaBand.ts, 2026-09-11)", () => {
+  // Real bundle, phone-sized chromium at 390 px against a staged server with
+  // Red's production tables and two buses placed on the published sequence
+  // (pr-preview/eta-band/probe.mjs). Captured innerText, verbatim.
+
+  // #304 standing at 344 Winchester, #316 far behind: the band is wide enough
+  // to print, the median sits inside it, the second bus stands apart, and the
+  // low end is floored at what the bus must still stand and then drive.
+  const LIVE_BAND_MEDIAN = `YALE SHUTTLE TRACKER
+Unofficial app · not affiliated with Yale University
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☁️
+71°F · Cloudy · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 1 ROUTE
+▴
+🚌
+🚌 (R) 4 (2-10) min
+🏁 (R) 11:36a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Red
+in 4 (2-10), 17 min
+17 min
+🚌 12 min
+11:36a
+›
+🚶 Walk
+37 min
+11:56a
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  // #304 driving toward the 344 Winchester layover, #316 behind it INSIDE the
+  // band: bunching.ts folds the pair, the head keeps its median and its band.
+  const LIVE_BAND_BUNCHED = `YALE SHUTTLE TRACKER
+Unofficial app · not affiliated with Yale University
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.303422, -72.931698
+☆
+WHEN
+Now
+Plan for later…
+☁️
+71°F · Cloudy · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 1 ROUTE
+▴
+🚌
+🚌 (R) 12 (6-20) min
+🏁 (R) 11:44a
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Red
+Red
+12 (6-20) min · 2 buses
+25 min
+🚌 12 min
+11:44a
+›
+🚶 Walk
+37 min
+11:56a
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the median with its band, the second bus after it, and the card around them", () => {
+    const opts = parseOptions(LIVE_BAND_MEDIAN);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Walk"]);
+    expect(opts[0]).toMatchObject({ totalMin: 17, arriveText: "11:36a" });
+    // The low end is 2, not "now": a standing bus's band is floored at
+    // departNow + the shortest stand left (etaBand.ts `standingLowFloor`).
+    expect(opts[0].eta).toMatchObject({
+      first: [120, 660], second: [1020, 1080], spread: true, bunched: false, median: [240, 300],
+      raw: "in 4 (2-10), 17 min",
+    });
+  });
+
+  it("reads the bunched median-with-band head", () => {
+    const opts = parseOptions(LIVE_BAND_BUNCHED);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Walk"]);
+    expect(opts[0]).toMatchObject({ totalMin: 25 });
+    expect(opts[0].eta).toMatchObject({
+      first: [360, 1260], second: null, spread: true, bunched: true, median: [720, 780],
+      raw: "12 (6-20) min \u00b7 2 buses",
+    });
+  });
+});
+
 describe("was there an EVENT behind the flag?", () => {
   // Every one of these is a real transition from scripts/.canary/runs.jsonl
   // with the bus positions the feed recorded alongside it. #71 measured that
@@ -1628,7 +1775,7 @@ describe("an expanded card carrying the berth map", () => {
   // The Directions button is relabelled in the same breath (operator,
   // 2026-09-11: "the directions to stop button should now say directions to
   // published stop since we show two"), and only on a card that shows a berth.
-  const LIVE_BERTH_INSET = `YALE SHUTTLE
+  const LIVE_BERTH_OPEN = `YALE SHUTTLE
 1:31 PM
 Trip
 Map
@@ -1643,6 +1790,9 @@ in 9, 24 min
 1:45p
 ›
 Division/Prospect
+🧭 Directions to published stop
+⚠ 55 m past
+▴
 published stop
 expected stop
 +
@@ -1653,7 +1803,6 @@ expected stop
 Tap the map to zoom and pan
 Wait about 55 m past the published stop
 Red buses actually stop there — seen 37 of the last 40 times one served this stop.
-🧭 Directions to published stop
 Blue Day
 in 4, 19 min
 17 min
@@ -1665,13 +1814,70 @@ Contribute
 🧪
 Not affiliated with or endorsed by Yale University.`;
 
+  /**
+   * And the state almost every card is actually in, since 2026-09-11: folded.
+   * The map is not mounted, so none of its lines exist; what is left is the
+   * Directions button back to its short wording and the ⚠ chip beside it.
+   *
+   * The chip is the line to watch. `isLabelish` is `^[A-Za-z][A-Za-z ]{0,19}$`,
+   * so a chip reading "Stops past published" WOULD have matched and outranked
+   * the route pill — the same failure as "nearby" (#102) and "Contribute". It
+   * carries digits and opens with ⚠, so it cannot; the chevron is its own line
+   * (the button is a flex container) and is not a letter. Captured verbatim at
+   * 390 px by `scripts/berth-map-capture.mjs`, not written by hand.
+   */
+  const LIVE_BERTH_FOLDED = `YALE SHUTTLE
+1:31 PM
+Trip
+Map
+Issues
+↻
+Red
+in 9, 24 min
+14 min
+🚶 2 min
+›
+🚌 9 min
+1:45p
+›
+Division/Prospect
+🧭 Directions to stop
+⚠ 55 m past
+▾
+Blue Day
+in 4, 19 min
+17 min
+1:48p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+Not affiliated with or endorsed by Yale University.`;
+
+  it("reads the FOLDED card — the state almost every berth card is in", () => {
+    const opts = parseOptions(LIVE_BERTH_FOLDED);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
+    expect(opts[0].eta?.raw).toBe("in 9, 24 min");
+    expect(opts[0].totalMin).toBe(14);
+  });
+
+  it("never reads the ⚠ chip as a route label", () => {
+    // Belt and braces on the wording rule: whatever the distance, the chip
+    // opens with a glyph and carries digits, so it can never match the route
+    // pill pattern. A future reword that dropped both would be caught here.
+    for (const text of ["⚠ 55 m past", "⚠ 39 m before", "⚠ 91 m past"]) {
+      expect(/^[A-Za-z][A-Za-z ]{0,19}$/.test(text)).toBe(false);
+    }
+  });
+
   it("still reads the line as Red, not as one of the map's labels or controls", () => {
-    const opts = parseOptions(LIVE_BERTH_INSET);
+    const opts = parseOptions(LIVE_BERTH_OPEN);
     expect(opts.map((o) => o.routeLabel)).toEqual(["Red", "Blue Day"]);
   });
 
   it("takes the countdown from the card, not from the sentence's metres", () => {
-    const [red] = parseOptions(LIVE_BERTH_INSET);
+    const [red] = parseOptions(LIVE_BERTH_OPEN);
     expect(red.eta?.raw).toBe("in 9, 24 min");
     expect(red.eta?.first).toEqual([540, 600]);
     expect(red.totalMin).toBe(14);

@@ -72,9 +72,24 @@ const toggle = async () => {
   await page.locator('[data-toggle="card"]').click({ timeout: 10_000 });
 };
 
+/**
+ * Since 2026-09-11 the map lives one fold deeper: the card expands to a folded
+ * row, and the ⚠ toggle is what mounts it. So the sequence is card-expand ->
+ * fold-open, and there is a new thing to check on the way — an expanded card
+ * whose fold is SHUT must carry no map either.
+ */
+const openFold = async () => {
+  await page.locator("button[aria-expanded]").click({ timeout: 10_000 });
+  await page.locator(".berth-map-wrap .leaflet-container").waitFor({ timeout: 30_000 });
+  await sleep(3000);
+};
+
 await page.goto(`${BASE}/?review=berth&cell=${CELL}`, { waitUntil: "domcontentloaded" });
-await page.locator(".berth-map-wrap .leaflet-container").waitFor({ timeout: 30_000 });
-await sleep(3000);
+await page.locator("button[aria-expanded]").waitFor({ timeout: 30_000 });
+await sleep(800);
+const foldedContainers = await containers();
+if (foldedContainers !== 0) bad.push(`${foldedContainers} .leaflet-container with the fold shut, expected 0`);
+await openFold();
 
 const cycles = [];
 const bad = [];
@@ -93,8 +108,7 @@ for (const n of [1, 2]) {
 
   // ── expand again ──────────────────────────────────────────────────────────
   await toggle();
-  await page.locator(".berth-map-wrap .leaflet-container").waitFor({ timeout: 30_000 });
-  await sleep(3000);
+  await openFold();
   const afterExpand = await containers();
 
   cycles.push({
@@ -115,6 +129,7 @@ if (finalContainers !== 1) bad.push(`after the second expand there are ${finalCo
 
 const report = {
   base: BASE, cell: CELL, quietMs: QUIET_MS,
+  foldedContainers,
   cycles,
   afterSecondExpand: { leafletContainers: finalContainers },
   totalTileRequests: tiles.length,

@@ -41,7 +41,8 @@ import { distanceMeters } from "../../src/network/geo.js";
 import { median } from "../../src/calibrator/shrinkage.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals";
 import { isBusOnRoute, registerRoutePaths } from "../../web/src/anchor";
-import { anchorKeyFor } from "../../web/src/liveAnchor";
+import { anchorKeyFor, resolveStandingStop } from "../../web/src/liveAnchor";
+import { standWaitFor } from "../../web/src/standWait";
 import { ringForBus } from "../../web/src/eta/index";
 // The retired legacy arithmetic, kept as the replay's own copy: the `chord`
 // replica below is that estimator — the stateless anchor, the stall credit
@@ -618,7 +619,7 @@ function replicaEtas(
 
 // -- Score ----------------------------------------------------------------------
 const MODES: Proration[] = ["chord", "none", "path", "chordNoStall", "uncapped", "cappedStallDwell", "cappedStallHalfSeg", "cappedStallQuarterSeg", "cappedStallDwell2x", "dwellSpillAdjacent", "dwellSpillLayover", "dwellSpillLayoverHalf", "dwellSpillBigger", "noFloor", "driveFloor6", "driveFloorNoMin", "oracleAnchor"];
-interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number }
+interface Pair { k: number; atStop: boolean; routeId: number; agree: boolean; leadAgree: boolean | null; dwellBin: string; sid: number; t: number; eta: Record<Proration, number>; det: number | null; prox: number | null; realEta: number; realLow: number; realHigh: number; realDepartNow: number; realLowFloor: number; standingLow: number | null }
 interface OraclePair { k: number; routeId: number; eta: number; prox: number | null; det: number | null }
 const oraclePairs: OraclePair[] = [];
 const pairs: Pair[] = [];
@@ -652,6 +653,12 @@ for (const o of observations) {
   for (let k = 1; k <= MAX_K; k++) targets.push(stops[(busIdx + k) % stops.length]!);
   const real = computeUpcomingArrivals([...new Set(targets)], [o.bus], net.routeStops, net.stopCoords, payload.segmentTimes, o.t, dwellPayloadAt(o.t), clientStore)
     .filter((a) => a.routeLabel === cfg.label);
+  // The card's STANDING floor (etaBand.ts `standingLowFloor`): the shortest
+  // stand still left, read after this poll's belief, added to each row's
+  // `departNow` below. Null while the client does not resolve a stand.
+  const standingNow = resolveStandingStop(o.bus, cfg, net.routeStops, net.stopCoords, o.t, clientStore);
+  const standView = standingNow ? standWaitFor(standingNow, dwellPayloadAt(o.t)[cfg.routeIds[0]!] ?? {}, dwellPayloadAt(o.t)) : null;
+  const soonSec = standView ? standView.soonSec : null;
   // assign the real function's etas to k in order of occurrence per stop id
   const usedPerStop = new Map<number, number>();
   // The CLIENT's own anchor after this poll: the belief's lead leg, which is
@@ -728,6 +735,8 @@ for (const o of observations) {
       realLow: r.low,
       realHigh: r.high,
       realDepartNow: r.departNow,
+      realLowFloor: r.lowFloor,
+      standingLow: soonSec === null ? null : r.departNow + Math.max(0, soonSec),
     });
   }
 }
@@ -777,6 +786,16 @@ if (process.env.PAIRS_OUT) {
       eta: Math.round(p.realEta * 10) / 10,
       low: Math.round(p.realLow * 10) / 10,
       high: Math.round(p.realHigh * 10) / 10,
+      // The drive floor (arrival.ts `departNow`), so a band floored at it can
+      // be scored post hoc beside the raw one.
+      dn: Math.round(p.realDepartNow * 10) / 10,
+      // The band's measured floor (arrival.ts `lowFloor`), not applied by the
+      // client: `band-coverage.mjs --floor fl` scores what applying it would do.
+      fl: Math.round(p.realLowFloor * 10) / 10,
+      // The card's floor for a STANDING bus (etaBand.ts `standingLowFloor`,
+      // departNow + the shortest stand left), null while the client does not
+      // resolve a stand; `band-coverage.mjs --floor sl` scores it.
+      sl: p.standingLow === null ? null : Math.round(p.standingLow * 10) / 10,
       det: p.det === null ? null : Math.round(p.det * 10) / 10,
       // Everything below is for the DECOMPOSITION (docs/route-bias.md): the
       // rider's truth, which stop and when, whether the client's own lead leg

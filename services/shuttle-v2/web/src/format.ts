@@ -65,6 +65,21 @@ export function fmtBusRange(lowSec: number, highSec: number, secondSec?: number 
   return `${head.replace(" min", "")}, then ${fmtMin(secondSec)}`;
 }
 
+/**
+ * The countdown for an arrival that carries a 10–90 band: the RANGE and
+ * nothing in front of it — "in 1-8, then 14 min". The median is not printed
+ * (operator, 2026-09-11, on "in 2 (1-8), 14 min": "just show 1-8, no need to
+ * show 2 (1-8)"); it lives in the row's tooltip (etaBand.ts `bandTitle`).
+ * The three numbers are still one distribution (eta/arrival.ts); this is only
+ * what the row says. Ends that print the same minute collapse to the point,
+ * exactly as `fmtBusRange` collapses. The `etaSec` argument is kept so every
+ * caller keeps passing the median and the tooltip/bunching logic can use it.
+ */
+export function fmtBusBand(lowSec: number, etaSec: number, highSec: number, secondSec?: number | null): string {
+  const low = fmtMin(lowSec), high = fmtMin(highSec);
+  if (low === high) return fmtBusPair(etaSec, secondSec);
+  return fmtBusRange(lowSec, highSec, secondSec);
+}
 export function fmtMin(s: number): string {
   if (s < 10) return "now";
   if (s < 60) return "<1 min";
