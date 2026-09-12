@@ -2318,6 +2318,15 @@ coverage, so silence is distinguishable from blindness:
   exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
   rather than grepping a pattern guessed in advance.
 - Verify a PR-body edit by READ-BACK, never by exit status.
+- **"No CI runs" is itself a silence that must be told apart from blindness.** All three
+  workflows are path-filtered to `services/shuttle-v2/`, so a change touching only root
+  files (this file included) triggers NOTHING — by mechanism, not by failure. A reviewer
+  applying "CI green on each head" literally then waits forever; one who shrugs has
+  accepted an empty result with no mechanism behind it. Establish the mechanism instead:
+  ENUMERATE the workflow files on a named ref so a fourth cannot be hiding, read their
+  `paths:` filters, and prove the query works by running `gh run list --branch` against a
+  branch that SHOULD have rows. Then the exemption is reasoned rather than waved. This
+  gap was hit within an hour of writing the rule above.
 
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 `BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/<name>.mjs`):
