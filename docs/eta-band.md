@@ -299,27 +299,77 @@ document — no overflow and no sideways scroll. The fallback `"12:29p"` is
 reading `by 12:15p`, the Walk card's plain `12:28p`, a Green card reading
 `by 1:00p`) is committed at `services/shuttle-v2/pr-preview/arrive-by/`.
 
-**What is NOT yet measured, and the exact recipe for it.** The decision set a
-gate — *the real arrival beats the printed "by" about 9 times in 10 on the
-rider-sim*. It has not been run, and two corrections to how it was framed:
+**MEASURED, 2026-09-12 — and the promise does not hold as well as claimed.**
+One `gps-replay` with `PAIRS_OUT`, then `band-coverage.mjs` at the SERVED
+widening (`fit-2026-09-11`), `--floor none` (what the client applies since
+#240), truth = detector arrivals. Three corpora: a fresh replay of the 9/04
+snapshot through today's client (487,325 pairs) and the band work's saved
+9/09 and 9/10 pairs. The statistic is the **late share** — the truth arriving
+AFTER the band's high end, i.e. after the printed "by" instant. It is
+one-sided and it is the only way this clock can mislead a rider.
 
-- **The rider-sim is the wrong instrument for it.** The estimator is untouched
-  by this change, so strands, reversals and `pessimistic120` are byte-identical
-  by construction; a pass there would be a result with no mechanism behind it.
-- **The promise is ONE-SIDED** (the bus arrives at or before the printed
-  instant). Section A's 82-91% held-out figure is TWO-SIDED interval coverage,
-  so it is not the nearest evidence for this and should not be quoted as
-  though it were. The statistic that settles it is the **late share** — how
-  often the arrival falls after the band's high end — which `band-coverage.mjs`
-  already computes and prints, and which section A's table never recorded.
+Pooled, all modes, late %:
 
-Recipe, cheap, and owed rather than skipped: one `gps-replay` with `PAIRS_OUT`
-set, then `band-coverage.mjs` over those pairs, reading the late share rather
-than the two-sided coverage.
+| corpus | 0-2 | 2-5 | 5-10 | 10-30 |
+|---|---|---|---|---|
+| 9/04 (n 76k-160k) | 7.3 | 8.8 | 7.3 | 2.1 |
+| 9/09 (n 46k-76k) | 7.5 | 6.2 | 6.9 | 5.0 |
+| 9/10 (n 145k-232k) | 7.8 | 8.9 | 8.0 | 5.0 |
 
-**And one residual that a free machine does not fix.** Every scorer here pairs
-a promise at the BOARD stop; nothing scores a promise at the ALIGHT stop, which
-is what this clock makes. Measuring the promise as riders actually see it needs
-a scorer BUILT, not merely a slot: pair `high` at the alight stop (plus the
-walk) against the detector's arrival there. Until then, treat the in-model
-claim as a claim.
+Per route, late %, the two lines riders actually use:
+
+| | 0-2 | 2-5 | 5-10 | 10-30 |
+|---|---|---|---|---|
+| Red 9/09 (n 1.8k-6.5k) | 12.3 | **16.7** | **21.2** | 0.5 |
+| Red 9/10 (n 14k-38k) | 8.9 | 8.1 | **13.0** | **11.0** |
+| Red 9/04 (n 13k-22k) | 6.6 | **10.9** | 6.6 | 0.3 |
+| Blue Day 9/10 (n 14k-40k) | 6.0 | 8.3 | **10.9** | **12.2** |
+
+**Pooled it clears 9-in-10 everywhere. Per route it does not.** Red is late
+21.2% of the time at 5-10 min on 9/09 (n = 6,494) and 13.0% on 9/10
+(n = 38,253); Blue Day reaches 12.2% at 10-30 on 9/10. Red is the operator's
+own line and the founding complaint. Day-to-day movement is large on the same
+cell (Red 2-5: 16.7% -> 8.1%), so one day would have told whichever story it
+was sampled from.
+
+**And the failure is worst exactly where the clock speaks.** By DISPLAYED band
+width (9/04, standing/moving), late %:
+
+| width | <1 | 1 | 2 | 3 | 4-5 | 6+ |
+|---|---|---|---|---|---|---|
+| pooled | 8.6 / 4.1 | 13.5 / 10.9 | 13.1 / 9.6 | 9.7 / 8.4 | 11.2 / 9.6 | 2.6 / 2.0 |
+| Red | 7.4 / 3.2 | 11.9 / 13.3 | **14.1 / 20.0** | 8.6 / 11.8 | 2.3 / 5.0 | 0.2 / 0.7 |
+
+It is NOT monotone: the late share peaks at one to two printed minutes and
+only collapses past six. An earlier reading of this PR guessed the headline
+was an upper bound because the clock declines on sub-minute margins. **That
+guess was wrong** — the declining rows are the SAFE ones, and the rows the
+clock prints on are the dangerous ones.
+
+**Positive control, three ways.** Re-scored with widening removed, the late
+share rises at exactly the three horizons where `CONFORMAL != 1` (pooled 9/09
+2-5: 6.2 -> 10.7%, 5-10: 6.9 -> 9.5%; Red 2-5: 16.7 -> 23.2%) and is
+BYTE-IDENTICAL at `0-2`, where the served factor is 1.0 (7.5% both). A metric
+that moves where the input moves and is frozen where it does not is reading
+what it claims to read. The fresh 9/04 corpus reproduces this independently
+(pooled 2-5: 8.8 -> 13.2%, `0-2` identical at 7.3%).
+
+**Three limits, none of which rescue the number.** (1) These are the band's
+high end at stops 1-5 ahead, not at alight stops; nothing scores an
+alight-stop promise, and that scorer is still unbuilt. The WALK does not
+matter here — it is deterministic and adds to the promise and to the rider's
+real arrival equally, so it cancels; what does not transfer is WHICH stops and
+how far ahead. (2) The 9/04 snapshot predates #132's restart-split merge, so
+it carries short stands and scores worse overall (pooled coverage 56-72%
+against 79-84% on 9/09-9/10) — weight the later days. (3) The width buckets
+are `high - low`, while the clock's own gate is on `high - eta`, so they are
+adjacent questions, not the same one.
+
+**Verdict: the gate is NOT met as specified.** "About 9 times in 10" is true
+pooled and false on Red at 2-10 min and on both lines at the widths the clock
+prints. A promise that is late one time in five is worse than no promise, so
+this clock should not ship on these numbers. What the measurement suggests, if
+it is to be reworked: promise only where the margin is genuinely wide (the 6+
+bucket is late 2.0-2.6%) and otherwise print the plain clock — which is the
+same shape of rule as `RANGE_MIN_SHOWN_MIN`, and would need its own
+measurement on the `high - eta` gate rather than this one.
