@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
 import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
-import { K, priceRoute, setCeilingArmsOnStanding, setClampTrace, type ClampEvent, type Floors } from "./arrival";
+import { ceilingArmsOnStanding, K, priceRoute, setCeilingArmsOnStanding, setClampTrace, type ClampEvent, type Floors } from "./arrival";
 import { LEAD_SWITCH_MASS } from "./filter";
 import type { LatLon } from "../geo";
 
@@ -322,7 +322,11 @@ describe("the band's floor (lowFloor) — the rest-less chain at the band's own 
 });
 
 describe("the ceiling arms on the standing hypothesis, not the mixture (2026-09-11)", () => {
-  afterEach(() => { setCeilingArmsOnStanding(true); setClampTrace(null); });
+  // The variant is what this block measures, so arm it per test — and leave
+  // the module on the SHIPPED default, so nothing that runs later in this file
+  // can read an armed switch as the default.
+  beforeEach(() => { setCeilingArmsOnStanding(true); });
+  afterEach(() => { setCeilingArmsOnStanding(false); setClampTrace(null); });
 
   /**
    * A bus driving down the 4 -> 1 leg on fresh fixes and then repeating its fix
@@ -446,5 +450,81 @@ describe("the ceiling arms on the standing hypothesis, not the mixture (2026-09-
     expect(r.evs[0]!.action).toBe("arm");
     expect(r.evs.filter((e) => e.action === "provisional" || e.action === "rearm").length).toBe(0);
     for (const v of r.floors.map.values()) expect(v.armed).toBe(true);
+  });
+});
+
+/**
+ * THE INSTRUMENT'S COST (review, 2026-09-12). This branch is a measured
+ * negative result, kept for the next attempt — so the one thing it may not do
+ * is cost the fleet anything. With `armOnStanding` off and no clamp trace set
+ * (production, permanently) `priceRoute` allocates nothing extra per row and
+ * must price every row by master's rule, the running `min(ceiling, mixture)`
+ * over one rest identity. Captured at IMPORT time so no test ordering can make
+ * the default assertion pass.
+ */
+const DEFAULT_ARMS_ON_STANDING = ceilingArmsOnStanding();
+
+describe("the refused experiment is off by default, and costs nothing when it is (2026-09-12)", () => {
+  afterEach(() => { setCeilingArmsOnStanding(false); setClampTrace(null); });
+
+  /**
+   * The 4 -> 1 leg driven in on fresh fixes, then a stand at the marker. Each
+   * poll is priced TWICE: once into a throwaway `Floors` (no held entry, so
+   * master's else-branch runs and the number IS the mixture — the raw one), and
+   * once into the running floors. The pair is what makes "master's rule" a
+   * measurement rather than a reading of the source.
+   */
+  function series(ring: Ring, tables: RouteTables, standPolls: number, trace: boolean) {
+    const floors: Floors = { map: new Map() };
+    if (trace) setClampTrace(() => {});
+    const out: { shown: number; raw: number; standingAt: number }[] = [];
+    let b: Belief | undefined;
+    let now = 0;
+    const poll = (pos: LatLon) => {
+      now += 5000;
+      b = stepBelief(b, ring, { lat: pos.lat, lon: pos.lon }, now, STOPS);
+      const raw = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, { map: new Map() }).find((x) => x.stopId === 2 && x.occurrence === 0);
+      const row = priceRoute(b, ring, tables, STOPS, new Set([2]), now, 0.5, floors).find((x) => x.stopId === 2 && x.occurrence === 0);
+      if (row && raw) out.push({ shown: row.eta, raw: raw.eta, standingAt: row.standingAt });
+    };
+    for (let y = 9 * 35; y >= 0; y -= 35) poll(at(0, y));
+    for (let i = 0; i < standPolls; i++) poll(at(0, 0));
+    setClampTrace(null);
+    return { rows: out, floors };
+  }
+
+  it("is off by default, so every other caller prices exactly as before", () => {
+    expect(DEFAULT_ARMS_ON_STANDING).toBe(false);
+  });
+
+  it("with the switch off every row is master's rule exactly: min(ceiling, mixture), and nothing is ever provisional", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const { rows, floors } = series(ring, tables, 30, false);
+    expect(rows.length).toBeGreaterThan(30);
+    let clamped = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!;
+      if (Math.abs(r.shown - r.raw) < 1e-9) continue; // no ceiling in force, or it did not bind
+      // The only other thing the shown number may be is the running minimum
+      // over this rest — master's `min(prev, eta)`, and never a rise.
+      expect(i).toBeGreaterThan(0);
+      expect(r.shown).toBeCloseTo(Math.min(rows[i - 1]!.shown, r.raw), 9);
+      expect(r.shown).toBeLessThan(r.raw);
+      clamped++;
+    }
+    // The path was really exercised: this stand does bind the ceiling.
+    expect(clamped).toBeGreaterThan(5);
+    // Every entry armed, so none of them can re-arm on a later poll.
+    for (const v of floors.map.values()) expect(v.armed).toBe(true);
+  });
+
+  it("setting the clamp trace changes no number — it is an observation, not a rule", () => {
+    const { ring, tables } = setup();
+    setCeilingArmsOnStanding(false);
+    const off = series(ring, tables, 30, false).rows;
+    const on = series(ring, tables, 30, true).rows;
+    expect(on.length).toBe(off.length);
+    for (let i = 0; i < off.length; i++) expect(on[i]!.shown).toBe(off[i]!.shown);
   });
 });

@@ -541,6 +541,12 @@ export interface Floors {
  *
  * The switch exists for the paired replays (both arms from one tree); the
  * measurement is in docs/eta-ring-posterior.md.
+ *
+ * WITH THE SWITCH OFF AND NO TRACE SET this is dead code at run time, and
+ * deliberately so: nothing extra is allocated per priced row and the clamp is
+ * master's `min(ceiling, mixture)` exactly. `arrival.test.ts` pins both — the
+ * import-time default, and every row of a stand against `min` recomputed from
+ * an unclamped pricing of the same belief.
  */
 let armOnStanding = false; // measured 2026-09-11 and NOT shipped: see the commit below and docs — default OFF so a merge cannot ship it by accident
 export function setCeilingArmsOnStanding(on: boolean): void { armOnStanding = on; }
@@ -649,8 +655,18 @@ export function priceRoute(
     // The lead cluster's parts priced as the rest at `clampAt` continuing —
     // the standing variant (and a repositioning one): what the ceiling is
     // armed from, and whose mass gates the arming.
-    const standParts: { s: Float64Array; w: number }[] = clampAt >= 0 && lead.standingAt === clampAt ? [{ s: leadBuf, w: lead.sit.mass }] : [];
-    let standMass = standParts.length ? lead.sit.mass : 0;
+    //
+    // NULL unless somebody asked for it. The switch defaults off and no
+    // production caller sets the trace, so on every row a rider's browser
+    // prices this is two boolean reads and NO allocation: a refused
+    // experiment is kept for the next attempt, not paid for by the fleet
+    // on every poll for ever. (Review, 2026-09-12: the array and its
+    // per-cluster objects were built on every priced row regardless, while
+    // only the `mixedQuantiles` call below was guarded.)
+    const needStand = armOnStanding || clampTrace !== null;
+    const standParts: { s: Float64Array; w: number }[] | null = needStand && clampAt >= 0 ? [] : null;
+    let standMass = 0;
+    if (standParts !== null && lead.standingAt === clampAt) { standParts.push({ s: leadBuf, w: lead.sit.mass }); standMass = lead.sit.mass; }
     let mass = lead.sit.mass;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
@@ -680,7 +696,7 @@ export function priceRoute(
       if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
-      if (clampAt >= 0 && c.standingAt === clampAt) { standParts.push({ s: bufs[i]!, w: c.sit.mass }); standMass += c.sit.mass; }
+      if (standParts !== null && c.standingAt === clampAt) { standParts.push({ s: bufs[i]!, w: c.sit.mass }); standMass += c.sit.mass; }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
@@ -718,8 +734,8 @@ export function priceRoute(
       const mixture = eta;
       // The standing variant's own number is computed only for the trace
       // (a replay counting the gap); production pays nothing for it.
-      let standing = clampTrace && standParts.length ? (mixedQuantiles(standParts, [tau]) as [number])[0] : eta;
-      if (armOnStanding && cleared && standParts.length && (!held || held.armed === false)) {
+      let standing = clampTrace && standParts !== null && standParts.length > 0 ? (mixedQuantiles(standParts, [tau]) as [number])[0] : eta;
+      if (armOnStanding && cleared && standParts !== null && standParts.length > 0 && (!held || held.armed === false)) {
         // Arming (or re-arming a provisional entry): the standing variant's
         // own quantiles, not the mixture's. The one rise a stand may show.
         const [s10, sT, s90] = mixedQuantiles(standParts, [0.1, tau, 0.9]) as [number, number, number];
