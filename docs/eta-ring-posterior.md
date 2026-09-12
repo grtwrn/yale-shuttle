@@ -372,12 +372,28 @@ occurrence, ring 18, for the whole stand:
     10:16:38  the lead follows to 18, ratchets to 0.994, and holds the stand
     10:24:38  the rest ends -> every Green stop rises +7..+9 printed min at once
 
-**It is a defect, and its sign is the dangerous one.** Against the arrivals that
-followed (West Haven station 10:31:58, Bradley (N) 10:39:58, Willow (N)
-10:46:23), the signed error of the shown median mid-stand (10:20:03) is
-**−382 s, worst −533 s** — every northbound stop promised 2.5 to 9 minutes
-EARLIER than the bus came, the direction that has a rider stroll down and find it
-gone. The station row held "3-11 min" for eight minutes while the truth fell
+**It is a defect, and BEWARE THE SIGN — this repo carries two opposite conventions
+for the same event.** `common.ts` scores `predicted - actual`, so a bus that BEATS
+its promise is POSITIVE (pessimistic, the tail that must not grow).
+`rider-sim/lib.ts`'s `firstSightMissSec` scores `actual - predicted`, so the same
+event is NEGATIVE there, and its own comment calls negative "the direction that
+strands a rider who trusted the number". Both files are right; the subtraction order
+is reversed. State the physical event, not the word.
+
+Here, in `common.ts`'s convention, the signed error of the shown median mid-stand
+(10:20:03) is **−382 s, worst −533 s** against the arrivals that followed (West Haven
+station 10:31:58, Bradley (N) 10:39:58, Willow (N) 10:46:23). Negative means
+PREDICTED BELOW ACTUAL: every northbound stop was promised 2.5 to 9 minutes EARLIER
+than the bus came, so a rider who trusted it **arrived early and waited** — annoying,
+and NOT the tail that strands. The station row held "3-11 min" for eight minutes
+while the truth fell 924 -> 474 s, which is the same fact seen directly.
+
+**The stranding happened anyway, and at OTHER instants** — 50 strands on this line,
+cut to 20 by the ring fix, concentrated at board stop 25. They come from the
+SEQUENCE, not from this median: the collapse when the belief corrects, and the
+departure poll, which still moves −467 s where master moved +438 s a minute later. An
+earlier draft of this paragraph attached stranding to the −382 s figure itself, which
+is wrong and is corrected here. The station row held "3-11 min" for eight minutes while the truth fell
 924 → 474 s. After the correction it is +351 s, i.e. pessimistic. The later
 `now → 36 min` on that row at 10:33:40 is honest: the bus had just left, so the
 next arrival is a lap away.
