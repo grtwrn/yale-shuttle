@@ -224,6 +224,19 @@ try {
   standWaitMod = await fromClient<any>("web/src/standWait.ts"); liveAnchorMod = await fromClient<any>("web/src/liveAnchor.ts");
 } catch { /* older tree */ }
 
+// The kerb-shuffle conditioning (web/src/eta/filter.ts), from the CLIENT tree
+// so the arm under test is the one that carries it. Loud on a tree without the
+// export: an arm that silently ran as master would make the pair meaningless.
+if (process.env.KERB_SHUFFLE === "1") {
+  const f = await fromClient<{ setKerbShuffleEvidence?: (on: boolean) => void }>("web/src/eta/filter.ts");
+  if (typeof f.setKerbShuffleEvidence !== "function") {
+    console.error(`KERB_SHUFFLE=1 but ${CLIENT_ROOT} has no setKerbShuffleEvidence — refusing to score an arm that would silently be master.`);
+    process.exit(2);
+  }
+  f.setKerbShuffleEvidence(true);
+  log("KERB_SHUFFLE=1: the client's in-rest departure evidence is on");
+}
+
 function treeInfo() {
   const git = (cmd: string) => { try { return execSync(`git -C "${CLIENT_ROOT}" ${cmd}`, { encoding: "utf8" }).trim(); } catch { return "?"; } };
   const head = git("rev-parse --short HEAD");

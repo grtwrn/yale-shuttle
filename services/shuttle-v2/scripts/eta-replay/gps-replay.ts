@@ -56,6 +56,7 @@ import { distanceToSegmentM, haversineMeters, progressAlongSegment, traceStopLeg
 import type { BusData } from "../../web/src/map-data";
 import { BUS_SPEED_M_S, ROUTE_ID_LABEL, ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes";
 import { applyModelParams, activeModelParams } from "../../web/src/eta/params";
+import { setKerbShuffleEvidence } from "../../web/src/eta/filter";
 
 const T0 = Date.now();
 const log = (...a: unknown[]) => console.error(`[${((Date.now() - T0) / 1000).toFixed(1)}s]`, ...a);
@@ -89,6 +90,13 @@ if (process.env.MODEL_PARAMS) {
     process.exit(2);
   }
   log(`MODEL_PARAMS ${activeModelParams()?.version} from ${process.env.MODEL_PARAMS}`);
+}
+
+// The kerb-shuffle conditioning (web/src/eta/filter.ts), so the two arms are
+// one process over identical inputs. Off is byte-identical to master.
+if (process.env.KERB_SHUFFLE === "1") {
+  setKerbShuffleEvidence(true);
+  log("KERB_SHUFFLE=1: a fresh fix inside the rest radius carries the measured in-rest departure evidence");
 }
 
 type PosRow = { i: number; b: string; r: number; lat: number; lon: number; h: number; l: number | null; t: number };
