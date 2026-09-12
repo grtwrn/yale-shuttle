@@ -2333,7 +2333,6 @@ coverage, so silence is distinguishable from blindness:
   makes a truncation visible. Then prove the query works by running `gh run list
   --branch` against a branch that SHOULD have rows. Only then is an exemption reasoned
   rather than waved.
-  gap was hit within an hour of writing the rule above.
 
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 `BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/<name>.mjs`):
