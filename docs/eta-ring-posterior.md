@@ -1010,6 +1010,19 @@ The operator caught it live — "green just flicked from 22 to 34 minutes as I w
 watching". The flick was the app recovering; the eight minutes before it were
 the defect.
 
+> **THE RULE THIS SECTION IS WRITTEN UNDER.** Never quote a signed ETA error
+> without naming its convention, and say **"the bus came before we said"** or
+> **"after we said"** beside it. Those phrases cannot invert; the words
+> *optimistic* and *pessimistic* can, and did, for four readers in one day.
+> The reason is that this repo carries two subtraction orders for one event:
+>
+> | file | formula | the bus BEATS its promise |
+> |---|---|---|
+> | `scripts/eta-replay/common.ts` | `predicted - actual` | **POSITIVE** (`pessimistic120`, the tail that must not grow) |
+> | `scripts/eta-replay/rider-sim/lib.ts` (`firstSightMissSec`) | `actual - predicted` | **NEGATIVE** |
+>
+> Both files are internally right and both call that event the stranding one.
+
 Green #331, the line's only bus that morning, stood **435 s at Building 800**
 from 10:16 to 10:24 ET. Building 800 is **ring 13 outbound and ring 18 on the
 return, the same kerb**. The belief attached the stand to **18**, five legs
@@ -1019,8 +1032,11 @@ ahead, on the poll the bus arrived, and held it for the whole rest.
 `stop_visits` row for that stand reads `stop_index 13`, and the rest of the pass
 corroborates it: the bus went on to Building 600, 400, 600, 750, Building 800
 AGAIN (a 20 s stand, `stop_index 18`), 900 and the station. Against the arrivals
-that followed, the board was **optimistic by up to 693 s** — the direction that
-has a rider stroll down and find the bus gone.
+that followed the board was wrong by up to **693 s** at the stops DOWNSTREAM of
+the rest, in the direction that makes a rider wait — and at Building 800 itself it
+quoted a LAP for a bus about to arrive, which is the direction that strands. Both
+are below, with their signs, because this repo has two subtraction orders and the
+words have misled four readers in one day.
 
 ### The proposed rule is refused, and by measurement
 
@@ -1159,6 +1175,10 @@ simply MOVED the cell to the marker, and this one, which keeps the cell on the
 line and splits the emission by mode. Scored on one common set — every pair that
 either version moved — they are indistinguishable:
 
+**Columns below are `common.ts`: error is `predicted - actual`, so `pess120` is
+the share where the bus came BEFORE we said (the tail that must not grow) and
+`opt120` the share where it came after (the rider waits).**
+
 | the 631 pairs either version moved | n | median \|err\| | bias | opt120 | pess120 |
 |---|---:|---:|---:|---:|---:|
 | AT A STOP — master | 195 | 103.3 | 538.1 | 11.8% | 33.8% |
@@ -1191,8 +1211,14 @@ than the four lines it saves.
 IS the record). All three arms are the same harness over the same fixture with
 the day's served `model_params` applied, differing only in the estimator.
 
-Signed error on the poll the bus reaches the kerb (10:16:28) — negative =
-promised earlier than the bus came, the direction that strands a rider:
+Signed error on the poll the bus reaches the kerb (10:16:28).
+
+**The sign, stated as a physical event, because this repo carries two conventions
+for it.** `common.ts` scores `predicted - actual`, so NEGATIVE means we named a
+SMALLER number than the truth: **the bus came AFTER we said**, and the rider
+arrives early and waits. `rider-sim/lib.ts`'s `firstSightMissSec` subtracts the
+other way round, so the same event is POSITIVE there. Carry the event across the
+two files, never the word "optimistic".
 
 | stop | master | cell moved to the marker | **stand point (shipped)** |
 |---|---:|---:|---:|
@@ -1201,10 +1227,23 @@ promised earlier than the bus came, the direction that strands a rider:
 | Orange / Bradley (N) (80) | **−556 s** | +18 s | **+47 s** |
 | Orange / Willow (N) (94) | **−370 s** | +161 s | **+198 s** |
 
-Over the 91 polls of the rest, stop-polls optimistic by more than 120 s go
-**315 of 364 → 19 of 364**, and `restStop` over the rest goes {−1, 13, 18} →
+Over the 91 polls of the rest, stop-polls on which we named a time more than
+120 s BEFORE the bus actually came (`common.ts` negative — the rider goes down
+early and waits) go **315 of 364 → 19 of 364**, and `restStop` over the rest goes {−1, 13, 18} →
 {−1, 13}. The middle column is the version that moved the cell outright; it is
 kept here because the two columns are what the gps-replay below separates.
+
+**And the stranding is not in the table above — it is at the BOARD stop, in the
+other direction.** Those four rows are stops DOWNSTREAM of the rest, where master
+named a time the bus then missed, so the rider waits. For a rider standing at
+Building 800 itself, master's belief put the bus five legs ahead, so the next call
+at that stop was a LAP away. Measured over the 31 strands the rider table below
+fixes: master showed **47 to 56 min for a bus that arrived 1.2 to 21 min later —
+the bus came BEFORE we said on 31 of 31**, median 28.5 min early, worst 45.8 min,
+every one at board stop 25. The drop is the correction collapsing, e.g.
+`13:57:21 "in 47, 62 min"` with the bus 1.2 min out, then
+`13:57:36 "in 7-16, then 47 min"`. That is `predicted > actual`, the tail that
+must not grow, and it is what a strand is.
 
 ### What this does NOT fix, and the trade it makes visible
 
@@ -1213,7 +1252,9 @@ kept here because the two columns are what the gps-replay below separates.
 of leg 13 are the ones 99 m away on a road the bus is not on, and the return
 cell is 12 m away. That is pre-existing — master sat on 18 for the whole rest —
 but the fix changes WHEN the consequence is paid, and the numbers should be
-quoted together:
+quoted together: **These two figures are movements of the SHOWN
+number between consecutive polls — not errors against truth — so their sign means
+up or down on the display, and nothing about whether the bus beat us:
 
 | | station ETA through the departure | largest single-poll move |
 |---|---|---|
@@ -1269,6 +1310,8 @@ poll at Building 800's outbound kerb now resolves to a stop instead of to nothin
 
 Paired, **521 of 184,138 pairs change (0.283%), every one of them on Green**:
 
+**Same convention as above: `pess120` = the bus came BEFORE we said.**
+
 | route | n | median \|err\| | p90 | bias | pess120 | opt120 |
 |---|---:|---:|---:|---:|---:|---:|
 | Green | 34,745 | 281.7 → 281.9 | 1090.2 → 1090.5 | 427.1 → 427.9 | 57.0 → 57.0 | 8.8 → 8.8 |
@@ -1297,12 +1340,24 @@ splits by what the bus was doing:
 | the bus is AT a stop | 161 | 85.7 → 88.2 | 483.1 → **475.9** | 7.5 → 7.5 | 32.9 → **31.7** |
 | the bus is MOVING | 360 | 247.3 → *264.7* | 447.7 → *531.7* | 22.5 → **21.7** | 45.8 → *48.9* |
 
-**Read the sign, not only the size.** The moving population pays in the
-PESSIMISTIC direction (bias +84 s, `pess120` +3.1 pp) while its optimistic tail
-falls slightly — a bus driving the return pass is priced as having further to go,
-because the zone flag is read by the transition kernel (above). Pessimistic costs
-a rider waiting; optimistic sends them to a stop the bus has left, and that is
-the tail this change exists to cut.
+**The cost falls on the tail that must not grow. Stated plainly, because an
+earlier draft of this section had it exactly backwards.** `common.ts` is explicit:
+error is `predicted - actual`, POSITIVE is the app naming a time the BUS BEAT so
+the rider strolls up and watches it leave, and **`pessimistic120` is the number
+that must not grow** whatever the median does. The moving population's bias moves
+447.7 -> 531.7 s — further INTO that tail — and its `pessimistic120` rises about
+three points: **45.8 -> 48.9%** on proximity truth (n = 360) and **51.7 -> 54.7%**
+on detector truth (n = 375). Its optimistic tail falls slightly (22.5 -> 21.7%),
+which is the lesser thing. A bus driving the return pass is priced as having
+further to go, because the zone flag is read by the transition kernel (above).
+
+**So the justification for shipping is not that the cost is safe.** It is that the
+rider simulator is the designated gate, and there the rider-visible form of this
+same failure — the app quoting a number the bus then beats, which is exactly what
+`strand` measures — goes 31 fixed to 1 introduced on Green, with reversals (11/10)
+and drops (0/0) flat and Purple unmoved. Three points of a replay tail on 360
+drive-past pairs against 31 stranded riders recovered at the kerb is the trade,
+and it is recorded as a trade rather than as a free win.
 
 **And this window is dominated by the cost side, which is why the aggregate reads
 as it does.** Route 9's `stop_visits` at stop 25 in the snapshot: 45 calls at
@@ -1377,9 +1432,10 @@ documented reason that the app is right to say "arriving now" to such a rider.
 **The 31 / 1 above is the complete count and is the one to quote**; the 0 is the
 flattering one.
 
-**What the introduced defects actually are, read rather than summarised.** All
-three populations are one-poll display differences in which this branch is the
-LESS optimistic arm:
+**What the introduced defects actually are, read rather than summarised.** All three
+populations are one-poll display differences in which this branch names a slightly
+LATER time than master for a single poll and the bus then arrives within seconds in
+both arms — display movements the metric counts, not riders missing buses:
 
 - the single introduced strand (`Green|25|14:10:04.903Z`): 29 of its 31 readings
   are identical to master's, and the sole difference is one poll at 14:16:39 —
@@ -1391,7 +1447,7 @@ LESS optimistic arm:
 - the sixth (`Green|26|15:59:14`) is slot 1's band low going `<1-11` -> `7-13` for
   a single poll, identical again at the next reading.
 
-So the −467 s departure move did **not** become a strand epidemic, which was the
+So the −467 s downward move in the SHOWN number at the departure poll did **not** become a strand epidemic, which was the
 open question this gate existed to answer. Elsewhere: first promise |miss|
 unchanged (p50 0 s, improved 0, worsened 0 — the change cannot reach first sight),
 pin wrong unchanged (491 both arms, 0 / 0), worst drift p10/p50/p90 all 0 s with
