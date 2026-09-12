@@ -70,22 +70,22 @@ with no fit, `priceRoute` never asks for them, so stripping the fit is the whole
 arm. Both arms replay the same polls against the same truth, so a difference is
 the covariate and not the day.
 
-## It needs the price trace, which is NOT in the tree
+## The price trace it reads
 
-`layover.ts` imports `setPriceTrace` from `web/src/eta/arrival.ts`. That hook is
-inert instrumentation (null in production, nothing computed) and it is
-deliberately **not committed**: this is a measurement branch and the estimator is
-not being changed. `price-trace.patch` beside this file applies it to master:
+`layover.ts` imports `setPriceTrace` from `web/src/eta/arrival.ts` — the
+exported, guarded hook. It is null in production and the decomposition's
+part-arrays are not allocated unless a trace is set, so the instrument costs
+nothing at runtime and there is **no apply step**: this harness runs against
+master as it stands. The harness clears it (`setPriceTrace(null)`) when it is
+done.
 
-```bash
-git apply services/shuttle-v2/scripts/eta-replay/postlap/price-trace.patch
-npx vitest run web/src/eta/     # 116 tests, unchanged — the clamp arithmetic is identical
-```
-
-The patch rewrites the #119 clamp as one branch instead of two so the raw
-mixture can be reported beside the number shown. With no held ceiling `shown`
-IS `eta` and the delta is 0, which is exactly master's else branch — the tests
-above are what says so.
+An earlier revision of this harness carried the same hook as a patch file
+applied out of tree. That shape is right only for a genuine ONE-OFF. A hook two
+harnesses want is reusable, and two copies of it are mutually exclusive — the
+patch could not be applied on top of the branch that exported the setter, and
+`git apply --check` said so. The rule the project settled on: **an exported
+guarded setter for a reusable hook; a patch, plus a test that shells
+`git apply --check` on it, only for a one-off.**
 
 ## The inputs (NOT committed — ~1–4 MB a route-day)
 
