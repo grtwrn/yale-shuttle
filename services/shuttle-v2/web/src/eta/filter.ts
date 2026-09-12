@@ -91,6 +91,58 @@ export const P_REPEAT_MOVE_ZONE = 0.5;
  */
 export const SHUFFLE_PER_POLL = 0.03;
 export const P_DEPART_ON_FRESH = 0.76;
+/**
+ * The same two rates for a fresh fix that has NOT left the rest — the bus
+ * shuffling at the kerb, which is 91-93% of every fresh fix a standing bus
+ * publishes. MEASURED against the detector's own departure instants
+ * (`stop_visits.departed_at`, verified equal to `last_at_rest_at` on 511 of
+ * 511 Red visits) over the archive of 2026-09-03..09-09, a fresh fix labelled
+ * a DEPARTURE when it is the first one after the last poll still at rest and a
+ * REPOSITION otherwise:
+ *
+ *   P(departure | fresh fix, still within REST_RADIUS_M of the rest point)
+ *       Red 31.2% (n=3,282)   Blue Day 35.5% (n=3,834)   pooled 33.5% (n=7,116)
+ *   P(departure | fresh fix, beyond it)
+ *       Red 71.0% (n=  231)   Blue Day 76.3% (n=  350)   pooled 74.2% (n=  581)
+ *   repositions per standing poll
+ *       Red 0.1148 (2,325 / 20,253)  Blue Day 0.1188 (2,557 / 21,516)
+ *
+ * So the pooled `P_DEPART_ON_FRESH` and `SHUFFLE_PER_POLL` above are the
+ * BEYOND-rest numbers — 0.76 against a measured 0.742, right — applied to both
+ * cases, and the belief is consequently about twice as departure-happy as the
+ * feed warrants on the fix that matters. Instrumented on the 9/10 replay, the
+ * standing mass's mean pDepart is 0.61-0.68 for a fix inside the rest and
+ * 0.72-0.75 for one beyond, against those measured 0.335 and 0.742: the model
+ * is calibrated for the bus that left and charges the same evidence to the bus
+ * that shuffled. That is the standing trough at its source — half the lead
+ * cluster is walked out of the stand on the first kerb shuffle, the mixture
+ * median lands in the standing part's lower tail, and #119's ratchet keeps it
+ * for the rest of the stand.
+ *
+ * The step cannot discriminate and must not be used to: the fresh fix's own
+ * displacement is 32 m at the median whether it is a departure or a shuffle
+ * (this measurement, both classes, both routes), exactly as
+ * docs/departure-derivation.md says. WHERE it lands is the evidence, not how
+ * far it moved.
+ *
+ * These are deliberately NOT in `MP`: the daily fit's own counter
+ * (`estimateVisitRates` in scripts/reestimate-lib.mjs) counts the detector's
+ * `shuffles` field — repositions big enough to open a departure candidate,
+ * 0.51 per visit against the 1.94 fresh fixes a visit actually publishes — and
+ * pools every stop class and both zone cases, so it cannot see this split. If
+ * this ships, teach that counter the split before serving either number.
+ */
+export const SHUFFLE_PER_POLL_IN_REST = 0.117;
+export const P_DEPART_ON_FRESH_IN_REST = 0.335;
+
+/**
+ * The conditioning above, off by default. Two DISPLAY rules for this defect
+ * were measured and refused (PRs #244, #245); this one is a belief change, so
+ * it is switched rather than assumed, and every gate is run paired on it.
+ */
+let kerbShuffleEvidence = false;
+export function setKerbShuffleEvidence(on: boolean): void { kerbShuffleEvidence = on; }
+export function kerbShuffleEvidenceOn(): boolean { return kerbShuffleEvidence; }
 /** Off-stop run -> stand hazard per second (a light, a queue). docs/eta-error-budget.md. */
 export const HOLD_ENTER_PER_S = 0.01612;
 /** Off-stop stand -> run hazard per second. */
@@ -615,7 +667,11 @@ export function stepBelief(
     // = 1 - P_REPEAT_MOVE. Without the first factor a single crawl repeat
     // left a standing ghost that fresh fixes never cancelled (review, 9).
     const stood = prev.rested ? standingSec(prev, prev.seenAt) : 0;
-    const shufflePoll = MP.SHUFFLE_PER_POLL * (dt / 5);
+    // The fix moved but stayed where the bus came to rest: the kerb shuffle,
+    // whose measured departure share is half the pooled one. `leftRest` is the
+    // discriminator already computed above, so this costs no new geometry.
+    const inRestFix = kerbShuffleEvidence && prev.rested && !leftRest;
+    const shufflePoll = (inRestFix ? SHUFFLE_PER_POLL_IN_REST : MP.SHUFFLE_PER_POLL) * (dt / 5);
     const fromStand = 1 - MP.P_REPEAT_STAND;
     const departKern = Float64Array.from(DEPART_KERNEL);
     for (let c = 0; c < C; c++) {
@@ -640,7 +696,7 @@ export function stepBelief(
             const hd = hazard(table, stood) * dt;
             pDepart = hd / (hd + shufflePoll);
           } else {
-            pDepart = MP.P_DEPART_ON_FRESH;
+            pDepart = inRestFix ? P_DEPART_ON_FRESH_IN_REST : MP.P_DEPART_ON_FRESH;
           }
         }
         // Through `advance`, so a first step that lands ON a stop cell is
