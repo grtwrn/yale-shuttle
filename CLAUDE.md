@@ -2291,6 +2291,57 @@ cannot move a third of the network; the direction and the breadth are the merge.
 
 ## Verification harnesses
 
+**Make an instrument report HOW MUCH it found, never just whether it succeeded.**
+On 2026-09-12 the same failure appeared in seven costumes in one day, and every one
+looked like success: `eta-accuracy.mjs` matched NOTHING for eight days and exited 0;
+`gh pr edit --body-file` aborted on a deprecated GraphQL path while exiting like a
+success, leaving a PR body unchanged; a `perl` substitution matched nothing and exited
+0; a `git ls-files` on this tree's long-lived branch reported a file absent that exists
+on `master`; a process search used a pattern drawn from a DIFFERENT process's shape; a
+regex ran over an invented token-split; and `FETCH_HEAD` was clobbered by a second
+fetch, so two checks silently examined the wrong branch. Several came within one
+command of shipping a wrong conclusion.
+
+The countermeasures that work all share one shape — the instrument states its own
+coverage, so silence is distinguishable from blindness:
+
+- `rider-canary.mjs` FAILS a run with `readings === 0`: a scraper that has quietly
+  stopped reading looks exactly like a healthy line.
+- `eta-accuracy.mjs` and `route-tester.mjs` fail on **zero predictions PARSED**, and
+  deliberately do NOT fail on zero pairs scored — zero parsed means a broken reader,
+  zero scored is legitimately quiet and failing on it cries wolf.
+- A guard asserting ABSENCES carries a **positive control** that its own patterns still
+  match something real; otherwise "nothing makes the claim" and "the test no longer
+  looks for the claim" are indistinguishable.
+- Count occurrences BEFORE and AFTER an edit rather than trusting the editor's exit —
+  **but a guard catches only what it was BUILT to catch.** A count proves the thing you
+  anticipated and says nothing about the thing you did not: a range-replacement in this
+  very file passed a guard checking "new text present, old text gone" — both true — while
+  leaving the replaced block's closing sentence orphaned mid-paragraph. So after any edit
+  that moves or replaces a RANGE rather than substituting a string, read the SEAM and a
+  wide margin around it, and prefer a check whose failure mode is unrelated to your
+  hypothesis: printing thirty lines and scanning for one that begins mid-sentence found
+  it at once, where no count of the strings I cared about ever would.
+- A control must come from the TARGET's population, not the searcher's. For "does X
+  exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
+  rather than grepping a pattern guessed in advance.
+- Verify a PR-body edit by READ-BACK, never by exit status.
+- **"No CI runs" is itself a silence that must be told apart from blindness.** The
+  workflows here are path-filtered and the filters are NOT uniform: different workflows
+  watch different paths, and at least one behaves differently on a pull request than on
+  a push to master. So a change touching none of the paths that apply triggers NOTHING,
+  by mechanism rather than by failure — while a change that looks peripheral may still
+  trigger a run. **Do not restate the filters here or anywhere else.** An enumeration of
+  them is a survey that drifts silently the first time a workflow is edited, which is
+  the exact failure this section warns about; the robust form is SHORTER than the
+  complete one. Read them at the time, on a named ref, and read them IN FULL — a
+  truncated read of a `paths:` list looks exactly like a complete one, and that mistake
+  was made twice within an hour of this bullet being written, once by its author and
+  once by its reviewer, both of whom capped the output. Counting the entries is what
+  makes a truncation visible. Then prove the query works by running `gh run list
+  --branch` against a branch that SHOULD have rows. Only then is an exemption reasoned
+  rather than waved.
+
 Beyond `npm test`, in `services/shuttle-v2/scripts/` (all
 `BOT_CHROMIUM_PATH=/usr/bin/chromium node scripts/<name>.mjs`):
 
