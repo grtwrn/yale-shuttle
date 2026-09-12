@@ -2313,7 +2313,15 @@ coverage, so silence is distinguishable from blindness:
 - A guard asserting ABSENCES carries a **positive control** that its own patterns still
   match something real; otherwise "nothing makes the claim" and "the test no longer
   looks for the claim" are indistinguishable.
-- Count occurrences BEFORE and AFTER an edit rather than trusting the editor's exit.
+- Count occurrences BEFORE and AFTER an edit rather than trusting the editor's exit —
+  **but a guard catches only what it was BUILT to catch.** A count proves the thing you
+  anticipated and says nothing about the thing you did not: a range-replacement in this
+  very file passed a guard checking "new text present, old text gone" — both true — while
+  leaving the replaced block's closing sentence orphaned mid-paragraph. So after any edit
+  that moves or replaces a RANGE rather than substituting a string, read the SEAM and a
+  wide margin around it, and prefer a check whose failure mode is unrelated to your
+  hypothesis: printing thirty lines and scanning for one that begins mid-sentence found
+  it at once, where no count of the strings I cared about ever would.
 - A control must come from the TARGET's population, not the searcher's. For "does X
   exist", ENUMERATE and read (`ps -eo args`, `git ls-tree -r <named ref> --name-only`)
   rather than grepping a pattern guessed in advance.
