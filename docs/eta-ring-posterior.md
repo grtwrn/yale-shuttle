@@ -385,7 +385,12 @@ reads a 25 s median against the 435 s the bus actually stood (and 915 s at
 whole spur: measured from ring 9 the offsets are 4 and 9, and
 `lastStopLikelihood` returns `0.14/19` for both, **identically**. A fresh value
 (26, ring 12) would have given ring 13 offset 1 = 0.14 against ring 18's
-0.00737 — a 19:1 ratio, and the right occurrence.
+0.00737 — a 19:1 ratio, and the right occurrence. Read that ratio as a LIKELIHOOD rather than as
+mass: `filter.ts` applies `w[i] = Math.sqrt(best)` before multiplying it in, so
+what actually reaches the belief is **sqrt(19) ~= 4.4:1**. The distinction
+matters here because this section is read by people asking how much evidence
+would have been needed to move the rest onto the right pass.
+
 
 **It is a defect, and its sign is the dangerous one.** Against the arrivals that
 followed (West Haven station 10:31:58, Bradley (N) 10:39:58, Willow (N)
