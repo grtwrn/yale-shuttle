@@ -1169,7 +1169,12 @@ either version moved — they are indistinguishable:
 | MOVING — stand point | 436 | *228.0* | 476.0 | 19.3% | 44.5% |
 
 They differ from each other on 336 of 184,138 pairs and by under half a second
-of median anywhere. **So the mode split is not justified by accuracy, and this
+of median anywhere. **The rider-level arm for the moved-cell version was
+deliberately not spent**: one arm of the simulator is ~55 minutes of this Pi's
+four cores, the replay comparison above already shows the two versions are
+indistinguishable, and the machine time was better spent on the arm that
+adjudicates what actually ships. If a future attempt wants to revisit the choice,
+the replay pairs for both are the artefacts to re-read, not a new run. **So the mode split is not justified by accuracy, and this
 section is the record of that.** It ships anyway for a reason that is not a
 number: `ring.lat` / `ring.lon` mean "a point on the published line", and
 consumers rely on it — `scripts/eta-replay/heading-fold.ts` takes the bearing
@@ -1240,6 +1245,18 @@ assertions on master, quoting the numbers: `expected [13, 18] to not include 18`
 at 14:16:28.609Z promised 693 s early`; `expected 318 to be less than or equal to
 40`; and `expected 0 to be greater than 80` — master never stands at 13 at all,
 so the re-pricing check has no polls to score.
+
+**The rider simulator's two arms share one harness, and that was checked rather
+than assumed.** `run-arm.sh` runs the harness from one tree and points
+`CLIENT_ROOT` at each arm in turn, so a client module reached from the HOST tree
+instead of from `CLIENT_ROOT` would put the same estimator in both arms and
+silently flatten the comparison. It cannot: `run.ts` loads `web/src/arrivals.ts`,
+`web/src/anchor.ts` and `web/src/eta/index.ts` — which pull in `ring.ts` and
+`filter.ts` transitively — through `fromClient()`, i.e. from `CLIENT_ROOT`, and
+its only host-tree imports are `src/network/geo`, `web/src/eta/params` and
+`src/server/v1compat`, none of which reach the estimator. `lib.ts` and
+`common.ts` import none of it, and the `typeof import(...)` lines are type-only
+and erased. Worth stating because the host tree used here is neither arm.
 
 **gps-replay, held out, 9/9 04:35–09:46 ET, snap909, each arm from its own
 worktree into its own `REPLAY_OUT`, paired on (route, stop, hop, instant).**
