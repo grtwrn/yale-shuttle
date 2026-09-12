@@ -378,7 +378,12 @@ its promise is POSITIVE (pessimistic, the tail that must not grow).
 `rider-sim/lib.ts`'s `firstSightMissSec` scores `actual - predicted`, so the same
 event is NEGATIVE there, and its own comment calls negative "the direction that
 strands a rider who trusted the number". Both files are right; the subtraction order
-is reversed. State the physical event, not the word.
+is reversed. **And they are NOT inter-convertible**: `firstSightMissSec` is measured
+against the promise INTERVAL — zero inside the window, the miss taken from the nearer
+edge — so it is not `common.ts`'s point error negated, and the two magnitudes will never
+reconcile. That is what defeats a CAREFUL reader: someone who suspects a sign problem
+checks it by comparing magnitudes, finds they disagree, and concludes the problem lies
+elsewhere. Only naming the harness resolves it. State the physical event, not the word.
 
 Here, in `common.ts`'s convention, the signed error of the shown median mid-stand
 (10:20:03) is **−382 s, worst −533 s** against the arrivals that followed (West Haven
@@ -393,8 +398,9 @@ cut to 20 by the ring fix, concentrated at board stop 25. They come from the
 SEQUENCE, not from this median: the collapse when the belief corrects, and the
 departure poll, which still moves −467 s where master moved +438 s a minute later. An
 earlier draft of this paragraph attached stranding to the −382 s figure itself, which
-is wrong and is corrected here. The station row held "3-11 min" for eight minutes while the truth fell
-924 → 474 s. After the belief corrects at 10:24:38 the shown error is **+351 s** — POSITIVE in
+is wrong and is corrected here.
+
+After the belief corrects at 10:24:38 the shown error is **+351 s** — POSITIVE in
 `common.ts`'s convention, i.e. the app now names a time the BUS BEATS, which is the tail
 that must not grow. **So no part of this episode is a good state**: mid-stand the rider
 waits, and after the correction a rider who trusts the number can reach the kerb late.
