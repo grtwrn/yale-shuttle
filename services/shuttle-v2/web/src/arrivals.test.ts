@@ -120,6 +120,27 @@ describe("nextArrivalAfterPinned", () => {
     expect(nextArrivalAfterPinned([], "#40", 450)).toBeNull();
   });
 
+  it("never prints a slot-2 bus SOONER than the countdown's own slot 1 (report #108)", () => {
+    // The reported card read "in 51, 35 min" — slot 2 arriving sixteen minutes
+    // before slot 1. Faithful to the diagnosis, verified against production's
+    // logged arrival list: the rider's live walk had grown to 46 min, so the
+    // pinned #48's THIS-lap entry (18 min) was no longer catchable and
+    // pickLiveArrival followed the same vehicle's NEXT lap (51 min). That is
+    // what slot 0 prints, and it is handed in here as `fallbackShownEta`.
+    //
+    // `shownIdx` however is the pin's FIRST entry — the 18-minute one — so the
+    // old comparison was against a number that was nowhere on screen, and #49
+    // at 35 min duly cleared it.
+    const list = [a("#48", 1100), a("#49", 2100), a("#48", 3060), a("#49", 4620)];
+    expect(nextArrivalAfterPinned(list, "#48", 3060)?.eta).toBe(4620);
+    // The property, not the vector: slot 2 is always later than what slot 1
+    // shows, whichever entry of the pinned vehicle the row happens to follow.
+    for (const shownOnScreen of [1100, 2100, 3060]) {
+      const next = nextArrivalAfterPinned(list, "#48", shownOnScreen);
+      expect(next === null || next.eta > shownOnScreen).toBe(true);
+    }
+  });
+
   it("matches vehicle names with or without the leading hash", () => {
     const list = [a("40", 450), a("#41", 510)];
     expect(nextArrivalAfterPinned(list, "#40", 450)?.busName).toBe("#41");

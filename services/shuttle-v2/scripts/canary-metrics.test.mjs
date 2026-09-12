@@ -2799,3 +2799,157 @@ About`;
     expect(blue.eta?.raw).toBe("in 1-4, then 40 min");
   });
 });
+
+
+/**
+ * THE "WALKING WINS RIGHT NOW" SENTENCE, WHICH NOW SHOWS ON THE DETAIL PAGE TOO
+ * (reports #103 and #106, and the card in #108).
+ *
+ * It used to be gated on `!_detailOpen`, so the one line explaining why a
+ * shuttle slower than walking is on screen vanished the moment a rider tapped
+ * the card to ask. Dropping that gate puts a new line on the page this parser
+ * reads, directly above a card — the same shape as "Contribute", as `nearby`,
+ * as the berth map's labels and as #111, which blinded the canary for twelve
+ * minutes on a change that "needed no parser change".
+ *
+ * So: a fixture, not an argument. The page below is the checked-in 390 px
+ * capture from the stop-alert block above, VERBATIM, with its 🔔 line removed —
+ * extracted from this file rather than retyped. Its own card order (Walk first,
+ * two slower shuttles) is what a walking-wins page looks like, which is why it
+ * is the right base. The sentence is spliced in at four positions, one of them
+ * directly above a card, exactly as that block does for the alert banner.
+ *
+ * MEASURED, the sentence cannot be misread anywhere on the page, and the reason
+ * is NOT its length: the route pill always sits between it and the card's
+ * duration, and `startOf` walks back only a countdown and one label. A shorter
+ * wording would be read the same way — asserted below, so a future rewording is
+ * not blocked by a rule nobody measured.
+ */
+describe("the walking-wins sentence on the page the canary reads", () => {
+  const WALK_WINS_PAGE = `YALE SHUTTLE TRACKER
+Not affiliated with or endorsed by Yale University.
+Trip
+Map
+Issues
+↻
+FROM
+📍 Current location
+⇅
+TO
+🏁 41.310836, -72.926148
+☆
+WHEN
+Now
+Plan for later…
+☀️
+71°F · Clear · no rain expected
+▾
+°F
+|
+°C
+OVERVIEW — ALL 2 ROUTES
+▴
+🚌
+🚌
+🚌 (B) 1-4 min
+🏁 (B) 7:07p
+ (O) 7:09p
+🚌 (O) 5-9 min
++
+−
+ Leaflet | © OpenStreetMap contributors
+⛶
+Blue Night
+Orange Night
+🚶 Walk
+4 min
+7:05p
+›
+Blue Night
+in 1-4, then 40 min
+6 min
+🚌 2 min
+›
+🚶 1 min
+7:07p
+›
+Orange Night
+in 5-9, then 34 min
+8 min
+🚶 3 min
+›
+🚌 <1 min
+›
+🚶 1 min
+7:10p
+›
+Clear
+💬 Send feedback
+Contribute
+🧪
+In beta — please report any issues
+›
+About`;
+
+  const SENTENCE = "Walking wins right now \u2014 every shuttle is slower, but the routes are listed in case you'd rather ride.";
+
+  const lines = WALK_WINS_PAGE.split("\n");
+  /** Directly above a card: the pill line whose next line is that card's countdown. */
+  const pillIndex = (label) =>
+    lines.findIndex((l, i) => l === label && /^in [<\d]/.test(lines[i + 1] ?? ""));
+  const inject = (text, at) => {
+    const idx = at === "top" ? 0
+      : at === "end" ? lines.length
+      : pillIndex(at);
+    return [...lines.slice(0, idx), text, ...lines.slice(idx)].join("\n");
+  };
+
+  it("is a real capture: three cards, walking first", () => {
+    expect(lines).not.toContain(SENTENCE);
+    expect(pillIndex("Blue Night")).toBeGreaterThan(0);
+    expect(pillIndex("Orange Night")).toBeGreaterThan(0);
+    const opts = parseOptions(WALK_WINS_PAGE);
+    expect(opts.map((o) => o.routeLabel)).toEqual(["Walk", "Blue Night", "Orange Night"]);
+    expect(opts[1].eta?.raw).toBe("in 1-4, then 40 min");
+    expect(opts[1].totalMin).toBe(6);
+  });
+
+  it("changes nothing the canary reads, wherever it lands", () => {
+    const expected = JSON.stringify(parseOptions(WALK_WINS_PAGE));
+    for (const at of ["top", "Blue Night", "Orange Night", "end"]) {
+      expect(JSON.stringify(parseOptions(inject(SENTENCE, at))), `sentence @ ${at}`)
+        .toBe(expected);
+    }
+  });
+
+  it("is never read as a route label or a countdown", () => {
+    // Why it is safe: letters-and-spaces only, up to 20 characters, is the whole
+    // of `isLabelish`. This sentence is 103 characters and carries an em dash and
+    // an apostrophe, so it fails that test three times over, and it holds no
+    // bare "in N min" for the countdown parsers to take.
+    expect(/^[A-Za-z][A-Za-z ]{0,19}$/.test(SENTENCE)).toBe(false);
+    expect(parseBusEtaText(SENTENCE)).toBeNull();
+    expect(parseWaitFallback(SENTENCE)).toBeNull();
+  });
+
+  it("AND THE SHAPE IS LOAD-BEARING: a short rewording WOULD be read as a route", () => {
+    // Not a hypothetical, and not what the first reading of this said. Injected
+    // directly above the Orange Night pill, a 12-character wording lands inside
+    // the BLUE NIGHT card's post region — and `label` prefers an `isLabelish`
+    // line found BELOW the duration, which is the whole mechanism behind
+    // "Contribute", `nearby` and the berth map's labels. Blue Night's line then
+    // reads "Walking wins".
+    //
+    // Measured HERE and nowhere else: a hand probe that injected by
+    // `indexOf("Orange Night")` scored this as safe, because that string also
+    // appears in the map legend far above the cards, so the probe never put the
+    // line where the parser could reach it. The position matters, which is why
+    // this block injects at a pill index and why it is a fixture rather than an
+    // argument.
+    const short = parseOptions(inject("Walking wins", "Orange Night"));
+    expect(short.map((o) => o.routeLabel)).toEqual(["Walk", "Walking wins", "Orange Night"]);
+    // So the sentence may be reworded, but never into something `isLabelish`
+    // would take: keep it over 20 characters, or keep the punctuation.
+    expect(SENTENCE.length).toBeGreaterThan(20);
+  });
+});
