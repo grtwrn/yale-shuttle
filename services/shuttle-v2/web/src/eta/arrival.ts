@@ -615,9 +615,17 @@ export interface Floors {
  *
  * The switch exists so both arms run from one tree in the replay; the
  * measurement is in `scripts/eta-replay/trough/README.md`.
+ *
+ * WITH THE SWITCH OFF AND NO TRACE SET this is dead code at run time, and
+ * deliberately so: nothing extra is allocated per priced row and the clamp is
+ * master's `min(ceiling, mixture)` exactly. `arrival.test.ts` pins both — the
+ * import-time default, and every row of a stand against `min` recomputed from
+ * an unclamped pricing of the same belief.
  */
 let ceilingHoldsUnderDeparture = false;
 export function setCeilingHoldsUnderDeparture(on: boolean): void { ceilingHoldsUnderDeparture = on; }
+/** The shipped default is OFF (measured and refused); `arrival.test.ts` pins it at import time. */
+export function ceilingHoldsUnderDepartureOn(): boolean { return ceilingHoldsUnderDeparture; }
 
 /**
  * ONE PRICED ROW, decomposed — for the replays that count the standing trough;
@@ -744,9 +752,16 @@ export function priceRoute(
     // still going — what the ceiling below is measured from and gated on (THE
     // CEILING'S EVIDENCE). The lead itself stands at `clampAt` by definition
     // (`clampAt` IS its `standingAt`), so it starts the tally.
-    let standMass = clampAt >= 0 ? lead.sit.mass : 0;
-    const standParts: { s: Float64Array; w: number }[] = [];
-    const moveParts: { s: Float64Array; w: number }[] = [];
+    //
+    // The tally runs only when somebody reads it: the switch is off by
+    // default and no production caller sets the trace, so on every row a
+    // rider's browser prices this is two boolean reads and NO allocation.
+    // (Review, 2026-09-12: the two arrays were built on every priced row
+    // even though the pushes into them were already guarded.)
+    const needSplit = ceilingHoldsUnderDeparture || priceTrace !== null;
+    let standMass = needSplit && clampAt >= 0 ? lead.sit.mass : 0;
+    const standParts: { s: Float64Array; w: number }[] | null = priceTrace ? [] : null;
+    const moveParts: { s: Float64Array; w: number }[] | null = priceTrace ? [] : null;
     for (let i = 0; i < chains.length; i++) {
       const c = chains[i]!;
       if (c === lead) continue;
@@ -775,9 +790,11 @@ export function priceRoute(
       if (c.sit.leg !== lead.sit.leg) continue;
       parts.push({ s: bufs[i]!, w: c.sit.mass });
       mass += c.sit.mass;
-      const standsHere = clampAt >= 0 && c.standingAt === clampAt;
-      if (standsHere) standMass += c.sit.mass;
-      if (priceTrace) (standsHere ? standParts : moveParts).push({ s: bufs[i]!, w: c.sit.mass });
+      if (needSplit) {
+        const standsHere = clampAt >= 0 && c.standingAt === clampAt;
+        if (standsHere) standMass += c.sit.mass;
+        if (standParts !== null && moveParts !== null) (standsHere ? standParts : moveParts).push({ s: bufs[i]!, w: c.sit.mass });
+      }
     }
     // The number follows the lead cluster (hysteresis lives in the lead leg);
     // the RANGE is honest about the rest: while alternatives still hold a
@@ -824,7 +841,7 @@ export function priceRoute(
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
         floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince });
       }
-      if (priceTrace) {
+      if (priceTrace && standParts !== null && moveParts !== null) {
         const f = lap ? lap.fStand[clampAt]! : 1;
         const standDist = tables.stops[clampAt]!.stand;
         standParts.unshift({ s: leadBuf, w: lead.sit.mass });
