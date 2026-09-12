@@ -4,7 +4,7 @@ import green from "../__fixtures__/green-published-order.json";
 import pink from "../__fixtures__/pink-published-order.json";
 import purple from "../__fixtures__/purple-published-order.json";
 import incidents from "../__fixtures__/anchor-incidents.json";
-import { polylineMeters, traceStopLegs, type LatLon } from "../geo";
+import { distanceToSegmentM, haversineMeters, polylineMeters, traceStopLegs, type LatLon } from "../geo";
 import { buildRing } from "./ring";
 
 const greenStops = green.stops as number[];
@@ -41,6 +41,47 @@ describe("the ring repairs a stop order its own line cannot supply", () => {
     // line, 7 km of that straight through West Haven.
     const loop = polylineMeters(greenPath);
     expect(Math.abs(ring.loopM - loop) / loop).toBeLessThan(0.005);
+  });
+
+  it("gives Building 800's outbound occurrence a STANDING point at the stop", () => {
+    // The published line serves Building 800's kerb on the RETURN pass only:
+    // its outbound pass never comes within 99 m, so occurrence 13's cell is 99 m
+    // from the stop and no cell of the ring was inside that marker's zone — the
+    // ring had no state for "standing at Building 800 outbound", and a bus
+    // parking there was relocated five legs onto the RETURN occurrence of the
+    // same stop id, 92.6 m away at the same kerb.
+    expect(ring.unreached).toEqual([13]);
+    expect(ring.stops[13]).toBe(25);
+    const cell = ring.stopCell[13]!;
+    // The STANDING point is the kerb ...
+    expect(haversineMeters({ lat: ring.standLat[cell]!, lon: ring.standLon[cell]! }, greenCoords[25]!)).toBeLessThan(1);
+    // ... and the cell itself stays on the line, 99 m away, because a bus that
+    // is DRIVING is on the road. Moving the cell outright cost 413 moving pairs
+    // on the gps-replay; see docs/eta-ring-posterior.md.
+    expect(haversineMeters({ lat: ring.lat[cell]!, lon: ring.lon[cell]! }, greenCoords[25]!)).toBeGreaterThan(90);
+    // And the stand is a state now: some cell claims that occurrence.
+    expect(Array.from(ring.nearStop)).toContain(13);
+  });
+
+  it("keeps every cell on the published line, and every other stand point on its cell", () => {
+    const offLine = (c: number) => {
+      const here = { lat: ring.lat[c]!, lon: ring.lon[c]! };
+      let best = Infinity;
+      for (let k = 1; k < greenPath.length; k++) {
+        best = Math.min(best, distanceToSegmentM(here,
+          { lat: greenPath[k - 1]![0], lon: greenPath[k - 1]![1] },
+          { lat: greenPath[k]![0], lon: greenPath[k]![1] }));
+      }
+      return best;
+    };
+    const moved: number[] = [];
+    for (let c = 0; c < ring.C; c++) {
+      // Every cell, including occurrence 13's, is a point on the line.
+      expect(offLine(c), `cell ${c} left the published line`).toBeLessThan(1);
+      if (ring.standLat[c] !== ring.lat[c] || ring.standLon[c] !== ring.lon[c]) moved.push(c);
+    }
+    // Exactly one cell's standing point differs from its cell, and it is the one.
+    expect(moved).toEqual([ring.stopCell[13]!]);
   });
 
   it("gives the two highway hops their real road length", () => {
@@ -108,6 +149,11 @@ describe("a route whose published order its line supports is built exactly as be
       expect(ring.repaired).toBe(false);
       expect(Array.from(ring.order)).toEqual(stops.map((_, i) => i));
       expect(ring.stops).toEqual(stops);
+      // The stand-point correction is evidence-triggered too: these lines reach
+      // every stop they serve, so not one standing point leaves its cell.
+      expect(ring.unreached).toEqual([]);
+      expect(Array.from(ring.standLat)).toEqual(Array.from(ring.lat));
+      expect(Array.from(ring.standLon)).toEqual(Array.from(ring.lon));
 
       // The trigger is the evidence and only the evidence: with no bridged leg
       // and no fold, the ring's legs are the tracer's own, so the cells are

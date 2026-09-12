@@ -1003,3 +1003,452 @@ retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
 scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
+
+## Green: a rest on the fold, and the cause was the RING, not the rest rule (2026-09-12)
+
+The operator caught it live — "green just flicked from 22 to 34 minutes as I was
+watching". The flick was the app recovering; the eight minutes before it were
+the defect.
+
+> **THE RULE THIS SECTION IS WRITTEN UNDER.** Never quote a signed ETA error
+> without naming its convention, and say **"the bus came before we said"** or
+> **"after we said"** beside it. Those phrases cannot invert; the words
+> *optimistic* and *pessimistic* can, and did, for four readers in one day.
+> The reason is that this repo carries two subtraction orders for one event:
+>
+> | file | formula | the bus BEATS its promise |
+> |---|---|---|
+> | `scripts/eta-replay/common.ts` | `predicted - actual` | **POSITIVE** (`pessimistic120`, the tail that must not grow) |
+> | `scripts/eta-replay/rider-sim/lib.ts` (`firstSightMissSec`) | `actual - predicted` | **NEGATIVE** |
+>
+> Both files are internally right and both call that event the stranding one.
+
+Green #331, the line's only bus that morning, stood **435 s at Building 800**
+from 10:16 to 10:24 ET. Building 800 is **ring 13 outbound and ring 18 on the
+return, the same kerb**. The belief attached the stand to **18**, five legs
+ahead, on the poll the bus arrived, and held it for the whole rest.
+
+**Which occurrence it was is not a matter of opinion.** The detector's own
+`stop_visits` row for that stand reads `stop_index 13`, and the rest of the pass
+corroborates it: the bus went on to Building 600, 400, 600, 750, Building 800
+AGAIN (a 20 s stand, `stop_index 18`), 900 and the station. Against the arrivals
+that followed the board was wrong by up to **693 s** at the stops DOWNSTREAM of
+the rest, in the direction that makes a rider wait — and at Building 800 itself it
+quoted a LAP for a bus about to arrive, which is the direction that strands. Both
+are below, with their signs, because this repo has two subtraction orders and the
+words have misled four readers in one day.
+
+### The proposed rule is refused, and by measurement
+
+The smallest candidate rule was *standing mass may not jump between two
+occurrences of one physical stop in a single poll* — on the reasoning that the
+transition kernel cannot move a stationary bus five legs, so only the rest
+mask's argmax over coincident cells could have. **Both halves of that are
+wrong, and the second one is why the rule would not have worked.**
+
+- **The mass moved before any rest existed.** Dumped per poll from the
+  captured payloads, `rested` is false at 10:16:23
+  *and* at 10:16:28, the poll the mass moves: leg 12 goes 0.976 → 0.008 and legs
+  17/18 go 0.008 → 0.982 on a FRESH fix, through the ordinary transition and
+  emission. No argmax over a rest mask is involved; `restStop` follows the mass
+  one poll later.
+- **The two occurrences are not coincident cells.** They are **92.6 m apart** —
+  cell 493 at 41.257469,-72.988013 and cell 549 at 41.258078,-72.988768 — so the
+  position emission separates them decisively, and it separates them *the wrong
+  way*.
+- And had the mass stayed, the stand still could not have been attributed to
+  Building 800: **no cell of the ring lay inside occurrence 13's zone at all**,
+  so `restStopFromBelief` would have returned −1 and priced the 435 s layover as
+  a hold on the road.
+
+A hysteresis rule would therefore have suppressed the symptom on one route and
+left the state unreachable. The cause is one layer down.
+
+### The cause: an occurrence the published line never comes near
+
+`traceStopLegs` projects each stop onto the polyline, so a stop's cell is the
+nearest point ON THE LINE. Measured over the checked-in payload's **280 stop
+occurrences**, that is the stop itself nearly everywhere: the cell sits a
+median **5.8 m** from the marker it stands for, 20.0 m at p90; **ten** exceed
+40 m.
+
+West Campus is where it is not. Measured against the published polyline, stop 25
+has passes at loop metre 14592 at **99 m** and 16262 at **27 m**: Green's line
+serves Building 800's kerb on the RETURN pass only, and its outbound pass never
+comes closer than 99 m. So occurrence 13's cell sat 99 m from the stop, and two
+things followed.
+
+1. **The state did not exist.** `nearStop` is measured to the markers, and no
+   cell of the ring was within `NEAR_STOP_M` of that one — the only such
+   occurrence in the network, 1 of 280.
+2. **The emission forced the wrong branch.** At σ = 20 m a fix 12 m from
+   occurrence 18's cell scores 0.835 and the same fix 90 m from occurrence 13's
+   scores 4.6e-6: **~180,000 : 1**. No prior survives that, so this is not a
+   fold coin-flip that sometimes lands wrong. Every bus that rests at Building
+   800 outbound is relocated.
+
+The bus parked 39 m from Building 800's published coordinate, 12 m from the
+return cell, 90 m from its own.
+
+### The fix
+
+A stop is a place, and the ring conflated it with a projection. `buildRing` gives
+an occurrence the line supplies no zone-inside cell a **standing point on that
+stop's marker** (`ring.standLat` / `standLon`, listed in `ring.unreached`) and
+makes that cell the stop's zone; `filter.ts` asks the emission twice per cell —
+the **standing** half against the marker, the **moving** half against the cell's
+point on the line.
+
+`metre`, `frac` and `legM` are untouched: nothing is billed differently. Three
+details are load-bearing:
+
+- **The trigger is the missing zone and nothing else**, the way `alignStops.ts`
+  is triggered by a bridged leg and nothing else. It fires on `9:13:25` and
+  nowhere else in the payload, so the other 279 occurrences and all fourteen
+  other lines are byte-identical — `standLat` equals `lat` cell for cell there,
+  which `ring.test.ts` asserts directly rather than inferring, and
+  `ring.unreached.length` guards the second distance sweep so those routes do not
+  pay an O(C) haversine pass per bus per poll for a duplicate array.
+- **It must be asked per OCCURRENCE, not per marker.** The first attempt asked
+  "is any cell within `NEAR_STOP_M` of this marker" and found nothing to fix: the
+  two Building 800 occurrences share one coordinate, so the *other* occurrence's
+  cells answer yes. The replay came back byte-identical and looked like a refuted
+  fix.
+- **`stopPoint` follows the marker too.** Its callers ask how far the bus is from
+  a stop (`STOOD_HERE_M`, `NEAR_STOP_M`), and those constants were measured
+  against stops' own coordinates — so on this one occurrence it had been
+  comparing against a point 99 m from the stop.
+
+#### The zone flag is the fix, and its cost is intrinsic
+
+`restStopFromBelief` argmaxes over zones and skips any cell whose zone is −1, so
+**an occurrence with no cell claiming it can never be a `restStop`, whatever the
+emission says.** Setting `nearStop[stopCell[i]] = i` is therefore not an
+accessory to the fix, it IS the fix — and it is also where the cost lands, because
+that flag is read by the transition kernel: a cell in a zone uses
+`P_REPEAT_MOVE_ZONE` (0.5) instead of `P_REPEAT_MOVE` (0.159) and is allowed to
+shuffle. A bus DRIVING the return pass past that kerb is affected by both.
+
+So the drive-past cost below is the price of having the state at all, not a
+side effect of where a point was put. That is worth stating plainly because it
+closes off the obvious "can't we have the fix without the cost" — not on this
+geometry.
+
+#### If upstream republishes a line and creates a second one
+
+Any stop whose kerb the line serves on **one pass only** is exposed to this, so
+the guard's blast radius belongs on the record rather than in an assumption.
+Measured by displacing one marker 150 m on route 3 — chosen because it is
+neither bridged nor repaired, so `traceStopLegs` alone decides its legs and the
+aligner cannot move under the measurement (displacing a marker on GREEN does
+move it: one attempt took the ring to N = 25 and another to `bridged`, which is a
+different geometry and a different question):
+
+    today:       moved=[9:13:25]              zone-less=0  clashes=0
+    republished: moved=[3:4:30, 9:13:25]      zone-less=0  clashes=0
+    ring shape (N per route) unchanged: true
+
+So: it is **picked up automatically** — there is no per-route list to edit — and
+nothing else about any ring moves. The cost does not compound either, because the
+guard is a boolean: route 3 would begin paying the one extra O(C) distance sweep
+it does not pay today, and a second occurrence on a route that already has one is
+free.
+
+And **CI fails rather than repricing quietly**: the pin in
+`no-bridged-ring.test.ts` compares the whole list against `["9:13:25"]`, so a
+republished line reaches a human. That is deliberate — a line that stopped running
+past a stop it serves is news about upstream, not a number to absorb.
+
+**The one case the fix could not disambiguate** is two occurrences of the SAME
+stop id both unreached: their standing points would land on one marker and the
+emission would be back to separating two identical states, which is exactly the
+defect this section is about. It does not happen today (clashes = 0 in both
+surveys), and on Green's real geometry it cannot be reached by accident — forcing
+both passes to miss that kerb produced a **`bridged`** ring instead, which
+`no-bridged-ring.test.ts` already fails on. So that pathology is caught by an
+existing gate rather than mispriced.
+
+#### Refused: the emission split does not pay for itself on the numbers
+
+Two versions were built and paired against master on the same replay: one that
+simply MOVED the cell to the marker, and this one, which keeps the cell on the
+line and splits the emission by mode. Scored on one common set — every pair that
+either version moved — they are indistinguishable:
+
+**Columns below are `common.ts`: error is `predicted - actual`, so `pess120` is
+the share where the bus came BEFORE we said (the tail that must not grow) and
+`opt120` the share where it came after (the rider waits).**
+
+| the 631 pairs either version moved | n | median \|err\| | bias | opt120 | pess120 |
+|---|---:|---:|---:|---:|---:|
+| AT A STOP — master | 195 | 103.3 | 538.1 | 11.8% | 33.8% |
+| AT A STOP — cell moved | 195 | **99.9** | 532.0 | 11.8% | 32.8% |
+| AT A STOP — stand point | 195 | **100.3** | 532.2 | 11.8% | 32.8% |
+| MOVING — master | 436 | 217.3 | 406.6 | 20.0% | 42.0% |
+| MOVING — cell moved | 436 | *227.6* | 475.5 | 20.4% | 42.9% |
+| MOVING — stand point | 436 | *228.0* | 476.0 | 19.3% | 44.5% |
+
+They differ from each other on 336 of 184,138 pairs and by under half a second
+of median anywhere. **The rider-level arm for the moved-cell version was
+deliberately not spent**: one arm of the simulator is ~55 minutes of this Pi's
+four cores, the replay comparison above already shows the two versions are
+indistinguishable, and the machine time was better spent on the arm that
+adjudicates what actually ships. If a future attempt wants to revisit the choice,
+the replay pairs for both are the artefacts to re-read, not a new run. **So the mode split is not justified by accuracy, and this
+section is the record of that.** It ships anyway for a reason that is not a
+number: `ring.lat` / `ring.lon` mean "a point on the published line", and
+consumers rely on it — `scripts/eta-replay/heading-fold.ts` takes the bearing
+between consecutive cells, which a 99 m sideways jump at one cell would corrupt.
+Keeping that invariant and paying nothing for it (the guard above) is worth more
+than the four lines it saves.
+
+### The recorded pass, paired
+
+`web/src/eta/green-fold-rest.test.ts` replays the captured `/api/buses` polls
+(`__fixtures__/green-fold-rest.json`, 342 polls, written by
+`scripts/eta-replay/greenfold/make-rest-fixture.ts`; `raw_positions` was swept at
+6 h and route 9 had no rider rows in `predictions_log` that day, so the capture
+IS the record). All three arms are the same harness over the same fixture with
+the day's served `model_params` applied, differing only in the estimator.
+
+Signed error on the poll the bus reaches the kerb (10:16:28).
+
+**The sign, stated as a physical event, because this repo carries two conventions
+for it.** `common.ts` scores `predicted - actual`, so NEGATIVE means we named a
+SMALLER number than the truth: **the bus came AFTER we said**, and the rider
+arrives early and waits. `rider-sim/lib.ts`'s `firstSightMissSec` subtracts the
+other way round, so the same event is POSITIVE there. Carry the event across the
+two files, never the word "optimistic".
+
+| stop | master | cell moved to the marker | **stand point (shipped)** |
+|---|---:|---:|---:|
+| Building 900 (26) | **−693 s** | −201 s | **−182 s** |
+| West Haven station (127) | **−598 s** | −108 s | **−94 s** |
+| Orange / Bradley (N) (80) | **−556 s** | +18 s | **+47 s** |
+| Orange / Willow (N) (94) | **−370 s** | +161 s | **+198 s** |
+
+Over the 91 polls of the rest, stop-polls on which we named a time more than
+120 s BEFORE the bus actually came (`common.ts` negative — the rider goes down
+early and waits) go **315 of 364 → 19 of 364**, and `restStop` over the rest goes {−1, 13, 18} →
+{−1, 13}. The middle column is the version that moved the cell outright; it is
+kept here because the two columns are what the gps-replay below separates.
+
+**And the stranding is not in the table above — it is at the BOARD stop, in the
+other direction.** Those four rows are stops DOWNSTREAM of the rest, where master
+named a time the bus then missed, so the rider waits. For a rider standing at
+Building 800 itself, master's belief put the bus five legs ahead, so the next call
+at that stop was a LAP away. Measured over the 31 strands the rider table below
+fixes: master showed **47 to 56 min for a bus that arrived 1.2 to 21 min later —
+the bus came BEFORE we said on 31 of 31**, median 28.5 min early, worst 45.8 min,
+every one at board stop 25. The drop is the correction collapsing, e.g.
+`13:57:21 "in 47, 62 min"` with the bus 1.2 min out, then
+`13:57:36 "in 7-16, then 47 min"`. That is `predicted > actual`, the tail that
+must not grow, and it is what a strand is.
+
+### What this does NOT fix, and the trade it makes visible
+
+**The departure is still mis-branched.** When the bus pulls off the kerb at
+10:23:48 the mass goes to leg **18** rather than leg 14, because the next cells
+of leg 13 are the ones 99 m away on a road the bus is not on, and the return
+cell is 12 m away. That is pre-existing — master sat on 18 for the whole rest —
+but the fix changes WHEN the consequence is paid, and the numbers should be
+quoted together: **These two figures are movements of the SHOWN
+number between consecutive polls — not errors against truth — so their sign means
+up or down on the display, and nothing about whether the bus beat us:
+
+| | station ETA through the departure | largest single-poll move |
+|---|---|---|
+| master | frozen at 332 s, then rises | **+438 s at 10:24:38** |
+| this | 830 s while standing, then 363 s | **−467 s at 10:23:48** |
+
+Master never moved AT the departure because it had been pricing the wrong
+occurrence all along; it moved a minute later, and that +438 s is the "22 to 34
+minutes" the operator watched. This arm holds the right number through the stand
+and then moves once, on the poll the bus is seen to leave.
+
+By this repo's own measurement that is the better shape — 92.4% of catastrophic
+drops have a real-world event behind them and must arrive instantly
+(`docs/eta-lurch-classification.md`), and a departure is the event — but a
+−467 s DROP is strand-shaped, so it is the rider simulator's `strand` column
+that adjudicates it, not this argument. Green is already one of the two routes
+`derivePath.ts` is kept for, and a published outbound pass that misses its own
+kerbs by 99 m is the same finding from the other side: the remedy for the
+departure branch is geometry, not another rule.
+
+### Gates
+
+**Unit.** `npm run typecheck` clean (backend and `web/`); the suite goes 108 files
+/ 2,574 tests to 109 / 2,598; `npm run test:accuracy` 143 passed, no bound
+touched and no fixture re-recorded; the `eta/` suites plus both accuracy replays
+are 13 files / 175 tests. `green-fold-rest.test.ts` fails **5 of its 6**
+assertions on master, quoting the numbers: `expected [13, 18] to not include 18`;
+`poll 14:16:33.697Z attached the rest elsewhere: expected 18 to be 13`; `stop 26
+at 14:16:28.609Z promised 693 s early`; `expected 318 to be less than or equal to
+40`; and `expected 0 to be greater than 80` — master never stands at 13 at all,
+so the re-pricing check has no polls to score.
+
+**The rider simulator's two arms share one harness, and that was checked rather
+than assumed.** `run-arm.sh` runs the harness from one tree and points
+`CLIENT_ROOT` at each arm in turn, so a client module reached from the HOST tree
+instead of from `CLIENT_ROOT` would put the same estimator in both arms and
+silently flatten the comparison. It cannot: `run.ts` loads `web/src/arrivals.ts`,
+`web/src/anchor.ts` and `web/src/eta/index.ts` — which pull in `ring.ts` and
+`filter.ts` transitively — through `fromClient()`, i.e. from `CLIENT_ROOT`, and
+its only host-tree imports are `src/network/geo`, `web/src/eta/params` and
+`src/server/v1compat`, none of which reach the estimator. `lib.ts` and
+`common.ts` import none of it, and the `typeof import(...)` lines are type-only
+and erased. Worth stating because the host tree used here is neither arm.
+
+**gps-replay, held out, 9/9 04:35–09:46 ET, snap909, each arm from its own
+worktree into its own `REPLAY_OUT`, paired on (route, stop, hop, instant).**
+Proximity truth, client arm, next 1–5 stops.
+
+**Pair on the key, not on the report.** The unpaired report shows Green's median
+falling 280.0 → 278.9, but that is `counts.scored` rising 194,533 → 194,610 — a
+poll at Building 800's outbound kerb now resolves to a stop instead of to nothing
+— and a moved denominator is not an improvement.
+
+Paired, **521 of 184,138 pairs change (0.283%), every one of them on Green**:
+
+**Same convention as above: `pess120` = the bus came BEFORE we said.**
+
+| route | n | median \|err\| | p90 | bias | pess120 | opt120 |
+|---|---:|---:|---:|---:|---:|---:|
+| Green | 34,745 | 281.7 → 281.9 | 1090.2 → 1090.5 | 427.1 → 427.9 | 57.0 → 57.0 | 8.8 → 8.8 |
+| Purple | 34,602 | 139.1 | 562.9 | 133.3 | 39.3 | 16.0 |
+| Pink | 27,923 | 93.8 | 340.5 | −38.2 | 16.8 | 24.5 |
+| Blue West | 27,525 | 63.3 | 391.0 | −41.2 | 14.0 | 18.9 |
+| Blue Day | 25,706 | 50.8 | 274.8 | 3.1 | 12.7 | 16.7 |
+| Red | 17,331 | 75.0 | 328.7 | 15.4 | 19.6 | 18.5 |
+| Brown | 11,446 | 226.6 | 575.6 | 53.4 | 37.9 | 32.3 |
+| Orange Night | 4,860 | 89.8 | 501.3 | 120.5 | 31.1 | 8.9 |
+| ALL | 184,138 | 107.6 → 107.6 | 597.4 → 597.5 | 102.1 → 102.2 | 29.5 → 29.5 | 17.5 → 17.5 |
+
+**The guard is inert, proved rather than argued.** `ring.unreached.length` picks
+between two distance arrays, and where no occurrence has its own standing point
+the two are the same array by construction — so the replay was run again against
+the guarded tree and its pairs file is **byte-identical**: 194,612 pairs,
+37,954,620 bytes, md5 `5020c5a37b5cf1cf2a6adb65cfdbef1b` either way. The numbers
+below therefore describe the code that ships, not a pre-guard ancestor of it.
+
+The fourteen other lines are byte-identical, which the trigger guarantees by
+construction. Green's aggregate is a **wash**, and on the 521 pairs that moved it
+splits by what the bus was doing:
+
+| the 521 changed pairs | n | median \|err\| | bias | opt120 | pess120 |
+|---|---:|---:|---:|---:|---:|
+| the bus is AT a stop | 161 | 85.7 → 88.2 | 483.1 → **475.9** | 7.5 → 7.5 | 32.9 → **31.7** |
+| the bus is MOVING | 360 | 247.3 → *264.7* | 447.7 → *531.7* | 22.5 → **21.7** | 45.8 → *48.9* |
+
+**The cost falls on the tail that must not grow. Stated plainly, because an
+earlier draft of this section had it exactly backwards.** `common.ts` is explicit:
+error is `predicted - actual`, POSITIVE is the app naming a time the BUS BEAT so
+the rider strolls up and watches it leave, and **`pessimistic120` is the number
+that must not grow** whatever the median does. The moving population's bias moves
+447.7 -> 531.7 s — further INTO that tail — and its `pessimistic120` rises about
+three points: **45.8 -> 48.9%** on proximity truth (n = 360) and **51.7 -> 54.7%**
+on detector truth (n = 375). Its optimistic tail falls slightly (22.5 -> 21.7%),
+which is the lesser thing. A bus driving the return pass is priced as having
+further to go, because the zone flag is read by the transition kernel (above).
+
+**So the justification for shipping is not that the cost is safe.** It is that the
+rider simulator is the designated gate, and there the rider-visible form of this
+same failure — the app quoting a number the bus then beats, which is exactly what
+`strand` measures — goes 31 fixed to 1 introduced on Green, with reversals (11/10)
+and drops (0/0) flat and Purple unmoved. Three points of a replay tail on 360
+drive-past pairs against 31 stranded riders recovered at the kerb is the trade,
+and it is recorded as a trade rather than as a free win.
+
+**And this window is dominated by the cost side, which is why the aggregate reads
+as it does.** Route 9's `stop_visits` at stop 25 in the snapshot: 45 calls at
+occurrence 13 averaging a **33 s** stand with only **2 over 120 s**, and 44 at
+occurrence 18 averaging 46 s. The long outbound rest the defect is about happens
+roughly once a morning; drive-pasts and 20-second calls are most of the
+population, so a held-out aggregate over these five hours cannot show the benefit
+at anything like its true weight. That is an argument for reading the recorded
+pass and the rider simulator beside it — not for discounting the cost.
+
+#### rider-sim, both folds, 9/10 capture — PASSED (2026-09-12)
+
+Method and population first, because they are what the verdict has to be read
+against.
+
+Two arms, one harness, one capture, one snapshot, differing in **one thing**: the
+client tree. `ROUTES=Green,Purple`, `CHAIN=none`, capture
+`positions-20260910.jsonl` sliced 13:00–19:00Z (`DETECTOR_FROM` 12:00Z),
+`REPLAY_DB=snap909.db`, no `PAYLOAD_PATCH` in either arm.
+
+- **base** — `CLIENT_ROOT` = a worktree at `b5c2c2b`, i.e. origin/master. Its
+  stamp reads `dirty: true`, and that is accounted for rather than waved past:
+  `git diff HEAD -- web/src src` is EMPTY, and the dirt is four untracked
+  files (a replay output directory, one harness script, and the fixture plus
+  test this PR adds, which only vitest ever loads). The estimator is master's.
+  `base.waits.jsonl` md5 `3427b9484c4f93ae97a06aa4f4c31a18`.
+- **split** — `CLIENT_ROOT` = this branch, committed and clean.
+
+Population actually scored, and it is not thin on either fold — 2,467 waits,
+**Green 959** and **Purple 1,508**. Master's own defect counts, which are the
+denominator every FIXED/INTRODUCED number below is a movement against:
+
+| arm: master | waits | strand | jump >= 180 s | reversal >= 60 s | dropped while approaching |
+|---|---:|---:|---:|---:|---:|
+| Green | 959 | 50 | 323 | 222 | 75 |
+| Purple | 1,508 | 74 | 753 | 634 | 351 |
+
+Purple is the control: this change cannot reach it (`unreached` is empty there, so
+its ring is byte-identical), so any movement in Purple's column is simulator
+noise and calibrates how much of Green's movement to believe.
+
+`split.waits.jsonl` md5 `aa9ebe0eb78780f661620cc8d02096a2` against base's
+`3427b948…`, so the arms are two runs and not one file compared with itself.
+Trees as stamped: base `b5c2c2b` (origin/master), split `b8c2051` on this branch,
+`dirty: false`.
+
+**The gate, `pair-by-route.mjs`, all 2,467 paired waits:**
+
+| route | n | strand | jump >= 180 s | reversal >= 60 s | dropped |
+|---|---:|---:|---:|---:|---:|
+| | | fixed / intro | fixed / intro | fixed / intro | fixed / intro |
+| **Green** | 959 | **31 / 1** | 36 / 6 | 11 / 10 | 0 / 0 |
+| Purple | 1,508 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+In absolutes, Green goes strand **50 -> 20**, jump >= 180 s 323 -> 293, reversal
+222 -> 221, dropped 75 -> 75 (drop events 459 -> 451, every one repriced, none
+declined). **Purple does not move by a single wait on any flag** — the control
+behaving exactly as the trigger predicts, which is what licenses reading Green's
+column as signal rather than simulator noise.
+
+**Every one of the 31 fixed strands is at board stop 25, Building 800.** The fix
+is not diffusely better; it is better at the kerb it is about.
+
+**Two instruments, two numbers, and the difference is a house rule rather than a
+discrepancy.** `--compare` reports the strand column as 31 fixed / **0**
+introduced over 2,284 waits, because `compareRuns` scores only waits that
+`arrived` in both arms, were shown something, and did NOT have a bus at the stop
+when the rider walked up. That excludes 183 of 2,467: 66 for outcome, **117 for
+`busAtStopOnArrival`**, 0 for `neverShown`. The one introduced strand is one of
+the 117 — bus #325 was already at the kerb — so the house rule excludes it for the
+documented reason that the app is right to say "arriving now" to such a rider.
+**The 31 / 1 above is the complete count and is the one to quote**; the 0 is the
+flattering one.
+
+**What the introduced defects actually are, read rather than summarised.** All three
+populations are one-poll display differences in which this branch names a slightly
+LATER time than master for a single poll and the bus then arrives within seconds in
+both arms — display movements the metric counts, not riders missing buses:
+
+- the single introduced strand (`Green|25|14:10:04.903Z`): 29 of its 31 readings
+  are identical to master's, and the sole difference is one poll at 14:16:39 —
+  master `now-10, then 47 min`, this branch `in 3-10, then 47 min` — with both
+  printing `now` five seconds later. Worst drift 50 -> 165 s.
+- five of the six introduced jumps are ONE episode (14:17:35, five stops at once)
+  in which **slot 1 is byte-identical and only slot 2 moves** (44 -> 36, 44 -> 36,
+  48 -> 41, 48 -> 41, 49 -> 41 min): the NEXT bus's estimate, not the pinned one.
+- the sixth (`Green|26|15:59:14`) is slot 1's band low going `<1-11` -> `7-13` for
+  a single poll, identical again at the next reading.
+
+So the −467 s downward move in the SHOWN number at the departure poll did **not** become a strand epidemic, which was the
+open question this gate existed to answer. Elsewhere: first promise |miss|
+unchanged (p50 0 s, improved 0, worsened 0 — the change cannot reach first sight),
+pin wrong unchanged (491 both arms, 0 / 0), worst drift p10/p50/p90 all 0 s with
+62 improved and 32 worsened.
