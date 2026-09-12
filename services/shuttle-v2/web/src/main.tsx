@@ -1,6 +1,7 @@
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import TransitMap from "./TransitMap";
+import { saveTripDraft } from "./tripDraft";
 import MinimapReview from "./MinimapReview";
 import BerthReview from "./BerthReview";
 
@@ -64,7 +65,16 @@ const Page = review === "minimap" ? MinimapReview : review === "berth" ? BerthRe
 // without it, the SW only adds the offline shell and installability.
 // Installed-app pull-to-refresh: standalone mode has no browser chrome, so
 // Safari's native gesture is gone. No-op in a normal tab.
-import("./pullToRefresh").then((m) => m.installPullToRefresh()).catch(() => {});
+//
+// It CLEARS the planned trip before reloading, like the header's ↻ button
+// (#222): since tripDraft.ts began restoring the trip across reloads, a bare
+// refresh came back to the same trip, so neither control cleared anything.
+// The two now behave identically — operator, 2026-09-12: "also pull down to
+// refresh should clear".
+import("./pullToRefresh").then((m) => m.installPullToRefresh(document, () => {
+  saveTripDraft(null);
+  window.location.reload();
+})).catch(() => {});
 
 if ("serviceWorker" in navigator && !import.meta.env.DEV) {
   window.addEventListener("load", () => {

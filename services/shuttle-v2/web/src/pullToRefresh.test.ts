@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import {
+  installPullToRefresh,
   isVerticalPull,
   PULL_RESISTANCE,
   PULL_THRESHOLD_PX,
@@ -27,5 +29,137 @@ describe("pull-to-refresh gesture math", () => {
     expect(isVerticalPull(100, 40)).toBe(false); // sideways swipe
     expect(isVerticalPull(10, 40)).toBe(true);   // clean pull
     expect(isVerticalPull(0, -20)).toBe(false);  // scrolling up
+  });
+});
+
+// --- Install-time gesture ownership -----------------------------------------
+// Android's Chrome keeps its own pull-to-refresh in an INSTALLED app, so the
+// installed case has to claim the gesture or both fire on one drag. These run
+// in the node environment (no jsdom here), against the injectable `doc`.
+
+function fakeStyle() {
+  const props = new Map<string, string>();
+  return {
+    cssText: "",
+    top: "",
+    setProperty(k: string, v: string) { props.set(k, v); },
+    getPropertyValue(k: string) { return props.get(k) ?? ""; },
+    removeProperty(k: string) { props.delete(k); },
+  };
+}
+
+function fakeDoc() {
+  const listeners = new Map<string, (e: unknown) => void>();
+  const root = { style: fakeStyle() };
+  const doc = {
+    documentElement: root,
+    scrollingElement: { scrollTop: 0 },
+    body: { appendChild() {} },
+    createElement: () => ({
+      setAttribute() {},
+      style: fakeStyle(),
+      textContent: "",
+      remove() {},
+    }),
+    addEventListener(t: string, h: (e: unknown) => void) { listeners.set(t, h); },
+    removeEventListener(t: string) { listeners.delete(t); },
+  };
+  return { doc: doc as unknown as Document, root, listeners };
+}
+
+const OVERSCROLL = "overscroll-behavior-y";
+const touchAt = (y: number) => ({
+  target: null,
+  touches: [{ clientX: 100, clientY: y }],
+  changedTouches: [{ clientX: 100, clientY: y }],
+});
+
+describe("pull-to-refresh gesture ownership", () => {
+  const g = globalThis as unknown as {
+    window?: unknown; Element?: unknown;
+  };
+  let savedWindow: unknown;
+  let savedElement: unknown;
+
+  function setStandalone(standalone: boolean) {
+    g.window = { matchMedia: () => ({ matches: standalone }) };
+  }
+
+  beforeEach(() => {
+    savedWindow = g.window;
+    savedElement = g.Element;
+    // `inMap` does `t instanceof Element`, which needs the global to exist.
+    g.Element = class {};
+  });
+
+  afterEach(() => {
+    g.window = savedWindow;
+    g.Element = savedElement;
+  });
+
+  it("an installed app turns the browser's own pull-to-refresh off", () => {
+    setStandalone(true);
+    const { doc, root } = fakeDoc();
+    installPullToRefresh(doc, () => {});
+    expect(root.style.getPropertyValue(OVERSCROLL)).toBe("contain");
+  });
+
+  it("a browser tab is left alone, so the native gesture still works", () => {
+    setStandalone(false);
+    const { doc, root } = fakeDoc();
+    installPullToRefresh(doc, () => {});
+    expect(root.style.getPropertyValue(OVERSCROLL)).toBe("");
+  });
+
+  it("uninstalling hands the gesture back to the browser", () => {
+    setStandalone(true);
+    const { doc, root } = fakeDoc();
+    installPullToRefresh(doc, () => {})();
+    expect(root.style.getPropertyValue(OVERSCROLL)).toBe("");
+  });
+
+  it("still refreshes the installed app, exactly once per pull", () => {
+    setStandalone(true);
+    const { doc, listeners } = fakeDoc();
+    let reloads = 0;
+    installPullToRefresh(doc, () => { reloads += 1; });
+    listeners.get("touchstart")!(touchAt(100));
+    listeners.get("touchmove")!(touchAt(120));
+    listeners.get("touchmove")!(touchAt(300));
+    listeners.get("touchend")!(touchAt(300));
+    expect(reloads).toBe(1);
+  });
+
+  it("a short tug is not a refresh", () => {
+    setStandalone(true);
+    const { doc, listeners } = fakeDoc();
+    let reloads = 0;
+    installPullToRefresh(doc, () => { reloads += 1; });
+    listeners.get("touchstart")!(touchAt(100));
+    listeners.get("touchmove")!(touchAt(120));
+    listeners.get("touchend")!(touchAt(120));
+    expect(reloads).toBe(0);
+  });
+});
+
+describe("the gesture clears the trip, like the header's refresh (#222)", () => {
+  // main.tsx is the call site and cannot be rendered by this harness, so the
+  // wiring is pinned at source — the same pattern walk.test.ts and
+  // mapFilter.test.ts use for cross-module contracts.
+  const main = readFileSync(new URL("./main.tsx", import.meta.url), "utf8");
+
+  it("passes a reload that wipes the saved trip before reloading", () => {
+    expect(main).toMatch(/installPullToRefresh\(document,\s*\(\)\s*=>\s*\{[\s\S]{0,200}saveTripDraft\(null\)[\s\S]{0,200}location\.reload\(\)/);
+  });
+
+  it("imports saveTripDraft, so the call cannot be a no-op", () => {
+    expect(main).toMatch(/import \{ saveTripDraft \} from "\.\/tripDraft";/);
+  });
+
+  it("clears BEFORE reloading — the other order would restore the trip", () => {
+    const clear = main.indexOf("saveTripDraft(null)");
+    const reload = main.indexOf("window.location.reload()", clear);
+    expect(clear).toBeGreaterThan(-1);
+    expect(reload).toBeGreaterThan(clear);
   });
 });
