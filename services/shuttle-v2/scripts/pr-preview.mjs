@@ -26,7 +26,13 @@
 //                                                     // suggestion list instead of planning a trip (view "search")
 //     "actions": [ { "click": "Blue Day", "which": "last" }, { "wait": 2000 },
 //                  { "click": "Purple", "on": "map" } ],  // after that view opens, before its shot
-//     "fullPage": false                               // frame the viewport (a fullscreen overlay), not the whole page
+//     "fullPage": false,                              // frame the viewport (a fullscreen overlay), not the whole page
+//     "expect": "by \\d{1,2}:\\d{2}[ap]"                 // the shot must CONTAIN this (regex, case-insensitive);
+//                                                     // string | string[] | { "<view>": string | string[] }.
+//                                                     // OPTIONAL: omitting it keeps today's behaviour exactly.
+//                                                     // A view whose text lacks it FAILS like a view that never
+//                                                     // opened, and a pattern no view ever evaluates fails the RUN.
+//                                                     // See preview-expect.mjs for why this exists.
 //   }
 // `actions` run in order once their view has opened. Each step belongs to ONE
 // view — `on` names it, default "trip" — so a trip step never re-fires on the
@@ -57,6 +63,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 import { seedTestId } from "./testId.mjs";
+import { checkView, compileExpect, describeMissing, rulesFor, unevaluatedRules } from "./preview-expect.mjs";
 
 const BASE = (process.env.BASE ?? process.env.BOT_BASE_URL ?? "http://127.0.0.1:8093").replace(/\/$/, "");
 const OUT = process.env.OUT ?? "/tmp/pr-preview";
@@ -65,6 +72,21 @@ const recipe = process.env.RECIPE && fs.existsSync(process.env.RECIPE)
   : {};
 const views = Array.isArray(recipe.views) && recipe.views.length ? recipe.views : ["trip", "map"];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// What this shot has to CONTAIN, if the recipe says (preview-expect.mjs).
+// Compiled before anything is launched: a malformed declaration is a failed
+// run, and finding that out after a browser and a page load is pure waste.
+const { rules: expectRules, errors: expectErrors } = compileExpect(recipe.expect, views);
+if (expectErrors.length) {
+  fs.mkdirSync(OUT, { recursive: true });
+  fs.writeFileSync(path.join(OUT, "preview.json"), JSON.stringify({
+    caption: recipe.caption ?? null, base: BASE, views,
+    shots: [], failedViews: [], pageErrors: [], crashed: false,
+    expected: [], expectChecked: [], declarationErrors: expectErrors, unevaluated: [],
+  }, null, 2));
+  console.error(`BAD expect DECLARATION: ${expectErrors.join(" | ")}`);
+  process.exit(1);
+}
 
 // "${now+60000}" -> epoch ms, "${isoNow-540000}" -> the collector's naive-UTC
 // string ("2026-09-09T13:05:00.000", no Z); applied recursively through the
@@ -139,6 +161,8 @@ for (const [pathname, spec] of Object.entries(mocks)) {
 fs.mkdirSync(OUT, { recursive: true });
 const taken = [];
 const failedViews = [];
+const expectChecked = [];
+const viewsChecked = [];
 async function shot(name) {
   const file = path.join(OUT, `${name}.png`);
   if (typeof recipe.focus === "string" && recipe.focus) {
@@ -224,28 +248,61 @@ for (const view of views) {
       await sleep(view === "map" ? 3000 : 500);
     }
     await runActions(view);
+    // BEFORE the shot, so a screenshot of a featureless page is never written
+    // under the name the PR would embed. A miss lands in the same catch as a
+    // view that never opened, and so gets the same `-failed.png` treatment.
+    if (rulesFor(expectRules, view).length) {
+      const text = await page.evaluate(() => document.body.innerText).catch(() => "");
+      const result = checkView(expectRules, view, text);
+      expectChecked.push({ view, matched: result.matched, missing: result.missing });
+      viewsChecked.push(view);
+      if (result.missing.length) {
+        const err = new Error(describeMissing(view, result.missing));
+        // What WAS on the page, so the author can see why it missed rather
+        // than re-running blind. This is the evidence the false pass lacked.
+        err.saw = text.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 25).join(" | ").slice(0, 600);
+        throw err;
+      }
+    }
     await shot(view);
   } catch (e) {
-    // A view that never opened is a FAILED preview, not a preview of a
-    // failure: PR #7 shipped a `trip-failed.png` embedded as if it were the
-    // feature, and the operator had to catch it. Recorded and, below, made
-    // fatal — a screenshot nobody can trust is worse than none.
+    // A view that never opened — or one that opened, rendered a perfectly
+    // valid page, and contained none of the feature — is a FAILED preview,
+    // not a preview of a failure. PR #7 shipped a `trip-failed.png` embedded
+    // as if it were the feature; on 2026-09-12 the opposite happened and a
+    // VALID page with no feature in it passed green, because nothing checked
+    // the content. Both are recorded here and both are fatal below: a
+    // screenshot nobody can trust is worse than none.
     console.error(`view ${view}: ${e.message}`);
-    failedViews.push({ view, error: String(e.message).slice(0, 300) });
+    if (e.saw) console.error(`  the page said: ${e.saw}`);
+    failedViews.push({ view, error: String(e.message).slice(0, 300), ...(e.saw ? { saw: e.saw } : {}) });
     await shot(`${view}-failed`).catch(() => {});
   }
 }
 const body = await page.evaluate(() => document.body.innerText).catch(() => "");
 const crashed = body.includes("App crashed");
+// THE GUARD ON THE GUARD. A declared pattern that no view ever evaluated has
+// asserted nothing, and a check that finds nothing looks exactly like a check
+// that passed — the failure mode behind #111, #123 and the eight days
+// `eta-accuracy.mjs` spent matching nothing. So it fails the run.
+const unevaluated = unevaluatedRules(expectRules, viewsChecked);
 fs.writeFileSync(path.join(OUT, "preview.json"), JSON.stringify({
   caption: recipe.caption ?? null, base: BASE, trip, views, mocked: Object.keys(mocks),
   shots: taken, failedViews, pageErrors, crashed,
+  expected: expectRules.map((r) => r.source), expectChecked,
+  declarationErrors: [], unevaluated,
 }, null, 2));
 console.log(`preview: ${taken.length} screenshot(s) in ${OUT}` + (recipe.caption ? ` — ${recipe.caption}` : ""));
 if (pageErrors.length || crashed) { console.error(`PAGE ERRORS: ${pageErrors.join(" | ")}${crashed ? " (App crashed)" : ""}`); }
 if (failedViews.length) {
-  console.error(`VIEWS THAT NEVER OPENED: ${failedViews.map((f) => `${f.view} (${f.error})`).join(" | ")}`);
+  console.error(`FAILED VIEWS: ${failedViews.map((f) => `${f.view} (${f.error})`).join(" | ")}`);
+}
+if (unevaluated.length) {
+  console.error(`EXPECTATIONS NEVER CHECKED: ${unevaluated.map((u) => `/${u}/`).join(", ")} — no view evaluated them, so this run asserted nothing.`);
+}
+if (expectRules.length && !unevaluated.length && !failedViews.length) {
+  console.log(`expect: ${expectChecked.reduce((n, c) => n + c.matched.length, 0)} pattern(s) found on ${expectChecked.length} view(s)`);
 }
 await ctx.close();
 await browser.close();
-process.exit(pageErrors.length || crashed || failedViews.length ? 1 : 0);
+process.exit(pageErrors.length || crashed || failedViews.length || unevaluated.length ? 1 : 0);
