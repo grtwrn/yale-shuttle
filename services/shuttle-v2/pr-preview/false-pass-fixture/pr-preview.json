@@ -1,0 +1,12 @@
+{
+  "caption": "FIXTURE, expected to FAIL: the recorded 2026-09-12 false pass — a Red bus mocked on a Saturday, dropped by the service gate, leaving a valid page with no Red option on it.",
+  "views": ["trip"],
+  "trip": { "board": 48, "dest": 38 },
+  "expect": "in \\d+[,-]",
+  "mock": {
+    "/api/buses": { "$patch": { "buses": [
+      { "bus_id": 9101, "bus_name": "#309", "route_id": 3, "heading": 100,
+        "lat": 41.3251, "lon": -72.9253, "last_stop_id": 49 }
+    ] } }
+  }
+}
