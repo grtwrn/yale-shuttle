@@ -470,16 +470,8 @@ const isLabelish = (l) =>
  * innerText in the tests, not reasoned about.
  */
 /**
- * The card's arrival clock, in all THREE spellings: "arrive 5:13p" until
- * 2026-09-04, a bare "10:33a" after (#123 dropped the word), and "by 2:23p"
- * from 2026-09-12, when the column stopped printing the median instant and
- * started promising the band's upper end instead (etaBand.ts `arriveByClock`;
- * the operator: "just put latest time?"). All three are kept rather than
- * swapped, for the reason below: production is always a deploy behind the
- * branch that changes the layout, and a card printing any of the three is
- * still a card. Note the app prints "by" only where it HAS an alight forecast
- * wide enough to promise against, so the bare form goes on appearing beside
- * it on the same page — this is not a migration, it is a third form.
+ * The card's arrival clock, in both spellings: "arrive 5:13p" until
+ * 2026-09-04 and a bare "10:33a" after (#123 dropped the word).
  *
  * EXPORTED because there are TWO readers of this text and they live in
  * different files. `parseOptions` below is one; `openCard` in
@@ -492,7 +484,7 @@ const isLabelish = (l) =>
  * first), so the pattern is exported rather than copied, and the anchored
  * per-line test comes with it.
  */
-export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+|by\s+)?\d{1,2}:\d{2}[ap]$/i;
+export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
 /** Does this block of innerText contain an arrival clock on a line of its own? */
 export function hasArrivalClock(text) {
   return String(text ?? "").split("\n").some((l) => ARRIVAL_CLOCK_RE.test(l.trim()));
@@ -573,7 +565,7 @@ export function parseOptions(bodyText) {
       mode: body.includes("🚶 Walk") ? "walk" : "shuttle",
       departed: lines[h] === "Departed",
       totalMin: lines[h] === "Departed" ? null : Number(lines[h].match(/(\d+)/)[1]),
-      arriveText: arrive ? arrive.replace(/^(?:arrive|by)\s+/i, "") : null,  // all three spellings collapse to the clock
+      arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,  // both spellings collapse to the clock
       eta: busLine ? parseBusEtaText(busLine) : null,
       waitFallback: waitLine ? parseWaitFallback(waitLine) : null,
       missedBus: missed ? missed[1] : null,

@@ -32,7 +32,7 @@ import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
-import { arriveByClock, bandTitle, boardArrivalText, waitLegText } from "./etaBand";
+import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -2144,20 +2144,6 @@ const TripPlanner: FC<{
       // is its current boarding visit, not another pass by the same curb.
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
-      // THE BAND'S UPPER END AT THE ALIGHT STOP for the SAME bus (widened by
-      // CONFORMAL, so above the chain's own q90) — what the card's
-      // "by 2:23p" is promised from (etaBand.ts `arriveByClock`). `visits`
-      // already holds it: the pass above asks for the alight stop as well as
-      // the board one, so this costs no extra estimator call and cannot be a
-      // second arithmetic. On a folded route one vehicle has two rows for the
-      // stop, so take the first pass at or after the board arrival — the ride
-      // runs board -> alight, never back.
-      const alightHighFor = (busName: string, fromStopsAhead: number): number | undefined => {
-        const rows = visits
-          .filter((a) => a.stopId === o.alightStopId && norm(a.busName) === norm(busName))
-          .sort((a, b) => a.stopsAhead - b.stopsAhead);
-        return (rows.find((a) => a.stopsAhead >= fromStopsAhead) ?? rows[0])?.high;
-      };
       const busesAtBoard = cfg
         ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
@@ -2171,7 +2157,6 @@ const TripPlanner: FC<{
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
           busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
-          busAlightHighSec: alightHighFor(norm(hereBus.bus_name), 0),
         };
       }
 
@@ -2206,10 +2191,6 @@ const TripPlanner: FC<{
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
         busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
-        // The promise rides with the pin, from the same estimator pass:
-        // the card's "by" clock cannot quote one bus's ceiling beside
-        // another bus's countdown.
-        busAlightHighSec: alightHighFor(match.busName, match.stopsAhead),
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3851,22 +3832,6 @@ const TripPlanner: FC<{
             const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
               ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
               : null;
-            // THE PROMISED ARRIVAL — "by 2:23p", the right column's own
-            // number. ONE latest time and not a range: at the destination the
-            // only question is whether the rider makes it by X, and arriving
-            // early costs nothing (operator, 2026-09-12: "do we need ranges on
-            // the arrival time too? or just put latest time?"). Priced from
-            // the same bus's q90 at the ALIGHT stop plus the trailing walk,
-            // and null — the median clock, byte-identical to before — for a
-            // walk option, a future plan, or a pin with no alight forecast.
-            const arriveBy = o.mode === "shuttle" && !o.departed && !isFuture
-              ? arriveByClock({
-                  alightHighSec: o.busAlightHighSec,
-                  walkFromSec: o.walkFromSec,
-                  totalSec: o.totalSec,
-                  computedAtMs: o.computedAtMs,
-                })
-              : null;
             // The bus AFTER the pinned one (user request 2026-07-17) — lets
             // riders judge "can I skip this one?" at a glance. Strictly later
             // than the pinned arrival so an earlier, uncatchable bus never
@@ -4156,7 +4121,7 @@ const TripPlanner: FC<{
                           word "Departed", which is not a duration and has no
                           arrival to quote. */}
                       {!o.departed && (
-                        <span title={arriveBy?.title} style={{
+                        <span style={{
                           fontSize: 13, fontWeight: 500, color: "#202124",
                           whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
                         }}>
@@ -4169,14 +4134,9 @@ const TripPlanner: FC<{
                               time"). Future mode already printed a bare range,
                               since the start is the chosen departure; the two
                               modes now agree. */}
-                          {/* Live mode promises the LATEST time instead of
-                              quoting the median instant (2026-09-12) — see
-                              `arriveBy` above. Future mode keeps its departure
-                              range: there is no live bus to forecast, so the
-                              band that would be promised does not exist. */}
                           {isFuture
                             ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                            : (arriveBy?.text ?? fmtClock(o.totalSec))}
+                            : fmtClock(o.totalSec)}
                         </span>
                       )}
                     </div>

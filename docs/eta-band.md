@@ -228,6 +228,20 @@ bucket every rider is looking at when they decide to run.
 
 ## F. The arrival clock as a promise — "by 2:23p" (2026-09-12)
 
+> **STATUS: REFUSED, TWICE, AND NO CODE SHIPPED.** This section is the record
+> of a design that was measured and rejected, not documentation of a live
+> feature. `arriveByClock` and its wiring were removed from the branch; what
+> remains here is the reasoning, the two measurements, and
+> `band-coverage.mjs --by-margin` so the tables stay reproducible. Sentences
+> below that describe the clock in the present tense describe the DESIGN AS
+> PROPOSED. **Riders were never exposed**: the clock never reached master
+> (`arriveByClock` appears zero times there), and the regime where its late
+> share peaks — a printed margin of one to two minutes — is unreachable on
+> master anyway, because `etaBand.ts:64` sets `RANGE_MIN_SHOWN_MIN = 3` and
+> line 121 declines below it. A 21% figure below is a measurement of a
+> proposal, not a live defect.
+
+
 The operator, reading a card whose countdown had just become a range: *"do we
 need ranges on the arrival time too? or just put latest time?"* The answer is
 the latest time, and the reason is that the two numbers in the right-hand
@@ -256,14 +270,15 @@ targets EIGHTY percent TWO-SIDED coverage. Production serves `fit-2026-09-11` �
 `{"0-2": 1, "2-5": 1.47, "5-10": 1.271, "10-30": 1.251}` — so at every horizon
 this clock can print (it declines under a printed minute of margin), `high` sits
 25-47% further above the median than q90 does. The direction favours the rider,
-which is why it ships without a gate; but the tooltip describes only what the
-number is ABOUT — arriving at the destination — and names no percentile, no
-frequency, and no other figure on screen. **That sentence has been wrong
-twice**: it called the number a 90th percentile (it is not), and then called it
-the top of the countdown's range (that range is the BOARD stop's band; this is
-the ALIGHT stop's plus the walk, which a Green card printing "in 25-36 min"
-beside "by 1:00p" shows plainly). `arriveByClaims.test.ts` now forbids both
-retired claims across every file that carries the prose.
+which is why it would have shipped without a gate. **The proposed tooltip was
+wrong twice, in the same way both times**: it called the number a 90th
+percentile (it is not), and then called it the top of the countdown's range —
+a different quantity again, since that range is the BOARD stop's band while
+this was the ALIGHT stop's plus the walk, as a Green card printing "in 25-36
+min" beside "by 1:00p" showed plainly. The lesson outlived the feature: a
+display string must name what its number is ABOUT, and a test that pins the
+CURRENT phrasing will defend that phrasing once it turns out to be false —
+assert the absence of the specific false claims instead.
 
 **It is a fixed instant.** The seconds are decayed off `computedAtMs` exactly
 as the point and the band are (report #48). For an absolute clock that has the
@@ -295,9 +310,10 @@ headless chromium at 390x844 against a staged build: the widest form
 `"by 12:58p"` is **60.1 px** on a 304 px row, a single 16 px line, `nowrap`,
 with `scrollWidth === clientWidth` at the span's column, the option row and the
 document — no overflow and no sideways scroll. The fallback `"12:29p"` is
-41.6 px. A screenshot of both branches on one page (a live Blue Weekend card
-reading `by 12:15p`, the Walk card's plain `12:28p`, a Green card reading
-`by 1:00p`) is committed at `services/shuttle-v2/pr-preview/arrive-by/`.
+41.6 px. A screenshot of both branches on one page was taken during the trial (a live
+Blue Weekend card reading `by 12:15p`, the Walk card's plain `12:28p`, a Green
+card reading `by 1:00p`); it is NOT kept here, because the page it shows does
+not exist.
 
 **MEASURED, 2026-09-12 — and the promise does not hold as well as claimed.**
 One `gps-replay` with `PAIRS_OUT`, then `band-coverage.mjs` at the SERVED
@@ -377,10 +393,10 @@ measurement on the `high - eta` gate rather than this one.
 ### The rework: held out on a second day, and REFUSED again (2026-09-12)
 
 **Name the defect first, because it is not a missing feature — it is a missing
-safeguard.** `arriveByClock` has five declines: two malformed-input guards,
-an incoherent-ceiling guard, a MAXIMUM (`> RANGE_MAX_SHOWN_MIN`), and the
-degenerate same-printed-minute case. **There is no minimum-margin decline at
-all.** Its neighbour in the same module has had one since 2026-09-11 —
+safeguard.** The refused composer (`arriveByClock`) had five declines: two
+malformed-input guards, an incoherent-ceiling guard, a MAXIMUM
+(`> RANGE_MAX_SHOWN_MIN`), and the degenerate same-printed-minute case.
+**There was no minimum-margin decline at all.** Its neighbour in the same module has had one since 2026-09-11 —
 `displayBand` returns null below `RANGE_MIN_SHOWN_MIN` — so the promised clock
 printed in exactly the regime the band composer beside it refuses to print in.
 
