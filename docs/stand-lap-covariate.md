@@ -889,3 +889,173 @@ case is the 2026-09-10 shape at 1/100 scale: a stubbed cache that busy-waits
 `durationMs` stays under it**. Two of its three cases fail on the code as it
 shipped, which is the point — an instrument that can go blind silently is how
 this hid for a day.
+
+## 8. After the widening: the layover deficit re-measured on BOTH served lines (2026-09-12)
+
+The lap covariate went live on Blue Night at **2026-09-12 00:5x ET** (#217 then
+#218, master 1d359a8), so `dwells` now serves five lap-fitted cells — Red 3:11
+and 3:121, Blue Night 13:10 (333 Cedar), 13:97 and 13:121. Every layover number
+quoted in the 2026-09-11 investigations predates that, including the one that
+matters most: the standing-freeze work concluded that the deficit on layover
+rests splits **40.5% ratchet / 59.5% estimate** with a median shown deficit of
+171 s, and named the estimate half — the pooled stand median — as what the lap
+covariate exists to attack.
+
+So: did the ship move the half it was aimed at? Measured, not argued, with
+`scripts/eta-replay/postlap/` (the generalisation of `../trough/`, same
+arithmetic, now per route and per cell, with the arms as a PAYLOAD patch).
+
+### The days, and why these
+
+| day | line | positions | window | buses |
+|---|---|---:|---|---|
+| 2026-09-10 | Red | 23,356 | 06:57–18:19 ET | #309 #310 #316 |
+| 2026-09-11 | Red | 13,212 | 06:59–13:31 ET | #304 #310 #316 |
+| 2026-09-10 | Blue Night | 8,327 | 17:58–23:59 ET | #41 #46 |
+| 2026-09-11 | Blue Night | 2,168 | 20:59–23:59 ET | #46 |
+
+`raw_positions` is swept at six hours, so an archived day holds a full service
+day only where the Pi's capture supplemented it: 09-10 is the last such day for
+both lines. Red 09-11 comes from the production snapshot the trough
+investigation took that afternoon — deliberately, because **09-11 is the day the
+−171 s figure was measured on**, so the comparison is direct.
+
+**There is no post-ship day, and there cannot be one yet.** The fits shipped at
+00:5x ET today and today is a Saturday: `route_active` reports 3 and 13 both
+false, and neither line has run since the ship. So every number here is the
+CURRENT client replayed over pre-ship days, with the covariate served and
+withheld on the same polls. That is the right instrument for this question — a
+paired arm cannot be confounded by the day, which is what
+[[project-red-bias-2026-09-11]] was retracted for — but note the honest caveat:
+the 90-day fit window includes these days, so the served arm is in sample here.
+The held-out evidence for these cells is the cell gate's own day-blocked
+cross-validation (§5a): 13:10 **−120.9 s**, 3:121 −64.0 s, 3:11 −54.8 s.
+
+**Fidelity.** Red 09-10, the WITHHELD arm against `predictions_log`'s own rider
+rows for that day (production's lap correction was not yet effective on Red —
+#217/#218 are what made it so): 231 rows paired inside the log's 15 s bucket,
+replay − logged **median +10 s**, p10 −24, p90 +52, 60.2% within 30 s. Blue
+Night 09-10, the same arm priced at the stops riders ACTUALLY watched — 333
+Cedar, Prospect / Sachem (N), 100 Church Street South, 129 York, Elm / York,
+since the cells' own +3 riders are nobody's watched stop on that line: **248
+rows paired, median −6 s**, p10 −252, p90 +23, **73.8% within 30 s**. Production
+served no route-13 fit that evening, so the withheld arm is the one to check
+against the log. Read from those farther stops the chains are three to five
+times longer (median mixture 1,505–1,518 s against 263–833 s) and both Blue
+Night cells read the same DIRECTION with a larger magnitude — +102 to +126 s
+signed, 46–52% of rows with the bus beating the promise by two minutes. That is
+chain length, not a second estimate of the cell.
+
+### What the covariate did, per route and per cell
+
+Rows are what a rider three hops past the resting cell would have read; rests
+are selected on the detector's own `arrived_at → departed_at` span ≥ 300 s.
+`signed` is `shown − actual` (negative = the rider waits longer than told),
+`wait` the share ≥ 120 s late to the rider, `early` the share where the bus beat
+the promise by ≥ 120 s, and `split` the deficit seconds divided into the part
+the #119 ratchet holds and the part the estimate is low by.
+
+| day | cell | n (rests) | signed off → on | \|err\| off → on | wait off → on | early off → on | split off → on |
+|---|---|---:|---|---|---|---|---|
+| 09-10 | **Red, both cells** | 3,867 (59) | −100 → −105 | 144 → **118** | 46.3 → 46.9% | 11.1 → **2.7%** | 28/72 → 28/72 |
+| 09-10 | Red 3:11 344 Winchester | 1,950 (30) | −162 → −162 | 168 → 162 | 57.9 → 58.6% | 3.0 → 0.2% | 40/60 → **39/61** |
+| 09-10 | Red 3:121 Union Station (N) | 1,917 (29) | −18 → −53 | 131 → **95** | 34.4 → 35.0% | 19.4 → **5.3%** | 6/94 → 10/90 |
+| 09-11 | **Red, both cells** | 3,100 (34) | −77 → −102 | 116 → 122 | 43.3 → 46.1% | 5.7 → 4.7% | 27/73 → 30/70 |
+| 09-11 | Red 3:11 344 Winchester | 1,686 (19) | −190 → −181 | 190 → 182 | 62.3 → 61.2% | 0.0 → 0.0% | 34/66 → **40/60** |
+| 09-11 | Red 3:121 Union Station (N) | 1,414 (15) | +9 → −49 | 76 → 94 | 20.6 → 28.1% | 12.5 → 10.3% | 0/100 → 0/100 |
+| 09-10 | **Blue Night, all cells** | 981 (27) | +60 → **+5** | 122 → **74** | 16.3 → 17.2% | 35.4 → **14.1%** | 1/99 → 2/98 |
+| 09-10 | BN 13:10 333 Cedar | 871 (14) | +62 → **+1** | 125 → **75** | 18.4 → 19.4% | 35.7 → **11.9%** | 0/100 → 2/98 |
+| 09-10 | BN 13:97 Peabody Museum | 36 (9) | −1 → 0 | 17 → 17 | 0.0 → 0.0% | 0.0 → 0.0% | 3/97 → 2/98 |
+| 09-10 | BN 13:121 Union Station (N) | 74 (4) | +117 → +115 | 117 → 115 | 0.0 → 0.0% | 48.6 → 45.9% | 53/47 → 53/47 |
+| 09-11 | **Blue Night, all cells** | 154 (5) | +107 → **+19** | 107 → **31** | 0.0 → 0.0% | 34.4 → **9.1%** | 90/10 → 0/100 |
+| 09-11 | BN 13:10 333 Cedar | 111 (2) | +111 → **+8** | 111 → **24** | 0.0 → 0.0% | 36.9 → **0.0%** | – → 0/100 |
+| 09-11 | BN 13:121 Union Station (N) | 38 (1) | +87 → +96 | 87 → 96 | 0.0 → 0.0% | 31.6 → 36.8% | 90/10 → – |
+
+**How much of that is the covariate and not the day: all of it, by
+construction.** The arms are the same polls, the same truth and the same code,
+differing only in whether the served tables carry `lapB`/`lapM`/`lapN`. Rows the
+two arms priced identically: Red 09-10 11.8%, Red 09-11 26.4%, Blue Night 09-10
+23.0%, Blue Night 09-11 0.6%; where they differ the median move is −9, −11, −41
+and −90 s respectively. The covariate is live and it is doing most of the work
+on Blue Night.
+
+### The judgement: the estimate half shrank where the ship aimed, and NOT on Red
+
+- **Blue Night 333 Cedar is fixed, or nearly.** |error| halves (125 → 75 s on
+  09-10, 111 → 24 s on 09-11), the signed error goes from +62 to +1 s, and the
+  share where the bus beat the promise by two minutes falls 35.7 → 11.9% and
+  36.9 → 0.0%. This was the largest held-out margin on the network (−120.9 s)
+  and it reads like it. The deficit that REMAINS there is still 98% estimate,
+  but it is a much smaller deficit.
+- **Red's 344 Winchester is untouched: −162 s signed in BOTH arms** on 09-10
+  (−190 → −181 on 09-11), `wait ≥ 120 s` 58.6%, per-row estimate part 104 → 103 s.
+  Its split is **38.6–42.0% ratchet / 58.0–61.4% estimate** — the 40.5 / 59.5
+  figure reproduced to within a point and a half, on the current client, with
+  the covariate on.
+- **Why the asymmetry, measured on the same days**: the realised lap → stand
+  slope at 13:10 was **−0.816** (09-10) and **−0.939** (09-11), against served
+  `lapB·1e4` −10.1; at Red's 3:11 it was **−0.025** on 09-10 — no lap signal
+  that day at all — so the factor sat at 1.00–1.10 and had nothing to correct.
+  The covariate is not weak on Red; the day's stands simply were not a function
+  of the lap. 3:121 is in between (realised −0.158) and still gains 36 s of
+  |error| on 09-10.
+- **What Red's covariate DOES buy is the pessimistic tail**: route-wide
+  `early ≥ 120 s` 11.1 → 2.7% (09-10), and at Union Station 19.4 → 5.3% with
+  |error| 131 → 95 s. It also costs a little on 09-11's Union Station (76 → 94 s
+  |err|, +9 → −49 s signed), the day whose stands there ran 625 s against a
+  served 374 — i.e. the day the correction was pointed the wrong way.
+- **So the pooled stand median is STILL the dominant term of what is left**, on
+  Red at 344 Winchester (59–61% of the deficit seconds) and route-wide (70–72%).
+  The ratchet's 40% has not grown and has not shrunk. Nothing here overturns the
+  operator's open trade on it.
+
+Two incidental findings worth keeping:
+
+- **13:97 (Peabody Museum) is a measured no-op**, |error| 17 s in both arms —
+  which is what §5a predicted for a cell admitted on a −1.5 s margin, and is
+  the evidence that the gate's tiny-effect admissions are harmless rather than
+  merely argued. Its served `q50` is **0 s** with `pstop` 0.54: half its visits
+  are roll-throughs, so its 525 s *arrivals* span is anchor residence time, not
+  standing time. `summarise.mjs` prints both spans for exactly this reason.
+- **13:121 (Union Station (N)) on Blue Night fails the other way.** The card
+  there is PESSIMISTIC by ~115 s and **53% of its deficit is the ratchet**, not
+  the estimate — the mirror image of 344 Winchester. Served `q50` 39 s with an
+  sd of 518 s. The covariate is a near no-op there (115 vs 117 s). That cell
+  wants a different fix from the stand median, and it is the one BN cell a
+  rider-facing complaint would come from.
+
+### No rider simulator was run, deliberately
+
+Nothing in this measurement changes behaviour — the arms are a payload patch and
+the only code touched is an inert trace applied out of tree — so there is no
+rider gate to clear. Route 13's rider gate was run when the widening shipped
+(§6c/§6d: jump ≥ 180 s introduced 0 on both paired evenings, reversals net
+fixed, Red byte-identical). A rider pair IS required before widening to a new
+route, per §5b.
+
+### Where a fit would pay most next (the input to the next widening)
+
+Ranked by the cell gate's own held-out margin, then by whether the cell actually
+carries layovers (served `q50`, and real visit spans on 09-10), then by demand
+(rider-surface `predictions_log` rows that day), with fold routes set aside —
+one stop id cannot carry two passes of an out-and-back, which is why Purple
+10:10 (−55.5 s) and Green 9:22 (−40.5 s) are excluded rather than ranked:
+
+| rank | line | cells (held-out Δ) | served q50 | visits ≥ 300 s on 09-10 | rider rows |
+|---|---|---|---:|---:|---:|
+| 1 | **Brown (19)** | 19:145 Science Park Garage **−41.3**, 19:115 State St −21.1, 19:121 Union Station −10.5 | 673 / 72 / 723 | 10 / 0 / 10 | 1,176–1,480 |
+| 2 | **Pink (8)** | 8:149 York / Cedar **−61.3**, 8:125 VA Hospital −21.1 | 355 / 144 | 26 / 11 | 112–759 |
+| 3 | Gold (15) | 15:10 333 Cedar −11.6 | 391 | 6 | 187 |
+| – | Orange Night (14), Orange East (17) | 14:10 −19.3, 17:10 −28.4 | 90 / 76 | 3 / 2 | 1,135 / 410 |
+| – | Grocery Ham (18), Blue Weekend (4) | 18:53 −32.9, 4:98 −25.1 | 135 / 25 | 0 / 0 | 0 |
+
+**Brown first.** It is the only non-fold line with two genuine layover cells
+(Science Park Garage stands a median 555 s, Union Station (N) 805 s), it has the
+fourth-largest rider volume of any line, and three of its cells pass the gate.
+Pink carries the single biggest non-fold margin (−61.3 s at York / Cedar, 26
+long stands in one day) and is ranked second only because it is the least
+watched line AND the line the split stand tables burned 280 → 431 strands — its
+rider pair is the one that will actually decide it, exactly as §5b says. Orange
+Night and Orange East have the demand but not the stands (q50 90 s and 76 s:
+there is almost nothing to correct). Grocery Ham and Blue Weekend have no
+weekday exposure at all and would have to be gated on a weekend day.
