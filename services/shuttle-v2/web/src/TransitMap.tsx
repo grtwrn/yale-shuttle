@@ -32,7 +32,7 @@ import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
-import { bandTitle, waitLegText } from "./etaBand";
+import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
 import { fmtBusLine } from "./bunching";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
@@ -4540,6 +4540,22 @@ const TripPlanner: FC<{
                         ? allStops.slice(busAnchorIdx, bi)
                         : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
                     : [];
+                  // WHEN THE BUS REACHES THE RIDER, on the BOARD row that
+                  // ends the approach. The approach list's only number used to
+                  // be the pause chip's DEPARTURE from the stop the bus stands
+                  // at, three rows up from a stop the list never priced — and
+                  // a rider compared it with the row's ARRIVAL band and saw
+                  // two answers (operator, 2026-09-11: "map says 1-8 but route
+                  // list says 1-4"). These are the row's own `leadBand` and
+                  // `busEtaLive`, the two values `fmtBusLine` prints on the
+                  // top line, so the list cannot print a different arrival
+                  // (etaBand.ts `boardArrivalText`; a source-level test in
+                  // standWait.test.ts pins both call sites to them). Only while
+                  // the bus is upstream: at the board stop the row already
+                  // carries 🚌 and its clock, and past it there is no arrival.
+                  const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
+                    ? boardArrivalText(leadBand, busEtaLive)
+                    : null;
                   // Dwell readouts: the typical hold at a stop, plus the live
                   // elapsed while the bus is parked at its current stop.
                   const routeDwells = dwellTimes?.[cfg.routeIds[0]] ?? {};
@@ -4820,6 +4836,32 @@ const TripPlanner: FC<{
                               {isAlight && <span style={{ fontSize: 11, fontWeight: 800, color: o.color, letterSpacing: 0.5, marginRight: 6 }}>GET OFF</span>}
                               {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                               {name}
+                              {isBoard && boardArrival && (
+                                // The pause chip's size and ink, so the two read as
+                                // one pair: "leaves in <1-4 min" where the bus is,
+                                // "arrives in 1-8 min" where the rider boards.
+                                // MEASURED at 390 px beside the BOARD tag (the
+                                // probe in pr-preview/approach-board-row): at 10 px
+                                // the widest form a band can print, "arrives in
+                                // 23-36 min", is 99 px and sits on the line beside
+                                // Division/Prospect, Prospect/Canner and LEPH/60
+                                // College; at 11 px it is 108 px and still fits,
+                                // but the chip's own size is what settles it —
+                                // before #237 dropped the median, 11 px orphaned
+                                // the "min" of "arrives in 4 (2-10) min" on the
+                                // operator's own stop. `nowrap` so a long stop name
+                                // ("130 Prospect Street (S)") moves the whole
+                                // phrase to the next line rather than breaking it.
+                                // A real space before it, not margin alone, so a
+                                // screen reader (and the canary's innerText) does
+                                // not hear "Prospectarrives".
+                                <>{" "}<span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 3, whiteSpace: "nowrap" }}
+                                      title={leadBand && busEtaLive !== null
+                                        ? bandTitle(leadBand, busEtaLive)
+                                        : "When this bus reaches your stop"}>
+                                  {boardArrival}
+                                </span></>
+                              )}
                               {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
                                 <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
                                       title={standing.approach
