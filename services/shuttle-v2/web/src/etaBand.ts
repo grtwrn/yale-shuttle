@@ -307,11 +307,21 @@ export function arriveByClock(
   return {
     sec,
     text: `by ${clock}`,
-    // No percentile and no frequency: `high` has been through the learned
-    // per-horizon widening (see above), so it is NOT the q90 an earlier draft
-    // of this line claimed, and the share of arrivals that beat it has never
-    // been measured. What is true and useful is that it is the top of the very
-    // range the countdown beside it prints.
-    title: `The latest this trip is likely to take — the top of the range the countdown shows. About ${fmtClock(totalSec, from)} is typical.`,
+    // THIS SENTENCE HAS BEEN WRONG TWICE, in the same way both times: it named
+    // something the number is not. First it named a percentile, which `high`
+    // is not once `widenBand` has scaled it (above). Then it named the
+    // countdown's range — a DIFFERENT QUANTITY, since that range is the BOARD
+    // stop's band (`boardArrivalText` over `chipCountdownText`) while this is
+    // the ALIGHT stop's `high` plus `walkFromSec`. A rider reading it
+    // literally computed something else, visibly so on a Green card printing
+    // "in 25-36 min" beside "by 1:00p".
+    //
+    // (Both retired wordings are paraphrased here rather than quoted, because
+    // `arriveByClaims.test.ts` bans them by pattern across this file.)
+    //
+    // So it now describes only what the number is ABOUT: arriving at the
+    // destination. No percentile, no frequency, and no reference to any other
+    // figure on screen — each of those is a claim this line cannot keep.
+    title: `The latest this trip is likely to get you there. About ${fmtClock(totalSec, from)} is typical.`,
   };
 }

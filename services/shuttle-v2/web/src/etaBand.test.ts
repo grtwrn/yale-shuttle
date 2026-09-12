@@ -157,7 +157,7 @@ const MIN = 60;
 describe("arriveByClock — one latest time, not a range", () => {
   const base = { walkFromSec: 0, totalSec: 19 * MIN, computedAtMs: TWO_PM };
 
-  it("prints the alight q90 as an absolute clock, with the word", () => {
+  it("prints the alight stop's band high as an absolute clock, with the word", () => {
     const by = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
     expect(by?.text).toBe("by 2:23p");
     // The spelling the canary's ARRIVAL_CLOCK_RE must accept — pinned there
@@ -167,7 +167,7 @@ describe("arriveByClock — one latest time, not a range", () => {
     expect(by?.sec).toBe(23 * MIN);
   });
 
-  it("adds the trailing walk, because the q90 is the BUS at the alight stop", () => {
+  it("adds the trailing walk, because the forecast is of the BUS at the alight stop", () => {
     expect(arriveByClock({ ...base, alightHighSec: 20 * MIN, walkFromSec: 3 * MIN }, TWO_PM)?.text)
       .toBe("by 2:23p");
   });
@@ -248,17 +248,28 @@ describe("arriveByClock — one latest time, not a range", () => {
     expect(widest!.text.length).toBeLessThan(futureRange.length);
   });
 
-  it("says what it is in the tooltip, without claiming a percentile or a frequency", () => {
+  /**
+   * ABSENCE, NOT PRESENCE. The first version of this test pinned the tooltip's
+   * exact phrase with `toContain`, and that is how a wrong sentence acquires a
+   * defender: the phrase it pinned named the countdown's range, which is the
+   * BOARD stop's band and not this number, so correcting it would have read as
+   * a regression. A presence assertion encodes today's wording as the
+   * requirement and defends it even once it is known to be false. These forbid
+   * the specific FALSE CLAIMS instead, so any true rewording passes unchanged.
+   */
+  it("claims nothing in the tooltip that this number cannot keep", () => {
     const by = arriveByClock({ ...base, alightHighSec: 23 * MIN }, TWO_PM);
-    expect(by?.title).toContain("top of the range");
-    expect(by?.title).toContain("2:19p"); // the median, for contrast
-    // NOT a percentile. `high` has been through `widenBand` (eta/params.ts),
+    // Not a percentile: `high` has been through `widenBand` (eta/params.ts),
     // whose served CONFORMAL factors are 1.25-1.47 at every horizon this clock
-    // prints, so it sits ABOVE the chain's q90 and calling it one is false.
-    // An earlier draft of this line did exactly that.
-    expect(by?.title).not.toMatch(/percentile|90th/i);
-    // And no claim about how often it holds — that is unmeasured.
-    expect(by?.title).not.toMatch(/9 (times|in)|nine|usually|always/i);
+    // prints, so it sits ABOVE the chain's q90.
+    expect(by?.title).not.toMatch(/percentile|90th|q90/i);
+    // No frequency: the share of arrivals that beat it is unmeasured.
+    expect(by?.title).not.toMatch(/\b(9|nine) (times|in|out)\b|usually|always|most of the time|% of/i);
+    // And no tying it to another figure on screen. The countdown's range is
+    // the BOARD stop's band; this is the ALIGHT stop's plus the walk.
+    expect(by?.title).not.toMatch(/countdown|board stop|the range (above|below|beside|the)/i);
+    // What it must still do is quote the typical time for contrast.
+    expect(by?.title).toContain("2:19p");
   });
 });
 
@@ -286,7 +297,7 @@ describe("the promised clock is drawn in exactly one place", () => {
     expect(src).toContain("(arriveBy?.text ?? fmtClock(o.totalSec))");
   });
 
-  it("is priced from the alight stop's q90 on the pinned bus, never from the ride average", () => {
+  it("is priced from the alight stop's band on the pinned bus, never from the ride average", () => {
     expect(src).toContain("alightHighSec: o.busAlightHighSec");
     expect(src).toContain("busAlightHighSec: alightHighFor(match.busName, match.stopsAhead)");
   });

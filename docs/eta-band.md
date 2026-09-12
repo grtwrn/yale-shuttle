@@ -256,9 +256,14 @@ targets EIGHTY percent TWO-SIDED coverage. Production serves `fit-2026-09-11` �
 `{"0-2": 1, "2-5": 1.47, "5-10": 1.271, "10-30": 1.251}` — so at every horizon
 this clock can print (it declines under a printed minute of margin), `high` sits
 25-47% further above the median than q90 does. The direction favours the rider,
-which is why it ships without a gate; but the tooltip says "the top of the range
-the countdown shows" and names no percentile and no frequency. An earlier draft
-of this section and of the tooltip called it a q90. That was wrong.
+which is why it ships without a gate; but the tooltip describes only what the
+number is ABOUT — arriving at the destination — and names no percentile, no
+frequency, and no other figure on screen. **That sentence has been wrong
+twice**: it called the number a 90th percentile (it is not), and then called it
+the top of the countdown's range (that range is the BOARD stop's band; this is
+the ALIGHT stop's plus the walk, which a Green card printing "in 25-36 min"
+beside "by 1:00p" shows plainly). `arriveByClaims.test.ts` now forbids both
+retired claims across every file that carries the prose.
 
 **It is a fixed instant.** The seconds are decayed off `computedAtMs` exactly
 as the point and the band are (report #48). For an absolute clock that has the
