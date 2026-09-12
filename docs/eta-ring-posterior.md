@@ -394,7 +394,22 @@ SEQUENCE, not from this median: the collapse when the belief corrects, and the
 departure poll, which still moves −467 s where master moved +438 s a minute later. An
 earlier draft of this paragraph attached stranding to the −382 s figure itself, which
 is wrong and is corrected here. The station row held "3-11 min" for eight minutes while the truth fell
-924 → 474 s. After the correction it is +351 s, i.e. pessimistic. The later
+924 → 474 s. After the belief corrects at 10:24:38 the shown error is **+351 s** — POSITIVE in
+`common.ts`'s convention, i.e. the app now names a time the BUS BEATS, which is the tail
+that must not grow. **So no part of this episode is a good state**: mid-stand the rider
+waits, and after the correction a rider who trusts the number can reach the kerb late.
+The episode crosses from one tail to the other, which is why the signed error alone
+cannot say whether the ring fix helped.
+
+**What the fix is actually measured on is a SEQUENCE property, not a tail.** `strand`
+(`rider-sim/lib.ts`) is "a DOWNWARD jump larger than the countdown left after it, with
+the bus then arriving within two minutes" — the operator's "told 7, then 2, gone in
+66 s". It is scored on what the row DID between two readings, where `pessimistic120` is
+scored on one promise against truth, so the two are independent failures. On the paired
+arms the two runs are identical for 30 of 31 readings and diverge only at the last, base
+printing `now, then 44 min` where the fix prints `in 5-10, then 44 min`; base's drop from
+`in 6-11` to `now` exceeds what remains and the bus arrives inside two minutes, which is
+the strand. That is the harm the 50 -> 20 refers to. The later
 `now → 36 min` on that row at 10:33:40 is honest: the bus had just left, so the
 next arrival is a lap away.
 
