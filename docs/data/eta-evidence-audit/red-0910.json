@@ -1,0 +1,82 @@
+{
+  "inputs": [
+    {
+      "path": "/home/gwarren/wt/r184data/out/am-base.waits.jsonl",
+      "sha256": "fa3e401867d7db6557d8908e4897b75423000103392db5a974af0fc1253c5631",
+      "rows": 430
+    },
+    {
+      "path": "/home/gwarren/wt/r184data/out/am-cand.waits.jsonl",
+      "sha256": "655c3f97c3dbe04cfe87a6080a475ded1b92cd2ac1e3bffc9046d0f9e84ecaed",
+      "rows": 438
+    }
+  ],
+  "validPairedWaits": 378,
+  "excluded": {
+    "already_at_stop": 25,
+    "arrival_unobserved": 25,
+    "unpaired": 2
+  },
+  "legacyReproduced": true,
+  "legacyStrand": {
+    "both": 1,
+    "onlyA": 9,
+    "onlyB": 8,
+    "neither": 360
+  },
+  "attributableStrand": {
+    "both": 0,
+    "onlyA": 0,
+    "onlyB": 1,
+    "neither": 377
+  },
+  "catastrophicWaits": {
+    "a": {
+      "primary": 10,
+      "secondary": 0
+    },
+    "b": {
+      "primary": 17,
+      "secondary": 28
+    }
+  },
+  "a": {
+    "classifications": {
+      "none": 1054,
+      "secondary": 10,
+      "unmatched": 0,
+      "confirmed": 0
+    },
+    "removedIds": [
+      "Red|36|2026-09-10T12:20:02.956Z",
+      "Red|36|2026-09-10T12:30:02.934Z",
+      "Red|128|2026-09-10T12:20:02.956Z",
+      "Red|128|2026-09-10T12:30:02.934Z",
+      "Red|146|2026-09-10T13:00:03.117Z",
+      "Red|49|2026-09-10T13:00:03.117Z",
+      "Red|30|2026-09-10T13:10:03.276Z",
+      "Red|31|2026-09-10T13:10:03.276Z",
+      "Red|113|2026-09-10T13:30:03.345Z",
+      "Red|113|2026-09-10T13:40:15.540Z"
+    ]
+  },
+  "b": {
+    "classifications": {
+      "none": 1382,
+      "secondary": 8,
+      "unmatched": 0,
+      "confirmed": 1
+    },
+    "removedIds": [
+      "Red|36|2026-09-10T12:00:02.824Z",
+      "Red|36|2026-09-10T12:10:02.812Z",
+      "Red|128|2026-09-10T12:00:02.824Z",
+      "Red|128|2026-09-10T12:10:02.812Z",
+      "Red|41|2026-09-10T12:20:02.956Z",
+      "Red|49|2026-09-10T13:00:03.117Z",
+      "Red|41|2026-09-10T13:20:03.251Z",
+      "Red|41|2026-09-10T13:30:03.345Z"
+    ]
+  },
+  "limitation": "Checks saved first-arrival identity/timing, not independent GPS truth or second-slot arrivals. Unattributed drops are not passes; stability transitions remain unchanged."
+}

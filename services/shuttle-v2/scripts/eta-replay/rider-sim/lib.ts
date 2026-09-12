@@ -476,9 +476,12 @@ export interface WaitResult {
   /**
    * The operator's complaint, as a flag: a DOWNWARD jump larger than the
    * countdown left after it, with the bus then arriving within two minutes.
-   * "Told 7, then 2, gone in 66 s."
+   * "Told 7, then 2, gone in 66 s." Requires the primary slot and the
+   * same named vehicle before/after the drop and at the observed arrival.
    */
   strand: boolean;
+  /** Old strand-shaped drops without matching vehicle/slot arrival evidence. */
+  unattributedStrand?: boolean;
   /** Any jump at least as large as the number that was on screen before it. */
   overshoot: boolean;
   /** Countdown was never shown at all during the wait. */
@@ -578,6 +581,20 @@ export interface ScoreOpts {
   thresholds?: typeof THRESHOLDS;
 }
 
+/** A second-slot drop has no second-arrival truth in this instrument. */
+export function strandAttribution(t: Transition, arrivedAt: number | null, arrivedBus: string | null): "none" | "secondary" | "unmatched" | "confirmed" {
+  if (!Number.isFinite(t.atMs) || !Number.isFinite(t.driftSec)
+    || arrivedAt === null || !Number.isFinite(arrivedAt)) return "none";
+  const after = parseBusEtaText(t.to);
+  if (!after || t.driftSec > -STRAND_MIN_DROP_SEC || -t.driftSec <= after.first[1]!
+    || arrivedAt === null || arrivedAt < t.atMs || arrivedAt - t.atMs > STRAND_ARRIVE_WITHIN_SEC * 1000) return "none";
+  if (!t.leader) return "secondary";
+  const norm = (bus: string | null | undefined) => bus?.replace(/^#/, "");
+  const before = norm(t.busFrom), afterBus = norm(t.busTo), truthBus = norm(arrivedBus);
+  if (!before || before !== afterBus || afterBus !== truthBus) return "unmatched";
+  return "confirmed";
+}
+
 export function scoreWait(
   spec: RiderSpec,
   allTicks: readonly Tick[],
@@ -667,6 +684,7 @@ export function scoreWait(
 
   let worst: Transition | null = null;
   let strand = false;
+  let unattributedStrand = false;
   let overshoot = false;
   let lapRepriced = false;
   for (let i = 0; i < transitions.length; i++) {
@@ -675,9 +693,10 @@ export function scoreWait(
     const after = parseBusEtaText(t.to);
     const before = parseBusEtaText(t.from);
     if (after && before) {
-      const afterHi = after.first[1]!;
       const beforeLo = before.first[0]!;
-      if (t.driftSec <= -STRAND_MIN_DROP_SEC && -t.driftSec > afterHi && arrivedAt !== null && arrivedAt - t.atMs <= STRAND_ARRIVE_WITHIN_SEC * 1000 && arrivedAt >= t.atMs) strand = true;
+      const attribution = strandAttribution(t, arrivedAt, arrivedBus);
+      if (attribution === "confirmed") strand = true;
+      if (attribution === "secondary" || attribution === "unmatched") unattributedStrand = true;
       if (Math.abs(t.driftSec) >= Math.max(60, beforeLo)) overshoot = true;
     }
     if (t.driftSec >= LAP_REPRICE_SEC && t.busFrom && t.busFrom === t.busTo) lapRepriced = true;
@@ -746,7 +765,7 @@ export function scoreWait(
     worstDriftSec, worst,
     pins, pinChanged: pins.length > 1,
     pinCorrect: pins.length && arrivedBus ? pins[0]!.replace(/^#/, "") === arrivedBus.replace(/^#/, "") : null,
-    vanished, returned, lapRepriced, strand, overshoot,
+    vanished, returned, lapRepriced, strand, unattributedStrand, overshoot,
     neverShown: !sawCountdown,
     droppedApproaching, droppedDeclined, droppedRepriced, droppedDetail,
     sequence: fmtSequence(ticks),
@@ -773,6 +792,7 @@ export interface GroupSummary {
   pctJump300: number;
   pctReversal60: number;
   pctStrand: number;
+  pctUnattributedStrand: number;
   pctOvershoot: number;
   pctPinChanged: number;
   /** Share of judgeable waits whose first-named bus is the one that arrived. */
@@ -840,6 +860,7 @@ export function summarise(waits: readonly WaitResult[]): GroupSummary {
     pctJump300: share(scored.filter((w) => w.worstDriftSec >= 300).length, scored.length),
     pctReversal60: share(scored.filter((w) => w.notableReversals > 0).length, scored.length),
     pctStrand: share(scored.filter((w) => w.strand).length, scored.length),
+    pctUnattributedStrand: share(scored.filter((w) => w.unattributedStrand).length, scored.length),
     pctOvershoot: share(scored.filter((w) => w.overshoot).length, scored.length),
     pctPinChanged: share(scored.filter((w) => w.pinChanged).length, scored.length),
     pctPinRight: (() => {
@@ -1029,7 +1050,7 @@ export function renderSummary(title: string, s: Summary): string {
   out.push(`  wait median ${g.medianWaitMin} min, p90 ${g.p90WaitMin} min; first promise |miss| median ${g.firstSight.medianAbsSec} s, p90 ${g.firstSight.p90AbsSec} s (early>60 s ${g.firstSight.earlyOver60Pct}%, late>60 s ${g.firstSight.lateOver60Pct}%)`);
   if (g.interval.n) out.push(`  estimator interval at first sight (n ${g.interval.n}, median width ${g.interval.medianWidthSec} s): inside ${g.interval.insidePct}%, bus earlier ${g.interval.earlyPct}%, later ${g.interval.latePct}%`);
   out.push(`  the first bus named is the bus that came: ${g.pctPinRight ?? "-"}%`);
-  out.push(`  riders who saw: jump>=180 s ${g.pctJump180}% | jump>=300 s ${g.pctJump300}% | reversal>=60 s ${g.pctReversal60}% | STRAND ${g.pctStrand}% | overshoot ${g.pctOvershoot}% | pin changed ${g.pctPinChanged}% | countdown vanished ${g.pctVanished}% | lap re-priced ${g.pctLapRepriced}% | never shown ${g.pctNeverShown}%`);
+  out.push(`  riders who saw: jump>=180 s ${g.pctJump180}% | jump>=300 s ${g.pctJump300}% | reversal>=60 s ${g.pctReversal60}% | STRAND ${g.pctStrand}% | unattributed strand-shaped drop ${g.pctUnattributedStrand}% | overshoot ${g.pctOvershoot}% | pin changed ${g.pctPinChanged}% | countdown vanished ${g.pctVanished}% | lap re-priced ${g.pctLapRepriced}% | never shown ${g.pctNeverShown}%`);
   out.push(`  worst drift per wait: p50 ${g.worstDrift.p50} s, p90 ${g.worstDrift.p90} s, max ${g.worstDrift.max} s`);
   out.push(`  DROPPED while still approaching: ${g.pctDropped}% of riders, ${g.drops} drops (${g.dropsDeclined} the card declined a live arrival, ${g.dropsRepriced} the estimator withdrew it)`);
   out.push(`  ${padR("route", 14)}${padL("scored", 7)}${padL("wait", 6)}${padL("miss", 6)}${padL("j180", 6)}${padL("j300", 6)}${padL("rev", 6)}${padL("strand", 7)}${padL("pin", 6)}${padL("pinOK", 7)}${padL("vanish", 7)}${padL("lap", 6)}${padL("drop%", 7)}${padL("p90dr", 7)}`);
