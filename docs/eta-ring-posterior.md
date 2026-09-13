@@ -1003,3 +1003,111 @@ retry needs that this one lacked is a warm-path gate: `cold-start-ghosts.ts`
 scores the cold tail only, and gps-replay's beliefs warm after one poll, so
 NEITHER instrument can see a stand refused mid-ride. Measure that first.
 
+
+## Direction along the ring: measured (2026-09-11)
+
+**Status: measured, NOT built.** Nothing in `filter.ts` changed; the only code
+is the measurement, `scripts/eta-replay/kerb-direction.mjs`, kept so the next
+attempt starts from the numbers rather than the idea.
+
+The standing trough has one cause and it is an evidence error (#246): a
+standing bus that publishes a fresh fix is charged the pooled — i.e. the
+BEYOND-rest — departure probability, half the lead cluster leaves the stand on
+the first kerb shuffle, the mixture median lands in the standing tail, and
+#119's ratchet keeps it for the rest of the stand. Two display rules were
+refused (#244, #245); charging the measured in-rest rate to every in-rest fresh
+fix fails the recorded pass's departure collapse (#246); charging it from the
+SECOND fresh fix is inert, because the first one has already moved 62-77% of
+the mass and the emission keeps it out (#247). The step size cannot separate
+the two classes — 32 m at the median either way.
+
+So: **direction.** A bus that has genuinely pulled out steps FORWARD along the
+published line; a bus shuffling at the kerb should not. The displacement of the
+fresh fix, projected onto the line's own forward tangent at the bus's
+position — no new geometry, the ring already has the line.
+
+Truth and population are #246's, unchanged, so its split reproduces as a
+self-check: a fresh fix while the detector still says standing is a SHUFFLE,
+the first fresh fix after `departed_at` (== `last_at_rest_at`) is the
+DEPARTURE. Archive 2026-09-03..09-09, Red (3) and Blue Day (1), 09-10 held out.
+2,833 stopped visits, 41,769 standing polls, 7,697 fresh fixes; in-rest 31.2%
+(n=3,282) Red and 35.5% (n=3,834) Blue Day against 74.2% (n=581) beyond the
+radius — #246's numbers to the row.
+
+### The trough poll: the FIRST in-rest fresh fix of each rest
+
+n / departures / P(departure):
+
+| forward projection | Red | Blue Day | pooled |
+|---|---|---|---|
+| ≤ 0 m | 99 / 33 / **33.3%** | 62 / 1 / **1.6%** | 161 / 34 / 21.1% |
+| 0-10 m | 0 | 3 / 1 / 33.3% | 3 / 1 / 33.3% |
+| 10-20 m | 0 | 1 / 1 / 100% | 1 / 1 / 100% |
+| 20-30 m | 41 / 9 / 22.0% | 73 / 8 / 11.0% | 114 / 17 / 14.9% |
+| ≥ 30 m | 1,058 / 126 / **11.9%** | 1,496 / 169 / **11.3%** | 2,554 / 295 / 11.6% |
+| ALL | 1,198 / 168 / 14.0% | 1,635 / 180 / 11.0% | 2,833 / 348 / 12.3% |
+
+By signed angle to that tangent the table is the same table: |angle| 0-30° is
+2,620 / 306 / 11.7% pooled, and 120-180° — the backward bucket again — is
+157 / 35 / 22.3%, Red 32.7% against Blue Day 5.1%.
+
+**The populations do not separate.** Three facts, in the order that matters:
+
+- **The bands the hypothesis needs are EMPTY.** The feed's ~30 m deadband means
+  a fresh fix has moved about 30 m or it is not a fresh fix: 3 rows of 2,833
+  land in 0-10 m and 1 in 10-20 m. A forward-projection threshold therefore has
+  only two reachable states, forward (≥ 20 m) and backward (≤ 0), and every cut
+  from 5 m to 25 m selects the identical 99 Red rows.
+- **The forward bucket carries no information.** It is 94% of the population
+  and it sits on the base rate on both lines — 11.9% against Red's own 14.0%,
+  11.3% against Blue Day's 11.0%.
+- **The one bucket that moves, moves opposite ways by route.** Backward is
+  Red 33.3% (n=99) and Blue Day 1.6% (n=62). A discriminator whose sign flips
+  between the two busiest lines is not a discriminator; Red's berth geometry at
+  its termini is the likeliest reading, and Blue Day has no such berths.
+
+What a rule would do, at the trough poll, pooled: keeping full evidence on a
+forward step weakens 161 rows (5.7%) — correcting 5.1% of shuffles while
+**withholding 9.8% of departures**, which is the direction the operator
+protects. Its inverse — weaken the forward step — weakens 94.3% of rows and
+withholds 90.2% of departures, i.e. it IS #246's flat form, which the recorded
+pass already refused.
+
+Direction carries no more than the step did. At the trough poll, departures
+against shuffles: step p50 32 m vs 33 m, |forward| p50 32 m vs 32 m, and
+perpendicular distance to the line 3 m vs 2 m — the projection is meaningful
+(both classes sit on the line), it simply says nothing. On the layover subset
+(n=191, 24 departures) the bands are flat or empty: Red's only lift is 6 rows
+in 20-30 m.
+
+Why, mechanically: **both classes move along the road, because the road is
+where the bus is.** A bus shuffling at a kerb shuffles ALONG the kerb, and a
+departing bus's first 30 m is the same 30 m of the same street. The question
+"has it left?" is not answered by the direction of a 30 m step at all — it is
+answered by whether the bus keeps going, which is the SECOND fix, and #247
+measured that the emission has already made the first one decisive.
+
+Nothing downstream was run: no unit tests, no `npm run test:accuracy`, no
+gps-replay on the held-out 09-10, no rider-sim. The measurement gate ahead of
+them failed, and running a replay on a rule this thin would only spend three
+hours of the Pi's cores to confirm a 1-3 s move.
+
+### What the next attempt should do instead
+
+The remaining lever is the **emission, not `pDepart`.** The belief already
+knows the fix is still inside the rest (`leftRest` is false) and already uses
+that to withhold the stray floor from cells outside `restMask` (`held`). What
+it does NOT do is stop the departure kernel from walking standing mass OUT of
+that mask on a fix that is still inside it — which is exactly the statement
+"the bus is still where it came to rest", the collector's own rule, applied to
+the transition instead of only to the likelihood. That form cannot delay a
+genuine departure past the radius (the first fix beyond it ends the rest by
+construction, so the recorded pass's collapse is untouched), which is the bound
+both #246 and #247 broke. Measure it on `accuracy-approach-rest.test.ts` and
+`accuracy-layover.test.ts` first, then the 09-10 gps-replay cell Red
+`standing 300 s+` (baseline −65.4 s signed / 87.2 s |err|).
+
+The warm artifacts for that replay are worth keeping: an archive-built
+`r0910.db` and the OFF-arm `PAIRS_OUT` baseline pair with a streaming
+comparator, which together save ~10 minutes and the memory headroom on this
+Pi.
