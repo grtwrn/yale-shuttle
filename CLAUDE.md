@@ -910,7 +910,23 @@ paired numbers. The short form of the model:
   hours** — it crashed the machine on 2026-09-06; slice it by route and by
   `FROM`/`TO`, and `nice` it. In `common.ts`'s metrics, `pessimistic120`
   (predicted > actual: the bus beat the promise) is the dangerous tail;
-  `optimistic120` is the rider waiting.
+  `optimistic120` is the rider waiting. **TWO OPPOSITE CONVENTIONS EXIST for the
+  same event and they are NOT inter-convertible.** `common.ts` scores
+  `predicted - actual`, so a bus that BEATS its promise is POSITIVE.
+  `rider-sim/lib.ts`'s `firstSightMissSec` scores `actual - predicted` against the
+  promise INTERVAL (zero inside the window, the miss taken from the nearer edge), so
+  the SAME event is NEGATIVE there, and its own comment calls negative "the direction
+  that strands a rider who trusted the number". Both files are right; neither converts
+  into the other, so the magnitudes never reconcile — which is what defeats a CAREFUL
+  reader, who checks a suspected sign flip by comparing magnitudes, finds they
+  disagree, and concludes the fault lies elsewhere. Four readers inverted this in one
+  day (2026-09-12), including the author of `common.ts`'s own comment until
+  2026-09-07. **Never quote a signed ETA error without naming its harness, and state
+  the physical event beside it** — "the bus came before we said" or "after we said".
+  Those cannot invert. Related: a `strand` is a SEQUENCE property (a downward jump
+  larger than the countdown left after it, with the bus arriving within two minutes),
+  independent of BOTH tails — a line can carry 50 strands while its signed error sits
+  in the safe one.
 - Constants in `filter.ts` are measured or derived, not tuned, and each
   carries the measurement it came from (the off-route emission weight is
   derived from the loop length, not a floor). A case the model gets wrong is

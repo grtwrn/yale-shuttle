@@ -356,6 +356,113 @@ at Building 600 bound for Orange / Humphrey (N)):
 | the wait after that, 19:22 → 19:31 | wanders 55.3 → 48.7 → 49.4 → 42.6 | counts down 49.7 → 44.4 |
 | destination, 18:55 → 19:05 | 56.4 → 46.1, then −28 min to 18.1, then back up to 23.7 | 39.1 → 26.7, monotone |
 
+### Green: a rest on the fold was attached to the wrong occurrence (2026-09-12)
+
+The operator watched Green flick from "22" to "34 min" and asked what happened.
+The flick was the app RECOVERING; the eight minutes before it were the defect.
+Green #331, the line's only bus that morning, stood at Building 800 from 10:16:08
+to 10:24:43 ET — the detector's `stop_visits` names **`stop_index 13`**, the
+OUTBOUND pass, and the bus then called at 600 / 400 / 600 / 750 / 800 again
+(index 18, a 20 s call) / 900 / the station. The belief instead held the RETURN
+occurrence, ring 18, for the whole stand:
+
+    10:16:18  lead 12, restStop 13           legMass 12=1.000
+    10:16:23  at_stop_id=25 appears          legMass 12=0.976 13=0.016 18=0.004
+    10:16:28  97% of the mass moves 5 legs   legMass 17=0.352 18=0.630
+    10:16:38  the lead follows to 18, ratchets to 0.994, and holds the stand
+    10:24:38  the rest ends -> every Green stop rises +7..+9 printed min at once
+
+**It is a defect, and BEWARE THE SIGN — this repo carries two opposite conventions
+for the same event.** `common.ts` scores `predicted - actual`, so a bus that BEATS
+its promise is POSITIVE (pessimistic, the tail that must not grow).
+`rider-sim/lib.ts`'s `firstSightMissSec` scores `actual - predicted`, so the same
+event is NEGATIVE there, and its own comment calls negative "the direction that
+strands a rider who trusted the number". Both files are right; the subtraction order
+is reversed. **And they are NOT inter-convertible**: `firstSightMissSec` is measured
+against the promise INTERVAL — zero inside the window, the miss taken from the nearer
+edge — so it is not `common.ts`'s point error negated, and the two magnitudes will never
+reconcile. That is what defeats a CAREFUL reader: someone who suspects a sign problem
+checks it by comparing magnitudes, finds they disagree, and concludes the problem lies
+elsewhere. Only naming the harness resolves it. State the physical event, not the word.
+
+Here, in `common.ts`'s convention, the signed error of the shown median mid-stand
+(10:20:03) is **−382 s, worst −533 s** against the arrivals that followed (West Haven
+station 10:31:58, Bradley (N) 10:39:58, Willow (N) 10:46:23). Negative means
+PREDICTED BELOW ACTUAL: every northbound stop was promised 2.5 to 9 minutes EARLIER
+than the bus came, so a rider who trusted it **arrived early and waited** — annoying,
+and NOT the tail that strands. The station row held "3-11 min" for eight minutes
+while the truth fell 924 -> 474 s, which is the same fact seen directly.
+
+**The stranding happened anyway, and at OTHER instants** — 50 strands on this line,
+cut to 20 by the ring fix, concentrated at board stop 25. They come from the
+SEQUENCE, not from this median: the collapse when the belief corrects, and the
+departure poll, which still moves −467 s where master moved +438 s a minute later. An
+earlier draft of this paragraph attached stranding to the −382 s figure itself, which
+is wrong and is corrected here.
+
+After the belief corrects at 10:24:38 the shown error is **+351 s** — POSITIVE in
+`common.ts`'s convention, i.e. the app now names a time the BUS BEATS, which is the tail
+that must not grow. **So no part of this episode is a good state**: mid-stand the rider
+waits, and after the correction a rider who trusts the number can reach the kerb late.
+The episode crosses from one tail to the other, which is why the signed error alone
+cannot say whether the ring fix helped.
+
+**What the fix is actually measured on is a SEQUENCE property, not a tail.** `strand`
+(`rider-sim/lib.ts`) is "a DOWNWARD jump larger than the countdown left after it, with
+the bus then arriving within two minutes" — the operator's "told 7, then 2, gone in
+66 s". It is scored on what the row DID between two readings, where `pessimistic120` is
+scored on one promise against truth, so the two are independent failures. On the paired
+arms the two runs are identical for 30 of 31 readings and diverge only at the last, base
+printing `now, then 44 min` where the fix prints `in 5-10, then 44 min`; base's drop from
+`in 6-11` to `now` exceeds what remains and the bus arrives inside two minutes, which is
+the strand. That is the harm the 50 -> 20 refers to. The later
+`now → 36 min` on that row at 10:33:40 is honest: the bus had just left, so the
+next arrival is a lap away.
+
+**Two explanations were written in this section first and BOTH were wrong.** They
+are kept, struck through, because each looked convincing and the measurement that
+killed them is the useful part:
+
+1. ~~"Nothing in the likelihood could separate the two occurrences: both passes
+   put a stop cell on the same kerb, so the position emission is equally strong
+   on each."~~ **False.** The two occurrences' cells are **92.6 m apart**. The
+   emission separates them decisively, and it does so the WRONG way.
+2. ~~"Standing mass may not jump between two occurrences of one physical stop in a
+   single poll: the transition kernel cannot produce a five-leg move for a
+   stationary bus, only the rest mask's argmax over coincident cells can."~~
+   **False on both premises.** The mass moves at 10:16:28 while `rested` is
+   **false**, through the ordinary transition and emission, and `restStop` follows
+   a poll LATER — so no rest-mask argmax is involved. And the cells are not
+   coincident. A rule forbidding that jump would have fixed nothing.
+
+**The measured cause is the RING, not the rest rule.** Green's published line
+serves Building 800's kerb on the **return pass only**: the outbound pass never
+comes within **99 m** of it, against 27 m on the return. So occurrence 13's cell
+sat 99 m from the stop it represents, and at σ = 20 m that state is roughly
+**180,000 : 1** less likely than the return occurrence sitting on the same kerb.
+So *every* bus resting there is relocated, not merely this one. And **no cell of
+the ring lay inside occurrence 13's zone at all**, so even had the mass stayed,
+the 435 s layover would have been priced as a hold on the open road.
+
+**Network-wide sizing, so nobody widens this into a general rewrite:** over 280
+stop occurrences the cell-to-marker offset is p50 **5.8 m** and p90 **20 m**; ten
+exceed 40 m; and **exactly one** occurrence has no cell inside its own zone —
+`9:13:25`, this one.
+
+**What shipped from this is the display half only.** `resolveStandingStop`
+indexed UPSTREAM's list with a RING index, which every other reader of the belief
+does not (`eta/index.ts`'s `seq`). So a rest at ring 18 was named `published[18]`
+— West Haven Train Station, 2.4 km from the bus — and the pause chip was drawn on
+that row and priced from that stop's stand table. Measured over 95 polls, the fix
+changes **0 priced fields and 0 printed countdowns**; it moves 47 chips and
+relabels the rest 127 → 25.
+
+**The ring fix is a separate PR** (`fix/green-fold-stand-emission`) and is gated on
+a paired rider-sim on Green AND Purple. It may still be refused: the departure poll
+remains mis-branched, the station moving **−467 s** where master moved +438 s a
+minute later, and that drop is strand-shaped. `scripts/eta-replay/greenfold/` holds
+the harnesses and the captured sequence.
+
 ### The legacy arithmetic is deleted (2026-09-07)
 
 **Status: shipped.** With the two declines closed — the grocery lines by the
