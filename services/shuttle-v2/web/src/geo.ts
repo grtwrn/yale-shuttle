@@ -163,8 +163,23 @@ export interface TracedLeg { slice: [number, number][]; bridged: boolean }
  */
 export function traceStopLegs(
   path: [number, number][] | undefined, stops: LatLon[] | undefined,
+  routeStops?: LatLon[],
 ): TracedLeg[] {
   if (!path || path.length < 2 || !stops || stops.length < 2) return [];
+  // A short ride can begin beside the opposite-direction pass of a loop.
+  // Resolve its stops in the full route's travel order before taking the
+  // requested legs. Otherwise College/Wall (N) on Blue Weekend anchors to
+  // College/Wall (S) and paints a 7.6 km detour for a 240 m northbound hop.
+  if (routeStops && routeStops.length >= stops.length) {
+    const same = (a: LatLon, b: LatLon) => a.lat === b.lat && a.lon === b.lon;
+    const start = routeStops.findIndex((_, i) =>
+      stops.every((stop, j) => same(stop, routeStops[(i + j) % routeStops.length]!)),
+    );
+    if (start >= 0) {
+      const routeLegs = traceStopLegs(path, [...routeStops, routeStops[0]!]);
+      return stops.slice(1).map((_, i) => routeLegs[(start + i) % routeLegs.length]!);
+    }
+  }
   const legs: TracedLeg[] = [];
   const loopM = polylineMeters(path);
   let cursor = forwardProject(path, stops[0]!, 0);
@@ -201,8 +216,9 @@ export function traceStopLegs(
 
 export function buildStopSequencePolyline(
   path: [number, number][] | undefined, stops: LatLon[] | undefined,
+  routeStops?: LatLon[],
 ): [number, number][] | undefined {
-  const legs = traceStopLegs(path, stops);
+  const legs = traceStopLegs(path, stops, routeStops);
   if (legs.length === 0) return undefined;
   const out: [number, number][] = [];
   for (let i = 0; i < legs.length; i++) {

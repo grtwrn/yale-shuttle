@@ -3513,6 +3513,7 @@ const TripPlanner: FC<{
                   if (!seen.has(sid)) { seen.add(sid); allStops.push(sid); }
                 }
               }
+              const routeCoords = allStops.map((sid) => stopCoords[sid]).filter((c): c is LatLon => !!c);
               const bi = allStops.indexOf(o.boardStopId);
               const ai = allStops.indexOf(o.alightStopId);
               if (bi === -1 || ai === -1) continue;
@@ -3561,12 +3562,12 @@ const TripPlanner: FC<{
                     .map((sid) => stopCoords[sid])
                     .filter((c): c is LatLon => !!c);
                   if (upCoords.length >= 2) {
-                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords)
+                    approach = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], upCoords, routeCoords)
                       ?? upCoords.map((c) => [c.lat, c.lon] as [number, number]);
                   }
                 }
               }
-              const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords);
+              const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords, routeCoords);
               overviewOpts.push({
                 label: o.routeLabel,
                 color: o.color,
@@ -6339,7 +6340,10 @@ const RideRouteMap: FC<{
     const legStops = legIds?.map((id) => stopCoords[id]);
     let focusPts = pts;
     if (legStops && legStops.every((p): p is LatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon))) {
-      focusPts = buildStopSequencePolyline(focusRouteId ? routePaths[focusRouteId] : undefined, legStops)
+      focusPts = buildStopSequencePolyline(
+        focusRouteId ? routePaths[focusRouteId] : undefined, legStops,
+        (focusRouteId ? routeStops[focusRouteId] : undefined)?.map((id) => stopCoords[id]).filter((p): p is LatLon => !!p),
+      )
         ?? legStops.map((p) => [p.lat, p.lon] as [number, number]);
       if (dest) focusPts.push([dest.lat, dest.lon]);
     }
