@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AT_STOP_WALK_SEC,
+  canStillCatch,
   computeLeaveAlert,
   findReminderOption,
   HEADS_UP_LEAD_SEC,
@@ -13,6 +14,7 @@ import {
   type FiredPings,
   type LeaveAlertInput,
 } from "./leaveAlert";
+import { STOP_DWELL_SEC } from "./planner";
 
 const NOW = 1_700_000_000_000;
 
@@ -337,5 +339,124 @@ describe("leave alerts follow the live walk (report #108 follow-up)", () => {
     expect(secUntilLeave(s)).toBe(0);
     expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe("leave_now");
     expect(leaveAlertMessage("leave_now", "Red", s)).toBe("Time to leave — Red in 3 min, 3 min walk");
+  });
+});
+
+/**
+ * THE TERMINAL PING MAY NOT FIRE ON A PROMISE IT CANNOT KEEP.
+ *
+ * `leave_now` is the LAST ping and it DISARMS the reminder (TransitMap:
+ * `if (ping === "leave_now") setReminder(null)`), so one bad tick does not
+ * mis-time a notification — it spends a reminder the rider cannot get back,
+ * and the app is silent for the rest of the trip. Keyed to the PLANNED walk
+ * that tick could not exist (planTrip holds the number constant). Keyed to the
+ * LIVE walk it can, two measured ways, and both are cases where the sentence
+ * "time to leave and you will make it" is FALSE — so one rule covers both:
+ * the planner's own `canCatch`.
+ */
+describe("leave_now never fires for a bus the rider can no longer make", () => {
+  const HEADS_UP_DONE: FiredPings = { headsUp: true, leaveNow: false };
+
+  /** The reported card's walks, with a LIVE walk we vary tick by tick. */
+  const tick = (liveWalkToSec: number, busEtaSec = 700): LeaveAlertInput =>
+    ({ busEtaSec, walkToSec: 17 * 60, liveWalkToSec, computedAtMs: NOW, nowMs: NOW });
+
+  it("ONE WILD GPS FIX MUST NOT SPEND THE REMINDER", () => {
+    // Nothing filters a fix on the way in: geoWatch.ts hands every position to
+    // onFix, `coords.accuracy` is read nowhere in web/src, and the rescue
+    // one-shot takes a network-accuracy fix up to two minutes old.
+    //
+    // heads_up has fired; the rider is a 5-minute walk out and the bus is 700 s
+    // away, so leave-time is still 370 s off and the engine is silent.
+    expect(secUntilLeave(tick(300))).toBe(370);
+    expect(computeLeaveAlert(tick(300), HEADS_UP_DONE)).toBeNull();
+
+    // One poll reads a walk of 1090 s — the fix has put the rider ~836 m from
+    // the board stop instead of ~330 m. secUntilLeave flips to −420 s.
+    expect(secUntilLeave(tick(1090))).toBe(-420);
+    // Unguarded that is a leave_now, and the caller DISARMS on it. Nothing
+    // fires: the promise is false — 1090 s of walk for a bus 700 s out.
+    expect(computeLeaveAlert(tick(1090), HEADS_UP_DONE)).toBeNull();
+    expect(canStillCatch(tick(1090))).toBe(false);
+
+    // THE REMINDER SURVIVES: leave_now is still owed, so when the fix recovers
+    // the engine is silent at 370 s out and pings at its real moment.
+    expect(computeLeaveAlert(tick(300), HEADS_UP_DONE)).toBeNull();
+    expect(computeLeaveAlert(tick(300, 330), HEADS_UP_DONE)).toBe("leave_now");
+  });
+
+  it("an HONEST collapse of the BUS's ETA still pings on the tick it happens", () => {
+    // The direction that matters: suppressing a real leave_now strands the
+    // rider. THE DISCRIMINATOR IS WHICH NUMBER MOVED. A real departure or
+    // re-anchor collapses the BUS's ETA and leaves the walk alone, so the
+    // promise stays true; a bad fix inflates the WALK past the bus, so it does
+    // not. The gate reads the promise and never has to guess the cause.
+    const walk = 600; // an honest 10-minute walk, unchanged across both ticks
+    expect(secUntilLeave(tick(walk, 1200))).toBe(570);
+    expect(computeLeaveAlert(tick(walk, 1200), HEADS_UP_DONE)).toBeNull();
+    // 1200 s → 620 s in one poll, a 580 s lurch — far bigger than the bad fix
+    // above, and it pings instantly.
+    expect(secUntilLeave(tick(walk, 620))).toBe(-10);
+    expect(computeLeaveAlert(tick(walk, 620), HEADS_UP_DONE)).toBe("leave_now");
+    // Even a collapse straight to the kerb still pings while the rider can make
+    // it by the dwell.
+    expect(computeLeaveAlert(tick(walk, walk - LEAVE_BUFFER_SEC), HEADS_UP_DONE)).toBe("leave_now");
+  });
+
+  it("does not spend the reminder on the ARMING tick for a bus past catching", () => {
+    // The reminder counts down `match` — the bus the row FOLLOWS — which the
+    // "two questions, two buses" rule deliberately keeps on a vehicle that may
+    // be out of reach while the card's total is priced on `boardable`. Executed
+    // against pickLiveArrival, not read off the contract: a pinned bus 2400 s
+    // out whose only other entry is its own next lap at 4200 s returns
+    // match 2400 / boardable 4200 with departed false, so findReminderOption
+    // hands the engine 2400 s. At a 46-minute live walk that is −390 s, and the
+    // rider armed into an immediate ping-and-disarm for a bus 6 min past
+    // catching.
+    const arming: LeaveAlertInput =
+      { busEtaSec: 2400, walkToSec: 17 * 60, liveWalkToSec: 46 * 60, computedAtMs: NOW, nowMs: NOW };
+    expect(secUntilLeave(arming)).toBe(-390);
+    expect(computeLeaveAlert(arming, NO_PINGS_FIRED)).toBeNull();
+    expect(canStillCatch(arming)).toBe(false);
+    // Still armed, so the reminder is there for the bus it CAN make — the next
+    // lap the card is already pricing its total on.
+    expect(computeLeaveAlert({ ...arming, busEtaSec: 4200 }, NO_PINGS_FIRED)).toBeNull();
+    expect(computeLeaveAlert({ ...arming, busEtaSec: 46 * 60 + LEAVE_BUFFER_SEC }, NO_PINGS_FIRED))
+      .toBe("leave_now");
+  });
+
+  it("suppresses EXACTLY the unkeepable promises, to the second", () => {
+    // A late arm is still a ping — the rider who taps at T−0 is told to go.
+    // The boundary is the planner's dwell: a bus waits STOP_DWELL_SEC at the
+    // kerb, so being that late is still catchable and one second more is not.
+    const eta = 700;
+    expect(computeLeaveAlert(tick(eta + STOP_DWELL_SEC, eta), NO_PINGS_FIRED)).toBe("leave_now");
+    expect(computeLeaveAlert(tick(eta + STOP_DWELL_SEC + 1, eta), NO_PINGS_FIRED)).toBeNull();
+    // Every honest leave_now sits far inside that bound: it fires when the bus
+    // is walk + LEAVE_BUFFER_SEC away, i.e. the walk is BELOW the ETA.
+    expect(canStillCatch(tick(eta - LEAVE_BUFFER_SEC, eta))).toBe(true);
+  });
+
+  it("counts the ETA down before judging reachability, like the timing does", () => {
+    // One clock for both halves: a 700 s ETA computed 400 s ago has 300 s left,
+    // so a 300 s walk is still catchable and still pings.
+    const stale: LeaveAlertInput =
+      { busEtaSec: 700, walkToSec: 1020, liveWalkToSec: 300, computedAtMs: NOW - 400_000, nowMs: NOW };
+    expect(secUntilLeave(stale)).toBe(-30);
+    expect(computeLeaveAlert(stale, NO_PINGS_FIRED)).toBe("leave_now");
+    // 100 s later there is nothing left to catch, and the ping stops.
+    const gone: LeaveAlertInput = { ...stale, computedAtMs: NOW - 500_000 };
+    expect(computeLeaveAlert(gone, NO_PINGS_FIRED)).toBeNull();
+    expect(canStillCatch(stale)).toBe(true);
+    expect(canStillCatch(gone)).toBe(false);
+  });
+
+  it("REGRESSION GUARD: no live walk → reachability off the plan's own walk", () => {
+    // Future-mode plans and any option the live recompute never touched. The
+    // planned walk cannot jump, so this can only ever be the honest case.
+    // Labelled as such: it passes with and without the guard, which is the
+    // point — the planned walk cannot jump, so the gate must be invisible here.
+    const s: LeaveAlertInput = { busEtaSec: 210, walkToSec: 180, computedAtMs: NOW, nowMs: NOW };
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe("leave_now");
   });
 });

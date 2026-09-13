@@ -27,6 +27,7 @@
 import { fmtMin, fmtWalk, remainingSec } from "./format";
 import { displayWalkToSec } from "./optionLegs";
 import type { WalkShown } from "./optionLegs";
+import { STOP_DWELL_SEC } from "./planner";
 
 /** Safety margin added to the walk time — leave a little before you must. */
 export const LEAVE_BUFFER_SEC = 30;
@@ -76,6 +77,64 @@ export function secUntilLeave(s: LeaveAlertInput): number {
 }
 
 /**
+ * CAN THE RIDER STILL MAKE THIS BUS? The planner's own reachability test —
+ * `canCatch` inside `pickLiveArrival` — imported rather than restated, because
+ * a second copy of the walk-versus-ETA rule is exactly how the card and the
+ * ping drifted apart in the first place. The walk may exceed the bus's
+ * remaining ETA by at most `STOP_DWELL_SEC`, since a bus waits that long at
+ * the kerb.
+ *
+ * WHY THE TERMINAL PING NEEDS IT. `leave_now` is the LAST ping: the caller
+ * disarms the reminder on it (`if (ping === "leave_now") setReminder(null)`),
+ * so a single bad tick does not merely mis-time a notification — it spends a
+ * reminder the rider cannot get back, and the app goes silent for the rest of
+ * the trip. While the ping was keyed to the PLANNED walk that tick could not
+ * exist, because `planTrip` holds that number constant. Keyed to the LIVE walk
+ * it can, and two measured ways:
+ *
+ *  - ONE WILD GPS FIX. Nothing filters a fix on the way in: `geoWatch.ts`
+ *    hands every position to `onFix`, `coords.accuracy` is read nowhere in
+ *    `web/src`, and the rescue one-shot accepts a network-accuracy fix up to
+ *    two minutes old. With `heads_up` already fired at a live walk of 300 s and
+ *    the bus 700 s out (`secUntilLeave` +370, silent), one poll reading a walk
+ *    of 1090 s flips it to −420 and fires.
+ *  - A BUS THE RIDER CANNOT REACH. The reminder counts down `match` — the bus
+ *    the row FOLLOWS — which the "two questions, two buses" rule deliberately
+ *    keeps on a vehicle that may be out of reach while the card's total is
+ *    priced on `boardable`. Executed, not read off the contract: a pinned bus
+ *    2400 s out whose only other entry is its own next lap at 4200 s returns
+ *    `match` 2400 / `boardable` 4200, `departed` false. At a live walk of
+ *    2760 s that is `secUntilLeave` −390 — so `leave_now` fires on the ARMING
+ *    tick and disarms at once, for a bus 6 min past catching.
+ *
+ * ONE RULE COVERS BOTH, because it tests the ping's own PROMISE rather than
+ * guessing at its cause: "time to leave" claims the rider will make it, and
+ * both failures are cases where that sentence is false. So the gate cannot
+ * silence an honest ping — the set it suppresses is exactly
+ * `walk > remaining + STOP_DWELL_SEC`, and an honest `leave_now` fires when the
+ * bus is `walk + LEAVE_BUFFER_SEC` away, comfortably inside it. An honest
+ * LURCH still pings instantly, which is the direction that matters: a real
+ * departure or re-anchor collapses the BUS's ETA and leaves the walk alone, so
+ * the promise stays true and the ping is not delayed by a single tick.
+ *
+ * WHAT IT DOES NOT CATCH, stated rather than hidden. A blunder landing the
+ * walk inside `[remaining − LEAVE_BUFFER_SEC, remaining + STOP_DWELL_SEC]` —
+ * a 90 s band, 99 m of crow-flies distance at every ETA — still fires, and
+ * fires a self-consistent ping ("in 11 min, 12 min walk"). Its cost is a rider
+ * who leaves early and waits at the stop, not one who is stranded, which is
+ * the asymmetry `rideEnd.ts` already argues for. Bounding the walk's GROWTH
+ * per tick would close that band, and it is deliberately NOT built: the fix
+ * noise this app is built around (`AT_PLACE_M`, "30–100 m off") is 73–91 s of
+ * walk, so the bound needs that much slack against the 6 s the walk model
+ * physically allows over a 5 s poll — 12–15× the physics — and nothing in this
+ * repo measures fix error, so that constant could not be validated. A guard
+ * that delays `leave_now` strands the rider; this one provably cannot.
+ */
+export function canStillCatch(s: LeaveAlertInput): boolean {
+  return displayWalkToSec(s) <= remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) + STOP_DWELL_SEC;
+}
+
+/**
  * Which ping (if any) to fire right now. Rules:
  * - displayed walk < 60 s → never anything (rider is at the stop, can see
  *   the bus).
@@ -89,7 +148,12 @@ export function secUntilLeave(s: LeaveAlertInput): number {
 export function computeLeaveAlert(s: LeaveAlertInput, fired: FiredPings): LeavePing | null {
   if (displayWalkToSec(s) < AT_STOP_WALK_SEC) return null;
   const until = secUntilLeave(s);
-  if (until <= 0) return fired.leaveNow ? null : "leave_now";
+  if (until <= 0) {
+    if (fired.leaveNow) return null;
+    // The terminal, self-disarming ping — never fire it for a bus the rider
+    // can no longer make. See `canStillCatch`.
+    return canStillCatch(s) ? "leave_now" : null;
+  }
   if (until <= HEADS_UP_LEAD_SEC) {
     return fired.headsUp || fired.leaveNow ? null : "heads_up";
   }
