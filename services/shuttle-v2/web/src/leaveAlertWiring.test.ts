@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
  */
 const src = readFileSync(new URL("./TransitMap.tsx", import.meta.url), "utf8");
 const engine = readFileSync(new URL("./leaveAlert.ts", import.meta.url), "utf8");
+const planner = readFileSync(new URL("./planner.ts", import.meta.url), "utf8");
 
 describe("the reminder engine's input", () => {
   it("carries the live walk into the alert, not just the planned one", () => {
@@ -50,5 +51,30 @@ describe("one walk resolution, shared", () => {
     // Every read goes through the helper; a bare `s.walkToSec` anywhere here
     // is a second answer waiting to disagree with the card.
     expect(engine).not.toMatch(/\bs\.walkToSec\b/);
+  });
+});
+
+/**
+ * ONE REACHABILITY RULE, SHARED — the same argument as the walk above, applied
+ * to `canCatch`. It lived in three places at once (both of planner.ts's own
+ * picks and a re-typed copy in the terminal ping's guard); it now lives in
+ * planner.ts and is called.
+ */
+describe("one reachability rule, shared", () => {
+  it("planner.ts owns it and exports it", () => {
+    expect(planner).toContain("export function canCatch(walkSec: number, etaSec: number): boolean");
+  });
+
+  it("leaveAlert.ts calls it rather than re-typing the formula", () => {
+    expect(engine).toContain('from "./planner"');
+    expect(engine).toContain("canCatch(displayWalkToSec(s)");
+  });
+
+  it("no pick in planner.ts restates it inline", () => {
+    // The two re-typings the export replaced. `canCatchWithBuffer` keeps its own
+    // arithmetic on purpose: a deliberately looser threshold for a different
+    // question (see planner.ts), so it is not folded into this rule.
+    expect(planner).not.toMatch(/effectiveWalkToSec <= a\.eta \+ STOP_DWELL_SEC;/);
+    expect(planner).not.toMatch(/walkToSec <= a\.eta \+ STOP_DWELL_SEC\)/);
   });
 });

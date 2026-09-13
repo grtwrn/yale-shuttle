@@ -14,7 +14,7 @@ import {
   type FiredPings,
   type LeaveAlertInput,
 } from "./leaveAlert";
-import { STOP_DWELL_SEC } from "./planner";
+import { canCatch, STOP_DWELL_SEC } from "./planner";
 
 const NOW = 1_700_000_000_000;
 
@@ -394,13 +394,42 @@ describe("leave_now never fires for a bus the rider can no longer make", () => {
     const walk = 600; // an honest 10-minute walk, unchanged across both ticks
     expect(secUntilLeave(tick(walk, 1200))).toBe(570);
     expect(computeLeaveAlert(tick(walk, 1200), HEADS_UP_DONE)).toBeNull();
-    // 1200 s → 620 s in one poll, a 580 s lurch — far bigger than the bad fix
-    // above, and it pings instantly.
+    // 1200 s → 620 s in one poll, a 580 s lurch, and it pings instantly —
+    // because 620 s LANDS where the promise still holds, not because 580 s is a
+    // big number. The next vector pins that distinction: a LARGER collapse
+    // landing lower is suppressed.
     expect(secUntilLeave(tick(walk, 620))).toBe(-10);
     expect(computeLeaveAlert(tick(walk, 620), HEADS_UP_DONE)).toBe("leave_now");
     // Even a collapse straight to the kerb still pings while the rider can make
     // it by the dwell.
     expect(computeLeaveAlert(tick(walk, walk - LEAVE_BUFFER_SEC), HEADS_UP_DONE)).toBe("leave_now");
+  });
+
+  it("is a 90 s WINDOW, and WHERE the ETA lands is the determinant", () => {
+    // The honest description of what the gate costs, to the second. At a 600 s
+    // displayed walk, leave_now needs `until <= 0` (remaining <= 630) AND
+    // `canStillCatch` (remaining >= 540), so it fires in [540, 630] — 91 s wide
+    // against the 631 s the ungated rule fires in.
+    const walk = 600;
+    expect(computeLeaveAlert(tick(walk, 631), HEADS_UP_DONE)).toBeNull();     // too early
+    expect(computeLeaveAlert(tick(walk, 630), HEADS_UP_DONE)).toBe("leave_now");
+    expect(computeLeaveAlert(tick(walk, 540), HEADS_UP_DONE)).toBe("leave_now"); // last firing
+    expect(computeLeaveAlert(tick(walk, 539), HEADS_UP_DONE)).toBeNull();     // first suppressed
+
+    // So the guard is NOT robust in proportion to the jump it survives. The
+    // 580 s collapse above pings; a 661 s one, landing 1 s lower than the edge,
+    // does not. Jumps of that size are ordinary here — 343 drops >= 300 s in
+    // docs/eta-lurch-classification.md, |jump| p99.9 of 572.6 s.
+    expect(1200 - 539).toBeGreaterThan(1200 - 620);
+    expect(computeLeaveAlert(tick(walk, 620), HEADS_UP_DONE)).toBe("leave_now");
+
+    // What makes the narrowing safe is not the width but WHAT is outside it:
+    // exactly the promises the app itself no longer believes. `canCatch` false
+    // is the same test that moves the card's total onto a later bus, so a
+    // suppressed ping is one that would have contradicted the card under it.
+    expect(canStillCatch(tick(walk, 539))).toBe(false);
+    expect(canCatch(walk, 539)).toBe(false);
+    expect(canCatch(walk, 540)).toBe(true);
   });
 
   it("does not spend the reminder on the ARMING tick for a bus past catching", () => {
@@ -432,8 +461,10 @@ describe("leave_now never fires for a bus the rider can no longer make", () => {
     const eta = 700;
     expect(computeLeaveAlert(tick(eta + STOP_DWELL_SEC, eta), NO_PINGS_FIRED)).toBe("leave_now");
     expect(computeLeaveAlert(tick(eta + STOP_DWELL_SEC + 1, eta), NO_PINGS_FIRED)).toBeNull();
-    // Every honest leave_now sits far inside that bound: it fires when the bus
-    // is walk + LEAVE_BUFFER_SEC away, i.e. the walk is BELOW the ETA.
+    // An honest leave_now fires when the bus is walk + LEAVE_BUFFER_SEC away —
+    // remaining ABOVE the walk — so it is inside the bound by construction.
+    // What the bound excludes is a promise `canCatch` already calls false, which
+    // is the same test that prices the card's total on a later bus.
     expect(canStillCatch(tick(eta - LEAVE_BUFFER_SEC, eta))).toBe(true);
   });
 
