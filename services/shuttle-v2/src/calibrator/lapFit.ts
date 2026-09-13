@@ -149,6 +149,35 @@ const GATE_MIN_DAYS = 10;
  *   34 / 0, reversal >= 60 s 48 / 20 and 24 / 10, the
  *   first-sight columns unchanged; gps-replay median |err| 70.0 and 71.8 s.
  *   Red 9/4 against master: 0 / 0 on every column over 1,374 paired waits, 1,373 sequences byte-identical.
+ *
+ * **19 (Brown) was measured on 2026-09-12 and REFUSED by the rider table.**
+ * All three of its cells pass the cell gate held out (`FIT_BEFORE=2026-09-10`,
+ * 187,499 closed visits): Science Park Garage (19:145) -41.4 s with the upper
+ * end of its interval at -35.1, State St Station (19:115) -17.8 / -10.9, Union
+ * Station (19:121) -12.1 / -8.3. The paired rider-sim on the ONLY archived day
+ * with a full day of Brown positions (2026-09-10; 06:00-11:00 ET, the window
+ * where the factor actually bites) reads STRAND 0 fixed / 3 introduced and
+ * jump >= 180 s 0 / 88 over 426 paired Brown waits, while Green (315) and
+ * Purple (320) are 0 / 0 on every flag — so the whole movement is route 19's.
+ * Per arm: jump >= 180 s 4.6 -> 27.8%, jump >= 300 s 0.5 -> 8.0%, strand
+ * 0 -> 1.4%, reversal >= 60 s 0.5 -> 2.8%, first-promise |miss| 0 -> 82 s, the
+ * dangerous tail (`early > 60 s`) 25.7 -> 34.9%, interval coverage
+ * 66.1 -> 65.1% at width 811 -> 895 s, worst drift p90 170 -> 290 s. Riders
+ * pay it all round the loop (introduced jumps by board stop: Phelps Gate 21,
+ * Winchester / Sachem 18, College / Wall 16, 130 Prospect 14, State St 8,
+ * Union Station 6, Humphrey / Whitney 3, Divinity 2).
+ *
+ * **It is NOT the departure poll that #217 and #218 fixed**: displayed drift at
+ * the departure is >= 180 s on ZERO riders in BOTH arms (max 50 -> 55 s). It is
+ * the factor itself. 19:145's own-stop lap ages that day are 1750-3491 s
+ * against `lapM` 2666 and the [0.65, 1.65] band, so the factor runs
+ * 0.42-1.64; a 1.49 or 1.64 inflates a 700-1000 s layover stand, promises a
+ * later bus, and collapses when the bus leaves on time. The per-cell layover
+ * table does NOT show this and cannot: the three 19:145 rests it can score are
+ * exactly the three whose served lap age is ABSENT (a bus's first rest of a
+ * block), so both arms are identical there by construction (`lapF` exactly
+ * 1.0000 on all 327 rows). Read that table's silence as a hole, not a null.
+ * `docs/stand-lap-covariate.md` section 6e.
  */
 export const LAP_SERVED_ROUTE_IDS: ReadonlySet<number> = new Set([3, 13]);
 
