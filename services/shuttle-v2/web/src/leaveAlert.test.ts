@@ -408,8 +408,12 @@ describe("leave_now never fires for a bus the rider can no longer make", () => {
   it("is a 90 s WINDOW, and WHERE the ETA lands is the determinant", () => {
     // The honest description of what the gate costs, to the second. At a 600 s
     // displayed walk, leave_now needs `until <= 0` (remaining <= 630) AND
-    // `canStillCatch` (remaining >= 540), so it fires in [540, 630] — 91 s wide
-    // against the 631 s the ungated rule fires in.
+    // `canStillCatch` (remaining >= 540), so it fires in [540, 630] — 90 s WIDE,
+    // 91 inclusive integer seconds — against ungated [0, 630], 630 s wide and
+    // 631 inclusive integer seconds. The width is the quantity; 91 and 631 are
+    // the counts of whole seconds those closed intervals contain. The 90 s here
+    // is `STOP_DWELL_SEC + LEAVE_BUFFER_SEC`, NOT the `SWITCH_BUFFER_SEC` 90 s
+    // of the silent-but-armed walk band — two widths that coincide numerically.
     const walk = 600;
     expect(computeLeaveAlert(tick(walk, 631), HEADS_UP_DONE)).toBeNull();     // too early
     expect(computeLeaveAlert(tick(walk, 630), HEADS_UP_DONE)).toBe("leave_now");
@@ -423,10 +427,16 @@ describe("leave_now never fires for a bus the rider can no longer make", () => {
     expect(1200 - 539).toBeGreaterThan(1200 - 620);
     expect(computeLeaveAlert(tick(walk, 620), HEADS_UP_DONE)).toBe("leave_now");
 
-    // What makes the narrowing safe is not the width but WHAT is outside it:
-    // exactly the promises the app itself no longer believes. `canCatch` false
-    // is the same test that moves the card's total onto a later bus, so a
-    // suppressed ping is one that would have contradicted the card under it.
+    // WHAT IS OUTSIDE THE WINDOW, in two cases that differ — this is an
+    // inference restated, not re-asserted, because three drafts got it wrong.
+    // `canCatch` false is the test that picks `boardable`, so WHERE A CATCHABLE
+    // ENTRY EXISTS the card's total has already moved to a later bus and the
+    // refused ping would have contradicted the card under it. WHERE NONE EXISTS
+    // `boardable` falls back to `match` itself (planner.ts:255), the card keeps
+    // pricing the refused bus at wait 0, and this gate is the only surface
+    // declining the promise — planner.test.ts pins that case with one live entry
+    // at eta 700 against a walk of 800 s. Here `live` is not modelled at all, so
+    // these two assertions pin the PREDICATE's edge only.
     expect(canStillCatch(tick(walk, 539))).toBe(false);
     expect(canCatch(walk, 539)).toBe(false);
     expect(canCatch(walk, 540)).toBe(true);
@@ -463,8 +473,12 @@ describe("leave_now never fires for a bus the rider can no longer make", () => {
     expect(computeLeaveAlert(tick(eta + STOP_DWELL_SEC + 1, eta), NO_PINGS_FIRED)).toBeNull();
     // An honest leave_now fires when the bus is walk + LEAVE_BUFFER_SEC away —
     // remaining ABOVE the walk — so it is inside the bound by construction.
-    // What the bound excludes is a promise `canCatch` already calls false, which
-    // is the same test that prices the card's total on a later bus.
+    // What the bound excludes is a promise `canCatch` already calls false. That
+    // is the same test that prices the card's total on a later bus WHEN A
+    // CATCHABLE ENTRY EXISTS; with a single live entry `boardable` falls back to
+    // `match` (planner.ts:255) and the card stays on the refused bus at wait 0,
+    // so this gate is then the only surface declining it. Both cases are bounded
+    // in leaveAlert.ts's header; the vector is in planner.test.ts.
     expect(canStillCatch(tick(eta - LEAVE_BUFFER_SEC, eta))).toBe(true);
   });
 

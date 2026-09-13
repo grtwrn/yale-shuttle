@@ -113,18 +113,56 @@ export function secUntilLeave(s: LeaveAlertInput): number {
  * guessing at its cause: "time to leave" claims the rider will make it, and
  * both failures are cases where that sentence is false.
  *
- * WHAT THE GATE COSTS, MEASURED. It CAN suppress a ping — it converts a
- * LATCHING condition into a 90 s WINDOW, and that is the honest description.
- * Swept at a displayed walk of 600 s, `leave_now` fires for a remaining ETA in
- * [540, 630] s, a width of 91 s; ungated it fires anywhere in [0, 630] s, a
- * width of 631 s. Three things follow, and the first is the one that makes the
- * narrowing safe:
+ * WHAT THE GATE COSTS, MEASURED. It CAN suppress a ping. It converts a latching
+ * condition into a WINDOW: swept at a displayed walk of 600 s, `leave_now` fires
+ * for a remaining ETA in [540, 630] s — 90 s wide, 91 inclusive integer seconds
+ * — against ungated [0, 630] s, 630 s wide, 631 inclusive integer seconds. One
+ * quantity, one spelling: the WIDTH is 90 s, and 91 is the count of whole
+ * seconds a closed interval of that width contains.
  *
- *  - IT NEVER SUPPRESSES A PROMISE THE APP ITSELF BELIEVES. The suppressed set
- *    is precisely where `canCatch` is false — the same test that decides
- *    `boardable` in `pickLiveArrival`. Wherever this gate is silent, the card's
- *    own total is ALREADY priced on a later bus, so the ping would have been
- *    contradicting the card it sits under.
+ * TWO DISTINCT 90 s WIDTHS APPEAR BELOW and coincide only numerically — keep
+ * their provenance attached. The firing window is
+ * `STOP_DWELL_SEC + LEAVE_BUFFER_SEC` (remaining in [walk − 60, walk + 30]);
+ * the silent-but-armed walk band is `SWITCH_BUFFER_SEC`. Four bounds, each with
+ * its configuration, rather than a general claim about what the gate does not
+ * do — three drafts of this comment died on such claims:
+ *
+ *  - WHERE A SUPPRESSED PING'S RIDER IS LEFT — TWO CASES, WHICH DIFFER. The
+ *    suppressed set is where `canCatch` is false, the test that picks
+ *    `boardable` in `pickLiveArrival`, so WHENEVER A CATCHABLE ENTRY EXISTS the
+ *    card's total has already moved to a later bus and the refused ping is one
+ *    that would have contradicted the card it sits under. WHEN NO CATCHABLE
+ *    ENTRY EXISTS that inference does not hold: `boardable` is
+ *    `canCatchArrival(match) ? match : (catchable[0] ?? match)` (planner.ts:255)
+ *    and the fallback is `match` ITSELF, so the card goes on pricing the refused
+ *    bus at wait 0 (`TransitMap.tsx:2192`) with `departed` false, and this gate
+ *    is the only surface declining the promise. Executed: ONE live entry at
+ *    eta 700 against a displayed walk of 800 s returns `boardable === match`,
+ *    `departed` false — there is no later bus and no lap. That is the
+ *    single-live-entry band, walk in
+ *    (eta + STOP_DWELL_SEC, eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC] = 761–850 s
+ *    at eta 700: 90 s of walk, 99 m at `WALK_EFFECTIVE_M_S`, 90 inclusive
+ *    integer walks. Pinned by `planner.test.ts` ("`boardable` falls back to
+ *    `match` itself"). The fallback was already pinned there for a
+ *    `departed: true` walk — 1000 s against eta 100, where the reminder is
+ *    retired regardless; what had no vector is THIS `departed: false` band, the
+ *    one where this gate is the only surface declining. The `boardable` vector
+ *    covering the predicate uses TWO entries, so a lap was present in every case
+ *    it checked, which is how three reviews carried the withdrawn claim.
+ *  - THE SUPPRESSED SET IS LARGER THAN `boardable`'s, BY THE ETA'S AGE. The
+ *    equivalence above holds AT AGE 0 ONLY: `canStillCatch` tests
+ *    `remainingSec(...)` counted to `nowMs`, while `pickLiveArrival` tests the
+ *    RAW poll-time `eta`. The age is bounded by the poll cadence — ≤ 5 s
+ *    foreground, ≤ 30 s on a hidden page (`TransitMap.tsx:7621`). Executed at
+ *    walk 700 / eta 645: age 5 s → `canStillCatch` true → leave_now; age 10 s →
+ *    false → null, while the card, reading the raw 645, still has
+ *    `boardable === match`. What bounds this is the TICK GEOMETRY, not the
+ *    equivalence: the firing window is 90 s of remaining ETA, the engine
+ *    re-evaluates at 1 Hz (`TransitMap.tsx:2263`), and within one poll's ETA the
+ *    age only walks remaining DOWN at 1 s/s — so a ping the age refuses at
+ *    remaining r was offered at r + age, up to ~90 ticks earlier. A
+ *    discontinuous drop ACROSS polls can still skip the window, which is the
+ *    next bullet.
  *  - THE DETERMINANT IS WHERE THE POST-JUMP ETA LANDS, NOT HOW BIG THE JUMP
  *    WAS. At a 600 s walk the last firing remaining is 540 s and the first
  *    suppressed is 539 s, so a 1200 → 539 s collapse — 661 s, LARGER than the
@@ -132,18 +170,24 @@ export function secUntilLeave(s: LeaveAlertInput): number {
  *    ordinary on this feed: `docs/eta-lurch-classification.md` records 343 drops
  *    of ≥ 300 s (92.4% with a real event behind them) and a |jump| p99.9 of
  *    572.6 s. So do not read the test's 580 s as the guard's headroom; read the
- *    bullet above, which is what actually protects the rider there.
- *  - THE BAND WHERE A BAD FIX STILL FIRES is that same 90 s — 99 m of
- *    crow-flies walk, at every ETA. It fires a self-consistent ping ("in 11
- *    min, 12 min walk"), and its cost is a rider who leaves early and waits at
- *    the stop, not one who is stranded: the asymmetry `rideEnd.ts` argues for.
+ *    first bullet, which says where such a rider is left — and which of the two
+ *    cases they are in.
+ *  - THE BAND WHERE A BAD FIX STILL FIRES is 90 s of WALK at a fixed remaining
+ *    ETA (`STOP_DWELL_SEC + LEAVE_BUFFER_SEC`; walk in [remaining − 30,
+ *    remaining + 60], e.g. 670–760 s at remaining 700) — 99 m of crow-flies
+ *    walk. It fires a self-consistent ping ("in 11 min, 12 min walk"), and its
+ *    cost is a rider who leaves early and waits at the stop, not one who is
+ *    stranded: the asymmetry `rideEnd.ts` argues for.
  *
- * THE CONVERSE BAND, for symmetry. A displayed walk in
+ * THE CONVERSE BAND is the FIRST BULLET'S BAND reached from the other side, not
+ * a second phenomenon. A displayed walk in
  * (remaining + STOP_DWELL_SEC, remaining + STOP_DWELL_SEC + SWITCH_BUFFER_SEC]
  * keeps the pin under `canCatchWithBuffer`, so the row counts that bus down
- * while this gate refuses its ping for as long as the walk holds there — the
- * same 99 m wide. Harmless, because the card's total is already on the lap, but
- * it belongs beside the band above rather than being left to be discovered.
+ * while this gate refuses its ping for as long as the walk holds there: 90 s of
+ * walk, 99 m. What the rider is left with is the first bullet's two cases — with
+ * a catchable entry the card's total is on it; with a single live entry the
+ * total sits on the refused bus at wait 0. Recorded rather than left to be
+ * discovered.
  *
  * WHY NOT A GROWTH BOUND on the walk per tick, which would close the first
  * band: deliberately NOT built. The fix noise this app is built around
