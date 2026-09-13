@@ -2237,7 +2237,11 @@ const TripPlanner: FC<{
       }
       const input = {
         busEtaSec: o.busEtaSec, computedAtMs: o.computedAtMs,
-        walkToSec: o.walkToSec, nowMs: Date.now(),
+        // BOTH walks. leaveAlert.ts times, gates and words the ping on the one
+        // the CARD prints (displayWalkToSec, optionLegs.ts) — report #108's
+        // follow-up: keyed to the planned walk this pinged 29 min of ETA after
+        // the rider had to leave, and said "17 min walk" under a card reading 46.
+        walkToSec: o.walkToSec, liveWalkToSec: o.liveWalkToSec, nowMs: Date.now(),
       };
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
@@ -4450,14 +4454,26 @@ const TripPlanner: FC<{
                           </>
                         )}
                         {/* Leave-time reminder. Hidden when the rider is
-                            effectively at the stop already (walk < 60 s —
-                            they can see the bus, a ping is noise) or when
+                            effectively at the stop already (the walk the CARD
+                            shows is < 60 s — they can see the bus, a ping is
+                            noise) or when
                             there's no live bus ETA to count down (future
                             mode / departed). One reminder at a time: arming
                             here silently replaces any other armed option,
                             and the button label is the whole armed-state
-                            UI — no modal. */}
-                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && o.walkToSec >= AT_STOP_WALK_SEC && (
+                            UI — no modal.
+
+                            THE GATE READS THE DISPLAYED WALK (report #108's
+                            follow-up), so the offer, the timing and the ping's
+                            own text are one answer. A rider now inside
+                            AT_PLACE_M has a live walk of 0 and no walk chip:
+                            the planned-walk gate still offered them a reminder
+                            that — priced on the live walk — could never fire,
+                            and a button that arms and cannot ping is a promise
+                            the app does not keep. The converse is the same
+                            rule: a rider who searched AT the stop and has since
+                            walked off is now offered the reminder they need. */}
+                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && displayWalkToSec(o) >= AT_STOP_WALK_SEC && (
                           <>
                             <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                             <button

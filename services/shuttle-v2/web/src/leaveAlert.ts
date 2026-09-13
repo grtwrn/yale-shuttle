@@ -12,8 +12,21 @@
 //
 // All state is caller-owned (which pings already fired); computeLeaveAlert is
 // pure so every rule here is unit-testable without React or timers.
+//
+// WHICH WALK. The ping is timed, gated and worded on the walk the CARD shows
+// (`displayWalkToSec`, optionLegs.ts): the live recompute's where it set one,
+// the plan's own otherwise. Report #108's fix moved the card onto the live walk
+// and left this module reading the planned one — so on the operator's own card
+// (planned 17 min, priced 46) "time to leave" was timed 29 minutes of ETA late
+// and printed "17 min walk" beside a card reading 46 min. It fails in the
+// direction that strands a rider, and it is the "two answers, one screen"
+// failure this codebase exists to end. ONE resolution, shared with the card:
+// a second copy of `liveWalkToSec ?? walkToSec` is precisely how the two
+// surfaces drifted apart in the first place.
 
 import { fmtMin, fmtWalk, remainingSec } from "./format";
+import { displayWalkToSec } from "./optionLegs";
+import type { WalkShown } from "./optionLegs";
 
 /** Safety margin added to the walk time — leave a little before you must. */
 export const LEAVE_BUFFER_SEC = 30;
@@ -22,16 +35,28 @@ export const HEADS_UP_LEAD_SEC = 5 * 60;
 /**
  * Below this walk time the rider is effectively AT the stop — they can see
  * the bus, so a ping is noise. Never fire anything.
+ *
+ * Judged on the DISPLAYED walk, which is what makes it true of where the rider
+ * IS rather than where they searched from: a rider now inside `AT_PLACE_M` has
+ * a live walk of 0 and no walk chip on the card, and is silent here even though
+ * the plan still holds the five-minute walk it was built with. The converse is
+ * the same rule — a rider who searched AT the stop (`walkToSec` 0, held
+ * constant by planner.ts so card order cannot flicker) and has since walked off
+ * gets the reminder they now need.
  */
 export const AT_STOP_WALK_SEC = 60;
 
-export type LeaveAlertInput = {
+/**
+ * `WalkShown` is the card's own pair — the plan's `walkToSec` and the live
+ * recompute's `liveWalkToSec` — and every rule below reads it through
+ * `displayWalkToSec`, so a caller cannot hand the ping one walk and the card
+ * another.
+ */
+export type LeaveAlertInput = WalkShown & {
   /** Bus's ETA at the board stop, seconds remaining as of `computedAtMs`. */
   busEtaSec: number;
   /** When busEtaSec was computed (ms epoch); undefined = treat as fresh. */
   computedAtMs?: number;
-  /** Rider's walk to the board stop, seconds. */
-  walkToSec: number;
   /** Current time (ms epoch). */
   nowMs: number;
 };
@@ -43,16 +68,17 @@ export const NO_PINGS_FIRED: FiredPings = { headsUp: false, leaveNow: false };
 
 /**
  * Seconds until it's time to leave: the live ETA (counted down from when it
- * was computed) minus walk time minus the safety buffer. ≤ 0 means leave now
- * (or you're already late).
+ * was computed) minus the DISPLAYED walk minus the safety buffer. ≤ 0 means
+ * leave now (or you're already late).
  */
 export function secUntilLeave(s: LeaveAlertInput): number {
-  return remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) - s.walkToSec - LEAVE_BUFFER_SEC;
+  return remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) - displayWalkToSec(s) - LEAVE_BUFFER_SEC;
 }
 
 /**
  * Which ping (if any) to fire right now. Rules:
- * - walk < 60 s → never anything (rider is at the stop, can see the bus).
+ * - displayed walk < 60 s → never anything (rider is at the stop, can see
+ *   the bus).
  * - Inside T−0 (secUntilLeave ≤ 0): fire leave_now once. If the rider armed
  *   this late, heads_up is skipped entirely — never both back-to-back.
  * - Inside T−5 (0 < secUntilLeave ≤ 5 min): fire heads_up once, unless
@@ -61,7 +87,7 @@ export function secUntilLeave(s: LeaveAlertInput): number {
  *   jumps up and re-enters a window never repeats a ping.
  */
 export function computeLeaveAlert(s: LeaveAlertInput, fired: FiredPings): LeavePing | null {
-  if (s.walkToSec < AT_STOP_WALK_SEC) return null;
+  if (displayWalkToSec(s) < AT_STOP_WALK_SEC) return null;
   const until = secUntilLeave(s);
   if (until <= 0) return fired.leaveNow ? null : "leave_now";
   if (until <= HEADS_UP_LEAD_SEC) {
@@ -104,7 +130,7 @@ export function leaveAlertMessage(
     const until = Math.max(0, secUntilLeave(s));
     return `${prefix}${routeLabel} in ${fmtMin(remaining)} — leave in ${fmtMin(until)}`;
   }
-  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(s.walkToSec)} walk`;
+  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(displayWalkToSec(s))} walk`;
 }
 
 /**

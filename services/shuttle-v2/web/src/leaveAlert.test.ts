@@ -246,3 +246,96 @@ describe("findReminderOption — disarm when the bus/option disappears", () => {
     expect(findReminderOption([{ ...walkOpt, routeLabel: "Blue Day" }], "Blue Day")).toBeNull();
   });
 });
+
+/**
+ * THE LIVE WALK, NOT THE PLANNED ONE (report #108 follow-up).
+ *
+ * The card and the ping must answer with the same walk. Report #108's fix made
+ * the CARD print the walk its total was priced on (`liveWalkToSec`, see
+ * optionLegs.ts); this module was left reading `walkToSec`, the walk planTrip
+ * measured from the search origin. On the operator's own card those were 46 min
+ * and 17 min — so the ping fired 29 minutes of ETA after the rider had to
+ * leave, and printed "17 min walk" beside a card reading 46.
+ *
+ * The reported card, to the second: planned walk 17 min, the walk the total was
+ * actually built from 46 min (the rider had walked away from the board stop).
+ */
+const PLANNED = 17 * 60; // 1020 s — what planTrip measured from the origin
+const LIVE = 46 * 60;    // 2760 s — what the live recompute priced
+
+/** The reported card's two walks, with the live one in force. */
+const bothWalks = (busEtaSec: number): LeaveAlertInput => ({
+  busEtaSec, walkToSec: PLANNED, liveWalkToSec: LIVE, computedAtMs: NOW, nowMs: NOW,
+});
+
+describe("leave alerts follow the live walk (report #108 follow-up)", () => {
+  it("times leaving by the walk the rider actually faces", () => {
+    // It is time to leave when the bus is walk + buffer away.
+    expect(secUntilLeave(bothWalks(LIVE + LEAVE_BUFFER_SEC))).toBe(0);
+    // Read off the PLANNED walk the same moment looks 29 minutes early.
+    expect(LIVE - PLANNED).toBe(29 * 60);
+  });
+
+  it("fires leave_now at the moment the rider must leave, not 29 min later", () => {
+    const s = bothWalks(LIVE + LEAVE_BUFFER_SEC);
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe("leave_now");
+  });
+
+  it("RIDER HARM: by the old ping's moment the rider is 28 min past rescue", () => {
+    // Keyed to the planned walk, leave_now waited until the bus was
+    // PLANNED + buffer away — 1050 s of ETA left. A rider who needs LIVE
+    // (2760 s) to reach the stop is 1710 s short at that instant, so the
+    // honest reading of the moment the old ping fired is deeply NEGATIVE:
+    // leave-time is long gone and the bus cannot be caught.
+    const tooLate = PLANNED + LEAVE_BUFFER_SEC;
+    expect(secUntilLeave(bothWalks(tooLate))).toBe(-(1710 + LEAVE_BUFFER_SEC));
+    expect(LIVE - tooLate).toBe(1710); // the walk gap, to the second
+  });
+
+  it("fires heads_up 5 min before the live leave-time", () => {
+    const s = bothWalks(LIVE + LEAVE_BUFFER_SEC + HEADS_UP_LEAD_SEC);
+    expect(secUntilLeave(s)).toBe(HEADS_UP_LEAD_SEC);
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe("heads_up");
+  });
+
+  it("prints the walk the card prints — never two answers on one screen", () => {
+    const s = bothWalks(LIVE + LEAVE_BUFFER_SEC);
+    // The card says 46 min; so does the ping.
+    expect(leaveAlertMessage("leave_now", "Blue Day", s))
+      .toBe("Time to leave — Blue Day in 46 min, 46 min walk");
+    const h = bothWalks(LIVE + LEAVE_BUFFER_SEC + HEADS_UP_LEAD_SEC);
+    expect(leaveAlertMessage("heads_up", "Blue Day", h))
+      .toBe("Blue Day in 51 min — leave in 5 min");
+  });
+
+  it("suppresses the ping for a rider who has REACHED the stop (live walk 0)", () => {
+    // The mirror case. planTrip measured a 5-minute walk; the rider is now
+    // inside AT_PLACE_M, so the live walk is 0 and the card shows no walk chip
+    // at all. They can see the bus — a ping is noise, in every window.
+    const atStop = (busEtaSec: number): LeaveAlertInput => ({
+      busEtaSec, walkToSec: 300, liveWalkToSec: 0, computedAtMs: NOW, nowMs: NOW,
+    });
+    expect(computeLeaveAlert(atStop(330), NO_PINGS_FIRED)).toBeNull();
+    expect(computeLeaveAlert(atStop(600), NO_PINGS_FIRED)).toBeNull();
+    expect(computeLeaveAlert(atStop(60), NO_PINGS_FIRED)).toBeNull();
+  });
+
+  it("DOES ping a rider who searched at the stop and then walked away", () => {
+    // The same report, the other direction: walkToSec is 0 because the rider
+    // searched from the board stop, and planner.ts holds it constant. They have
+    // since walked 5 minutes off, so the reminder is exactly what they need.
+    const walkedOff = (busEtaSec: number): LeaveAlertInput => ({
+      busEtaSec, walkToSec: 0, liveWalkToSec: 300, computedAtMs: NOW, nowMs: NOW,
+    });
+    expect(computeLeaveAlert(walkedOff(330), NO_PINGS_FIRED)).toBe("leave_now");
+    expect(computeLeaveAlert(walkedOff(630), NO_PINGS_FIRED)).toBe("heads_up");
+  });
+
+  it("REGRESSION GUARD: no live walk → the plan's own walk, unchanged", () => {
+    // Future-mode plans and any option the live recompute never touched.
+    const s: LeaveAlertInput = { busEtaSec: 210, walkToSec: 180, computedAtMs: NOW, nowMs: NOW };
+    expect(secUntilLeave(s)).toBe(0);
+    expect(computeLeaveAlert(s, NO_PINGS_FIRED)).toBe("leave_now");
+    expect(leaveAlertMessage("leave_now", "Red", s)).toBe("Time to leave — Red in 3 min, 3 min walk");
+  });
+});
