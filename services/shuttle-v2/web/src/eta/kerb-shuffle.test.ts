@@ -96,8 +96,28 @@ describe("the kerb shuffle as departure evidence", () => {
     // The mass the rule keeps is standing IN THE REST, not standing anywhere:
     // everything that did not leave is inside the mask.
     expect(standInRest(on.b, on.r)).toBeGreaterThan(0.97 * (1 - on.moving));
+    // #246's own vector on this same setup, kept verbatim across the rebase
+    // that replaced its rate with this rule (master: "halves the departure mass
+    // a 32 m shuffle takes off a LAYOVER stand"). It still holds, so it stays.
+    expect(on.moving).toBeLessThan(off.moving * 0.75);
     // It is not absolutist either — the moving hypothesis still explains a
     // 32 m step better than a reposition does, and keeps a third of the mass.
+  });
+
+  it("keeps mass at the kerb on a shuffle with NO stand table (#246's no-table vector)", () => {
+    // Carried across the rebase from the test file this one superseded, where
+    // the flag applied a flat measured RATE and this rule replaced it. No stand
+    // table on this stop, so the fallback prior decides. Two of that vector's
+    // three assertions survive verbatim; the third was a FLOOR on the ratio
+    // (> 0.6) pinning the magnitude of the rate #246 measured, and this rule
+    // deliberately holds MORE mass at the kerb than that rate did — measured
+    // here the ratio is 0.418 — so the floor is false by construction under the
+    // rule and is dropped rather than loosened.
+    const off = afterOneFreshFix({ standSec: 60, stepM: 32 });
+    setKerbShuffleEvidence(true);
+    const on = afterOneFreshFix({ standSec: 60, stepM: 32 });
+    expect(on.moving).toBeLessThan(off.moving);
+    expect(on.moving / off.moving).toBeLessThan(0.85);
   });
 
   it("still lets a bus with no table depart normally once it is beyond the rest", () => {
