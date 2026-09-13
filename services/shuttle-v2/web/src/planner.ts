@@ -19,6 +19,24 @@ export type TripOption = {
   routeLabel: string; color: string;
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
+  /**
+   * THE WALK THE TOTAL WAS ACTUALLY PRICED ON, when that is not `walkToSec`.
+   *
+   * `planTrip` measures the walk from the origin the rider searched from; the
+   * per-poll live recompute re-measures it from where they are standing NOW
+   * and builds `waitSec` and `totalSec` on THAT. Report #108 (operator,
+   * 2026-09-12, "This is horrible") is the two disagreeing on one card: the
+   * priced walk was ~46 min, every chip printed the planned 17, and four legs
+   * summing to 44 sat under a 73-minute headline with no visible reason.
+   *
+   * It is a SECOND FIELD rather than an overwrite on purpose. `commuteSec`,
+   * `slowerThanWalk`, `directPromotion` and the tier sort are all functions of
+   * `walkToSec`, which is held constant for a given plan (see `commuteSec`)
+   * exactly so card ORDER cannot flicker on GPS jitter; rewriting it would
+   * reorder the list underneath a walking rider. Display-only, and read
+   * through `displayWalkToSec` (optionLegs.ts) at every site that prints it.
+   */
+  liveWalkToSec?: number;
   totalSec: number; busName: string;
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
@@ -93,7 +111,8 @@ export function dwellBoardWindowSec(
 // not flap between vehicles mid-glance. These constants bound that loyalty:
 //
 //   STOP_DWELL_SEC    — a bus dwells ~60 s at a stop, so a rider is catchable
-//                       until eta + 60 s. Shared with planTrip's own pick.
+//                       until eta + 60 s. The rule itself is `canCatch` below,
+//                       shared with planTrip's pick and the leave reminder.
 //   SWITCH_BUFFER_SEC — walking GPS can read 50–100 m long; require the
 //                       overshoot past catchability to exceed 90 s before
 //                       giving up on the planned bus (spurious-flip guard).
@@ -116,6 +135,31 @@ export function dwellBoardWindowSec(
 export const STOP_DWELL_SEC = 60;
 export const SWITCH_BUFFER_SEC = 90;
 export const PIN_SWITCH_MARGIN_SEC = 5 * 60;
+
+/**
+ * CAN A RIDER `walkSec` FROM THE STOP CATCH A BUS `etaSec` OUT? The one
+ * reachability rule, exported because it has three callers and this repo's norm
+ * is one source per rule: `pickLiveArrival`'s pinning and dominance logic
+ * below, `planTrip`'s own plan-time pick, and the leave reminder's terminal
+ * ping (`canStillCatch`, leaveAlert.ts). All three used to re-type
+ * `walk <= eta + STOP_DWELL_SEC` separately — the same duplication that let the
+ * card and the ping drift apart on report #108, which is the defect this rule's
+ * newest caller exists to fix.
+ *
+ * THE CALLER SUPPLIES THE ETA IT MEANS, and that is the only difference between
+ * the three: `pickLiveArrival` and `planTrip` pass an arrival's own `eta`, the
+ * reminder passes that ETA counted down to now (`remainingSec`), which is the
+ * number the rider is watching. The rule is identical; which clock it is asked
+ * about is the caller's business, not this function's.
+ *
+ * `canCatchWithBuffer` inside `pickLiveArrival` is deliberately NOT this rule.
+ * It is a looser threshold (`+ SWITCH_BUFFER_SEC`) answering a different
+ * question — whether to give up on the planned bus when walking GPS may be
+ * reading 50-100 m long — and folding the two together would hide that.
+ */
+export function canCatch(walkSec: number, etaSec: number): boolean {
+  return walkSec <= etaSec + STOP_DWELL_SEC;
+}
 
 export type LiveArrivalPick<A> = {
   /** The arrival the row COUNTS DOWN to — the bus the rider can see coming. */
@@ -161,10 +205,10 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
 ): LiveArrivalPick<A> | null {
   if (live.length === 0) return null;
   const norm = (s: string) => s.replace(/^#/, "");
-  const canCatch = (a: A) => effectiveWalkToSec <= a.eta + STOP_DWELL_SEC;
+  const canCatchArrival = (a: A) => canCatch(effectiveWalkToSec, a.eta);
   const canCatchWithBuffer = (a: A) =>
     effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
-  const catchable = live.filter(canCatch);
+  const catchable = live.filter(canCatchArrival);
   /**
    * THE SOONEST ARRIVAL, catchable or not — the bus the rider can SEE coming.
    *
@@ -208,11 +252,11 @@ export function pickLiveArrival<A extends { eta: number; busName: string }>(
    */
   const pick = (match: A, departed: boolean, missedBus?: string): LiveArrivalPick<A> => ({
     match,
-    boardable: canCatch(match) ? match : (catchable[0] ?? match),
+    boardable: canCatchArrival(match) ? match : (catchable[0] ?? match),
     departed,
     ...(missedBus ? { missedBus } : {}),
   });
-  if (pinned && canCatch(pinned)) {
+  if (pinned && canCatchArrival(pinned)) {
     // Dominance check (report #49): stay loyal to the pinned bus unless a
     // different vehicle beats it by the full margin. Same-name entries are the
     // same vehicle a lap sooner/later — never a "switch".
@@ -440,9 +484,9 @@ export function planTrip(
             // flag it "🚌 #X just passed your stop" the instant a fresh plan
             // rendered. Falls back to the soonest when none is catchable —
             // the option then correctly shows "departed".
-            // STOP_DWELL_SEC is shared with pickLiveArrival's canCatch so
-            // plan-time and live pinning can never disagree.
-            const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
+            // `canCatch` is the shared rule (above), so plan-time pinning,
+            // live pinning and the leave reminder's ping cannot disagree.
+            const next = arrivals.find((a) => canCatch(walkToSec, a.eta)) ?? arrivals[0];
             waitSec = Math.max(0, next.eta - walkToSec);
             busEtaSec = next.eta;
             busDepartNowSec = next.departNow;
@@ -748,9 +792,12 @@ export function findPotentialRoutes(
  *
  * Unlike `totalSec`, every term here is fixed by the plan's geometry and the
  * calibrated segment times. The per-poll live recompute rewrites `waitSec`,
- * `totalSec`, `busName`, `departed` and `busEtaSec` and nothing else, so this
- * number is CONSTANT for a given (origin, destination) plan. Anything decided
- * by it therefore cannot flicker poll to poll.
+ * `totalSec`, `busName`, `departed`, `busEtaSec` and `liveWalkToSec` and
+ * nothing else, so this number is CONSTANT for a given (origin, destination)
+ * plan. Anything decided by it therefore cannot flicker poll to poll — which
+ * is why report #108's fix added `liveWalkToSec` beside `walkToSec` instead of
+ * writing over it: the walk the card PRINTS follows the rider, the walk the
+ * list is ORDERED by does not.
  */
 export function commuteSec(o: TripOption): number {
   return o.walkToSec + o.rideSec + o.walkFromSec;

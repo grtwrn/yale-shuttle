@@ -12,8 +12,22 @@
 //
 // All state is caller-owned (which pings already fired); computeLeaveAlert is
 // pure so every rule here is unit-testable without React or timers.
+//
+// WHICH WALK. The ping is timed, gated and worded on the walk the CARD shows
+// (`displayWalkToSec`, optionLegs.ts): the live recompute's where it set one,
+// the plan's own otherwise. Report #108's fix moved the card onto the live walk
+// and left this module reading the planned one — so on the operator's own card
+// (planned 17 min, priced 46) "time to leave" was timed 29 minutes of ETA late
+// and printed "17 min walk" beside a card reading 46 min. It fails in the
+// direction that strands a rider, and it is the "two answers, one screen"
+// failure this codebase exists to end. ONE resolution, shared with the card:
+// a second copy of `liveWalkToSec ?? walkToSec` is precisely how the two
+// surfaces drifted apart in the first place.
 
 import { fmtMin, fmtWalk, remainingSec } from "./format";
+import { displayWalkToSec } from "./optionLegs";
+import type { WalkShown } from "./optionLegs";
+import { canCatch } from "./planner";
 
 /** Safety margin added to the walk time — leave a little before you must. */
 export const LEAVE_BUFFER_SEC = 30;
@@ -22,16 +36,28 @@ export const HEADS_UP_LEAD_SEC = 5 * 60;
 /**
  * Below this walk time the rider is effectively AT the stop — they can see
  * the bus, so a ping is noise. Never fire anything.
+ *
+ * Judged on the DISPLAYED walk, which is what makes it true of where the rider
+ * IS rather than where they searched from: a rider now inside `AT_PLACE_M` has
+ * a live walk of 0 and no walk chip on the card, and is silent here even though
+ * the plan still holds the five-minute walk it was built with. The converse is
+ * the same rule — a rider who searched AT the stop (`walkToSec` 0, held
+ * constant by planner.ts so card order cannot flicker) and has since walked off
+ * gets the reminder they now need.
  */
 export const AT_STOP_WALK_SEC = 60;
 
-export type LeaveAlertInput = {
+/**
+ * `WalkShown` is the card's own pair — the plan's `walkToSec` and the live
+ * recompute's `liveWalkToSec` — and every rule below reads it through
+ * `displayWalkToSec`, so a caller cannot hand the ping one walk and the card
+ * another.
+ */
+export type LeaveAlertInput = WalkShown & {
   /** Bus's ETA at the board stop, seconds remaining as of `computedAtMs`. */
   busEtaSec: number;
   /** When busEtaSec was computed (ms epoch); undefined = treat as fresh. */
   computedAtMs?: number;
-  /** Rider's walk to the board stop, seconds. */
-  walkToSec: number;
   /** Current time (ms epoch). */
   nowMs: number;
 };
@@ -43,16 +69,149 @@ export const NO_PINGS_FIRED: FiredPings = { headsUp: false, leaveNow: false };
 
 /**
  * Seconds until it's time to leave: the live ETA (counted down from when it
- * was computed) minus walk time minus the safety buffer. ≤ 0 means leave now
- * (or you're already late).
+ * was computed) minus the DISPLAYED walk minus the safety buffer. ≤ 0 means
+ * leave now (or you're already late).
  */
 export function secUntilLeave(s: LeaveAlertInput): number {
-  return remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) - s.walkToSec - LEAVE_BUFFER_SEC;
+  return remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs) - displayWalkToSec(s) - LEAVE_BUFFER_SEC;
+}
+
+/**
+ * CAN THE RIDER STILL MAKE THIS BUS? The planner's own reachability rule,
+ * `canCatch` — imported and CALLED, not restated. (The first draft of this
+ * guard re-typed the formula here, which made three copies of one rule in a
+ * repo whose norm is one source per rule; `canCatch` is now exported from
+ * planner.ts and its other two callers — `pickLiveArrival` and `planTrip` —
+ * were moved onto it in the same commit.) The walk may exceed the bus's
+ * remaining ETA by at most `STOP_DWELL_SEC`, since a bus waits that long at
+ * the kerb.
+ *
+ * WHY THE TERMINAL PING NEEDS IT. `leave_now` is the LAST ping: the caller
+ * disarms the reminder on it (`if (ping === "leave_now") setReminder(null)`),
+ * so a single bad tick does not merely mis-time a notification — it spends a
+ * reminder the rider cannot get back, and the app goes silent for the rest of
+ * the trip. While the ping was keyed to the PLANNED walk that tick could not
+ * exist, because `planTrip` holds that number constant. Keyed to the LIVE walk
+ * it can, and two measured ways:
+ *
+ *  - ONE WILD GPS FIX. Nothing filters a fix on the way in: `geoWatch.ts`
+ *    hands every position to `onFix`, `coords.accuracy` is read nowhere in
+ *    `web/src`, and the rescue one-shot accepts a network-accuracy fix up to
+ *    two minutes old. With `heads_up` already fired at a live walk of 300 s and
+ *    the bus 700 s out (`secUntilLeave` +370, silent), one poll reading a walk
+ *    of 1090 s flips it to −420 and fires.
+ *  - A BUS THE RIDER CANNOT REACH. The reminder counts down `match` — the bus
+ *    the row FOLLOWS — which the "two questions, two buses" rule deliberately
+ *    keeps on a vehicle that may be out of reach while the card's total is
+ *    priced on `boardable`. Executed, not read off the contract: a pinned bus
+ *    2400 s out whose only other entry is its own next lap at 4200 s returns
+ *    `match` 2400 / `boardable` 4200, `departed` false. At a live walk of
+ *    2760 s that is `secUntilLeave` −390 — so `leave_now` fires on the ARMING
+ *    tick and disarms at once, for a bus 6 min past catching.
+ *
+ * ONE RULE COVERS BOTH, because it tests the ping's own PROMISE rather than
+ * guessing at its cause: "time to leave" claims the rider will make it, and
+ * both failures are cases where that sentence is false.
+ *
+ * WHAT THE GATE COSTS, MEASURED. It CAN suppress a ping. It converts a latching
+ * condition into a WINDOW: swept at a displayed walk of 600 s, `leave_now` fires
+ * for a remaining ETA in [540, 630] s — 90 s wide, 91 inclusive integer seconds
+ * — against ungated [0, 630] s, 630 s wide, 631 inclusive integer seconds. One
+ * quantity, one spelling: the WIDTH is 90 s, and 91 is the count of whole
+ * seconds a closed interval of that width contains.
+ *
+ * TWO DISTINCT 90 s WIDTHS APPEAR BELOW and coincide only numerically — keep
+ * their provenance attached. The firing window is
+ * `STOP_DWELL_SEC + LEAVE_BUFFER_SEC` (remaining in [walk − 60, walk + 30]);
+ * the silent-but-armed walk band is `SWITCH_BUFFER_SEC`. Four bounds, each with
+ * its configuration, rather than a general claim about what the gate does not
+ * do — three drafts of this comment died on such claims:
+ *
+ *  - WHERE A SUPPRESSED PING'S RIDER IS LEFT — TWO CASES, WHICH DIFFER. The
+ *    suppressed set is where `canCatch` is false, the test that picks
+ *    `boardable` in `pickLiveArrival`, so WHENEVER A CATCHABLE ENTRY EXISTS the
+ *    card's total has already moved to a later bus and the refused ping is one
+ *    that would have contradicted the card it sits under. WHEN NO CATCHABLE
+ *    ENTRY EXISTS that inference does not hold: `boardable` is
+ *    `canCatchArrival(match) ? match : (catchable[0] ?? match)` (planner.ts:255)
+ *    and the fallback is `match` ITSELF, so the card goes on pricing the refused
+ *    bus at wait 0 (`TransitMap.tsx:2192`) with `departed` false, and this gate
+ *    is the only surface declining the promise. Executed: ONE live entry at
+ *    eta 700 against a displayed walk of 800 s returns `boardable === match`,
+ *    `departed` false — there is no later bus and no lap. That is the
+ *    single-live-entry band, walk in
+ *    (eta + STOP_DWELL_SEC, eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC] = 761–850 s
+ *    at eta 700: 90 s of walk, 99 m at `WALK_EFFECTIVE_M_S`, 90 inclusive
+ *    integer walks. Pinned by `planner.test.ts` ("`boardable` falls back to
+ *    `match` itself"). The fallback was already pinned there for a
+ *    `departed: true` walk — 1000 s against eta 100, where the reminder is
+ *    retired regardless; what had no vector is THIS `departed: false` band, the
+ *    one where this gate is the only surface declining. The `boardable` vector
+ *    covering the predicate uses TWO entries, so a lap was present in every case
+ *    it checked, which is how three reviews carried the withdrawn claim.
+ *  - THE SUPPRESSED SET IS LARGER THAN `boardable`'s, BY THE ETA'S AGE. The
+ *    equivalence above holds AT AGE 0 ONLY: `canStillCatch` tests
+ *    `remainingSec(...)` counted to `nowMs`, while `pickLiveArrival` tests the
+ *    RAW poll-time `eta`. The age is bounded by the poll cadence — ≤ 5 s
+ *    foreground, ≤ 30 s on a hidden page (`TransitMap.tsx:7621`). Executed at
+ *    walk 700 / eta 645: age 5 s → `canStillCatch` true → leave_now; age 10 s →
+ *    false → null, while the card, reading the raw 645, still has
+ *    `boardable === match`. What bounds this is the TICK GEOMETRY, not the
+ *    equivalence: the firing window is 90 s of remaining ETA, the engine
+ *    re-evaluates at 1 Hz (`TransitMap.tsx:2263`), and within one poll's ETA the
+ *    age only walks remaining DOWN at 1 s/s — so a ping the age refuses at
+ *    remaining r was offered at r + age, up to ~90 ticks earlier. A
+ *    discontinuous drop ACROSS polls can still skip the window, which is the
+ *    next bullet.
+ *  - THE DETERMINANT IS WHERE THE POST-JUMP ETA LANDS, NOT HOW BIG THE JUMP
+ *    WAS. At a 600 s walk the last firing remaining is 540 s and the first
+ *    suppressed is 539 s, so a 1200 → 539 s collapse — 661 s, LARGER than the
+ *    580 s collapse the tests exercise — is suppressed. Collapses that size are
+ *    ordinary on this feed: `docs/eta-lurch-classification.md` records 343 drops
+ *    of ≥ 300 s (92.4% with a real event behind them) and a |jump| p99.9 of
+ *    572.6 s. So do not read the test's 580 s as the guard's headroom; read the
+ *    first bullet, which says where such a rider is left — and which of the two
+ *    cases they are in.
+ *  - THE BAND WHERE A BAD FIX STILL FIRES is 90 s of WALK at a fixed remaining
+ *    ETA (`STOP_DWELL_SEC + LEAVE_BUFFER_SEC`; walk in [remaining − 30,
+ *    remaining + 60], e.g. 670–760 s at remaining 700) — 99 m of crow-flies
+ *    walk. It fires a self-consistent ping ("in 11 min, 12 min walk"), and its
+ *    cost is a rider who leaves early and waits at the stop, not one who is
+ *    stranded: the asymmetry `rideEnd.ts` argues for.
+ *
+ * THE CONVERSE BAND is the FIRST BULLET'S BAND reached from the other side, not
+ * a second phenomenon. A displayed walk in
+ * (remaining + STOP_DWELL_SEC, remaining + STOP_DWELL_SEC + SWITCH_BUFFER_SEC]
+ * keeps the pin under `canCatchWithBuffer`, so the row counts that bus down
+ * while this gate refuses its ping for as long as the walk holds there: 90 s of
+ * walk, 99 m. What the rider is left with is the first bullet's two cases — with
+ * a catchable entry the card's total is on it; with a single live entry the
+ * total sits on the refused bus at wait 0. Recorded rather than left to be
+ * discovered.
+ *
+ * WHY NOT A GROWTH BOUND on the walk per tick, which would close the first
+ * band: deliberately NOT built. The fix noise this app is built around
+ * (`AT_PLACE_M`, "30–100 m off") is 73–91 s of walk, so the bound needs that
+ * much slack against the 6 s the walk model physically allows over a 5 s poll
+ * — 12–15× the physics — and nothing in this repo measures fix error, so that
+ * constant could not be validated. A guard that delays `leave_now` strands the
+ * rider; the 90 s window above is what this one costs instead.
+ *
+ * ONE RESIDUAL, recorded rather than solved. The slack here is
+ * `STOP_DWELL_SEC` = 60 s, while the estimator's own documented optimistic mean
+ * bias is 58–88 s (docs/eta-accuracy.md), so a bus predicted just-too-late is
+ * often catchable in fact. That makes the rule itself slightly conservative at
+ * the margin — a POLICY question for all three of its callers together, never
+ * something to re-tune for this ping alone.
+ */
+export function canStillCatch(s: LeaveAlertInput): boolean {
+  return canCatch(displayWalkToSec(s), remainingSec(s.busEtaSec, s.computedAtMs, s.nowMs));
 }
 
 /**
  * Which ping (if any) to fire right now. Rules:
- * - walk < 60 s → never anything (rider is at the stop, can see the bus).
+ * - displayed walk < 60 s → never anything (rider is at the stop, can see
+ *   the bus).
  * - Inside T−0 (secUntilLeave ≤ 0): fire leave_now once. If the rider armed
  *   this late, heads_up is skipped entirely — never both back-to-back.
  * - Inside T−5 (0 < secUntilLeave ≤ 5 min): fire heads_up once, unless
@@ -61,9 +220,14 @@ export function secUntilLeave(s: LeaveAlertInput): number {
  *   jumps up and re-enters a window never repeats a ping.
  */
 export function computeLeaveAlert(s: LeaveAlertInput, fired: FiredPings): LeavePing | null {
-  if (s.walkToSec < AT_STOP_WALK_SEC) return null;
+  if (displayWalkToSec(s) < AT_STOP_WALK_SEC) return null;
   const until = secUntilLeave(s);
-  if (until <= 0) return fired.leaveNow ? null : "leave_now";
+  if (until <= 0) {
+    if (fired.leaveNow) return null;
+    // The terminal, self-disarming ping — never fire it for a bus the rider
+    // can no longer make. See `canStillCatch`.
+    return canStillCatch(s) ? "leave_now" : null;
+  }
   if (until <= HEADS_UP_LEAD_SEC) {
     return fired.headsUp || fired.leaveNow ? null : "heads_up";
   }
@@ -104,13 +268,25 @@ export function leaveAlertMessage(
     const until = Math.max(0, secUntilLeave(s));
     return `${prefix}${routeLabel} in ${fmtMin(remaining)} — leave in ${fmtMin(until)}`;
   }
-  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(s.walkToSec)} walk`;
+  return `${prefix}Time to leave — ${routeLabel} in ${fmtMin(remaining)}, ${fmtWalk(displayWalkToSec(s))} walk`;
 }
 
 /**
  * The live option an armed reminder should follow, or null → quietly disarm.
  * Null when the option is gone from the plan, flagged departed, or carries no
  * live bus ETA (walk options, future-mode plans, route stopped running).
+ *
+ * THE `departed` BRANCH IS A SECOND DOOR OUT OF AN ARMED REMINDER, and
+ * `canStillCatch` does not cover it: the caller's `setReminder(null)` on a null
+ * return spends the reminder just as `leave_now` does. `departed` comes from
+ * `pickLiveArrival`, which is fed the LIVE walk, so a live walk past every
+ * arrival in the feed retires the reminder outright — executed: a single live
+ * entry with a walk of 1090 s against a bus 700 s out returns departed, and
+ * with a lap row present a walk of 3000 s does. PRE-EXISTING on master
+ * (`b5c2c2b`), which already fed `pickLiveArrival` the live walk and already
+ * disarmed here, so this PR's guard closes the `leave_now` door only.
+ * Deliberately left alone: the fix belongs with whether an unreachable option
+ * should be offered at all (report #84), not bolted on here.
  */
 export function findReminderOption<
   T extends { mode: string; routeLabel: string; departed?: boolean; busEtaSec?: number },

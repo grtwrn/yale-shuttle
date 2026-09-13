@@ -55,6 +55,7 @@ import {
 import { topVisibleOptions, keptThirdLabel,
   directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
 } from "./planner";
+import { displayWalkToSec } from "./optionLegs";
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 // "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
@@ -2156,6 +2157,10 @@ const TripPlanner: FC<{
         const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
           ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
+          // The walk THIS total was built from, for the chips to print — see
+          // optionLegs.ts (report #108). Never `walkToSec`, which the sort
+          // reads and which must stay the plan's own.
+          liveWalkToSec: effectiveWalkToSec,
           busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
@@ -2188,6 +2193,10 @@ const TripPlanner: FC<{
       const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
         ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
+        // The walk THIS total was built from, for the chips to print — see
+        // optionLegs.ts (report #108). Never `walkToSec`, which the sort reads
+        // and which must stay the plan's own.
+        liveWalkToSec: effectiveWalkToSec,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
         busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
@@ -2228,7 +2237,11 @@ const TripPlanner: FC<{
       }
       const input = {
         busEtaSec: o.busEtaSec, computedAtMs: o.computedAtMs,
-        walkToSec: o.walkToSec, nowMs: Date.now(),
+        // BOTH walks. leaveAlert.ts times, gates and words the ping on the one
+        // the CARD prints (displayWalkToSec, optionLegs.ts) — report #108's
+        // follow-up: keyed to the planned walk this pinged 29 min of ETA after
+        // the rider had to leave, and said "17 min walk" under a card reading 46.
+        walkToSec: o.walkToSec, liveWalkToSec: o.liveWalkToSec, nowMs: Date.now(),
       };
       const ping = computeLeaveAlert(input, reminderFiredRef.current);
       if (!ping) return;
@@ -3722,11 +3735,18 @@ const TripPlanner: FC<{
             // Reassure rather than confuse: when every shuttle option got
             // demoted below walking, say so up front — otherwise the grey
             // tags read like the app is broken.
+            //
+            // SHOWN IN THE DETAIL VIEW TOO (reports #103 and #106, "walk time
+            // about same as just walking", and the #108 screenshot). It used to
+            // be gated on `!_detailOpen`, so the one sentence explaining why a
+            // slow shuttle is on screen vanished on exactly the page a rider
+            // opens to find out — they tap the card BECAUSE the numbers look
+            // wrong, and the explanation left as they arrived.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
               _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
             return <>
-          {_allShuttlesSlower && !_detailOpen && (
+          {_allShuttlesSlower && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
               Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride.
             </div>
@@ -3923,6 +3943,18 @@ const TripPlanner: FC<{
             // clock used to sit to its left and always supplied that
             // neighbour; it is the right column now, so the separator has to
             // ask.
+            /**
+             * THE WALK THIS CARD PRINTS, resolved once at ROW scope so the
+             * collapsed leg strip, the expanded chip line and the wait leg
+             * cannot disagree about it — the same "one answer per screen" rule
+             * `busEtaLive` and `standCtx` above follow.
+             *
+             * The walk the TOTAL was priced on (optionLegs.ts, report #108),
+             * which is the rider's remaining walk whenever live GPS is driving
+             * the recompute. NOT `o.walkToSec`: that is the plan's own walk,
+             * held constant so the row ORDER cannot flicker as they walk.
+             */
+            const walkToShown = displayWalkToSec(o);
             const legsShown = !isExpanded && o.mode === "shuttle";
             return (
               // Keyed by IDENTITY (route label), not list position — the
@@ -4073,9 +4105,9 @@ const TripPlanner: FC<{
                       <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
                         {legsShown && (
                           <>
-                            {o.walkToSec > 0 && (
+                            {walkToShown > 0 && (
                               <>
-                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
+                                <span style={{ fontSize: 13, color: "#5f6368", whiteSpace: "nowrap" }}>🚶 {fmtWalk(walkToShown)}</span>
                                 <span style={{ fontSize: 13, color: "#9aa0a6" }}>›</span>
                               </>
                             )}
@@ -4310,12 +4342,12 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
+                        const waitText = waitLegText(leadBand, busEtaLive, walkToShown, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
-                            {o.walkToSec >= 60 && (<>
-                              <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkToSec)}</span>
+                            {walkToShown >= 60 && (<>
+                              <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(walkToShown)}</span>
                               {sep}
                             </>)}
                             {waitText && (<>
@@ -4422,14 +4454,26 @@ const TripPlanner: FC<{
                           </>
                         )}
                         {/* Leave-time reminder. Hidden when the rider is
-                            effectively at the stop already (walk < 60 s —
-                            they can see the bus, a ping is noise) or when
+                            effectively at the stop already (the walk the CARD
+                            shows is < 60 s — they can see the bus, a ping is
+                            noise) or when
                             there's no live bus ETA to count down (future
                             mode / departed). One reminder at a time: arming
                             here silently replaces any other armed option,
                             and the button label is the whole armed-state
-                            UI — no modal. */}
-                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && o.walkToSec >= AT_STOP_WALK_SEC && (
+                            UI — no modal.
+
+                            THE GATE READS THE DISPLAYED WALK (report #108's
+                            follow-up), so the offer, the timing and the ping's
+                            own text are one answer. A rider now inside
+                            AT_PLACE_M has a live walk of 0 and no walk chip:
+                            the planned-walk gate still offered them a reminder
+                            that — priced on the live walk — could never fire,
+                            and a button that arms and cannot ping is a promise
+                            the app does not keep. The converse is the same
+                            rule: a rider who searched AT the stop and has since
+                            walked off is now offered the reminder they need. */}
+                        {o.mode === "shuttle" && !o.departed && o.busEtaSec != null && displayWalkToSec(o) >= AT_STOP_WALK_SEC && (
                           <>
                             <span style={{ color: "#dadce0", fontSize: 13 }}>·</span>
                             <button

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { remainingSec } from "./format";
 import { haversineMeters } from "./geo";
 import { computeUpcomingArrivals } from "./arrivals";
-import { DIRECT_COMMUTE_MARGIN_SEC, directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, keptThirdLabel, MAX_RIDE_SEC, mostDirectOption, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_KEEP_SLACK_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
+import { canCatch, DIRECT_COMMUTE_MARGIN_SEC, directPromotion, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, keptThirdLabel, MAX_RIDE_SEC, mostDirectOption, PIN_SWITCH_MARGIN_SEC, pickLiveArrival, planTrip, publishedWindowFor, routeHoursCaption, SAME_SPOT_M, THIRD_SHUTTLE_KEEP_SLACK_SEC, STOP_DWELL_SEC, THIRD_SHUTTLE_SLACK_SEC, topVisibleOptions } from "./planner";
 import { fmtSchedule, HEADWAY_MIN, isRouteActiveAt } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
 import {
@@ -946,5 +946,88 @@ describe("topVisibleOptions", () => {
       expect(keptThirdLabel(topVisibleOptions(poll(26 * 60 + 900)))).toBeNull();
       expect(keptThirdLabel([opt("walk", "Walk", 600), opt("shuttle", "A", 900)])).toBeNull();
     });
+  });
+});
+
+/**
+ * ONE REACHABILITY RULE, THREE CALLERS. `canCatch` is exported because
+ * `pickLiveArrival`, `planTrip` and the leave reminder's terminal ping
+ * (`canStillCatch`, leaveAlert.ts) all need it, and each used to re-type
+ * `walk <= eta + STOP_DWELL_SEC` for itself — the same duplication that let the
+ * card and the ping disagree in report #108. These vectors pin the rule so no
+ * caller's answer can move without moving all three.
+ */
+describe("canCatch — the one reachability rule", () => {
+  it("is walk <= eta + STOP_DWELL_SEC, boundary inclusive", () => {
+    expect(canCatch(760, 700)).toBe(true);   // exactly a dwell late
+    expect(canCatch(761, 700)).toBe(false);  // one second past it
+    expect(canCatch(0, 0)).toBe(true);       // standing at the stop
+    expect(canCatch(600, 1200)).toBe(true);
+  });
+
+  // The grid is a formula check, not a boundary check: its walk/eta lists
+  // contain no `walk === eta + STOP_DWELL_SEC + 1` pair, so it reads stronger
+  // than it is. The boundary vector above is what pins the edge.
+  it("agrees with the formula across a grid, so no caller can drift", () => {
+    for (const walk of [0, 1, 59, 60, 300, 539, 600, 1020, 2760]) {
+      for (const eta of [0, 1, 60, 240, 540, 630, 700, 2400, 4200]) {
+        expect(canCatch(walk, eta)).toBe(walk <= eta + STOP_DWELL_SEC);
+      }
+    }
+  });
+
+  it("is what decides `boardable` — the bus the total is priced on", () => {
+    // One vehicle, two entries: this lap and the next.
+    const live = [{ eta: 700, busName: "1" }, { eta: 2400, busName: "1" }];
+    // Catchable → the row and the total follow the same bus.
+    expect(canCatch(760, 700)).toBe(true);
+    expect(pickLiveArrival(live, "1", 760)!.boardable.eta).toBe(700);
+    // Past the rule the total moves to the lap the rider CAN make, while the
+    // row keeps counting down the bus they can see. This is the same predicate
+    // the leave reminder's terminal ping consults — so WHERE A CATCHABLE ENTRY
+    // EXISTS, a suppressed ping is one that would have contradicted the card.
+    // The next vector is the case where that inference does NOT hold.
+    expect(canCatch(900, 700)).toBe(false);
+    const picked = pickLiveArrival(live, "1", 900)!;
+    expect(picked.match.eta).toBe(700);
+    expect(picked.boardable.eta).toBe(2400);
+  });
+
+  /**
+   * THE `?? match` FALLBACK IN THE `departed: false` BAND.
+   *
+   * `falls back to the watched bus when nothing at all is catchable` (above)
+   * already pins the fallback — but only where `departed` is TRUE (walk 1000 s
+   * against eta 100), and there `findReminderOption` retires the reminder
+   * regardless, so nothing rests on `boardable`. What had no vector is the band
+   * where `departed` is FALSE. The `boardable` vector that covers this predicate
+   * uses TWO entries, so a lap was present in every case it checked, and that is
+   * how three reviews of the leave-reminder guard came to carry the claim that a
+   * suppressed ping's card is ALREADY priced on a later bus. With ONE live entry
+   * and a walk still inside `canCatchWithBuffer`, `catchable` is empty,
+   * `boardable` is `catchable[0] ?? match` = `match`, and the card goes on
+   * pricing the refused bus at wait 0 (`TransitMap.tsx:2192`) with the row still
+   * following it — no later bus, no lap. The reminder's `canStillCatch` is then
+   * the only surface declining the promise, which is the bound `leaveAlert.ts`'s
+   * header states in place of the withdrawn claim.
+   */
+  it("with nothing catchable, `boardable` falls back to `match` itself", () => {
+    const live = [{ eta: 700, busName: "1" }];       // one entry: this lap only
+    const pick = pickLiveArrival(live, "1", 800)!;   // walk 800 s: past the rule
+    expect(canCatch(800, 700)).toBe(false);          // nothing is catchable
+    expect(pick.boardable).toBe(pick.match);         // ...so the fallback fires
+    expect(pick.boardable.eta).toBe(700);
+    expect(pick.departed).toBe(false);               // the row still follows it
+    // The band this holds across: walk in (eta + STOP_DWELL_SEC, + SWITCH_BUFFER_SEC],
+    // 761..850 s at eta 700 — 90 s of walk, 90 inclusive integer walks. Below it
+    // the bus is catchable; above it `departed` retires the reminder instead.
+    for (const walk of [761, 800, 850]) {
+      const p = pickLiveArrival(live, "1", walk)!;
+      expect(p.boardable).toBe(p.match);
+      expect(p.departed).toBe(false);
+    }
+    expect(pickLiveArrival(live, "1", 760)!.boardable.eta).toBe(700); // catchable
+    expect(canCatch(760, 700)).toBe(true);
+    expect(pickLiveArrival(live, "1", 851)!.departed).toBe(true);     // door out
   });
 });
