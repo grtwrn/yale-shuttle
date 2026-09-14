@@ -3827,9 +3827,15 @@ const TripPlanner: FC<{
               : null;
             // THE ROW'S RANGE: the pinned arrival's own 10-90 band, when it is
             // wide enough to print (etaBand.ts) — standing OR moving — through
-            // the one composer every surface reads (`arrivalBand`): decayed
-            // with the point, and for a standing bus floored at departNow +
-            // the shortest stand still left.
+            // the one composer every surface reads (`arrivalBand`), decayed
+            // with the point.
+            //
+            // IT IS NOT FLOORED. `arrivalBand` passes no low floor: the
+            // standing floor (departNow + the shortest stand still left) was
+            // built, measured and REFUSED on 2026-09-11 (#228) — it was beaten
+            // on 31-52% of standing pairs and took Red's 2-5 min coverage from
+            // 90.4% to 46.4%. See the header of `arrivalBand` in standWait.ts
+            // before re-adding one.
             const leadBand = o.mode === "shuttle" && !o.departed && busEtaLive !== null
               ? arrivalBand(standCtx, { low: o.busLowSec, high: o.busHighSec, departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs })
               : null;

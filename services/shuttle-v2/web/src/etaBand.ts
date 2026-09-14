@@ -195,13 +195,35 @@ export function boardArrivalText(band: EtaBand | null, etaSec: number | null): s
  * The expanded card's wait leg ("⏳ 2-9 min"): the row's own band, less the
  * walk to the stop, so the leg strip and the countdown above it describe one
  * arrival. Null when there is nothing to wait for.
+ *
+ * THIS LEG IS A WAIT, SO ITS LOW END IS A DURATION (operator, 2026-09-13:
+ * "This looks wrong too", of a card reading "⏳ now-7 min"). "now" is the
+ * countdown's word for an ARRIVAL — on the row above it means the bus is at
+ * the kerb. Subtracting the walk turns the same band into how long the rider
+ * stands there, and "now" as the low end of a wait says the wait is over
+ * before it starts; a rider reads the pair and averages it. `standLeftText`
+ * settled this for the chip and `boardArrivalText` for the BOARD row, both by
+ * spelling the quantity as "<1" — this is the third surface and the same rule,
+ * not a new one.
+ *
+ * It is also the spelling this leg ALREADY used either side of the case: a low
+ * end in [10, 60) s prints "<1-7 min" through `fmtMin`, and only under ten
+ * seconds did it flip to "now-7 min". So the change removes an inconsistency
+ * inside one slot rather than introducing a wording.
  */
 export function waitLegText(band: EtaBand | null, etaSec: number | null, walkSec: number, waitSec: number): string | null {
   if (band && etaSec != null) {
     const low = Math.max(0, band.lowSec - walkSec);
     const high = Math.max(0, band.highSec - walkSec);
     const mid = Math.max(0, etaSec - walkSec);
-    return high < 60 ? null : fmtBusBand(low, mid, high).replace(/^in /, "");
+    if (high < 60) return null;
+    const t = fmtBusBand(low, mid, high).replace(/^in /, "");
+    // "now-6 min", and "3 (now-6) min" should the median ever be printed here.
+    const spelled = t.replace(/(^|\()now-/, "$1<1-");
+    // "<1-1 min" is not a range, it is two spellings of about a minute — the
+    // one adjacent pair that breaks (operator, 2026-09-10: "reads a little
+    // funny"), collapsed exactly as `standLeftText` collapses it.
+    return spelled === "<1-1 min" ? "~1 min" : spelled;
   }
   return waitSec < 60 ? null : fmtWait(waitSec);
 }
