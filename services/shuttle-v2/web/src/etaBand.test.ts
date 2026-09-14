@@ -86,7 +86,16 @@ describe("one belief, one screen — the row, the chip and the wait leg print th
 
   it("the wait leg is the same band less the walk to the stop", () => {
     expect(waitLegText(band, M(5), 60, M(4))).toBe("1-8 min");
-    expect(waitLegText(band, M(5), M(8), 0)).toBe("now-1 min");
+    // A WAIT'S LOW END IS A DURATION, never the arrival word "now" (operator,
+    // 2026-09-13, of a card reading "⏳ now-7 min"). The chip and the BOARD row
+    // spell the same quantity "<1"; this is the third surface, same rule.
+    expect(waitLegText({ lowSec: 0, highSec: M(7) }, M(3), 0, 0)).toBe("<1-7 min");
+    // The leg already printed "<1-" either side of that case: a low end of
+    // 10..59 s goes through fmtMin, and only under ten seconds did it flip.
+    expect(waitLegText({ lowSec: 30, highSec: M(7) }, M(3), 0, 0)).toBe("<1-7 min");
+    // "<1-1 min" is two spellings of about a minute, not a range — collapsed
+    // exactly as standLeftText collapses it (operator, 2026-09-10).
+    expect(waitLegText(band, M(5), M(8), 0)).toBe("~1 min");
     // Nothing left to wait for once the whole band is inside the walk.
     expect(waitLegText(band, M(5), M(9), 0)).toBeNull();
     // No band: the leg's own wait, as before.
