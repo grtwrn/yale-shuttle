@@ -6,6 +6,14 @@ const makeStore = () => { let value: string | null = null; return {
 const trip: TripDraft = { fromText: "", fromLL: null, toText: "Yale Public Health",
   toLL: { lat: 41.303735, lon: -72.932155 }, tripTime: "", expandedKey: "Red" };
 describe("waiting trip restoration", () => {
+  it('restores a class deadline and buffer, discarding malformed optional values', () => {
+    const store = makeStore();
+    const draft = { ...trip, arriveBy: '2026-09-16T12:30', classBufferMin: 10 };
+    saveTripDraft(draft, store, 1000);
+    expect(loadTripDraft(store, 2000)).toEqual(draft);
+    saveTripDraft({ ...draft, arriveBy: 'bad date', classBufferMin: -5 }, store, 1000);
+    expect(loadTripDraft(store, 2000)).toEqual(trip);
+  });
   it("preserves the selection time across later saves and reloads", () => {
     const draft = { ...trip, tripTime: "2026-09-10T17:00", tripTimeSetAt: 1000 };
     const store = makeStore(); saveTripDraft(draft, store, 50_000);

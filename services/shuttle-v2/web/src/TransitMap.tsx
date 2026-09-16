@@ -34,6 +34,8 @@ import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
 import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
+import { ArriveBy } from "./ArriveBy";
+import { journeyArrival } from "./journeyArrival";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -1631,6 +1633,8 @@ const AllRoutesMap: FC<{
 
 const TripPlanner: FC<{
   buses: BusData[];
+  lastBusUpdateAt: number | null;
+  busUpdateFailed: boolean;
   stopNames: Record<number, string>;
   stopCoords: Record<number, LatLon>;
   routeStops: Record<string, number[]>;
@@ -1670,7 +1674,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -1775,11 +1779,13 @@ const TripPlanner: FC<{
     setTripTimeValue(value);
     setTripTimeSetAt(Date.now());
   };
+  const [arriveBy, setArriveBy] = useState<string | null>(initialDraft?.arriveBy ?? null);
+  const [classBufferMin, setClassBufferMin] = useState(initialDraft?.classBufferMin ?? 5);
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
-    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey } : null);
-  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, fromExpanded, toExpanded]);
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy: arriveBy ?? undefined, classBufferMin } : null);
+  }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy, classBufferMin, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
   const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);
   const isFuture = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
@@ -2097,7 +2103,13 @@ const TripPlanner: FC<{
     const isFutureMode = !!targetDate && targetDate.getTime() - Date.now() > 60_000;
     if (isFutureMode) return stableOptions;
     return stableOptions.map((o) => {
-      if (o.mode !== "shuttle") return o;
+      if (o.mode !== "shuttle") {
+        // A live origin moves with the rider for both alternatives.
+        const from = isCurrentLocationText(fromText) && userLatLon ? userLatLon : effectiveFromLL;
+        if (!from || !toLL) return o;
+        const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
+        return { ...o, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
+      }
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
       // passed" (it could just mean the bus is on the far side of
@@ -2153,23 +2165,28 @@ const TripPlanner: FC<{
         // shared with planTrip). Beyond that the bus will be gone before
         // they arrive, so fall through to the normal math.
         const waitSec = 0;
-        const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+        const board = live.find(a => norm(a.busName) === norm(hereBus.bus_name) && a.stopsAhead === 0 && a.eta === 0);
+        const arrival = journeyArrival(board, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
+        const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
+          : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
         return {
-          ...o, waitSec, totalSec, busName: norm(hereBus.bus_name), departed: false,
+          ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+          rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
+          journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
           busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
 
       if (live.length === 0) {
         // No future arrival and no bus parked at the stop — truly unreachable.
-        return { ...o, departed: true };
+        return { ...o, journeyArrival: undefined, departed: true };
       }
       // Which arrival to follow — pinned-bus loyalty, its catchability
       // bounds, the report-#49 dominance switch, and the departed verdict
       // all live in pickLiveArrival (planner.ts), where they are unit
       // tested. `live` is non-empty here, so the pick exists.
       const picked = pickLiveArrival(live, o.busName, effectiveWalkToSec);
-      if (!picked) return { ...o, departed: true };
+      if (!picked) return { ...o, journeyArrival: undefined, departed: true };
       const { match, boardable, departed, missedBus } = picked;
       // TWO QUESTIONS, TWO BUSES. `match` is the bus the row counts down to —
       // the one the rider can see coming, which must not vanish while it is
@@ -2185,9 +2202,13 @@ const TripPlanner: FC<{
       // lie when they cannot. The countdown was not the problem; the total
       // was, and the total now waits for a bus the rider can board.
       const waitSec = Math.max(0, boardable.eta - effectiveWalkToSec);
-      const totalSec = effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
+      const arrival = departed ? undefined : journeyArrival(boardable, visits, o.alightStopId, effectiveWalkToSec, o.walkFromSec, nowMs);
+      const totalSec = arrival ? (arrival.pointMs - nowMs) / 1000
+        : effectiveWalkToSec + waitSec + o.rideSec + o.walkFromSec;
       return {
-        ...o, waitSec, totalSec, busName: match.busName, departed, missedBus,
+        ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
+        rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - waitSec - o.walkFromSec) : o.rideSec,
+        journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
         busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
@@ -3483,6 +3504,13 @@ const TripPlanner: FC<{
               }}
             >← All routes</button>
           )}
+          {!detailOpen && <ArriveBy
+            value={arriveBy} onChange={setArriveBy} bufferMin={classBufferMin} onBufferChange={setClassBufferMin}
+            options={orderedOptions ?? options} destination={toText} stopNames={stopNames}
+            departureMs={isFuture ? targetDate?.getTime() : undefined}
+            lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
+            onSelect={setExpandedKey}
+          />}
           {/* Combined overview: all shuttle options on one map so the
               rider can compare routes geographically, Google-Maps-app
               style — map first, cards below. Open by default (see
@@ -3609,7 +3637,9 @@ const TripPlanner: FC<{
                   },
                   dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
                 ),
-                arriveAt: o.departed ? null : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
+                arriveAt: o.departed ? null : o.journeyArrival
+                  ? fmtClock(-o.walkFromSec, new Date(o.journeyArrival.pointMs))
+                  : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
             }
             if (overviewOpts.length < 1) return null;
@@ -4073,7 +4103,7 @@ const TripPlanner: FC<{
                               modes now agree. */}
                           {isFuture
                             ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                            : fmtClock(o.totalSec)}
+                            : o.journeyArrival ? fmtClock(0, new Date(o.journeyArrival.pointMs)) : fmtClock(o.totalSec)}
                         </span>
                       )}
                     </div>
@@ -8015,6 +8045,7 @@ const TransitMap: FC = () => {
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
+          lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
           routeHours={routeHours} routeActive={routeActive}

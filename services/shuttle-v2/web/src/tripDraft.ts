@@ -8,6 +8,8 @@ export type TripDraft = {
   tripTime: string;
   tripTimeSetAt?: number;
   expandedKey: string | null;
+  arriveBy?: string;
+  classBufferMin?: number;
 };
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const KEY = "shuttle-trip-draft";
@@ -31,7 +33,10 @@ export function loadTripDraft(store?: Store | null, now = Date.now()): TripDraft
       || (d.expandedKey !== null && typeof d.expandedKey !== "string")) return null;
     return { fromText: d.fromText, fromLL: d.fromLL, toText: d.toText, toLL: d.toLL,
       tripTime: d.tripTime, ...(Number.isFinite(d.tripTimeSetAt) && d.tripTimeSetAt >= 0 && d.tripTimeSetAt <= d.savedAt
-        ? { tripTimeSetAt: d.tripTimeSetAt } : {}), expandedKey: d.expandedKey };
+        ? { tripTimeSetAt: d.tripTimeSetAt } : {}), expandedKey: d.expandedKey,
+      ...(typeof d.arriveBy === 'string' && (!d.arriveBy || Number.isFinite(Date.parse(d.arriveBy))) ? { arriveBy: d.arriveBy } : {}),
+      ...(Number.isInteger(d.classBufferMin) && d.classBufferMin >= 0 && d.classBufferMin <= 30 ? { classBufferMin: d.classBufferMin } : {}),
+    };
   } catch { return null; }
 }
 
