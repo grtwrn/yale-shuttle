@@ -91,12 +91,15 @@ try {
   await panel.getByLabel('Class starts · local time').fill('2026-01-01T10:00');
   assert.match(await panel.getByRole('alert').innerText(), /passed/);
   assert.equal(await panel.getByRole('heading').count(), 0);
+  await panel.getByLabel('Class starts · local time').fill('');
+  assert.match(await panel.getByRole('alert').innerText(), /Choose a class/);
+  assert(await panel.getByLabel('Class starts · local time').isVisible(), 'editing must not close the panel');
   await panel.getByLabel('Class starts · local time').fill(datetime);
   await page.route('**/api/buses', route => route.fulfill({ status: 503, json: { error: 'Test interrupted feed' } }));
   await page.waitForTimeout(6500);
   assert.match(await panel.innerText(), /No live window/);
   assert.equal(await panel.getByRole('heading', { name: /^Take / }).count(), 0);
-  result.checks.push('passed deadline rejected', 'failed feed suppresses shuttle recommendation');
+  result.checks.push('passed deadline rejected', 'empty time remains editable', 'failed feed suppresses shuttle recommendation');
   await panel.getByRole('button', { name: 'Clear', exact: true }).click();
   await page.getByRole('button', { name: /Arrive by…/ }).waitFor();
   result.checks.push('clear returns to normal planner');

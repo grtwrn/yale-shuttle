@@ -7,6 +7,7 @@
     "deadline survives reload",
     "trip details, pickup gap and Escape focus still work",
     "passed deadline rejected",
+    "empty time remains editable",
     "failed feed suppresses shuttle recommendation",
     "clear returns to normal planner"
   ],

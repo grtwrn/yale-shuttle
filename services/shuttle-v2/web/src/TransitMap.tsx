@@ -1779,12 +1779,12 @@ const TripPlanner: FC<{
     setTripTimeValue(value);
     setTripTimeSetAt(Date.now());
   };
-  const [arriveBy, setArriveBy] = useState(initialDraft?.arriveBy ?? "");
+  const [arriveBy, setArriveBy] = useState<string | null>(initialDraft?.arriveBy ?? null);
   const [classBufferMin, setClassBufferMin] = useState(initialDraft?.classBufferMin ?? 5);
   useEffect(() => {
     // Preserve the last committed selection while either field is being edited.
     if (fromExpanded || toExpanded) return;
-    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy, classBufferMin } : null);
+    saveTripDraft(toLL && toText ? { fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy: arriveBy ?? undefined, classBufferMin } : null);
   }, [fromText, fromLL, toText, toLL, tripTime, tripTimeSetAt, expandedKey, arriveBy, classBufferMin, fromExpanded, toExpanded]);
   const targetDate = tripTime ? new Date(tripTime) : null;
   const tripTimeError = planningTimeError(tripTime, tripTimeSetAt);

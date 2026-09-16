@@ -9,13 +9,13 @@ const input: CSSProperties = { ...button, boxSizing: 'border-box', fontSize: 16,
 
 export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, destination,
   lastBusUpdateAt, busUpdateFailed, departureMs, stopNames, onSelect }: {
-  value: string; onChange: (value: string) => void; bufferMin: number; onBufferChange: (value: number) => void;
+  value: string | null; onChange: (value: string | null) => void; bufferMin: number; onBufferChange: (value: number) => void;
   options: TripOption[]; destination: string; lastBusUpdateAt: number | null; busUpdateFailed: boolean;
   departureMs?: number; stopNames: Record<number, string>; onSelect: (route: string) => void;
 }) {
   const id = useId();
   const now = Date.now();
-  if (!value) return <button type="button" style={{ ...button, width: '100%', marginBottom: 12, textAlign: 'left' }}
+  if (value === null) return <button type="button" style={{ ...button, width: '100%', marginBottom: 12, textAlign: 'left' }}
     onClick={() => onChange(localDateTime(Math.ceil((now + 30 * 60_000) / (30 * 60_000)) * 30 * 60_000))}>
     Arrive by… <span style={{ color: '#5f6368', fontSize: 13 }}>Plan for class</span>
   </button>;
@@ -53,7 +53,7 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
   return <section aria-label="Arrive by class" style={{ background: '#f8fafd', border: '1px solid #dbe3ee', borderRadius: 12, padding: 16, marginBottom: 12 }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
       <strong style={{ fontSize: 16 }}>Arrive by class</strong>
-      <button type="button" style={{ ...button, border: 0, background: 'transparent' }} onClick={() => onChange('')}>Clear</button>
+      <button type="button" style={{ ...button, border: 0, background: 'transparent' }} onClick={() => onChange(null)}>Clear</button>
     </div>
     <label htmlFor={`${id}-time`} style={{ display: 'block', fontSize: 13, marginBottom: 5 }}>Class starts · local time</label>
     <input id={`${id}-time`} type="datetime-local" value={value} onChange={e => onChange(e.target.value)}
