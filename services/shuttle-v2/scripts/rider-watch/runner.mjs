@@ -67,7 +67,9 @@ export async function attach({page,ctx,initialTrip,initialLine,initialFeed,initi
    const more=page.getByRole('button',{name:/Show \d+ more route/});if(await more.isVisible())await more.click();
    const row=page.getByRole('button',{name:'View '+line.label+' trip details',exact:true});
    if(!await row.isVisible()){await event('selection-unavailable',{line:line.label,trip:picked,text:await page.locator('body').innerText()});await capture('selection-unavailable');return;}
-   await row.click();await begin(picked,line);return;
+   // A centre click can hit the nested arrival disclosure. Activate the
+   // focused trip card itself; its keyboard handler opens the trip view.
+   await row.focus();await page.keyboard.press('Enter');await begin(picked,line);return;
   }
   await status({note:'No suitable live trip currently available'});
  };

@@ -92,13 +92,27 @@ export function bucketOf(token) {
  */
 export function parseBusEtaText(line) {
   let t = String(line).replace(/^🚌\s*/u, "").trim();
+  const full = t;
+  // The tappable ETA keeps the point and prediction window on separate lines.
+  // Score the window when both are captured, retaining the point separately.
+  const detail = t.match(/^About (<1|\d+) min\s*ⓘ?\s*\nLikely (<1|\d+)(?:[–-](\d+))? min$/);
+  if (detail) {
+    const lo = detail[2] === '<1' ? 0 : Number(detail[2]) * 60;
+    const hi = Number(detail[3] ?? detail[2]) * 60;
+    return Number.isFinite(hi) && hi >= lo ? {
+      first: [lo, hi], second: null, median: detail[1] === '<1' ? [0, 60] : bucketOf(detail[1]),
+      raw: t, spread: true, bunched: false,
+    } : null;
+  }
+  if (/^About <1 min\s*ⓘ?$/.test(t)) return { first: [0, 60], second: null, raw: full, spread: false, bunched: false };
+  if (t === 'At your stop' || t === 'At your stop ⓘ') t = 'arriving now';
+  t = t.replace(/^About (<1|\d+) min\s*ⓘ?$/, 'in $1 min');
   // Strip the cause before matching, so every form above parses exactly as it
   // did — the suffix is a marker on the line, not a new grammar for it.
   let bunched = false;
   // `raw` stays the WHOLE line, suffix included: it is what the canary logs and
   // what `--summary` quotes, and a log that silently dropped half the reading
   // is how a layout change goes unnoticed for twelve minutes (#111).
-  const full = t;
   const suffix = t.match(/\s*·\s*2 buses$/);
   if (suffix) {
     bunched = true;
@@ -334,8 +348,11 @@ export const THRESHOLDS = {
  * Returns `{ matched, dropped, appeared }` in terms of the buckets passed in.
  */
 export function pairBuses(prev, next, dtSec, thresholds = THRESHOLDS, pin = null) {
-  const P = [prev.first, prev.second].filter(Boolean);
-  const N = [next.first, next.second].filter(Boolean);
+  // When a point is visible beside a window, measure movement of that point.
+  // Overlapping broad windows must not hide a jumping headline. `first` is
+  // still the prediction interval for coverage and first-sight scoring.
+  const P = [prev.median ?? prev.first, prev.second].filter(Boolean);
+  const N = [next.median ?? next.first, next.second].filter(Boolean);
   // What the pinned vehicle's name settles, when a caller knows it. Slot 0 is
   // the pinned bus in both readings, so the same name FORCES that pair (the
   // window does not get a vote — identity is stronger evidence than an ETA
@@ -499,10 +516,12 @@ export function parseOptions(bodyText) {
   // the card before, so the walk-back is deliberately short.
   const startOf = (h) => {
     let start = h;
+    if (h >= 2 && /^(Likely |Next about |Arrival details$)/.test(lines[h - 1])
+        && parseBusEtaText(lines[h - 2]) !== null) start = h - 2;
     // Either form of the countdown line: the glyph-prefixed one production may
     // still be serving, or the bare one shipped 2026-09-04. Parsing it is the
     // stricter test, so both are accepted rather than swapping one for the other.
-    if (h > 0 && !isHeader(lines[h - 1])
+    if (start === h && h > 0 && !isHeader(lines[h - 1])
         && (lines[h - 1].startsWith("🚌") || parseBusEtaText(lines[h - 1]) !== null)) start = h - 1;
     const p = start - 1;
     if (p >= 0 && !isHeader(lines[p]) && (isLabelish(lines[p]) || lines[p] === "🚶 Walk")) start = p;
@@ -540,7 +559,12 @@ export function parseOptions(bodyText) {
     // above had already been taught both forms. parseBusEtaText is the only
     // arbiter, so there is one place to teach and it cannot half-learn again.
     // It cannot collide with the ride bar ("🚌 12 min"), which has no "in".
-    const busLine = body.find((l) => parseBusEtaText(l) !== null);
+    const busIndex = body.findIndex((l) => parseBusEtaText(l) !== null);
+    let busLine = body[busIndex];
+    if (busLine?.startsWith('About ') && body[busIndex + 1]?.startsWith('Likely ')) {
+      const combined = `${busLine}\n${body[busIndex + 1]}`;
+      if (parseBusEtaText(combined)) busLine = combined;
+    }
     // Every 🚌 line in the card, parsed or not. The countdown is whichever one
     // `parseBusEtaText` accepts; this is the RECORD of what was on screen when
     // it accepts none. Without it a parser that has not learned a new wording

@@ -11,7 +11,7 @@
  *
  *   topology         `stops`, `routes`             from the base snapshot
  *   calibration      `segments`  (30 days back)    from the base snapshot
- *   dwell history    `arrivals`  (14 days back)    base snapshot, then every
+ *   dwell/lap history `arrivals` (90 days back)    base snapshot, then every
  *                                                  archived day in the window
  *   split history    `legs`, `stop_visits` (30 d)  the same two sources
  *   THE DAY          `raw_positions`, `arrivals`,  the archive only
@@ -37,6 +37,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
 import { openDb } from "../../src/db/client.js";
 import { etDay, etDayStartMs } from "../../src/server/actives.js";
+import { LAP_FIT_WINDOW_DAYS } from '../../src/calibrator/lapFit.js';
 
 const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
@@ -47,6 +48,7 @@ const DAY_MS = 86_400_000;
 const SEGMENT_DAYS = 30;
 /** gps-replay.ts DWELL_WINDOW_MS. */
 const DWELL_DAYS = 14;
+const ARRIVAL_DAYS = Math.max(DWELL_DAYS, LAP_FIT_WINDOW_DAYS);
 
 /** The archived days present, ascending. */
 export function archivedDays(dir = ARCHIVE_DIR): string[] {
@@ -113,7 +115,7 @@ export function buildArchiveDb(day: string, baseDb: string, out: string, dir = A
   copy("stops", "", []);
   copy("routes", "", []);
   copy("segments", "WHERE started_at >= ? AND started_at < ?", [from - SEGMENT_DAYS * DAY_MS, from]);
-  copy("arrivals", "WHERE arrived_at >= ? AND arrived_at < ?", [from - DWELL_DAYS * DAY_MS - 3_600_000, from]);
+  copy("arrivals", "WHERE arrived_at >= ? AND arrived_at < ?", [from - ARRIVAL_DAYS * DAY_MS - 3_600_000, from]);
   copy("legs", "WHERE departed_at >= ? AND departed_at < ?", [from - SEGMENT_DAYS * DAY_MS, from]);
   copy("stop_visits", "WHERE anchored_at >= ? AND anchored_at < ?", [from - SEGMENT_DAYS * DAY_MS, from]);
   sqlite.prepare("DETACH DATABASE base").run();
@@ -140,10 +142,11 @@ export function buildArchiveDb(day: string, baseDb: string, out: string, dir = A
   const used: string[] = [];
   for (const d of days) {
     const dFrom = etDayStartMs(d);
-    if (dFrom < from - SEGMENT_DAYS * DAY_MS) continue;
+    if (dFrom < from - Math.max(SEGMENT_DAYS, ARRIVAL_DAYS) * DAY_MS) continue;
     used.push(d);
     const tally = (table: string, n: number) => { archived[table] = (archived[table] ?? 0) + n; };
-    if (dFrom >= from - DWELL_DAYS * DAY_MS - 3_600_000) tally("arrivals", insertRows("arrivals", readArchiveRows(d, "arrivals", dir), "arrived_at", 0, to));
+    if (dFrom >= from - ARRIVAL_DAYS * DAY_MS - 3_600_000) tally("arrivals", insertRows("arrivals", readArchiveRows(d, "arrivals", dir), "arrived_at", 0, to));
+    if (dFrom < from - SEGMENT_DAYS * DAY_MS) continue;
     tally("legs", insertRows("legs", readArchiveRows(d, "legs", dir), "departed_at", 0, to));
     tally("stop_visits", insertRows("stop_visits", readArchiveRows(d, "stop_visits", dir), "anchored_at", 0, to));
     if (d === day) tally("raw_positions", insertRows("raw_positions", readArchiveRows(d, "raw_positions", dir), "collected_at", from, to));

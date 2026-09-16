@@ -217,6 +217,8 @@ const hasNextRule = typeof (arrivalsMod as any).nextArrivalAfterPinned === "func
 // with slot 2 by bunching.ts. Older trees print the bare pair.
 let bandMod: { displayBand: (low: number, high: number, at: number | undefined, now: number) => { lowSec: number; highSec: number } | null } | null = null;
 let bunchingMod: { fmtBusLine: (i: { leadSec: number; leadBand: { lowSec: number; highSec: number } | null; nextSec: number | null }) => string } | null = null;
+let detailsMod: { arrivalSummary: (eta: number, low: number | undefined, high: number | undefined, at: number, now: number, atPickup: boolean) => { token: string } } | null = null;
+try { detailsMod = await fromClient<any>('web/src/arrivalDetails.ts'); } catch { /* older tree */ }
 let standWaitMod: { standWaitFor: (standing: unknown, routeDwells: unknown, dwellsByRoute: unknown) => { soonSec: number } | null } | null = null;
 let liveAnchorMod: { resolveStandingStop: (bus: unknown, cfg: unknown, routeStops: unknown, stopCoords: unknown, now: number, store: unknown) => unknown } | null = null;
 try {
@@ -726,7 +728,9 @@ function tickFor(a: Active, arr: UpcomingArrival[], buses: BusData[], dw: any, t
   // must not either or it would score a client that no longer exists.
   const floorSec: number | undefined = undefined;
   const leadBand = bandMod && lowSec != null && highSec != null ? (bandMod.displayBand as any)(lowSec, highSec, t, t, floorSec) : null;
-  const token = bunchingMod && leadBand
+  const token = detailsMod
+    ? detailsMod.arrivalSummary(busEtaLive, lowSec ?? undefined, highSec ?? undefined, t, t, busMatch?.at_stop_id === o.boardStopId).token
+    : bunchingMod && leadBand
     ? bunchingMod.fmtBusLine({ leadSec: busEtaLive, leadBand, nextSec: nextArr ? nextArr.eta : null })
     : formatMod.fmtBusPair(busEtaLive, nextArr?.eta);
   return { t, state: "countdown", token, etaSec: busEtaLive, nextSec: nextArr ? nextArr.eta : null, bus: u.busName, missedBus: u.missedBus ?? null, prevSoonest, lowSec, highSec };

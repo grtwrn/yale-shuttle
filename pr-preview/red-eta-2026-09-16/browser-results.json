@@ -1,0 +1,19 @@
+{
+  "errors": [],
+  "text": "Red arrival\n×\n\nAbout 5 min\n\nLikely arrival window: <1–14 min\n\nNow\n14 min\n\nThis window aims to cover 8 in 10 arrivals. The shuttle can arrive earlier or later; use the early end when deciding when to reach your stop.\n\nWaiting at 344 Winchester. The window may stay wide until the shuttle leaves.\n\nShuttle\n#308\nStops to pickup\n3\nNext arrival · #316\nAbout 20 min\nEstimated gap\nAbout 14 min\n\nThe gap compares the two arrival estimates. It can change as either shuttle moves or waits.",
+  "size": {
+    "width": 282,
+    "scroll": 280,
+    "client": 280,
+    "doc": 320,
+    "viewport": 320
+  },
+  "checks": [
+    "Enter opens only arrival dialog",
+    "Escape restores focus",
+    "320px no horizontal overflow",
+    "close button",
+    "backdrop click",
+    "details available inside expanded trip"
+  ]
+}

@@ -31,6 +31,8 @@
  *                  per-pair factors needed.
  */
 
+import { conformalFactor } from '../web/src/eta/conformal.mjs';
+
 export const COMPILED = Object.freeze({
   P_REPEAT_STAND: 0.919,
   P_REPEAT_MOVE: 0.159,
@@ -339,7 +341,7 @@ export function scoreRows(pairs, conformal = null, capSec = 1800) {
     const h = horizonOf(p.eta, capSec);
     if (!h) { for (const r of routes) { const c = cell(r, "all"); c.n++; c.beyond++; } continue; }
     if (p.det === null || p.det === undefined) { for (const r of routes) for (const hh of [h, "all"]) { const c = cell(r, hh); c.n++; c.missing++; } continue; }
-    const w = conformal ? conformal[h] ?? 1 : 1;
+    const w = conformal ? conformalFactor(p.eta, conformal) : 1;
     const [low, high] = widen(p.eta, p.low, p.high, w);
     const err = p.eta - p.det;
     const band = low < high;

@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import Database from 'better-sqlite3';
 import { describe, expect, it } from "vitest";
 
-import { computeLapFits, etDay, gateCell, LAP_BAND_HI, LAP_BAND_LO, LAP_F_MAX, LAP_F_MIN, LAP_MIN_N, LAP_SERVED_ROUTE_IDS, LAP_SHRINK_K, type GateResult, type LapArrival } from "./lapFit.js";
+import { computeLapFits, etDay, gateCell, loadLapFits, LAP_BAND_HI, LAP_BAND_LO, LAP_F_MAX, LAP_F_MIN, LAP_MIN_N, LAP_SERVED_ROUTE_IDS, LAP_SHRINK_K, type GateResult, type LapArrival } from "./lapFit.js";
 
 /**
  * The client's copy of these constants is parsed out of its source rather
@@ -67,6 +68,23 @@ function corpus(days: number, slope: number): LapArrival[] {
 }
 
 describe("computeLapFits", () => {
+  it('does not let visits completed after the replay cutoff influence the fitted lap adjustment', () => {
+    const db = new Database(':memory:');
+    try {
+      db.exec('CREATE TABLE arrivals(bus_name TEXT, route_id INTEGER, stop_id INTEGER, arrived_at INTEGER, departed_at INTEGER)');
+      const insert = db.prepare('INSERT INTO arrivals VALUES (?, ?, ?, ?, ?)');
+      const rows = corpus(20, -0.5), cutoff = T0 + 15 * DAY;
+      const past = rows.filter(r => r.departedAt <= cutoff);
+      const put = (r: LapArrival) => insert.run(r.busName, r.routeId, r.stopId, r.arrivedAt, r.departedAt);
+      past.forEach(put);
+      const expected = loadLapFits(db, cutoff);
+      expect(expected.has('3:11')).toBe(true);
+      rows.filter(r => r.departedAt > cutoff).forEach(put);
+      // Even a visit already started at cutoff has an unknown final duration.
+      put({ busName: '#1', routeId: 3, stopId: 11, arrivedAt: cutoff - 1000, departedAt: cutoff + 3600000 });
+      expect(loadLapFits(db, cutoff)).toEqual(expected);
+    } finally { db.close(); }
+  });
   it("recovers a known slope, and the reference lap", () => {
     // lap is in SECONDS in the corpus, stand in seconds; the fit is per second.
     const rows = corpus(20, -0.5);

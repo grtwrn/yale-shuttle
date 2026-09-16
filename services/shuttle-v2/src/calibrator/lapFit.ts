@@ -531,15 +531,15 @@ export function loadLapFits(db: Queryable, nowMs: number = Date.now()): Map<stri
   const since = nowMs - LAP_FIT_WINDOW_DAYS * 86_400_000;
   const rows = db.prepare(`
     SELECT bus_name, route_id, stop_id, arrived_at, departed_at FROM arrivals
-    WHERE departed_at IS NOT NULL AND arrived_at >= ?
+    WHERE departed_at IS NOT NULL AND arrived_at >= ? AND departed_at <= ?
       AND (route_id, stop_id) IN (
         SELECT route_id, stop_id FROM arrivals
-        WHERE departed_at IS NOT NULL AND arrived_at >= ?
+        WHERE departed_at IS NOT NULL AND arrived_at >= ? AND departed_at <= ?
         GROUP BY route_id, stop_id
         HAVING count(*) >= ? AND avg((departed_at - arrived_at) / 1000.0) >= ?
       )
     ORDER BY arrived_at
-  `).all(since, since, LAP_MIN_N, LAP_MIN_MED_STAND_SEC * 0.75) as Row[];
+  `).all(since, nowMs, since, nowMs, LAP_MIN_N, LAP_MIN_MED_STAND_SEC * 0.75) as Row[];
   return computeLapFits(rows.map((r) => ({
     busName: r.bus_name, routeId: r.route_id, stopId: r.stop_id,
     arrivedAt: r.arrived_at, departedAt: r.departed_at,

@@ -2,6 +2,8 @@
 
 This versions the previously workspace-only continuous runner so measurement fixes are reviewable. `attach({page, ctx, outputDir, initialFeed, allowedLabels, fixedTrip})` receives an existing tester-seeded Playwright page/context; it launches no browser. Existing local supervision owns offline pause/resume. Imports use the repository canary helpers.
 
+September 16: focus and activate the trip card with Enter so its nested ETA disclosure does not intercept a centre click. Install the matching canary helpers alongside a runner release: they parse the two-line arrival summary and measure movement of its visible estimate, keeping the interval for coverage scoring. A broad interval must not hide a jumping headline.
+
 September 11 fixes:
 - Brown's first `BOARD🚌Science Park Garage⏸ 14:04` row now resolves immediately. Exact lookup previously missed the icon/pause decorations, delaying identification until the bus left. The 45-minute timeout is excluded, not an app wait error.
 - West Haven Train Station resolves as West Haven Station. Use the normal Enter action and verify saved destination coordinates within 80 m, rather than wait for an exact alias that is absent. A distant result fails the run instead of silently testing the wrong destination.

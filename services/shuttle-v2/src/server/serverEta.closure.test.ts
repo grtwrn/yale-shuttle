@@ -40,6 +40,9 @@ function importsOf(file: string): string[] {
 
 function resolveSpec(fromFile: string, spec: string): string | null {
   const base = path.resolve(path.dirname(fromFile), spec.replace(/\.js$/, ""));
+  // The client and the plain-Node calibration scripts share native ESM too.
+  // Keep traversing it and require its explicit Docker COPY like TS sources.
+  if (spec.endsWith('.mjs') && fs.existsSync(base)) return base;
   for (const cand of [`${base}.ts`, path.join(base, "index.ts")]) {
     if (fs.existsSync(cand)) return cand;
   }

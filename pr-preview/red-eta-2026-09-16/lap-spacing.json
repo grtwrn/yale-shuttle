@@ -1,0 +1,90 @@
+{
+  "features": 137,
+  "days": {
+    "2026-09-11": 34,
+    "2026-09-14": 50,
+    "2026-09-15": 39,
+    "2026-09-16": 14
+  },
+  "excluded": {
+    "no_fresh_watcher_frame": 295,
+    "no_projected_neighbour": 2,
+    "no_recent_leader_departure": 3,
+    "no_recent_lap": 15
+  },
+  "folds": [
+    {
+      "day": "2026-09-14",
+      "train": 34,
+      "test": 50
+    },
+    {
+      "day": "2026-09-15",
+      "train": 84,
+      "test": 39
+    },
+    {
+      "day": "2026-09-16",
+      "train": 123,
+      "test": 14
+    }
+  ],
+  "summary": {
+    "stop_median": {
+      "n": 103,
+      "mae": 187.2,
+      "p90_abs": 382.6,
+      "by_day": {
+        "2026-09-14": 198.4,
+        "2026-09-15": 172.1,
+        "2026-09-16": 189.4
+      }
+    },
+    "lap": {
+      "n": 103,
+      "mae": 119.1,
+      "p90_abs": 282.9,
+      "by_day": {
+        "2026-09-14": 137.1,
+        "2026-09-15": 100.5,
+        "2026-09-16": 106.2
+      }
+    },
+    "lap_previous": {
+      "n": 103,
+      "mae": 120.1,
+      "p90_abs": 279.9,
+      "by_day": {
+        "2026-09-14": 137.6,
+        "2026-09-15": 101.1,
+        "2026-09-16": 110.4
+      }
+    },
+    "lap_spacing": {
+      "n": 103,
+      "mae": 121.2,
+      "p90_abs": 268.6,
+      "by_day": {
+        "2026-09-14": 140.0,
+        "2026-09-15": 100.8,
+        "2026-09-16": 110.5
+      }
+    },
+    "lap_previous_spacing": {
+      "n": 103,
+      "mae": 123.6,
+      "p90_abs": 269.3,
+      "by_day": {
+        "2026-09-14": 138.0,
+        "2026-09-15": 107.8,
+        "2026-09-16": 115.9
+      }
+    }
+  },
+  "limits": [
+    "Same upstream GPS and detector outcomes, not independent physical truth.",
+    "Neighbour spacing uses directed nearest-polyline projection; junction ambiguity remains.",
+    "Spacing seconds are a distance proxy based on a 3035 s typical loop, not a predicted neighbour arrival.",
+    "Small number of service days; hypothesis screen only, no production fit promoted."
+  ]
+}

@@ -33,7 +33,7 @@ import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
 import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
-import { fmtBusLine } from "./bunching";
+import { ArrivalDetails } from "./ArrivalDetails";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -3849,42 +3849,7 @@ const TripPlanner: FC<{
                   busEtaLive,
                 )
               : null;
-            /**
-             * THE SAME STAND RESOLUTION FOR SLOT 2's BUS. `standCtx` above is
-             * built from the PINNED vehicle alone, which is why the Orange
-             * Night card at 22:28 read "in 25, 25 min": #51 had overtaken #49
-             * and become the pin, so the bus that was standing — the one whose
-             * arrival was a 14-minute-wide question — was in slot 2 and got a
-             * bare point (bunching.ts).
-             *
-             * Its band is NEVER DRAWN (two intervals do not fit the span). It
-             * exists so `fmtBusLine` can tell whether the two buses are
-             * distinguishable at all, and it reads the same resolver, the same
-             * tables and the same clock as slot 1's, so the two cannot answer
-             * differently about the same stand.
-             */
-            const nextBand = nextArrLive && shuttleCtx && !o.departed
-              ? (() => {
-                  const norm = shuttleCtx.normBus;
-                  const nextBus = buses.find((b) =>
-                    norm(b.bus_name) === norm(nextArrLive.busName) &&
-                    shuttleCtx.cfg.busRouteIds.includes(b.route_id) &&
-                    isBusOnRoute(b, shuttleCtx.allStops, stopCoords),
-                  ) ?? null;
-                  if (!nextBus) return null;
-                  // Only a STANDING slot-2 bus contributes its band, exactly
-                  // as #216 gated it; the band itself is the model's own
-                  // (its arrival row) through the same composer as slot 1's.
-                  const standing = resolveStandingStop(
-                    nextBus, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                  );
-                  if (!standing) return null;
-                  return arrivalBand(
-                    standWaitFor(standing, dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
-                    { low: nextArrLive.low, high: nextArrLive.high, departNow: nextArrLive.departNow },
-                  );
-                })()
-              : null;
+
             // Is this the last one, and will there be another? Judged
             // against the PUBLISHED close (the same `route_hours` the
             // "Runs …" caption shows), the second bus above when the card
@@ -3997,47 +3962,18 @@ const TripPlanner: FC<{
                             maxWidth: 168, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>{o.routeLabel}</span>
                         )}
-                        {/* The live bus, directly right of the line it belongs to.
-                            No glyph: the pill already says this is a shuttle, and
-                            the operator asked for the "in" to follow the line with
-                            nothing between them (2026-09-04). Secondary weight so
-                            the pill and the total frame the row; nowrap + ellipsis
-                            so a narrow phone clips the second figure rather than
-                            wrapping the row in two.
-
-                            The canary reads this line as TEXT and used to key on
-                            the glyph — scripts/canary-metrics.mjs now accepts both
-                            forms, because it watches production, which is always a
-                            deploy behind this.
-
-                            Shown EXPANDED as well as collapsed (operator,
-                            2026-09-08, comparing the two cards side by side:
-                            "were just missing some data in the route plan
-                            region, that should look like trip overview
-                            region"). Opening a card used to drop the pair —
-                            the one figure that says when the NEXT bus comes if
-                            this one is missed — so the detail view carried
-                            less than the summary it came from. The leg strip
-                            below spells out this bus's wait; the pair is about
-                            the one after it. */}
+                        {/* Keep the estimate and full likely window visible in both
+                            card states. Tap for the next shuttle and estimated gap. */}
                         {busEtaLive !== null && !o.departed && (
-                          <span title={leadBand ? bandTitle(leadBand, busEtaLive) : undefined} style={{
-                            fontSize: 13, color: "#5f6368", fontWeight: 500,
-                            minWidth: 0, overflow: "hidden",
-                            textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
-                            {/* ONE composer for all four forms — the pair,
-                                the pinned bus's range, and either of those
-                                collapsed to a single statement when the two
-                                buses have bunched (bunching.ts). Slot 2's own
-                                band goes in as evidence and is never drawn. */}
-                            {fmtBusLine({
-                              leadSec: busEtaLive,
-                              leadBand,
-                              nextSec: nextArrLive?.eta ?? null,
-                              nextBand,
-                            })}
-                          </span>
+                          <ArrivalDetails
+                            routeLabel={o.routeLabel} busName={o.busName}
+                            etaSec={busEtaLive} lowSec={o.busLowSec} highSec={o.busHighSec}
+                            computedAtMs={o.computedAtMs} nextSec={nextArrLive?.eta}
+                            nextBusName={nextArrLive?.busName} stopsAway={shuttleCtx?.stopsAway}
+                            atPickup={shuttleCtx?.busMatch?.at_stop_id === o.boardStopId}
+                            holdingAt={shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
+                              ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined}
+                          />
                         )}
                       </span>
                       {/* Duration, right-aligned. "Departed" takes the same slot —
