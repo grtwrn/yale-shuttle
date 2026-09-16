@@ -964,12 +964,12 @@ export class Collector {
     return Date.now() - this.lastPollAttemptAt;
   }
 
-  /**
-   * Cache key for anything derived from collector state. Changes on every
-   * live-position update, calibration pass and topology swap — and on nothing
-   * else, so a reader that has already built a view of this version can serve
-   * it unchanged.
-   */
+  /** Only successful GPS observations advance this clock. Calibration and
+   * topology refreshes must not manufacture repeated position evidence. */
+  private observationCounter = 0;
+  observationVersion(): number { return this.observationCounter; }
+
+  /** Cache key for any collector state, including calibration and topology. */
   dataVersion(): number {
     return this.version;
   }
@@ -1197,6 +1197,7 @@ export class Collector {
     // from `runPoll` — including the ticks where upstream returned nothing,
     // which never reach this method.
     this.version++;
+    this.observationCounter++;
   }
 
   /**

@@ -199,6 +199,7 @@ export function buildBusesPayload(
     : new Map<number, readonly [number, number][]>();
 
   const buses = live.map((b) => ({
+    observed_at: b.collectedAt,
     bus_id: b.busId,
     bus_name: b.busName,
     route_id: b.routeId,
@@ -442,7 +443,7 @@ export function createBusesPayloadCache(
     if (serverEta) {
       // Non-throwing by contract (see serverEta.ts): the worst case is an
       // absent field, never a failed /api/buses.
-      const wire = serverEta.contribute(payload as unknown as EtaPayloadView, cachedVersion, nowMs);
+      const wire = serverEta.contribute(payload as unknown as EtaPayloadView, collector.observationVersion(), nowMs);
       if (wire) payload["server_eta"] = wire;
     }
     cachedJson = JSON.stringify(payload);

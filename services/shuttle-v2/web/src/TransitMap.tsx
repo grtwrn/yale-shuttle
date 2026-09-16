@@ -8,6 +8,8 @@ import {
 // Pure logic lives in sibling modules so it is reachable from tests without
 // mounting React or Leaflet. This file is the UI.
 import { isBusOnRoute, registerRoutePaths } from "./anchor";
+import { computeUpcomingArrivals } from "./liveArrivals";
+import { attachServerEta, liveEtaAvailable, liveBusAvailable } from "./etaSource";
 import { liveAnchorStore } from "./eta";
 import { anchorIndexOnList, resolveStandingStop } from "./liveAnchor";
 import { applyModelParams } from "./eta/params";
@@ -18,7 +20,7 @@ import {
   weatherEmoji, weatherMessage, weatherTone, type TempUnit, type WeatherPayload,
 } from "./weather";
 import {
-  computeUpcomingArrivals, nextArrivalAfterPinned, shownStandSec,
+  nextArrivalAfterPinned, shownStandSec,
   type DwellStat, type SegmentStat, type UpcomingArrival,
 } from "./arrivals";
 // Records what the screen actually said, sampled, deduplicated and posted from
@@ -2065,7 +2067,7 @@ const TripPlanner: FC<{
   // current plan has no shuttle in it. Rosters change a few times an hour;
   // plans with a shuttle already re-derive their waits live and are left alone.
   const busRoster = useMemo(
-    () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(","),
+    () => buses.map((b) => `${b.route_id}:${b.bus_name}`).sort().join(",") + `:${liveEtaAvailable(buses)}`,
     [buses],
   );
   const prevRosterRef = useRef(busRoster);
@@ -2096,6 +2098,7 @@ const TripPlanner: FC<{
     return findPotentialRoutes(effectiveFromLL, toLL, routeStops, stopCoords, after, routeHours, { labels: liveLabels, now: new Date(), active: routeActive });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveFromLL?.lat, effectiveFromLL?.lon, toLL?.lat, toLL?.lon, targetDate?.getTime(), routeStops, stopCoords, routeHours, routeActive, refreshKey, liveLabelsKey]);
+  const etaFresh = !busUpdateFailed && liveEtaAvailable(buses);
   const options: TripOption[] | null = useMemo(() => {
     if (tripTimeError || !stableOptions) return null;
     // For future-mode (user picked a date >60s out) we can't refresh
@@ -2110,6 +2113,7 @@ const TripPlanner: FC<{
         const totalSec = walkSecFromMeters(haversineMeters(from, toLL));
         return { ...o, totalSec, walkToSec: totalSec, directWalkSec: totalSec };
       }
+      if (!etaFresh || !liveEtaAvailable(buses, Date.now(), o.routeLabel)) return { ...o, etaUnavailable: true, journeyArrival: undefined };
       // Re-derive wait from current arrivals. Simpler than it used to
       // be — a large pinned.eta *by itself* doesn't mean "just
       // passed" (it could just mean the bus is on the far side of
@@ -2157,7 +2161,7 @@ const TripPlanner: FC<{
       const cfg = ROUTE_LISTS.find((c) => c.label === o.routeLabel);
       const norm = (s: string) => s.replace(/^#/, "");
       const busesAtBoard = cfg
-        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
+        ? buses.filter((b) => cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId && liveBusAvailable(b, cfg.label, nowMs) && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, visits))
         : [];
       const hereBus = busesAtBoard.find((b) => norm(b.bus_name) === norm(o.busName)) ?? busesAtBoard[0];
       if (hereBus && cfg && effectiveWalkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], o.boardStopId, dwellTimes)) {
@@ -2215,7 +2219,7 @@ const TripPlanner: FC<{
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableOptions, tripTimeError, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
+  }, [stableOptions, tripTimeError, etaFresh, buses, dwellTimes, dwellsByBus, segmentTimes, routeStops, stopCoords, targetDate, effectiveFromLL?.lat, effectiveFromLL?.lon, fromText, userLatLon?.lat, userLatLon?.lon]);
 
   // Origin and destination are the same place (report: setting one's own
   // location as the destination "gets confused"). Keyed on effectiveFromLL,
@@ -2277,7 +2281,7 @@ const TripPlanner: FC<{
   // options are worth offering at all.
   // Shared row/map order: competitive / slower-than-walk / departed,
   // fastest first within each tier by live total.
-  const optionTier = (o: TripOption) => (o.departed ? 2 : slowerThanWalk(o) ? 1 : 0);
+  const optionTier = (o: TripOption) => (o.departed || o.etaUnavailable ? 2 : slowerThanWalk(o) ? 1 : 0);
   const sortOptions = (list: TripOption[]) =>
     [...list].sort((a, b) => optionTier(a) - optionTier(b) || a.totalSec - b.totalSec);
   // Display order with HYSTERESIS (user feedback 2026-07-17: fastest
@@ -2359,7 +2363,7 @@ const TripPlanner: FC<{
     if (!userLatLon || !options || !stopCoords) { setAutoDetectOffer(null); return; }
     const norm = (s: string) => s.replace(/^#/, "");
     for (const o of options) {
-      if (o.mode !== "shuttle" || o.departed) continue;
+      if (o.mode !== "shuttle" || o.departed || o.etaUnavailable) continue;
       const board = stopCoords[o.boardStopId];
       if (!board || haversineMeters(userLatLon, board) > 60) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
@@ -2368,7 +2372,7 @@ const TripPlanner: FC<{
         segmentTimes, Date.now(), dwellTimes, liveAnchorStore).filter(a => a.routeLabel === o.routeLabel);
       const busAtStop = buses.find(b =>
         cfg.busRouteIds.includes(b.route_id) && b.at_stop_id === o.boardStopId
-        && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
+        && liveBusAvailable(b, cfg.label, Date.now()) && boardingVisitAllowed(b.bus_name, o.boardStopId, o.alightStopId, arrivals)
       );
       if (!busAtStop) continue;
       const key = `${o.routeLabel}-${o.boardStopId}-${norm(busAtStop.bus_name)}`;
@@ -2386,7 +2390,7 @@ const TripPlanner: FC<{
     // the board stop with you on it is exactly what flags them departed.
     let aboard: { option: TripOption; bus: BusData; key: string } | null = null;
     for (const o of options) {
-      if (o.mode !== "shuttle") continue;
+      if (o.mode !== "shuttle" || o.etaUnavailable) continue;
       const cfg = ROUTE_LISTS.find(c => c.label === o.routeLabel);
       if (!cfg) continue;
       const busNear = buses.find(b =>
@@ -3637,7 +3641,7 @@ const TripPlanner: FC<{
                   },
                   dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
                 ),
-                arriveAt: o.departed ? null : o.journeyArrival
+                arriveAt: o.departed || o.etaUnavailable ? null : o.journeyArrival
                   ? fmtClock(-o.walkFromSec, new Date(o.journeyArrival.pointMs))
                   : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
               });
@@ -3755,7 +3759,7 @@ const TripPlanner: FC<{
             // tags read like the app is broken.
             const _allShuttlesSlower =
               _sorted.some((o) => o.mode === "shuttle") &&
-              _sorted.every((o) => o.mode === "walk" || _tier(o) > 0);
+              _sorted.every((o) => o.mode === "walk" || (!o.etaUnavailable && _tier(o) > 0));
             return <>
           {_allShuttlesSlower && !_detailOpen && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
@@ -3829,7 +3833,7 @@ const TripPlanner: FC<{
             // beat the rider to the stop, which froze the readout at the
             // constant walk time ("in 1:49" for a full minute) while the bus
             // visibly closed in — report #48.
-            const busEtaLive = o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
+            const busEtaLive = o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null
               ? remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs)
               : null;
             /**
@@ -4008,7 +4012,9 @@ const TripPlanner: FC<{
                       </span>
                       {/* Duration, right-aligned. "Departed" takes the same slot —
                           it is what that number would have said. */}
-                      {o.departed ? (
+                      {o.etaUnavailable ? (
+                        <span style={{ fontSize: 14, color: "#795000" }}>ETA unavailable</span>
+                      ) : o.departed ? (
                         <span style={{ fontSize: 16, fontWeight: 600, color: "#5f6368", flexShrink: 0 }}>Departed</span>
                       ) : (
                         <span style={{ fontSize: 16, fontWeight: 600, color: "#202124", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -4087,7 +4093,7 @@ const TripPlanner: FC<{
                           Suppressed on a Departed card — nothing goes under the
                           word "Departed", which is not a duration and has no
                           arrival to quote. */}
-                      {!o.departed && (
+                      {!o.departed && !o.etaUnavailable && (
                         <span style={{
                           fontSize: 13, fontWeight: 500, color: "#202124",
                           whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
@@ -4151,7 +4157,7 @@ const TripPlanner: FC<{
                     in Ym (HH:MM)"; the detailed walk/wait/ride breakdown
                     is deferred to the expanded view so the card stays
                     scannable when the user just wants to pick one. */}
-                {o.mode === "shuttle" && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
+                {o.mode === "shuttle" && !o.etaUnavailable && shuttleCtx?.busMatch && shuttleCtx.stopsAway !== null && (() => {
                   const { busMatch, stopsAway, normBus } = shuttleCtx;
                   // Both hoisted to row scope — the top line shows the same
                   // numbers, and computing them twice was how they could
@@ -4277,7 +4283,7 @@ const TripPlanner: FC<{
                         const busNo = shuttleCtx?.busMatch
                           ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
                           : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
+                        const waitText = o.etaUnavailable ? null : waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -4292,7 +4298,7 @@ const TripPlanner: FC<{
                             <span style={{
                               fontWeight: 600, color: "#fff", background: o.color,
                               borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap",
-                            }}>🚌 {busNo ? `#${busNo} · ` : ""}{fmtMin(o.rideSec)}</span>
+                            }}>🚌 {busNo ? `#${busNo} · ` : ""}{o.etaUnavailable ? "ETA unavailable" : fmtMin(o.rideSec)}</span>
                             {o.walkFromSec >= 60 && (<>
                               {sep}
                               <span style={{ whiteSpace: "nowrap" }}>🚶 {fmtWalk(o.walkFromSec)}</span>
@@ -7510,7 +7516,10 @@ const TransitMap: FC = () => {
         // Drop out-of-service ghosts (see isBusInService) before anything
         // downstream — map markers, planner, and arrival boards all read
         // this state.
-        setBuses(((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b)));
+        const liveBuses = ((data.buses ?? []) as BusData[]).filter((b) => isBusInService(b));
+        const etaReady = attachServerEta(liveBuses, data.server_eta);
+        setBusUpdateFailed(!etaReady && liveBuses.length > 0);
+        setBuses(liveBuses);
         if (data.routes) setRouteStops(data.routes);
         if (data.stop_names) setStopNames(data.stop_names);
         if (data.segments) setSegmentTimes(data.segments);

@@ -21,7 +21,7 @@ export function compareDeadline(options: readonly TripOption[], classMs: number,
       return { option, pointMs, status: deadlineStatus(pointMs, classMs, bufferMin) };
     }
     const a = option.journeyArrival;
-    if (future || stale || !a || a.pointMs < now || ![a.pointMs, a.lowMs, a.highMs].every(Number.isFinite)) {
+    if (future || stale || option.etaUnavailable || !a || a.pointMs < now || ![a.pointMs, a.lowMs, a.highMs].every(Number.isFinite)) {
       return { option, status: 'unknown', caution: future ? 'Live window available closer to departure.'
         : stale ? 'Bus updates interrupted.' : 'Destination window unavailable.' };
     }

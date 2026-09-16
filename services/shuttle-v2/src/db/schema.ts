@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -748,3 +748,9 @@ export const modelParams = sqliteTable(
 );
 
 export type DbModelParams = typeof modelParams.$inferSelect;
+
+// One local tracking checkpoint. Not calibration data or rider information.
+export const etaCheckpoint = sqliteTable("eta_checkpoint", {
+  id: integer("id").primaryKey(),
+  value: blob("value", { mode: "buffer" }).notNull(),
+});

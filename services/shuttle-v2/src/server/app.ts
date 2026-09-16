@@ -45,6 +45,7 @@ import {
   parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
+import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
 import { readStopDataCatalog, readStopDataDay, readStopDataVisit, StopDataInputError } from "./stop-data.js";
@@ -286,13 +287,12 @@ export function buildApp(opts: AppOptions): Hono {
   // docs/closed-loop.md). Null until a fit is accepted, and then the payload
   // carries `model_params`.
   const modelParams = createModelParamsSource(opts.bundle.sqlite);
-  // The server-side belief (src/server/serverEta.ts). Null unless
-  // SHUTTLE_SERVER_ETA=1 — and null is the default, which leaves `/api/buses`
-  // byte-for-byte what it is today.
+  // Shared live forecasts, enabled by default. An explicit 0 withholds ETAs.
   const serverEta = opts.serverEta !== undefined
     ? opts.serverEta
     : serverEtaFromEnv(process.env, (msg, fields) =>
       console.error(JSON.stringify({ level: "error", msg, ...fields })));
+  if (serverEta) serverEta.useCheckpoint(etaCheckpointStore(opts.bundle.sqlite), now());
   const busesJson = createBusesPayloadCache(opts.collector, modelParams, serverEta);
   if (serverEta) {
     // Priming the cache on the collector's own poll is what steps the belief:
@@ -1416,6 +1416,7 @@ export function buildApp(opts: AppOptions): Hono {
         pollStalenessMs,
         collectorLagMs: lagMs,
         knownBuses: buses.length,
+        ...(serverEta ? { serverEta: serverEta.stats() } : {}),
         pollSkipped: poll.skipped,
         droppedObservations: poll.droppedObservations,
         // The commit this server was built from (SHUTTLE_BUILD_SHA, stamped by

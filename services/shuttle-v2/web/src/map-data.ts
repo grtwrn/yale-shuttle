@@ -35,6 +35,8 @@ export interface Route {
 }
 
 export interface BusData {
+  /** Server timestamp of this vehicle's latest actual observation (UTC ms). */
+  observed_at?: number;
   bus_id: number;
   bus_name: string;
   route_id: number;

@@ -271,8 +271,10 @@ describe("route path derivation", () => {
 
     insertLaps(RUNNING_ROUTE);
     const version = collector.dataVersion();
+    const observations = collector.observationVersion();
     sweep();
     expect(collector.dataVersion()).toBeGreaterThan(version);
+    expect(collector.observationVersion()).toBe(observations);
 
     const after = cached();
     expect(after).not.toBe(before);

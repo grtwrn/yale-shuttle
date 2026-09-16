@@ -246,3 +246,7 @@ describe("findReminderOption — disarm when the bus/option disappears", () => {
     expect(findReminderOption([{ ...walkOpt, routeLabel: "Blue Day" }], "Blue Day")).toBeNull();
   });
 });
+
+ it('withholds leave reminders when the shared forecast is unavailable', () => {
+   expect(findReminderOption([{ mode: 'shuttle', routeLabel: 'Red', busEtaSec: 120, etaUnavailable: true }], 'Red')).toBeNull();
+ });
