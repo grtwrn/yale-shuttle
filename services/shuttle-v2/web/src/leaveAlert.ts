@@ -113,10 +113,10 @@ export function leaveAlertMessage(
  * live bus ETA (walk options, future-mode plans, route stopped running).
  */
 export function findReminderOption<
-  T extends { mode: string; routeLabel: string; departed?: boolean; busEtaSec?: number },
+  T extends { mode: string; routeLabel: string; departed?: boolean; etaUnavailable?: boolean; busEtaSec?: number },
 >(options: readonly T[] | null | undefined, routeLabel: string): (T & { busEtaSec: number }) | null {
   const o = options?.find((x) => x.mode === "shuttle" && x.routeLabel === routeLabel);
-  if (!o || o.departed || o.busEtaSec == null) return null;
+  if (!o || o.departed || o.etaUnavailable || o.busEtaSec == null) return null;
   return o as T & { busEtaSec: number };
 }
 

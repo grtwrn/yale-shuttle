@@ -205,11 +205,14 @@ const RESUME_ARRIVAL_MAX_ROWS = 20;
 
 // Retention windows -----------------------------------------------------------
 
-const RAW_POSITION_RETAIN_MS = 6 * 60 * 60_000; // 6 h
+// The 03:40 ET archive must still contain the previous operating day's GPS,
+// including its first daytime runs. Six hours silently removed Red from the
+// nightly replay gate. 36 h also covers the fall DST transition and job delay.
+const RAW_POSITION_RETAIN_MS = 36 * 60 * 60_000;
 const ARRIVAL_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d
 const SEGMENT_RETAIN_MS = 90 * 24 * 60 * 60_000; // 90 d (calibrator looks back 30 d)
 // Derived stop visits and legs are small (a few hundred rows a day) and belong
-// with arrivals/segments, not with the 6 h raw_positions window they came from.
+// with arrivals/segments, not with the 36 h raw_positions window they came from.
 const VISIT_RETAIN_MS = ARRIVAL_RETAIN_MS;
 const LEG_RETAIN_MS = SEGMENT_RETAIN_MS;
 /**
@@ -464,8 +467,8 @@ export class Collector {
    *
    * Loaded from `derived_paths` at construction and only ever added to or
    * upgraded — never cleared. That is deliberate and load-bearing: a route can
-   * only be derived while it is running, and `raw_positions` is swept after six
-   * hours, so for most of the day most routes have nothing to derive from. If
+   * only be derived from its latest six hours of GPS, so for most of the day
+   * most routes have nothing to derive from. If
    * this map tracked "what can we derive right now" instead of "the best we
    * have ever derived", every night route's geometry would vanish each morning.
    */
@@ -964,12 +967,12 @@ export class Collector {
     return Date.now() - this.lastPollAttemptAt;
   }
 
-  /**
-   * Cache key for anything derived from collector state. Changes on every
-   * live-position update, calibration pass and topology swap — and on nothing
-   * else, so a reader that has already built a view of this version can serve
-   * it unchanged.
-   */
+  /** Only successful GPS observations advance this clock. Calibration and
+   * topology refreshes must not manufacture repeated position evidence. */
+  private observationCounter = 0;
+  observationVersion(): number { return this.observationCounter; }
+
+  /** Cache key for any collector state, including calibration and topology. */
   dataVersion(): number {
     return this.version;
   }
@@ -1197,6 +1200,7 @@ export class Collector {
     // from `runPoll` — including the ticks where upstream returned nothing,
     // which never reach this method.
     this.version++;
+    this.observationCounter++;
   }
 
   /**

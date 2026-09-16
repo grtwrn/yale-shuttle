@@ -528,3 +528,31 @@ describe("the refused experiment is off by default, and costs nothing when it is
     for (let i = 0; i < off.length; i++) expect(on[i]!.shown).toBe(off[i]!.shown);
   });
 });
+
+it('does not switch the priced visit when the held route branch crosses the situation cutoff', () => {
+  const { ring, tables } = setup();
+  const b = stepBelief(undefined, ring, { ...at(450, 0) }, 0, STOPS);
+  b.lead = 0;
+  b.rested = false;
+  b.restStop = -1;
+  const here = ring.stopCell[0]! + Math.floor((ring.stopCell[1]! - ring.stopCell[0]!) / 2);
+  const alternative = ring.stopCell[2]! + 3;
+  const price = (mass: number) => {
+    b.p.fill(0);
+    b.p[ring.C + here] = mass;
+    b.p[ring.C + alternative] = 1 - mass;
+    return priceRoute(b, ring, tables, STOPS, new Set([2]), 5000, 0.5)
+      .find(row => row.stopId === 2 && row.occurrence === 0)!;
+  };
+  const before = price(0.011), after = price(0.009);
+  expect(before.stopsAhead).toBe(1);
+  expect(after.stopsAhead).toBe(1);
+  expect(after.eta).toBeCloseTo(before.eta, 6);
+  expect(after.eta).toBeLessThan(100);
+  // The competing branch remains in the uncertainty window. Holding the
+  // displayed route position must not pretend the posterior is concentrated.
+  expect(after.high).toBeGreaterThan(after.eta + 200);
+  // A held index with effectively zero probability must not resurrect a
+  // disproven visit (recorded Green #325 had only ~1e-33 on its old branch).
+  expect(price(1e-33).eta).toBeGreaterThan(after.eta + 200);
+});

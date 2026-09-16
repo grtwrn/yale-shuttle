@@ -41,7 +41,7 @@ COPY drizzle.config.ts tsconfig.json ./
 # `serverEta.closure.test.ts` recomputes it and fails if this COPY has fallen
 # behind — an import added here and forgotten here would pass every gate and
 # then crash the production process on boot.
-COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts \
+COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts web/src/etaSource.ts \
      web/src/map-data.ts web/src/routes.ts ./web/src/
 COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
      web/src/eta/conformal.mjs web/src/eta/conformal.d.mts \

@@ -170,10 +170,12 @@ needs exactly that to compare a challenger.
 
 ## Stage 2 — the archive
 
-The production volume is 1 GB with ~430 MB free; `raw_positions` is swept
-after 6 h, the census after ~4 weekdays, `predictions_log`'s upstream rows
-after 7 days. Nothing a replay needs survives on the volume long enough to
-learn from, so the Pi keeps it.
+The production volume is 1 GB; `raw_positions` is swept after 36 h, the
+census after ~4 weekdays, `predictions_log`'s upstream rows after 7 days.
+The raw window covers the previous operating day at the 03:40 ET archive,
+including the fall DST transition. Before September 16, its six-hour window
+deleted daytime Red positions before archiving. The Pi keeps the long-term
+recordings needed for replay and calibration comparisons.
 
 `scripts/archive-day.mjs [YYYY-MM-DD]` (default: yesterday in ET) pulls, for
 that ET day, `arrivals`, `stop_visits`, `legs`, `predictions_log`,

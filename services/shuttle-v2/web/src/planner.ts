@@ -1,7 +1,8 @@
 // Client-side trip planning. Extracted from TransitMap.tsx unchanged except
 // for the walk model, which now matches the server (see walk.ts).
 
-import { computeUpcomingArrivals } from "./arrivals";
+import { computeUpcomingArrivals } from "./liveArrivals";
+import { liveEtaAvailable, liveBusAvailable } from './etaSource';
 import type { AnchorStore } from "./eta";
 import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
 import { haversineMeters } from "./geo";
@@ -60,6 +61,7 @@ export type TripOption = {
   computedAtMs?: number;
   /** Destination arrival for the catchable bus, including the final walk. */
   journeyArrival?: JourneyArrival;
+  etaUnavailable?: boolean;
 };
 
 /** Don't keep looping past a boarding point. */
@@ -353,6 +355,7 @@ export function planTrip(
     // The calendar question, alternation included: a plan for next Saturday
     // must not ride the grocery line that runs the OTHER weekends.
     if (futureMode && !isRouteScheduledAt(cfg.label, targetDate!)) continue;
+    if (!futureMode && !liveEtaAvailable(buses, now, cfg.label)) continue;
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
     const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
@@ -374,7 +377,7 @@ export function planTrip(
       // the wrap-around change above roughly doubled the (board, alight) pairs
       // — so it was running about 4x more often than it used to.
       const hereBus = futureMode ? undefined : buses.find(
-        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b,
+        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b && liveBusAvailable(bb, cfg.label, now),
       );
       const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
         [b, ...stops.filter(s => toDist[s] !== undefined && toDist[s]! <= MAX_WALK_M)], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes, anchorStore,

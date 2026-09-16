@@ -32,6 +32,7 @@ import { beliefFor, ringForBus, type AnchorStore } from "./eta";
 import { standingSec, type FilterBus } from "./eta/filter";
 import type { LatLon } from "./geo";
 import { mergedRouteStops, type RouteListConfig } from "./routes";
+import { serverTrack } from './etaSource';
 
 /** What the anchor needs of a bus: a fix, the clocks, and the route whose line it is measured against. */
 export type AnchorBus = FilterBus & { route_id: number | string };
@@ -90,7 +91,8 @@ export function anchorIndexOnList(
 ): number {
   const canonical = mergedRouteStops(cfg, routeStops);
   if (canonical.length === 0) return -1;
-  const idx = resolveAnchorIndex(
+  const served = serverTrack(bus, cfg.label, now);
+  const idx = served !== undefined ? (served?.index ?? -1) : resolveAnchorIndex(
     bus, canonical, stopCoords, anchorKeyFor(cfg.label, bus.bus_name), now, store,
   );
   if (idx < 0) return idx;
@@ -146,6 +148,8 @@ export function resolveStandingStop(
   now: number,
   store: AnchorStore | undefined,
 ): StandingAnswer | null {
+  const served = serverTrack(bus, cfg.label, now);
+  if (served !== undefined) return served?.standing ?? null;
   if (!store) return null;
   const stops = mergedRouteStops(cfg, routeStops);
   if (stops.length === 0) return null;

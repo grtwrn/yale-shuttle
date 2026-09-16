@@ -46,6 +46,7 @@ import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes, type Upcom
 import type { AnchorStore } from "../../web/src/eta/index.js";
 import type { LatLon } from "../../web/src/geo.js";
 import type { BusData } from "../../web/src/map-data.js";
+import { attachServerEta, serverArrivals } from "../../web/src/etaSource.js";
 import { ROUTE_LISTS } from "../../web/src/routes.js";
 import { ServerEta, type EtaPayloadView, type ServerEtaWire } from "./serverEta.js";
 
@@ -91,7 +92,7 @@ function clientRows(arrivals: UpcomingArrival[]): Map<Key, number[][]> {
   for (const a of arrivals) {
     const k = `${a.routeLabel}|${a.busName}|${a.stopId}`;
     const list = out.get(k) ?? [];
-    list.push([a.eta, a.low, a.high, a.stopsAhead, a.estimated ? 1 : 0]);
+    list.push([a.eta, a.low, a.high, a.stopsAhead, a.estimated ? 1 : 0, a.departNow, a.lowFloor]);
     out.set(k, list);
   }
   return out;
@@ -103,7 +104,7 @@ function serverRows(wire: ServerEtaWire | null): Map<Key, number[][]> {
     const [name, label] = wire.buses[r[0]]!;
     const k = `${label}|${name}|${r[1]}`;
     const list = out.get(k) ?? [];
-    list.push([r[2], r[3], r[4], r[5], r[6]]);
+    list.push([r[2], r[3], r[4], r[5], r[6], r[7], r[8]]);
     out.set(k, list);
   }
   return out;
@@ -144,6 +145,11 @@ describe("the server's belief and the client's give the same answer", () => {
       // The server's poll: a new collector data version per frame.
       const wire = server.contribute(payloadFor(frame), i, frame.t);
       const srv = serverRows(wire);
+      if (wire) {
+        const browserBuses = frame.buses.map(b => ({ ...b }));
+        expect(attachServerEta(browserBuses, JSON.parse(JSON.stringify(wire)), frame.t)).toBe(true);
+        expect(serverArrivals(browserBuses, ALL_STOPS, frame.t)?.length).toBe(wire.rows.length);
+      }
 
       expect([...srv.keys()].sort(), `frame ${i} keys`).toEqual([...client.keys()].sort());
       for (const [k, want] of client) {
@@ -156,6 +162,8 @@ describe("the server's belief and the client's give the same answer", () => {
           expect(g[2]!, `frame ${i} ${k} high`).toBeCloseTo(w[2]!, 0);
           expect(g[3]!, `frame ${i} ${k} stopsAhead`).toBe(w[3]!);
           expect(g[4]!, `frame ${i} ${k} estimated`).toBe(w[4]!);
+          expect(g[5]!, `frame ${i} ${k} departNow`).toBeCloseTo(w[5]!, 0);
+          expect(g[6]!, `frame ${i} ${k} lowFloor`).toBeCloseTo(w[6]!, 0);
           comparedRows++;
         });
       }

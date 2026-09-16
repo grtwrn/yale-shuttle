@@ -666,6 +666,17 @@ export function stepBelief(
   const C = ring.C;
   const dt = Math.max(1, Math.min(60, (now - prev.seenAt) / 1000));
   const fresh = prev.lastFix === null || prev.lastFix.lat !== bus.lat || prev.lastFix.lon !== bus.lon;
+  // A repeated physical stop can name either direction of a folded route.
+  // Fresh movement plus a changed served stop ends the old kerb visit even
+  // inside the rest radius. Reacquire instead of carrying its branch/clock
+  // into the next visit. Layovers and stationary hint changes retain memory.
+  const restId = prev.restStop >= 0 ? stops[prev.restStop] : undefined;
+  const foldedDeparture = fresh && prev.rested && !prev.restApproach
+    && restId !== undefined && ring.layover[prev.restStop] !== 1
+    && stops.filter(id => id === restId).length > 1
+    && prev.lastStopId === restId && bus.last_stop_id != null
+    && bus.last_stop_id !== restId && stops.includes(bus.last_stop_id);
+  if (foldedDeparture) return initBelief(ring, bus, now, stops);
   // Has the fix left the rest? The collector's own rule (STATIONARY_RADIUS_M):
   // inside the radius the bus is still where it came to rest, whatever the
   // published line says.
@@ -896,8 +907,8 @@ function advance(q: Float64Array, ring: Ring, c: number, m: number, kern: Float6
 
 /**
  * Situations: the posterior collapsed to (anchor leg, mode) with the
- * mass-weighted mean position within the leg, dropping anything under
- * `minMass`.
+ * mass-weighted mean position within the leg. Prune below `minMass`, except
+ * the held lead may survive down to the filter's propagation floor.
  */
 export interface Situation {
   leg: number;
@@ -942,7 +953,10 @@ export function situations(b: Belief, ring: Ring, minMass = 0.01): Situation[] {
   let total = 0;
   for (let k = 0; k < 2 * N; k++) {
     const m = mass[k]!;
-    if (m < minMass) continue;
+    // Pruning must not silently switch the priced branch while leadLeg still
+    // holds it. Keep its meaningful mass, using the propagation floor to
+    // exclude numerical remnants of a physically disproven branch.
+    if (m < PROPAGATE_MIN || (m < minMass && (k >> 1) !== b.lead)) continue;
     let zoneKey = -1, best = 0;
     if (k % 2 === 0) {
       for (const [zk, zm] of zoneMass) {

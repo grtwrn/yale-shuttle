@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // Static network state, refreshed from upstream every ~6h.
 export const stops = sqliteTable("stops", {
@@ -23,7 +23,7 @@ export const routes = sqliteTable("routes", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-// Raw GPS polls, append-only. Retained for ~6h.
+// Raw GPS polls, append-only. Retained for 36 h to cover the nightly archive.
 export const rawPositions = sqliteTable(
   "raw_positions",
   {
@@ -579,7 +579,7 @@ export const operatorAnonIds = sqliteTable("operator_anon_ids", {
  * Upstream publishes a `path` per route and several are far too coarse to draw
  * with: Orange Night ships 37 points for a 9.5 km loop, so a stop sits a median
  * 97 m from its own route line. `raw_positions` holds thousands of real points
- * along the actual roads for the same loop — but it is swept after 6 h, so a
+ * along the actual roads for the same loop — but it is swept after 36 h, so a
  * derivation has to be persisted or it dies with its inputs, and every restart
  * would redraw the map from upstream's polyline again.
  *
@@ -748,3 +748,9 @@ export const modelParams = sqliteTable(
 );
 
 export type DbModelParams = typeof modelParams.$inferSelect;
+
+// One local tracking checkpoint. Not calibration data or rider information.
+export const etaCheckpoint = sqliteTable("eta_checkpoint", {
+  id: integer("id").primaryKey(),
+  value: blob("value", { mode: "buffer" }).notNull(),
+});

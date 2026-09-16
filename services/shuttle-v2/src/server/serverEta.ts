@@ -1,61 +1,10 @@
-/**
- * The ring estimator, stepped SERVER-SIDE — foundation only, off by default.
- *
- * ## Why this exists
- *
- * The estimator runs in the BROWSER today, a legacy of v2's frontend being a
- * fork of v1's. It is stateful — an HMM belief per bus (`web/src/eta/`) — so
- * every browser keeps its own copy, and that is a class of defect rather than
- * a list of them:
- *
- *  - a rider who just opened the app has a COLD belief; one with a tab open an
- *    hour has a WARM one. They see different numbers for the same bus at the
- *    same instant.
- *  - PR #176 existed solely to make a cold start read direction correctly,
- *    shipped, and was REVERTED the next morning (#183) once the canary
- *    measured leader jumps rising from 0.36 to 1.34 per watched hour.
- *  - the countdown was observed flapping between two fixed values 72 s apart
- *    (1:57 / 3:09) poll to poll while a bus stood — a belief with too little
- *    history to commit.
- *
- * A belief stepped by the collector is ALWAYS warm, because it never stops
- * tracking, and there is then ONE answer per bus for every rider.
- *
- * ## What this file is, and is not
- *
- * It is the SAME module, not a port. `computeUpcomingArrivals` is imported
- * from `web/src/arrivals.ts` verbatim; nothing here reimplements a line of the
- * estimator, and nothing here may. The whole value of the move is that the two
- * sides cannot disagree, and `serverEta.parity.test.ts` is what proves it —
- * it replays a captured production poll sequence through a "client" store and
- * this server engine and requires every row to match exactly.
- *
- * It is NOT wired to any rider. `SHUTTLE_SERVER_ETA=1` is what constructs it;
- * with the flag unset `buildApp` passes nothing, `createBusesPayloadCache`
- * attaches nothing, and the `/api/buses` bytes are identical (asserted in
- * `serverEta.test.ts`). No client code reads `server_eta`, and the display
- * rules, the #119 clamp and #185/#186's range are untouched.
- *
- * ## The three constraints this file is built around
- *
- *  1. **The poll must never stall.** Every entry point here is non-throwing:
- *     an estimator exception is counted and logged and the served field simply
- *     goes absent, exactly as if the flag were off.
- *  2. **One step per observation.** The belief is stepped once per collector
- *     `dataVersion()` — the counter `updateLivePositions` bumps once per poll.
- *     The `/api/buses` cache also rebuilds on a one-second wall clock during an
- *     upstream outage, and stepping the filter again on the SAME fix would feed
- *     it a repeat observation upstream never sent, which this model reads as
- *     evidence the bus is standing. So a same-version call re-serves the rows
- *     it already has (minus buses that have since aged out) and steps nothing.
- *  3. **A route allowlist.** Client-side a bug is bounded by which routes the
- *     bundle prices; server-side it would reach every rider at once. Beliefs
- *     are stepped for EVERY route — warmth is the point, and a widened
- *     allowlist should not need a warm-up — but only allowlisted routes are
- *     SERVED. See {@link DEFAULT_SERVER_ETA_ROUTES}.
+/** Shared live forecasts: one stateful estimator, stepped by collector GPS polls.
+ * Browsers consume its arrivals, route position and standing state together.
+ * A local checkpoint preserves tracking across short service restarts.
+ * Missing/stale output is unavailable to riders; requests never advance belief.
  */
 
-import { anchorKeyFor } from "../../web/src/liveAnchor.js";
+import { anchorKeyFor, anchorIndexOnList, resolveStandingStop } from "../../web/src/liveAnchor.js";
 import { computeUpcomingArrivals, type DwellTimes, type SegmentTimes } from "../../web/src/arrivals.js";
 import { registerRoutePaths } from "../../web/src/anchor.js";
 import { BELIEF_STALE_MS } from "../../web/src/eta/filter.js";
@@ -63,19 +12,15 @@ import { applyModelParams } from "../../web/src/eta/params.js";
 import type { AnchorStore } from "../../web/src/eta/index.js";
 import type { BusData } from "../../web/src/map-data.js";
 import type { LatLon } from "../../web/src/geo.js";
-import { ROUTE_LISTS } from "../../web/src/routes.js";
+import { ROUTE_LISTS, mergedRouteStops } from "../../web/src/routes.js";
+import { ETA_MAX_AGE_MS } from '../../web/src/etaSource.js';
+import { serialize, deserialize } from 'node:v8';
 
-/**
- * The lines whose answer is SERVED when the flag is on, overridable with
- * `SHUTTLE_SERVER_ETA_ROUTES` (comma-separated labels, or `*` for every line).
- *
- * Red and Blue Day, because they are the lines riders actually use and Red is
- * the founding complaint — the same pair every measured ETA decision in
- * `docs/eta-accuracy.md` was argued on. The rollout widens this the way the
- * ring estimator itself went out: route by route, on the rider simulator's
- * paired FIXED/INTRODUCED split, never all fifteen at once.
- */
-export const DEFAULT_SERVER_ETA_ROUTES: readonly string[] = ["Red", "Blue Day"];
+export const RECOVERY_MAX_AGE_MS = 120_000;
+export interface EtaCheckpointStore { load(): Uint8Array | null; save(value: Uint8Array): void }
+
+/** Serve the network by default; an explicit allowlist can withhold routes. */
+export const DEFAULT_SERVER_ETA_ROUTES: readonly string[] = ROUTE_LISTS.map(c => c.label);
 
 /** How long a bus may be absent before its belief is dropped. */
 export const BELIEF_EVICT_MS = BELIEF_STALE_MS;
@@ -100,24 +45,18 @@ export interface EtaPayloadView {
  * so an object-per-row shape spends more bytes on repeated keys than on
  * numbers. `buses` is the index space the rows point into.
  *
- * `[busIndex, stopId, etaSec, lowSec, highSec, stopsAhead, estimated]`
+ * `[busIndex, stopId, etaSec, lowSec, highSec, stopsAhead, estimated, departNow, lowFloor]`
  */
-export type ServerEtaRow = readonly [number, number, number, number, number, number, 0 | 1];
-
-export interface ServerEtaWire {
-  /** Bumped when the row shape changes. A client that does not recognise it ignores the field. */
-  v: 1;
-  /** The instant the belief behind these rows was stepped, ms. */
-  at: number;
-  /** `[busName, routeLabel]`, the index space `rows` points into. */
-  buses: (readonly [string, string])[];
-  rows: ServerEtaRow[];
-}
+export type { ServerEtaRow, ServerEtaWire } from "../../web/src/etaSource.js";
+import type { ServerEtaRow, ServerEtaWire, ServerEtaBus } from "../../web/src/etaSource.js";
 
 export interface ServerEtaStats {
+  restored: number;
+  forecastAt: number | null;
+  checkpointAt: number | null;
   /** Beliefs currently held, one per (route label, bus name). */
   beliefs: number;
-  /** Collector data versions stepped. */
+  /** Collector observation versions stepped. */
   steps: number;
   /** Exceptions swallowed. Non-zero means the field is absent, never that the poll broke. */
   failures: number;
@@ -129,12 +68,9 @@ export interface ServerEtaStats {
 
 type Log = (event: string, fields: Record<string, unknown>) => void;
 
-/**
- * Reads the flag. `null` — the default — means the machinery is not
- * constructed at all and `/api/buses` is byte-for-byte what it is today.
- */
+/** Enabled by default. Setting 0 withholds live ETAs without stopping GPS. */
 export function serverEtaFromEnv(env: NodeJS.ProcessEnv = process.env, log?: Log): ServerEta | null {
-  if (env.SHUTTLE_SERVER_ETA !== "1") return null;
+  if (env.SHUTTLE_SERVER_ETA === "0") return null;
   const raw = env.SHUTTLE_SERVER_ETA_ROUTES?.trim();
   const routes = !raw
     ? DEFAULT_SERVER_ETA_ROUTES
@@ -159,14 +95,50 @@ export class ServerEta {
   private steps = 0;
   private failures = 0;
   private lastStepMs = 0;
+  private restored = 0;
+  private checkpoint: EtaCheckpointStore | undefined;
+  private lastSavedAt = -Infinity;
+  private readonly observed = new Map<string, BusData>();
 
   constructor(opts: { routes: readonly string[]; log?: Log }) {
     this.served = new Set(opts.routes);
     this.log = opts.log ?? (() => {});
   }
 
+  /** Versioned local checkpoint preserves the posterior and display history
+   * across a short deploy. An old/corrupt checkpoint is discarded atomically. */
+  useCheckpoint(checkpoint: EtaCheckpointStore, now = Date.now()): void {
+    this.checkpoint = checkpoint;
+    try {
+      const bytes = checkpoint.load();
+      if (!bytes) return;
+      const saved = deserialize(Buffer.from(bytes)) as { v: number; at: number; store: AnchorStore; seen: Map<string, number> };
+      if (saved.v !== 1 || !Number.isFinite(saved.at) || saved.at > now
+        || now - saved.at > RECOVERY_MAX_AGE_MS || !(saved.store instanceof Map) || !(saved.seen instanceof Map)
+        || saved.store.size > 200) return;
+      for (const [key, entry] of saved.store) {
+        const b = entry.belief;
+        if (typeof key !== 'string' || !b || typeof b.ringKey !== 'string'
+          || !(b.p instanceof Float64Array) || !(b.restMask instanceof Uint8Array)
+          || !(b.standLeg instanceof Int32Array) || !(b.zoneKey instanceof Int32Array)
+          || !Number.isFinite(b.seenAt) || !Number.isFinite(saved.seen.get(key))) return;
+      }
+      for (const [key, entry] of saved.store) this.store.set(key, entry);
+      for (const [key, at] of saved.seen) this.seenAt.set(key, at);
+      this.restored = saved.store.size;
+    } catch (err) { this.log('server_eta.checkpoint_load_failed', { error: String(err) }); }
+  }
+
+  private saveCheckpoint(now: number): void {
+    if (!this.checkpoint || now - this.lastSavedAt < 30_000) return;
+    try {
+      this.checkpoint.save(serialize({ v: 1, at: now, store: this.store, seen: this.seenAt }));
+      this.lastSavedAt = now;
+    } catch (err) { this.log('server_eta.checkpoint_save_failed', { error: String(err) }); }
+  }
+
   /**
-   * Step the beliefs for this collector data version and return the field to
+   * Step the beliefs for this collector observation version and return the field to
    * attach to `/api/buses`, or null when there is nothing to say.
    *
    * Never throws. A same-`version` call re-serves the rows already computed,
@@ -177,8 +149,10 @@ export class ServerEta {
       if (version !== this.lastVersion) {
         this.lastVersion = version;
         this.wire = this.recompute(payload, now);
+        this.saveCheckpoint(now);
       }
-      return this.filterToLive(this.wire, payload.buses);
+      const wire = this.filterToLive(this.wire, payload.buses, now);
+      return wire ? { ...wire, servedAt: now } : null;
     } catch (err) {
       this.failures++;
       this.wire = null;
@@ -192,6 +166,9 @@ export class ServerEta {
 
   stats(): ServerEtaStats {
     return {
+      restored: this.restored,
+      forecastAt: this.wire?.at ?? null,
+      checkpointAt: Number.isFinite(this.lastSavedAt) ? this.lastSavedAt : null,
       beliefs: this.store.size,
       steps: this.steps,
       failures: this.failures,
@@ -227,18 +204,31 @@ export class ServerEta {
       }
     }
 
+    // An absent bus can remain on the map during the collector's 120 s TTL.
+    // It must not gain fresh evidence from other vehicles' successful polls.
+    const current = payload.buses.filter(b => b.observed_at === undefined || now - b.observed_at < ETA_MAX_AGE_MS);
+    const tracked = current.map(bus => {
+      const key = `${bus.route_id}|${bus.bus_name}`;
+      const old = this.observed.get(key);
+      if (old && bus.observed_at !== undefined && old.observed_at === bus.observed_at) return old;
+      this.observed.set(key, bus);
+      return bus;
+    });
+    for (const [key, bus] of this.observed) {
+      if (bus.observed_at !== undefined && now - bus.observed_at > BELIEF_EVICT_MS) this.observed.delete(key);
+    }
     const arrivals = computeUpcomingArrivals(
-      targets, payload.buses, payload.routes, payload.stop_coords,
+      targets, tracked, payload.routes, payload.stop_coords,
       payload.segments, now, payload.dwells, this.store,
     );
 
-    this.markSeen(payload.buses, now);
+    this.markSeen(current, now);
     this.evict(now);
     this.steps++;
     this.lastStepMs = Date.now() - t0;
 
     const index = new Map<string, number>();
-    const buses: (readonly [string, string])[] = [];
+    const buses: ServerEtaBus[] = [];
     const rows: ServerEtaRow[] = [];
     for (const a of arrivals) {
       if (!this.served.has(a.routeLabel)) continue;
@@ -247,12 +237,17 @@ export class ServerEta {
       if (i === undefined) {
         i = buses.length;
         index.set(k, i);
-        buses.push([a.busName, a.routeLabel]);
+        const cfg = ROUTE_LISTS.find(c => c.label === a.routeLabel)!;
+        const bus = tracked.find(b => b.bus_name.replace(/^#/, '') === a.busName && cfg.busRouteIds.includes(b.route_id))!;
+        const seq = mergedRouteStops(cfg, payload.routes);
+        buses.push([a.busName, a.routeLabel,
+          anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store),
+          resolveStandingStop(bus, cfg, payload.routes, payload.stop_coords, now, this.store)]);
       }
-      rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0]);
+      rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
     }
     if (rows.length === 0) return null;
-    return { v: 1, at: now, buses, rows };
+    return { v: 2, at: now, servedAt: now, buses, rows };
   }
 
   /**
@@ -263,25 +258,30 @@ export class ServerEta {
    * never moves. Without this the field would keep naming a bus the same
    * payload no longer carries.
    */
-  private filterToLive(wire: ServerEtaWire | null, live: readonly BusData[]): ServerEtaWire | null {
+  private filterToLive(wire: ServerEtaWire | null, live: readonly BusData[], now: number): ServerEtaWire | null {
     if (!wire) return null;
     const names = new Set<string>();
-    for (const b of live) names.add(b.bus_name.replace("#", ""));
-    if (wire.buses.every((b) => names.has(b[0]))) return wire;
+    for (const b of live) {
+      if (b.observed_at !== undefined && now - b.observed_at >= ETA_MAX_AGE_MS) continue;
+      for (const cfg of ROUTE_LISTS) {
+        if (cfg.busRouteIds.includes(b.route_id)) names.add(`${cfg.label}|${b.bus_name.replace(/^#/, '')}`);
+      }
+    }
+    if (wire.buses.every((b) => names.has(`${b[1]}|${b[0]}`))) return wire;
     const keep = new Set<number>();
-    wire.buses.forEach((b, i) => { if (names.has(b[0])) keep.add(i); });
+    wire.buses.forEach((b, i) => { if (names.has(`${b[1]}|${b[0]}`)) keep.add(i); });
     if (keep.size === 0) return null;
     // Reindex rather than leave holes, so `buses` stays the row index space.
     const remap = new Map<number, number>();
-    const buses: (readonly [string, string])[] = [];
+    const buses: ServerEtaBus[] = [];
     for (const i of [...keep].sort((a, b) => a - b)) {
       remap.set(i, buses.length);
       buses.push(wire.buses[i]!);
     }
     const rows = wire.rows
       .filter((r) => remap.has(r[0]))
-      .map((r) => [remap.get(r[0])!, r[1], r[2], r[3], r[4], r[5], r[6]] as ServerEtaRow);
-    return { v: 1, at: wire.at, buses, rows };
+      .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
+    return { ...wire, buses, rows };
   }
 
   /**

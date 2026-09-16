@@ -1,4 +1,4 @@
-// Run after building web/: ARRIVE_BY_FEED=payload.json ARRIVE_BY_WATCHER=watcher.jsonl node scripts/arrive-by-check.mjs
+// Run with node --import tsx after building web/: ARRIVE_BY_FEED=payload.json ARRIVE_BY_WATCHER=watcher.jsonl node scripts/arrive-by-check.mjs
 // Or use the live site: ARRIVE_BY_URL=https://yale-shuttle.fly.dev node scripts/arrive-by-check.mjs
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +17,10 @@ if (local) {
   feed = JSON.parse(await fs.readFile(process.env.ARRIVE_BY_FEED, 'utf8'));
   sample = JSON.parse((await fs.readFile(process.env.ARRIVE_BY_WATCHER, 'utf8')).trim().split('\n').at(-1));
   feed.buses = sample.buses;
+  const { ServerEta } = await import('../src/server/serverEta.ts');
+  const { ROUTE_LISTS } = await import('../web/src/routes.ts');
+  const server = new ServerEta({ routes: ROUTE_LISTS.map(c => c.label) });
+  feed.server_eta = server.contribute(feed, 1, Date.parse(sample.at));
 }
 const result = { source: local ? 'Recorded Red feed, 2026-09-16' : base, errors: [], checks: [] };
 const browser = await chromium.launch({ executablePath: process.env.BOT_CHROMIUM_PATH ?? '/usr/bin/chromium',

@@ -1,5 +1,5 @@
 /**
- * The server-side belief's contract: it is OFF by default, it cannot break the
+ * The server-side belief's contract: it is ON by default, it cannot break the
  * poll, it keys on the bus NAME, and it lets go of a bus that stops reporting.
  *
  * The parity test (`serverEta.parity.test.ts`) is the deliverable; this file is
@@ -57,18 +57,16 @@ function payloadFor(i: number): EtaPayloadView {
 const ALL_ROUTES = ROUTE_LISTS.map((c) => c.label);
 
 describe("the flag", () => {
-  it("is off unless SHUTTLE_SERVER_ETA=1", () => {
-    expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeNull();
+  it("runs by default and can explicitly withhold forecasts", () => {
+    expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeInstanceOf(ServerEta);
     expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "0" } as unknown as NodeJS.ProcessEnv)).toBeNull();
-    expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "true" } as unknown as NodeJS.ProcessEnv)).toBeNull();
+
   });
 
-  it("serves a bounded set of lines, not the whole network", () => {
-    // Client-side a bug is bounded by which routes the bundle prices. There is
-    // no such bound on the server, so the allowlist is the bound.
+  it("serves all supported lines by default", () => {
     const on = serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "1" } as unknown as NodeJS.ProcessEnv)!;
     expect(on.servedRoutes()).toEqual([...DEFAULT_SERVER_ETA_ROUTES]);
-    expect(on.servedRoutes().length).toBeLessThan(ROUTE_LISTS.length);
+    expect(on.servedRoutes()).toEqual(ALL_ROUTES);
     for (const label of on.servedRoutes()) {
       expect(ALL_ROUTES, `${label} is not a route`).toContain(label);
     }
@@ -251,5 +249,54 @@ describe("/api/buses with the flag off", () => {
     // price and no field — which is itself the invariant: absent, never a stub.
     delete on["server_eta"];
     expect(on).toEqual(off);
+  });
+});
+
+describe('restart recovery and observation freshness', () => {
+  afterEach(() => registerRoutePaths(null));
+
+  it('continues the same forecast after restoring a recent checkpoint', () => {
+    let bytes: Uint8Array | null = null;
+    const checkpoint = { load: () => bytes, save: (b: Uint8Array) => { bytes = b; } };
+    const original = new ServerEta({ routes: ALL_ROUTES });
+    original.useCheckpoint(checkpoint, CAP.frames[0]!.t);
+    original.contribute(payloadFor(0), 0, CAP.frames[0]!.t);
+    expect((bytes as Uint8Array | null)?.byteLength).toBeGreaterThan(1000);
+    const restarted = new ServerEta({ routes: ALL_ROUTES });
+    restarted.useCheckpoint(checkpoint, CAP.frames[1]!.t);
+    expect(restarted.stats().restored).toBe(original.stats().beliefs);
+    for (let i = 1; i < 8; i++) {
+      expect(restarted.contribute(payloadFor(i), i, CAP.frames[i]!.t))
+        .toEqual(original.contribute(payloadFor(i), i, CAP.frames[i]!.t));
+    }
+  });
+
+  it('discards corrupt and old checkpoints, and write failures do not suppress live arrivals', () => {
+    let bytes: Uint8Array | null = null;
+    const original = new ServerEta({ routes: ALL_ROUTES });
+    original.useCheckpoint({ load: () => null, save: b => { bytes = b; } });
+    original.contribute(payloadFor(0), 0, CAP.frames[0]!.t);
+    for (const value of [bytes, new Uint8Array([0, 1, 2])]) {
+      const restarted = new ServerEta({ routes: ALL_ROUTES });
+      restarted.useCheckpoint({ load: () => value, save: () => { throw new Error('disk full'); } }, CAP.frames[0]!.t + 180_000);
+      expect(restarted.stats().restored).toBe(0);
+      expect(restarted.contribute(payloadFor(1), 1, CAP.frames[1]!.t)).not.toBeNull();
+      expect(restarted.stats().failures).toBe(0);
+    }
+  });
+
+  it('expires a missing bus even while other buses keep polling', () => {
+    const server = new ServerEta({ routes: ALL_ROUTES });
+    const t = CAP.frames[0]!.t;
+    const p = payloadFor(0);
+    p.buses = p.buses.map(b => ({ ...b, observed_at: t }));
+    const first = server.contribute(p, 0, t)!;
+    const missing = first.buses[0]![0];
+    const next = { ...p, buses: p.buses.map(b => ({ ...b, observed_at: b.bus_name.replace(/^#/, '') === missing ? t : t + 44_000 })) };
+    expect(server.contribute(next, 1, t + 44_000)!.buses.some(b => b[0] === missing)).toBe(true);
+    const wire = server.contribute(next, 1, t + 45_000)!;
+    expect(wire.buses.some(b => b[0] === missing)).toBe(false);
+    expect(wire.buses.length).toBeGreaterThan(0);
+    expect(server.stats().steps).toBe(2);
   });
 });

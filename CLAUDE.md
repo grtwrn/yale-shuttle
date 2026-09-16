@@ -2448,3 +2448,14 @@ printf '<js>' | ~/.fly/bin/flyctl ssh console -a yale-shuttle -C "node -"
 ```
 
 Visual checks of the live site DO work on this Pi via Playwright driving system chromium over CDP (only the legacy `chromium --screenshot` one-shot CLI hangs). Recipe: `npm i playwright-core`, launch with `executablePath: "/usr/bin/chromium"` + `--no-sandbox --disable-gpu --disable-dev-shm-usage`, `goto(url, {waitUntil: "domcontentloaded"})`. Working end-to-end example: `services/shuttle-v2/scripts/map-bot-visual.mjs` (run with `BOT_CHROMIUM_PATH=/usr/bin/chromium`) — picks a random trip, sets geolocation as the origin, screenshots the plan + the Leaflet map with bus markers, and watches a bus approach. The companion `scripts/map-bot.mjs` is a headless data-level check (random trip → `/api/plan` ground truth). For a pure JS-crash repro without any browser, the jsdom harness still works — see the memory note on environment quirks.
+
+### Shared live ETA ownership (2026-09-16)
+
+Live arrivals now come from `src/server/serverEta.ts` via `/api/buses.server_eta`
+v2. UI callers use `web/src/liveArrivals.ts`; `web/src/arrivals.ts` remains the
+pure estimator for the server, replays and hypothetical inputs. Register actual
+payloads with `attachServerEta` before publishing buses to React. Missing or
+stale server forecasts must not silently fall back to a browser belief.
+`liveAnchor.ts` reads server route position and hold metadata for those same bus
+objects. Preserve repeated visits, `departNow` and `lowFloor` across transport.
+See `docs/server-side-eta.md` for clocks, checkpoint recovery and paired replay.

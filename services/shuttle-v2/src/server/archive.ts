@@ -2,7 +2,7 @@
  * What the archive feed may serve, and for which day.
  *
  * Stage 2 of the closed loop (docs/closed-loop.md): the production volume is
- * 1 GB and retention sweeps `raw_positions` after 6 h, the census after ~4
+ * 1 GB and retention sweeps `raw_positions` after 36 h, the census after ~4
  * weekdays and the upstream rows of `predictions_log` after 7 days, so the
  * rows a replay needs do not survive where they are written. The Pi pulls
  * each day through `GET /api/archive/day?day=&table=` and keeps it 180 days.
