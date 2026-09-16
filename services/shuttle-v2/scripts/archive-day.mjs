@@ -3,7 +3,7 @@
  * Archive one ET day of production data on the Pi.
  *
  * Stage 2 of the closed loop (docs/closed-loop.md). The production volume is
- * 1 GB with ~430 MB free and retention sweeps `raw_positions` after 6 h, the
+ * 1 GB with bounded storage and retention sweeps `raw_positions` after 36 h, the
  * census after ~4 weekdays and `predictions_log`'s upstream rows after 7 days,
  * so the rows a replay needs do not survive where they are written. This pulls
  * them, one table at a time, through `GET /api/archive/day` (admin header
@@ -173,8 +173,8 @@ export async function archiveDay(day, opts = {}) {
       entry.complete = got.complete;
       if (!got.complete) entry.error = "stream ended without its trailer";
       if (table === "raw_positions") {
-        // Merge the Pi's capture: the server's 6 h window has usually swept
-        // most of the day by the time this runs.
+        // Merge any independent capture too, filling server outages or a
+        // delayed archive that exceeded the server's 36 h retention window.
         const cap = captureRows(day, opts.capturesDir);
         const merged = new Map();
         for (const r of cap.rows) merged.set(`${r.bus_id}:${r.collected_at}`, r);

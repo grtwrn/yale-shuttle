@@ -2,7 +2,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { openDb, type DbBundle } from "../db/client.js";
 import { arrivals, legs, rawPositions, segments, stopVisits } from "../db/schema.js";
@@ -115,6 +115,7 @@ let logs: LogLine[];
 // (rather than a reimplementation) is the whole point — the bug being guarded
 // against lives in its await boundaries.
 type Internals = {
+  runRetention: () => void;
   runPoll: () => Promise<void>;
   refreshStaticIfNeeded: (force: boolean) => Promise<void>;
   states: Map<string, BusState>;
@@ -137,9 +138,31 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   collector.stop();
   bundle.sqlite.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+it("retains the previous operating day's GPS until the overnight archive, then expires it", () => {
+  // 03:40 ET after the fall DST transition: yesterday's midnight is 28 h
+  // 40 min ago. Both it and the morning Red service must survive the sweep.
+  const now = Date.parse("2026-11-02T08:40:00Z");
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  const times = [
+    now - 37 * 60 * 60_000,
+    Date.parse("2026-11-01T04:00:00Z"),
+    Date.parse("2026-11-01T12:00:00Z"),
+    now - 60_000,
+  ];
+  bundle.db.insert(rawPositions).values(times.map((at, i) => ({
+    busId: i + 1, busName: `#${i + 1}`, routeId: 10,
+    lat: 41.31, lon: -72.93, heading: 90, collectedAt: new Date(at),
+  }))).run();
+  inner().runRetention();
+  const remaining = bundle.db.select().from(rawPositions).all()
+    .map(row => row.collectedAt.getTime()).sort((a, b) => a - b);
+  expect(remaining).toEqual(times.slice(1));
 });
 
 describe("runPoll re-entrancy", () => {

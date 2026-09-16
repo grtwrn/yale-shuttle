@@ -232,8 +232,8 @@ describe("route path derivation", () => {
   });
 
   it("ignores samples older than the derivation window", () => {
-    // Older than the 6 h raw-position retention window: in production these
-    // rows would already be gone, and they must not resurrect a derivation.
+    // Retention keeps 36 h for archival, but geometry still uses only 6 h.
+    // Older samples must not resurrect a derivation.
     insertLaps(RUNNING_ROUTE, { startMs: Date.now() - 20 * 60 * 60_000 });
     sweep();
     expect(collector.derivedPaths().size).toBe(0);

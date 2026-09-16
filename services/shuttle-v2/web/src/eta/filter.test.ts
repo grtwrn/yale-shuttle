@@ -171,4 +171,34 @@ describe("filter: the deadband is the observation model", () => {
     expect(legMass(b, r)[1]).toBeGreaterThan(0.85);
     expect(b.lead).toBe(1);
   });
+
+  it("reacquires a repeated-stop branch on a fresh departure, but preserves a layover shuffle", () => {
+    const coords = { 1: at(0, 0), 2: at(450, 0), 3: at(900, 0) };
+    const stops = [1, 2, 3, 2];
+    const path: [number, number][] = [coords[1], coords[3], coords[1]].map(p => [p.lat, p.lon]);
+    const r = buildRing("repeated", path, stops, coords)!;
+    const since = new Date(0).toISOString();
+    const prev = stepBelief(undefined, r,
+      bus(at(450, 0), { last_stop_id: 2, stationary_since: since }), 300_000, stops);
+    expect(prev.rested).toBe(true);
+    // The warm track has already selected the incoming occurrence of stop 2.
+    prev.restStop = 1;
+    prev.restApproach = false;
+    prev.lead = 1;
+    expect(stops[prev.restStop]).toBe(2);
+    const next = bus(at(415, 0), { last_stop_id: 1 });
+    const b = stepBelief(prev, r, next, 305_000, stops);
+    // The old visit cannot keep billing its wait after evidence of a different
+    // stop on a folded route; the new fix must establish the branch again.
+    expect(b.rested).toBe(false);
+    expect(b.restPoint).toEqual(at(415, 0));
+    expect(b.restSince).toBe(305_000);
+
+    r.layover[prev.restStop] = 1;
+    const shuffled = stepBelief(prev, r, next, 305_000, stops);
+    expect(shuffled.restPoint).toEqual(prev.restPoint);
+    expect(shuffled.restSince).toBe(prev.restSince);
+    const repeated = stepBelief(prev, r, bus(at(450, 0), { last_stop_id: 1 }), 305_000, stops);
+    expect(repeated.restPoint).toEqual(prev.restPoint);
+  });
 });

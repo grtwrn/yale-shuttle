@@ -2,8 +2,11 @@
 
 Live riders read one continuously updated forecast from `/api/buses.server_eta`.
 Opening a browser no longer initializes a separate tracking model. The server
-uses the same ring estimator in `web/src/arrivals.ts`; the migration changes
-who owns its state, not the statistical model or calibration parameters.
+uses the same ring estimator in `web/src/arrivals.ts` and the existing historical
+calibration. Two tracking corrections accompany the migration: reacquire a
+repeated-stop branch when fresh GPS and a changed stop hint end its kerb visit;
+retain meaningful posterior mass on the held branch when pricing, without
+resurrecting numerical remnants of a disproven branch.
 
 ## Observation and forecast clocks
 
@@ -40,6 +43,11 @@ across a short deployment. Stale, incompatible or corrupt data is discarded;
 checkpoint write failure does not suppress a live forecast. Historical segment,
 stand and lap calibration remains in the existing database and loads separately.
 A long outage cannot recover *current* GPS knowledge from old recordings.
+
+Raw GPS retention is 36 hours so the overnight archive can retain a full prior
+operating day for calibration replay. The former six-hour window had removed
+daytime Red GPS before the archive ran. Derived visits, legs and arrivals retain
+their existing 90-day history. Route geometry still uses a six-hour input window.
 
 Default: all supported routes. `SHUTTLE_SERVER_ETA=0` withholds live ETA output;
 it does not restore browser estimation. `SHUTTLE_SERVER_ETA_ROUTES` can restrict
