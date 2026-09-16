@@ -377,7 +377,7 @@ const countDrops: CountDrop[] = [];
 /** detector arrival events: `${busName}|${stopId}` -> times */
 const detArrivals = new Map<string, number[]>();
 
-type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null };
+type LivePos = { o: import("../../../src/collector/detector.js").BusObservation; atStopId: number | null; atStopSince: number | null; stationarySince: number | null; lastMovedAt: number | null };
 
 /**
  * The stops that carry a lap fit in the payload patch — the only ones
@@ -442,6 +442,7 @@ function makeFeed() {
           // that does not read the field is byte-identical with or without it,
           // which is the same contract PAYLOAD_PATCH keeps.
           stationarySince: st ? st.stationarySince : null,
+          lastMovedAt: st ? st.lastMovedAt : null,
         });
       }
       for (const [k, v] of livePositions) if (v.o.collectedAt < t - LIVE_BUS_TTL_MS) livePositions.delete(k);
@@ -458,6 +459,7 @@ function makeFeed() {
         last_stop_id: v.o.lastStopId as number, stationary: v.atStopId != null,
         ...(v.atStopId != null ? { at_stop_id: v.atStopId } : {}),
         ...(v.atStopSince != null ? { at_stop_since: new Date(v.atStopSince).toISOString().replace(/Z$/, "") } : {}),
+        ...(v.lastMovedAt != null ? { last_moved_at: new Date(v.lastMovedAt).toISOString().replace(/Z$/, "") } : {}),
         ...(v.stationarySince != null ? { stationary_since: new Date(v.stationarySince).toISOString().replace(/Z$/, "") } : {}),
       }));
       // The client drops out-of-service ghosts before anything reads `buses`.
