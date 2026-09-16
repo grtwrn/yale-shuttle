@@ -25,6 +25,8 @@
  * ETA with no deploy in between.
  */
 
+import { conformalFactor } from './conformal.mjs';
+
 /**
  * The correction is applied only to the part of a promise ABOVE this many
  * seconds — which is where the deficit is. The measured bias inside two
@@ -393,13 +395,13 @@ export function conformalHorizon(etaSec: number): ConformalHorizon | null {
 }
 
 /**
- * The band with the bucket's widening applied. A factor of exactly 1 leaves
+ * The band with the fitted widening applied, blended across bucket edges
+ * over one minute so crossing an edge cannot jump the interval. A factor of exactly 1 leaves
  * the numbers untouched — not `eta - (eta - low) * 1`, which can differ from
  * `low` in the last bit — so the default is byte-identical.
  */
 export function widenBand(eta: number, low: number, high: number): [number, number] {
-  const h = conformalHorizon(eta);
-  const w = h === null ? 1 : MP.CONFORMAL[h];
+  const w = conformalFactor(eta, MP.CONFORMAL);
   if (w === 1) return [low, high];
   return [eta - (eta - low) * w, eta + (high - eta) * w];
 }

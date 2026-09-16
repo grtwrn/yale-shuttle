@@ -44,6 +44,7 @@ COPY drizzle.config.ts tsconfig.json ./
 COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts \
      web/src/map-data.ts web/src/routes.ts ./web/src/
 COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
+     web/src/eta/conformal.mjs web/src/eta/conformal.d.mts \
      web/src/eta/index.ts web/src/eta/lap.ts web/src/eta/params.ts \
      web/src/eta/ring.ts web/src/eta/tables.ts ./web/src/eta/
 

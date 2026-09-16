@@ -340,8 +340,8 @@ describe("the BOARD row prints the collapsed row's arrival", () => {
     // two different arrivals.
     expect(src.match(/const busEtaLive\b/g)?.length).toBe(1);
     expect(src.match(/const leadBand\b/g)?.length).toBe(1);
-    // The collapsed row prints those two...
-    expect(src).toMatch(/fmtBusLine\(\{\s*leadSec: busEtaLive,\s*leadBand,/);
+    // The tappable summary reads the same arrival, retaining the full bounds.
+    expect(src).toMatch(/<ArrivalDetails[\s\S]*?etaSec=\{busEtaLive\} lowSec=\{o.busLowSec\} highSec=\{o.busHighSec\}/);
     // ...and so does the BOARD row, once, and nowhere else.
     expect(src.match(/boardArrivalText\(/g)?.length).toBe(1);
     expect(src).toContain("boardArrivalText(leadBand, busEtaLive)");

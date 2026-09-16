@@ -196,8 +196,9 @@ function run(cmd, args, env, label) {
  * depend on the parameters under test.
  */
 function prepareDay(day) {
-  const db = path.join(WORK, `replay-${day}.db`);
-  const patch = path.join(WORK, `patch-${day}.json`);
+  // Older cache entries omitted the lap covariate and its 90-day history.
+  const db = path.join(WORK, `replay-lap-v2-${day}.db`);
+  const patch = path.join(WORK, `patch-lap-v2-${day}.json`);
   if (!fs.existsSync(db)) {
     run("npx", ["tsx", "scripts/eta-replay/archive-db.ts", day, BASE_DB, db], { TZ: "America/New_York", ARCHIVE_DIR: ARCHIVE }, `archive-db ${day}`);
   }
@@ -225,7 +226,7 @@ function prepareDay(day) {
  * had reached rather than starting over.
  */
 function replayFile(day, prepared, arm, params) {
-  const out = path.join(WORK, `pairs-${day}-${arm}.jsonl`);
+  const out = path.join(WORK, `pairs-lap-v2-${day}-${arm}.jsonl`);
   // MODEL_ROUTES is deliberately NOT set: unset means gps-replay uses the
   // tree's own allowlist (web/src/eta/index.ts MODEL_ROUTE_IDS), which is
   // production. Setting it to "all" would build the set {"all"}, match no

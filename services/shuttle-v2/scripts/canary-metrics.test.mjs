@@ -44,6 +44,24 @@ describe("bucketOf", () => {
 });
 
 describe("parseBusEtaText", () => {
+  it('reads the tappable estimate and outward-rounded prediction interval without adding a minute', () => {
+    expect(parseBusEtaText('About 6 min ⓘ\nLikely 4–9 min')).toMatchObject({
+      first: [240, 540], median: [360, 420], second: null, spread: true, bunched: false,
+    });
+    expect(parseBusEtaText('About <1 min\nLikely <1–2 min')).toMatchObject({ first: [0, 120], median: [0, 60] });
+    expect(parseBusEtaText('About 6 min ⓘ')).toMatchObject({ first: [360, 420], raw: 'About 6 min ⓘ' });
+    expect(parseBusEtaText('About <1 min ⓘ').first).toEqual([0, 60]);
+    expect(parseBusEtaText('At your stop ⓘ')).toMatchObject({ first: [0, 10], raw: 'At your stop ⓘ' });
+    expect(parseBusEtaText('About 6 min\nLikely 9–4 min')).toBeNull();
+  });
+
+  it('does not hide a jumping headline inside overlapping prediction windows', () => {
+    const before = parseBusEtaText('About 3 min\nLikely 1–20 min');
+    const after = parseBusEtaText('About 9 min\nLikely 1–20 min');
+    const paired = pairBuses(before, after, 15, undefined, { from: '308', to: '308' });
+    expect(paired.matched[0].driftSec).toBe(315);
+    expect(before.first).toEqual(after.first); // coverage remains the full window
+  });
   it("reads every shape fmtBusPair produces", () => {
     expect(parseBusEtaText("🚌 arriving now").first).toEqual([0, 10]);
     expect(parseBusEtaText("🚌 now, then 16 min").second).toEqual([960, 1020]);
@@ -321,6 +339,13 @@ Not affiliated with or endorsed by Yale University.`;
     expect(opts[0].eta.raw).toBe("in 3, 21 min");
     expect(opts[2].eta.raw).toBe("in 25, 31 min");
     expect(opts[4].eta.raw).toBe("in 36 min");
+  });
+
+  it('keeps the two-line tappable arrival attached to its route card', () => {
+    const text = LIVE_NO_GLYPH.replace('in 25, 31 min', 'About 25 min ⓘ\nLikely 20–34 min');
+    const opts = parseOptions(text);
+    expect(opts.map(o => o.routeLabel)).toEqual(['Blue Day', 'Orange Day', 'Red', 'Walk', 'Brown']);
+    expect(opts[2].eta).toMatchObject({ first: [1200, 2040], median: [1500, 1560], raw: 'About 25 min ⓘ\nLikely 20–34 min' });
   });
 
   it("does not mistake the ride bar for the countdown", () => {
