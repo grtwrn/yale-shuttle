@@ -13,6 +13,7 @@ import {
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
+import type { JourneyArrival } from './journeyArrival';
 
 export type TripOption = {
   mode: "shuttle" | "walk";
@@ -57,6 +58,8 @@ export type TripOption = {
   busLowSec?: number;
   busHighSec?: number;
   computedAtMs?: number;
+  /** Destination arrival for the catchable bus, including the final walk. */
+  journeyArrival?: JourneyArrival;
 };
 
 /** Don't keep looping past a boarding point. */
@@ -474,6 +477,7 @@ export function planTrip(
           directWalkSec,
           busEtaSec,
           busDepartNowSec,
+          busLowSec, busHighSec,
           computedAtMs: busEtaSec !== undefined ? now : undefined,
         });
       }
