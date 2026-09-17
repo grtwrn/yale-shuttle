@@ -2,6 +2,7 @@ import type { UpcomingArrival } from './arrivals';
 
 export interface JourneyArrival {
   busName: string;
+  distributionMs?: number[] | undefined;
   pointMs: number;
   lowMs: number;
   highMs: number;
@@ -32,6 +33,7 @@ export function journeyArrival(
     || destination.eta < Math.max(board.eta, walkToSec) || destination.low < 0 || destination.high < destination.low) return undefined;
   return {
     busName: board.busName,
+    ...(destination.distribution ? { distributionMs: destination.distribution.map(s => now + (s + walkFromSec) * 1000) } : {}),
     pointMs: now + (destination.eta + walkFromSec) * 1000,
     lowMs: now + (destination.low + walkFromSec) * 1000,
     highMs: now + (Math.max(destination.eta, destination.high) + walkFromSec) * 1000,

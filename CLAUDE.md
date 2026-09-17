@@ -12,6 +12,14 @@ Live web app at **https://yale-shuttle.fly.dev** showing Yale Downtowner shuttle
 
 ⚠️ **To change the live site, edit `services/shuttle-v2/web/src/TransitMap.tsx` — NOT `services/shuttle-map/app/src/TransitMap.tsx`.** The latter is archived v1; edits there compile and lint fine but change nothing in production. (This has bitten before — a feature was prototyped in the v1 file while the real one already shipped in v2.)
 
+Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
+50-quantile `server_eta.distributions` rows; `ArrivalDetails.tsx` shows pickup
+and following-shuttle timing, and `ArriveBy.tsx` overlays class/walking targets
+on destination arrivals. `ArrivalHistory.tsx` fetches the bounded public
+`/api/arrival-history` endpoint only when expanded. Filled forecast dots and
+hollow dated observations are distinct; no validated on-time percentage is
+claimed. See `docs/server-side-eta.md` for matching and transport semantics.
+
 ## Architecture (v2 — `services/shuttle-v2/`)
 
 One Node process (`src/index.ts`, run via tsx) does everything:

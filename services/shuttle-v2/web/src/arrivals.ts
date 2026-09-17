@@ -161,6 +161,7 @@ export function shownStandSec(
 }
 
 export type UpcomingArrival = {
+  distribution?: number[] | undefined;
   eta: number; low: number; high: number;
   /**
    * The DRIVE FLOOR (eta/arrival.ts `departNow`): this same arrival with the
@@ -233,6 +234,7 @@ export function computeUpcomingArrivals(
    * what the existing tests assert.
    */
   anchorStore?: AnchorStore,
+  includeDistribution = false,
 ): UpcomingArrival[] {
   const result: UpcomingArrival[] = [];
   const targetSet = new Set(targetStopIds);
@@ -268,10 +270,11 @@ export function computeUpcomingArrivals(
     for (const bus of routeBuses) {
       const rows = arrivalsForBus(
         anchorStore, anchorKeyFor(cfg.label, bus.bus_name), bus, ring, stops, stopCoords,
-        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes,
+        routeSegs, routeDwells, targetSet, now, undefined, dwellTimes, includeDistribution,
       );
       for (const row of rows) {
         result.push({
+          ...(row.distribution ? { distribution: row.distribution } : {}),
           eta: row.eta, low: row.low, high: row.high, departNow: row.departNow, lowFloor: row.lowFloor,
           routeLabel: cfg.label, color: cfg.color,
           busName: bus.bus_name.replace("#", ""),

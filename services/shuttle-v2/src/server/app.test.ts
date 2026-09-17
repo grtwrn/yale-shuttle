@@ -2079,3 +2079,15 @@ describe("a replayed challenger in the scorecard (stage 4)", () => {
     expect((await post({ day: "2026-09-05", name: "x", rows: [] }, {})).status).toBe(401);
   });
 });
+
+describe('public arrival history', () => {
+  it('returns only bounded fleet evidence and validates its query', async () => {
+    const res = await app.request('/api/arrival-history?route=Red&stop=48&eta=300');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toMatchObject({ days: 30, trips: [], recent: [] });
+    for (const query of ['', '?route=Red&stop=nope&eta=300', '?route=Red&stop=48&eta=-1', '?route=fake&stop=48&eta=300']) {
+      expect((await app.request('/api/arrival-history' + query)).status).toBe(400);
+    }
+  });
+});

@@ -13,6 +13,10 @@ await fs.mkdir(out, { recursive: true });
 const base = process.env.ARRIVE_BY_URL ?? 'https://arrive-by.test';
 const local = !process.env.ARRIVE_BY_URL;
 let feed, sample;
+const historyQueries = [];
+const historyFixture = process.env.ARRIVE_BY_HISTORY_FILE
+  ? JSON.parse(await fs.readFile(process.env.ARRIVE_BY_HISTORY_FILE, 'utf8')).historyProbe : [];
+
 if (local) {
   feed = JSON.parse(await fs.readFile(process.env.ARRIVE_BY_FEED, 'utf8'));
   sample = JSON.parse((await fs.readFile(process.env.ARRIVE_BY_WATCHER, 'utf8')).trim().split('\n').at(-1));
@@ -40,6 +44,13 @@ try {
       if (u.hostname === 'yale.downtownerapp.com') return route.fulfill({ contentType: 'text/html', body: '<body>Official tracker</body>' });
       if (u.hostname !== 'arrive-by.test') return route.abort();
       if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
+      if (u.pathname === '/api/arrival-history') {
+        const routeName = u.searchParams.get('route'), stop = Number(u.searchParams.get('stop')), eta = Number(u.searchParams.get('eta'));
+        historyQueries.push({ route: routeName, stop, eta });
+        const match = historyFixture.find(x => x.route === routeName && x.stop === stop && Math.abs(x.eta - eta) <= 60);
+        return route.fulfill({ json: match?.result ?? { asOf: Date.parse(sample.at), days: 30,
+          forecastLowSec: Math.max(0, eta - 60), forecastHighSec: eta + 60, trips: [], recent: [] } });
+      }
       if (u.pathname === '/api/weather') return route.fulfill({ status: 204 });
       if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { reports: [] } });
       const file = u.pathname === '/' ? '/index.html' : u.pathname;
@@ -67,7 +78,7 @@ try {
   await page.waitForTimeout(300);
   assert.match(await panel.innerText(), /10 min before class/);
   assert.match(await panel.innerText(), /Walk/);
-  assert.match(await panel.innerText(), /Red|Blue|Orange/);
+  assert.match(await panel.innerText(), /Red|Blue|Orange|Green|Purple|Brown|Pink|Gold/);
   result.comparison = await panel.innerText();
   await panel.scrollIntoViewIfNeeded();
   await page.screenshot({ path: out + '/class-arrival-390.png' });
@@ -75,19 +86,57 @@ try {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '320px viewport overflow');
   await page.screenshot({ path: out + '/class-arrival-320.png' });
   result.checks.push('390px and 320px layouts', 'buffer changes destination target');
+  if (local) assert.equal(historyQueries.length, 0, 'closed disclosures must not fetch history');
+  await panel.getByText('See possible arrival times ▾', { exact: true }).click();
+  const destinationPlot = panel.getByRole('img', { name: /^Arrival at / });
+  await destinationPlot.waitFor();
+  assert.equal(await destinationPlot.locator('circle').count(), 50);
+  assert.match(await panel.innerText(), /Class starts|Your target/);
+  await destinationPlot.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: out + '/destination-distribution-320.png' });
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'distribution overflows 320px');
+  result.checks.push('destination distribution has 50 server outcomes, deadline and walking markers');
+
   // A refresh keeps the class selection, and opening details keeps existing controls usable.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await panel.waitFor();
   assert.equal(await panel.getByLabel('Class starts · local time').inputValue(), datetime);
   assert.equal(await panel.getByLabel('Time to get inside').inputValue(), '10');
-  await page.getByRole('button', { name: 'View Red trip details', exact: true }).focus();
+  const trip = page.getByRole('button', { name: /^View (?!Walk ).+ trip details$/ }).first();
+  const routeLabel = (await trip.getAttribute('aria-label')).replace(/^View /, '').replace(/ trip details$/, '');
+  result.route = routeLabel;
+  await trip.focus();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /All routes/ }).waitFor();
-  const eta = page.getByRole('button', { name: /^Red arrival details:/ });
+  const eta = page.getByRole('button', { name: new RegExp('^' + routeLabel + ' arrival details:') });
   await eta.click();
   const dialog = page.getByRole('dialog');
   await dialog.waitFor();
-  assert.match(await dialog.innerText(), /Next arrival/);
+  assert.match(await dialog.innerText(), /Following shuttle|Next pass|Next arrival/);
+  assert.doesNotMatch(await dialog.innerText(), /Estimated gap|8 in 10/);
+  const pickupPlot = dialog.getByRole('img', { name: /^Possible pickup times/ });
+  await pickupPlot.waitFor();
+  assert.equal(await pickupPlot.locator('circle').count(), 50);
+  await dialog.getByRole('region', { name: 'Recorded arrival history' }).waitFor();
+  await page.waitForTimeout(400);
+  result.pickupDetails = await dialog.innerText();
+  result.historyQueries = historyQueries;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: out + '/pickup-distribution-390.png' });
+  const historyPlot = dialog.getByRole('img', { name: /^Recorded time until arrival/ });
+  if (await historyPlot.count()) {
+    assert((await historyPlot.locator('circle').count()) > 0);
+    assert.equal(await historyPlot.locator('circle:not([fill="#fff"])').count(), 0);
+    await historyPlot.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: out + '/recorded-arrivals-390.png' });
+    await dialog.getByText('Dates and recorded waits ▾', { exact: true }).click();
+    assert((await dialog.locator('tbody tr').count()) > 0);
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'recorded table overflow');
+    result.checks.push('hollow historical dots display dated observed trips');
+  }
+  if (local && historyFixture.length) assert(await historyPlot.count(), 'real recorded fixture must produce historical dots');
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'pickup distribution viewport overflow');
+  result.checks.push('pickup distribution and following-shuttle wording');
   await page.keyboard.press('Escape');
   assert(await eta.evaluate(e => e === document.activeElement));
   await page.getByRole('button', { name: /All routes/ }).click();

@@ -56,6 +56,7 @@ export type TripOption = {
    * the row's range must be the band of the very row its point came from.
    * etaBand.ts decides whether it is wide enough to print.
    */
+  busDistribution?: number[] | undefined;
   busLowSec?: number;
   busHighSec?: number;
   computedAtMs?: number;
@@ -415,6 +416,7 @@ export function planTrip(
         // exists yet to time against.
         let waitSec: number; let busName: string;
         let busEtaSec: number | undefined;
+        let busDistribution: number[] | undefined;
         let busDepartNowSec: number | undefined;
         let busLowSec: number | undefined;
         let busHighSec: number | undefined;
@@ -451,6 +453,7 @@ export function planTrip(
             const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
             waitSec = Math.max(0, next.eta - walkToSec);
             busEtaSec = next.eta;
+            busDistribution = next.distribution;
             busDepartNowSec = next.departNow;
             busLowSec = next.low; busHighSec = next.high;
             busName = next.busName;
@@ -479,6 +482,7 @@ export function planTrip(
           totalSec, busName,
           directWalkSec,
           busEtaSec,
+          ...(busDistribution ? { busDistribution } : {}),
           busDepartNowSec,
           busLowSec, busHighSec,
           computedAtMs: busEtaSec !== undefined ? now : undefined,

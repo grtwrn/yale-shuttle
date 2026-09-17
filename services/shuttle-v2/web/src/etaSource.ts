@@ -14,6 +14,8 @@ export interface ServerEtaWire {
   servedAt: number;
   buses: ServerEtaBus[];
   rows: ServerEtaRow[];
+  /** Optional row-aligned 50-point quantile distributions; old readers ignore it. */
+  distributions?: number[][];
 }
 interface Snapshot { at: number; rows: UpcomingArrival[]; valid: boolean }
 interface Track { snapshot: Snapshot; index: number; standing: StandingAnswer | null }
@@ -51,7 +53,7 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
     busIndex.set(i, { name: norm(b[0]), label: b[1], colour: colours.get(b[1])! });
     for (const bus of live) tracks.get(bus)!.set(b[1], { snapshot, index: b[2], standing: rest });
   }
-  for (const row of w.rows) {
+  for (const [ri, row] of w.rows.entries()) {
     if (!Array.isArray(row) || row.length !== 9 || !row.every(finite)
       || !Number.isInteger(row[0]) || row[0] < 0 || row[0] >= w.buses.length
       || !Number.isInteger(row[1]) || !Number.isInteger(row[5]) || row[5] < 0
@@ -59,7 +61,10 @@ export function attachServerEta(buses: BusData[], raw: unknown, receivedAt = Dat
       || row[7] < 0) return false;
     const b = busIndex.get(row[0]);
     if (!b) continue;
-    snapshot.rows.push({ busName: b.name, routeLabel: b.label, color: b.colour, stopId: row[1],
+    const dots = w.distributions?.length === w.rows.length ? w.distributions[ri] : undefined;
+    const distribution = Array.isArray(dots) && dots.length === 50
+      && dots.every((v, i) => finite(v) && v >= 0 && (i === 0 || v >= dots[i - 1]!)) ? dots : undefined;
+    snapshot.rows.push({ ...(distribution ? { distribution } : {}), busName: b.name, routeLabel: b.label, color: b.colour, stopId: row[1],
       eta: row[2], low: row[3], high: row[4], stopsAhead: row[5], estimated: row[6] === 1,
       departNow: row[7], lowFloor: row[8] });
   }
@@ -76,6 +81,7 @@ export function serverArrivals(buses: readonly BusData[], targets: readonly numb
   const remaining = (n: number) => Math.max(0, n - elapsed);
   const ids = new Set(targets);
   return s.rows.filter(a => ids.has(a.stopId)).map(a => ({ ...a, eta: remaining(a.eta),
+    ...(a.distribution ? { distribution: a.distribution.map(remaining) } : {}),
     low: remaining(a.low), high: remaining(a.high), departNow: remaining(a.departNow), lowFloor: remaining(a.lowFloor) }));
 }
 

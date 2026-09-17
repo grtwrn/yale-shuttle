@@ -1,4 +1,6 @@
-import { useId, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
+import { ArrivalPlot } from './ArrivalPlot';
+import { ArrivalHistory } from './ArrivalHistory';
 import type { TripOption } from './planner';
 import { compareDeadline, type DeadlineOption } from './arriveBy';
 import { arrivalClock, deadlineError, localDateTime } from './journeyArrival';
@@ -70,13 +72,40 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
       <p style={{ fontSize: 13, lineHeight: 1.5, margin: '0 0 16px' }}>{explanation}</p>
       <p style={{ fontSize: 12, color: '#5f6368', marginBottom: 6 }}>Estimated arrival at destination</p>
       <div aria-label="Arrival at destination">{shuttle && renderRow(shuttle)}{walk && renderRow(walk)}</div>
+      {shuttle?.pointMs !== undefined && shuttle.option.journeyArrival?.distributionMs?.length && !comparison.stale && !comparison.future
+        ? <DestinationDistribution row={shuttle} classMs={classMs} targetMs={targetMs} walkMs={walk?.pointMs} destination={destination} /> : null}
       <details style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5, borderTop: '1px solid #e5e7eb', paddingTop: 6 }}>
         <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>How to read these times ▾</summary>
         <p>Shuttle windows include waiting, the ride and the final walk, assuming you catch the listed bus. They can run earlier or later. Walking uses an estimated pace; crossings and getting inside may take longer.</p>
         <p>Your buffer is separate from the arrival window. These are estimates, not an on-time probability.</p>
         {lastBusUpdateAt !== null && <p>Bus feed last received {arrivalClock(lastBusUpdateAt)}{comparison.stale ? ' · updates interrupted' : ''}.</p>}
-        <p>Tap a trip, then its pickup estimate, for stops away, the next shuttle and the estimated gap.</p>
+        <p>Tap a trip, then its pickup estimate, for stops away, possible pickup times, past trips and how much later the following shuttle is expected.</p>
       </details>
     </>}
   </section>;
+}
+
+
+function DestinationDistribution({ row, classMs, targetMs, walkMs, destination }: {
+  row: DeadlineOption; classMs: number; targetMs: number; walkMs?: number; destination: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const arrival = row.option.journeyArrival!;
+  return <details onToggle={e => setOpen(e.currentTarget.open)} style={{ borderTop: '1px solid #e5e7eb', fontSize: 13 }}>
+    <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>See possible arrival times ▾</summary>
+    {open && <>
+      <ArrivalPlot values={arrival.distributionMs!} title={`Arrival at ${destination}`}
+        markers={[
+          ...(targetMs !== classMs ? [{ value: targetMs, label: 'Your target', color: '#25613c', dashed: true }] : []),
+          { value: classMs, label: 'Class starts', color: '#a52a2a' },
+          ...(walkMs !== undefined ? [{ value: walkMs, label: 'Walk estimate', color: '#56616e', dashed: true }] : []),
+        ]}
+        description="Filled dots show modeled shuttle arrival times, including the final walk and assuming you catch this bus. Dots after a deadline indicate possible late arrivals, not a validated chance of being late." />
+      {row.caution && <p style={{ color: '#795000', lineHeight: 1.5 }}>{row.caution}</p>}
+      <p style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5 }}>Walking is a single estimate, not a guarantee. Crossings and your pace can change it.</p>
+      <ArrivalHistory route={row.option.routeLabel} stopId={row.option.alightStopId}
+        etaSec={Math.max(0, (arrival.pointMs - Date.now()) / 1000 - row.option.walkFromSec)} />
+      <p style={{ fontSize: 11, color: '#5f6368' }}>Recorded waits above end at the drop-off stop, before your final walk.</p>
+    </>}
+  </details>;
 }
