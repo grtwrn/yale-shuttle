@@ -34,6 +34,23 @@ describe('reports 113/114: point and range keep separate roles', () => {
 });
 
 describe('bus wait label', () => {
+  it.each([270, 340, 380])('avoids controls and arrival labels in a %ipx phone map', width => {
+    const rect = { left: width - 146, right: width - 43, top: 39, bottom: 73 };
+    const blockers = [
+      { left: 10, right: 44, top: 10, bottom: 84 },
+      { left: width - 52, right: width - 8, top: 8, bottom: 52 },
+      { left: width - 136, right: width - 26, top: 78, bottom: 102 },
+    ];
+    const shift = placeWaitLabel(rect, { left: 0, top: 0, right: width, bottom: 320 }, blockers);
+    const placed = { left: rect.left + shift.x, right: rect.right + shift.x,
+      top: rect.top + shift.y, bottom: rect.bottom + shift.y };
+    expect(placed.left).toBeGreaterThanOrEqual(6);
+    expect(placed.right).toBeLessThanOrEqual(width - 6);
+    expect(placed.top).toBeGreaterThanOrEqual(6);
+    expect(placed.bottom).toBeLessThanOrEqual(314);
+    for (const b of blockers) expect(placed.right + 6 <= b.left || placed.left >= b.right + 6
+      || placed.bottom + 6 <= b.top || placed.top >= b.bottom + 6).toBe(true);
+  });
   it('moves a wait label clear of the pickup window and zoom control while keeping it above the bus', () => {
     const rect = { left: 85, right: 188, top: 42, bottom: 78 };
     const blockers = [{ left: 118, right: 222, top: 8, bottom: 80 }, { left: 8, right: 42, top: 7, bottom: 78 }];

@@ -342,7 +342,10 @@ export function buildApp(opts: AppOptions): Hono {
     // rider exists. `seen` is a Set hit after the first sighting of the day.
     actives.seen(c.req.header("x-anon-id"), "poll", now());
     c.header("Content-Type", "application/json");
-    c.header("Cache-Control", "public, max-age=3, stale-while-revalidate=6");
+    // Snapshot age is anchored to receipt in the browser. Re-serving an old
+    // HTTP response rewinds waiting clocks and extends stale forecast life.
+    // busesJson already memoizes the expensive payload on the server.
+    c.header("Cache-Control", "no-store");
     return c.body(busesJson());
   });
 
