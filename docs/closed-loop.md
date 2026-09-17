@@ -4,8 +4,14 @@
 data … build the closed loop." And, the same day: "can the nightly learning be
 increased to hourly?"
 
-**Status:** all four stages are built. This document says what each one is,
-what it writes, and the rules the last two decide by.
+**Current status (2026-09-17): automatic parameter promotion is blocked pending
+independent validation provenance.** The live champion and ordinary live table
+refreshes continue. Re-estimation can produce diagnostics, but legacy replay
+pairs lack bus/target-visit identity, outcome-availability timestamps, and a
+verified pre-test champion vintage. They cannot certify calibrated intervals.
+The current chronological blocks, cache rules and release gate are described in
+[calibration-validation.md](calibration-validation.md). The older stages below
+record the original implementation; its pooled promotion rule is superseded.
 
 ## The four stages
 

@@ -45,27 +45,58 @@ fit a normal curve through the displayed low/point/high. The point and bounds
 are unchanged. Missing or malformed optional samples suppress only the graph.
 Samples age and expire with their corresponding live arrival rows.
 
-The pickup dialog uses filled quantile dots on a clock axis. The class-arrival
-disclosure uses the selected bus's forward drop-off distribution plus its final
-walk, with target, class and walking markers. It does not add marginal pickup
-and ride quantiles. The following-shuttle label states how many minutes later
-the next arrival is expected. Dot fractions are not advertised as validated
-on-time probabilities.
+The pickup dialog leads with observed source-to-target journeys. Filled model
+quantile dots on a clock axis sit in a separate, initially collapsed "Forecast
+for this shuttle" section. The class-arrival disclosure uses the selected
+bus's forward drop-off distribution plus its final walk, with target, class and
+walking markers. It does not add marginal pickup and ride quantiles. Class
+recommendations state that the shuttle *may* fit the buffer and keep the catch
+assumption beside that conclusion. Dot fractions are not validated on-time
+probabilities.
 
-Opening either disclosure requests `/api/arrival-history?route=Red&stop=48&eta=360`.
-The bounded, rate-limited, 60-second-cached reader uses existing `stop_visits`
-and `predictions_log` indexes. It considers at most 240 recent GPS-confirmed
-stopped visits in 30 days and returns at most 24 independent visit matches:
-same line/stop, comparable forecast duration, weekday/weekend category and
-nearby local time of day. Predictions must precede that arrival, follow the
-previous visit, and come from the trip/ride/card surfaces (never upstream).
-The response also includes the three latest recorded arrivals. No rider fields
-are selected. Sparse/failed history is displayed explicitly and does not block
-live estimates; closed disclosures do not fetch or poll history.
+Opening either disclosure requests
+`/api/journey-history?route=Red&bus=308&stop=48&eta=360`. The bus/ETA identify the
+selected forward occurrence in the existing warm server snapshot; requests do
+not advance tracking. Stale snapshots, ambiguous repeated sources, later laps,
+and contradictory/approach rest states have no comparable starting point.
 
-Hollow dots show actual waits, with dates, forecasts and waits available in a
-table. They remain separate from predictive dots and use a duration axis;
-destination history ends at the drop-off stop before the final walk.
+The reader uses `stop_visits` and `legs`, without old predictions or rider
+reports. It examines at most 240 recent source visits in 30 days and returns
+at most 24 independent completed paths (one dot per target visit, not one per
+poll). Paths connect exact departure/arrival timestamps through intermediate
+visits, preserve route occurrence indices, and reject gaps, missing legs,
+wrong-direction hops and weak target arrivals. Both endpoints must have a
+recorded stop; pass-through endpoint visits are excluded and disclosed. Departure timestamps use the
+existing time-leading leg index. Similar weekday/weekend and local time within
+two hours constrain comparisons. "Independent" here means distinct visits;
+trips on the same day or bus can still be statistically dependent.
+
+For a stopped bus, the historical reference instant is `pinned_at + elapsed`,
+including only visits still stopped then. Live elapsed time comes from the
+collector's `at_stop_since` (the same pinned clock), rounded down to five
+seconds. It is used only when the warm estimator agrees with the pinned stop
+and the latest movement was at least ten seconds ago. The graph includes the
+remaining stop wait and the connected journey to the target. It does not
+replace the estimator's potentially earlier approach-rest clock.
+
+For a moving bus, the graph explicitly shows complete times measured from
+departure at the starting stop, as context. No duration is prorated into a fake
+observed remaining time. The live ETA handles present progress. Historical
+matching at exact GPS positions remains a later extension requiring sufficient
+recorded trajectories and direction/occurrence checks.
+
+Hollow dots retain their actual horizontal values and show recorded durations,
+with dated timing anchors in a table, a sample/date count, an observed median
+when at least five trips exist, and the last three recorded arrivals. The
+min/max is not presented as a prediction interval. Destination history ends at
+the drop-off stop before the final walk.
+
+Each opening or explicit refresh obtains a labeled snapshot, with no hidden
+polling. The reader has a bounded 60-second cache keyed by route occurrences,
+mode and elapsed-wait bucket; the public endpoint is rate limited and marked
+`no-store`. Sparse/failed history does not block live estimates. The old
+`/api/arrival-history` similar-ETA diagnostic remains for cached older clients;
+the new UI no longer uses it.
 
 ## Restart recovery
 

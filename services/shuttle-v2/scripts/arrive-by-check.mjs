@@ -44,12 +44,12 @@ try {
       if (u.hostname === 'yale.downtownerapp.com') return route.fulfill({ contentType: 'text/html', body: '<body>Official tracker</body>' });
       if (u.hostname !== 'arrive-by.test') return route.abort();
       if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
-      if (u.pathname === '/api/arrival-history') {
+      if (u.pathname === '/api/journey-history') {
         const routeName = u.searchParams.get('route'), stop = Number(u.searchParams.get('stop')), eta = Number(u.searchParams.get('eta'));
         historyQueries.push({ route: routeName, stop, eta });
         const match = historyFixture.find(x => x.route === routeName && x.stop === stop && Math.abs(x.eta - eta) <= 60);
         return route.fulfill({ json: match?.result ?? { asOf: Date.parse(sample.at), days: 30,
-          forecastLowSec: Math.max(0, eta - 60), forecastHighSec: eta + 60, trips: [], recent: [] } });
+          journey: null, recent: [] } });
       }
       if (u.pathname === '/api/weather') return route.fulfill({ status: 204 });
       if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { reports: [] } });
@@ -88,7 +88,7 @@ try {
   result.checks.push('390px and 320px layouts', 'buffer changes destination target');
   if (local) assert.equal(historyQueries.length, 0, 'closed disclosures must not fetch history');
   await panel.getByText('See possible arrival times ▾', { exact: true }).click();
-  const destinationPlot = panel.getByRole('img', { name: /^Arrival at / });
+  const destinationPlot = panel.getByRole('img', { name: /^Model estimate: arrival at / });
   await destinationPlot.waitFor();
   assert.equal(await destinationPlot.locator('circle').count(), 50);
   const walkingTime = (await panel.getByText(/^About \d/).first().innerText()).replace(/^About /, '');
@@ -116,32 +116,58 @@ try {
   await dialog.waitFor();
   assert.match(await dialog.innerText(), /Following shuttle|Next pass|Next arrival/);
   assert.doesNotMatch(await dialog.innerText(), /Estimated gap|8 in 10/);
-  const pickupPlot = dialog.getByRole('img', { name: /^Possible pickup times/ });
-  await pickupPlot.waitFor();
-  assert.equal(await pickupPlot.locator('circle').count(), 50);
+  const pickupPlot = dialog.getByRole('img', { name: /^Model estimate for this shuttle/ });
+  assert.equal(await pickupPlot.count(), 0, 'modeled pickup dots start collapsed');
   await dialog.getByRole('region', { name: 'Recorded arrival history' }).waitFor();
   await page.waitForTimeout(400);
   result.pickupDetails = await dialog.innerText();
   result.historyQueries = historyQueries;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: out + '/pickup-distribution-390.png' });
-  const historyPlot = dialog.getByRole('img', { name: /^Recorded time until arrival/ });
+  const historyPlot = dialog.getByRole('img', { name: /^(Remaining wait \+ travel|Travel time after departure)/ });
   if (await historyPlot.count()) {
     assert((await historyPlot.locator('circle').count()) > 0);
     assert.equal(await historyPlot.locator('circle:not([fill="#fff"])').count(), 0);
     await historyPlot.scrollIntoViewIfNeeded();
     await page.screenshot({ path: out + '/recorded-arrivals-390.png' });
-    await dialog.getByText('Dates and recorded waits ▾', { exact: true }).click();
+    await dialog.getByText('Dates and recorded times ▾', { exact: true }).click();
     assert((await dialog.locator('tbody tr').count()) > 0);
+    await page.setViewportSize({ width: 320, height: 740 });
+    assert(await dialog.evaluate(e => e.scrollWidth <= e.clientWidth), 'recorded table overflows dialog at 320px');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'recorded table overflow');
+    await page.screenshot({ path: out + '/recorded-arrivals-320.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
     result.checks.push('hollow historical dots display dated observed trips');
   }
   if (local && historyFixture.length) assert(await historyPlot.count(), 'real recorded fixture must produce historical dots');
+  if (local && historyFixture.length) {
+    const actual = historyFixture.find(x => x.stop === historyQueries.at(-1).stop)?.result;
+    assert(actual?.journey?.trips.length, 'moving context uses completed recorded journeys');
+    const moving = structuredClone(actual);
+    moving.journey.mode = 'departure'; moving.journey.elapsedSec = null;
+    moving.journey.trips = moving.journey.trips.map(t => ({ ...t, startedAt: t.departedAt, actualSec: (t.arrivedAt - t.departedAt) / 1000 }));
+    const movingHandler = route => route.fulfill({ json: moving });
+    await page.route('**/api/journey-history?**', movingHandler);
+    await dialog.getByRole('button', { name: 'Refresh comparison' }).click();
+    await dialog.getByRole('img', { name: /^Travel time after departure/ }).waitFor();
+    assert.match(await dialog.innerText(), /full stop-to-stop times/);
+    assert.doesNotMatch(await dialog.innerText(), /Matched to buses still waiting/);
+    await page.screenshot({ path: out + '/departure-context-390.png' });
+    await page.unroute('**/api/journey-history?**', movingHandler);
+    await dialog.getByRole('button', { name: 'Refresh comparison' }).click();
+    await dialog.getByRole('img', { name: /^Remaining wait \+ travel/ }).waitFor();
+    result.checks.push('refresh switches timing anchors explicitly; moving history is measured from departure');
+  }
+  await dialog.getByText('Forecast for this shuttle ▾', { exact: true }).click();
+  await pickupPlot.waitFor();
+  assert.equal(await pickupPlot.locator('circle').count(), 50);
+  await pickupPlot.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: out + '/pickup-forecast-expanded-390.png' });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'pickup distribution viewport overflow');
-  result.checks.push('pickup distribution and following-shuttle wording');
+  result.checks.push('recorded waits are the primary pickup graph; current forecast expands separately', 'pickup distribution and following-shuttle wording');
   await page.keyboard.press('Escape');
   assert(await eta.evaluate(e => e === document.activeElement));
-  await page.route('**/api/arrival-history?**', route => route.fulfill({ status: 503, json: { error: 'test interruption' } }));
+  await page.route('**/api/journey-history?**', route => route.fulfill({ status: 503, json: { error: 'test interruption' } }));
   await eta.click();
   await dialog.getByText('Recorded trips are unavailable right now.').waitFor();
   assert.equal(await pickupPlot.locator('circle').count(), 50);
@@ -160,7 +186,7 @@ try {
   await page.route('**/api/buses', route => route.fulfill({ status: 503, json: { error: 'Test interrupted feed' } }));
   await page.waitForTimeout(6500);
   assert.match(await panel.innerText(), /No live window/);
-  assert.equal(await panel.getByRole('heading', { name: /^Take / }).count(), 0);
+  assert.equal(await panel.getByRole('heading', { name: /may fit your buffer/ }).count(), 0);
   result.checks.push('passed deadline rejected', 'empty time remains editable', 'failed feed suppresses shuttle recommendation');
   await panel.getByRole('button', { name: 'Clear', exact: true }).click();
   await page.getByRole('button', { name: /Arrive by…/ }).waitFor();

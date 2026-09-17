@@ -1,5 +1,8 @@
 /**
- * The estimators and the promotion rule behind scripts/reestimate-params.mjs
+ * The estimators and legacy diagnostic comparison used by reestimation.
+ * Publication now uses the chronological, fail-closed gates in
+ * reestimate-validation.mjs; the older promotionDecision is retained only
+ * for reproducibility of historical comparisons.
  * (docs/closed-loop.md, stages 3-4) — pure functions over rows, so
  * reestimate-lib.test.mjs can hand them fixtures with known answers.
  *
@@ -27,8 +30,9 @@
  *   CONFORMAL      per promised-minutes bucket, the factor w by which the
  *                  shown 10-90 band must be scaled about the number for the
  *                  detector's arrival to fall inside it 80% of the time —
- *                  split conformal: the ceil((n+1)·0.8)-th smallest of the
- *                  per-pair factors needed.
+ *                  the ceil((n+1)·0.8)-th smallest of per-pair factors needed.
+ *                  Correlated replay polls do not establish exchangeability
+ *                  or an independent 80% prediction guarantee.
  */
 
 import { conformalFactor } from '../web/src/eta/conformal.mjs';
@@ -283,7 +287,7 @@ export function widen(eta, low, high, w) {
 }
 
 /**
- * Split-conformal widening per bucket from scored pairs (truth = the
+ * Empirical interval widening per bucket from scored pairs (truth = the
  * detector's arrival, `det`): for each pair the factor its band needed to
  * cover the truth, then the ceil((n+1)·target)-th smallest. A pair whose
  * band has no width on the side the truth fell needs an infinite factor and
@@ -749,6 +753,8 @@ export const MIN_MEDIAN_BOUND_SEC = 3;
 export const MIN_COVERAGE_BOUND_PCT = 2;
 
 /**
+ * LEGACY DIAGNOSTIC ONLY: not the publication gate. It does not establish
+ * independent sampling, untouched chronology or adequate absolute coverage.
  * Champion against challenger on the same days. `days` is
  * [{day, champion: {medianAbsSec, intervalCoveragePct}, challenger: {...}}]
  * in date order; `heldOut` names the day the challenger's conformal table

@@ -57,6 +57,19 @@ function payloadFor(i: number): EtaPayloadView {
 const ALL_ROUTES = ROUTE_LISTS.map((c) => c.label);
 
 describe("the flag", () => {
+  it('reads the displayed history origin without advancing belief and expires missing buses', () => {
+    const engine = new ServerEta({ routes: ALL_ROUTES });
+    const t = CAP.frames[0]!.t, payload = payloadFor(0);
+    const wire = engine.contribute(payload, 1, t)!;
+    const row = wire.rows.find(r => r[5] > 0)!;
+    const bus = wire.buses[row[0]]!;
+    const steps = engine.stats().steps;
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t)).toMatchObject({ index: bus[2], stopsAhead: row[5] });
+    expect(engine.stats().steps).toBe(steps);
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t + 45_000)).toBeNull();
+    engine.contribute({ ...payload, buses: [] }, 1, t + 1000);
+    expect(engine.historyPosition(bus[1], bus[0], row[1], row[2], t + 1000)).toBeNull();
+  });
   it("runs by default and can explicitly withhold forecasts", () => {
     expect(serverEtaFromEnv({} as NodeJS.ProcessEnv)).toBeInstanceOf(ServerEta);
     expect(serverEtaFromEnv({ SHUTTLE_SERVER_ETA: "0" } as unknown as NodeJS.ProcessEnv)).toBeNull();

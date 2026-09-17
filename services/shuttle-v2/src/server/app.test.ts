@@ -2081,6 +2081,15 @@ describe("a replayed challenger in the scorecard (stage 4)", () => {
 });
 
 describe('public arrival history', () => {
+  it('keeps journey history usable without a live starting point and validates inputs', async () => {
+    const res = await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toMatchObject({ days: 30, journey: null, recent: [] });
+    for (const query of ['', '?route=Red&bus=308&stop=nope&eta=300', '?route=Red&bus=308&stop=48&eta=-1', '?route=fake&bus=308&stop=48&eta=300']) {
+      expect((await app.request('/api/journey-history' + query)).status).toBe(400);
+    }
+  });
   it('returns only bounded fleet evidence and validates its query', async () => {
     const res = await app.request('/api/arrival-history?route=Red&stop=48&eta=300');
     expect(res.status).toBe(200);
