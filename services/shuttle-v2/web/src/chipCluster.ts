@@ -29,6 +29,8 @@ export interface ChipBox {
   y: number;
   /** Estimated label width in pixels. */
   w: number;
+  /** Board chips can include a second line for their arrival window. */
+  lines?: number;
 }
 
 /** One rendered line per member, plus the tooltip's own padding. */
@@ -57,7 +59,7 @@ export function clusterChips(chips: readonly ChipBox[], maxPasses = 8): number[]
       x: idx.reduce((t, i) => t + chips[i].x, 0) / idx.length,
       y: idx.reduce((t, i) => t + chips[i].y, 0) / idx.length,
       w: Math.max(...idx.map((i) => chips[i].w)),
-      h: idx.length * CHIP_LINE_H + CHIP_PAD_Y,
+      h: idx.reduce((n, i) => n + (chips[i].lines ?? 1), 0) * CHIP_LINE_H + CHIP_PAD_Y,
     }));
     let merged = false;
     for (let a = 0; a < boxes.length; a++) {

@@ -43,7 +43,9 @@ try {
       const u = new URL(route.request().url());
       if (u.hostname === 'yale.downtownerapp.com') return route.fulfill({ contentType: 'text/html', body: '<body>Official tracker</body>' });
       if (u.hostname !== 'arrive-by.test') return route.abort();
-      if (u.pathname === '/api/buses') return route.fulfill({ json: feed });
+      if (u.pathname === '/api/buses') return route.fulfill({ json: { ...feed,
+        server_eta: { ...feed.server_eta, servedAt: await page.evaluate(() => Date.now()) },
+      } });
       if (u.pathname === '/api/journey-history') {
         const routeName = u.searchParams.get('route'), stop = Number(u.searchParams.get('stop')), eta = Number(u.searchParams.get('eta'));
         historyQueries.push({ route: routeName, stop, eta });
@@ -107,6 +109,37 @@ try {
   const trip = page.getByRole('button', { name: /^View (?!Walk ).+ trip details$/ }).first();
   const routeLabel = (await trip.getAttribute('aria-label')).replace(/^View /, '').replace(/ trip details$/, '');
   result.route = routeLabel;
+  const map = page.locator('.trip-map-wrap').first();
+  const pickupChip = map.locator('.eta-tip').filter({ hasText: new RegExp('\\(' + routeLabel[0] + '\\) About') });
+  await pickupChip.first().waitFor();
+  assert.match(await pickupChip.first().innerText(), /Likely .*min/);
+  result.checks.push('mini-map keeps the point estimate and arrival window in separate lines');
+  if (local) {
+    const waitLabel = map.locator('.bus-wait-label').first();
+    await waitLabel.waitFor();
+    assert.match(await waitLabel.innerText(), /Waiting(?: nearby)? \d+:\d{2}\nUsually ~\d+ min total/);
+    const before = await waitLabel.innerText();
+    await page.clock.runFor(2000);
+    const after = await waitLabel.innerText();
+    assert.notEqual(after.split('\n')[0], before.split('\n')[0], 'waiting clock advances');
+    assert.equal(after.split('\n')[1], before.split('\n')[1], 'typical total stays stable');
+    result.checks.push('mini-map waiting clock advances while typical total stays stable');
+  }
+  await map.scrollIntoViewIfNeeded();
+  const waitLabelsClear = () => map.evaluate(el => {
+    const waits = [...el.querySelectorAll('.eta-tip')].filter(t => t.querySelector('.bus-wait-label'));
+    const arrivals = [...el.querySelectorAll('.eta-tip')].filter(t => !t.querySelector('.bus-wait-label'));
+    return waits.every(w => arrivals.every(a => {
+      const x = w.getBoundingClientRect(), y = a.getBoundingClientRect();
+      return x.right <= y.left || x.left >= y.right || x.bottom <= y.top || x.top >= y.bottom;
+    }));
+  });
+  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window at 320px');
+  await page.screenshot({ path: out + '/mini-map-wait-320.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(150);
+  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window at 390px');
+  await page.screenshot({ path: out + '/mini-map-wait-390.png' });
   await trip.focus();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /All routes/ }).waitFor();
@@ -183,6 +216,12 @@ try {
   assert.match(await panel.getByRole('alert').innerText(), /Choose a class/);
   assert(await panel.getByLabel('Class starts · local time').isVisible(), 'editing must not close the panel');
   await panel.getByLabel('Class starts · local time').fill(datetime);
+  if (local) {
+    feed.server_eta.buses = feed.server_eta.buses.map(b => [b[0], b[1], b[2], null]);
+    await page.clock.runFor(5500);
+    await page.waitForFunction(() => document.querySelectorAll('.bus-wait-label').length === 0);
+    result.checks.push('waiting labels disappear on the next moving-bus update');
+  }
   await page.route('**/api/buses', route => route.fulfill({ status: 503, json: { error: 'Test interrupted feed' } }));
   await page.waitForTimeout(6500);
   assert.match(await panel.innerText(), /No live window/);
