@@ -28,10 +28,10 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
   const comparison = compareDeadline(options, classMs, bufferMin, now, lastBusUpdateAt, busUpdateFailed, departureMs);
   const { recommendation, shuttle, walk } = comparison;
   const heading = recommendation?.option.mode === 'walk' ? (departureMs ? 'Walking fits your buffer' : 'Walk now')
-    : recommendation ? `Take ${recommendation.option.routeLabel}` : 'Your arrival is at risk';
+    : recommendation ? `${recommendation.option.routeLabel} may fit your buffer` : 'Your arrival is at risk';
   const explanation = recommendation?.option.mode === 'walk'
     ? 'The walking estimate gets you there before your target. It avoids the shuttle wait.'
-    : recommendation ? `Head to ${stopNames[recommendation.option.boardStopId] ?? 'your pickup stop'}. The shuttle window fits before your target.`
+    : recommendation ? `The estimated window fits your target if you catch the bus at ${stopNames[recommendation.option.boardStopId] ?? 'your pickup stop'}. Check the pickup and walking times.`
     : 'No available option fits your buffer with enough information. Check the times below.';
   const renderRow = (r: DeadlineOption) => {
     const walking = r.option.mode === 'walk';
@@ -94,7 +94,7 @@ function DestinationDistribution({ row, classMs, targetMs, walkMs, destination }
   return <details onToggle={e => setOpen(e.currentTarget.open)} style={{ borderTop: '1px solid #e5e7eb', fontSize: 13 }}>
     <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>See possible arrival times ▾</summary>
     {open && <>
-      <ArrivalPlot values={arrival.distributionMs!} title={`Arrival at ${destination}`}
+      <ArrivalPlot values={arrival.distributionMs!} title={`Model estimate: arrival at ${destination}`}
         markers={[
           ...(targetMs !== classMs ? [{ value: targetMs, label: 'Your target', color: '#25613c', dashed: true }] : []),
           { value: classMs, label: 'Class starts', color: '#a52a2a' },
@@ -104,6 +104,7 @@ function DestinationDistribution({ row, classMs, targetMs, walkMs, destination }
       {row.caution && <p style={{ color: '#795000', lineHeight: 1.5 }}>{row.caution}</p>}
       <p style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5 }}>Walking is a single estimate, not a guarantee. Crossings and your pace can change it.</p>
       <ArrivalHistory route={row.option.routeLabel} stopId={row.option.alightStopId}
+        busName={arrival.busName}
         etaSec={Math.max(0, (arrival.pointMs - Date.now()) / 1000 - row.option.walkFromSec)} />
       <p style={{ fontSize: 11, color: '#5f6368' }}>Recorded waits above end at the drop-off stop, before your final walk.</p>
     </>}

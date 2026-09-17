@@ -99,6 +99,8 @@ export class ServerEta {
   private checkpoint: EtaCheckpointStore | undefined;
   private lastSavedAt = -Infinity;
   private readonly observed = new Map<string, BusData>();
+  private routeStops: Record<string, number[]> = {};
+  private currentBuses: readonly BusData[] = [];
 
   constructor(opts: { routes: readonly string[]; log?: Log }) {
     this.served = new Set(opts.routes);
@@ -145,6 +147,7 @@ export class ServerEta {
    * filtered to buses still in the payload — see constraint 2 in the header.
    */
   contribute(payload: EtaPayloadView, version: number, now: number): ServerEtaWire | null {
+    this.currentBuses = payload.buses;
     try {
       if (version !== this.lastVersion) {
         this.lastVersion = version;
@@ -182,8 +185,29 @@ export class ServerEta {
     return [...this.served];
   }
 
+  /** Read the same source occurrence as the displayed ETA, without stepping
+   * the estimator. Used only to anchor historical fleet comparisons. */
+  historyPosition(label: string, busName: string, stopId: number, etaSec: number, now: number) {
+    const wire = this.filterToLive(this.wire, this.currentBuses, now);
+    if (!wire || now < wire.at || now - wire.at >= ETA_MAX_AGE_MS) return null;
+    const name = busName.replace(/^#/, '');
+    const bi = wire.buses.findIndex(b => b[0] === name && b[1] === label);
+    const tracked = wire.buses[bi];
+    const cfg = ROUTE_LISTS.find(c => c.label === label);
+    if (!tracked || !cfg || tracked[2] < 0) return null;
+    const bus = [...this.observed.values()].find(b => b.bus_name.replace(/^#/, '') === name && cfg.busRouteIds.includes(b.route_id));
+    if (!bus || (bus.observed_at !== undefined && now - bus.observed_at >= ETA_MAX_AGE_MS)) return null;
+    const rows = wire.rows.filter(r => r[0] === bi && r[1] === stopId);
+    const elapsed = (now - wire.at) / 1000;
+    rows.sort((a, b) => Math.abs(Math.max(0, a[2] - elapsed) - etaSec) - Math.abs(Math.max(0, b[2] - elapsed) - etaSec));
+    const row = rows[0];
+    if (!row || Math.abs(Math.max(0, row[2] - elapsed) - etaSec) > 90) return null;
+    return { bus, sequence: mergedRouteStops(cfg, this.routeStops), index: tracked[2], standing: tracked[3], stopsAhead: row[5] };
+  }
+
   private recompute(payload: EtaPayloadView, now: number): ServerEtaWire | null {
     const t0 = Date.now();
+    this.routeStops = payload.routes;
     // The published polylines are a module-level registration on the client
     // (the shell calls this once per poll before anything reads a bus); the
     // server has one process and does the same, before anything is priced.

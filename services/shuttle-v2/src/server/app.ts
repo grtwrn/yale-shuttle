@@ -46,6 +46,7 @@ import {
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
 import { createArrivalHistory } from './arrivalHistory.js';
+import { createJourneyHistory } from './journeyHistory.js';
 import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -306,6 +307,21 @@ export function buildApp(opts: AppOptions): Hono {
   }
 
   const arrivalHistory = createArrivalHistory(opts.bundle.sqlite);
+  const journeyHistory = createJourneyHistory(opts.bundle.sqlite);
+  app.get('/api/journey-history', c => {
+    c.header('Cache-Control', 'no-store');
+    const at = now();
+    if (!rateLimitAllow(`journey-history:${clientIp(c) ?? 'anon'}`, at, { perMinute: 120, perDay: 20_000 })) {
+      return c.json({ error: 'rate_limited' }, 429);
+    }
+    const label = c.req.query('route') ?? '', bus = c.req.query('bus') ?? '';
+    const stop = c.req.query('stop') ?? '', eta = c.req.query('eta') ?? '';
+    if (!label || label.length > 40 || !bus || bus.length > 24 || !stop || !eta
+      || !Number.isFinite(Number(eta)) || Number(eta) < 0 || Number(eta) > 14_400) return c.json({ error: 'invalid_query' }, 400);
+    const position = serverEta?.historyPosition(label, bus, Number(stop), Number(eta), at) ?? null;
+    const result = journeyHistory(label, Number(stop), position, opts.collector.ref.get(), at);
+    return result ? c.json(result) : c.json({ error: 'invalid_query' }, 400);
+  });
   app.get('/api/arrival-history', c => {
     c.header('Cache-Control', 'no-store');
     if (!rateLimitAllow(`arrival-history:${clientIp(c) ?? 'anon'}`, now(), { perMinute: 120, perDay: 20_000 })) {

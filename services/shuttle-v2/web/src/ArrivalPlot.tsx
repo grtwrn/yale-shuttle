@@ -37,7 +37,7 @@ export function ArrivalPlot({ values, title, description, markers = [], clock = 
       <title id={`${id}-title`}>{title}</title><desc id={`${id}-description`}>{description}</desc>
       {markers.map(m => <line key={m.label} x1={layout.x(m.value)} x2={layout.x(m.value)} y1={5} y2={layout.baseline + 4}
         stroke={m.color} strokeWidth={2} strokeDasharray={m.dashed ? '4 3' : undefined} />)}
-      {layout.dots.map((d, i) => <circle key={i} cx={d.x} cy={layout.baseline - 5 - d.stack * 7} r={2.8}
+      {layout.dots.map((d, i) => <circle key={i} cx={observed ? layout.x(d.value) : d.x} cy={layout.baseline - 5 - d.stack * 7} r={2.8}
         fill={observed ? '#fff' : '#3567a8'} stroke={observed ? '#6a4b86' : '#3567a8'} strokeWidth={observed ? 1.5 : 0.5}>
         <title>{labels?.[i] ?? format(d.value)}</title>
       </circle>)}

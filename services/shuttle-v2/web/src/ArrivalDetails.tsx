@@ -60,18 +60,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
       <p style={{ margin: '18px 0 4px', fontSize: 28, fontWeight: 650 }}>{point}</p>
       {band && !atPickup ? <>
         <p style={{ margin: 0, color: '#4b5563' }}>Likely arrival window: <strong>{band.text}</strong></p>
-        {dots?.length ? <ArrivalPlot values={dots} title="Possible pickup times"
-          markers={[{ value: now + etaSec * 1000, label: 'Estimate', color: '#174ea6' }]}
-          description="Filled dots show possible arrivals in the forecast. A taller stack means more modeled outcomes around that time; these are not past buses." /> : <>
-        <div role="img" aria-label={`Likely arrival window ${band.text}; estimate ${fmtMin(etaSec)}`} style={{ margin: '30px 6px 22px' }}>
-          <div style={{ height: 8, position: 'relative', background: '#e5e7eb', borderRadius: 5 }}>
-            <span style={{ position: 'absolute', left: position(band.lowSec), right: position(extent - band.highSec), height: 8, borderRadius: 5, background: '#a8c7fa' }} />
-            <span style={{ position: 'absolute', left: position(etaSec), top: -5, height: 18, width: 4, borderRadius: 2, background: '#174ea6', transform: 'translateX(-50%)' }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#5f6368', marginTop: 8 }}><span>Now</span><span>{Math.ceil(extent / 60)} min</span></div>
-        </div>
-        </>}
-        <p style={{ fontSize: 13, lineHeight: 1.5, color: '#5f6368' }}>This is an estimated window, not a guaranteed cutoff. Use the early end when deciding when to reach your stop.</p>
+        <p style={{ fontSize: 13, lineHeight: 1.5, color: '#5f6368' }}>Use the early end of the estimated window when deciding when to reach your stop.</p>
       </> : !atPickup ? <p style={{ color: '#5f6368', fontSize: 13 }}>An arrival window is not available yet.</p> : null}
       {holdingAt && !atPickup && <p style={{ padding: 12, borderRadius: 10, background: '#fff8e1', fontSize: 13, lineHeight: 1.5 }}>Waiting at {holdingAt}. The window may stay wide until the shuttle leaves.</p>}
       <dl style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '14px 18px', fontSize: 14, borderTop: '1px solid #e5e7eb', paddingTop: 18, marginBottom: 0 }}>
@@ -83,7 +72,21 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
         </> : <><dt>Next arrival</dt><dd style={valueStyle}>Not available</dd></>}
       </dl>
       {next && <p style={{ fontSize: 12, lineHeight: 1.5, color: '#5f6368', marginBottom: 0 }}>The following arrival is estimated in about {next} from now. Both arrival estimates can change.</p>}
-      {open && stopId !== undefined && <ArrivalHistory route={routeLabel} stopId={stopId} etaSec={etaSec} />}
+      {open && stopId !== undefined && <ArrivalHistory route={routeLabel} stopId={stopId} etaSec={etaSec} busName={busName} />}
+      {band && !atPickup && <details style={{ borderTop: '1px solid #e5e7eb', marginTop: 16, fontSize: 13 }}>
+        <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>Forecast for this shuttle ▾</summary>
+        {dots?.length ? <ArrivalPlot values={dots} title="Model estimate for this shuttle"
+          markers={[{ value: now + etaSec * 1000, label: 'Estimate', color: '#174ea6' }]}
+          description="Predicted pickup times for this shuttle. Taller stacks show times the forecast considers more likely." /> : <>
+          <div role="img" aria-label={`Likely arrival window ${band.text}; estimate ${fmtMin(etaSec)}`} style={{ margin: '30px 6px 22px' }}>
+            <div style={{ height: 8, position: 'relative', background: '#e5e7eb', borderRadius: 5 }}>
+              <span style={{ position: 'absolute', left: position(band.lowSec), right: position(extent - band.highSec), height: 8, borderRadius: 5, background: '#a8c7fa' }} />
+              <span style={{ position: 'absolute', left: position(etaSec), top: -5, height: 18, width: 4, borderRadius: 2, background: '#174ea6', transform: 'translateX(-50%)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#5f6368', marginTop: 8 }}><span>Now</span><span>{Math.ceil(extent / 60)} min</span></div>
+          </div>
+        </>}
+      </details>}
     </dialog>, document.body)}
   </>;
 }

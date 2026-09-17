@@ -16,9 +16,13 @@ Arrival distribution UI (2026-09-16): `ArrivalPlot.tsx` renders the optional
 50-quantile `server_eta.distributions` rows; `ArrivalDetails.tsx` shows pickup
 and following-shuttle timing, and `ArriveBy.tsx` overlays class/walking targets
 on destination arrivals. `ArrivalHistory.tsx` fetches the bounded public
-`/api/arrival-history` endpoint only when expanded. Filled forecast dots and
+`/api/journey-history` endpoint only when expanded or explicitly refreshed.
+Historical dots use connected source-to-target journeys; stopped-bus matches
+include residual waiting on the collector pinned clock, while moving-bus
+context explicitly starts at source departure. Filled forecast dots and
 hollow dated observations are distinct; no validated on-time percentage is
-claimed. See `docs/server-side-eta.md` for matching and transport semantics.
+claimed. Pickup details show recorded waits first; the current shuttle forecast
+expands separately. See `docs/server-side-eta.md` for matching and transport semantics.
 
 ## Architecture (v2 — `services/shuttle-v2/`)
 
@@ -43,7 +47,7 @@ One Node process (`src/index.ts`, run via tsx) does everything:
 
   It began as a copy of v1's frontend but has **drifted substantially — don't assume it matches `services/shuttle-map/app/`**.
 
-The frontend computes ETAs client-side from the `/api/buses` payload (positions + calibrated segments/dwells); it does not use the native v2 endpoints. `/api/plan` is used only by `scripts/map-bot.mjs` as ground truth — so a bug there is invisible to riders but corrupts the automated checks.
+The frontend consumes shared, continuously warm server ETAs in `/api/buses.server_eta`; the pure ETA modules are shared with server tracking and offline replay. Stale live snapshots fail closed. It does not use the native v2 planning endpoint for its rider estimates. `/api/plan` is used only by `scripts/map-bot.mjs` as ground truth — so a bug there is invisible to riders but corrupts the automated checks.
 
 ## Common commands
 
