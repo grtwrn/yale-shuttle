@@ -110,9 +110,9 @@ try {
   const routeLabel = (await trip.getAttribute('aria-label')).replace(/^View /, '').replace(/ trip details$/, '');
   result.route = routeLabel;
   const map = page.locator('.trip-map-wrap').first();
-  const pickupChip = map.locator('.eta-tip').filter({ hasText: new RegExp('\\(' + routeLabel[0] + '\\) About') });
+  const pickupChip = map.locator('.eta-tip').filter({ hasText: new RegExp('\\(' + routeLabel[0] + '\\) (About|At your stop)') });
   await pickupChip.first().waitFor();
-  assert.match(await pickupChip.first().innerText(), /Likely .*min/);
+  if (!(await pickupChip.first().innerText()).includes('At your stop')) assert.match(await pickupChip.first().innerText(), /Likely .*min/);
   result.checks.push('mini-map keeps the point estimate and arrival window in separate lines');
   if (local) {
     const waitLabel = map.locator('.bus-wait-label').first();
@@ -140,6 +140,14 @@ try {
   await page.waitForTimeout(150);
   if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window at 390px');
   await page.screenshot({ path: out + '/mini-map-wait-390.png' });
+  if (local) {
+    await page.setViewportSize({ width: 1701, height: 1164 });
+    await page.waitForTimeout(150);
+    assert(await waitLabelsClear(), 'wait label must not cover arrival window at reported desktop size');
+    await page.screenshot({ path: out + '/mini-map-wait-desktop.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    result.checks.push('wait labels avoid arrival windows at phone and reported desktop sizes');
+  }
   await trip.focus();
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /All routes/ }).waitFor();
