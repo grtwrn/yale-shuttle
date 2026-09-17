@@ -22,10 +22,11 @@ Genuine forecast updates still change the values. Missing or stale forecasts
 do not retain a fabricated map arrival. Wait labels avoid arrival chips and
 map controls; the map reserves space above its endpoints for these labels.
 
-At a wait stop, the bus's mini-map marker has a permanent label above it:
-**Red · Waiting M:SS** and **Usually ~N min total**. The full route name uses
-the bus marker's route color and stays on the elapsed-time line, so nearby
-buses and displaced labels remain identifiable without adding a third line.
+At a wait stop, the bus's mini-map marker has a permanent label next to it:
+**Red M:SS/~Nm**, a single compact line placed closer to the bus. The full
+route name uses the bus marker's route color so nearby buses remain
+identifiable. The tooltip and accessibility label spell out elapsed waiting
+time and typical total, including whether the bus is waiting nearby.
 The elapsed clock comes from the
 shared warm standing state; the typical total comes from the same historical
 stand quantiles used by the stop list, not the legacy arrival-to-arrival hop
@@ -35,7 +36,7 @@ sufficient data and a typical wait of at least three minutes receive it, as in
 the existing wait-stop labels. Typical total is context, not time left.
 
 Regression tests reproduce both cutoff switches, compare map/card wording,
-exercise waiting/moving and missing-table states, and cover two-line chip
+exercise waiting/moving and missing-table states, and cover wait-label
 collisions. The recorded mobile browser check also verifies an advancing wait
 clock with a stable typical total. No ETA model coefficients, forecast values,
 or arrival-selection rules change.

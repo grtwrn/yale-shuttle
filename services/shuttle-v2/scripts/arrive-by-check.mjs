@@ -123,24 +123,26 @@ try {
     const waitingRoute = await waitLabel.locator('.bus-wait-route').innerText();
     assert(waitingRoute.length > 0, 'waiting label visibly identifies its route');
     assert((await waitLabel.getAttribute('title')).startsWith(waitingRoute + ' #'), 'visible route matches its bus');
-    assert((await waitLabel.innerText()).startsWith(waitingRoute + ' · Waiting'), 'route shares the elapsed-time line');
-    assert.match(await waitLabel.innerText(), /Waiting(?: nearby)? \d+:\d{2}\nUsually ~\d+ min total/);
+    assert((await waitLabel.innerText()).startsWith(waitingRoute + ' '), 'route shares the elapsed-time line');
+    assert.match(await waitLabel.innerText(), / \d+:\d{2}\/~\d+m$/);
+    assert.equal((await waitLabel.innerText()).split('\n').length, 1, 'wait badge stays on one line');
+    assert.match(await waitLabel.getAttribute('aria-label'), /Waiting(?: nearby)? \d+:\d{2}\. Usually ~\d+ min total/);
     const before = await waitLabel.innerText();
     await page.clock.runFor(2000);
     const after = await waitLabel.innerText();
     const elapsed = text => {
-      const match = text.match(/Waiting(?: nearby)? (\d+):(\d{2})/);
+      const match = text.match(/ (\d+):(\d{2})\/~/);
       assert(match, 'waiting label includes elapsed time');
       return Number(match[1]) * 60 + Number(match[2]);
     };
     assert(elapsed(after) > elapsed(before), 'waiting clock advances without stepping backward');
-    assert.equal(after.split('\n')[1], before.split('\n')[1], 'typical total stays stable');
+    assert.equal(after.split('/~')[1], before.split('/~')[1], 'typical total stays stable');
     result.checks.push('waiting label names its route on the elapsed-time line; clock advances while typical total stays stable');
   }
   await map.scrollIntoViewIfNeeded();
   const waitLabelsClear = () => map.evaluate(el => {
     const waits = [...el.querySelectorAll('.eta-tip')].filter(t => t.querySelector('.bus-wait-label'));
-    const obstacles = [...el.querySelectorAll('.eta-tip, .leaflet-control, :scope > button')]
+    const obstacles = [...el.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, :scope > button')]
       .filter(t => !t.querySelector('.bus-wait-label'));
     return waits.every(w => obstacles.every(a => {
       const x = w.getBoundingClientRect(), y = a.getBoundingClientRect();

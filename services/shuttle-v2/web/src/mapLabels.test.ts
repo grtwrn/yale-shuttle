@@ -34,6 +34,14 @@ describe('reports 113/114: point and range keep separate roles', () => {
 });
 
 describe('bus wait label', () => {
+  it('stays beside the bus when stacking above an arrival chip would be farther away', () => {
+    const rect = { left: 141, right: 219, top: 328, bottom: 348 };
+    const bus = { left: 166, right: 194, top: 350, bottom: 378 };
+    const shift = placeWaitLabel(rect, { left: 25, right: 365, top: 210, bottom: 530 },
+      [{ left: 147, right: 243, top: 313, bottom: 347 },
+        { left: 182, right: 210, top: 375, bottom: 403 }], bus);
+    expect(shift).toEqual({ x: -59, y: 25 });
+  });
   it.each([270, 340, 380])('avoids controls and arrival labels in a %ipx phone map', width => {
     const rect = { left: width - 146, right: width - 43, top: 39, bottom: 73 };
     const blockers = [
@@ -64,9 +72,11 @@ describe('bus wait label', () => {
     const a = mapWaitLabel({ stopId: 11, standingSec: 201.9 }, dwells, undefined)!;
     const b = mapWaitLabel({ stopId: 11, standingSec: 601 }, dwells, undefined)!;
     expect(a.elapsed).toBe('Waiting 3:21');
+    expect(a.compact).toBe('3:21/~5m');
     expect(a.typical).toBe('Usually ~5 min total');
     expect(b.typical).toBe(a.typical);
     expect(b.elapsed).toBe('Waiting 10:01');
+    expect(b.compact).toBe('10:01/~5m');
     expect(b.overdue).toBe(true);
     expect(mapWaitLabel({ stopId: 11, standingSec: 201, approach: true }, dwells, undefined)?.elapsed).toBe('Waiting nearby 3:21');
   });
