@@ -7,7 +7,7 @@
  * does not copy type-checks, unit-tests, builds and then crashes the process
  * on boot with a module-not-found. Every gate in the repo would be green.
  *
- * This walks the real import graph out of `serverEta.ts` and requires the
+ * This walks the estimator and planner import graphs and requires the
  * Dockerfile's backend stage to copy every `web/` file it reaches. TYPE-ONLY
  * imports count: `verbatimModuleSyntax` erases them today, but a later edit
  * that turns one into a value import must not be the thing that discovers
@@ -23,7 +23,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(new URL("../..", import.meta.url).pathname);
-const ENTRY = path.join(ROOT, "src/server/serverEta.ts");
+const ENTRIES = ["src/server/serverEta.ts", "src/planner/planner.ts"].map(f => path.join(ROOT, f));
 
 /** Every relative import in a TS source, value and type alike. */
 function importsOf(file: string): string[] {
@@ -65,8 +65,8 @@ function closure(entry: string): Set<string> {
   return seen;
 }
 
-describe("the estimator the server imports reaches the runtime image", () => {
-  const files = [...closure(ENTRY)].map((f) => path.relative(ROOT, f)).sort();
+describe("the shared estimator and planner imports reach the runtime image", () => {
+  const files = [...new Set(ENTRIES.flatMap(entry => [...closure(entry)]))].map((f) => path.relative(ROOT, f)).sort();
   const web = files.filter((f) => f.startsWith("web/"));
   const dockerfile = fs.readFileSync(path.join(ROOT, "Dockerfile"), "utf8");
   // The backend stage only — the web stage copies web/ wholesale for the Vite

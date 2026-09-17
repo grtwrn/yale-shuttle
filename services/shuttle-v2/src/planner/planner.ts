@@ -12,6 +12,7 @@ import type {
 
 import { etaAlongRoute } from "./eta.js";
 import { expectedWait } from "./wait.js";
+import { savesWalking } from '../../web/src/walk.js';
 
 // Tuning ---------------------------------------------------------------------
 
@@ -146,7 +147,7 @@ export function planTrip(inputs: PlanInputs): PlanResponse {
         // Sanity: skip plans where the walk dominates the ride — the
         // raised MAX_WALK_M ceiling would otherwise produce "walk 14 min,
         // wait 2, ride 1, walk 10" against a 19-min direct walk.
-        if (origin.seconds + walkFromSec >= directWalkSec) continue;
+        if (!savesWalking(origin.seconds + walkFromSec, directWalkSec)) continue;
 
         // Variance: independent walk/wait/ride components compose additively.
         // Walking has no variance (or tiny — ignore).

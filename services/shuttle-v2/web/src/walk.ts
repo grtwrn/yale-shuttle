@@ -83,3 +83,11 @@ export const AT_PLACE_M = 80;
  * stops the generous ceiling from producing silly detours.
  */
 export const MAX_WALK_M = 1500;
+
+/** A ride should save meaningful walking: two minutes, or 20% on short trips,
+ * and at least 10% on longer walks.
+ * This is a rider preference, independent of the bus's changing ETA. */
+export function savesWalking(walkSec: number, directSec: number): boolean {
+  return Number.isFinite(walkSec) && Number.isFinite(directSec) && directSec > 0
+    && directSec - walkSec >= Math.min(directSec * 0.2, Math.max(120, directSec * 0.1));
+}
