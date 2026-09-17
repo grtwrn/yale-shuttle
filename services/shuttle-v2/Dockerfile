@@ -1,7 +1,7 @@
 # Build context: services/shuttle-v2/ (i.e. `flyctl deploy` invoked from here).
 
 # ---- Frontend build ---------------------------------------------------------
-FROM node:20-slim AS web
+FROM node:22-slim AS web
 WORKDIR /app
 # Vite aliases `@shuttle/schema` to ../src/schema/api.ts, which imports zod.
 # Node module resolution walks UP from the importing file's location, so it
@@ -21,7 +21,7 @@ RUN npm ci
 RUN npx vite build
 
 # ---- Backend build (better-sqlite3 native module) --------------------------
-FROM node:20-slim AS backend
+FROM node:22-slim AS backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -49,7 +49,7 @@ COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
      web/src/eta/ring.ts web/src/eta/tables.ts ./web/src/eta/
 
 # ---- Runtime ---------------------------------------------------------------
-FROM node:20-slim
+FROM node:22-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata curl \
     && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime \

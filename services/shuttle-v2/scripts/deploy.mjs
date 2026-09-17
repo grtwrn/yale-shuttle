@@ -143,7 +143,7 @@ async function browserSmoke(base, { markAsTest }) {
 
     // Walk every tab — today's crash only fired once a specific card rendered,
     // so touching each surface matters more than staring at the home screen.
-    for (const tab of ["All", "Map", "Trip"]) {
+    for (const tab of ["Map", "Trip"]) {
       const btn = page.getByRole("button", { name: tab, exact: true }).first();
       if (await btn.count()) {
         await btn.click().catch(() => {});

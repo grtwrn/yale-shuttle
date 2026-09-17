@@ -1,3 +1,6 @@
+// ⚠️ ARCHIVED v1 CODE — NOT DEPLOYED. The live app is services/shuttle-v2/web/src/TransitMap.tsx.
+// Edits here compile and lint fine but change nothing in production.
+
 import React, { useState, useEffect, useMemo, useRef, type FC } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
