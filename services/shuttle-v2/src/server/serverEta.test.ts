@@ -110,6 +110,11 @@ describe("the served answer", () => {
     expect(thinned.buses.map((b) => b[0])).toEqual([one.bus_name.replace("#", "")]);
     // Reindexed, not left with holes: `buses` is the row index space.
     for (const r of thinned.rows) expect(r[0]).toBe(0);
+    expect(full.distributions).toHaveLength(full.rows.length);
+    expect(full.distributions!.every(d => d.length === 50 && d.every(Number.isFinite))).toBe(true);
+    expect(thinned.distributions).toEqual(full.distributions!.filter((_, i) =>
+      full.buses[full.rows[i]![0]]![0] === one.bus_name.replace('#', '')));
+
 
     expect(eta.contribute({ ...payloadFor(0), buses: [] }, 1, t + 1_800)).toBeNull();
   });

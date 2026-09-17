@@ -48,7 +48,11 @@ export const MAX_ETA_SEC = 90 * 60;
 /** Entries per stop: this lap and the next. */
 const MAX_OCCURRENCES = 2;
 
+export const DISTRIBUTION_QUANTILES = Array.from({ length: 50 }, (_, i) => (i + 0.5) / 50);
+
 export interface StopArrival {
+  /** Equal-mass quantile dots from the priced mixture, with display corrections. */
+  distribution?: number[] | undefined;
   stopId: number;
   /** 0 = the next time the bus reaches the stop, 1 = the time after. */
   occurrence: number;
@@ -642,6 +646,7 @@ export function priceRoute(
   floors?: Floors,
   /** Seconds since this bus last departed each stop (`buses[].lap`); the lap correction is off without it. */
   lapAges?: LapAges | undefined,
+  includeDistribution = false,
 ): StopArrival[] {
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
@@ -697,7 +702,7 @@ export function priceRoute(
     const sid = stops[lead.standingAt]!;
     occ.set(lead.standingAt, 1);
     if (targetStopIds.has(sid)) {
-      out.push({ stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
+      out.push({ ...(includeDistribution ? { distribution: DISTRIBUTION_QUANTILES.map(() => 0) } : {}), stopId: sid, occurrence: 0, stopsAhead: 0, eta: 0, low: 0, high: 0, departNow: 0, lowFloor: 0, leadMass: lead.sit.mass, estimated: !lead.measured && !anyMeasured, standingAt: lead.standingAt });
     }
   }
   for (let h = 1; h <= 2 * N; h++) {
@@ -787,6 +792,10 @@ export function priceRoute(
       low = Math.min(low, f10); high = Math.max(high, f90);
       fullMix = true;
     }
+    // Read the actual mixture while the chain samples are still available.
+    // This is optional for server transport; it never changes ETA arithmetic.
+    let distribution = includeDistribution
+      ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
     if (floors && clampAt >= 0) {
       const prev = floors.map.get(key);
@@ -801,12 +810,14 @@ export function priceRoute(
         // own quantiles, not the mixture's. The one rise a stand may show.
         const [s10, sT, s90] = mixedQuantiles(standParts, [0.1, tau, 0.9]) as [number, number, number];
         standing = sT;
+        if (distribution) distribution = mixedQuantiles(standParts, DISTRIBUTION_QUANTILES);
         eta = sT; low = s10; high = s90;
         if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held ? held.eta : null, action: held ? "rearm" : "arm" });
         floors.map.set(key, { eta, standingAt: clampAt, since: clockSince, armed: true });
       } else if (held) {
         const shown = Math.min(held.eta, eta);
         const delta = shown - eta;
+        if (distribution) distribution = distribution.map(v => Math.max(0, v + delta));
         eta = shown; low = Math.max(0, low + delta); high = Math.max(0, high + delta);
         if (clampTrace) clampTrace({ stopIdx: cur, occurrence: o, clampAt, since: clockSince, standMass, mixture, standing, prevCeiling: held.eta, action: "hold" });
         floors.map.set(key, { eta: shown, standingAt: clampAt, since: clockSince, armed: held.armed !== false });
@@ -871,7 +882,12 @@ export function priceRoute(
     // alternative may put the bus AHEAD of the lead's stand, so there is no
     // rest-less floor to report there either.
     const floor = leadNow && !fullMix && Number.isFinite(nowLow) ? Math.min(nowLow, eta) : lowOut;
+    if (distribution) distribution = distribution.map(value => {
+      const corrected = applyHorizonBias(scale === 1 ? value : applyRouteScale(value, scale));
+      return Math.max(0, widenBand(eta, corrected, corrected)[0]);
+    });
     out.push({
+      ...(distribution ? { distribution } : {}),
       stopId: sid,
       occurrence: o,
       stopsAhead: h,

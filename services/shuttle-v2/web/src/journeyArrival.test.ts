@@ -54,3 +54,11 @@ describe('class deadline', () => {
     expect(deadlineError('invalid', now)).toMatch(/Choose/);
   });
 });
+
+it('translates the selected destination dots by the final walk only', () => {
+  const board = row(48, 2, 180, { distribution: [90, 180, 360] });
+  const right = row(121, 8, 600, { distribution: [400, 600, 900] });
+  const wrong = row(121, 3, 250, { busName: '999', distribution: [1, 2, 3] });
+  expect(journeyArrival(board, [board, wrong, right], 121, 60, 120, now)?.distributionMs)
+    .toEqual([now + 520_000, now + 720_000, now + 1020_000]);
+});

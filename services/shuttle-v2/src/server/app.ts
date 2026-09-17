@@ -45,6 +45,7 @@ import {
   parseReplayRows, readScorecard, resolveEstimatorVersion, replaySurface, writeReplayDay,
 } from "./scorecard.js";
 import { ARCHIVE_TABLES, archiveDayRange, isArchiveTable, type ArchiveTable } from "./archive.js";
+import { createArrivalHistory } from './arrivalHistory.js';
 import { etaCheckpointStore } from "./etaCheckpoint.js";
 import { serverEtaFromEnv, type ServerEta } from "./serverEta.js";
 import { buildLiveSnapshot } from "./snapshot.js";
@@ -303,6 +304,19 @@ export function buildApp(opts: AppOptions): Hono {
     // on a busy one.
     opts.collector.setPollObserver(() => { busesJson(); });
   }
+
+  const arrivalHistory = createArrivalHistory(opts.bundle.sqlite);
+  app.get('/api/arrival-history', c => {
+    c.header('Cache-Control', 'no-store');
+    if (!rateLimitAllow(`arrival-history:${clientIp(c) ?? 'anon'}`, now(), { perMinute: 120, perDay: 20_000 })) {
+      return c.json({ error: 'rate_limited' }, 429);
+    }
+    const label = c.req.query('route') ?? '';
+    const stop = c.req.query('stop') ?? '', eta = c.req.query('eta') ?? '';
+    if (!label || label.length > 40 || !stop || !eta) return c.json({ error: 'invalid_query' }, 400);
+    const result = arrivalHistory(label, Number(stop), Number(eta), now());
+    return result ? c.json(result) : c.json({ error: 'invalid_query' }, 400);
+  });
 
   app.get("/api/buses", (c) => {
     // Every rider polls this every 5 s, so it is the natural place to notice a

@@ -219,7 +219,7 @@ export class ServerEta {
     }
     const arrivals = computeUpcomingArrivals(
       targets, tracked, payload.routes, payload.stop_coords,
-      payload.segments, now, payload.dwells, this.store,
+      payload.segments, now, payload.dwells, this.store, true,
     );
 
     this.markSeen(current, now);
@@ -230,6 +230,7 @@ export class ServerEta {
     const index = new Map<string, number>();
     const buses: ServerEtaBus[] = [];
     const rows: ServerEtaRow[] = [];
+    const distributions: number[][] = [];
     for (const a of arrivals) {
       if (!this.served.has(a.routeLabel)) continue;
       const k = `${a.routeLabel}|${a.busName}`;
@@ -244,10 +245,11 @@ export class ServerEta {
           anchorIndexOnList(bus, cfg, payload.routes, payload.stop_coords, seq, now, this.store),
           resolveStandingStop(bus, cfg, payload.routes, payload.stop_coords, now, this.store)]);
       }
+      distributions.push((a.distribution ?? []).map(Math.round));
       rows.push([i, a.stopId, Math.round(a.eta), Math.round(a.low), Math.round(a.high), a.stopsAhead, a.estimated ? 1 : 0, Math.round(a.departNow), Math.round(a.lowFloor)]);
     }
     if (rows.length === 0) return null;
-    return { v: 2, at: now, servedAt: now, buses, rows };
+    return { v: 2, at: now, servedAt: now, buses, rows, distributions };
   }
 
   /**
@@ -281,7 +283,8 @@ export class ServerEta {
     const rows = wire.rows
       .filter((r) => remap.has(r[0]))
       .map((r) => [remap.get(r[0])!, ...r.slice(1)] as unknown as ServerEtaRow);
-    return { ...wire, buses, rows };
+    const distributions = wire.distributions?.filter((_, i) => remap.has(wire.rows[i]![0]));
+    return { ...wire, buses, rows, ...(distributions ? { distributions } : {}) };
   }
 
   /**

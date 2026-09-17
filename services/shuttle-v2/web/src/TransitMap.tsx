@@ -2177,7 +2177,7 @@ const TripPlanner: FC<{
           ...o, walkToSec: effectiveWalkToSec, waitSec, totalSec,
           rideSec: arrival ? Math.max(0, totalSec - effectiveWalkToSec - o.walkFromSec) : o.rideSec,
           journeyArrival: arrival, busName: norm(hereBus.bus_name), departed: false,
-          busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
+          busDistribution: board?.distribution, busEtaSec: 0, busDepartNowSec: 0, busLowSec: 0, busHighSec: 0, computedAtMs: nowMs,
         };
       }
 
@@ -2215,7 +2215,7 @@ const TripPlanner: FC<{
         journeyArrival: arrival, busName: match.busName, departed, missedBus,
         // The floor rides with the pin: one row of one estimator pass, so the
         // range's low end cannot be built from a different bus's drive.
-        busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
+        busDistribution: match.distribution, busEtaSec: match.eta, busDepartNowSec: match.departNow, busLowSec: match.low, busHighSec: match.high, computedAtMs: nowMs,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4002,6 +4002,7 @@ const TripPlanner: FC<{
                           <ArrivalDetails
                             routeLabel={o.routeLabel} busName={o.busName}
                             etaSec={busEtaLive} lowSec={o.busLowSec} highSec={o.busHighSec}
+                            distributionSec={o.busDistribution} stopId={o.boardStopId}
                             computedAtMs={o.computedAtMs} nextSec={nextArrLive?.eta}
                             nextBusName={nextArrLive?.busName} stopsAway={shuttleCtx?.stopsAway}
                             atPickup={shuttleCtx?.busMatch?.at_stop_id === o.boardStopId}

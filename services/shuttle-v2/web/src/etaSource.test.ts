@@ -65,3 +65,15 @@ describe('authoritative live forecast', () => {
     expect(serverTrack(offline[0]!, 'Red', 50_000)).toBeUndefined();
   });
 });
+
+it('ages row-aligned distributions and isolates malformed chart data from live ETAs', () => {
+  const live = buses(), w = wire();
+  w.distributions = [Array.from({ length: 50 }, (_, i) => 30 + i * 4), Array.from({ length: 50 }, (_, i) => 1000 + i * 10)];
+  attachServerEta(live, JSON.parse(JSON.stringify(w)), 50_000);
+  expect(serverArrivals(live, [48], 55_000)?.[0]?.distribution).toEqual(w.distributions[0]!.map(s => s - 15));
+  expect(serverArrivals(live, [48], 85_000)).toEqual([]);
+  w.distributions[0]![4] = -1;
+  expect(attachServerEta(live, w, 50_000)).toBe(true);
+  expect(serverArrivals(live, [48], 50_000)?.[0]?.distribution).toBeUndefined();
+  expect(serverArrivals(live, [48], 50_000)?.[1]?.distribution).toHaveLength(50);
+});

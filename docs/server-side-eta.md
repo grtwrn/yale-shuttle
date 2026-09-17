@@ -21,6 +21,8 @@ The v2 wire contains:
 - `at`: forecast calculation time; `servedAt`: response assembly time.
 - `buses`: `[name, routeLabel, canonicalAnchorIndex, standingState]`.
 - `rows`: `[busIndex, stopId, eta, low, high, stopsAhead, estimated, departNow, lowFloor]`.
+- Optional `distributions`: one array per row, containing 50 equal-mass quantiles
+  (1%, 3%, …, 99%) in rounded seconds. Older v2 clients ignore this additive field.
 
 Repeated stop visits remain separate rows. Arrivals, stops-away and holds come
 from the same server state. The reader accounts for observation age and elapsed
@@ -33,6 +35,37 @@ position TTL. Missing, malformed or stale live output yields no local fallback:
 trip timing becomes unavailable, class recommendations and leave reminders are
 withheld. GPS map positions may remain visible. Pure estimation remains available
 for offline tools and hypothetical planning.
+
+## Rider distributions and recorded trips
+
+The server samples the existing priced mixture before it is discarded, applying
+its held-arrival shift, route/horizon corrections and interval widening to the
+samples. This preserves separate route branches and layover tails; it does not
+fit a normal curve through the displayed low/point/high. The point and bounds
+are unchanged. Missing or malformed optional samples suppress only the graph.
+Samples age and expire with their corresponding live arrival rows.
+
+The pickup dialog uses filled quantile dots on a clock axis. The class-arrival
+disclosure uses the selected bus's forward drop-off distribution plus its final
+walk, with target, class and walking markers. It does not add marginal pickup
+and ride quantiles. The following-shuttle label states how many minutes later
+the next arrival is expected. Dot fractions are not advertised as validated
+on-time probabilities.
+
+Opening either disclosure requests `/api/arrival-history?route=Red&stop=48&eta=360`.
+The bounded, rate-limited, 60-second-cached reader uses existing `stop_visits`
+and `predictions_log` indexes. It considers at most 240 recent GPS-confirmed
+stopped visits in 30 days and returns at most 24 independent visit matches:
+same line/stop, comparable forecast duration, weekday/weekend category and
+nearby local time of day. Predictions must precede that arrival, follow the
+previous visit, and come from the trip/ride/card surfaces (never upstream).
+The response also includes the three latest recorded arrivals. No rider fields
+are selected. Sparse/failed history is displayed explicitly and does not block
+live estimates; closed disclosures do not fetch or poll history.
+
+Hollow dots show actual waits, with dates, forecasts and waits available in a
+table. They remain separate from predictive dots and use a duration axis;
+destination history ends at the drop-off stop before the final walk.
 
 ## Restart recovery
 

@@ -155,6 +155,7 @@ export function arrivalsForBus(
   now: number,
   tau = DISPLAY_TAU,
   dwellsByRoute?: Record<string, Record<string, DwellLike>>,
+  includeDistribution = false,
 ): StopArrival[] {
   const tables = tablesFor(ring, ring.stops, stopCoords, routeSegs, routeDwells, dwellsByRoute);
   const belief = beliefFor(store, key, bus, ring, ring.stops, now);
@@ -164,7 +165,7 @@ export function arrivalsForBus(
     if (!e.floors) e.floors = { map: new Map() };
     floors = e.floors;
   }
-  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus));
+  return priceRoute(belief, ring, tables, ring.stops, targetStopIds, now, tau, floors, lapAgesOf(bus), includeDistribution);
 }
 
 // Tables (and the chain prefix sums behind them, arrival.ts) are rebuilt only
