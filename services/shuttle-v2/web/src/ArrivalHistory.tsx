@@ -11,9 +11,9 @@ function valid(raw: unknown): raw is History {
   const j = h.journey;
   return j === null || !!j && ['standing', 'departure'].includes(j.mode)
     && typeof j.fromName === 'string' && typeof j.toName === 'string'
-    && Number.isInteger(j.serviceDates) && j.serviceDates >= 0 && j.serviceDates <= 24
+    && Number.isInteger(j.serviceDates) && j.serviceDates >= 0 && j.serviceDates <= 100
     && (j.mode === 'departure' ? j.elapsedSec === null : Number.isFinite(j.elapsedSec) && j.elapsedSec! >= 0)
-    && Array.isArray(j.trips) && j.trips.length <= 24 && j.trips.every(t => t && typeof t.busName === 'string'
+    && Array.isArray(j.trips) && j.trips.length <= 100 && j.trips.every(t => t && typeof t.busName === 'string'
       && [t.startedAt, t.departedAt, t.arrivedAt, t.actualSec].every(Number.isFinite)
       && t.startedAt <= t.departedAt && t.departedAt < t.arrivedAt && t.actualSec > 0);
 }
@@ -28,7 +28,7 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
     const abort = new AbortController();
     let active = true;
     const timeout = setTimeout(() => abort.abort(), 10_000);
-    const query = new URLSearchParams({ route, stop: String(stopId), bus: busName, eta: String(Math.round(etaSec)) });
+    const query = new URLSearchParams({ route, stop: String(stopId), bus: busName, eta: String(Math.round(etaSec)), limit: '100' });
     fetch(`/api/journey-history?${query}`, { signal: abort.signal }).then(async r => {
       if (!r.ok) throw new Error('history unavailable');
       const raw = await r.json();
@@ -67,12 +67,12 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
         </details>
       </> : <p style={{ fontSize: 13, color: '#5f6368', lineHeight: 1.5 }}>{j
         ? 'No comparable completed journeys among the recent records.'
-        : 'A comparable starting point is not available for this shuttle right now.'}</p>}
+        : 'Past trips cannot be matched to this shuttle’s current position yet.'}</p>}
       {data.recent.length > 0 && <><h4 style={{ margin: '14px 0 8px', fontSize: 13 }}>Recent recorded arrivals at this stop</h4>
         <ul style={{ paddingLeft: 18, fontSize: 12, lineHeight: 1.8 }}>{data.recent.map(t => <li key={`${t.busName}|${t.arrivedAt}`}>{when(t.arrivedAt)} · #{t.busName.replace(/^#/, '')}</li>)}</ul></>}
       <details style={{ fontSize: 11, color: '#5f6368', lineHeight: 1.5 }}>
         <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>About these records ▾</summary>
-        <p>Up to 24 connected journeys among the latest 240 starting-stop visits in 30 days, on the same route and direction, within two hours of this time and the same weekday/weekend category. Only GPS-detected journeys that stopped at both endpoints are shown; skipped stops and recording gaps leave trips out. These observations are context for the live estimate.</p>
+        <p>Up to 100 connected journeys among the latest 240 starting-stop visits in 30 days, on the same route and direction, within two hours of this time and the same weekday/weekend category. Only GPS-detected journeys that stopped at both endpoints are shown; skipped stops and recording gaps leave trips out. These observations are context for the live estimate.</p>
       </details>
       <p style={{ fontSize: 11, color: '#5f6368', margin: '6px 0' }}>Comparison captured {when(data.asOf)}</p>
     </>}

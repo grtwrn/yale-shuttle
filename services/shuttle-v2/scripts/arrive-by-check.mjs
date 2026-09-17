@@ -48,7 +48,8 @@ try {
       } });
       if (u.pathname === '/api/journey-history') {
         const routeName = u.searchParams.get('route'), stop = Number(u.searchParams.get('stop')), eta = Number(u.searchParams.get('eta'));
-        historyQueries.push({ route: routeName, stop, eta });
+        historyQueries.push({ route: routeName, stop, eta, limit: Number(u.searchParams.get('limit')) });
+        assert.equal(u.searchParams.get('limit'), '100', 'new history readers request the larger sample');
         const match = historyFixture.find(x => x.route === routeName && x.stop === stop && Math.abs(x.eta - eta) <= 60);
         return route.fulfill({ json: match?.result ?? { asOf: Date.parse(sample.at), days: 30,
           journey: null, recent: [] } });
@@ -110,10 +111,12 @@ try {
   const routeLabel = (await trip.getAttribute('aria-label')).replace(/^View /, '').replace(/ trip details$/, '');
   result.route = routeLabel;
   const map = page.locator('.trip-map-wrap').first();
-  const pickupChip = map.locator('.eta-tip').filter({ hasText: new RegExp('\\(' + routeLabel[0] + '\\) (About|At your stop)') });
+  const pickupChip = map.locator('.eta-tip').filter({ hasText: new RegExp('\\(' + routeLabel[0] + '\\) (?:~?[<\\d]|At stop)') });
   await pickupChip.first().waitFor();
-  if (!(await pickupChip.first().innerText()).includes('At your stop')) assert.match(await pickupChip.first().innerText(), /Likely .*min/);
-  result.checks.push('mini-map keeps the point estimate and arrival window in separate lines');
+  const compactText = await pickupChip.first().innerText();
+  assert.doesNotMatch(compactText, /About|Likely/);
+  if (!compactText.includes('At stop')) assert.match(compactText, /(?:<1|\d+)–\d+ min|~(?:<1|\d+) min/);
+  result.checks.push('mini-map shows one compact arrival window per route without width cutoffs');
   if (local) {
     const waitLabel = map.locator('.bus-wait-label').first();
     await waitLabel.waitFor();
@@ -184,6 +187,8 @@ try {
   if (local && historyFixture.length) {
     const actual = historyFixture.find(x => x.stop === historyQueries.at(-1).stop)?.result;
     assert(actual?.journey?.trips.length, 'moving context uses completed recorded journeys');
+    assert.equal(await historyPlot.locator('circle').count(), actual.journey.trips.length, 'every returned historical trip gets a dot');
+    assert.equal(await dialog.locator('tbody tr').count(), actual.journey.trips.length, 'every returned historical trip has a dated row');
     const moving = structuredClone(actual);
     moving.journey.mode = 'departure'; moving.journey.elapsedSec = null;
     moving.journey.trips = moving.journey.trips.map(t => ({ ...t, startedAt: t.departedAt, actualSec: (t.arrivedAt - t.departedAt) / 1000 }));

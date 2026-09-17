@@ -319,7 +319,10 @@ export function buildApp(opts: AppOptions): Hono {
     if (!label || label.length > 40 || !bus || bus.length > 24 || !stop || !eta
       || !Number.isFinite(Number(eta)) || Number(eta) < 0 || Number(eta) > 14_400) return c.json({ error: 'invalid_query' }, 400);
     const position = serverEta?.historyPosition(label, bus, Number(stop), Number(eta), at) ?? null;
-    const result = journeyHistory(label, Number(stop), position, opts.collector.ref.get(), at);
+    // Older cached clients only accept 24 observations. New readers request
+    // the larger sample explicitly; both remain bounded and cached separately.
+    const limit = c.req.query('limit');
+    const result = journeyHistory(label, Number(stop), position, opts.collector.ref.get(), at, limit === undefined ? 24 : Number(limit));
     return result ? c.json(result) : c.json({ error: 'invalid_query' }, 400);
   });
   app.get('/api/arrival-history', c => {

@@ -88,13 +88,14 @@ export function createJourneyHistory(db: Database.Database) {
   const recentQueries = new Map<string, Database.Statement>();
   const cache = new Map<string, JourneyHistory>();
 
-  return (label: string, stopId: number, position: Position | null, network: Pick<TransitNetwork, 'routes' | 'stops'>, now: number): JourneyHistory | null => {
+  return (label: string, stopId: number, position: Position | null, network: Pick<TransitNetwork, 'routes' | 'stops'>, now: number, limit = 24): JourneyHistory | null => {
     const cfg = ROUTE_LISTS.find(c => c.label === label);
-    if (!cfg || !Number.isInteger(stopId) || stopId < 1 || !Number.isFinite(now)) return null;
+    if (!cfg || !Number.isInteger(stopId) || stopId < 1 || !Number.isFinite(now)
+      || !Number.isInteger(limit) || limit < 1 || limit > 100) return null;
     const route = position && cfg.busRouteIds.includes(position.bus.route_id) ? network.routes.get(position.bus.route_id) : undefined;
     const seq = route?.stops ?? [];
     const origin = position && route ? journeyOrigin(position, seq, stopId, now) : null;
-    const key = `${label}|${stopId}|${route?.id}|${origin?.fromIndex}|${origin?.toIndex}|${origin?.mode}|${origin?.elapsedSec}|${seq.join(',')}|${Math.floor(now / 60_000)}`;
+    const key = `${label}|${stopId}|${limit}|${route?.id}|${origin?.fromIndex}|${origin?.toIndex}|${origin?.mode}|${origin?.elapsedSec}|${seq.join(',')}|${Math.floor(now / 60_000)}`;
     const old = cache.get(key);
     if (old && now >= old.asOf && now - old.asOf < 60_000) return old;
     const out: JourneyHistory = { asOf: now, days: 30, journey: null, recent: [] };
@@ -119,7 +120,7 @@ export function createJourneyHistory(db: Database.Database) {
       const rows = sources.all(route.id, origin.fromStopId, origin.fromIndex, now - 30 * DAY, now, now) as Visit[];
       const reference = period(now), seen = new Set<string>();
       for (const source of rows) {
-        if (journey.trips.length >= 24) break;
+        if (journey.trips.length >= limit) break;
         const departed = source.departedAt!;
         const started = origin.mode === 'standing'
           ? source.pinnedAt === null ? NaN : source.pinnedAt + origin.elapsedSec! * 1000 : departed;

@@ -2086,6 +2086,10 @@ describe('public arrival history', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(await res.json()).toMatchObject({ days: 30, journey: null, recent: [] });
+    expect((await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300&limit=100')).status).toBe(200);
+    for (const limit of ['0', '101', '1.5', 'nope', '']) {
+      expect((await app.request('/api/journey-history?route=Red&bus=308&stop=48&eta=300&limit=' + limit)).status).toBe(400);
+    }
     for (const query of ['', '?route=Red&bus=308&stop=nope&eta=300', '?route=Red&bus=308&stop=48&eta=-1', '?route=fake&bus=308&stop=48&eta=300']) {
       expect((await app.request('/api/journey-history' + query)).status).toBe(400);
     }
