@@ -17,17 +17,21 @@ export interface ArrivalDetailsProps {
   nextSec?: number | null;
   nextBusName?: string;
   stopsAway?: number | null;
+  /** The stop the priced stand is at — the headline during a hold. */
   holdingAt?: string;
+  /** The hold is short of the stop's marker (an approach cell): "near". */
+  holdingNear?: boolean;
   atPickup?: boolean;
 }
 
 export function ArrivalDetails(props: ArrivalDetailsProps) {
-  const { routeLabel, busName, etaSec, lowSec, highSec, computedAtMs, nextSec, distributionSec, stopId, nextBusName, stopsAway, holdingAt, atPickup } = props;
+  const { routeLabel, busName, etaSec, lowSec, highSec, computedAtMs, nextSec, distributionSec, stopId, nextBusName, stopsAway, holdingAt, holdingNear, atPickup } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const now = Date.now();
   const titleId = useId();
-  const { point, band } = arrivalSummary(etaSec, lowSec, highSec, computedAtMs, Date.now(), atPickup);
+  const { point, band, sub } = arrivalSummary(etaSec, lowSec, highSec, computedAtMs, Date.now(), atPickup,
+    holdingAt ? { at: holdingAt, near: holdingNear } : undefined);
   const gap = estimatedGap(etaSec, nextSec);
   const next = gap !== null ? fmtMin(nextSec!) : null;
   const sameBus = !!nextBusName && nextBusName.replace(/^#/, '') === busName.replace(/^#/, '');
@@ -38,12 +42,12 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const position = (sec: number) => `${Math.max(0, Math.min(100, 100 * sec / extent))}%`;
   const valueStyle = { margin: 0, fontWeight: 600, textAlign: 'right' as const };
   return <>
-    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${point}${band ? `, likely ${band.text}` : ''}`}
+    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${point}${sub ? `, ${sub}` : ''}`}
       onKeyDown={e => e.stopPropagation()}
       onClick={e => { e.stopPropagation(); dialog.current?.showModal(); setOpen(true); }}
       style={{ border: 0, background: 'transparent', padding: '4px 0', minHeight: 44, minWidth: 0, color: '#374151', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
       <span style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{point} <span aria-hidden="true" style={{ color: '#5f6368' }}>ⓘ</span></span>
-      <span style={{ display: 'block', fontSize: 11, color: '#5f6368' }}>{band && !atPickup ? `Likely ${band.text}` : next ? `Next about ${next}` : 'Arrival details'}</span>
+      <span style={{ display: 'block', fontSize: 11, color: '#5f6368' }}>{sub ? sub : next ? `Next about ${next}` : 'Arrival details'}</span>
     </button>
     {createPortal(<dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onKeyDown={e => e.stopPropagation()} onClick={e => {
       e.stopPropagation();
@@ -62,7 +66,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
         <p style={{ margin: 0, color: '#4b5563' }}>Likely arrival window: <strong>{band.text}</strong></p>
         <p style={{ fontSize: 13, lineHeight: 1.5, color: '#5f6368' }}>Use the early end of the estimated window when deciding when to reach your stop.</p>
       </> : !atPickup ? <p style={{ color: '#5f6368', fontSize: 13 }}>An arrival window is not available yet.</p> : null}
-      {holdingAt && !atPickup && <p style={{ padding: 12, borderRadius: 10, background: '#fff8e1', fontSize: 13, lineHeight: 1.5 }}>Waiting at {holdingAt}. The window may stay wide until the shuttle leaves.</p>}
+      {holdingAt && !atPickup && <p style={{ padding: 12, borderRadius: 10, background: '#fff8e1', fontSize: 13, lineHeight: 1.5 }}>Waiting {holdingNear ? 'near' : 'at'} {holdingAt}. The window may stay wide until the shuttle leaves.</p>}
       <dl style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '14px 18px', fontSize: 14, borderTop: '1px solid #e5e7eb', paddingTop: 18, marginBottom: 0 }}>
         <dt>Shuttle</dt><dd style={valueStyle}>#{busName.replace(/^#/, '')}</dd>
         {stopsAway != null && <><dt>Stops to pickup</dt><dd style={valueStyle}>{stopsAway}</dd></>}

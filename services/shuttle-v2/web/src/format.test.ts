@@ -1,11 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   fmtBusPair,
   fmtBusBand,
   fmtBusRange,
   fmtClock,
+  fmtDate,
+  fmtDateTime,
   fmtMin,
+  fmtWeekday,
+  sameCampusDay,
   fmtWait,
   fmtWalk,
   formatEtaRange,
@@ -106,8 +110,14 @@ describe("minutes are always spelled 'min'", () => {
 });
 
 describe("fmtClock", () => {
-  const base = new Date("2026-08-31T12:00:00");
+  // Noon Eastern is an INSTANT, pinned absolute so the device's zone at parse
+  // time cannot move it; what it prints depends on the zone each case sets.
+  const base = new Date("2026-08-31T16:00:00Z"); // 12:00 in New Haven
+  const OLD_TZ = process.env.TZ;
+  afterEach(() => { process.env.TZ = OLD_TZ; });
+
   it("renders 12-hour times with a compact am/pm marker", () => {
+    process.env.TZ = "America/New_York";
     expect(fmtClock(0, base)).toBe("12:00p");
     expect(fmtClock(90 * 60, base)).toBe("1:30p");
     expect(fmtClock(-12 * 3600, base)).toBe("12:00a");
@@ -115,7 +125,44 @@ describe("fmtClock", () => {
   });
 
   it("pads the minutes", () => {
+    process.env.TZ = "America/New_York";
     expect(fmtClock(5 * 60, base)).toBe("12:05p");
+  });
+
+  it("keeps the Eastern reading for a device in another zone, and says so", () => {
+    // The 2026-09-17 eval ran on a UTC browser: every trip clock read four
+    // hours ahead of the Yale journey it described, unlabeled. A campus
+    // shuttle's clocks are New Haven's — render them Eastern, and say it.
+    process.env.TZ = "UTC";
+    expect(fmtClock(0, base)).toBe("12:00p ET");
+    expect(fmtClock(90 * 60, base)).toBe("1:30p ET");
+    expect(fmtClock(-60 * 60, base)).toBe("11:00a ET");
+  });
+
+  it("writes the other campus clocks in the same zone, labeled the same way", () => {
+    // Same instant as `base`: noon on Mon Aug 31 in New Haven.
+    process.env.TZ = "America/New_York";
+    expect(fmtDateTime(base.getTime())).toBe("Mon, Aug 31, 12:00p");
+    expect(fmtDate(base.getTime())).toBe("Aug 31");
+    expect(fmtWeekday(base.getTime())).toBe("Mon, Aug 31");
+    process.env.TZ = "UTC";
+    expect(fmtDateTime(base.getTime())).toBe("Mon, Aug 31, 12:00p ET");
+    // A bare date carries no zone suffix — the day itself is the campus's.
+    expect(fmtDate(base.getTime())).toBe("Aug 31");
+    expect(fmtWeekday(base.getTime())).toBe("Mon, Aug 31");
+  });
+
+  it("compares days on the campus calendar, not the device's", () => {
+    // 02:00 UTC is Aug 31 22:00 in New Haven; 05:00 UTC is Sep 1 01:00 —
+    // the SAME UTC day, different campus days.
+    const lateEt = Date.parse("2026-09-01T02:00:00Z");
+    const nextEt = Date.parse("2026-09-01T05:00:00Z");
+    process.env.TZ = "UTC";
+    expect(new Date(lateEt).toDateString()).toBe(new Date(nextEt).toDateString());
+    expect(sameCampusDay(lateEt, nextEt)).toBe(false);
+    process.env.TZ = "America/New_York";
+    expect(sameCampusDay(lateEt, nextEt)).toBe(false);
+    expect(sameCampusDay(nextEt, nextEt + 3600_000)).toBe(true);
   });
 });
 

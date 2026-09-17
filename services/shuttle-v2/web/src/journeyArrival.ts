@@ -1,4 +1,5 @@
 import type { UpcomingArrival } from './arrivals';
+import { fmtClock, fmtDate, sameCampusDay } from './format';
 
 export interface JourneyArrival {
   busName: string;
@@ -66,8 +67,7 @@ export function localDateTime(at: number): string {
 /** Round the window outward, never make a deadline look easier by rounding. */
 export function arrivalClock(at: number, rounding: 'low' | 'high' | 'point' = 'point'): string {
   const round = rounding === 'low' ? Math.floor : rounding === 'high' ? Math.ceil : Math.round;
-  const d = new Date(round(at / 60_000) * 60_000);
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  return d.toDateString() === new Date().toDateString() ? time
-    : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+  const t = round(at / 60_000) * 60_000;
+  const time = fmtClock(0, new Date(t));
+  return sameCampusDay(t, Date.now()) ? time : `${fmtDate(t)}, ${time}`;
 }
