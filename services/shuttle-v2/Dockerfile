@@ -37,12 +37,12 @@ COPY drizzle.config.ts tsconfig.json ./
 # the whole point of the server-side belief. Only web/dist reaches the runtime
 # image otherwise, so the sources have to be copied explicitly.
 #
-# The list is the import closure of `src/server/serverEta.ts`, and
+# The list covers the server estimator and planner's shared imports, and
 # `serverEta.closure.test.ts` recomputes it and fails if this COPY has fallen
 # behind — an import added here and forgotten here would pass every gate and
 # then crash the production process on boot.
 COPY web/src/anchor.ts web/src/arrivals.ts web/src/geo.ts web/src/liveAnchor.ts web/src/etaSource.ts \
-     web/src/map-data.ts web/src/routes.ts ./web/src/
+     web/src/map-data.ts web/src/routes.ts web/src/walk.ts ./web/src/
 COPY web/src/eta/arrival.ts web/src/eta/dist.ts web/src/eta/filter.ts \
      web/src/eta/conformal.mjs web/src/eta/conformal.d.mts \
      web/src/eta/index.ts web/src/eta/lap.ts web/src/eta/params.ts \

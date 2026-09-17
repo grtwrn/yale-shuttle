@@ -93,12 +93,12 @@ describe("planTrip: walking dominance", () => {
     expect(shuttle!.walkToSec + shuttle!.walkFromSec).toBeLessThan(shuttle!.directWalkSec);
   });
 
-  it("never returns a surviving option whose walk legs beat the direct walk", () => {
+  it("only returns shuttle options that save meaningful walking", () => {
     const from = northOf(STOP.phelpsGate, 110);
     const to = { lat: at(STOP.cedar333).lat, lon: at(STOP.cedar333).lon - 0.002 };
     for (const o of plan(from, to)) {
       if (o.mode !== "shuttle") continue;
-      expect(o.walkToSec + o.walkFromSec).toBeLessThan(o.directWalkSec);
+      expect(o.directWalkSec - o.walkToSec - o.walkFromSec).toBeGreaterThanOrEqual(Math.min(.2 * o.directWalkSec, Math.max(120, .1 * o.directWalkSec)));
     }
   });
 });
@@ -827,7 +827,7 @@ describe("topVisibleOptions", () => {
     }
   });
 
-  it("stays quiet when the top of the list is already the direct route", () => {
+  it("keeps a useful third route without labeling it a direct-route promotion", () => {
     // Blue is both fastest and most direct — no fourth row.
     const sorted = [
       opt("shuttle", "Blue Day", 12 * 60, { walkToSec: 60, rideSec: 600, walkFromSec: 60 }),
@@ -835,7 +835,7 @@ describe("topVisibleOptions", () => {
       opt("shuttle", "Red", 30 * 60, { walkToSec: 120, rideSec: 660, walkFromSec: 60 }),
     ];
     expect(directPromotion(sorted)).toBeUndefined();
-    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day"]);
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["Blue Day", "Orange Day", "Red"]);
   });
 
   it("needs a real margin — a hair more direct does not earn a row", () => {
@@ -877,10 +877,11 @@ describe("topVisibleOptions", () => {
     ];
     expect(mostDirectOption(sorted)?.routeLabel).toBe("A");
     expect(directPromotion(sorted)).toBeUndefined();
-    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B"]);
+    // C is competitive on travel time, but does not receive the direct label.
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "C"]);
   });
 
-  it("adds at most one row", () => {
+  it("adds at most one direct promotion beyond the three useful rows", () => {
     const sorted = [
       opt("shuttle", "A", 10 * 60, { rideSec: 3000 }),
       opt("shuttle", "B", 20 * 60, { rideSec: 2400 }),
@@ -888,8 +889,8 @@ describe("topVisibleOptions", () => {
       opt("shuttle", "D", 50 * 60, { rideSec: 300 }),
       opt("shuttle", "E", 60 * 60, { rideSec: 120 }),
     ];
-    // E is the most direct; C and D do not each get a row of their own.
-    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "E"]);
+    // C qualifies by travel time; E is the single direct-route promotion.
+    expect(topVisibleOptions(sorted).map((o) => o.routeLabel)).toEqual(["A", "B", "C", "E"]);
   });
 
   describe("stability of the third row (report #76)", () => {

@@ -13,7 +13,7 @@ import {
   fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
-import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters } from "./walk";
+import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
 import type { JourneyArrival } from './journeyArrival';
 
 export type TripOption = {
@@ -22,6 +22,8 @@ export type TripOption = {
   boardStopId: number; alightStopId: number;
   walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
   totalSec: number; busName: string;
+  /** Route's ride duration at planning time, independent of live ETA differences. */
+  plannedRideSec?: number;
   directWalkSec: number;
   // True when the pinned bus has already gone past the board stop and
   // isn't catchable anymore. Set only while the rider is watching the
@@ -460,25 +462,14 @@ export function planTrip(
           }
         }
         const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
-        // An option whose two walking legs already exceed the direct walk is
-        // never worth offering: totalSec = walkTo + wait + ride + walkFrom with
-        // wait >= 0 and ride > 0, so walkTo + walkFrom >= directWalkSec IMPLIES
-        // totalSec >= directWalkSec. More walking is therefore always also
-        // slower, and this single test drops exactly the strictly-dominated
-        // options — no faster trip can be lost to it.
-        //
-        // (An earlier attempt at report #40 added "&& totalSec >= directWalkSec"
-        // believing this filter was discarding a faster ride. By the identity
-        // above that conjunct is unreachable, so it changed nothing. The actual
-        // client/server divergence in #40 was the walk model: the client ran at
-        // 1.083 m/s effective against the server's 1.4, inflating every walk and
-        // every walk-derived comparison. That is fixed in walk.ts.)
-        if (walkToSec + walkFromSec >= directWalkSec) continue;
+        // A shuttle that saves almost no walking adds a wait/boarding/ride
+        // without enough benefit, even if a noisy ETA briefly looks attractive.
+        if (!savesWalking(walkToSec + walkFromSec, directWalkSec)) continue;
         options.push({
           mode: "shuttle",
           routeLabel: cfg.label, color: cfg.color,
           boardStopId: b, alightStopId: cur,
-          walkToSec, waitSec, rideSec: cumRide, walkFromSec,
+          walkToSec, waitSec, rideSec: cumRide, plannedRideSec: cumRide, walkFromSec,
           totalSec, busName,
           directWalkSec,
           busEtaSec,
@@ -498,7 +489,7 @@ export function planTrip(
   const viable = options;
   // Per-route pick: lowest total time, with one carve-out — among options
   // whose totals are within ~3 min of the route's best, prefer the
-  // shortest walk to the boarding stop ("catch the bus right outside").
+  // least total walking, then the shortest ride.
   // The old pick minimized walk-to unconditionally, which ignored wait:
   // report #3 saw a 43-min wait at the nearest stop chosen over boarding
   // the same (resting) bus a 4-min walk away.
@@ -513,7 +504,8 @@ export function planTrip(
   for (const [label, group] of byRoute) {
     const minTotal = Math.min(...group.map((o) => o.totalSec));
     const nearBest = group.filter((o) => o.totalSec <= minTotal + TOTAL_TIE_SEC);
-    nearBest.sort((a, b) => a.walkToSec - b.walkToSec || a.totalSec - b.totalSec);
+    nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
+      || a.rideSec - b.rideSec || a.totalSec - b.totalSec);
     bestPerRoute.set(label, nearBest[0]);
   }
   // Sort the chosen options by total time for display.
@@ -694,6 +686,7 @@ export function findPotentialRoutes(
   live?: { labels: ReadonlySet<string>; now: Date; active?: Record<string, boolean> },
 ): PotentialRoute[] {
   const out: PotentialRoute[] = [];
+  const directWalkSec = walkSecFromMeters(haversineMeters(from, to));
   for (const cfg of ROUTE_LISTS) {
     const stops = mergedRouteStops(cfg, routeStops);
     if (stops.length < 2) continue;
@@ -722,6 +715,7 @@ export function findPotentialRoutes(
         const dTo = haversineMeters(to, ac);
         if (dTo > MAX_WALK_M) continue;
         const total = dFrom + dTo;
+        if (!savesWalking(walkSecFromMeters(total), directWalkSec)) continue;
         if (total < bestTotal) {
           bestTotal = total; bestBoard = b; bestAlight = a;
         }
@@ -758,13 +752,12 @@ export function findPotentialRoutes(
  * on the trip — which is the same distinction `slowerThanWalk` already draws.
  *
  * Unlike `totalSec`, every term here is fixed by the plan's geometry and the
- * calibrated segment times. The per-poll live recompute rewrites `waitSec`,
- * `totalSec`, `busName`, `departed` and `busEtaSec` and nothing else, so this
- * number is CONSTANT for a given (origin, destination) plan. Anything decided
+ * calibrated segment times. The planned ride is retained separately from the live ride estimate. Waiting
+ * and ETA differences cannot change this cost; walking can follow the rider. Anything decided
  * by it therefore cannot flicker poll to poll.
  */
 export function commuteSec(o: TripOption): number {
-  return o.walkToSec + o.rideSec + o.walkFromSec;
+  return o.mode === 'walk' ? o.totalSec : o.walkToSec + (o.plannedRideSec ?? o.rideSec) + o.walkFromSec;
 }
 
 /**
@@ -803,18 +796,12 @@ export function slowerThanWalk(o: TripOption): boolean {
 export function mostDirectOption(options: readonly TripOption[]): TripOption | undefined {
   let best: TripOption | undefined;
   for (const o of options) {
-    if (o.mode !== "shuttle" || o.departed || slowerThanWalk(o)) continue;
+    if (o.mode !== "shuttle" || o.departed || o.etaUnavailable || slowerThanWalk(o)) continue;
     if (!best) { best = o; continue; }
     const d = commuteSec(o) - commuteSec(best);
-    // Deterministic tie-break so two equally direct routes can't trade places
-    // between polls: shorter ride, then lower total, then label order.
-    if (d < 0 || (d === 0 && (
-      o.rideSec < best.rideSec ||
-      (o.rideSec === best.rideSec && (
-        o.totalSec < best.totalSec ||
-        (o.totalSec === best.totalSec && o.routeLabel < best.routeLabel)
-      ))
-    ))) best = o;
+    // Geometry-only ties: a live ETA must not change which route is direct.
+    const walk = o.walkToSec + o.walkFromSec, bestWalk = best.walkToSec + best.walkFromSec;
+    if (d < 0 || (d === 0 && (walk < bestWalk || (walk === bestWalk && o.routeLabel < best.routeLabel)))) best = o;
   }
   return best;
 }
@@ -863,7 +850,7 @@ export function directPromotion(sorted: readonly TripOption[]): TripOption | und
 /**
  * Which of the sorted options the collapsed list shows.
  *
- * Two shuttles plus the walk row, and a third shuttle ONLY when it is nearly
+ * Two shuttles plus the walk row, and a third shuttle ONLY when its walking and riding time is nearly
  * as good as the second — riders weigh similar options themselves (from
  * Prospect/Canner to the Green, Blue ranked one minute behind Orange with a
  * quarter of the walking, and sat hidden behind "show more": report #46). A
@@ -913,7 +900,7 @@ export function topVisibleOptions(
     : THIRD_SHUTTLE_SLACK_SEC;
   const keepThird =
     second !== undefined && third !== undefined &&
-    third.totalSec <= second.totalSec + slack;
+    commuteSec(third) <= commuteSec(second) + slack;
   const promoted = directPromotion(sorted);
   let seen = 0;
   return sorted.filter((o) => {

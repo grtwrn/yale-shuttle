@@ -58,8 +58,9 @@ import {
   notifyPermissionState, vibrateAlert, type FiredPings,
 } from "./leaveAlert";
 import { topVisibleOptions, keptThirdLabel,
-  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, slowerThanWalk, type TripOption,
+  directPromotion, boardingVisitAllowed, rideBoardArrivals, dwellBoardWindowSec, findPotentialRoutes, isAlreadyThere, pickLiveArrival, planTrip, publishedWindowFor, routeActiveFor, routeHoursCaption, SAME_SPOT_M, type TripOption,
 } from "./planner";
+import { optionTier, stableTripOrder, type TripOrderState } from './tripRanking';
 import { anonIdHeader } from "./anonId";
 import { allHidden, drawnHidden, loadHiddenRoutes, saveHiddenRoutes, toggleAll, toggleOne } from "./mapFilter";
 // "Tell me when Red gets to 344 Winchester" — every rule (arm, expire, the fire
@@ -2330,53 +2331,22 @@ const TripPlanner: FC<{
     return () => clearInterval(id);
   }, [reminder]);
 
-  // `slowerThanWalk` — the commute-vs-direct-walk test — now lives in
-  // planner.ts, where `mostDirectOption` needs the same verdict about which
-  // options are worth offering at all.
-  // Shared row/map order: competitive / slower-than-walk / departed,
-  // fastest first within each tier by live total.
-  const optionTier = (o: TripOption) => (o.departed || o.etaUnavailable ? 2 : slowerThanWalk(o) ? 1 : 0);
-  const sortOptions = (list: TripOption[]) =>
-    [...list].sort((a, b) => optionTier(a) - optionTier(b) || a.totalSec - b.totalSec);
-  // Display order with HYSTERESIS (user feedback 2026-07-17: fastest
-  // first, but "make sure there's some stability — avoid flicker").
-  // Each render starts from the previously displayed order; a lower card
-  // climbs only for a better tier or a ≥90 s faster live total, so small
-  // wait-noise oscillations never reorder the list mid-glance.
-  const displayOrderRef = useRef<string[]>([]);
+  // Route quality uses planned travel, not differences between two noisy ETAs.
+  // Clearly separated destination windows can change rank after 30 seconds.
+  const displayOrderRef = useRef<TripOrderState | null>(null);
   const orderDestRef = useRef<string>("");
   const orderedOptions = useMemo(() => {
-    if (!options) { displayOrderRef.current = []; return null; }
-    // New destination → forget the old trip's ranking entirely.
-    const destKey = `${toLL?.lat},${toLL?.lon}`;
+    if (!options) { displayOrderRef.current = null; return null; }
+    const originKey = isCurrentLocationText(fromText) || !fromText.trim() ? "current" : `${fromLL?.lat},${fromLL?.lon}`;
+    const destKey = `${originKey}|${toLL?.lat},${toLL?.lon}|${targetDate?.getTime()}|${refreshKey}`;
     if (orderDestRef.current !== destKey) {
       orderDestRef.current = destKey;
-      displayOrderRef.current = [];
+      displayOrderRef.current = null;
     }
-    const byKey = new Map(options.map((o) => [o.routeLabel, o]));
-    const kept = displayOrderRef.current.filter((k) => byKey.has(k));
-    const fresh = sortOptions(options.filter((o) => !kept.includes(o.routeLabel))).map((o) => o.routeLabel);
-    const arr = [...kept, ...fresh];
-    const HYST_SEC = 90;
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let i = 0; i + 1 < arr.length; i++) {
-        const a = byKey.get(arr[i])!;
-        const b = byKey.get(arr[i + 1])!;
-        if (
-          optionTier(b) < optionTier(a) ||
-          (optionTier(b) === optionTier(a) && b.totalSec < a.totalSec - HYST_SEC)
-        ) {
-          [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-          changed = true;
-        }
-      }
-    }
-    displayOrderRef.current = arr;
-    return arr.map((k) => byKey.get(k)!);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options, toLL?.lat, toLL?.lon]);
+    const ranked = stableTripOrder(options, displayOrderRef.current, Date.now());
+    displayOrderRef.current = ranked.state;
+    return ranked.options;
+  }, [options, fromText, fromLL?.lat, fromLL?.lon, toLL?.lat, toLL?.lon, targetDate, refreshKey]);
 
   // Which of those the collapsed list shows — computed ONCE per render and
   // shared by the map overview and the rows below, so the two cannot disagree
@@ -3746,7 +3716,7 @@ const TripPlanner: FC<{
           })()}
           {options.length === 1 && options[0].mode === "walk" && (
             <div style={{ fontSize: 13, color: "#78909c", padding: "0 4px 8px" }}>
-              Walking beats every shuttle here — no bus nearby saves time.
+              Walking is the simplest available option for this trip.
             </div>
           )}
           {(() => {
@@ -3759,7 +3729,7 @@ const TripPlanner: FC<{
             // Still shown either way (riders want to see every route);
             // only judged when walking is a real alternative — the walk
             // card itself is suppressed >60 min.
-            // Fastest-first with hysteresis — see orderedOptions above.
+            // Shorter walks/rides among overlapping arrival windows; see orderedOptions.
             const _tier = optionTier;
             const _sorted = orderedOptions ?? [];
             // Shuttles-plus-walk visibility rule — see topVisibleOptions.
@@ -3797,6 +3767,7 @@ const TripPlanner: FC<{
               Walking wins right now — every shuttle is slower, but the routes are listed in case you'd rather ride.
             </div>
           )}
+          {!_detailOpen && _sorted.some(o => o.mode === 'shuttle') && <p style={{ fontSize: 12, color: '#5f6368', margin: '0 4px 8px' }}>When arrival timing is unclear, shorter walks and rides come first.</p>}
           <div style={{
             background: "#fff", borderRadius: 12, marginBottom: 8,
             border: "1px solid #e8eaed", boxShadow: "0 1px 2px rgba(60,64,67,0.08)",
