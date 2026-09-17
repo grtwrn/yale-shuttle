@@ -36,7 +36,7 @@ import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
-import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { journeyArrival } from "./journeyArrival";
 import {
@@ -923,7 +923,6 @@ type OverviewOption = {
   // bus reaches the board stop ("🚌 4 min") and when the rider steps off
   // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
   boardEta?: string | null;
-  boardWindow?: string | null;
   busWait?: ReturnType<typeof mapWaitLabel>;
   arriveAt?: string | null;
   /**
@@ -994,21 +993,20 @@ const CombinedTripMap: FC<{
         // its route even without judging the text color (user request
         // 2026-07-17; also helps color-blind riders).
         const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
-        const window = e.kind === "board" ? o.boardWindow : null;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
-          part: `<span style="color:${o.color}">${tagged}</span>${window ? `<br/><span style="font-weight:400;color:#5f6368;padding-left:18px">${window}</span>` : ""}`,
+          part: `<span style="color:${o.color}">${tagged}</span>`,
           // Estimated label footprint: emoji + padding + ~6 px/char at
           // the chip's 10 px bold face. Merge decisions use these
           // per-chip estimates, per the spec: "overlap of would-be
           // individual labels".
-          w: 26 + Math.max(tagged.length, window?.length ?? 0) * 6,
-          lines: window ? 2 : 1,
+          w: 26 + tagged.length * 6,
+          lines: 1,
           x: p.x,
           // Board chips render above their stop, alight chips below —
           // baked into y so labels merge when the LABELS would collide,
           // not merely when the dots are near.
-          y: p.y + (e.kind === "board" ? (window ? -21 : -14) : 14),
+          y: p.y + (e.kind === "board" ? -14 : 14),
         });
       }
     }
@@ -1144,7 +1142,7 @@ const CombinedTripMap: FC<{
     chipLayerRef.current = L.layerGroup().addTo(map);
     map.on("zoomend moveend resize", rebuildChips);
 
-    // Leave room above the northern stops for the two-line arrival chip and
+    // Leave room above the northern stops for the arrival chip and
     // a waiting bus label. Tight endpoint-only bounds clipped both at 320px.
     map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
     rebuildChips();
@@ -3659,8 +3657,7 @@ const TripPlanner: FC<{
                 bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
                 passedBus: passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
                 berth: berthFor(o.boardStopId, cfg.busRouteIds),
-                boardEta: boardLabel?.point ?? null,
-                boardWindow: boardLabel?.window ?? null,
+                boardEta: compactMapArrival(boardLabel),
                 busWait: o.etaUnavailable ? null : mapWaitLabel(standRest,
                   dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
                 arriveAt: o.departed || o.etaUnavailable ? null : o.journeyArrival

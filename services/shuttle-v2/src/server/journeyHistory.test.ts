@@ -94,10 +94,15 @@ it('returns recent fleet facts when the live origin is unavailable and rejects b
   expect(history('Red', NaN, null, network, now)).toBeNull();
 });
 it('bounds results and caches only the same source state and elapsed-wait bucket', () => {
-  for (let i = 0; i < 28; i++) trip(start - i * 1000);
+  for (let i = 0; i < 105; i++) trip(start - i * 1000);
   const history = createJourneyHistory(db), p = position();
   const result = history('Red', 48, p, network, now)!;
   expect(result.journey!.trips).toHaveLength(24);
+  const larger = history('Red', 48, p, network, now, 100)!;
+  expect(larger.journey!.trips).toHaveLength(100);
+  expect(larger).not.toBe(result);
+  expect(history('Red', 48, p, network, now + 1000, 100)).toBe(larger);
+  for (const limit of [0, 101, 1.5, NaN]) expect(history('Red', 48, p, network, now, limit)).toBeNull();
   expect(history('Red', 48, p, network, now + 1000)).toBe(result);
   const later = history('Red', 48, p, network, now + 5000)!;
   expect(later).not.toBe(result);

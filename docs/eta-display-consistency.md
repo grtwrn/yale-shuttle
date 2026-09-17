@@ -13,12 +13,13 @@ with a 2-minute midpoint. At the other cutoff, a Red interval could replace a
 These are reproductions of the display rule, not raw telemetry recovered from
 the screenshots.
 
-The mini-map and stop rows now use the trip card's `arrivalSummary` through
-`mapArrivalLabel`: **About X min** and **Likely A–B min** have fixed roles. The
-full interval remains visible regardless of width, with outward endpoint
-rounding. Genuine forecast updates still change the values. Missing or stale
-forecasts do not retain a fabricated map arrival. Chip clustering accounts for
-the second line when measuring collisions. Wait labels avoid arrival chips and
+All surfaces use the trip card's `arrivalSummary` through `mapArrivalLabel`.
+The mini-map is compact: **(R) A–B min**, one line per route. It retains every
+available window regardless of width, with outward endpoint rounding; the
+point estimate stays on the card and stop rows. A missing window gets an
+explicitly approximate **~N min**, and an observed arrival says **At stop**.
+Genuine forecast updates still change the values. Missing or stale forecasts
+do not retain a fabricated map arrival. Wait labels avoid arrival chips and
 map controls; the map reserves space above its endpoints for these labels.
 
 At a wait stop, the bus's mini-map marker has a permanent label above it:

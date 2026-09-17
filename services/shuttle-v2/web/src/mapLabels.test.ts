@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from './mapLabels';
+import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from './mapLabels';
 import { displayBand, chipCountdownText } from './etaBand';
 import { arrivalSummary } from './arrivalDetails';
 
@@ -15,6 +15,7 @@ describe('reports 113/114: point and range keep separate roles', () => {
         expect(label.point).toBe(card.point);
         expect(label.window).toBe(`Likely ${card.band!.text}`);
         expect(label.window).not.toBeNull();
+        expect(compactMapArrival(label)).toBe(card.band!.text);
         current.push(label.point);
       }
       expect(new Set(old).size).toBeGreaterThan(1); // reproduces the switch
@@ -26,6 +27,9 @@ describe('reports 113/114: point and range keep separate roles', () => {
     expect(mapArrivalLabel({ eta: 120 })).toEqual({ point: 'About 2 min', window: null });
     expect(mapArrivalLabel({ eta: 0, low: 0, high: 0 }, 0, true)).toEqual({ point: 'At your stop', window: null });
     expect(mapArrivalLabel({ eta: NaN })).toBeNull();
+    expect(compactMapArrival(mapArrivalLabel({ eta: 120 }))).toBe('~2 min');
+    expect(compactMapArrival(mapArrivalLabel({ eta: 0 }, 0, true))).toBe('At stop');
+    expect(compactMapArrival(null)).toBeNull();
   });
 });
 

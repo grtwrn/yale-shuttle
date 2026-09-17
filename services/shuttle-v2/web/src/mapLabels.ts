@@ -26,6 +26,14 @@ export function mapArrivalLabel(arrival: { eta: number; low?: number; high?: num
   return { point, window: band ? `Likely ${band.text}` : null };
 }
 
+/** The mini-map has one line per route. Keep every available window, without
+ * width cutoffs; the card retains the separate point estimate and explanation. */
+export function compactMapArrival(label: ReturnType<typeof mapArrivalLabel>) {
+  if (!label) return null;
+  if (label.window) return label.window.replace(/^Likely /, '');
+  return label.point === 'At your stop' ? 'At stop' : label.point.replace(/^About /, '~');
+}
+
 /** Observed elapsed time and typical TOTAL stand, never typical minus elapsed.
  * Only label wait stops (the same >=3-minute typical hold used in stop lists). */
 export function mapWaitLabel(standing: { stopId: number; standingSec: number; approach?: boolean } | null,

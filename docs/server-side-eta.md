@@ -55,21 +55,31 @@ assumption beside that conclusion. Dot fractions are not validated on-time
 probabilities.
 
 Opening either disclosure requests
-`/api/journey-history?route=Red&bus=308&stop=48&eta=360`. The bus/ETA identify the
+`/api/journey-history?route=Red&bus=308&stop=48&eta=360&limit=100`. The bus/ETA identify the
 selected forward occurrence in the existing warm server snapshot; requests do
 not advance tracking. Stale snapshots, ambiguous repeated sources, later laps,
 and contradictory/approach rest states have no comparable starting point.
 
 The reader uses `stop_visits` and `legs`, without old predictions or rider
 reports. It examines at most 240 recent source visits in 30 days and returns
-at most 24 independent completed paths (one dot per target visit, not one per
+at most 100 distinct completed paths (one dot per target visit, not one per
 poll). Paths connect exact departure/arrival timestamps through intermediate
 visits, preserve route occurrence indices, and reject gaps, missing legs,
 wrong-direction hops and weak target arrivals. Both endpoints must have a
 recorded stop; pass-through endpoint visits are excluded and disclosed. Departure timestamps use the
 existing time-leading leg index. Similar weekday/weekend and local time within
-two hours constrain comparisons. "Independent" here means distinct visits;
-trips on the same day or bus can still be statistically dependent.
+two hours constrain comparisons. Distinct trips on the same day or bus can
+still be statistically dependent. The endpoint defaults to 24 observations
+for older cached clients; current clients explicitly request `limit=100`.
+Limits must be integers from 1 to 100 and have separate cache entries.
+
+A read-only September 17 audit of the September 16 Red #308 snapshot found
+75 matching Winchester-to-Division/Prospect journeys across nine dates,
+versus 24 across four dates under the old display cap. The same starting
+state had 51 matching journeys to LEPH across nine dates. Increasing the
+cap preserved all matching filters; these queries took about 25–39 ms.
+An unavailable current origin is separately labeled as a matching problem,
+rather than implying that the server has no recorded trips.
 
 For a stopped bus, the historical reference instant is `pinned_at + elapsed`,
 including only visits still stopped then. Live elapsed time comes from the
