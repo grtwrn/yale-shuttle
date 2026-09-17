@@ -62,53 +62,15 @@ export interface StopArrival {
   eta: number;
   low: number;
   high: number;
-  /**
-   * THE DRIVE FLOOR: the same chain with the stand ALREADY IN PROGRESS ended
-   * this second — quantile tau of (drive out of the stand + every stand and
-   * drive between there and here). It is what no departure can skip.
-   *
-   * Equal to `eta` whenever the lead is not resting, because there is then no
-   * current stand to remove; below the RAW `eta` while the lead rests, by the
-   * residual of that rest. It may exceed the SHOWN `eta`, and on a long stand
-   * it should: #119 holds the shown number down while the conditional median
-   * climbs, and the drive underneath it does not move.
-   *
-   * It exists because the DISPLAY needs a floor and had been RECONSTRUCTING
-   * one by subtraction — `eta - remainingStand`, with the stand read from a
-   * second computation (arrivals.ts `shownStandSec`) at a second clock, and
-   * the difference floored at zero. On a stand that has run past its table
-   * that subtraction collapses, and the card printed a low end of "<1 min"
-   * for a bus three hops and 472 m from the rider's stop (operator,
-   * 2026-09-10: `Red in <1-8, then 14 min`). The floor is a quantity the
-   * model already holds; it is served here rather than guessed there, so
-   * there is still exactly one arithmetic.
-   *
-   * NOT clamped by #119's floors: the clamp is a rule about the number a
-   * standing bus shows, and a drive is not standing time.
+  /** Median arrival in the scenario where the current rest ends now.
+   * Future regulated waits are recomputed using each path's earlier arrival.
+   * This is not a mathematical lower bound: leaving earlier can buy a longer
+   * later wait. It is independent of the display's standing clamp.
    */
   departNow: number;
-  /**
-   * THE BAND'S FLOOR, MEASURED AND NOT APPLIED: quantile 0.1 of `departNow`'s
-   * chain — the same rest-less chain, read at the band's own low quantile —
-   * and `low` itself when the lead is not resting. Sample for sample the
-   * lead chain is that chain plus a non-negative residual, so in the model
-   * `low` cannot honestly sit below this; it does only because #119's clamp
-   * shifts the band down with the shown number and the shift is floored at
-   * zero rather than here (0 s for twelve consecutive polls on the operator's
-   * 2026-09-10 case, "now-8 min" for a bus 595 m away).
-   *
-   * It is SERVED so the replay can score it and NOT enforced, because the
-   * measurement refused it (2026-09-11, gps-replay 9/9 and 9/10, Red and Blue
-   * Day, `scripts/eta-replay/band-coverage.mjs --floor fl`): the truth
-   * arrives before this q10 on 7-18% of pairs at 2-30 min — the rest-less
-   * chain prices the stands ahead at pooled medians and is pessimistic where
-   * a bus takes them short — so flooring at it cost 3-13 points of held-out
-   * coverage under the served widening, and the nightly fit would have to
-   * widen 5-10 min bands by ~45% to buy the coverage back. A floor at
-   * `departNow` itself (the median) is worse still: for a moving bus that IS
-   * `eta`, so it deletes the lower half of every moving band (Red 5-10 min
-   * moving coverage 77 -> 32%). The right fix is the chain's pessimism, not
-   * a floor on its band.
+  /** Legacy diagnostic: q10 of the leave-now scenario, capped at the shown
+   * point, or the displayed low when there is no attributed rest. Never
+   * enforced as a lower bound; regulation can change the later waits.
    */
   lowFloor: number;
   /** Mass of the lead cluster (1 on a plain loop). */
@@ -306,6 +268,10 @@ interface LapCorrection {
 
 const ZERO = new Float64Array(K);
 
+/** Paired-replay control; joint lap paths are enabled for measured Red only. */
+let sampledFutureLap = true;
+export function setSampledFutureLap(on: boolean): void { sampledFutureLap = on; }
+
 /**
  * The departure the BELIEF has seen and the served lap clock has not.
  *
@@ -460,6 +426,8 @@ interface Chain {
   standingAt: number;
   /** A rest ALREADY IN PROGRESS was billed into `start` (the residual term). */
   restsNow: boolean;
+  /** Joint sampled paths, indexed by hops to the target. */
+  sampled?: Float64Array[];
 }
 
 /**
@@ -524,6 +492,7 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
 
 /** The chain's samples at the stop `h` hops on (h >= 1), into `out`. */
 function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: LapCorrection | null): void {
+  if (c.sampled) { out.set(c.sampled[h]!); return; }
   const a = pre.prefix[c.leg + h]!, b = pre.prefix[c.leg + 1]!;
   const s = c.start;
   if (!lap || !lap.bounds.length) {
@@ -532,6 +501,45 @@ function chainAt(c: Chain, pre: ChainPrefix, h: number, out: Float64Array, lap: 
   }
   const da = accAt(lap, c.leg + h), db = accAt(lap, c.leg + 1);
   for (let k = 0; k < K; k++) out[k] = s[k]! + a[k]! - b[k]! + da[k]! - db[k]!;
+}
+
+/** Joint forward simulation. An early arrival can buy a longer regulated
+ * wait; treating both as independent loses that negative dependence. Keep
+ * the same fixed uniforms and current-rest pricing as the nominal chain.
+ */
+function sampleFutureLaps(
+  c: Chain, tables: RouteTables, stops: readonly number[], ages: LapAges,
+  own: { stop: number; depT: number } | null,
+): void {
+  const N = tables.hops.length;
+  const departed = new Map<number, Float64Array>();
+  if (own && own.stop !== c.standingAt) departed.set(own.stop, new Float64Array(K).fill(own.depT));
+  if (c.standingAt >= 0) {
+    const drive = termDraws(tables.hops[c.leg]!.drive, 2 * c.leg + 1);
+    departed.set(c.standingAt, Float64Array.from(c.start, (t, k) => Math.max(0, t - drive[k]!)));
+  }
+  const paths: Float64Array[] = [ZERO, c.start];
+  for (let h = 1; h < 2 * N; h++) {
+    const s = (c.leg + h) % N;
+    const model = tables.stops[s]!;
+    const hop = tables.hops[s]!;
+    const current = paths[h]!;
+    const next = new Float64Array(K);
+    const dep = new Float64Array(K);
+    const previous = departed.get(s);
+    const marginal = termDraws(model.stand, 2 * s);
+    const drive = termDraws(hop.drive, 2 * s + 1);
+    for (let k = 0; k < K; k++) {
+      const lap = previous ? current[k]! - previous[k]! : lapAt(ages[stops[s]!], current[k]!);
+      const f = lapFactor(model.lap, lap);
+      const stand = marginal[k]!;
+      dep[k] = current[k]! + (hop.includesStand ? 0 : stand * f);
+      next[k] = dep[k]! + drive[k]!;
+    }
+    departed.set(s, dep);
+    paths.push(next);
+  }
+  c.sampled = paths;
 }
 
 // -- mixing and the clamp -----------------------------------------------------
@@ -675,6 +683,12 @@ export function priceRoute(
   const leadNow = lead.restsNow
     ? startChain(lead.sit, tables, r, restStop, N, lap, true)
     : null;
+  if (sampledFutureLap && ring.routeId === "3" && lapAges && tables.stops.some(st => st.lap)) {
+    for (const c of chains) sampleFutureLaps(c, tables, stops, lapAges,
+      ownDeparture(belief, stops, lapAges, c.standingAt, r, now));
+    if (leadNow) sampleFutureLaps(leadNow, tables, stops, lapAges,
+      ownDeparture(belief, stops, lapAges, leadNow.standingAt, r, now));
+  }
   const out: StopArrival[] = [];
   const clockSince = clockOrigin(belief);
   // The clamp (#119): while the lead STANDS, the shown remainder may pause
