@@ -27,7 +27,7 @@ export function ArrivalPlot({ values, title, description, markers = [], clock = 
   if (!values.length || !values.every(Number.isFinite)) return null;
   const layout = arrivalPlotLayout(values, markers, clock);
   const format = (n: number) => clock
-    ? new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    ? new Date(Math.round(n / 60_000) * 60_000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : `${Math.round(n / 60)} min`;
   const ticks = [layout.min, Math.round((layout.min + layout.max) / (clock ? 120_000 : 120)) * (clock ? 60_000 : 60), layout.max];
   return <figure style={{ margin: '16px 0' }}>
