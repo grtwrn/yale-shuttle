@@ -31,6 +31,21 @@ describe('authoritative live forecast', () => {
       .toEqual(serverArrivals(live, [48], 50_000));
   });
 
+  it('advances across fresh snapshots but permits genuine new-rest and new-stop resets', () => {
+    const read = (at: number, standingSec: number, stopId = 48) => {
+      const live = buses(), w = wire();
+      w.at = at; w.servedAt = at + 2_000;
+      w.buses = [['12', 'Red', 2, { stopId, standingSec, approach: false }]];
+      const receivedAt = at + 9_000_000; // a phone clock need not match the server
+      expect(attachServerEta(live, w, receivedAt)).toBe(true);
+      return serverTrack(live[0]!, 'Red', receivedAt + 1_000)!.standing!;
+    };
+    expect(read(1_000_000, 360).standingSec).toBe(363);
+    expect(read(1_005_000, 365).standingSec).toBe(368);
+    expect(read(1_010_000, 2).standingSec).toBe(5);
+    expect(read(1_015_000, 1, 49)).toEqual({ stopId: 49, standingSec: 4, approach: false });
+  });
+
   it('expires arrivals and track metadata together, including already-old responses', () => {
     const live = buses();
     attachServerEta(live, wire(), 50_000);

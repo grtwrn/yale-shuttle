@@ -128,24 +128,30 @@ try {
     const before = await waitLabel.innerText();
     await page.clock.runFor(2000);
     const after = await waitLabel.innerText();
-    assert.notEqual(after.split('\n')[0], before.split('\n')[0], 'waiting clock advances');
+    const elapsed = text => {
+      const match = text.match(/Waiting(?: nearby)? (\d+):(\d{2})/);
+      assert(match, 'waiting label includes elapsed time');
+      return Number(match[1]) * 60 + Number(match[2]);
+    };
+    assert(elapsed(after) > elapsed(before), 'waiting clock advances without stepping backward');
     assert.equal(after.split('\n')[1], before.split('\n')[1], 'typical total stays stable');
     result.checks.push('waiting label names its route on the elapsed-time line; clock advances while typical total stays stable');
   }
   await map.scrollIntoViewIfNeeded();
   const waitLabelsClear = () => map.evaluate(el => {
     const waits = [...el.querySelectorAll('.eta-tip')].filter(t => t.querySelector('.bus-wait-label'));
-    const arrivals = [...el.querySelectorAll('.eta-tip')].filter(t => !t.querySelector('.bus-wait-label'));
-    return waits.every(w => arrivals.every(a => {
+    const obstacles = [...el.querySelectorAll('.eta-tip, .leaflet-control, :scope > button')]
+      .filter(t => !t.querySelector('.bus-wait-label'));
+    return waits.every(w => obstacles.every(a => {
       const x = w.getBoundingClientRect(), y = a.getBoundingClientRect();
       return x.right <= y.left || x.left >= y.right || x.bottom <= y.top || x.top >= y.bottom;
     }));
   });
-  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window at 320px');
+  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window or controls at 320px');
   await page.screenshot({ path: out + '/mini-map-wait-320.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(150);
-  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window at 390px');
+  if (local) assert(await waitLabelsClear(), 'wait label must not cover arrival window or controls at 390px');
   await page.screenshot({ path: out + '/mini-map-wait-390.png' });
   if (local) {
     await page.setViewportSize({ width: 1701, height: 1164 });
@@ -153,7 +159,7 @@ try {
     assert(await waitLabelsClear(), 'wait label must not cover arrival window at reported desktop size');
     await page.screenshot({ path: out + '/mini-map-wait-desktop.png' });
     await page.setViewportSize({ width: 390, height: 844 });
-    result.checks.push('wait labels avoid arrival windows at phone and reported desktop sizes');
+    result.checks.push('wait labels avoid arrival windows and map controls at phone and reported desktop sizes');
   }
   await trip.focus();
   await page.keyboard.press('Enter');

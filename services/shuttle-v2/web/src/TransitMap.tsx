@@ -961,7 +961,8 @@ const CombinedTripMap: FC<{
     if (!ref.current) return;
     const tooltips = Object.values(busMarkersRef.current).map(m => m.getTooltip()).filter(t => t?.options.permanent);
     for (const t of tooltips) { t!.options.offset = L.point(0, -16); t!.update(); }
-    const obstacles = [...ref.current.querySelectorAll('.eta-tip, .leaflet-control')]
+    // Fullscreen/Back are siblings of the Leaflet container, inside the wrapper.
+    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, :scope > button')]
       .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
     for (const t of tooltips) {
       const element = t!.getElement();

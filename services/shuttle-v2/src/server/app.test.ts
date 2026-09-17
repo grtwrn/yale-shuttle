@@ -226,6 +226,9 @@ describe("GET /api/buses", () => {
     const res = await app.request("/api/buses");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
+    // Reusing a stale response resets the client's snapshot receipt clock:
+    // a continuing wait can jump backward, and stale ETAs stay available.
+    expect(res.headers.get("cache-control")).toBe("no-store");
     const body = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual([
       "announcements",
