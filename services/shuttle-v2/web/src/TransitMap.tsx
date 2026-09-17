@@ -959,16 +959,20 @@ const CombinedTripMap: FC<{
   optionsRef.current = options;
   function layoutWaitLabels() {
     if (!ref.current) return;
-    const tooltips = Object.values(busMarkersRef.current).map(m => m.getTooltip()).filter(t => t?.options.permanent);
-    for (const t of tooltips) { t!.options.offset = L.point(0, -16); t!.update(); }
+    const tooltips = Object.values(busMarkersRef.current).flatMap(marker => {
+      const tooltip = marker.getTooltip();
+      return tooltip?.options.permanent ? [{ tooltip, marker }] : [];
+    });
+    for (const { tooltip } of tooltips) { tooltip.options.offset = L.point(0, -10); tooltip.update(); }
     // Fullscreen/Back are siblings of the Leaflet container, inside the wrapper.
-    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, :scope > button')]
+    const obstacles = [...ref.current.parentElement!.querySelectorAll('.eta-tip, .leaflet-control, .bus-pin-sm, :scope > button')]
       .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
-    for (const t of tooltips) {
-      const element = t!.getElement();
+    for (const { tooltip, marker } of tooltips) {
+      const element = tooltip.getElement();
       if (!element) continue;
-      const shift = placeWaitLabel(element.getBoundingClientRect(), ref.current.getBoundingClientRect(), obstacles);
-      t!.options.offset = L.point(shift.x, -16 + shift.y); t!.update();
+      const shift = placeWaitLabel(element.getBoundingClientRect(), ref.current.getBoundingClientRect(), obstacles,
+        marker.getElement()?.getBoundingClientRect());
+      tooltip.options.offset = L.point(shift.x, -10 + shift.y); tooltip.update();
       obstacles.push(element.getBoundingClientRect());
     }
   }
@@ -1258,24 +1262,25 @@ const CombinedTripMap: FC<{
     const updateWait = (marker: L.Marker, label: string, color: string, routeName: string, wait: OverviewOption['busWait']) => {
       const permanent = !!wait;
       const content = document.createElement('div');
-      content.title = `${label}. Typical total wait is historical context, not time remaining.`;
+      content.title = wait ? `${label}. ${wait.elapsed}. ${wait.typical}. Typical total wait is historical context, not time remaining.` : label;
       content.className = wait ? 'bus-wait-label' : '';
       if (wait) {
-        const elapsed = document.createElement('div'), typical = document.createElement('div');
+        content.setAttribute('role', 'img');
+        content.setAttribute('aria-label', content.title);
+        content.style.whiteSpace = 'nowrap';
         const route = document.createElement('span');
         route.className = 'bus-wait-route';
         route.textContent = routeName; route.style.color = color;
-        elapsed.append(route, document.createTextNode(` · ${wait.elapsed}`));
-        elapsed.style.fontWeight = '700';
-        elapsed.style.color = wait.overdue ? '#8a5300' : '#374151';
-        typical.textContent = wait.typical; typical.style.fontWeight = '400';
-        content.append(elapsed, typical);
+        const time = document.createElement('span');
+        time.textContent = wait.compact;
+        time.style.color = wait.overdue ? '#8a5300' : '#374151';
+        content.append(route, document.createTextNode(' '), time);
       } else content.textContent = label;
       const tooltip = marker.getTooltip();
       if (tooltip && !!tooltip.options.permanent === permanent) marker.setTooltipContent(content);
       else {
         marker.unbindTooltip();
-        marker.bindTooltip(content, { permanent, direction: 'top', offset: [0, -16], className: 'eta-tip', opacity: 0.98 });
+        marker.bindTooltip(content, { permanent, direction: 'top', offset: [0, permanent ? -10 : -16], className: permanent ? 'eta-tip bus-wait-tip' : 'eta-tip', opacity: 0.98 });
       }
     };
     for (const o of options) {
@@ -1341,6 +1346,7 @@ const CombinedTripMap: FC<{
           border-radius: 6px;
           box-shadow: 0 1px 3px rgba(0,0,0,0.25);
         }
+        .trip-map-wrap .bus-wait-tip::before { display: none; }
       `}</style>
       <div ref={ref} style={{ position: "absolute", inset: 0 }} />
       {/* Back, top-left, beside the ✕ rather than instead of it: on a phone
