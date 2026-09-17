@@ -25,6 +25,7 @@ import type { BusPosition, Route, Stop } from "../schema/api.js";
 
 import { pruneVisits, stepManyWithVisits, type VisitEvent, type VisitState } from "./departure.js";
 import { visitRowsOf } from "./visitRows.js";
+import { recoverOpenVisit, type OpenArrival } from "./visitRecovery.js";
 import type {
   BusObservation,
   BusState,
@@ -662,7 +663,8 @@ export class Collector {
     // is SUPPOSED to restart (see MAX_HANDOFF_GAP_MS). DESC because the scan
     // walks backwards from the present until the stand ends.
     this.recentBusSamplesStmt = this.sqlite.prepare(
-      "SELECT lat, lon, collected_at AS collectedAt FROM raw_positions " +
+      "SELECT bus_id AS busId, bus_name AS busName, route_id AS routeId, lat, lon, heading, " +
+        "last_stop_id AS lastStopId, collected_at AS collectedAt FROM raw_positions " +
         "WHERE bus_id = ? AND collected_at >= ? AND collected_at < ? " +
         "ORDER BY collected_at DESC LIMIT ?",
     );
@@ -844,6 +846,7 @@ export class Collector {
           });
         }
         reconcileTracks(this.livePositions, plan);
+        this.recoverOpenVisits(observations, plan);
         // The same `step`, in the same order, as `stepMany` — `events` is
         // byte-for-byte what it returned before. The visit reducer rides
         // alongside and adds the departure observation the detector lacks.
@@ -1080,6 +1083,40 @@ export class Collector {
         error: (err as Error).message,
       });
       return null;
+    }
+  }
+
+  /** A fresh fix after a restart may be a shuffle within an existing stop.
+   * Restore the complete reducers before processing it; clocks alone cannot
+   * recover the preceding plateau or a departure candidate already in flight.
+   */
+  private recoverOpenVisits(observations: readonly BusObservation[], plan: TrackPlan): void {
+    // A previously contended name can become unique on this poll. Recognize
+    // its existing state under the new key before considering disk recovery.
+    reconcileTracks(this.states, plan);
+    reconcileTracks(this.visitStates, plan);
+    for (const obs of observations) {
+      const key = plan.keys.get(obs.busId) ?? obs.busName;
+      if (this.states.has(key) || plan.contendedNames.has(obs.busName)) continue;
+      try {
+        const rows = this.recentBusArrivalsStmt.all(obs.busId,
+          obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, RESUME_ARRIVAL_MAX_ROWS) as OpenArrival[];
+        const latest = rows[0];
+        const stop = latest && this.ref.get().stops.get(latest.stopId);
+        if (!latest || latest.departedAt !== null || latest.routeId !== obs.routeId
+          || !stop || distanceMeters(obs, stop) > AT_STOP_PIN_M) continue;
+        const history = this.recentBusSamplesStmt.all(obs.busId,
+          obs.collectedAt - STATIONARY_SEED_WINDOW_MS, obs.collectedAt, STATIONARY_SEED_MAX_ROWS) as BusObservation[];
+        const restored = recoverOpenVisit(this.ref.get(), obs, history.reverse(), rows);
+        if (restored) {
+          this.states.set(key, restored.detector);
+          this.visitStates.set(key, restored.visit);
+          this.logger.info("collector.visit_recovered", { busName: obs.busName, stopId: latest.stopId,
+            enteredAt: restored.detector.enteredAt, samples: history.length });
+        }
+      } catch (err) {
+        this.logger.warn("collector.visit_recovery_failed", { busName: obs.busName, error: (err as Error).message });
+      }
     }
   }
 
