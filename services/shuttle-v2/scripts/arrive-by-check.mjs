@@ -91,6 +91,8 @@ try {
   const destinationPlot = panel.getByRole('img', { name: /^Arrival at / });
   await destinationPlot.waitFor();
   assert.equal(await destinationPlot.locator('circle').count(), 50);
+  const walkingTime = (await panel.getByText(/^About \d/).first().innerText()).replace(/^About /, '');
+  assert((await panel.innerText()).includes('Walk estimate ' + walkingTime), 'walk marker and summary must agree to the minute');
   assert.match(await panel.innerText(), /Class starts|Your target/);
   await destinationPlot.scrollIntoViewIfNeeded();
   await page.screenshot({ path: out + '/destination-distribution-320.png' });
@@ -139,6 +141,13 @@ try {
   result.checks.push('pickup distribution and following-shuttle wording');
   await page.keyboard.press('Escape');
   assert(await eta.evaluate(e => e === document.activeElement));
+  await page.route('**/api/arrival-history?**', route => route.fulfill({ status: 503, json: { error: 'test interruption' } }));
+  await eta.click();
+  await dialog.getByText('Recorded trips are unavailable right now.').waitFor();
+  assert.equal(await pickupPlot.locator('circle').count(), 50);
+  assert.match(await dialog.innerText(), /Likely arrival window/);
+  await page.keyboard.press('Escape');
+  result.checks.push('history failure leaves live distribution and forecast usable');
   await page.getByRole('button', { name: /All routes/ }).click();
   result.checks.push('deadline survives reload', 'trip details, pickup gap and Escape focus still work');
   await panel.getByLabel('Class starts · local time').fill('2026-01-01T10:00');
