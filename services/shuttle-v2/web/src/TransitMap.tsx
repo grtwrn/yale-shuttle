@@ -33,7 +33,7 @@ import { noteShown } from "./shownLog";
 import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
-import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
+import { arrivalBand, rideHoldText, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
 import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
@@ -76,7 +76,7 @@ import { planningTimeError } from "./planningTime";
 import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
-import { isUnambiguousRideArrival } from "./rideArrival";
+import { isUnambiguousRideArrival, rideStopPassed } from "./rideArrival";
 import { getOffAlertTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
@@ -3869,11 +3869,14 @@ const TripPlanner: FC<{
              * model's own q10/q90 into a range floored by the drive — see the
              * header there for the measured case.
              */
-            const standCtx = o.mode === "shuttle" && !o.departed && shuttleCtx?.busMatch
+            const standAnswer = o.mode === "shuttle" && !o.departed && shuttleCtx?.busMatch
+              ? resolveStandingStop(
+                  shuttleCtx.busMatch, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
+                )
+              : null;
+            const standCtx = standAnswer && shuttleCtx
               ? standWaitFor(
-                  resolveStandingStop(
-                    shuttleCtx.busMatch, shuttleCtx.cfg, routeStops, stopCoords, Date.now(), liveAnchorStore,
-                  ),
+                  standAnswer,
                   dwellTimes?.[shuttleCtx.cfg.routeIds[0]] ?? {},
                   dwellTimes ?? undefined,
                 )
@@ -4025,8 +4028,10 @@ const TripPlanner: FC<{
                             computedAtMs={o.computedAtMs} nextSec={nextArrLive?.eta}
                             nextBusName={nextArrLive?.busName} stopsAway={shuttleCtx?.stopsAway}
                             atPickup={shuttleCtx?.busMatch?.at_stop_id === o.boardStopId}
-                            holdingAt={shuttleCtx?.busMatch?.stationary && shuttleCtx.busMatch.at_stop_id != null
-                              ? stopNames[shuttleCtx.busMatch.at_stop_id] : undefined}
+                            holdingAt={standAnswer
+                              ? (stopNames[standAnswer.stopId] ?? `Stop ${standAnswer.stopId}`).replace(/\s*\/\s*/g, "/")
+                              : undefined}
+                            holdingNear={standAnswer?.approach}
                           />
                         )}
                       </span>
@@ -4844,6 +4849,22 @@ const TripPlanner: FC<{
                         );
                       })}
                       </div>
+                      {/* The trip's END, named — the list finishes at GET OFF
+                          and, expanded, the destination the ride was for
+                          dropped off the page entirely (2026-09-17 eval: the
+                          rider could not re-check "Rosenkranz Hall" or the
+                          final walk without collapsing the card). */}
+                      {toText && (
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "6px 0 2px 16px", fontSize: 14 }}>
+                          <span aria-hidden="true">🏁</span>
+                          <span style={{ fontWeight: 700, color: "#202124" }}>
+                            {o.walkFromSec > 0 && (
+                              <span style={{ fontWeight: 400, color: "#5f6368" }}>🚶 {fmtWalk(o.walkFromSec)} to </span>
+                            )}
+                            {toText}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -6432,11 +6453,30 @@ const RideStopList: FC<{
 
   const busStepsFromBoard = busIdx >= 0 ? (busIdx - boardIdx + n) % n : -1;
 
+  // The same two states the banner carries — the hold that explains a
+  // countdown which cannot rise (#119), and the lapped exit that used to
+  // read as an ordinary "N stops" ("21 stops · 50 min", 2026-09-17 eval).
+  const alightPassed = bus !== undefined && rideStopPassed(busIdx, boardIdx, alightIdx, n);
+  const standAnswer = bus && cfg
+    ? resolveStandingStop(bus, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore)
+    : null;
+  const holdText = standAnswer
+    ? rideHoldText((stopNames[standAnswer.stopId] ?? `Stop ${standAnswer.stopId}`).replace(/\s*\/\s*/g, "/"))
+    : null;
+
   return (
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", paddingBottom: 24 }}>
       <div style={{ padding: "12px 16px 6px", fontSize: 12, color: "#78909c" }}>
         {ride.routeLabel} · Bus #{normBus(ride.busName)}
-        {etaSec !== null && (
+        {alightPassed ? (
+          <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
+            {`· may have passed${etaSec !== null ? ` · ~${formatRideEta(etaSec)} next lap` : ""}`}
+          </span>
+        ) : holdText ? (
+          <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
+            {`· ${holdText}`}
+          </span>
+        ) : etaSec !== null && (
           <span style={{ marginLeft: 8, color: ride.color, fontWeight: 600 }}>
             {`· ${etaSec < 60 ? formatRideEta(etaSec) : `~${formatRideEta(etaSec)}`} to your stop`}
           </span>
@@ -6538,15 +6578,35 @@ const OnBusBanner: FC<{
     : undefined;
 
   let stopsRemaining: number | null = null;
+  let anchorIdx = -1;
   if (bus && cfg && allStops.length > 0) {
-    const anchor = anchorIndexOnList(
+    anchorIdx = anchorIndexOnList(
       bus, cfg, routeStops, stopCoords, allStops, Date.now(), liveAnchorStore,
     );
     const alightIdx = allStops.indexOf(ride.alightStopId);
-    if (anchor >= 0 && alightIdx >= 0) {
-      stopsRemaining = (alightIdx - anchor + allStops.length) % allStops.length;
+    if (anchorIdx >= 0 && alightIdx >= 0) {
+      stopsRemaining = (alightIdx - anchorIdx + allStops.length) % allStops.length;
     }
   }
+
+  // The bus has gone PAST the rider's exit and is looping back around —
+  // without this state the recovery reads as an ordinary countdown
+  // ("21 stops · 50 min", 2026-09-17 eval) and the one thing a returning
+  // rider needs to know goes unsaid.
+  const alightPassed = bus !== undefined && rideStopPassed(
+    anchorIdx, allStops.indexOf(ride.boardStopId), allStops.indexOf(ride.alightStopId), allStops.length,
+  );
+
+  // A hold at a named stop explains a countdown that cannot rise while the
+  // bus stands (#119) — "holding at X" where the stalled number used to sit.
+  // The priced stand, not the payload's flag: `at_stop_id` is withheld for a
+  // hold short of the marker, which is exactly the approach case.
+  const standAnswer = bus && cfg
+    ? resolveStandingStop(bus, cfg, routeStops, stopCoords, Date.now(), liveAnchorStore)
+    : null;
+  const holdText = standAnswer
+    ? rideHoldText((stopNames[standAnswer.stopId] ?? `Stop ${standAnswer.stopId}`).replace(/\s*\/\s*/g, "/"))
+    : null;
 
   let etaSec: number | null = null;
   if (bus) {
@@ -6596,20 +6656,25 @@ const OnBusBanner: FC<{
   }, [stopsRemaining, ride.busName, ride.alightStopId, ride.routeLabel, alightName]);
 
   const etaStr = etaSec !== null ? formatRideEta(etaSec) : null;
+  // What follows the stops count: the hold when there is one to name, the
+  // countdown otherwise.
+  const trail = holdText ?? etaStr;
   const headline =
     bus === undefined
       ? "Looking for your bus…"
       : stopsRemaining === null
         ? "Tracking your ride"
-        : stopsRemaining <= 0
-          ? `Arriving at ${alightName}`
-          : stopsRemaining === 1
-            ? `Get off NEXT stop!${etaStr ? ` · ${etaStr}` : ""}`
-            : stopsRemaining === 2
-              ? `Get off in 2 stops!${etaStr ? ` · ${etaStr}` : ""}`
-              : etaStr
-                ? `${stopsRemaining} stops · ${etaStr}`
-                : `${stopsRemaining} stops until your stop`;
+        : alightPassed
+          ? `May have passed ${alightName}${etaStr ? ` · back in ${etaStr}` : ""}`
+          : stopsRemaining <= 0
+            ? `Arriving at ${alightName}`
+            : stopsRemaining === 1
+              ? `Get off NEXT stop!${trail ? ` · ${trail}` : ""}`
+              : stopsRemaining === 2
+                ? `Get off in 2 stops!${trail ? ` · ${trail}` : ""}`
+                : trail
+                  ? `${stopsRemaining} stops · ${trail}`
+                  : `${stopsRemaining} stops until your stop`;
 
   return (
     <>

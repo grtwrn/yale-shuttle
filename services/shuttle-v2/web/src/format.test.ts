@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   fmtBusPair,
@@ -106,8 +106,14 @@ describe("minutes are always spelled 'min'", () => {
 });
 
 describe("fmtClock", () => {
-  const base = new Date("2026-08-31T12:00:00");
+  // Noon Eastern is an INSTANT, pinned absolute so the device's zone at parse
+  // time cannot move it; what it prints depends on the zone each case sets.
+  const base = new Date("2026-08-31T16:00:00Z"); // 12:00 in New Haven
+  const OLD_TZ = process.env.TZ;
+  afterEach(() => { process.env.TZ = OLD_TZ; });
+
   it("renders 12-hour times with a compact am/pm marker", () => {
+    process.env.TZ = "America/New_York";
     expect(fmtClock(0, base)).toBe("12:00p");
     expect(fmtClock(90 * 60, base)).toBe("1:30p");
     expect(fmtClock(-12 * 3600, base)).toBe("12:00a");
@@ -115,7 +121,18 @@ describe("fmtClock", () => {
   });
 
   it("pads the minutes", () => {
+    process.env.TZ = "America/New_York";
     expect(fmtClock(5 * 60, base)).toBe("12:05p");
+  });
+
+  it("keeps the Eastern reading for a device in another zone, and says so", () => {
+    // The 2026-09-17 eval ran on a UTC browser: every trip clock read four
+    // hours ahead of the Yale journey it described, unlabeled. A campus
+    // shuttle's clocks are New Haven's — render them Eastern, and say it.
+    process.env.TZ = "UTC";
+    expect(fmtClock(0, base)).toBe("12:00p ET");
+    expect(fmtClock(90 * 60, base)).toBe("1:30p ET");
+    expect(fmtClock(-60 * 60, base)).toBe("11:00a ET");
   });
 });
 

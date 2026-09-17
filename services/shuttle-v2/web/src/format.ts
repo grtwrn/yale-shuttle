@@ -128,15 +128,33 @@ export function fmtWait(s: number): string {
   return `${m} min`;
 }
 
-/** Wall-clock time `s` seconds from `from` (default: now), device timezone. */
+const CAMPUS_ZONE = "America/New_York";
+const campusClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: CAMPUS_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+/**
+ * Wall-clock time `s` seconds from `from` (default: now), on the campus's
+ * clock — America/New_York, whatever the device is set to. A campus
+ * shuttle's times are New Haven's times; a browser left on another zone read
+ * a Yale trip four hours ahead with no label (2026-09-17 eval), and the app
+ * already resolves Eastern for the schedule itself for the same reason
+ * (schedule.ts). The " ET" suffix appears only on a device set to another
+ * zone — an Eastern device needs no label on its own times.
+ */
 export function fmtClock(s: number, from?: Date): string {
   const base = from?.getTime() ?? Date.now();
-  const d = new Date(base + s * 1000);
-  let h = d.getHours();
-  const mm = d.getMinutes();
-  const ampm = h >= 12 ? "p" : "a";
-  h = h % 12; if (h === 0) h = 12;
-  return `${h}:${String(mm).padStart(2, "0")}${ampm}`;
+  // "8:47 AM" -> "8:47a"
+  const t = campusClock.format(new Date(base + s * 1000))
+    .replace(/\s*([AP])M$/, (_, p: string) => (p === "A" ? "a" : "p"));
+  let et = true;
+  try {
+    et = Intl.DateTimeFormat().resolvedOptions().timeZone === CAMPUS_ZONE;
+  } catch { /* an unreadable zone still gets the label */ }
+  return et ? t : `${t} ET`;
 }
 
 export function formatEtaRange(a: { eta: number; low: number; high: number }): string {

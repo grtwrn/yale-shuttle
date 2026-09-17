@@ -289,3 +289,17 @@ export function stopEtaText(
   const view = standing ? standWaitFor(standing, routeDwells, dwellsByRoute) : null;
   return chipCountdownText(arrivalBand(view, arrival), arrival.eta);
 }
+
+/**
+ * THE RIDE SURFACES' one word for a bus paused at a named stop — "holding
+ * at Prospect/Hillside", beside the countdown it explains (the countdown
+ * may not rise while the bus stands, #119, so without this a dwell reads as
+ * a number that has stopped ticking: "2 min" through two minutes of no
+ * movement, 2026-09-17 eval). Both ride surfaces print it — the on-bus
+ * banner and the ride stop list's header — so they cannot spell the same
+ * hold two ways. Null where there is no stop to name: a light or a queue
+ * is not a hold the rider can place.
+ */
+export function rideHoldText(stopName: string | null | undefined): string | null {
+  return stopName ? `holding at ${stopName}` : null;
+}
