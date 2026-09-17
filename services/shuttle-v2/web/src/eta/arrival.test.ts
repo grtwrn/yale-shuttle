@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cdf, fromQuantiles, quantile, residual, type Dist } from "./dist";
+import { cdf, fromQuantiles, point, quantile, residual, type Dist } from "./dist";
 import { stepBelief, type Belief } from "./filter";
 import { buildRing, type Ring } from "./ring";
 import { buildTables, hiddenRest, PACE_KEY, type RouteTables } from "./tables";
-import { ceilingArmsOnStanding, K, priceRoute, setCeilingArmsOnStanding, setClampTrace, type ClampEvent, type Floors } from "./arrival";
+import { ceilingArmsOnStanding, K, priceRoute, setCeilingArmsOnStanding, setClampTrace, setSampledFutureLap, type ClampEvent, type Floors } from "./arrival";
 import { LEAD_SWITCH_MASS } from "./filter";
 import type { LatLon } from "../geo";
 
@@ -40,6 +40,73 @@ function setup(): { ring: Ring; tables: RouteTables } {
 }
 const since = new Date(0).toISOString().replace("Z", "");
 function standAt1(t: number) { return { lat: corners[0]!.lat, lon: corners[0]!.lon, stationary_since: since }; }
+
+describe("joint future lap paths on Red", () => {
+  afterEach(() => setSampledFutureLap(true));
+  const fitted = () => buildTables(STOPS, COORDS, {
+    ...SEGS, "1-2": { ...SEGS["1-2"], dq: [200,280,360,440,520,600,680,760,840,920], dqn: 10000 },
+  }, { ...DWELLS, "2": { med: 400, n: 10000, q: Array(10).fill(400), qn: 10000,
+    pstop: 1, lapB: -0.002, lapM: 2000, lapN: 10000 } });
+  function moving(ring: Ring) {
+    let b: Belief | undefined;
+    for (let i = 0; i < 5; i++) b = stepBelief(b, ring, at(100 + i * 30, 0), i * 5000, STOPS);
+    return b!;
+  }
+  it("lets slower travel buy a shorter future wait without changing the tracking belief", () => {
+    const ring = buildRing("3", PATH, STOPS, COORDS)!;
+    const tables = fitted(), belief = moving(ring);
+    tables.stops[1]!.stand = point(400);
+    // Isolate travel-time uncertainty from uncertainty about which leg the
+    // bus occupies: one known moving cell, a broad drive, one regulated wait.
+    let cell = 0;
+    for (let c = 0; c < ring.C; c++) if (ring.leg[c] === 0
+      && Math.abs(ring.frac[c]! - .25) < Math.abs(ring.frac[cell]! - .25)) cell = c;
+    belief.p.fill(0); belief.p[ring.C + cell] = 1; belief.lead = 0;
+    const before = structuredClone(belief);
+    const read = () => priceRoute(belief, ring, tables, STOPS, new Set([3]), 20000, .5, undefined, { 2: 1500 }, true)[0]!;
+    setSampledFutureLap(false); const independent = read();
+    setSampledFutureLap(true); const joint = read();
+    expect(joint.high - joint.low).toBeLessThan((independent.high - independent.low) * .7);
+    expect(Math.abs(joint.eta - independent.eta)).toBeLessThan(50);
+    expect(joint.low).toBeLessThanOrEqual(joint.eta);
+    expect(joint.eta).toBeLessThanOrEqual(joint.high);
+    expect(joint.distribution).toEqual([...joint.distribution!].sort((a,b) => a-b));
+    expect(belief).toEqual(before);
+  });
+  it("leaves other routes, absent lap clocks, and unfitted tables unchanged", () => {
+    for (const route of ["1", "3", "13"]) {
+      const ring = buildRing(route, PATH, STOPS, COORDS)!, b = moving(ring);
+      for (const tables of [fitted(), setup().tables]) {
+        for (const ages of [undefined, { 2: 1500 }]) {
+          if (route === "3" && tables.stops[1]!.lap && ages) continue;
+          const read = () => priceRoute(b, ring, tables, STOPS, new Set(STOPS), 20000, .5, undefined, ages, true);
+          setSampledFutureLap(false); const before = read();
+          setSampledFutureLap(true); expect(read()).toEqual(before);
+        }
+      }
+    }
+  });
+  it("prices both later occurrences with finite ordered quantiles through departure", () => {
+    const ring = buildRing("3", PATH, STOPS, COORDS)!;
+    const tables = buildTables(STOPS, COORDS, SEGS, { ...DWELLS,
+      "1": { ...DWELLS["1"], lapB: -.0009, lapM: 1000, lapN: 1000 },
+      "2": { ...DWELLS["2"], lapB: -.0009, lapM: 1000, lapN: 1000 } });
+    let b: Belief | undefined;
+    for (let t = 0; t <= 300000; t += 15000) b = stepBelief(b, ring, standAt1(t), t, STOPS);
+    for (let i = 0; i < 10; i++) {
+      const now = 300000 + i * 5000;
+      if (i) b = stepBelief(b, ring, at(i * 35, 0), now, STOPS);
+      const rows = priceRoute(b!, ring, tables, STOPS, new Set(STOPS), now, .5, undefined, { 1: 1200+i*5, 2: 800+i*5 }, true);
+      expect(rows.some(r => r.occurrence === 1)).toBe(true);
+      for (const r of rows) {
+        expect([r.low, r.eta, r.high, r.departNow, r.lowFloor].every(Number.isFinite)).toBe(true);
+        expect(r.low).toBeLessThanOrEqual(r.eta);
+        expect(r.high).toBeGreaterThanOrEqual(r.eta);
+        expect(r.distribution).toEqual([...r.distribution!].sort((a,b) => a-b));
+      }
+    }
+  });
+});
 
 /** Exact convolution of independent distributions on a 1 s grid, as a CDF sampler. */
 function convolve(ds: Dist[], maxSec = 4000): (p: number) => number {
