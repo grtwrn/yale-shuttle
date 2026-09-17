@@ -33,9 +33,10 @@ import { noteShown } from "./shownLog";
 import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
 import { clusterChips } from "./chipCluster";
-import { arrivalBand, standChipFor, standWaitFor, stopEtaText } from "./standWait";
-import { bandTitle, boardArrivalText, waitLegText } from "./etaBand";
+import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
+import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
+import { mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { journeyArrival } from "./journeyArrival";
 import {
@@ -922,6 +923,8 @@ type OverviewOption = {
   // bus reaches the board stop ("🚌 4 min") and when the rider steps off
   // at the alight stop ("10:26 AM"). Null when unknown (departed/future).
   boardEta?: string | null;
+  boardWindow?: string | null;
+  busWait?: ReturnType<typeof mapWaitLabel>;
   arriveAt?: string | null;
   /**
    * Detail view only: where this line actually pulls up at the PICKUP stop,
@@ -955,13 +958,27 @@ const CombinedTripMap: FC<{
   const chipMarkersRef = useRef<Record<string, L.Marker>>({});
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  function layoutWaitLabels() {
+    if (!ref.current) return;
+    const tooltips = Object.values(busMarkersRef.current).map(m => m.getTooltip()).filter(t => t?.options.permanent);
+    for (const t of tooltips) { t!.options.offset = L.point(0, -16); t!.update(); }
+    const obstacles = [...ref.current.querySelectorAll('.eta-tip, .leaflet-control')]
+      .filter(e => !e.querySelector('.bus-wait-label')).map(e => e.getBoundingClientRect());
+    for (const t of tooltips) {
+      const element = t!.getElement();
+      if (!element) continue;
+      const shift = placeWaitLabel(element.getBoundingClientRect(), ref.current.getBoundingClientRect(), obstacles);
+      t!.options.offset = L.point(shift.x, -16 + shift.y); t!.update();
+      obstacles.push(element.getBoundingClientRect());
+    }
+  }
   const rebuildChips = () => {
     const map = mapRef.current;
     const grp = chipLayerRef.current;
     if (!map || !grp) return;
     type Chip = {
       lat: number; lon: number; kind: "board" | "alight"; label: string;
-      part: string; w: number; x: number; y: number;
+      part: string; w: number; x: number; y: number; lines: number;
     };
     const chips: Chip[] = [];
     for (const o of optionsRef.current) {
@@ -977,19 +994,21 @@ const CombinedTripMap: FC<{
         // its route even without judging the text color (user request
         // 2026-07-17; also helps color-blind riders).
         const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
+        const window = e.kind === "board" ? o.boardWindow : null;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
-          part: `<span style="color:${o.color}">${tagged}</span>`,
+          part: `<span style="color:${o.color}">${tagged}</span>${window ? `<br/><span style="font-weight:400;color:#5f6368;padding-left:18px">${window}</span>` : ""}`,
           // Estimated label footprint: emoji + padding + ~6 px/char at
           // the chip's 10 px bold face. Merge decisions use these
           // per-chip estimates, per the spec: "overlap of would-be
           // individual labels".
-          w: 26 + tagged.length * 6,
+          w: 26 + Math.max(tagged.length, window?.length ?? 0) * 6,
+          lines: window ? 2 : 1,
           x: p.x,
           // Board chips render above their stop, alight chips below —
           // baked into y so labels merge when the LABELS would collide,
           // not merely when the dots are near.
-          y: p.y + (e.kind === "board" ? -14 : 14),
+          y: p.y + (e.kind === "board" ? (window ? -21 : -14) : 14),
         });
       }
     }
@@ -1037,6 +1056,7 @@ const CombinedTripMap: FC<{
     for (const [sig, m] of Object.entries(chipMarkersRef.current)) {
       if (!seen.has(sig)) { grp.removeLayer(m); delete chipMarkersRef.current[sig]; }
     }
+    layoutWaitLabels();
   };
   // Build/teardown when the set of endpoints or options changes.
   useEffect(() => {
@@ -1122,9 +1142,11 @@ const CombinedTripMap: FC<{
     // across renders. First build happens AFTER fitBounds — projecting
     // before the map has a view throws.
     chipLayerRef.current = L.layerGroup().addTo(map);
-    map.on("zoomend", rebuildChips);
+    map.on("zoomend moveend resize", rebuildChips);
 
-    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], maxZoom: 15 });
+    // Leave room above the northern stops for the two-line arrival chip and
+    // a waiting bus label. Tight endpoint-only bounds clipped both at 320px.
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [28, 88], paddingBottomRight: [28, 40], maxZoom: 15 });
     rebuildChips();
     const sizeTimer = setTimeout(() => { if (mapRef.current === map) map.invalidateSize(); }, 60);
 
@@ -1208,12 +1230,14 @@ const CombinedTripMap: FC<{
       color: string,
       label: string,
       dim: boolean,
+      wait: OverviewOption['busWait'] = null,
     ) => {
       seenKeys.add(key);
       const latlng: [number, number] = [pos.lat, pos.lon];
       const existing = busMarkersRef.current[key];
       if (existing) {
         existing.setLatLng(latlng);
+        updateWait(existing, label, wait);
         return;
       }
       const icon = L.divIcon({
@@ -1227,13 +1251,32 @@ const CombinedTripMap: FC<{
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       });
-      busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
-        .addTo(map)
-        .bindTooltip(label, { direction: "top" });
+      const marker = busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
+        .addTo(map);
+      updateWait(marker, label, wait);
+    };
+    const updateWait = (marker: L.Marker, label: string, wait: OverviewOption['busWait']) => {
+      const permanent = !!wait;
+      const content = document.createElement('div');
+      content.title = `${label}. Typical total wait is historical context, not time remaining.`;
+      content.className = wait ? 'bus-wait-label' : '';
+      if (wait) {
+        const elapsed = document.createElement('div'), typical = document.createElement('div');
+        elapsed.textContent = wait.elapsed; elapsed.style.fontWeight = '700';
+        elapsed.style.color = wait.overdue ? '#8a5300' : '#374151';
+        typical.textContent = wait.typical; typical.style.fontWeight = '400';
+        content.append(elapsed, typical);
+      } else content.textContent = label;
+      const tooltip = marker.getTooltip();
+      if (tooltip && !!tooltip.options.permanent === permanent) marker.setTooltipContent(content);
+      else {
+        marker.unbindTooltip();
+        marker.bindTooltip(content, { permanent, direction: 'top', offset: [0, -16], className: 'eta-tip', opacity: 0.98 });
+      }
     };
     for (const o of options) {
       if (o.bus) {
-        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false);
+        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait);
       }
       if (o.passedBus) {
         upsert(
@@ -1252,6 +1295,7 @@ const CombinedTripMap: FC<{
         delete busMarkersRef.current[key];
       }
     }
+    layoutWaitLabels();
   }, [options]);
 
   // Fullscreen toggle — matches the per-option TripMap behavior.
@@ -3600,6 +3644,12 @@ const TripPlanner: FC<{
                 }
               }
               const road = buildStopSequencePolyline(routePaths?.[cfg.routeIds[0]], segCoords, routeCoords);
+              // Match the card's fixed point + window roles. Never replace a
+              // wide/narrow window with its median at a display-width cutoff.
+              const boardLabel = o.departed || o.etaUnavailable ? null : mapArrivalLabel({
+                eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
+                low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs,
+              }, Date.now(), busMatch?.at_stop_id === o.boardStopId);
               overviewOpts.push({
                 label: o.routeLabel,
                 color: o.color,
@@ -3608,39 +3658,11 @@ const TripPlanner: FC<{
                 approach,
                 bus: busMatch ? { lat: busMatch.lat, lon: busMatch.lon, name: normBus(busMatch.bus_name) } : null,
                 passedBus: passedMatch ? { lat: passedMatch.lat, lon: passedMatch.lon, name: normBus(passedMatch.bus_name) } : null,
-                // The bus's own arrival at the board stop, counted down from
-                // when it was computed. (walk + wait) is NOT that number:
-                // waitSec clamps at 0 when the bus beats the rider there, so
-                // the sum froze at the walk time — report #48. Rider steps
-                // off at total minus the trailing walk.
-                // The SAME answer the card's countdown gives, in the chip's
-                // shorter words. It used to be `fmtMin` of the point number
-                // alone, so a bus mid-layover read `<1-9 min` on its row and a
-                // definitive `1 min` on the map (operator, 2026-09-10). That
-                // point is the median of a standing bus's departure
-                // distribution — it legitimately moves while the bus sits,
-                // which is why the card stopped showing one — and the chip was
-                // watched going 5 -> 1 -> 2 min with nothing happening.
-                // `chipCountdownText` picks the range when there is one and
-                // deliberately does not decay it by wall clock; the point
-                // number still is, for report #48's reason.
-                // Only where the rider is actually boarding, and only for the
-                // line they picked: `berthFor` answers null for all but ten
-                // stop/route cells and the map is unchanged wherever it does.
                 berth: berthFor(o.boardStopId, cfg.busRouteIds),
-                boardEta: o.departed ? null : stopEtaText(
-                  // The same composition the Map tab's stop rows use, so a bus
-                  // standing mid-layover cannot read as a range here and a point
-                  // there: `arrivalBand` off the pinned arrival's own band, the
-                  // standing floor from `standRest`.
-                  standRest,
-                  {
-                    eta: remainingSec(o.busEtaSec ?? o.walkToSec + o.waitSec, o.computedAtMs),
-                    low: o.busLowSec, high: o.busHighSec,
-                    departNow: o.busDepartNowSec, computedAtMs: o.computedAtMs,
-                  },
-                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined,
-                ),
+                boardEta: boardLabel?.point ?? null,
+                boardWindow: boardLabel?.window ?? null,
+                busWait: o.etaUnavailable ? null : mapWaitLabel(standRest,
+                  dwellTimes?.[cfg.routeIds[0]] ?? {}, dwellTimes ?? undefined),
                 arriveAt: o.departed || o.etaUnavailable ? null : o.journeyArrival
                   ? fmtClock(-o.walkFromSec, new Date(o.journeyArrival.pointMs))
                   : fmtClock(o.totalSec - o.walkFromSec, isFuture ? targetDate! : undefined),
@@ -4522,21 +4544,10 @@ const TripPlanner: FC<{
                         ? allStops.slice(busAnchorIdx, bi)
                         : [...allStops.slice(busAnchorIdx), ...allStops.slice(0, bi)])
                     : [];
-                  // WHEN THE BUS REACHES THE RIDER, on the BOARD row that
-                  // ends the approach. The approach list's only number used to
-                  // be the pause chip's DEPARTURE from the stop the bus stands
-                  // at, three rows up from a stop the list never priced — and
-                  // a rider compared it with the row's ARRIVAL band and saw
-                  // two answers (operator, 2026-09-11: "map says 1-8 but route
-                  // list says 1-4"). These are the row's own `leadBand` and
-                  // `busEtaLive`, the two values `fmtBusLine` prints on the
-                  // top line, so the list cannot print a different arrival
-                  // (etaBand.ts `boardArrivalText`; a source-level test in
-                  // standWait.test.ts pins both call sites to them). Only while
-                  // the bus is upstream: at the board stop the row already
-                  // carries 🚌 and its clock, and past it there is no arrival.
+                  // Same point + complete window as the card and mini-map,
+                  // without the legacy rounded-width switch (reports 113/114).
                   const boardArrival = approachStops.length > 0 && busEtaLive !== null && !o.departed
-                    ? boardArrivalText(leadBand, busEtaLive)
+                    ? mapArrivalLabel({ eta: busEtaLive, low: o.busLowSec, high: o.busHighSec, computedAtMs: o.computedAtMs })
                     : null;
                   // Dwell readouts: the typical hold at a stop, plus the live
                   // elapsed while the bus is parked at its current stop.
@@ -4819,30 +4830,9 @@ const TripPlanner: FC<{
                               {isBusHere && <span style={{ marginRight: 4 }}>🚌</span>}
                               {name}
                               {isBoard && boardArrival && (
-                                // The pause chip's size and ink, so the two read as
-                                // one pair: "leaves in <1-4 min" where the bus is,
-                                // "arrives in 1-8 min" where the rider boards.
-                                // MEASURED at 390 px beside the BOARD tag (the
-                                // probe in pr-preview/approach-board-row): at 10 px
-                                // the widest form a band can print, "arrives in
-                                // 23-36 min", is 99 px and sits on the line beside
-                                // Division/Prospect, Prospect/Canner and LEPH/60
-                                // College; at 11 px it is 108 px and still fits,
-                                // but the chip's own size is what settles it —
-                                // before #237 dropped the median, 11 px orphaned
-                                // the "min" of "arrives in 4 (2-10) min" on the
-                                // operator's own stop. `nowrap` so a long stop name
-                                // ("130 Prospect Street (S)") moves the whole
-                                // phrase to the next line rather than breaking it.
-                                // A real space before it, not margin alone, so a
-                                // screen reader (and the canary's innerText) does
-                                // not hear "Prospectarrives".
-                                <>{" "}<span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 3, whiteSpace: "nowrap" }}
-                                      title={leadBand && busEtaLive !== null
-                                        ? bandTitle(leadBand, busEtaLive)
-                                        : "When this bus reaches your stop"}>
-                                  {boardArrival}
-                                </span></>
+                                <span style={{ display: 'block', fontSize: 10, color: '#5f6368', marginTop: 2 }}>
+                                  Arrival: {boardArrival.point}{boardArrival.window ? ` · ${boardArrival.window}` : ''}
+                                </span>
                               )}
                               {isBusHere && standing?.stopId === sid && liveElapsedSec != null && (
                                 <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6368", marginLeft: 6 }}
@@ -5825,24 +5815,10 @@ const StopList: FC<{
                 return (
                   <span style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "baseline" }}>
                     <span style={{ fontSize: 12, color: cfg.color, fontWeight: 700, opacity: e.estimated ? 0.5 : 1 }}>
-                      {/* `fmtMin(eta)`, the trip card's own rule — not the LOW
-                          end of the interval, which is what this row used to
-                          print. Two surfaces now share an estimator; printing
-                          its answer through two different transforms would put
-                          them a minute or two apart again for no reason, and
-                          `Math.round(low / 60)` could reach "0 min" for a bus
-                          at the kerb, which PR #98 already established is not a
-                          countdown. The interval has not gone: it is the clock
-                          time beside it. */}
-                      {/* The RANGE when the bus supplying this arrival is
-                          standing, the point otherwise — `stopEtaText` falls
-                          through to `fmtMin(eta)`, so every non-standing row is
-                          byte-identical to what this printed before. Same
-                          composition as the trip card's minimap chip. */}
-                      {e.estimated ? "~" : ""}{stopEtaText(
-                        restForBus[normBusName(e.busName)] ?? null,
-                        e, routeDwells, dwellTimes,
-                      )}
+                      {(() => {
+                        const label = mapArrivalLabel(e);
+                        return label && <>{label.point}{label.window && <span style={{ display: 'block', fontSize: 10, fontWeight: 400 }}>{label.window}</span>}</>;
+                      })()}
                     </span>
                     <span style={{ fontSize: 10, color: "#9e9e9e", fontVariantNumeric: "tabular-nums", opacity: e.estimated ? 0.5 : 1 }}>
                       {fmtClock(e.eta)}
