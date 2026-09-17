@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { JourneyHistory as History } from '../../src/server/journeyHistory';
 import { ArrivalPlot } from './ArrivalPlot';
+import { historyRecency, HISTORY_HALF_LIFE_DAYS } from './historyRecency';
 
 const when = (t: number) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const minutes = (s: number) => s < 60 ? '<1 min' : `${Math.round(s / 60)} min`;
@@ -42,8 +43,7 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
   }, [route, stopId, busName, refresh]);
   const state = result?.key === key ? result : undefined;
   const data = state?.data, j = data?.journey;
-  const values = j?.trips.map(t => t.actualSec).sort((a, b) => a - b) ?? [];
-  const median = values.length >= 5 ? (values[Math.floor((values.length - 1) / 2)]! + values[Math.floor(values.length / 2)]!) / 2 : null;
+  const { weights, median } = historyRecency(j?.trips ?? [], data?.asOf ?? 0);
   return <section aria-label="Recorded arrival history" style={{ borderTop: '1px solid #e5e7eb', marginTop: 20, paddingTop: 16 }}>
     <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Past trips to this stop</h3>
     {!data ? <p style={{ fontSize: 13, color: '#5f6368' }}>{state?.error ? 'Recorded trips are unavailable right now.' : 'Loading recorded trips…'}</p> : <>
@@ -54,11 +54,12 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
           : 'Measured from departure at the starting stop. These are full stop-to-stop times; the live estimate accounts for this shuttle’s current progress.'}</p>
       </>}
       {j?.trips.length ? <>
-        <ArrivalPlot observed clock={false} values={j.trips.map(t => t.actualSec)}
+        <ArrivalPlot observed clock={false} values={j.trips.map(t => t.actualSec)} emphasis={weights}
           title={j.mode === 'standing' ? 'Remaining wait + travel' : 'Travel time after departure'}
           labels={j.trips.map(t => `${when(t.arrivedAt)} · #${t.busName.replace(/^#/, '')}: ${minutes(t.actualSec)} from ${when(t.startedAt)}`)}
-          description={`${j.trips.length} recorded ${j.trips.length === 1 ? 'trip' : 'trips'} across ${j.serviceDates} ${j.serviceDates === 1 ? 'date' : 'dates'}. Each dot is one completed journey.`} />
-        {median !== null && <p style={{ fontSize: 13 }}>Observed median: <strong>{minutes(median)}</strong></p>}
+          description={`${j.trips.length} recorded ${j.trips.length === 1 ? 'trip' : 'trips'} across ${j.serviceDates} ${j.serviceDates === 1 ? 'date' : 'dates'}. Each dot is one completed journey. Darker, thicker dots are more recent.`} />
+        {median !== null && <p style={{ fontSize: 13 }}>Recent-weighted median: <strong>{minutes(median)}</strong></p>}
+        <p style={{ fontSize: 11, color: '#5f6368', lineHeight: 1.5 }}>Recent trips count more; weight halves every {HISTORY_HALF_LIFE_DAYS} days.</p>
         <details style={{ fontSize: 12 }}><summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>Dates and recorded times ▾</summary>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead><tr><th>Arrival · bus</th><th>Measured from</th><th>Time to stop</th></tr></thead>
@@ -73,6 +74,7 @@ export function ArrivalHistory({ route, stopId, etaSec, busName }: { route: stri
       <details style={{ fontSize: 11, color: '#5f6368', lineHeight: 1.5 }}>
         <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>About these records ▾</summary>
         <p>Up to 100 connected journeys among the latest 240 starting-stop visits in 30 days, on the same route and direction, within two hours of this time and the same weekday/weekend category. Only GPS-detected journeys that stopped at both endpoints are shown; skipped stops and recording gaps leave trips out. These observations are context for the live estimate.</p>
+        <p>Every dot stays at its measured time. Recency affects its emphasis and the historical median. The median is shown only when the weighted sample is equivalent to at least five equally weighted trips. This is a summary of past trips, not the live forecast.</p>
       </details>
       <p style={{ fontSize: 11, color: '#5f6368', margin: '6px 0' }}>Comparison captured {when(data.asOf)}</p>
     </>}

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 
 export interface PlotMarker { value: number; label: string; color: string; dashed?: boolean }
-/** Stack equal-weight dots in time bins. All data and markers stay on scale. */
+/** Stack one dot per observation in time bins. All data and markers stay on scale. */
 export function arrivalPlotLayout(values: readonly number[], markers: readonly PlotMarker[], clock: boolean) {
   const data = values.filter(Number.isFinite);
   const all = [...data, ...markers.map(m => m.value).filter(Number.isFinite)];
@@ -21,8 +21,8 @@ export function arrivalPlotLayout(values: readonly number[], markers: readonly P
 }
 
 export function ArrivalPlot({ values, title, description, markers = [], clock = true, observed = false,
-  labels }: { values: readonly number[]; title: string; description: string; markers?: PlotMarker[];
-    clock?: boolean; observed?: boolean; labels?: string[] }) {
+  labels, emphasis }: { values: readonly number[]; title: string; description: string; markers?: PlotMarker[];
+    clock?: boolean; observed?: boolean; labels?: string[]; emphasis?: readonly number[] }) {
   const id = useId();
   if (!values.length || !values.every(Number.isFinite)) return null;
   const layout = arrivalPlotLayout(values, markers, clock);
@@ -37,10 +37,15 @@ export function ArrivalPlot({ values, title, description, markers = [], clock = 
       <title id={`${id}-title`}>{title}</title><desc id={`${id}-description`}>{description}</desc>
       {markers.map(m => <line key={m.label} x1={layout.x(m.value)} x2={layout.x(m.value)} y1={5} y2={layout.baseline + 4}
         stroke={m.color} strokeWidth={2} strokeDasharray={m.dashed ? '4 3' : undefined} />)}
-      {layout.dots.map((d, i) => <circle key={i} cx={observed ? layout.x(d.value) : d.x} cy={layout.baseline - 5 - d.stack * 7} r={2.8}
-        fill={observed ? '#fff' : '#3567a8'} stroke={observed ? '#6a4b86' : '#3567a8'} strokeWidth={observed ? 1.5 : 0.5}>
+      {layout.dots.map((d, i) => {
+        const weight = observed && emphasis?.length === values.length && Number.isFinite(emphasis[i])
+          ? Math.max(0, Math.min(1, emphasis[i]!)) : null;
+        return <circle key={i} cx={observed ? layout.x(d.value) : d.x} cy={layout.baseline - 5 - d.stack * 7} r={2.8}
+        fill={observed ? '#fff' : '#3567a8'} stroke={observed ? '#6a4b86' : '#3567a8'}
+        strokeOpacity={weight === null ? 1 : 0.65 + 0.35 * weight}
+        strokeWidth={weight === null ? observed ? 1.5 : 0.5 : 1 + 0.8 * weight}>
         <title>{labels?.[i] ?? format(d.value)}</title>
-      </circle>)}
+      </circle>; })}
       <line x1={26} x2={314} y1={layout.baseline} y2={layout.baseline} stroke="#9aa5b1" />
       {ticks.map((t, i) => <text key={i} x={layout.x(t)} y={layout.baseline + 21} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}
         fill="#4b5563" fontSize={16}>{format(t)}</text>)}
