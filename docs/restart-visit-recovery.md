@@ -14,7 +14,7 @@ consecutive still-open arrival on disk. The historical events are discarded;
 the current observation is then processed normally. This preserves an open
 shuffle or departure candidate and avoids inserting another arrival.
 
-Recovery uses the existing 30-minute/600-row history bound and two-minute
+Recovery uses the existing 30-minute/600-row history bound and one-minute
 handoff gap limit. Missing, unordered, mismatched, stale, or differently
 identified evidence falls back to the existing stationary seed. Current
 contended names are excluded, and existing in-memory states are reconciled
