@@ -23,7 +23,10 @@ do not retain a fabricated map arrival. Wait labels avoid arrival chips and
 map controls; the map reserves space above its endpoints for these labels.
 
 At a wait stop, the bus's mini-map marker has a permanent label above it:
-**Waiting M:SS** and **Usually ~N min total**. The elapsed clock comes from the
+**Red · Waiting M:SS** and **Usually ~N min total**. The full route name uses
+the bus marker's route color and stays on the elapsed-time line, so nearby
+buses and displaced labels remain identifiable without adding a third line.
+The elapsed clock comes from the
 shared warm standing state; the typical total comes from the same historical
 stand quantiles used by the stop list, not the legacy arrival-to-arrival hop
 median. The label names nearby waits, updates without recreating the marker,

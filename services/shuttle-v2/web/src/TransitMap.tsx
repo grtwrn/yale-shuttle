@@ -1229,13 +1229,14 @@ const CombinedTripMap: FC<{
       label: string,
       dim: boolean,
       wait: OverviewOption['busWait'] = null,
+      routeName = label,
     ) => {
       seenKeys.add(key);
       const latlng: [number, number] = [pos.lat, pos.lon];
       const existing = busMarkersRef.current[key];
       if (existing) {
         existing.setLatLng(latlng);
-        updateWait(existing, label, wait);
+        updateWait(existing, label, color, routeName, wait);
         return;
       }
       const icon = L.divIcon({
@@ -1251,16 +1252,20 @@ const CombinedTripMap: FC<{
       });
       const marker = busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
         .addTo(map);
-      updateWait(marker, label, wait);
+      updateWait(marker, label, color, routeName, wait);
     };
-    const updateWait = (marker: L.Marker, label: string, wait: OverviewOption['busWait']) => {
+    const updateWait = (marker: L.Marker, label: string, color: string, routeName: string, wait: OverviewOption['busWait']) => {
       const permanent = !!wait;
       const content = document.createElement('div');
       content.title = `${label}. Typical total wait is historical context, not time remaining.`;
       content.className = wait ? 'bus-wait-label' : '';
       if (wait) {
         const elapsed = document.createElement('div'), typical = document.createElement('div');
-        elapsed.textContent = wait.elapsed; elapsed.style.fontWeight = '700';
+        const route = document.createElement('span');
+        route.className = 'bus-wait-route';
+        route.textContent = routeName; route.style.color = color;
+        elapsed.append(route, document.createTextNode(` · ${wait.elapsed}`));
+        elapsed.style.fontWeight = '700';
         elapsed.style.color = wait.overdue ? '#8a5300' : '#374151';
         typical.textContent = wait.typical; typical.style.fontWeight = '400';
         content.append(elapsed, typical);
@@ -1274,7 +1279,7 @@ const CombinedTripMap: FC<{
     };
     for (const o of options) {
       if (o.bus) {
-        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait);
+        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait, o.label);
       }
       if (o.passedBus) {
         upsert(

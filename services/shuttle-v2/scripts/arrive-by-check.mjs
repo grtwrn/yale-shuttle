@@ -120,13 +120,17 @@ try {
   if (local) {
     const waitLabel = map.locator('.bus-wait-label').first();
     await waitLabel.waitFor();
+    const waitingRoute = await waitLabel.locator('.bus-wait-route').innerText();
+    assert(waitingRoute.length > 0, 'waiting label visibly identifies its route');
+    assert((await waitLabel.getAttribute('title')).startsWith(waitingRoute + ' #'), 'visible route matches its bus');
+    assert((await waitLabel.innerText()).startsWith(waitingRoute + ' · Waiting'), 'route shares the elapsed-time line');
     assert.match(await waitLabel.innerText(), /Waiting(?: nearby)? \d+:\d{2}\nUsually ~\d+ min total/);
     const before = await waitLabel.innerText();
     await page.clock.runFor(2000);
     const after = await waitLabel.innerText();
     assert.notEqual(after.split('\n')[0], before.split('\n')[0], 'waiting clock advances');
     assert.equal(after.split('\n')[1], before.split('\n')[1], 'typical total stays stable');
-    result.checks.push('mini-map waiting clock advances while typical total stays stable');
+    result.checks.push('waiting label names its route on the elapsed-time line; clock advances while typical total stays stable');
   }
   await map.scrollIntoViewIfNeeded();
   const waitLabelsClear = () => map.evaluate(el => {
