@@ -40,7 +40,7 @@ import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from
 import { ArriveBy } from "./ArriveBy";
 import { journeyArrival } from "./journeyArrival";
 import {
-  fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
+  fmtClock, fmtDateTime, fmtMin, fmtWait, fmtWalk, fmtWeekday, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
   suggLabel,
   type GeocodeResult,
@@ -3460,17 +3460,10 @@ const TripPlanner: FC<{
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {potentialRoutes.map((p) => {
-              const nextStr = p.nextActive
-                ? p.nextActive.toLocaleString([], {
-                    weekday: "short", month: "short", day: "numeric",
-                    hour: "numeric", minute: "2-digit",
-                  })
-                : null;
+              const nextStr = p.nextActive ? fmtDateTime(p.nextActive.getTime()) : null;
               // A line off for the whole weekend gets a date, not a time —
               // "next Sat Sep 12", the day the rider will plan around.
-              const nextDayStr = p.nextActive
-                ? p.nextActive.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })
-                : null;
+              const nextDayStr = p.nextActive ? fmtWeekday(p.nextActive.getTime()) : null;
               return (
                 <div key={p.label} style={{
                   padding: "10px 12px", background: "#fff", borderRadius: 10,

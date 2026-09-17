@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { JourneyHistory as History } from '../../src/server/journeyHistory';
 import { ArrivalPlot } from './ArrivalPlot';
+import { fmtDateTime } from './format';
 
-const when = (t: number) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+// Campus zone like the trip clocks (fmtClock): the journeys are New Haven's.
+const when = (t: number) => fmtDateTime(t);
 const minutes = (s: number) => s < 60 ? '<1 min' : `${Math.round(s / 60)} min`;
 function valid(raw: unknown): raw is History {
   const h = raw as History | null;

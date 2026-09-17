@@ -135,26 +135,66 @@ const campusClock = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   hour12: true,
 });
+const campusDayTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: CAMPUS_ZONE,
+  weekday: "short", month: "short", day: "numeric",
+  hour: "numeric", minute: "2-digit",
+  hour12: true,
+});
+const campusDay = new Intl.DateTimeFormat("en-US", {
+  timeZone: CAMPUS_ZONE,
+  month: "short", day: "numeric",
+});
+const campusWeekday = new Intl.DateTimeFormat("en-US", {
+  timeZone: CAMPUS_ZONE,
+  weekday: "short", month: "short", day: "numeric",
+});
+const campusDayKey = new Intl.DateTimeFormat("en-CA", {
+  timeZone: CAMPUS_ZONE,
+  year: "numeric", month: "2-digit", day: "2-digit",
+});
 
-/**
- * Wall-clock time `s` seconds from `from` (default: now), on the campus's
- * clock — America/New_York, whatever the device is set to. A campus
- * shuttle's times are New Haven's times; a browser left on another zone read
- * a Yale trip four hours ahead with no label (2026-09-17 eval), and the app
- * already resolves Eastern for the schedule itself for the same reason
- * (schedule.ts). The " ET" suffix appears only on a device set to another
- * zone — an Eastern device needs no label on its own times.
- */
+// "8:47 AM" -> "8:47a"
+const compactAmPm = (s: string) =>
+  s.replace(/\s*([AP])M$/, (_, p: string) => (p === "A" ? "a" : "p"));
+
+// A campus shuttle's times are New Haven's times; a browser left on another
+// zone read a Yale trip four hours ahead with no label (2026-09-17 eval),
+// and the app already resolves Eastern for the schedule itself for the same
+// reason (schedule.ts). The " ET" suffix appears only on a device set to
+// another zone — an Eastern device needs no label on its own times.
+const etSuffix = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone === CAMPUS_ZONE ? "" : " ET";
+  } catch { /* an unreadable zone still gets the label */ }
+  return " ET";
+};
+
+/** Wall-clock time `s` seconds from `from` (default: now), on the campus's clock. */
 export function fmtClock(s: number, from?: Date): string {
   const base = from?.getTime() ?? Date.now();
-  // "8:47 AM" -> "8:47a"
-  const t = campusClock.format(new Date(base + s * 1000))
-    .replace(/\s*([AP])M$/, (_, p: string) => (p === "A" ? "a" : "p"));
-  let et = true;
-  try {
-    et = Intl.DateTimeFormat().resolvedOptions().timeZone === CAMPUS_ZONE;
-  } catch { /* an unreadable zone still gets the label */ }
-  return et ? t : `${t} ET`;
+  return compactAmPm(campusClock.format(new Date(base + s * 1000))) + etSuffix();
+}
+
+/** Date + clock on the campus's zone — "Thu, Sep 17, 1:28p". */
+export function fmtDateTime(ms: number): string {
+  return compactAmPm(campusDayTime.format(new Date(ms))) + etSuffix();
+}
+
+/** Campus date, "Sep 17" — a day belongs to the campus, so no zone suffix. */
+export function fmtDate(ms: number): string {
+  return campusDay.format(new Date(ms));
+}
+
+/** Campus date with its weekday, "Sat, Sep 12" — no zone suffix. */
+export function fmtWeekday(ms: number): string {
+  return campusWeekday.format(new Date(ms));
+}
+
+/** The same calendar day in New Haven — a UTC device's "today" lags the
+ * campus's by hours, so device-local day keys disagree at the edges. */
+export function sameCampusDay(a: number, b: number): boolean {
+  return campusDayKey.format(a) === campusDayKey.format(b);
 }
 
 export function formatEtaRange(a: { eta: number; low: number; high: number }): string {
