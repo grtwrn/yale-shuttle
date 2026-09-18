@@ -904,8 +904,16 @@ export function priceRoute(
     // floor clamp has moved it. At the default 1.0 it returns [low, high]
     // itself, so the served defaults are byte-identical to no widening.
     const rawUpper = currentRelease !== undefined;
+    // Division's immediate pickup after a supported Winchester hold has its
+    // own conditional release distribution. The older fleet-wide widening
+    // pushes that lower tail toward zero. Keep its modeled q10, but retain
+    // the legacy margin for other destinations and subsequent laps: those
+    // journeys have not passed the same pickup validation.
+    const rawLower = currentRelease !== undefined && sid === 48 && o === 0
+      && h <= (cur - currentRelease.index + N) % N;
     const widened = widenBand(eta, low, high);
-    const [wLow, wHigh] = rawUpper ? [widened[0], high] : widened;
+    const wLow = rawLower ? low : widened[0];
+    const wHigh = rawUpper ? high : widened[1];
     const lowOut = Math.min(wLow, eta);
     // The floor is reported, never applied (see `lowFloor`); while
     // alternatives hold real mass the band is the full mixture's and an
@@ -914,7 +922,7 @@ export function priceRoute(
     const floor = leadNow && !fullMix && Number.isFinite(nowLow) ? Math.min(nowLow, eta) : lowOut;
     if (distribution) distribution = distribution.map(value => {
       const corrected = applyHorizonBias(scale === 1 ? value : applyRouteScale(value, scale));
-      return Math.max(0, rawUpper && corrected >= eta ? corrected : widenBand(eta, corrected, corrected)[0]);
+      return Math.max(0, rawUpper && (rawLower || corrected >= eta) ? corrected : widenBand(eta, corrected, corrected)[0]);
     });
     out.push({
       ...(distribution ? { distribution } : {}),
