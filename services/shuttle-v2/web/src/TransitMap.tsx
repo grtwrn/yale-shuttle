@@ -98,7 +98,7 @@ import {
   BUS_SPEED_M_S, LEGEND_ROUTES, mergedRouteStops, ROUTE_COLOR, ROUTE_COLOR_BY_BUS_ID, ROUTE_LISTS,
 } from "./routes";
 import { lastBusVerdict } from "./lastBus";
-import { fmtSchedule, fmtWindows, isBusInService, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
+import { fmtSchedule, fmtWindows, groceryServiceNotice, isBusInService, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt } from "./schedule";
 import { stopRowHighlight } from "./stopRow";
 import type { PublishedWindow } from "./schedule";
 import { attachErrorText, dragCarriesFile, downscaleToDataUrl, imageFromTransfer } from "./screenshot";
@@ -3459,7 +3459,7 @@ const TripPlanner: FC<{
                       // that is simply the other one's this week.
                       <>
                         <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
-                          {p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
+                          {p.off.discontinued ? "Milford service discontinued" : p.off.partner ? "Not this weekend" : "Not running today"}{nextDayStr ? ` · next ${nextDayStr}` : ""}
                         </div>
                         {p.off.partner && (
                           <div style={{ fontSize: 11, color: "#78909c", marginTop: 2 }}>
@@ -3631,7 +3631,7 @@ const TripPlanner: FC<{
             const _hoursCfg = expandedKey
               ? ROUTE_LISTS.find((c) => c.label === expandedKey)
               : undefined;
-            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours) : null;
+            const _hours = _hoursCfg ? routeHoursCaption(_hoursCfg, routeHours, targetDate ?? new Date()) : null;
             return (
               <div style={{
                 marginBottom: 12,
@@ -4209,6 +4209,11 @@ const TripPlanner: FC<{
                           A stop relocation belongs at decision time, in the
                           card the rider is already reading — not on a page
                           they'll never visit. */}
+                      {groceryServiceNotice(o.routeLabel, targetDate ?? new Date()) && (
+                        <div role="note" style={{ background: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 6, padding: "6px 8px", marginBottom: 8, fontSize: 12.5, color: "#795548", lineHeight: 1.45 }}>
+                          {groceryServiceNotice(o.routeLabel, targetDate ?? new Date())}
+                        </div>
+                      )}
                       {announcementsForRoute(o.routeLabel, announcements).map((a) => (
                         <div key={a.id} style={{
                           display: "flex", gap: 6, alignItems: "flex-start",
@@ -5536,8 +5541,9 @@ const StopList: FC<{
               active: routeActiveFor(cfg, routeActive),
             }).off
           : null;
-        const schedule = off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
-        const routeNote = ROUTE_CALENDAR[cfg.label]?.note ?? null;
+        const schedule = routeDiscontinuedAt(cfg.label, new Date()) ? "Milford service discontinued Sep 19, 2026"
+          : off ? `${hoursText} · ${off.partner ? "not this weekend" : "not running today"}` : hoursText;
+        const routeNote = groceryServiceNotice(cfg.label) ?? ROUTE_CALENDAR[cfg.label]?.note ?? null;
         const busLabel = `${peak > 0 ? `${busCount}/${peak}` : busCount} `
           + (peak === 1 || (peak === 0 && busCount === 1) ? "bus" : "buses");
 

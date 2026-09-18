@@ -10,7 +10,7 @@ import type { LatLon } from "./geo";
 import type { BusData } from "./map-data";
 import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
 import {
-  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
+  fmtSchedule, fmtWindows, groceryServiceNotice, HEADWAY_MIN, isRouteScheduledAt, routeDiscontinuedAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
 } from "./schedule";
 import type { PublishedWindow } from "./schedule";
 import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
@@ -617,7 +617,7 @@ export interface PotentialRoute {
    * ("Not running today"). Never "should be running now" in this state.
    * `nextActive` is then the line's own next start.
    */
-  off: { partner: string | null } | null;
+  off: { partner: string | null; discontinued?: true } | null;
   /** The published sheet's one-line note for the route (FlexiStop, holidays), if any. */
   note: string | null;
   /** Where the calendar facts come from, for the card's small print. */
@@ -666,7 +666,9 @@ export function routeActiveFor(
 export function routeHoursCaption(
   cfg: { label: string; routeIds: readonly string[]; busRouteIds: readonly number[] },
   publishedHours: Record<string, PublishedWindow> | undefined,
+  at = new Date(),
 ): string | null {
+  if (routeDiscontinuedAt(cfg.label, at)) return "Milford service discontinued Sep 19, 2026";
   const published = publishedWindowFor(cfg, publishedHours);
   const hours = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
   return hours ? `Runs ${hours}` : null;
@@ -730,11 +732,11 @@ export function findPotentialRoutes(
       color: cfg.color,
       boardStopId: bestBoard,
       alightStopId: bestAlight,
-      schedule: published ? fmtWindows([published]) : fmtSchedule(cfg.label),
+      schedule: state.off?.discontinued ? "" : published ? fmtWindows([published]) : fmtSchedule(cfg.label),
       nextActive: state.next,
       activeNow: state.open,
       off: state.off,
-      note: ROUTE_CALENDAR[cfg.label]?.note ?? null,
+      note: [groceryServiceNotice(cfg.label, after), state.off?.discontinued ? null : ROUTE_CALENDAR[cfg.label]?.note].filter(Boolean).join(" ") || null,
       source: ROUTE_CALENDAR[cfg.label]?.source ?? null,
     });
   }
