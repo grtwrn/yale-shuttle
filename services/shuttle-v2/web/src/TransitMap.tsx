@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, Fragment, type FC } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment, type FC } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -6825,6 +6825,16 @@ const TransitMap: FC = () => {
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
   const mapModeButtonRef = useRef<HTMLButtonElement>(null);
+  const mapRecoveryButtonRef = useRef<HTMLButtonElement | null>(null);
+  const setMapRecoveryButtonRef = useCallback((button: HTMLButtonElement | null) => {
+    // A poll can reveal the selected routes without a click. Restore focus
+    // only from this disappearing action, while the map mode remains mounted.
+    if (!button && mapRecoveryButtonRef.current === document.activeElement
+        && mapModeButtonRef.current?.isConnected) {
+      mapModeButtonRef.current.focus();
+    }
+    mapRecoveryButtonRef.current = button;
+  }, []);
   const activeFilter = activeOnly && buses.length > 0;
   // Which lines have a bus ON ROUTE right now, as toggle labels — the same
   // test the route cards use (isBusOnRoute over the merged stop list), so a
@@ -7952,7 +7962,7 @@ const TransitMap: FC = () => {
             {LEGEND_ROUTES.map((r) => {
               const off = mapHidden.has(r.toggleLabel);
               // On, but not drawn: "Running now" is on and this line has no
-              // bus. Outlined in its own colour rather than dimmed — a filled
+              // on-route bus. Outlined in its own colour rather than dimmed — a filled
               // chip at half opacity loses its white text — so the three
               // states read apart: filled = on the map, outlined = switched on
               // but idle, grey = switched off. Still 44 px and still tappable.
@@ -7962,7 +7972,7 @@ const TransitMap: FC = () => {
                   key={r.toggleLabel}
                   onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
                   aria-pressed={!off}
-                  title={idle ? `${r.label} has no bus in the last update — hidden by "Running now"` : undefined}
+                  title={idle ? `${r.label} has no on-route bus in the last update — hidden by "Running now"` : undefined}
                   style={{
                     padding: "3px 10px", borderRadius: 10,
                     border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
@@ -8043,9 +8053,10 @@ const TransitMap: FC = () => {
               <div>{allHidden(LEGEND_TOGGLES, mapHidden)
                 ? "All routes are hidden. Choose a route above or show all."
                 : busStatus === "ready"
-                  ? "No buses are reporting on your selected routes."
+                  ? "Your selected routes are hidden by the Running now filter."
                   : "Your selected routes are hidden by the Running now filter. Live status is unavailable."}</div>
               <button
+                ref={setMapRecoveryButtonRef}
                 onClick={() => {
                   if (allHidden(LEGEND_TOGGLES, mapHidden)) setMapHiddenPersisted(new Set());
                   setActiveOnly(false);

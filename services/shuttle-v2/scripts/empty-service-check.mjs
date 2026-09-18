@@ -72,7 +72,7 @@ try {
  const modeButton=page.getByRole('button',{name:/^(Running now|Every route)$/});assert(await modeButton.evaluate(e=>e===document.activeElement));assert.equal(await modeButton.getAttribute('aria-pressed'),'false');assert(await page.locator('[id^="route-card-"]').count()>1,'Show all routes also clears Running now');await modeButton.click();assert.equal(await modeButton.getAttribute('aria-pressed'),'true');
  // Only an idle route is selected; recovery must show it without un-hiding Red.
  await page.getByRole('button',{name:'Hide all',exact:true}).click();await page.getByRole('button',{name:'Blue Day',exact:true}).click();
- const showSelected=page.getByRole('button',{name:'Show selected routes',exact:true});await showSelected.waitFor();assert.match(await body(),/No buses are reporting on your selected routes/);
+ const showSelected=page.getByRole('button',{name:'Show selected routes',exact:true});await showSelected.waitFor();assert.match(await body(),/Your selected routes are hidden by the Running now filter/);
  const saved=await page.evaluate(()=>localStorage.getItem('mapHiddenRoutes'));
  mode='fail';await poll();assert.match(await body(),/Your selected routes are hidden by the Running now filter. Live status is unavailable/);
  for(const button of [showSelected,modeButton]){const b=await button.boundingBox();assert(b.width>=44&&b.height>=44);}
@@ -82,9 +82,55 @@ try {
  assert.equal(await page.evaluate(()=>localStorage.getItem('mapHiddenRoutes')),saved);assert.equal(await red.count(),0);await page.locator('[id="route-card-Blue Day"]').waitFor();
  await switchView('trip');await switchView('map');assert.equal(await red.count(),0);await page.locator('[id="route-card-Blue Day"]').waitFor();
  report.checks.push('All-hidden keeps basemap with one message; keyboard Show all recovers; selected-idle recovery works by keyboard/touch, retains manual route choices, returns focus to persistent 44px mode control and survives tab changes');
+ // Polling can remove recovery without a click. Preserve focus only when the
+ // removed action owns it; ordinary updates and an outgoing view must not move it.
+ mode='ready';await poll();await modeButton.click();await showSelected.waitFor();
+ await showSelected.focus();await poll();
+ assert(await showSelected.evaluate(e=>e===document.activeElement),'ordinary poll keeps recovery focus');
+ feed.buses=[];delete feed.server_eta;await poll();
+ await page.locator('[id="route-card-Blue Day"]').waitFor();assert.equal(await showSelected.count(),0);
+ assert(await modeButton.evaluate(e=>e===document.activeElement),'empty poll returns removed recovery focus to mode');
+ assert.equal(await modeButton.getAttribute('aria-pressed'),'true','empty fallback preserves Running now choice');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('mapHiddenRoutes')),saved);
+ feed.buses=buses;feed.server_eta=wire;await poll();await showSelected.waitFor();
+ assert(await modeButton.evaluate(e=>e===document.activeElement),'recovery appearing does not take focus');
+ await nav('issues').focus();feed.buses=[];delete feed.server_eta;await poll();
+ await page.locator('[id="route-card-Blue Day"]').waitFor();
+ assert(await nav('issues').evaluate(e=>e===document.activeElement),'automatic recovery preserves external focus');
+ feed.buses=buses;feed.server_eta=wire;await poll();await showSelected.waitFor();
+ await modeButton.evaluate(e=>{window.__outgoingModeFocus=0;e.addEventListener('focus',()=>window.__outgoingModeFocus++);});
+ await showSelected.focus();
+ // A programmatic navigation leaves the departing action focused, exercising
+ // unmount itself rather than relying on the navigation click taking focus.
+ await page.clock.runFor(400);await nav('trip').evaluate(e=>e.click());await page.clock.runFor(400);
+ assert.equal(await nav('trip').getAttribute('aria-current'),'page');
+ assert.equal(await modeButton.count(),0);assert.equal(await page.evaluate(()=>window.__outgoingModeFocus),0,'do not focus the outgoing map mode');
+ await switchView('map');await showSelected.waitFor();await showSelected.focus();
+ const blueStop=feed.routes['1'][0];
+ feed.buses=[...buses,{bus_name:'310',bus_id:3,route_id:1,...feed.stop_coords[blueStop],last_stop_id:blueStop,heading:180,observed_at:now}];delete feed.server_eta;
+ await poll();await page.locator('[id="route-card-Blue Day"]').waitFor();
+ assert.equal(await showSelected.count(),0);assert(await modeButton.evaluate(e=>e===document.activeElement),'a newly running selection restores focus to the remounted mode');
+ assert.equal(await red.count(),0,'automatic recovery retains manually hidden Red');
+ report.checks.push('Ordinary polls preserve recovery focus; empty-fleet and newly running selection remove it with guarded mode focus; external focus and outgoing navigation are preserved, including after Map remount');
+ // Valid current positions can be off route without being absent. Running now
+ // still hides them; Every route must retain their correct counts and warning.
+ feed.buses=buses.map(b=>({...b,lat:41.45,lon:-72.8}));delete feed.server_eta;
+ await page.getByRole('button',{name:'Hide all',exact:true}).click();await page.getByRole('button',{name:'Red',exact:true}).click();
+ await poll();await showSelected.waitFor();await snapshot('offRouteFiltered');
+ assert.match(await body(),/Your selected routes are hidden by the Running now filter/);
+ assert.doesNotMatch(await body(),/No buses are reporting on your selected routes/);
+ const redTitle=await page.getByRole('button',{name:'Red',exact:true}).getAttribute('title');
+ assert.match(redTitle,/no on-route bus/);assert.doesNotMatch(redTitle,/has no bus in the last update/);
+ report.snapshots.offRouteChipTitle=redTitle;
+ await reflow();await page.screenshot({path:out+'/off-route-filtered.png'});
+ await showSelected.focus();await page.keyboard.press('Enter');await red.waitFor();
+ const offRouteCard=await red.innerText();report.snapshots.offRouteRecovered=offRouteCard;
+ assert.match(offRouteCard,/2\/2 buses/);assert.match(offRouteCard,/2 buses off route/);
+ assert(await modeButton.evaluate(e=>e===document.activeElement));
+ report.checks.push('Fresh off-route reports are described as filtered, with an on-route chip explanation; recovery retains both reported buses and their off-route warning without fabricated forecasts');
  // Restore selection, then prove forecast absence and expiry cannot imply no service.
  await page.getByRole('button',{name:'Hide all',exact:true}).click();await page.getByRole('button',{name:'Show all routes',exact:true}).click();
- mode='ready';delete feed.server_eta;await poll();await red.waitFor();assert.match(await red.innerText(),/live arrivals unavailable/);assert.doesNotMatch(await red.innerText(),/no buses reporting|Live count unavailable/);assert.match(await red.innerText(),/2.*bus/);await snapshot('missingForecast');
+ mode='ready';feed.buses=buses;delete feed.server_eta;await poll();await red.waitFor();assert.match(await red.innerText(),/live arrivals unavailable/);assert.doesNotMatch(await red.innerText(),/no buses reporting|Live count unavailable/);assert.match(await red.innerText(),/2.*bus/);await snapshot('missingForecast');
  feed.server_eta=wire;wire.servedAt=wire.at+60000;await poll();assert.match(await red.innerText(),/live arrivals unavailable/);await snapshot('staleForecast');
  wire.servedAt=wire.at;await poll();assert.doesNotMatch(await red.innerText(),/live arrivals unavailable/);
  mode='malformed';await poll();assert.match(await red.innerText(),/Live count unavailable/);mode='fail';for(let i=0;i<9;i++)await poll();assert.match(await red.innerText(),/live arrivals unavailable/);await snapshot('expiredRetainedFleet');
