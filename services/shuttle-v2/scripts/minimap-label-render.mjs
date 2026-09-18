@@ -74,7 +74,7 @@ try {
   await page.waitForTimeout(500);
   await map.evaluate(el => {
     window.previewOriginal = [...el.querySelectorAll('.leaflet-tooltip')].map(t => ({ t, html: t.innerHTML, style: t.getAttribute('style') }));
-    const legend = [...el.querySelectorAll(':scope > div')].find(n => n.style.position === 'absolute' && n.style.bottom);
+    const legend = [...el.querySelectorAll(':scope > div')].find(n => n.style.position === 'absolute' && n.style.bottom === '8px' && n.style.left === '8px');
     if (!legend) throw Error('Current route legend not found');
     window.previewLegend = { el: legend, html: legend.innerHTML };
   });
@@ -113,8 +113,8 @@ try {
       }
       if (id === 9) {
         hide(wait);
-        const time = label.textContent.replace(/^Red\s*/, '');
-        window.previewLegend.el.append(document.createTextNode(` · ${time}`));
+        const time = label.lastElementChild.textContent;
+        window.previewLegend.el.firstElementChild.append(document.createTextNode(` · ${time}`));
       }
       if (id === 10) for (const tip of [wait, pickup, destination]) hide(tip);
     }, id);
