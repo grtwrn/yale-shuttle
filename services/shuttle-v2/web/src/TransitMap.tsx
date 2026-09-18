@@ -1686,8 +1686,11 @@ const AllRoutesMap: FC<{
 };
 
 
+type LiveBusStatus = "loading" | "unavailable" | "ready";
+
 const TripPlanner: FC<{
   buses: BusData[];
+  busStatus: LiveBusStatus;
   lastBusUpdateAt: number | null;
   busUpdateFailed: boolean;
   stopNames: Record<number, string>;
@@ -1729,7 +1732,7 @@ const TripPlanner: FC<{
   // re-render.
   // Called when the rider taps "I'm on this bus" on an expanded shuttle option.
   onBoard: (ride: BoardedRide) => void;
-}> = ({ buses, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
+}> = ({ buses, busStatus, lastBusUpdateAt, busUpdateFailed, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, dwellsByBus, routeHours, routeActive, userLatLon, onRequestLocate, locating, locateError, savedTrips, onSaveTrip, onDeleteSaved, onRenameSaved, recentTrips, onRecordRecent, onDeleteRecent, onClearRecents, announcements, onReportSubmitted, pendingTrip, onConsumePending, onBoard }) => {
   const [initialDraft] = useState(loadTripDraft);
   const [fromText, setFromText] = useState(initialDraft?.fromText ?? "");
   const [toText, setToText] = useState(initialDraft?.toText ?? "");
@@ -3474,7 +3477,9 @@ const TripPlanner: FC<{
       {options && !alreadyThere && (options.length === 0 || (options.length === 1 && options[0].mode === "walk")) && potentialRoutes.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, padding: "0 2px" }}>
-            {potentialRoutes.some((p) => p.activeNow)
+            {busStatus !== "ready"
+              ? "Shuttle routes for this trip — live status unavailable"
+              : potentialRoutes.some((p) => p.activeNow)
               ? "Shuttles that go there — none on the map yet"
               : "Shuttles that go there — not running now"}
           </div>
@@ -3503,12 +3508,12 @@ const TripPlanner: FC<{
                   </span>
                   <span style={{ fontSize: 12, color: "#546e7a", marginLeft: "auto", textAlign: "right" }}>
                     {p.schedule && (
-                      <div>Runs {p.schedule}</div>
+                      <div>Schedule: {p.schedule}</div>
                     )}
                     {/* activeNow is judged against the PUBLISHED timetable
                         when the server supplied one, so this reads "the
                         published schedule says running". */}
-                    {p.activeNow ? (
+                    {busStatus !== "ready" ? null : p.activeNow ? (
                       <div style={{ fontWeight: 600, color: "#263238", marginTop: 2 }}>
                         Should be running now — no bus reporting yet
                       </div>
@@ -4930,10 +4935,12 @@ const TripPlanner: FC<{
         const firstTimer = savedTrips.length === 0 && recentTrips.length === 0;
         return (
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 13, color: buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
-              {buses.length > 0
-                ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} running now on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
-                : "😴 No shuttles running right now"}
+            <div role="status" style={{ fontSize: 13, color: busStatus === "ready" && buses.length > 0 ? "#2E7D32" : "#78909c", padding: "0 2px", fontWeight: 600 }}>
+              {busStatus === "loading" ? "Loading shuttle information…"
+                : busStatus === "unavailable" ? "Live shuttle status unavailable"
+                : buses.length > 0
+                  ? `🚌 ${buses.length} shuttle${buses.length === 1 ? "" : "s"} reporting on ${activeRoutes.length} route${activeRoutes.length === 1 ? "" : "s"}`
+                  : "No shuttles reporting right now"}
             </div>
             {/* WHY nothing is running, in Yale's own words. A system-wide
                 notice names no route, so the per-option banners never showed
@@ -4948,14 +4955,17 @@ const TripPlanner: FC<{
                 background: "#fff8e1", border: "1px solid #ffe082",
                 fontSize: 13, color: "#5d4037", lineHeight: 1.45,
               }}>
+                {busStatus !== "ready" && <span>Last received notice: </span>}
                 <span style={{ fontWeight: 700 }}>{a.title}</span>
                 <span style={{ margin: "0 6px" }}>·</span>
                 <span>{a.message}</span>
               </div>
             ))}
-            {firstTimer && buses.length > 0 && (
+            {firstTimer && (
               <div style={{ fontSize: 12, color: "#78909c", padding: "2px 2px 0" }}>
-                Pick a destination — we compare walking against every shuttle.
+                {busStatus === "ready" && buses.length > 0
+                  ? "Pick a destination — we compare walking against every shuttle."
+                  : "Choose a destination to check walking directions and route schedules."}
               </div>
             )}
             {firstTimer && (
@@ -5396,12 +5406,14 @@ const RouteThumb: FC<{
   color: string;
   label: string;
   dashed?: boolean;
-}> = ({ thumb, color, label, dashed }) => {
+  busStatus: LiveBusStatus;
+}> = ({ thumb, color, label, dashed, busStatus }) => {
   const busNames = thumb.buses.map((b) => b.name).join(", ");
   const caption = `${label} route map: ${thumb.stops.length} stops, `
-    + (thumb.buses.length === 0
-      ? "no buses running"
-      : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} live (${busNames})`);
+    + (busStatus !== "ready" ? "live bus positions unavailable"
+      : thumb.buses.length === 0
+        ? "no buses reporting"
+        : `${thumb.buses.length} ${thumb.buses.length === 1 ? "bus" : "buses"} reporting (${busNames})`);
   return (
     <svg
       viewBox={thumb.viewBox}
@@ -5440,6 +5452,7 @@ const RouteThumb: FC<{
 
 const StopList: FC<{
   buses: BusData[];
+  busStatus: LiveBusStatus;
   stopNames: Record<number, string>;
   stopCoords: Record<number, { lat: number; lon: number }>;
   routeStops: Record<string, number[]>;
@@ -5468,7 +5481,7 @@ const StopList: FC<{
   stopAlerts?: readonly StopAlert[];
   onArmStopAlert?: (routeId: string, routeLabel: string, stopId: number, stopName: string, leadMin: number) => void;
   onDisarmStopAlert?: (routeLabel: string, stopId: number) => void;
-}> = ({ buses, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
+}> = ({ buses, busStatus, stopNames, stopCoords, routeStops, routePaths, segmentTimes, dwellTimes, routePeaks, routeHours, routeActive, tick, listView, activeOnly, hiddenRoutes, favoriteStopIds, favorites, onToggleFavorite, savedStops, onToggleSavedStop, userLatLon, onRequestLocate, stopAlerts, onArmStopAlert, onDisarmStopAlert }) => {
   // Which route the rider has tapped into, by primary route id. Local state on
   // purpose: leaving the tab unmounts this list, so isolation never survives a
   // visit. The effect covers the case where the view changes underneath us
@@ -5714,7 +5727,7 @@ const StopList: FC<{
         // ROUTE_CALENDAR) says so beside its hours, so "0/1 bus" under
         // "Sa/Su 7a–5p" on a Sunday does not read as a bus that failed to
         // come out.
-        const off = routeBuses.length === 0
+        const off = busStatus === "ready" && routeBuses.length === 0
           ? serviceStateAt(published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, new Date(), {
               labels: new Set(buses.map((b) => ROUTE_ID_LABEL[b.route_id]).filter((l): l is string => !!l)),
               now: new Date(),
@@ -6089,7 +6102,7 @@ const StopList: FC<{
                   {loopSec > 0 && schedule ? " · " : ""}
                   {schedule}
                 </span>
-                <span>{busLabel}</span>
+                <span>{busStatus === "ready" ? busLabel : "Live count unavailable"}</span>
                 {routeNote && (
                   <span style={{ flexBasis: "100%", lineHeight: 1.4 }}>{routeNote}</span>
                 )}
@@ -6130,6 +6143,7 @@ const StopList: FC<{
                       color={cfg.color}
                       label={cfg.label}
                       dashed={cfg.dashed}
+                      busStatus={busStatus}
                     />
                   </div>
                 )}
@@ -6154,11 +6168,13 @@ const StopList: FC<{
                       // arrivals off it (7,566 rows in a day — Pink, Blue Night
                       // and Green, docs/card-vs-trip.md). Declining to answer
                       // is right; declining silently is not.
-                      : routeBuses.length === 0
-                        ? `${stops.length} stops · no buses en route ›`
+                      : busStatus !== "ready"
+                        ? `${stops.length} stops · live arrivals unavailable ›`
+                        : routeBuses.length === 0
+                        ? `${stops.length} stops · no buses reporting ›`
                         : onRoute === 0
                           ? `${stops.length} stops · ${routeBuses.length} bus${routeBuses.length === 1 ? "" : "es"} off route ›`
-                          : `${stops.length} stops ›`}
+                          : `${stops.length} stops · live arrivals unavailable ›`}
                   </button>
                 )}
               </>
@@ -6736,6 +6752,9 @@ const TransitMap: FC = () => {
   const busUpdatesStartedAt = useRef(Date.now());
   const [lastBusUpdateAt, setLastBusUpdateAt] = useState<number | null>(null);
   const [busUpdateFailed, setBusUpdateFailed] = useState(false);
+  // A valid position snapshot can arrive without usable ETA rows. Keep that
+  // distinction for counts/empty-state copy; the existing ETA warning stays on.
+  const [busSnapshotFailed, setBusSnapshotFailed] = useState(false);
   // Active ride the rider has boarded (drives the on-bus banner). Seeded from
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
@@ -6804,6 +6823,7 @@ const TransitMap: FC = () => {
   // running the filter is moot, so fall back to showing everything
   // (activeFilter) instead of an empty page.
   const [activeOnly, setActiveOnly] = useState(true);
+  const mapModeButtonRef = useRef<HTMLButtonElement>(null);
   const activeFilter = activeOnly && buses.length > 0;
   // Which lines have a bus ON ROUTE right now, as toggle labels — the same
   // test the route cards use (isBusOnRoute over the merged stop list), so a
@@ -7509,6 +7529,7 @@ const TransitMap: FC = () => {
         latestApplied = mySeq;
         setLastBusUpdateAt(Date.now());
         setBusUpdateFailed(false);
+        setBusSnapshotFailed(false);
         // The estimator's learned parameters, before anything that prices a
         // row with them (docs/closed-loop.md, stage 3). Absent, malformed or
         // out of range and this resets to the compiled constants, which is
@@ -7547,6 +7568,7 @@ const TransitMap: FC = () => {
         // Replaced requests and unmounts are not connection failures.
         if (!stopped && !controller.signal.aborted && mySeq > latestApplied) {
           setBusUpdateFailed(true);
+          setBusSnapshotFailed(true);
         }
       }
     };
@@ -7615,6 +7637,10 @@ const TransitMap: FC = () => {
   // label and the toggle grouping key live beside the colour in ROUTE_LISTS.
   const legendRoutes = LEGEND_ROUTES;
   const busUpdateNotice = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busUpdateFailed, document.hidden);
+  // Use the same freshness policy for the position snapshot. An empty array
+  // before a successful poll (or retained after a failure) cannot prove no service.
+  const busStatus: LiveBusStatus = liveUpdateMessage(lastBusUpdateAt, busUpdatesStartedAt.current, Date.now(), busSnapshotFailed, document.hidden)
+    ? "unavailable" : lastBusUpdateAt === null ? "loading" : "ready";
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F5F3EF", minHeight: "100vh",
@@ -7935,7 +7961,7 @@ const TransitMap: FC = () => {
                   key={r.toggleLabel}
                   onClick={() => setMapHiddenPersisted(toggleOne(mapHidden, r.toggleLabel))}
                   aria-pressed={!off}
-                  title={idle ? `No ${r.label} bus right now — hidden by "Running now"` : undefined}
+                  title={idle ? `${r.label} has no bus in the last update — hidden by "Running now"` : undefined}
                   style={{
                     padding: "3px 10px", borderRadius: 10,
                     border: `${r.dashed ? "1px dashed" : "1px solid"} ${off ? "#cfd8dc" : r.color}`,
@@ -7951,23 +7977,6 @@ const TransitMap: FC = () => {
               );
             })}
           </div>
-          {allHidden(LEGEND_TOGGLES, mapHidden) ? (
-            <div style={{
-              width: "100%", maxWidth: 800, margin: "0 auto",
-              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
-            }}>
-              Every line is switched off — tap one above to put it back on the map and in the cards below.
-            </div>
-          ) : allHidden(LEGEND_TOGGLES, mapDrawnHidden) ? (
-            // The chips leave something on, but none of it has a bus: say so,
-            // or an empty map under lit chips reads as broken.
-            <div style={{
-              width: "100%", maxWidth: 800, margin: "0 auto",
-              padding: "0 12px 8px", fontSize: 13, color: "#78909c",
-            }}>
-              None of the lines switched on has a bus right now — the map shows only running lines. Tap "Every route" below to see them all.
-            </div>
-          ) : null}
           <AllRoutesMap
             // Shorter here than it was as a whole page: the route cards sit
             // below it now and must be reachable without a long scroll.
@@ -7998,6 +8007,7 @@ const TransitMap: FC = () => {
               background: "#fff8e1", border: "1px solid #ffe082",
               fontSize: 13, color: "#5d4037", lineHeight: 1.45,
             }}>
+              {busStatus !== "ready" && <span>Last received notice: </span>}
               <span style={{ fontWeight: 700 }}>{a.title}</span>
               <span style={{ margin: "0 6px" }}>·</span>
               <span>{a.message}</span>
@@ -8008,7 +8018,9 @@ const TransitMap: FC = () => {
             padding: "8px 12px 6px", display: "flex", gap: 6, alignItems: "center",
           }}>
             <button
+              ref={mapModeButtonRef}
               onClick={() => setActiveOnly(!activeOnly)}
+              aria-pressed={activeOnly}
               style={{
                 padding: "4px 14px", borderRadius: 12, minHeight: 44, flexShrink: 0,
                 border: activeOnly ? "1px solid #1a1a2e" : "1px solid #bbb",
@@ -8027,13 +8039,36 @@ const TransitMap: FC = () => {
               width: "100%", maxWidth: 800, margin: "0 auto", boxSizing: "border-box",
               padding: "6px 12px 12px", fontSize: 13, color: "#78909c",
             }}>
-              {allHidden(LEGEND_TOGGLES, mapHidden)
-                ? "No lines selected — tap a line above."
-                : "None of the selected lines has a bus right now — tap \"Every route\" to see them all."}
+              <div>{allHidden(LEGEND_TOGGLES, mapHidden)
+                ? "All routes are hidden. Choose a route above or show all."
+                : busStatus === "ready"
+                  ? "No buses are reporting on your selected routes."
+                  : "Your selected routes are hidden by the Running now filter. Live status is unavailable."}</div>
+              <button
+                onClick={() => {
+                  if (allHidden(LEGEND_TOGGLES, mapHidden)) setMapHiddenPersisted(new Set());
+                  setActiveOnly(false);
+                  // This recovery button disappears; keep keyboard focus on
+                  // the persistent mode control rather than dropping to body.
+                  mapModeButtonRef.current?.focus();
+                }}
+                style={{ minHeight: 44, marginTop: 4, padding: "4px 12px", borderRadius: 8,
+                  border: "1px solid #bbb", background: "#fff", color: "#1a73e8",
+                  font: "inherit", cursor: "pointer" }}
+              >{allHidden(LEGEND_TOGGLES, mapHidden) ? "Show all routes" : "Show selected routes"}</button>
+            </div>
+          )}
+          {!allHidden(LEGEND_TOGGLES, mapDrawnHidden) && buses.length === 0 && (
+            <div role="status" style={{ width: "100%", maxWidth: 800, padding: "6px 12px 12px", fontSize: 13, color: "#78909c" }}>
+              {busStatus === "loading" ? "Loading shuttle information…"
+                : busStatus === "unavailable"
+                  ? Object.keys(routeStops).length > 0 ? "Route maps and schedules remain available. Live shuttle status is unavailable." : "Route maps will appear when updates reconnect."
+                  : "No shuttles reporting right now. Showing selected routes and schedules."}
             </div>
           )}
           <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
             <StopList
+              busStatus={busStatus}
               buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
               routePaths={routePaths}
               segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks}
@@ -8057,6 +8092,7 @@ const TransitMap: FC = () => {
         <IssuesPanel refreshSignal={myReportsBump} onAllSeen={() => { setIssuesBadge(false); setIssuesBannerDismissed(false); }} />
       ) : listView === "trip" ? (
         <TripPlanner
+          busStatus={busStatus}
           lastBusUpdateAt={lastBusUpdateAt} busUpdateFailed={busUpdateFailed}
           buses={buses} stopNames={stopNames} stopCoords={stopCoords}
           routeStops={routeStops} routePaths={routePaths} segmentTimes={segmentTimes} dwellTimes={dwellTimes} dwellsByBus={dwellsByBus}
@@ -8303,6 +8339,7 @@ const TransitMap: FC = () => {
       {listView === "all" && (
         <div style={{ width: "100%", padding: "0 16px", display: "flex", justifyContent: "center" }}>
           <StopList
+            busStatus={busStatus}
             buses={buses} stopNames={stopNames} stopCoords={stopCoords} routeStops={routeStops}
             routePaths={routePaths}
             segmentTimes={segmentTimes} dwellTimes={dwellTimes} routePeaks={routePeaks} routeHours={routeHours} routeActive={routeActive} tick={tick}
