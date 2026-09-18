@@ -6930,7 +6930,12 @@ const TransitMap: FC = () => {
   // tabs has to bring it into view as well as open it — expanding a form
   // several screens below the tap looks like nothing happened.
   const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const feedbackButtonRef = useRef<HTMLButtonElement | null>(null);
+  const feedbackFileRef = useRef<HTMLInputElement | null>(null);
+  const feedbackAttachRef = useRef<HTMLButtonElement | null>(null);
   const openFeedback = () => {
+    setFeedbackStatus(null);
+    setFeedbackError(null);
     setFeedbackOpen(true);
     // Next frame: the composer has to exist before it can be scrolled to.
     // Both calls are optional-chained — an older engine without smooth
@@ -6941,7 +6946,16 @@ const TransitMap: FC = () => {
   };
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const closeFeedback = (ownedFocus = feedbackRef.current?.contains(document.activeElement)) => {
+    setFeedbackOpen(false);
+    // Only replace focus lost with the composer; an async send must not take
+    // it away from navigation or another control the rider has reached.
+    if (ownedFocus) requestAnimationFrame(() => {
+      if (document.activeElement === document.body) feedbackButtonRef.current?.focus();
+    });
+  };
   // "Install app" affordance. Three situations, three behaviours:
   //   - Chrome (Android/desktop): the browser hands us a beforeinstallprompt
   //     event; the button replays it, which opens the REAL install dialog.
@@ -7009,8 +7023,10 @@ const TransitMap: FC = () => {
   const sendFeedback = async () => {
     const msg = feedbackText.trim();
     if (!msg) return;
+    const ownedFocus = feedbackRef.current?.contains(document.activeElement);
     setFeedbackSending(true);
-    setFeedbackStatus(null);
+    setFeedbackError(null);
+    setFeedbackStatus("Sending…");
     try {
       const res = await fetch("/api/report", {
         method: "POST",
@@ -7033,14 +7049,14 @@ const TransitMap: FC = () => {
       setFeedbackText("");
       setFeedbackImage(null);
       setFeedbackPriority("normal");
-      setFeedbackOpen(false);
+      closeFeedback(ownedFocus);
       setMyReportsBump((b) => b + 1);
       setFeedbackStatus(d?.id ? `Thanks — logged (#${d.id})` : "Thanks — logged");
     } catch {
-      setFeedbackStatus("Couldn't send — try again");
+      setFeedbackStatus(null);
+      setFeedbackError("Couldn't send — try again");
     }
     setFeedbackSending(false);
-    setTimeout(() => setFeedbackStatus(null), 6_000);
   };
   // Seed userLatLon from localStorage so reloads don't flash "Tap
   // to set start" while the GPS watcher warms up. CRITICAL: the
@@ -8342,7 +8358,8 @@ const TransitMap: FC = () => {
               </button>
             )}
             <button
-              onClick={() => setFeedbackOpen(true)}
+              ref={feedbackButtonRef}
+              onClick={openFeedback}
               style={{
                 fontSize: 13, padding: "8px 14px", minHeight: 44,
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -8354,9 +8371,6 @@ const TransitMap: FC = () => {
               💬 Send feedback
             </button>
             <ContributeButton />
-            {feedbackStatus && (
-              <span style={{ fontSize: 12, color: "#78909c" }}>{feedbackStatus}</span>
-            )}
           </div>
         ) : null}
         {!feedbackOpen && iosHintOpen && showInstall ? (
@@ -8378,13 +8392,14 @@ const TransitMap: FC = () => {
             border: "1px solid #e0ddd8", borderRadius: 10, background: "#fff",
             padding: 12, display: "flex", flexDirection: "column", gap: 8,
           }}>
-            <div style={{
+            <label htmlFor="feedback-message" style={{
               fontSize: 11, color: "#78909c", textTransform: "uppercase",
               letterSpacing: 1,
             }}>
               Feedback
-            </div>
+            </label>
             <textarea
+              id="feedback-message"
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               // Paste or drop a screenshot straight in (operator request,
@@ -8415,16 +8430,17 @@ const TransitMap: FC = () => {
                 fontFamily: "inherit", resize: "vertical", minHeight: 80,
               }}
             />
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <div role="group" aria-label="How urgent?" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>
                 How urgent?
               </span>
               {([["urgent", "🔴 Urgent"], ["normal", "Normal"], ["nice_to_have", "💡 Nice to have"]] as const).map(([v, label]) => (
                 <button
                   key={v}
+                  aria-pressed={feedbackPriority === v}
                   onClick={() => setFeedbackPriority(v)}
                   style={{
-                    fontSize: 12, padding: "6px 10px", minHeight: 36,
+                    fontSize: 12, padding: "6px 10px", minHeight: 44,
                     border: feedbackPriority === v ? "1.5px solid #1976D2" : "1px solid #ccc",
                     borderRadius: 14,
                     background: feedbackPriority === v ? "#E3F2FD" : "#fff",
@@ -8437,40 +8453,45 @@ const TransitMap: FC = () => {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              {feedbackImage ? (
+              <button ref={feedbackAttachRef} type="button"
+                onClick={() => { if (!feedbackSending && !feedbackAttaching) feedbackFileRef.current?.click(); }}
+                aria-disabled={feedbackSending || feedbackAttaching}
+                style={{ fontSize: 13, color: "#1976D2", cursor: "pointer", fontFamily: "inherit",
+                  border: "1px solid #bbb", borderRadius: 6, background: "#fff",
+                  minHeight: 44, padding: "8px 12px" }}>
+                📎 {feedbackImage ? "Replace screenshot" : "Attach screenshot"}
+              </button>
+              <input ref={feedbackFileRef} type="file" accept="image/*" hidden
+                onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
+              {!feedbackImage && <span style={{ fontSize: 12, color: "#78909c" }}>or paste one</span>}
+              {feedbackImage && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <img src={feedbackImage} alt="attached screenshot"
                     style={{ height: 44, borderRadius: 4, border: "1px solid #ccc" }} />
-                  <button onClick={() => setFeedbackImage(null)} title="Remove screenshot"
+                  <button
+                    aria-label="Remove screenshot"
+                    onClick={() => { setFeedbackImage(null); setFeedbackImageErr(null); feedbackAttachRef.current?.focus(); }} title="Remove screenshot"
                     style={{ border: "none", background: "transparent", color: "#c62828",
                       fontSize: 13, cursor: "pointer", minHeight: 44, padding: "0 6px" }}>
                     ✕ remove
                   </button>
                 </div>
-              ) : (
-                <label style={{
-                  fontSize: 13, color: "#1976D2", cursor: "pointer",
-                  minHeight: 44, display: "inline-flex", alignItems: "center", padding: "0 4px",
-                }}>
-                  📎 Attach screenshot <span style={{ color: "#90a4ae" }}>&nbsp;or paste one</span>
-                  <input type="file" accept="image/*" hidden
-                    onChange={(e) => { attachScreenshot(e.target.files?.[0]); e.target.value = ""; }} />
-                </label>
               )}
               {feedbackImageErr && (
-                <span style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
+                <span role="alert" style={{ fontSize: 12, color: "#c62828" }}>{feedbackImageErr}</span>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 onClick={() => {
-                  setFeedbackOpen(false);
+                  closeFeedback();
                   setFeedbackText("");
                   setFeedbackImage(null);
                   setFeedbackImageErr(null);
+                  setFeedbackError(null);
                 }}
                 style={{
-                  fontSize: 13, padding: "8px 14px", minHeight: 40,
+                  fontSize: 13, padding: "8px 14px", minHeight: 44,
                   border: "1px solid #bbb", borderRadius: 6,
                   background: "#fff", color: "#546e7a",
                   cursor: "pointer", fontFamily: "inherit", flex: 1,
@@ -8482,7 +8503,7 @@ const TransitMap: FC = () => {
                 onClick={sendFeedback}
                 disabled={feedbackSending || feedbackAttaching || !feedbackText.trim()}
                 style={{
-                  fontSize: 13, padding: "8px 14px", minHeight: 40,
+                  fontSize: 13, padding: "8px 14px", minHeight: 44,
                   border: "1px solid #1976D2", borderRadius: 6,
                   background: feedbackSending || feedbackAttaching || !feedbackText.trim() ? "#90CAF9" : "#1976D2",
                   color: "#fff",
@@ -8493,8 +8514,10 @@ const TransitMap: FC = () => {
                 {feedbackSending ? "Sending…" : feedbackAttaching ? "Attaching…" : "Send"}
               </button>
             </div>
+            {feedbackError && <div role="alert" style={{ fontSize: 13, color: "#c62828" }}>{feedbackError}</div>}
           </div>
         )}
+        <div role="status" style={{ fontSize: 12, color: "#546e7a" }}>{feedbackAttaching ? "Attaching screenshot…" : feedbackStatus}</div>
       </div>
 
       {/* Beta notice — persistent, and the tap opens the feedback composer
