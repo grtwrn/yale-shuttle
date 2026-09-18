@@ -1472,7 +1472,9 @@ const AllRoutesMap: FC<{
   // upstream refresh), not per poll. Routes/stops are static for a session.
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
+    // Filters rebuild this map and changing tabs removes it. As on trip maps,
+    // disable CSS zoom: map.stop() does not cancel its delayed completion.
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true, zoomAnimation: false });
     mapRef.current = map;
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
@@ -6281,7 +6283,9 @@ const RideRouteMap: FC<{
   // polyline, its stops with board emphasised + alight as 🚏, fit to the ride leg.
   useEffect(() => {
     if (!ref.current || mapRef.current || !cfg) return;
-    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true });
+    // Done can remove the map during a zoom. Keep zoom immediate, as on trip
+    // maps, so a delayed CSS transition cannot run after teardown.
+    const map = L.map(ref.current, { zoomControl: true, scrollWheelZoom: true, zoomAnimation: false });
     mapRef.current = map;
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors", maxZoom: 19,
