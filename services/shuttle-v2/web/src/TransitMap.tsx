@@ -3146,14 +3146,14 @@ const TripPlanner: FC<{
         </div>
       )}
 
-      {/* "When" is hidden until a destination is locked — same
+      {/* Departure is hidden until a destination is locked — same
           treatment as Google Maps, where the depart/arrive picker only
           appears after you've set where you're going. Default is
           "Now" (tripTime = ""), so leaving this hidden changes
           nothing functionally. */}
       {toLL && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>When</span>
+          <span style={{ fontSize: 11, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Leave</span>
           {tripTime ? (
             <>
               <input
@@ -3173,7 +3173,7 @@ const TripPlanner: FC<{
               <button onClick={() => setTripTime("")} style={{
                 fontSize: 14, padding: "8px 14px", border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", borderRadius: 6,
-                fontFamily: "inherit", cursor: "pointer", minHeight: 40,
+                fontFamily: "inherit", cursor: "pointer", minHeight: 44,
               }}>Now</button>
             </>
           ) : (
@@ -3188,7 +3188,7 @@ const TripPlanner: FC<{
               }} style={{
                 fontSize: 14, padding: "8px 14px", border: "1px solid #bbb",
                 background: "#fff", color: "#546e7a", borderRadius: 6,
-                fontFamily: "inherit", cursor: "pointer", minHeight: 40,
+                fontFamily: "inherit", cursor: "pointer", minHeight: 44,
               }}>Plan for later…</button>
             </>
           )}
@@ -3202,7 +3202,7 @@ const TripPlanner: FC<{
       {isFuture && targetDate && (
         <div style={{ fontSize: 13, color: "#1976D2", marginBottom: 10, padding: "0 2px" }}>
           Planning for {targetDate.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-          {" · routes filtered by published hours, wait = ½ typical headway"}
+          {" · Estimated from service hours and typical wait and travel times. Check live arrivals near departure."}
         </div>
       )}
 

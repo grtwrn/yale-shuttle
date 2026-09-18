@@ -3,6 +3,7 @@ import { ArrivalPlot } from './ArrivalPlot';
 import { ArrivalHistory } from './ArrivalHistory';
 import type { TripOption } from './planner';
 import { compareDeadline, type DeadlineOption } from './arriveBy';
+import { deadlineMessage } from './arriveByMessage';
 import { arrivalClock, deadlineError, localDateTime } from './journeyArrival';
 
 const button: CSSProperties = { minHeight: 44, padding: '8px 12px', border: '1px solid #dadce0', borderRadius: 8,
@@ -27,14 +28,10 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
   const targetMs = classMs - bufferMin * 60_000;
   const comparison = compareDeadline(options, classMs, bufferMin, now, lastBusUpdateAt, busUpdateFailed, departureMs);
   const { recommendation, shuttle, walk } = comparison;
-  const heading = recommendation?.option.mode === 'walk' ? (departureMs ? 'Walking fits your buffer' : 'Walk now')
-    : recommendation ? `${recommendation.option.routeLabel} may fit your buffer` : 'Your arrival is at risk';
-  const explanation = recommendation?.option.mode === 'walk'
-    ? 'The walking estimate gets you there before your target. It avoids the shuttle wait.'
-    : recommendation ? `The estimated window fits your target if you catch the bus at ${stopNames[recommendation.option.boardStopId] ?? 'your pickup stop'}. Check the pickup and walking times.`
-    : 'No available option fits your buffer with enough information. Check the times below.';
+  const { heading, explanation } = deadlineMessage(comparison, stopNames);
   const renderRow = (r: DeadlineOption) => {
     const walking = r.option.mode === 'walk';
+    const busName = r.option.journeyArrival?.busName ?? r.option.busName;
     const unavailable = r.pointMs === undefined;
     const fits = r.status === 'fits' && !r.caution;
     const status = unavailable ? r.caution : r.caution ? (r.option.journeyArrival?.catchRisk ? 'Connection uncertain' : 'Limited trip data')
@@ -44,7 +41,7 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
       style={{ ...button, display: 'block', width: '100%', textAlign: 'left', padding: '12px 0', border: 0, borderRadius: 0,
         borderTop: '1px solid #e5e7eb', color: '#202124', background: 'transparent' }}>
       <span style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 12px' }}>
-        <strong>{walking ? 'Walk' : `${r.option.routeLabel} · #${r.option.journeyArrival?.busName ?? r.option.busName}`}</strong>
+        <strong>{walking ? 'Walk' : `${r.option.routeLabel}${busName ? ` · #${busName}` : ''}`}</strong>
         <span style={{ fontWeight: 600 }}>{unavailable ? 'No live window' : walking ? `About ${arrivalClock(r.pointMs!)}`
           : `${arrivalClock(r.lowMs!, 'low')}–${arrivalClock(r.highMs!, 'high')}`}</span>
       </span>
