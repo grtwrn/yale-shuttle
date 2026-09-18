@@ -1,0 +1,17 @@
+{
+  "status": "compute_stopped_at_user_request",
+  "ownedRunningPids": [],
+  "completed": ["screen.py", "extend.py", "validate.py", "runtime-comparator.mts"],
+  "notRun": ["summarize.py"],
+  "report": "REPORT.md",
+  "verdict": "No production change. Close-leader gate improvement on reused Sep14-17 reverses on reused Sep18; only one fresh gated hold. Follower and co-anchor training support insufficient.",
+  "limitations": [
+    "No individual regression-source audit or runtime aggregate comparison was run after the stop instruction.",
+    "Stored visit weighting is original whole-visit origin weighting; subgroup scores are not equal-visit within subgroup.",
+    "Current gate/spacing results are landmark component research, not a production ETA replay."
+  ],
+  "appChanges": false,
+  "productionChanges": false,
+  "watcherChanges": false,
+  "restartOnPiAuthorized": false
+}

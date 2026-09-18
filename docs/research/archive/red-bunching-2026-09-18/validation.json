@@ -1,0 +1,10 @@
+{
+  "fitSha256": "1cc1e4e92d6fea1caebc1882665d1f82d4a4f8a80aeaa7f901461d168481e654",
+  "orderedQuantileAndProbabilityChecks": 6426,
+  "continuedTailChecks": 6426,
+  "exactGateFallbackChecks": 1826,
+  "sampledOrigins": 113,
+  "futureDeletionAndPerturbationChecks": 226,
+  "passed": true,
+  "scope": "Every emitted base+fresh arm checked for finite ordered quantiles, probability range, and continued tail. Future-delete/perturbation tests cover deterministic one-in-eleven origins plus all co-anchor origins and both known early-hold cases, each at15/120s."
+}
