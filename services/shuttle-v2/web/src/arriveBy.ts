@@ -38,5 +38,5 @@ export function compareDeadline(options: readonly TripOption[], classMs: number,
     ?? rows.find(r => r.option.mode === 'shuttle');
   const recommendation = fits && (walk?.status !== 'fits' || fits.pointMs! < walk.pointMs!)
     ? fits : walk?.status === 'fits' ? walk : undefined;
-  return { walk, shuttle, recommendation, stale, future };
+  return { rows, walk, shuttle, recommendation, stale, future };
 }
