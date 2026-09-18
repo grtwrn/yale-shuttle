@@ -43,7 +43,7 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
       onKeyDown={e => e.stopPropagation()}
       onClick={e => { e.stopPropagation(); dialog.current?.showModal(); setOpen(true); }}
       style={{ border: 0, background: 'transparent', padding: '4px 0', minHeight: 44, minWidth: 0, color: '#374151', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
-      <span style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{pickup} <span aria-hidden="true" style={{ color: '#5f6368' }}>ⓘ</span></span>
+      <span style={{ display: 'block', fontSize: 12, fontWeight: 600 }}>{pickup}</span>
       {next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>Next in {next.startsWith('<') ? next : `~${next}`}</span>}
     </button>
     {createPortal(<dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onKeyDown={e => e.stopPropagation()} onClick={e => {
