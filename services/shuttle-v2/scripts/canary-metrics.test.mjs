@@ -1287,6 +1287,33 @@ describe("the arrival clock has TWO readers", () => {
     expect(ARRIVAL_CLOCK_RE.test("12:13 PM")).toBe(false);     // the page header
   });
 
+  it("recognizes destination windows and approximate points without mistaking nearby map or pickup text for a clock", () => {
+    for (const clock of ['10:21a–10:27a', '~10:45a', '~Sep 19, 12:05a', '11:59p–Sep 19, 12:05a']) {
+      expect(ARRIVAL_CLOCK_RE.test(clock), clock).toBe(true);
+      expect(hasArrivalClock(`At destination (est.)\n${clock}`), clock).toBe(true);
+    }
+    for (const text of ['🏁 (R) 10:23a', '(B) ~10:45a', 'Likely 3–9 min', 'About 5 min ⓘ', 'At destination (est.)']) {
+      expect(ARRIVAL_CLOCK_RE.test(text), text).toBe(false);
+    }
+  });
+
+  it("reads actual built-page cards after removing the separate arrive-by bar", () => {
+    // Captured at360px from the built SPA with a synthetic shared-server ETA
+    // fixture,2026-09-18. These are rendered text, not a mocked card layout.
+    const live = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-live.txt', import.meta.url), 'utf8');
+    const future = readFileSync(new URL('./__fixtures__/trip-without-arrive-by-future.txt', import.meta.url), 'utf8');
+    const liveOptions = parseOptions(live);
+    expect(liveOptions.map(o => o.routeLabel)).toEqual(['Red', 'Walk']);
+    expect(liveOptions[0]).toMatchObject({ totalMin: 23, arriveText: '10:21a–10:27a',
+      eta: { first: [180, 540], median: [300, 360] } });
+    expect(liveOptions[1]).toMatchObject({ mode: 'walk', arriveText: '~10:45a' });
+    expect(parseOptions(future).map(o => [o.routeLabel, o.arriveText])).toEqual([
+      ['Red', '~11:16a'], ['Brown', '~11:20a'], ['Walk', '~11:45a'],
+    ]);
+    expect(live).toContain('Plan for later…');
+    expect(live).not.toContain('Arrive by');
+  });
+
   it("finds a clock in the card text `openCard` actually greps", () => {
     // The predicate is per-LINE over a card's innerText, which is how
     // `openCard` uses it. The old copy tested the blob unanchored, so it

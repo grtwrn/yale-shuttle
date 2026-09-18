@@ -501,7 +501,10 @@ const isLabelish = (l) =>
  * first), so the pattern is exported rather than copied, and the anchored
  * per-line test comes with it.
  */
-export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?\d{1,2}:\d{2}[ap]$/i;
+// DestinationArrival prints live windows and approximate walking/future
+// points. Both card readers must accept them, including a next-day date.
+// Keep the whole line anchored so map labels and pickup countdowns stay out.
+export const ARRIVAL_CLOCK_RE = /^(?:arrive\s+)?~?(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap](?:\s*[–-]\s*(?:[a-z]{3}\s+\d{1,2},\s*)?\d{1,2}:\d{2}[ap])?$/i;
 /** Does this block of innerText contain an arrival clock on a line of its own? */
 export function hasArrivalClock(text) {
   return String(text ?? "").split("\n").some((l) => ARRIVAL_CLOCK_RE.test(l.trim()));
