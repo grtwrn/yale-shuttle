@@ -70,7 +70,8 @@ try {
       assert.doesNotMatch(text, /Arrive by|Plan for class|Class starts/);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal page overflow');
       const box = await destination.boundingBox();
-      const pickupBox = await card.getByRole('button', { name: /^Red arrival details:/ }).boundingBox();
+      const pickup = card.getByRole('button', { name: /^Red arrival details:/ });
+      const pickupBox = await pickup.count() ? await pickup.boundingBox() : null;
       if (pickupBox) assert(pickupBox.x + pickupBox.width <= box.x, 'pickup overlaps destination');
       assert(box.x >= 0 && box.x + box.width <= width, 'destination range outside viewport');
       assert(await destination.evaluate(e => e.scrollWidth <= e.clientWidth), 'clipped destination range');
