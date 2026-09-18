@@ -35,6 +35,7 @@
  */
 
 import { quantile, residual, residualMedian, type Dist } from "./dist";
+import { releaseDist, releaseResidual, releaseModelEnabled, type ReleasePin } from './release';
 import { lapAt, lapFactor } from "./lap";
 import { clockOrigin, LEAD_SWITCH_MASS, situations, standingSec, type Belief, type Situation } from "./filter";
 import { applyHorizonBias, applyRouteScale, routeScale, widenBand } from "./params";
@@ -151,31 +152,31 @@ function addTerm(samples: Float64Array, d: Dist, term: number, scale = 1): void 
  * because the simulator prices the same bus for many riders in one poll.
  */
 const residualCache = new Map<string, Float64Array>();
-function residualDraws(d: Dist, r: number, term: number): Float64Array {
+function residualDraws(d: Dist, r: number, term: number, stable = false): Float64Array {
   let id = distIds.get(d);
   if (id === undefined) { id = nextDistId++; distIds.set(d, id); }
-  const key = `${id}|${Math.round(r / 5)}|${term}`;
+  const key = `${id}|${Math.round(r / 5)}|${term}|${stable}`;
   const hit = residualCache.get(key);
   if (hit) return hit;
   if (residualCache.size > 4096) residualCache.clear();
   const perm = permFor(term);
-  const f = residual(d, Math.round(r / 5) * 5);
+  const f = (stable ? releaseResidual : residual)(d, Math.round(r / 5) * 5);
   const out = new Float64Array(K);
   for (let k = 0; k < K; k++) out[k] = f(STRATA[perm[k]!]!);
   residualCache.set(key, out);
   return out;
 }
 
-function addResidual(samples: Float64Array, d: Dist, r: number, term: number, f = 1): void {
+function addResidual(samples: Float64Array, d: Dist, r: number, term: number, f = 1, stable = false): void {
   // A stand scaled by f is the variable f x X, so its residual given r seconds
   // already stood is f x (X's residual given r / f) — exactly, with no new
   // distribution to build and no new entry in the draw cache.
   if (f === 1) {
-    const draws = residualDraws(d, r, term);
+    const draws = residualDraws(d, r, term, stable);
     for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]!;
     return;
   }
-  const draws = residualDraws(d, r / f, term);
+  const draws = residualDraws(d, r / f, term, stable);
   for (let k = 0; k < K; k++) samples[k] = samples[k]! + draws[k]! * f;
 }
 
@@ -437,7 +438,7 @@ interface Chain {
  * legs, the same tables, the same permutations, one term short — and it is
  * why the drive floor is not a second walk over the hops.
  */
-function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false): Chain {
+function startChain(sit: Situation, tables: RouteTables, r: number, restStop: number, N: number, lap: LapCorrection | null, skipRest = false, release?: { index: number; dist: Dist; elapsed: number }): Chain {
   const samples = new Float64Array(K);
   let measured = false;
   let standingAt = -1;
@@ -462,7 +463,10 @@ function startChain(sit: Situation, tables: RouteTables, r: number, restStop: nu
     // Term indices past the ring's own (2N + ...) so the residual draws are independent of the chain's.
     if (!hop.includesStand) {
       restsNow = true;
-      if (!skipRest) addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+      if (!skipRest) {
+        if (release?.index === j) addResidual(samples, release.dist, release.elapsed, 6 * tables.hops.length + j, 1, true);
+        else addResidual(samples, tables.stops[j]!.stand, r, 6 * tables.hops.length + j, lap ? lap.fStand[j]! : 1);
+      }
     }
     addTerm(samples, hop.drive, 2 * j + 1);
     measured = hop.measured || tables.stops[j]!.measured;
@@ -655,6 +659,7 @@ export function priceRoute(
   /** Seconds since this bus last departed each stop (`buses[].lap`); the lap correction is off without it. */
   lapAges?: LapAges | undefined,
   includeDistribution = false,
+  releasePin?: ReleasePin,
 ): StopArrival[] {
   const sits = situations(belief, ring);
   if (sits.length === 0) return [];
@@ -662,19 +667,28 @@ export function priceRoute(
   const r = standingSec(belief, now);
   const pre = chainPrefix(tables);
   const restStop = belief.rested ? belief.restStop : -1;
+  const releaseFit = ring.routeId === '3' && releaseModelEnabled() && restStop >= 0 ? tables.stops[restStop]?.release : undefined;
+  let currentRelease: { index: number; dist: Dist; elapsed: number } | undefined;
+  if (releaseFit && releasePin && releaseFit.stopId === releasePin.stopId && restStop >= 0 && stops[restStop] === releasePin.stopId) {
+    const age = lapAges?.[releasePin.stopId], elapsed = (now - releasePin.since) / 1000;
+    if (elapsed >= 0 && age !== undefined) {
+      const d = releaseDist(releaseFit, releasePin.since, releasePin.lapAtPin ?? age - elapsed);
+      if (d) currentRelease = { index: restStop, dist: d, elapsed };
+    }
+  }
   // The lead chain is found first WITHOUT the lap correction, because the
   // correction is a walk forward from the lead's own leg; then every chain is
   // built again with it. `startChain` is scalar work, so the second pass costs
   // nothing measurable, and with no lap fit or no served ages the second pass
   // IS the first — `lapCorrection` returns null and every draw is unchanged.
   const pick = (cs: Chain[]) => cs.find((c) => c.sit.leg === belief.lead) ?? cs[0]!;
-  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null));
+  const plain = sits.map((s) => startChain(s, tables, r, restStop, N, null, false, currentRelease));
   const lead0 = pick(plain);
   const lap = lapAges && tables.stops.some((st) => st.lap)
     ? lapCorrection(tables, pre, stops, lapAges, lead0.leg, lead0.standingAt, lead0.sit.frac, r,
       ownDeparture(belief, stops, lapAges, lead0.standingAt, r, now))
     : null;
-  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap)) : plain;
+  const chains = lap && lap.anyStand ? sits.map((s) => startChain(s, tables, r, restStop, N, lap, false, currentRelease)) : plain;
   const lead = pick(chains);
   // The drive floor's chain (`departNow` on every row): the lead's own chain
   // with the rest in progress ended this second. Built only when there IS one
@@ -811,7 +825,7 @@ export function priceRoute(
     let distribution = includeDistribution
       ? mixedQuantiles(fullMix ? all : parts, DISTRIBUTION_QUANTILES) : undefined;
     const key = chainKey(cur, o);
-    if (floors && clampAt >= 0) {
+    if (floors && clampAt >= 0 && currentRelease?.index !== clampAt) {
       const prev = floors.map.get(key);
       const held = prev !== undefined && prev.standingAt === clampAt && prev.since === clockSince ? prev : undefined;
       const cleared = standMass >= LEAD_SWITCH_MASS;
@@ -889,7 +903,9 @@ export function priceRoute(
     // actually shown, so it must scale the band about that number, after the
     // floor clamp has moved it. At the default 1.0 it returns [low, high]
     // itself, so the served defaults are byte-identical to no widening.
-    const [wLow, wHigh] = widenBand(eta, low, high);
+    const rawUpper = currentRelease !== undefined;
+    const widened = widenBand(eta, low, high);
+    const [wLow, wHigh] = rawUpper ? [widened[0], high] : widened;
     const lowOut = Math.min(wLow, eta);
     // The floor is reported, never applied (see `lowFloor`); while
     // alternatives hold real mass the band is the full mixture's and an
@@ -898,7 +914,7 @@ export function priceRoute(
     const floor = leadNow && !fullMix && Number.isFinite(nowLow) ? Math.min(nowLow, eta) : lowOut;
     if (distribution) distribution = distribution.map(value => {
       const corrected = applyHorizonBias(scale === 1 ? value : applyRouteScale(value, scale));
-      return Math.max(0, widenBand(eta, corrected, corrected)[0]);
+      return Math.max(0, rawUpper && corrected >= eta ? corrected : widenBand(eta, corrected, corrected)[0]);
     });
     out.push({
       ...(distribution ? { distribution } : {}),

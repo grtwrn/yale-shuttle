@@ -1,3 +1,5 @@
+import type { ReleaseFit } from "../../web/src/eta/release.js";
+
 import KDBush from "kdbush";
 
 import type { Route, Stop } from "../schema/api.js";
@@ -168,6 +170,7 @@ export interface DwellStats {
   lapB?: number;
   lapM?: number;
   lapN?: number;
+  release?: ReleaseFit;
 }
 
 export interface WalkTransfer {

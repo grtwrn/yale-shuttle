@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 
 import { calibrate } from "../calibrator/calibrator.js";
+import { ReleaseFitCache } from "../calibrator/releaseFit.js";
 import { LapFitCache } from "../calibrator/lapFit.js";
 import type { DB, DbBundle } from "../db/client.js";
 import {
@@ -1251,6 +1252,7 @@ export class Collector {
    */
   private readonly lapClock = new Map<string, Map<number, number>>();
   private lapFitsCache: LapFitCache | null = null;
+  private releaseFitsCache: ReleaseFitCache | null = null;
 
   /** Seconds since this bus last departed each stop it has a record for. */
   lapAges(busName: string, nowMs: number): Record<string, number> | undefined {
@@ -1352,17 +1354,26 @@ export class Collector {
    * A cached get costs microseconds, so `lapFitMs` is ~0 on the 5-minute
    * cadence and names its own cost on the six-hourly refresh.
    */
+  private calibrateNetwork(network: TransitNetwork) {
+    if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
+    const fitAt = Date.now();
+    const lapFits = this.lapFitsCache.get();
+    const lapFitMs = Date.now() - fitAt;
+    if (!this.releaseFitsCache) this.releaseFitsCache = new ReleaseFitCache(this.sqlite);
+    const releaseAt = Date.now();
+    const releaseFits = this.releaseFitsCache.get();
+    const releaseFitMs = Date.now() - releaseAt;
+    const stats = calibrate(this.db, network, new Date(), lapFits, releaseFits);
+    return { ...stats, lapFitMs, releaseFitMs, releaseFitCount: releaseFits.size, loopHeldMs: stats.durationMs + lapFitMs + releaseFitMs };
+  }
+
   private runCalibrate(): void {
     try {
-      if (!this.lapFitsCache) this.lapFitsCache = new LapFitCache(this.sqlite);
-      const fitAt = Date.now();
-      const lapFits = this.lapFitsCache.get();
-      const lapFitMs = Date.now() - fitAt;
-      const stats = calibrate(this.db, this.ref.get(), new Date(), lapFits);
+      const stats = this.calibrateNetwork(this.ref.get());
       // Calibration mutates the live network's stats in place, so readers
       // memoizing on dataVersion() must be told the segment/dwell numbers moved.
       this.version++;
-      this.logger.info("collector.calibrated", { ...stats, lapFitMs, loopHeldMs: stats.durationMs + lapFitMs });
+      this.logger.info("collector.calibrated", stats);
     } catch (err) {
       this.logger.error("collector.calibrate_failed", {
         error: (err as Error).message,
@@ -1448,7 +1459,7 @@ export class Collector {
       // Build fresh, run calibration into it, then swap — so the new network
       // is already calibrated when consumers start reading it.
       const rebuilt = TransitNetwork.build(stops, routes);
-      calibrate(this.db, rebuilt);
+      const stats = this.calibrateNetwork(rebuilt);
       this.ref.replace(rebuilt);
       this.version++;
       this.lastStaticRefreshAt = now;
@@ -1458,6 +1469,7 @@ export class Collector {
         stops: stops.length,
         routes: routes.length,
       });
+      this.logger.info("collector.calibrated", stats);
     } catch (err) {
       this.logUpstreamError("static_refresh", err);
       this.scheduleStaticRetry();

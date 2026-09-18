@@ -341,6 +341,40 @@ describe("state pruning", () => {
 });
 
 describe("static refresh", () => {
+  it("keeps fitted Winchester waits on a replacement network and its retry", async () => {
+    const redStops = stops.map((s, i) => ({ ...s, id: [11, 121, 48][i]! }));
+    vi.spyOn(upstream, "stops").mockResolvedValue(redStops);
+    const routeFetch = vi.spyOn(upstream, "routes").mockResolvedValue([
+      { id: 3, name: "Red", shortName: "R", color: "#f00", stops: [11, 121, 48] },
+    ]);
+    const at = Date.now() - 600_000;
+    bundle.db.insert(stopVisits).values({
+      busId: 7, busName: "#7", anchorBusId: 7, routeId: 3, stopId: 11, stopIndex: 0,
+      anchoredAt: new Date(at), pinnedAt: new Date(at), arrivedAt: new Date(at),
+      departedAt: new Date(at + 300_000), standSec: 300, insideSec: 300,
+      outcome: "stopped", how: "next", confidence: 1, closestM: 5,
+      steps: 3, restPolls: 8, shuffles: 0,
+      dow: 4, hour: 12,
+    }).run();
+    const release = { stopId: 11, referenceLap: 3000, n: 100, days: 4,
+      coefficients: [-4, 1, 0, 0, 0, 1, 0, 1, 0] };
+    const fitted = collector as unknown as {
+      lapFitsCache: { get(): ReadonlyMap<string, unknown> };
+      releaseFitsCache: { get(): ReadonlyMap<string, unknown> };
+    };
+    fitted.lapFitsCache = { get: () => new Map([["3:11", { b: -0.001, m: 3000, n: 100 }]]) };
+    fitted.releaseFitsCache = { get: () => new Map([["3:11", release]]) };
+    await inner().refreshStaticIfNeeded(true);
+    const first = collector.ref.get();
+    expect(first.getDwellStats(3, 11)).toMatchObject({ release, lapB: -0.001 });
+    routeFetch.mockRejectedValueOnce(new Error("temporary topology fetch failure"));
+    await inner().refreshStaticIfNeeded(true);
+    expect(collector.ref.get()).toBe(first);
+    await inner().refreshStaticIfNeeded(true);
+    expect(collector.ref.get()).not.toBe(first);
+    expect(collector.ref.get().getDwellStats(3, 11)).toMatchObject({ release, lapB: -0.001 });
+  });
+
   it("guards against overlapping refreshes", async () => {
     let calls = 0;
     const slowUpstream = {

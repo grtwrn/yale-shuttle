@@ -1,3 +1,4 @@
+import type { ReleaseFit } from "../../web/src/eta/release.js";
 import { sql } from "drizzle-orm";
 
 import type { DB } from "../db/client.js";
@@ -129,6 +130,7 @@ export function calibrate(
   now: Date = new Date(),
   /** The lap fits (src/calibrator/lapFit.ts), refreshed on their own slow cadence by the caller. */
   lapFits: ReadonlyMap<string, LapFit> = new Map(),
+  releaseFits: ReadonlyMap<string, ReleaseFit> = new Map(),
 ): CalibrationStats {
   const t0 = Date.now();
   const nowMs = now.getTime();
@@ -158,6 +160,11 @@ export function calibrate(
     loadStopOccurrenceShares(db, SPLIT_WINDOW_DAYS, nowMs),
   );
   const lapFitCount = attachLapFits(dwellStats, lapFits);
+  for (const [key, release] of releaseFits) {
+    if (key !== '3:11') continue; // Full-arrival validation accepted Winchester only.
+    const current = dwellStats.get(key);
+    if (current) dwellStats.set(key, { ...current, release });
+  }
   const driveCount = attachDrives(segmentStats, driveGroups);
   const legQuantileCount = attachLegQuantiles(segmentStats, legGroups);
   const ownPace = computePace(legGroups, network);
