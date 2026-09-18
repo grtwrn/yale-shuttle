@@ -40,6 +40,8 @@ import { ArrivalDetails } from "./ArrivalDetails";
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
+import { tripBusIdentity } from "./tripBusIdentity";
+import { TripBoardingActions } from "./TripBoardingActions";
 import {
   fmtClock, fmtMin, fmtWait, fmtWalk, formatEtaRange, remainingSec,
   sanitizeGeocodeResults, suggIcon,
@@ -4274,6 +4276,7 @@ const TripPlanner: FC<{
                   </div>
                 )}
                 {isExpanded && o.mode === "shuttle" && (() => {
+                  const tripBus = tripBusIdentity(o);
                   const boardCoord = stopCoords[o.boardStopId];
                   const navHref = boardCoord
                     ? `https://www.google.com/maps/dir/?api=1&destination=${boardCoord.lat},${boardCoord.lon}&travelmode=walking`
@@ -4320,10 +4323,12 @@ const TripPlanner: FC<{
                           readout was cut 2026-07-17 ("don't need the
                           distance"). */}
                       {(() => {
-                        const busNo = shuttleCtx?.busMatch
-                          ? shuttleCtx.normBus(shuttleCtx.busMatch.bus_name)
-                          : (o.busName ? o.busName.replace(/^#/, "") : null);
-                        const waitText = o.etaUnavailable ? null : waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
+                        const busNo = tripBus.ride;
+                        // The pickup band's bus can differ from the journey's.
+                        // In that case use the journey's existing wait estimate;
+                        // never apply the approaching bus's window to this ride.
+                        const waitText = o.etaUnavailable ? null : tripBus.different
+                          ? fmtWait(o.waitSec) : waitLegText(leadBand, busEtaLive, o.walkToSec, o.waitSec);
                         const sep = <span style={{ color: "#9aa0a6" }}>›</span>;
                         return (
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
@@ -4346,6 +4351,11 @@ const TripPlanner: FC<{
                           </div>
                         );
                       })()}
+                      {tripBus.different && (
+                        <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.4 }}>
+                          Trip time uses #{tripBus.ride}. #{tripBus.pickup} may reach pickup before you.
+                        </p>
+                      )}
                       {/* Where the bus really pulls up, when that is not the
                           stop's own dot — FOLDED by default since 2026-09-11
                           (operator: "maybe we can collapse the stop location by
@@ -4408,32 +4418,15 @@ const TripPlanner: FC<{
                             within 60 m of the board stop — indoors, in a
                             urban canyon, or with location permission at
                             city-block precision it simply never fires, and
-                            without this the ride page is unreachable. */}
-                        {o.mode === "shuttle" && (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onBoard({
-                                  routeLabel: o.routeLabel, color: o.color,
-                                  busName: o.busName,
-                                  boardStopId: o.boardStopId, alightStopId: o.alightStopId,
-                                  startedAt: Date.now(),
-                                  ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
-                                });
-                              }}
-                              title="Track this ride now — use this if the app didn't notice you boarding"
-                              style={{
-                                fontSize: 13, fontWeight: 500, padding: "0 8px",
-                                minHeight: 44, display: "inline-flex", alignItems: "center",
-                                border: "none", background: "transparent",
-                                color: "#1a73e8", cursor: "pointer", fontFamily: "inherit",
-                              }}
-                            >
-                              🚌 I'm on it
-                            </button>
-                          </>
-                        )}
+                            without this the ride page is unreachable. When the trip
+                            uses another bus, name both choices so a rider who
+                            catches the approaching one can still track it. */}
+                        <TripBoardingActions {...tripBus} onBoard={(busName) => onBoard({
+                          routeLabel: o.routeLabel, color: o.color, busName,
+                          boardStopId: o.boardStopId, alightStopId: o.alightStopId,
+                          startedAt: Date.now(),
+                          ...(toLL && toText ? { toLat: toLL.lat, toLon: toLL.lon, toText } : {}),
+                        })} />
                         {/* Leave-time reminder. Hidden when the rider is
                             effectively at the stop already (walk < 60 s —
                             they can see the bus, a ping is noise) or when
