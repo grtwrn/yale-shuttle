@@ -4,6 +4,7 @@ import TransitMap from "./TransitMap";
 import { saveTripDraft } from "./tripDraft";
 import MinimapReview from "./MinimapReview";
 import BerthReview from "./BerthReview";
+import CrashRecovery from "./CrashRecovery";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -18,36 +19,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
   render() {
     if (this.state.error) {
-      return (
-        <div style={{ padding: 24, fontFamily: "monospace", fontSize: 14 }}>
-          <b style={{ color: "red" }}>App crashed</b>
-          {/* A way out, not just a stack: a rider in a browser tab has no
-              pull-to-refresh, and a crash that repeats on every load (a
-              corrupt saved value, blocked storage) needs the reset. */}
-          <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-            <button
-              onClick={() => window.location.reload()}
-              style={{ fontSize: 16, padding: "12px 18px", minHeight: 44, borderRadius: 8, border: "1px solid #999", background: "#fff" }}
-            >
-              Reload
-            </button>
-            <button
-              onClick={() => {
-                try { localStorage.clear(); } catch { /* blocked — nothing to clear */ }
-                window.location.reload();
-              }}
-              style={{ fontSize: 16, padding: "12px 18px", minHeight: 44, borderRadius: 8, border: "1px solid #999", background: "#fff" }}
-            >
-              Reset app data &amp; reload
-            </button>
-          </div>
-          <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
-            {this.state.error.message}
-            {"\n\n"}
-            {this.state.error.stack}
-          </pre>
-        </div>
-      );
+      return <CrashRecovery error={this.state.error} />;
     }
     return this.props.children;
   }
