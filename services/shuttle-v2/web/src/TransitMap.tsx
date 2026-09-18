@@ -82,7 +82,7 @@ import { rideMapStopSequence } from "./rideMapFocus";
 import { loadTripDraft, saveTripDraft } from "./tripDraft";
 import { RideFinish } from "./RideFinish";
 import { isUnambiguousRideArrival } from "./rideArrival";
-import { getOffAlertTitle } from "./rideAlert";
+import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 import { buildRouteThumb, type RouteThumb as RouteThumbShape } from "./routeThumb";
 
@@ -6639,11 +6639,19 @@ const OnBusBanner: FC<{
   const getOffAlertRef = useRef<string | null>(null);
   const [getOffPopup, setGetOffPopup] = useState<string | null>(null);
   const getOffButtonRef = useRef<HTMLButtonElement | null>(null);
+  const rideDoneRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (!getOffPopup) return;
     const previous = document.activeElement as HTMLElement | null;
-    getOffButtonRef.current?.focus();
-    return () => { if (previous?.isConnected) previous.focus(); };
+    const button = getOffButtonRef.current;
+    button?.focus();
+    return () => {
+      // Restore only focus owned by this prompt. A restored ride may have
+      // opened before anything was focused; Done is its persistent fallback.
+      if (document.activeElement !== button && document.activeElement !== document.body) return;
+      const target = previous?.isConnected && previous !== document.body ? previous : rideDoneRef.current;
+      target?.focus();
+    };
   }, [getOffPopup]);
   useEffect(() => {
     if (stopsRemaining === null || stopsRemaining > 2) return;
@@ -6687,6 +6695,7 @@ const OnBusBanner: FC<{
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="get-off-prompt-title"
+        aria-describedby="get-off-prompt-description"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -6712,11 +6721,12 @@ const OnBusBanner: FC<{
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
         }}>
           <div style={{ fontSize: 36, lineHeight: 1 }}>🔔</div>
-          <div id="get-off-prompt-title" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
-            {getOffAlertTitle(stopsRemaining) ?? getOffPopup}
+          <div id="get-off-prompt-title" aria-live="polite" aria-atomic="true" style={{ fontSize: 19, fontWeight: 800, color: "#1a1a2e", marginTop: 8 }}>
+            {getOffPromptTitle(stopsRemaining)}
           </div>
-          <div style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
-            {ride.routeLabel} → {alightName}
+          <div id="get-off-prompt-description" style={{ fontSize: 14, color: "#546e7a", marginTop: 4 }}>
+            {ride.routeLabel}{ride.busName ? ` #${normBus(ride.busName)}` : ""} → {alightName}
+            {stopsRemaining === null && <p style={{ margin: "8px 0 0" }}>Check the stop signs for your exit while live updates recover.</p>}
           </div>
           <button
             ref={getOffButtonRef}
@@ -6746,6 +6756,7 @@ const OnBusBanner: FC<{
         </div>
       </div>
       <button
+        ref={rideDoneRef}
         onClick={onEnd}
         style={{
           flexShrink: 0, fontSize: 13, fontWeight: 600, padding: "6px 14px",
@@ -6798,6 +6809,20 @@ const TransitMap: FC = () => {
   // localStorage so a mid-trip refresh keeps tracking; persisted on change.
   const [boardedRide, setBoardedRide] = useState<BoardedRide | null>(() => loadBoardedRide());
   const [finishedRide, setFinishedRide] = useState<(BoardedRide & { endReason?: RideEndReason }) | null>(null);
+  const rideFinishRef = useRef<HTMLElement | null>(null);
+  const mainNavRef = useRef<HTMLElement | null>(null);
+  const finishReturnFocusRef = useRef(false);
+  useEffect(() => {
+    // Ending/removing a ride view removes its controls. Keep the next step
+    // reachable, without taking focus from a surviving control on auto-end.
+    if (document.activeElement === document.body) {
+      if (finishedRide) rideFinishRef.current?.focus();
+      else if (finishReturnFocusRef.current) {
+        mainNavRef.current?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus();
+      }
+    }
+    finishReturnFocusRef.current = false;
+  }, [finishedRide]);
   useEffect(() => { saveBoardedRide(boardedRide); }, [boardedRide]);
   // Go mode was retired 2026-07-17 ("too complicated") and its plumbing
   // deleted 2026-08-31. Clear anything an older build left in localStorage so
@@ -7749,7 +7774,7 @@ const TransitMap: FC = () => {
       {/* View tabs — the tabs themselves are hidden while on a bus, since the
           ride page is its own view, but the row stays so Refresh never
           disappears. */}
-      <nav aria-label="Main" className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
+      <nav ref={mainNavRef} aria-label="Main" className="app-tabs" style={{ width: "100%", padding: "0 16px", maxWidth: 1200 }}>
         <div style={{
           display: "flex", gap: 4, padding: "4px 4px 6px", fontSize: 11,
           overflowX: "auto", WebkitOverflowScrolling: "touch",
@@ -7885,9 +7910,10 @@ const TransitMap: FC = () => {
       )}
 
       {!boardedRide && finishedRide && (
-        <RideFinish ride={finishedRide} reason={finishedRide.endReason}
-          onDismiss={() => setFinishedRide(null)}
+        <RideFinish ride={finishedRide} reason={finishedRide.endReason} focusRef={rideFinishRef}
+          onDismiss={() => { finishReturnFocusRef.current = true; setFinishedRide(null); }}
           onFindShuttle={() => {
+            finishReturnFocusRef.current = true;
             if (finishedRide.toText && Number.isFinite(finishedRide.toLat) && Number.isFinite(finishedRide.toLon)) {
               setPendingTrip({ toText: finishedRide.toText, toLat: finishedRide.toLat!,
                 toLon: finishedRide.toLon!, recoverRide: true });

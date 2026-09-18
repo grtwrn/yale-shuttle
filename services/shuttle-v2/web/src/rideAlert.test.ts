@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getOffAlertTitle } from "./rideAlert";
+import { getOffAlertTitle, getOffPromptTitle } from "./rideAlert";
 import { formatRideEta } from "./format";
 
 describe("an undismissed get-off prompt", () => {
@@ -11,6 +11,15 @@ describe("an undismissed get-off prompt", () => {
   it("does not invent an imminent arrival without a nearby stop count", () => {
     expect(getOffAlertTitle(null)).toBeNull();
     expect(getOffAlertTitle(3)).toBeNull();
+  });
+  it("replaces an open instruction when current position is unavailable or farther away", () => {
+    expect([2, 1, 0, null, 5, 1].map(getOffPromptTitle)).toEqual([
+      "Get off in 2 stops", "Get off at the next stop", "Get off here",
+      "Live stop position unavailable", "Your stop is 5 stops away", "Get off at the next stop",
+    ]);
+    // Updating an existing prompt must not broaden the notification trigger.
+    expect(getOffAlertTitle(null)).toBeNull();
+    expect(getOffAlertTitle(5)).toBeNull();
   });
 });
 
