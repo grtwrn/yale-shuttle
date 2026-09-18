@@ -4,6 +4,12 @@ on:
     paths:
       - 'services/shuttle-v2/web/public/minimap-options/**'
       - 'services/shuttle-v2/scripts/minimap-gallery-check.mjs'
+      - 'services/shuttle-v2/scripts/minimap-label-render.mjs'
+      - 'services/shuttle-v2/scripts/__fixtures__/minimap-label-feed.json'
+      - 'services/shuttle-v2/scripts/trip-scheduling-check.mjs'
+      - 'services/shuttle-v2/web/src/ArrivalDetails.tsx'
+      - 'services/shuttle-v2/web/src/DestinationArrival.tsx'
+      - 'services/shuttle-v2/web/src/TransitMap.tsx'
       - '.github/workflows/minimap-gallery-review.yml'
 permissions:
   contents: read
@@ -21,7 +27,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: services/shuttle-v2/package-lock.json
-      - run: npm ci
+      - run: npm ci && npm ci --prefix web
+      - run: npm run build --prefix web
+      - name: Check compact route cards at phone and desktop sizes
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" TRIP_SCHEDULING_OUT=gallery-review/cards node scripts/trip-scheduling-check.mjs
+      - name: Render current map and ten label-only variants
+        run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-label-render.mjs
       - name: Inspect gallery and interactions in hosted Chrome
         run: BOT_CHROMIUM_PATH="$(command -v google-chrome)" node scripts/minimap-gallery-check.mjs
       - uses: actions/upload-artifact@v4
@@ -29,3 +40,8 @@ jobs:
         with:
           name: minimap-gallery-review
           path: services/shuttle-v2/gallery-review/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: minimap-label-previews
+          path: services/shuttle-v2/web/public/minimap-options/previews/

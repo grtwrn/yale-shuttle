@@ -29,7 +29,8 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const titleId = useId();
   const { point, band } = arrivalSummary(etaSec, lowSec, highSec, computedAtMs, Date.now(), atPickup);
   const gap = estimatedGap(etaSec, nextSec);
-  const next = gap !== null ? fmtMin(nextSec!) : null;
+  const next = gap !== null ? (nextSec! < 60 ? '<1 min' : fmtMin(nextSec!)) : null;
+  const pickup = atPickup ? 'At your stop' : `Arrives in ${etaSec < 60 ? '<1 min' : `~${fmtMin(etaSec)}`}`;
   const sameBus = !!nextBusName && nextBusName.replace(/^#/, '') === busName.replace(/^#/, '');
   const dots = distributionSec?.map(s => now + remainingSec(s, computedAtMs, now) * 1000);
   // An interval bar communicates the three known quantiles without inventing
@@ -38,12 +39,12 @@ export function ArrivalDetails(props: ArrivalDetailsProps) {
   const position = (sec: number) => `${Math.max(0, Math.min(100, 100 * sec / extent))}%`;
   const valueStyle = { margin: 0, fontWeight: 600, textAlign: 'right' as const };
   return <>
-    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${point}${band ? `, likely ${band.text}` : ''}`}
+    <button type="button" aria-haspopup="dialog" aria-label={`${routeLabel} arrival details: ${pickup}${next ? `, next in ${next}` : ''}${band ? `, likely ${band.text}` : ''}`}
       onKeyDown={e => e.stopPropagation()}
       onClick={e => { e.stopPropagation(); dialog.current?.showModal(); setOpen(true); }}
       style={{ border: 0, background: 'transparent', padding: '4px 0', minHeight: 44, minWidth: 0, color: '#374151', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
-      <span style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{point} <span aria-hidden="true" style={{ color: '#5f6368' }}>ⓘ</span></span>
-      <span style={{ display: 'block', fontSize: 11, color: '#5f6368' }}>{band && !atPickup ? `Likely ${band.text}` : next ? `Next about ${next}` : 'Arrival details'}</span>
+      <span style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{pickup} <span aria-hidden="true" style={{ color: '#5f6368' }}>ⓘ</span></span>
+      {next && <span style={{ display: 'block', fontSize: 12, color: '#5f6368' }}>Next in {next.startsWith('<') ? next : `~${next}`}</span>}
     </button>
     {createPortal(<dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)} onKeyDown={e => e.stopPropagation()} onClick={e => {
       e.stopPropagation();

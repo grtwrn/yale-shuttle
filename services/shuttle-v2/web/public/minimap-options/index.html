@@ -5,30 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex">
-  <title>10 quieter mini maps · Yale Shuttle</title>
+  <title>10 variants of the current mini map · Yale Shuttle</title>
   <link rel="stylesheet" href="./style.css">
   <script src="./gallery.js" defer></script>
 </head>
 <body>
   <header class="intro">
-    <a class="back" href="/">← Shuttle app</a>
-    <p class="eyebrow">MINI MAP / DESIGN REVIEW</p>
-    <h1>Less on the map.<br>More at a glance.</h1>
-    <p class="lead">Ten ways to simplify the same trip. Try the bus markers and controls, then save your favorites.</p>
-    <div class="scenario"><span class="route-badge">Red</span> Division / Prospect <span aria-hidden="true">→</span> Rosenkranz</div>
-    <p class="sample-note">Illustrative times, simplified maps. These are design concepts, not live forecasts.</p>
+    <a href="/">← Shuttle app</a>
+    <h1>The same map.<br>A little less on it.</h1>
+    <p>Ten small variations of the current mini map. Same streets, route, markers and controls; only the labels change.</p>
+    <p class="scenario"><strong>Red</strong> · Division / Prospect → Rosenkranz</p>
+    <p class="muted">Screenshots from the app using one recorded trip. Times are frozen for comparison. The maps here are images, not live forecasts.</p>
   </header>
-  <nav class="toolbar" aria-label="Gallery controls">
-    <div class="filters"><button id="all" class="filter active" aria-pressed="true">All 10</button><button id="favorites" class="filter" aria-pressed="false">Saved <span id="saved-count">0</span></button></div>
-    <span class="start-hint">Start with <a href="#option-2">02</a>, <a href="#option-6">06</a> &amp; <a href="#option-8">08</a></span>
-  </nav>
   <main>
+    <section class="baseline" aria-labelledby="current-title">
+      <div><h2 id="current-title">Current mini map</h2><p>This is the reference for every option below.</p><p class="muted">Waiting time reads elapsed / usual total wait. For example, 6:54/~8m means waiting 6 minutes 54 seconds; usually about 8 minutes in total.</p></div>
+      <img src="./previews/option-00.png" alt="Current Red mini map with pickup time, destination time and waiting label." width="338" height="320">
+    </section>
+    <nav class="toolbar" aria-label="Gallery controls">
+      <button id="all" aria-pressed="true">All 10</button><button id="favorites" aria-pressed="false">Saved <span id="saved-count">0</span></button>
+    </nav>
     <div id="gallery" class="gallery"></div>
-    <p id="empty" hidden>No saved designs yet. Use “Save” on any option.</p>
-    <noscript>Enable JavaScript to view the ten interactive design concepts.</noscript>
+    <p id="empty" hidden>No saved options yet. Use “Save” on any option.</p>
+    <noscript>Enable JavaScript to compare the ten options.</noscript>
   </main>
-  <footer class="page-footer">Favorites stay in this browser. Choose a number to discuss; the rider app keeps its current layout.</footer>
-  <dialog id="detail" aria-labelledby="detail-title"><button class="close" aria-label="Close details">×</button><div id="detail-content"></div></dialog>
+  <footer>Favorites stay in this browser. These options are for review; the app’s mini map keeps its current labels.</footer>
+  <dialog id="detail" aria-labelledby="detail-title">
+    <button class="close" aria-label="Close comparison">×</button>
+    <h2 id="detail-title"></h2>
+    <div class="comparison"><figure><figcaption>Current</figcaption><img id="current-image" src="./previews/option-00.png" alt="Current mini map"></figure><figure><figcaption id="variant-caption"></figcaption><img id="variant-image" alt=""></figure></div>
+  </dialog>
   <p id="announcement" class="sr-only" aria-live="polite"></p>
 </body>
 </html>

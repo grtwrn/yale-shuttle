@@ -2851,3 +2851,29 @@ About`;
     expect(blue.eta?.raw).toBe("in 1-4, then 40 min");
   });
 });
+
+// Current destination-first cards keep the following arrival separate from a gap.
+it('parses compact pickup countdowns without needing a total-duration header', () => {
+  const text = `Red
+Arrives in ~5 min ⓘ
+Next in ~20 min
+At destination
+10:21a–10:27a
+🚶 2 min
+›
+🚌 18 min
+›
+🚶 Walk
+At destination
+~10:40a
+Show 2 more routes`;
+  const cards = parseOptions(text);
+  expect(cards.map(c => c.routeLabel)).toEqual(['Red', 'Walk']);
+  expect(cards[0]).toMatchObject({ totalMin: null, arriveText: '10:21a–10:27a',
+    eta: { first: [300, 360], second: [1200, 1260] } });
+  expect(cards[1]).toMatchObject({ mode: 'walk', totalMin: null, arriveText: '~10:40a', eta: null });
+  expect(parseBusEtaText('Arrives in <1 min ⓘ\nNext in ~8 min')).toMatchObject({ first: [0, 60], second: [480, 540] });
+  expect(parseBusEtaText('At your stop ⓘ\nNext in ~8 min')).toMatchObject({ first: [0, 10], second: [480, 540] });
+  expect(parseOptions('Blue Night\nAt destination\n~11:20p')[0]).toMatchObject({ routeLabel: 'Blue Night', eta: null });
+  expect(parseOptions('Red\nETA unavailable')[0]).toMatchObject({ routeLabel: 'Red', eta: null, arriveText: null });
+});

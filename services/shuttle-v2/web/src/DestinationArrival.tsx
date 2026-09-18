@@ -45,8 +45,8 @@ export function DestinationArrival({ option, destination, departureMs, now = Dat
   return <span data-testid="destination-arrival" data-kind={view.kind}
     aria-label={`Estimated arrival at ${destination}: ${view.text}. ${view.description}`}
     title={view.description}
-    style={{ flexShrink: 0, maxWidth: '60%', textAlign: 'right', color: '#202124', fontSize: 13, fontWeight: 500 }}>
-    <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination (est.)</span>
+    style={{ flexShrink: 0, maxWidth: '60%', textAlign: 'right', color: '#202124', fontSize: 16, fontWeight: 600 }}>
+    <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: '#5f6368' }}>At destination</span>
     <span style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}>{view.text.split('–').map((endpoint, i) => {
       // A date can wrap above its clock; the digits of a clock stay together.
       const timeAt = endpoint.lastIndexOf(' ') + 1;

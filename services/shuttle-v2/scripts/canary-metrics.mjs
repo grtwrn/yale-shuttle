@@ -93,6 +93,13 @@ export function bucketOf(token) {
 export function parseBusEtaText(line) {
   let t = String(line).replace(/^🚌\s*/u, "").trim();
   const full = t;
+  // Compact pickup summary: both values are arrivals from now, not a gap.
+  const compact = t.match(/^(Arrives in (~?)(<1|\d+) min|At your stop)\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
+  if (compact) return {
+    first: compact[1] === 'At your stop' ? [0, 10] : bucketOf(compact[3]),
+    second: compact[4] ? bucketOf(compact[4]) : null,
+    raw: full, spread: false, bunched: false,
+  };
   // The tappable ETA keeps the point and prediction window on separate lines.
   // Score the window when both are captured, retaining the point separately.
   const detail = t.match(/^About (<1|\d+) min\s*ⓘ?\s*\nLikely (<1|\d+)(?:[–-](\d+))? min$/);
@@ -512,14 +519,14 @@ export function hasArrivalClock(text) {
 const IS_ARRIVAL_CLOCK = ARRIVAL_CLOCK_RE;
 export function parseOptions(bodyText) {
   const lines = String(bodyText).split("\n").map((l) => l.trim()).filter(Boolean);
-  const isHeader = (l) => /^\d+\s*min$/.test(l) || l === "Departed";
+  const isHeader = (l) => /^\d+\s*min$/.test(l) || l === "Departed" || l === "At destination" || l === "ETA unavailable";
   const headers = lines.map((l, i) => (isHeader(l) ? i : -1)).filter((i) => i >= 0);
   // Where the card anchored at `h` begins: at most one countdown line and one
   // route pill above it. Anything further up belongs to the map overview or to
   // the card before, so the walk-back is deliberately short.
   const startOf = (h) => {
     let start = h;
-    if (h >= 2 && /^(Likely |Next about |Arrival details$)/.test(lines[h - 1])
+    if (h >= 2 && /^(Likely |Next about |Next in |Arrival details$)/.test(lines[h - 1])
         && parseBusEtaText(lines[h - 2]) !== null) start = h - 2;
     // Either form of the countdown line: the glyph-prefixed one production may
     // still be serving, or the bare one shipped 2026-09-04. Parsing it is the
@@ -554,7 +561,7 @@ export function parseOptions(bodyText) {
     // A real card either quotes an arrival clock or is a Departed card. This
     // is what keeps a stray "16 min" in the map overview out of the list.
     const arrive = body.find((l) => IS_ARRIVAL_CLOCK.test(l));
-    if (!arrive && lines[h] !== "Departed") continue;
+    if (!arrive && lines[h] !== "Departed" && lines[h] !== "ETA unavailable") continue;
     // The countdown is whatever line parses as one. It carried a 🚌 until
     // 2026-09-04, when the glyph was dropped so "in" could follow the route
     // pill directly; requiring the glyph here left the canary reading zero
@@ -564,7 +571,8 @@ export function parseOptions(bodyText) {
     // It cannot collide with the ride bar ("🚌 12 min"), which has no "in".
     const busIndex = body.findIndex((l) => parseBusEtaText(l) !== null);
     let busLine = body[busIndex];
-    if (busLine?.startsWith('About ') && body[busIndex + 1]?.startsWith('Likely ')) {
+    if ((busLine?.startsWith('About ') && body[busIndex + 1]?.startsWith('Likely '))
+      || (busLine && body[busIndex + 1]?.startsWith('Next in '))) {
       const combined = `${busLine}\n${body[busIndex + 1]}`;
       if (parseBusEtaText(combined)) busLine = combined;
     }
@@ -574,7 +582,7 @@ export function parseOptions(bodyText) {
     // leaves no evidence at all: 770 present-but-unparsed samples in the
     // archive to 2026-09-09 have no text against them, so the standing-range
     // gap could not be back-tested even after the parser learned the form.
-    const busLines = body.filter((l) => l.startsWith("🚌"));
+    const busLines = body.filter((l) => l.startsWith("🚌") || l.startsWith("Arrives in ") || l.startsWith("Next in "));
     const waitLine = body.find((l) => l.startsWith("⏳"));
     const missed = body.map((l) => l.match(/^🚌 You can't catch #(\S+)/)).find(Boolean);
     const walks = body.filter((l) => /^🚶\s*\d+\s*min$/.test(l))
@@ -591,7 +599,7 @@ export function parseOptions(bodyText) {
       routeLabel: body.includes("🚶 Walk") ? "Walk" : label,
       mode: body.includes("🚶 Walk") ? "walk" : "shuttle",
       departed: lines[h] === "Departed",
-      totalMin: lines[h] === "Departed" ? null : Number(lines[h].match(/(\d+)/)[1]),
+      totalMin: /^\d+\s*min$/.test(lines[h]) ? Number(lines[h].match(/(\d+)/)[1]) : null,
       arriveText: arrive ? arrive.replace(/^arrive\s+/i, "") : null,  // both spellings collapse to the clock
       eta: busLine ? parseBusEtaText(busLine) : null,
       waitFallback: waitLine ? parseWaitFallback(waitLine) : null,
