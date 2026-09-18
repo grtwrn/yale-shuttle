@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from './mapLabels';
+import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from './mapLabels';
 import { displayBand, chipCountdownText } from './etaBand';
 import { arrivalSummary } from './arrivalDetails';
+
+describe('map route identity without color', () => {
+  it.each([
+    ['Blue Day', 'Brown'], ['Blue Weekend', 'Blue West'],
+    ['Orange Night', 'Orange East'], ['Green', 'Gold', 'Grocery TJ'],
+  ])('disambiguates shared initials in %j', (...labels) => {
+    const tags = labels.map(label => mapRouteTag(label, labels));
+    expect(new Set(tags).size).toBe(labels.length);
+    expect(tags).toEqual(labels);
+  });
+  it('keeps unambiguous initials and ignores repeated instances of the same route', () => {
+    expect(mapRouteTag('Red', ['Red', 'Blue Day', 'Brown'])).toBe('R');
+    expect(mapRouteTag('Blue Day', ['Blue Day', 'Blue Day', 'Red'])).toBe('B');
+  });
+});
 
 describe('reports 113/114: point and range keep separate roles', () => {
   for (const [name, eta, low, high] of [['Red', 550, 179, 1081], ['Blue', 150, 119, 241]] as const) {

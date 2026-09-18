@@ -2,6 +2,15 @@ import { arrivalSummary } from './arrivalDetails';
 import { shownStandSec, type DwellStat, type DwellTimes } from './arrivals';
 
 type Rect = { left: number; top: number; right: number; bottom: number };
+
+/** Keep the short map tag unless two displayed routes share that initial.
+ * In that case use their names so color is not the only way to tell them apart. */
+export function mapRouteTag(label: string, labels: readonly string[]) {
+  const initial = label.charAt(0).toUpperCase();
+  return labels.some(other => other !== label && other.charAt(0).toUpperCase() === initial)
+    ? label : initial;
+}
+
 /** Keep waiting labels close to their bus, inside the map and clear of ETA chips.
  * Prefer the nearest clear position to the bus, then the smallest displacement.
  * No marker coordinates change. */
