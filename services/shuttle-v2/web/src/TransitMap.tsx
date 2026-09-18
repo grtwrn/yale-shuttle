@@ -53,6 +53,7 @@ import {
 import {
   CURRENT_LOCATION_TEXT, isCurrentLocationText, unresolvedEndpoint, unresolvedEndpointHint,
 } from "./endpoints";
+import { SavedPlaces } from "./SavedPlaces";
 import { loadRecents, recordRecent, samePlace, saveRecents, type SavedTrip } from "./recents";
 import { PlaceList, type PlaceRow } from "./PlaceList";
 import { buildStopSequencePolyline, haversineMeters, rideStopDots, type LatLon } from "./geo";
@@ -2079,8 +2080,6 @@ const TripPlanner: FC<{
   };
 
   const [awaitingLocation, setAwaitingLocation] = useState(false);
-  const [editingSavedId, setEditingSavedId] = useState<string | null>(null);
-  const [editingSavedMode, setEditingSavedMode] = useState(false);
   const useCurrent = () => {
     console.log("[locate] 📍 clicked; userLatLon:", userLatLon);
     if (userLatLon) {
@@ -2678,79 +2677,6 @@ const TripPlanner: FC<{
     border: "1px solid #bbb", background: "#fff", color: "#546e7a",
     fontSize: 15, cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
     display: "inline-flex", alignItems: "center", justifyContent: "center",
-  };
-
-  const renderTripRow = (t: SavedTrip, onDelete: () => void, starred: boolean) => {
-    const editing = editingSavedId === t.id;
-    return (
-    <div key={t.id} style={{
-      display: "flex", alignItems: "center", gap: 6,
-      padding: "5px 8px", borderRadius: 4, background: "#fff",
-      border: "1px solid #e0ddd8", cursor: editing ? "default" : "pointer",
-    }} onClick={() => { if (!editing) applyDestination(t); }}>
-      {starred && <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>}
-      {editing ? (
-        <input
-          defaultValue={t.toText}
-          autoFocus
-          onClick={(e) => e.stopPropagation()}
-          onBlur={(e) => {
-            const v = e.currentTarget.value.trim();
-            if (v && v !== t.toText) onRenameSaved(t.id, v);
-            setEditingSavedId(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") setEditingSavedId(null);
-          }}
-          style={{
-            flex: 1, minWidth: 0, fontSize: 11, padding: "2px 6px",
-            border: "1px solid #c5e1a5", background: "#f1f8e9",
-            borderRadius: 4, fontFamily: "inherit", color: "#263238",
-          }}
-        />
-      ) : (
-        <span style={{
-          flex: 1, minWidth: 0, fontSize: 11, color: "#263238",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          <span style={{ color: "#9e9e9e", marginRight: 4 }}>→</span>
-          <span style={{ color: "#C62828", fontWeight: 600 }}>{t.toText}</span>
-        </span>
-      )}
-      {starred && !editing && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setEditingSavedId(t.id); }}
-          style={{
-            border: "none", background: "transparent", color: "#9e9e9e",
-            fontSize: 12, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-          }}
-          title="Rename"
-        >✎</button>
-      )}
-      {!starred && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // Promote this recent destination into Saved. Use a fresh id so
-            // the entries stay unique even if the user later re-visits and
-            // a new recent record is generated.
-            onSaveTrip({ ...t, id: `t${Date.now().toString(36)}` });
-            onDelete();
-          }}
-          style={{
-            border: "none", background: "transparent", color: "#2E7D32",
-            fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-          }}
-          title="Save destination"
-        >☆</button>
-      )}
-      <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{
-        border: "none", background: "transparent", color: "#9e9e9e",
-        fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1,
-      }} title="Remove">✕</button>
-    </div>
-    );
   };
 
   // The rows under each box, rendered by one PlaceList for both ends.
@@ -5008,136 +4934,23 @@ const TripPlanner: FC<{
       {/* Saved + Recent are hidden whenever we have a live trip on
           screen — the destination search is what the user is acting on.
           They come back automatically once the destination is cleared. */}
-      {!options && savedTrips.length > 0 && (
-        <div style={{ marginTop: 20, marginBottom: 8 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 3, padding: "0 2px",
-          }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Saved destinations</span>
-            <button
-              onClick={() => {
-                setEditingSavedMode((v) => !v);
-                setEditingSavedId(null);
-              }}
-              style={{
-                border: "none", background: "transparent",
-                color: editingSavedMode ? "#2E7D32" : "#90a4ae",
-                fontSize: 12, fontWeight: editingSavedMode ? 700 : 400,
-                cursor: "pointer", padding: "0 4px", lineHeight: 1,
-              }}
-              title={editingSavedMode ? "Done editing" : "Rename or delete"}
-            >{editingSavedMode ? "Done" : "✎"}</button>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 4,
-            maxHeight: 180, overflowY: "auto",
-          }}>
-            {savedTrips.map((t) => {
-              const editing = editingSavedMode;
-              if (editing) {
-                // Edit mode stretches to a full row so the input is
-                // comfortable AND the ✕ delete button lives far from the
-                // regular tap target to avoid accidental removal.
-                return (
-                  <div key={t.id} style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "4px 8px", borderRadius: 8,
-                    background: "#f1f8e9", border: "1px solid #c5e1a5",
-                    gridColumn: "1 / -1",
-                  }} onClick={(e) => e.stopPropagation()}>
-                    <span style={{ color: "#2E7D32", fontSize: 11 }}>★</span>
-                    <input
-                      defaultValue={t.toText}
-                      onBlur={(e) => {
-                        const v = e.currentTarget.value.trim();
-                        if (v && v !== t.toText) onRenameSaved(t.id, v);
-                        setEditingSavedId(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                        if (e.key === "Escape") setEditingSavedId(null);
-                      }}
-                      style={{
-                        flex: 1, minWidth: 0, fontSize: 12, padding: "2px 6px",
-                        border: "1px solid #cfd8dc", background: "#fff",
-                        borderRadius: 4,
-                        fontFamily: "inherit", color: "#263238", outline: "none",
-                      }}
-                    />
-                    <button
-                      onMouseDown={(e) => {
-                        // Fire before input's onBlur so we don't commit a
-                        // half-edited name when the user is really just
-                        // removing the entry.
-                        e.preventDefault(); e.stopPropagation();
-                        setEditingSavedId(null);
-                        onDeleteSaved(t.id);
-                      }}
-                      style={{
-                        fontSize: 11, padding: "3px 8px",
-                        border: "1px solid #C62828", background: "#fff",
-                        color: "#C62828", borderRadius: 4,
-                        fontFamily: "inherit", cursor: "pointer",
-                      }}
-                      title="Delete this saved destination"
-                    >✕ delete</button>
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => applyDestination(t)}
-                  title="Tap to plan"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44,
-                    padding: "3px 10px", borderRadius: 999,
-                    background: "#fff",
-                    border: "1px solid #c5e1a5",
-                    fontSize: 11, color: "#263238", cursor: "pointer",
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span style={{ color: "#2E7D32", fontSize: 10 }}>★</span>
-                  <span style={{
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    color: "#C62828", fontWeight: 600,
-                  }}>{t.toText}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {!options && recentTrips.length > 0 && (
-        <div style={{ marginTop: savedTrips.length > 0 ? 8 : 20, marginBottom: 10 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 3, padding: "0 2px",
-          }}>
-            <span style={{ fontSize: 9, color: "#78909c", textTransform: "uppercase", letterSpacing: 1 }}>Recent places</span>
-            <button
-              onClick={onClearRecents}
-              style={{
-                border: "none", background: "transparent",
-                color: "#90a4ae",
-                fontSize: 12, fontWeight: 400,
-                cursor: "pointer", padding: "0 4px", lineHeight: 1,
-              }}
-              title="Clear all recent places"
-            >Clear all</button>
-          </div>
-          <div style={{
-            display: "flex", flexDirection: "column", gap: 4,
-            maxHeight: 320, overflowY: "auto",
-          }}>
-            {recentTrips.map((t) => renderTripRow(t, () => onDeleteRecent(t.id), false))}
-          </div>
-        </div>
-      )}
+      {!options && <SavedPlaces
+        saved={savedTrips} recent={recentTrips}
+        onPick={(place) => {
+          const active = document.activeElement;
+          applyDestination(place);
+          setToExpanded(false);
+          requestAnimationFrame(() => {
+            if (document.activeElement === active || document.activeElement === document.body) {
+              toSummaryRef.current?.focus({ preventScroll: true });
+            }
+          });
+        }}
+        onSave={onSaveTrip} onRename={onRenameSaved}
+        onDeleteSaved={onDeleteSaved} onDeleteRecent={onDeleteRecent}
+        onClearRecent={onClearRecents}
+        focusDestination={() => (toSummaryRef.current ?? toInputRef.current)?.focus({ preventScroll: true })}
+      />}
       {autoDetectOffer && (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
