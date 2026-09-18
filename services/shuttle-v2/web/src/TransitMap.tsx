@@ -38,6 +38,7 @@ import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
+import { DestinationArrival } from "./DestinationArrival";
 import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { atStopJourneyBoard, journeyArrival } from "./journeyArrival";
@@ -4064,34 +4065,13 @@ const TripPlanner: FC<{
                           </span>
                         )}
                       </span>
-                      {/* When you land, right-aligned under the duration. It
-                          never shrinks and never wraps: on a narrow phone the
-                          legs on the left wrap to a second line instead, because
-                          future mode prints a RANGE here ("10:33a – 10:56a")
-                          and a clipped clock is a wrong clock, whereas a leg
-                          list that runs onto two lines is merely longer.
-                          Suppressed on a Departed card — nothing goes under the
-                          word "Departed", which is not a duration and has no
-                          arrival to quote. */}
-                      {!o.departed && !o.etaUnavailable && (
-                        <span style={{
-                          fontSize: 13, fontWeight: 500, color: "#202124",
-                          whiteSpace: "nowrap", flexShrink: 0, textAlign: "right",
-                        }}>
-                          {/* Live mode: the bare clock — the start is always
-                              "now" (user feedback 2026-07-17), and sitting
-                              directly under the duration in a right-aligned
-                              column, the number no longer needs a word to say
-                              what it is (operator, 2026-09-04: "remove
-                              'arrive' from arrival time and just show the
-                              time"). Future mode already printed a bare range,
-                              since the start is the chosen departure; the two
-                              modes now agree. */}
-                          {isFuture
-                            ? `${fmtClock(0, targetDate!)} – ${fmtClock(o.totalSec, targetDate!)}`
-                            : o.journeyArrival ? fmtClock(0, new Date(o.journeyArrival.pointMs)) : fmtClock(o.totalSec)}
-                        </span>
-                      )}
+                      {/* The destination window belongs to the catchable bus's
+                          joined visit and includes the final walk. Pickup has
+                          its own countdown above. Walking and future plans
+                          retain an explicit point estimate, never a made-up
+                          window or a departure-to-arrival span. */}
+                      <DestinationArrival option={o} destination={toText}
+                        departureMs={isFuture ? targetDate?.getTime() : undefined} />
                     </div>
                     )}
                   </div>
