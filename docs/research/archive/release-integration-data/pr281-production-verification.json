@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-09-18T00:56:46.555113+00:00",
+  "health": {
+    "ok": true,
+    "pollStalenessMs": 865,
+    "collectorLagMs": 786,
+    "knownBuses": 7,
+    "serverEta": {
+      "restored": 7,
+      "forecastAt": 1789693005494,
+      "checkpointAt": 1789692975762,
+      "beliefs": 7,
+      "steps": 7,
+      "failures": 0,
+      "lastStepMs": 50,
+      "rows": 210
+    },
+    "pollSkipped": 0,
+    "droppedObservations": 0,
+    "build": "40af3c0bb8e2"
+  },
+  "fits": [
+    {
+      "route": "3",
+      "stop": "11",
+      "stopId": 11,
+      "referenceLap": 3210.47,
+      "coefficients": [
+        -5.331911364120956,
+        1.3708556024220209,
+        -0.0623649872998921,
+        -0.21502386645506052,
+        0.1450203604899116,
+        1.3283053982622364,
+        -0.350786583447392,
+        1.427965729916242,
+        -0.1192161032746811
+      ],
+      "n": 273,
+      "days": 10
+    }
+  ],
+  "etaRows": 210,
+  "distributionRows": 210
+}

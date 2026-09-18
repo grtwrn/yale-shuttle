@@ -1,0 +1,79 @@
+{
+  "checks": [
+    "Feedback image/text/priority survive HTTP failure for >6s and aborted network request; successful retry keeps payload identity and focus, with live-feed failure",
+    "Switching open reply clears completed attachment and text; POST uses report 802; focus waits for delayed refresh and returns to correct Reply on send/cancel",
+    "Reply refresh does not steal focus from another report priority control",
+    "Acknowledged reply remains labeled sent when refresh fails; loading error is distinct, and keyboard retry recovers saved thread",
+    "Named priority action and archive/unarchive retain payload association and recover state"
+  ],
+  "errors": [],
+  "submissions": [
+    {
+      "kind": "feedback",
+      "text": "Independent fixture with attached image",
+      "priority": "urgent",
+      "image": true,
+      "anonPresent": true
+    },
+    {
+      "kind": "feedback",
+      "text": "Independent fixture with attached image",
+      "priority": "urgent",
+      "image": true,
+      "anonPresent": true
+    },
+    {
+      "kind": "feedback",
+      "text": "Independent fixture with attached image",
+      "priority": "urgent",
+      "image": true,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 802,
+      "action": "followup",
+      "text": "Reply specifically for report 802",
+      "image": false,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 801,
+      "action": "followup",
+      "text": "Do not steal another report action focus",
+      "image": false,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 801,
+      "action": "followup",
+      "text": "Saved even if subsequent refresh fails",
+      "image": false,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 802,
+      "action": "set_priority",
+      "image": false,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 802,
+      "action": "archive",
+      "image": false,
+      "anonPresent": true
+    },
+    {
+      "kind": "action",
+      "id": 802,
+      "action": "unarchive",
+      "image": false,
+      "anonPresent": true
+    }
+  ],
+  "completed": true
+}

@@ -1,0 +1,48 @@
+{
+  "eligibleApproachPolls": 239,
+  "lowGE80": 0,
+  "maximumLow": 13,
+  "maxExamples": [
+    {
+      "at": 1789568642455,
+      "bus": "316",
+      "stop": 30,
+      "eta": 22,
+      "low": 13,
+      "hops": 1
+    },
+    {
+      "at": 1789587694161,
+      "bus": "309",
+      "stop": 30,
+      "eta": 20,
+      "low": 12,
+      "hops": 1
+    },
+    {
+      "at": 1789587699195,
+      "bus": "309",
+      "stop": 30,
+      "eta": 20,
+      "low": 12,
+      "hops": 1
+    },
+    {
+      "at": 1789561696370,
+      "bus": "316",
+      "stop": 30,
+      "eta": 18,
+      "low": 11,
+      "hops": 1
+    },
+    {
+      "at": 1789561701525,
+      "bus": "316",
+      "stop": 30,
+      "eta": 18,
+      "low": 11,
+      "hops": 1
+    }
+  ],
+  "scope": "Saved 1172 selected Red fleet frames only; does not estimate production frequency. Boundary browser uses synthetic pickup timings."
+}

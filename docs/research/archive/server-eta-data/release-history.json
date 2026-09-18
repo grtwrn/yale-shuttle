@@ -1,0 +1,1545 @@
+{
+ "generatedAt": "2026-09-16T17:22:19.054Z",
+ "config": {
+  "SERVER_ETA": true,
+  "captureFiles": [
+   "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history-positions.jsonl"
+  ],
+  "REPLAY_DB": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history.db",
+  "CLIENT_ROOT": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-2026-09-16/services/shuttle-v2",
+  "PAYLOAD_PATCH": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-data/history-patch.json",
+  "POP": "uniform",
+  "EVERY_MS": 1800000,
+  "MAX_WAIT_MS": 2700000,
+  "SAMPLE_MS": 5000,
+  "CANARY_MS": 15000,
+  "CALIB_LAG_MS": 0,
+  "FROM": "2026-09-10T13:00:00Z",
+  "TO": "2026-09-10T14:00:00Z",
+  "DETECTOR_FROM": "2026-09-10T08:36:11.903Z"
+ },
+ "tree": {
+  "root": "/home/gwarren/projects/yale-shuttle-watcher/server-eta-2026-09-16/services/shuttle-v2",
+  "head": "ee1b4dd",
+  "dirty": true,
+  "branch": "feat/server-eta-live",
+  "store": "eta",
+  "nextRule": "identity (#74)"
+ },
+ "data": {
+  "positions": 177895,
+  "polls": 13873,
+  "start": "2026-09-10T08:36:11.903Z",
+  "end": "2026-09-11T03:59:55.900Z"
+ },
+ "population": {
+  "focus": [
+   "Red",
+   "Blue Day"
+  ],
+  "holdout": [
+   "Green",
+   "Purple"
+  ],
+  "chain": null,
+  "riders": 182,
+  "bySource": {
+   "uniform": 182,
+   "targeted": 0,
+   "chain": 0,
+   "named": 0
+  },
+  "skipped": {
+   "boardElsewhere": 30,
+   "noOption": 2
+  }
+ },
+ "summary": {
+  "all": {
+   "waits": 150,
+   "arrived": 141,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 9,
+   "scored": 141,
+   "medianWaitMin": 9.2,
+   "p90WaitMin": 18.9,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 173,
+    "earlyOver60Pct": 2.8,
+    "lateOver60Pct": 14.2
+   },
+   "interval": {
+    "n": 141,
+    "insidePct": 68.1,
+    "earlyPct": 5,
+    "latePct": 27,
+    "medianWidthSec": 386
+   },
+   "pctJump180": 8.5,
+   "pctJump300": 5,
+   "pctReversal60": 6.4,
+   "pctStrand": 3.5,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 8.5,
+   "pctPinChanged": 9.2,
+   "pctPinRight": 97.2,
+   "pctVanished": 0,
+   "pctLapRepriced": 0.7,
+   "pctNeverShown": 0,
+   "pctDropped": 5.7,
+   "drops": 11,
+   "dropsDeclined": 0,
+   "dropsRepriced": 11,
+   "worstDrift": {
+    "p50": 0,
+    "p90": 110,
+    "max": 650
+   }
+  },
+  "byRoute": {
+   "Blue Day": {
+    "waits": 56,
+    "arrived": 53,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 53,
+    "medianWaitMin": 10.1,
+    "p90WaitMin": 17.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 271.6,
+     "earlyOver60Pct": 1.9,
+     "lateOver60Pct": 32.1
+    },
+    "interval": {
+     "n": 53,
+     "insidePct": 49.1,
+     "earlyPct": 1.9,
+     "latePct": 49.1,
+     "medianWidthSec": 334
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 7.5,
+    "pctPinRight": 98.1,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 7.5,
+    "drops": 7,
+    "dropsDeclined": 0,
+    "dropsRepriced": 7,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 10,
+     "max": 55
+    }
+   },
+   "Green": {
+    "waits": 21,
+    "arrived": 19,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 2,
+    "scored": 19,
+    "medianWaitMin": 10.6,
+    "p90WaitMin": 11.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 10,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 5.3
+    },
+    "interval": {
+     "n": 19,
+     "insidePct": 73.7,
+     "earlyPct": 0,
+     "latePct": 26.3,
+     "medianWidthSec": 516
+    },
+    "pctJump180": 5.3,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 15.8,
+    "pctPinChanged": 5.3,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 170,
+     "max": 230
+    }
+   },
+   "Purple": {
+    "waits": 22,
+    "arrived": 21,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 1,
+    "scored": 21,
+    "medianWaitMin": 5.8,
+    "p90WaitMin": 17.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 130,
+     "earlyOver60Pct": 14.3,
+     "lateOver60Pct": 4.8
+    },
+    "interval": {
+     "n": 21,
+     "insidePct": 66.7,
+     "earlyPct": 28.6,
+     "latePct": 4.8,
+     "medianWidthSec": 740
+    },
+    "pctJump180": 52.4,
+    "pctJump300": 33.3,
+    "pctReversal60": 42.9,
+    "pctStrand": 23.8,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 42.9,
+    "pctPinChanged": 38.1,
+    "pctPinRight": 85.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 4.8,
+    "pctNeverShown": 0,
+    "pctDropped": 19,
+    "drops": 4,
+    "dropsDeclined": 0,
+    "dropsRepriced": 4,
+    "worstDrift": {
+     "p50": 220,
+     "p90": 590,
+     "max": 650
+    }
+   },
+   "Red": {
+    "waits": 51,
+    "arrived": 48,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 48,
+    "medianWaitMin": 9.5,
+    "p90WaitMin": 20.9,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 2.1
+    },
+    "interval": {
+     "n": 48,
+     "insidePct": 87.5,
+     "earlyPct": 0,
+     "latePct": 12.5,
+     "medianWidthSec": 431.5
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 7.5,
+     "p90": 55,
+     "max": 55
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|127|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 127,
+    "worstDriftSec": 650,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 14 min\nLikely 10–22 min | 13:00:43 About 14 min\nLikely 10–23 min | 13:01:13 About 14 min\nLikely 10–40 min | 13:01:23 About 25 min\nLikely 16–38 min | 13:01:38 About 26 min\nLikely 16–40 min | 13:01:48 About 26 min\nLikely 16–41 min | 13:01:58 About 26 min\nLikely 15–41 min | 13:02:03 About 26 min\nLikely 15–42 min | 13:02:08 About 25 min\nLikely 16–38 min | 13:02:18 About 25 min\nLikely 15–37 min | 13:02:28 About 24 min\nLikely 15–37 min | 13:03:08 About 24 min\nLikely 15–36 min | 13:03:18 About 12 min\nLikely 8–20 min | 13:03:43 About 12 min\nLikely 8–19 min | 13:03:58 About 12 min\nLikely 7–19 min | 13:04:03 About 11 min\nLikely 7–19 min | 13:04:28 About 11 min\nLikely 8–19 min | 13:04:33 About 11 min\nLikely 7–19 min | 13:05:28 About 10 min\nLikely 7–19 min | 13:06:08 About 10 min\nLikely 6–17 min | 13:06:18 About 10 min\nLikely 7–18 min | 13:06:23 About 10 min\nLikely 6–17 min | 13:06:43 About 10 min\nLikely 6–18 min | 13:06:58 About 10 min\nLikely 7–18 min | 13:07:13 About 10 min\nLikely 6–18 min | 13:07:53 About 10 min\nLikely 6–17 min | 13:08:08 About 10 min\nLikely 6–18 min | 13:08:13 About 9 min\nLikely 6–17 min | 13:08:58 About 9 min\nLikely 5–17 min | 13:09:38 About 9 min\nLikely 5–16 min | 13:09:58 About 8 min\nLikely 5–16 min | 13:10:03 About 8 min\nLikely 5–15 min | 13:10:38 About 7 min\nLikely 4–14 min | 13:11:03 About 7 min\nLikely 4–13 min | 13:11:28 About 6 min\nLikely 4–12 min | 13:11:48 About 6 min\nLikely 3–11 min | 13:11:58 At your stop | 13:12:13 About 5 min\nLikely 3–10 min | 13:12:43 About 5 min\nLikely 3–9 min | 13:12:53 About 4 min\nLikely 2–9 min | 13:13:28 About 4 min\nLikely 2–8 min | 13:13:58 About 3 min\nLikely 2–7 min | 13:14:13 About 3 min\nLikely 1–7 min | 13:14:23 About 3 min\nLikely 1–6 min | 13:14:43 About 2 min\nLikely 1–6 min | 13:14:48 About 2 min\nLikely 1–5 min | 13:15:03 About 2 min\nLikely 1–4 min | 13:15:23 About 1 min\nLikely 1–4 min | 13:15:28 About 1 min\nLikely 1–3 min | 13:16:08 About 1 min\nLikely <1–2 min | 13:16:28 About <1 min\nLikely <1–2 min | 13:16:58 About <1 min\nLikely <1–1 min | 13:17:48 At your stop"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 590,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 2 min\nLikely <1–6 min | 13:01:13 About 2 min\nLikely <1–31 min | 13:01:23 About 12 min\nLikely 6–23 min | 13:01:33 About 12 min\nLikely 6–24 min | 13:01:38 About 14 min\nLikely 6–25 min | 13:01:48 About 14 min\nLikely 5–26 min | 13:01:58 About 14 min\nLikely 4–25 min | 13:02:03 About 14 min\nLikely 4–26 min | 13:02:08 About 12 min\nLikely 6–23 min | 13:02:28 About 11 min\nLikely 5–22 min | 13:03:18 About <1 min\nLikely <1–2 min | 13:03:28 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 590,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 3 min\nLikely 1–7 min | 13:00:08 About 3 min\nLikely 1–8 min | 13:00:43 About 3 min\nLikely 1–7 min | 13:00:58 About 3 min\nLikely 1–8 min | 13:01:13 About 3 min\nLikely 1–33 min | 13:01:23 About 13 min\nLikely 7–24 min | 13:01:33 About 13 min\nLikely 7–25 min | 13:01:38 About 15 min\nLikely 7–27 min | 13:01:48 About 15 min\nLikely 6–27 min | 13:01:58 About 15 min\nLikely 6–28 min | 13:02:03 About 15 min\nLikely 5–27 min | 13:02:08 About 13 min\nLikely 7–24 min | 13:02:28 About 12 min\nLikely 6–24 min | 13:03:18 About 1 min\nLikely <1–4 min | 13:03:28 About 1 min\nLikely <1–3 min | 13:04:03 About <1 min\nLikely <1–2 min | 13:04:28 About 1 min\nLikely <1–2 min | 13:04:53 About <1 min\nLikely <1–2 min | 13:05:08 About <1 min\nLikely <1–1 min | 13:05:43 At your stop"
+   },
+   {
+    "id": "Purple|26|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 26,
+    "worstDriftSec": 590,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 19 min\nLikely 14–27 min | 13:01:13 About 19 min\nLikely 14–44 min | 13:01:23 About 29 min\nLikely 21–41 min | 13:01:33 About 29 min\nLikely 21–42 min | 13:01:38 About 31 min\nLikely 22–42 min | 13:01:58 About 31 min\nLikely 21–43 min | 13:02:08 About 29 min\nLikely 21–41 min | 13:02:18 About 29 min\nLikely 20–41 min | 13:02:38 About 28 min\nLikely 20–41 min | 13:03:08 About 28 min\nLikely 19–41 min | 13:03:18 About 17 min\nLikely 12–24 min | 13:03:38 About 16 min\nLikely 11–24 min | 13:04:03 About 16 min\nLikely 11–23 min | 13:04:58 About 15 min\nLikely 11–23 min | 13:06:08 About 14 min\nLikely 10–22 min | 13:06:18 About 15 min\nLikely 11–22 min | 13:06:23 About 14 min\nLikely 10–22 min | 13:06:28 About 14 min\nLikely 10–21 min | 13:06:38 About 14 min\nLikely 10–22 min | 13:06:53 About 15 min\nLikely 10–23 min | 13:06:58 About 15 min\nLikely 10–22 min | 13:07:08 About 15 min\nLikely 11–23 min | 13:07:53 At your stop"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 590,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely 3–10 min | 13:30:13 About 5 min\nLikely 3–14 min | 13:30:23 About 7 min\nLikely 3–17 min | 13:30:28 About 7 min\nLikely <1–16 min | 13:30:38 About 7 min\nLikely <1–14 min | 13:30:48 About 7 min\nLikely 1–14 min | 13:31:23 About 5 min\nLikely 2–9 min | 13:32:03 About 4 min\nLikely 2–9 min | 13:32:13 About 4 min\nLikely 2–8 min | 13:32:33 About 4 min\nLikely 1–8 min | 13:32:48 About 3 min\nLikely 1–7 min | 13:32:58 About 3 min\nLikely <1–7 min | 13:33:13 About 2 min\nLikely <1–7 min | 13:33:18 About 2 min\nLikely <1–6 min | 13:34:08 About 2 min\nLikely <1–30 min | 13:34:18 About 2 min\nLikely <1–31 min | 13:34:28 About 12 min\nLikely 6–23 min | 13:35:23 About 11 min\nLikely 5–23 min | 13:35:33 About 11 min\nLikely 5–22 min | 13:36:28 About <1 min\nLikely <1–2 min | 13:36:43 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 550,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely 3–12 min | 13:30:13 About 6 min\nLikely 3–15 min | 13:30:23 About 8 min\nLikely 3–19 min | 13:30:28 About 8 min\nLikely 2–17 min | 13:30:38 About 8 min\nLikely 1–16 min | 13:30:48 About 8 min\nLikely 2–15 min | 13:31:23 About 6 min\nLikely 3–10 min | 13:32:13 About 5 min\nLikely 3–10 min | 13:32:33 About 5 min\nLikely 2–9 min | 13:32:58 About 5 min\nLikely 1–9 min | 13:33:13 About 4 min\nLikely 1–8 min | 13:33:18 About 3 min\nLikely 1–7 min | 13:33:28 About 3 min\nLikely 1–8 min | 13:34:08 About 3 min\nLikely 1–31 min | 13:34:18 About 3 min\nLikely 1–33 min | 13:34:28 About 13 min\nLikely 7–24 min | 13:35:23 About 13 min\nLikely 6–24 min | 13:35:38 About 12 min\nLikely 6–24 min | 13:35:48 About 12 min\nLikely 6–23 min | 13:36:28 About 2 min\nLikely <1–4 min | 13:36:33 About 1 min\nLikely <1–4 min | 13:36:43 About 1 min\nLikely <1–3 min | 13:37:08 About 1 min\nLikely <1–2 min | 13:37:28 About <1 min\nLikely <1–2 min | 13:37:48 About <1 min\nLikely <1–1 min | 13:38:33 At your stop"
+   },
+   {
+    "id": "Purple|72|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 72,
+    "worstDriftSec": 355,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 34 min\nLikely 21–54 min | 13:30:23 About 34 min\nLikely 22–54 min | 13:30:58 About 34 min\nLikely 19–54 min | 13:31:03 About 36 min\nLikely 23–56 min | 13:31:13 About 34 min\nLikely 20–54 min | 13:31:23 About 34 min\nLikely 15–53 min | 13:31:28 About 27 min\nLikely 14–43 min | 13:31:33 About 27 min\nLikely 14–44 min | 13:31:43 About 27 min\nLikely 14–43 min | 13:32:03 About 26 min\nLikely 14–43 min | 13:32:13 About 26 min\nLikely 13–43 min | 13:32:33 About 26 min\nLikely 14–43 min | 13:32:38 About 26 min\nLikely 13–43 min | 13:32:48 About 26 min\nLikely 13–42 min | 13:33:13 About 25 min\nLikely 13–42 min | 13:33:28 About 25 min\nLikely 12–42 min | 13:33:38 About 25 min\nLikely 12–41 min | 13:33:48 About 24 min\nLikely 12–40 min | 13:33:58 About 24 min\nLikely 12–41 min | 13:34:08 About 25 min\nLikely 12–41 min | 13:34:28 About <1 min\nLikely <1–1 min | 13:34:38 About <1 min | 13:35:18 At your stop | 13:35:23 About 25 min\nLikely 11–45 min | 13:35:33 About 25 min\nLikely 11–46 min | 13:35:58 About 26 min\nLikely 13–44 min | 13:36:08 About 25 min\nLikely 12–42 min | 13:36:13 About 24 min\nLikely 12–40 min | 13:36:58 About 23 min\nLikely 11–40 min | 13:37:18 About 23 min\nLikely 11–39 min | 13:37:33 About 22 min\nLikely 10–39 min | 13:37:53 About 21 min\nLikely 10–38 min | 13:38:03 About 21 min\nLikely 9–38 min | 13:38:23 About 21 min\nLikely 9–37 min | 13:38:33 About 21 min\nLikely 8–37 min | 13:38:38 About 20 min\nLikely 8–36 min | 13:39:03 About 19 min\nLikely 8–36 min | 13:39:18 About 19 min\nLikely 7–36 min | 13:39:43 About 18 min\nLikely 7–35 min | 13:39:58 About 18 min\nLikely 6–34 min | 13:41:25 About 17 min\nLikely 6–33 min | 13:41:45 About 17 min\nLikely 6–32 min | 13:42:40 About 16 min\nLikely 6–31 min | 13:43:05 About 16 min\nLikely 6–30 min | 13:43:15 About 15 min\nLikely 5–29 min | 13:43:25 About 15 min\nLikely 5–28 min | 13:43:35 About 14 min\nLikely 5–27 min | 13:43:45 About 13 min\nLikely 5–26 min | 13:43:55 About 13 min\nLikely 5–25 min | 13:44:05 About 12 min\nLikely 4–24 min | 13:44:25 About 12 min\nLikely 4–23 min | 13:44:35 About 11 min\nLikely 4–22 min | 13:44:45 About 11 min\nLikely 4–21 min | 13:44:55 About 10 min\nLikely 4–20 min | 13:45:00 About 10 min\nLikely 3–20 min | 13:45:10 About 9 min\nLikely 3–20 min | 13:45:16 About 9 min\nLikely 2–19 min | 13:45:26 About 9 min\nLikely 2–18 min | 13:45:31 About 8 min\nLikely 2–18 min | 13:45:41 About 8 min\nLikely 2–17 min | 13:45:51 About 7 min\nLikely 2–16 min | 13:46:06 About 7 min\nLikely 2–15 min | 13:46:11 About 6 min\nLikely 1–14 min | 13:46:26 About 6 min\nLikely 1–13 min | 13:46:36 About 5 min\nLikely 1–12 min | 13:46:41 About 5 min\nLikely 1–11 min | 13:46:56 About 4 min\nLikely 1–10 min | 13:47:01 About 4 min\nLikely <1–10 min | 13:47:06 About 4 min\nLikely <1–9 min | 13:47:16 About 3 min\nLikely <1–9 min | 13:47:26 About 3 min\nLikely <1–8 min | 13:47:36 About 3 min\nLikely <1–7 min | 13:47:41 About 2 min\nLikely <1–7 min | 13:47:46 About 2 min\nLikely <1–6 min | 13:47:56 About 2 min\nLikely <1–5 min | 13:48:06 About 1 min\nLikely <1–4 min | 13:48:16 About 1 min\nLikely <1–3 min | 13:49:11 About 1 min\nLikely <1–2 min | 13:49:26 About <1 min\nLikely <1–2 min | 13:49:56 About <1 min\nLikely <1–1 min | 13:51:06 At your stop"
+   },
+   {
+    "id": "Purple|25|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 25,
+    "worstDriftSec": 295,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely <1–28 min | 13:30:23 About 6 min\nLikely <1–29 min | 13:30:58 About 6 min\nLikely <1–27 min | 13:31:03 About 8 min\nLikely 1–27 min | 13:31:13 About 6 min\nLikely <1–27 min | 13:31:23 About 6 min\nLikely <1–29 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:32:18 About <1 min\nLikely <1–74 min"
+   },
+   {
+    "id": "Purple|10|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 10,
+    "worstDriftSec": 295,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 35 min\nLikely 23–55 min | 13:30:23 About <1 min | 13:31:23 About 35 min\nLikely 17–56 min | 13:31:28 About 29 min\nLikely 16–44 min | 13:31:33 About 29 min\nLikely 16–45 min | 13:31:43 About 28 min\nLikely 16–44 min | 13:32:38 About 27 min\nLikely 15–43 min | 13:33:28 About 26 min\nLikely 14–43 min | 13:33:38 About 26 min\nLikely 14–42 min | 13:34:28 About 1 min\nLikely <1–3 min | 13:35:23 About 1 min\nLikely <1–2 min | 13:35:33 About <1 min\nLikely <1–2 min | 13:35:48 About <1 min\nLikely <1–1 min | 13:36:08 About <1 min\nLikely <1–76 min | 13:36:13 About <1 min\nLikely <1–77 min | 13:36:18 About <1 min\nLikely <1–78 min | 13:36:28 About 26 min\nLikely 14–41 min | 13:36:43 About 25 min\nLikely 14–41 min | 13:36:48 About 25 min\nLikely 13–41 min | 13:36:58 About 25 min\nLikely 13–40 min | 13:37:18 About 24 min\nLikely 13–40 min | 13:37:28 About 24 min\nLikely 12–40 min | 13:37:43 About 23 min\nLikely 12–39 min | 13:38:03 About 23 min\nLikely 11–39 min | 13:38:18 About 22 min\nLikely 11–39 min | 13:38:23 About 22 min\nLikely 11–38 min | 13:38:33 About 22 min\nLikely 10–38 min | 13:38:38 About 21 min\nLikely 10–37 min | 13:39:03 About 21 min\nLikely 9–37 min | 13:39:08 About 21 min\nLikely 9–36 min | 13:39:23 About 20 min\nLikely 9–36 min | 13:39:33 About 20 min\nLikely 8–36 min | 13:39:38 About 20 min\nLikely 8–37 min | 13:39:48 About 20 min\nLikely 8–36 min | 13:40:15 About 20 min\nLikely 8–35 min | 13:40:45 About 19 min\nLikely 8–35 min | 13:41:25 About 19 min\nLikely 8–34 min | 13:41:45 About 18 min\nLikely 8–33 min | 13:41:55 About 18 min\nLikely 7–33 min | 13:42:45 About 18 min\nLikely 7–32 min | 13:42:55 About 17 min\nLikely 7–32 min | 13:43:05 About 17 min\nLikely 7–31 min | 13:43:15 About 16 min\nLikely 7–30 min | 13:43:25 About 16 min\nLikely 7–29 min | 13:43:35 About 15 min\nLikely 6–28 min | 13:43:45 About 15 min\nLikely 6–27 min | 13:43:55 About 14 min\nLikely 6–27 min | 13:44:00 About 14 min\nLikely 6–26 min | 13:44:15 About 13 min\nLikely 6–25 min | 13:44:25 About 13 min\nLikely 5–24 min | 13:44:35 About 12 min\nLikely 5–23 min | 13:44:55 About 12 min\nLikely 5–22 min | 13:45:00 About 11 min\nLikely 5–21 min | 13:45:10 About 11 min\nLikely 5–20 min | 13:45:16 About 10 min\nLikely 5–20 min | 13:45:26 About 10 min\nLikely 4–19 min | 13:45:41 About 9 min\nLikely 3–18 min | 13:45:51 About 9 min\nLikely 3–17 min | 13:46:06 About 8 min\nLikely 3–16 min | 13:46:11 About 8 min\nLikely 3–15 min | 13:46:16 About 7 min\nLikely 3–15 min | 13:46:26 About 7 min\nLikely 3–14 min | 13:46:36 About 6 min\nLikely 3–13 min | 13:46:41 About 6 min\nLikely 2–12 min | 13:46:56 About 6 min\nLikely 2–11 min | 13:47:01 About 5 min\nLikely 2–10 min | 13:47:16 About 5 min\nLikely 2–9 min | 13:47:26 About 4 min\nLikely 1–9 min | 13:47:36 About 4 min\nLikely 1–8 min | 13:47:56 About 3 min\nLikely 1–7 min | 13:48:06 About 3 min\nLikely 1–6 min | 13:48:16 About 2 min\nLikely 1–5 min | 13:49:26 About 2 min\nLikely 1–4 min | 13:49:56 About 1 min\nLikely 1–4 min | 13:50:06 About 1 min\nLikely 1–3 min | 13:51:06 About 1 min\nLikely <1–3 min | 13:51:46 About 1 min\nLikely <1–2 min | 13:51:51 About <1 min\nLikely <1–2 min | 13:52:06 About <1 min\nLikely <1–1 min | 13:52:26 About <1 min | 13:52:46 At your stop"
+   },
+   {
+    "id": "Purple|24|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 235,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   }
+  ]
+ },
+ "summaryCanaryCadence": {
+  "all": {
+   "waits": 150,
+   "arrived": 141,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 9,
+   "scored": 141,
+   "medianWaitMin": 9.2,
+   "p90WaitMin": 18.9,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 173,
+    "earlyOver60Pct": 2.8,
+    "lateOver60Pct": 14.2
+   },
+   "interval": {
+    "n": 141,
+    "insidePct": 68.1,
+    "earlyPct": 5,
+    "latePct": 27,
+    "medianWidthSec": 386
+   },
+   "pctJump180": 7.1,
+   "pctJump300": 5,
+   "pctReversal60": 6.4,
+   "pctStrand": 2.8,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 8.5,
+   "pctPinChanged": 9.2,
+   "pctPinRight": 97.2,
+   "pctVanished": 0,
+   "pctLapRepriced": 0.7,
+   "pctNeverShown": 0,
+   "pctDropped": 5.7,
+   "drops": 9,
+   "dropsDeclined": 0,
+   "dropsRepriced": 9,
+   "worstDrift": {
+    "p50": 0,
+    "p90": 45,
+    "max": 640
+   }
+  },
+  "byRoute": {
+   "Blue Day": {
+    "waits": 56,
+    "arrived": 53,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 53,
+    "medianWaitMin": 10.1,
+    "p90WaitMin": 17.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 271.6,
+     "earlyOver60Pct": 1.9,
+     "lateOver60Pct": 32.1
+    },
+    "interval": {
+     "n": 53,
+     "insidePct": 49.1,
+     "earlyPct": 1.9,
+     "latePct": 49.1,
+     "medianWidthSec": 334
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 7.5,
+    "pctPinRight": 98.1,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 7.5,
+    "drops": 5,
+    "dropsDeclined": 0,
+    "dropsRepriced": 5,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 32,
+     "max": 45
+    }
+   },
+   "Green": {
+    "waits": 21,
+    "arrived": 19,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 2,
+    "scored": 19,
+    "medianWaitMin": 10.6,
+    "p90WaitMin": 11.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 10,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 5.3
+    },
+    "interval": {
+     "n": 19,
+     "insidePct": 73.7,
+     "earlyPct": 0,
+     "latePct": 26.3,
+     "medianWidthSec": 516
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 15.8,
+    "pctPinChanged": 5.3,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 160,
+     "max": 160
+    }
+   },
+   "Purple": {
+    "waits": 22,
+    "arrived": 21,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 1,
+    "scored": 21,
+    "medianWaitMin": 5.8,
+    "p90WaitMin": 17.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 130,
+     "earlyOver60Pct": 14.3,
+     "lateOver60Pct": 4.8
+    },
+    "interval": {
+     "n": 21,
+     "insidePct": 66.7,
+     "earlyPct": 28.6,
+     "latePct": 4.8,
+     "medianWidthSec": 740
+    },
+    "pctJump180": 47.6,
+    "pctJump300": 33.3,
+    "pctReversal60": 42.9,
+    "pctStrand": 19,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 42.9,
+    "pctPinChanged": 38.1,
+    "pctPinRight": 85.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 4.8,
+    "pctNeverShown": 0,
+    "pctDropped": 19,
+    "drops": 4,
+    "dropsDeclined": 0,
+    "dropsRepriced": 4,
+    "worstDrift": {
+     "p50": 105,
+     "p90": 580,
+     "max": 640
+    }
+   },
+   "Red": {
+    "waits": 51,
+    "arrived": 48,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 48,
+    "medianWaitMin": 9.5,
+    "p90WaitMin": 20.9,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 2.1
+    },
+    "interval": {
+     "n": 48,
+     "insidePct": 87.5,
+     "earlyPct": 0,
+     "latePct": 12.5,
+     "medianWidthSec": 431.5
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 41.5,
+     "max": 45
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|127|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 127,
+    "worstDriftSec": 640,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 14 min\nLikely 10–22 min | 13:00:43 About 14 min\nLikely 10–23 min | 13:01:23 About 25 min\nLikely 16–38 min | 13:01:38 About 26 min\nLikely 16–40 min | 13:01:58 About 26 min\nLikely 15–41 min | 13:02:13 About 25 min\nLikely 16–38 min | 13:02:28 About 24 min\nLikely 15–37 min | 13:03:23 About 12 min\nLikely 8–20 min | 13:03:58 About 12 min\nLikely 7–19 min | 13:04:18 About 11 min\nLikely 7–19 min | 13:05:28 About 10 min\nLikely 7–19 min | 13:06:23 About 10 min\nLikely 6–17 min | 13:06:43 About 10 min\nLikely 6–18 min | 13:06:58 About 10 min\nLikely 7–18 min | 13:07:18 About 10 min\nLikely 6–18 min | 13:07:53 About 10 min\nLikely 6–17 min | 13:08:13 About 9 min\nLikely 6–17 min | 13:09:08 About 9 min\nLikely 5–17 min | 13:09:38 About 9 min\nLikely 5–16 min | 13:09:58 About 8 min\nLikely 5–16 min | 13:10:13 About 8 min\nLikely 5–15 min | 13:10:48 About 7 min\nLikely 4–14 min | 13:11:08 About 7 min\nLikely 4–13 min | 13:11:28 About 6 min\nLikely 4–12 min | 13:11:48 About 6 min\nLikely 3–11 min | 13:12:03 At your stop | 13:12:23 About 5 min\nLikely 3–10 min | 13:12:43 About 5 min\nLikely 3–9 min | 13:13:03 About 4 min\nLikely 2–9 min | 13:13:38 About 4 min\nLikely 2–8 min | 13:13:53 About 3 min\nLikely 2–8 min | 13:14:08 About 3 min\nLikely 2–7 min | 13:14:28 About 3 min\nLikely 1–6 min | 13:14:48 About 2 min\nLikely 1–5 min | 13:15:03 About 2 min\nLikely 1–4 min | 13:15:23 About 1 min\nLikely 1–4 min | 13:15:38 About 1 min\nLikely 1–3 min | 13:16:18 About 1 min\nLikely <1–2 min | 13:16:38 About <1 min\nLikely <1–2 min | 13:16:58 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 580,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 2 min\nLikely <1–6 min | 13:01:23 About 12 min\nLikely 6–23 min | 13:01:38 About 14 min\nLikely 6–25 min | 13:01:58 About 14 min\nLikely 4–25 min | 13:02:13 About 12 min\nLikely 6–23 min | 13:02:28 About 11 min\nLikely 5–22 min | 13:03:23 About <1 min\nLikely <1–2 min | 13:03:38 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 580,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 3 min\nLikely 1–7 min | 13:00:23 About 3 min\nLikely 1–8 min | 13:00:43 About 3 min\nLikely 1–7 min | 13:01:03 About 3 min\nLikely 1–8 min | 13:01:23 About 13 min\nLikely 7–24 min | 13:01:38 About 15 min\nLikely 7–27 min | 13:01:58 About 15 min\nLikely 6–28 min | 13:02:13 About 13 min\nLikely 7–24 min | 13:02:28 About 12 min\nLikely 6–24 min | 13:03:23 About 1 min\nLikely <1–4 min | 13:03:38 About 1 min\nLikely <1–3 min | 13:04:18 About <1 min\nLikely <1–2 min | 13:04:33 About 1 min\nLikely <1–2 min | 13:04:53 About <1 min\nLikely <1–2 min | 13:05:13 About <1 min\nLikely <1–1 min | 13:05:43 At your stop"
+   },
+   {
+    "id": "Purple|26|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 26,
+    "worstDriftSec": 580,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 19 min\nLikely 14–27 min | 13:01:23 About 29 min\nLikely 21–41 min | 13:01:38 About 31 min\nLikely 22–42 min | 13:01:58 About 31 min\nLikely 21–43 min | 13:02:13 About 29 min\nLikely 21–41 min | 13:02:28 About 29 min\nLikely 20–41 min | 13:02:48 About 28 min\nLikely 20–41 min | 13:03:23 About 17 min\nLikely 12–24 min | 13:03:38 About 16 min\nLikely 11–24 min | 13:04:18 About 16 min\nLikely 11–23 min | 13:05:13 About 15 min\nLikely 11–23 min | 13:06:23 About 14 min\nLikely 10–22 min | 13:06:58 About 15 min\nLikely 10–22 min | 13:07:18 About 15 min\nLikely 11–23 min | 13:07:53 At your stop"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 580,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely 3–10 min | 13:30:18 About 6 min\nLikely 3–17 min | 13:30:38 About 7 min\nLikely <1–14 min | 13:30:58 About 7 min\nLikely 1–14 min | 13:31:33 About 5 min\nLikely 2–9 min | 13:32:08 About 4 min\nLikely 2–9 min | 13:32:23 About 4 min\nLikely 2–8 min | 13:32:43 About 3 min\nLikely 1–7 min | 13:33:03 About 3 min\nLikely <1–7 min | 13:33:18 About 2 min\nLikely <1–6 min | 13:34:08 About 2 min\nLikely <1–30 min | 13:34:28 About 12 min\nLikely 6–23 min | 13:35:33 About 11 min\nLikely 5–22 min | 13:36:28 About <1 min\nLikely <1–2 min | 13:36:43 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 560,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely 3–12 min | 13:30:18 About 7 min\nLikely 3–18 min | 13:30:38 About 8 min\nLikely 1–16 min | 13:30:58 About 8 min\nLikely 2–15 min | 13:31:33 About 6 min\nLikely 3–10 min | 13:32:23 About 5 min\nLikely 3–10 min | 13:32:43 About 5 min\nLikely 2–9 min | 13:33:03 About 5 min\nLikely 1–9 min | 13:33:18 About 3 min\nLikely 1–7 min | 13:33:38 About 3 min\nLikely 1–8 min | 13:34:08 About 3 min\nLikely 1–31 min | 13:34:28 About 13 min\nLikely 7–24 min | 13:35:33 About 13 min\nLikely 6–24 min | 13:35:48 About 12 min\nLikely 6–23 min | 13:36:28 About 2 min\nLikely <1–4 min | 13:36:43 About 1 min\nLikely <1–3 min | 13:37:18 About 1 min\nLikely <1–2 min | 13:37:33 About <1 min\nLikely <1–2 min | 13:37:53 About <1 min\nLikely <1–1 min | 13:38:28 At your stop"
+   },
+   {
+    "id": "Purple|72|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 72,
+    "worstDriftSec": 345,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 34 min\nLikely 21–54 min | 13:30:18 About 34 min\nLikely 22–54 min | 13:30:58 About 34 min\nLikely 19–54 min | 13:31:18 About 34 min\nLikely 22–54 min | 13:31:33 About 27 min\nLikely 14–44 min | 13:31:48 About 27 min\nLikely 14–43 min | 13:32:08 About 26 min\nLikely 14–43 min | 13:32:23 About 26 min\nLikely 13–43 min | 13:32:43 About 26 min\nLikely 13–42 min | 13:33:18 About 25 min\nLikely 13–42 min | 13:33:38 About 25 min\nLikely 12–41 min | 13:33:53 About 24 min\nLikely 12–40 min | 13:34:08 About 25 min\nLikely 12–41 min | 13:34:28 About <1 min\nLikely <1–1 min | 13:34:43 About <1 min | 13:35:18 At your stop | 13:35:33 About 25 min\nLikely 11–46 min | 13:36:08 About 25 min\nLikely 12–42 min | 13:36:28 About 24 min\nLikely 12–40 min | 13:36:58 About 23 min\nLikely 11–40 min | 13:37:18 About 23 min\nLikely 11–39 min | 13:37:33 About 22 min\nLikely 10–39 min | 13:37:53 About 21 min\nLikely 10–38 min | 13:38:08 About 21 min\nLikely 9–38 min | 13:38:28 About 21 min\nLikely 9–37 min | 13:38:43 About 20 min\nLikely 8–36 min | 13:39:18 About 19 min\nLikely 7–36 min | 13:39:48 About 18 min\nLikely 7–35 min | 13:40:15 About 18 min\nLikely 6–34 min | 13:41:25 About 17 min\nLikely 6–33 min | 13:41:55 About 17 min\nLikely 6–32 min | 13:42:35 About 16 min\nLikely 6–32 min | 13:42:50 About 16 min\nLikely 6–31 min | 13:43:10 About 15 min\nLikely 5–29 min | 13:43:25 About 15 min\nLikely 5–28 min | 13:43:45 About 13 min\nLikely 5–26 min | 13:44:05 About 12 min\nLikely 4–24 min | 13:44:25 About 12 min\nLikely 4–23 min | 13:44:45 About 11 min\nLikely 4–21 min | 13:45:05 About 10 min\nLikely 3–20 min | 13:45:21 About 9 min\nLikely 2–19 min | 13:45:36 About 8 min\nLikely 2–18 min | 13:45:51 About 7 min\nLikely 2–16 min | 13:46:11 About 6 min\nLikely 1–14 min | 13:46:26 About 6 min\nLikely 1–13 min | 13:46:46 About 5 min\nLikely 1–11 min | 13:47:06 About 4 min\nLikely <1–9 min | 13:47:26 About 3 min\nLikely <1–8 min | 13:47:46 About 2 min\nLikely <1–6 min | 13:48:06 About 1 min\nLikely <1–4 min | 13:48:26 About 1 min\nLikely <1–3 min | 13:49:16 About 1 min\nLikely <1–2 min | 13:49:36 About <1 min\nLikely <1–2 min | 13:50:06 About <1 min\nLikely <1–1 min | 13:51:06 At your stop"
+   },
+   {
+    "id": "Purple|25|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 25,
+    "worstDriftSec": 285,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely <1–28 min | 13:30:38 About 6 min\nLikely <1–29 min | 13:30:58 About 6 min\nLikely <1–27 min | 13:31:33 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|24|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 225,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:18 About 5 min\nLikely <1–27 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   },
+   {
+    "id": "Purple|23|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 23,
+    "worstDriftSec": 210,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 5 min\nLikely 1–22 min | 13:00:23 About 4 min\nLikely 1–22 min | 13:00:43 At your stop"
+   }
+  ]
+ },
+ "focus": {
+  "all": {
+   "waits": 107,
+   "arrived": 101,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 6,
+   "scored": 101,
+   "medianWaitMin": 9.9,
+   "p90WaitMin": 19.8,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 213,
+    "earlyOver60Pct": 1,
+    "lateOver60Pct": 17.8
+   },
+   "interval": {
+    "n": 101,
+    "insidePct": 67.3,
+    "earlyPct": 1,
+    "latePct": 31.7,
+    "medianWidthSec": 364
+   },
+   "pctJump180": 0,
+   "pctJump300": 0,
+   "pctReversal60": 0,
+   "pctStrand": 0,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 0,
+   "pctPinChanged": 4,
+   "pctPinRight": 99,
+   "pctVanished": 0,
+   "pctLapRepriced": 0,
+   "pctNeverShown": 0,
+   "pctDropped": 4,
+   "drops": 7,
+   "dropsDeclined": 0,
+   "dropsRepriced": 7,
+   "worstDrift": {
+    "p50": 0,
+    "p90": 55,
+    "max": 55
+   }
+  },
+  "byRoute": {
+   "Blue Day": {
+    "waits": 56,
+    "arrived": 53,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 53,
+    "medianWaitMin": 10.1,
+    "p90WaitMin": 17.6,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 271.6,
+     "earlyOver60Pct": 1.9,
+     "lateOver60Pct": 32.1
+    },
+    "interval": {
+     "n": 53,
+     "insidePct": 49.1,
+     "earlyPct": 1.9,
+     "latePct": 49.1,
+     "medianWidthSec": 334
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 7.5,
+    "pctPinRight": 98.1,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 7.5,
+    "drops": 7,
+    "dropsDeclined": 0,
+    "dropsRepriced": 7,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 10,
+     "max": 55
+    }
+   },
+   "Red": {
+    "waits": 51,
+    "arrived": 48,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 3,
+    "scored": 48,
+    "medianWaitMin": 9.5,
+    "p90WaitMin": 20.9,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 0,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 2.1
+    },
+    "interval": {
+     "n": 48,
+     "insidePct": 87.5,
+     "earlyPct": 0,
+     "latePct": 12.5,
+     "medianWidthSec": 431.5
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 7.5,
+     "p90": 55,
+     "max": 55
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Red|115|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 115,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 7 min\nLikely 4–12 min | 13:00:08 About 7 min\nLikely 4–11 min | 13:00:13 About 7 min\nLikely 3–11 min | 13:00:23 About 6 min\nLikely 3–10 min | 13:00:48 About 6 min\nLikely 2–10 min | 13:00:58 About 5 min\nLikely 2–9 min | 13:01:48 About 5 min\nLikely 1–9 min | 13:01:58 About 4 min\nLikely 1–8 min | 13:02:03 About 2 min\nLikely 1–8 min | 13:02:08 About 3 min\nLikely <1–8 min | 13:02:18 About 3 min\nLikely <1–7 min | 13:02:28 About 3 min\nLikely <1–6 min | 13:03:18 About 3 min\nLikely 1–6 min | 13:03:53 About 2 min\nLikely 1–6 min | 13:03:58 About 2 min\nLikely 1–4 min | 13:04:53 About 1 min\nLikely 1–3 min | 13:05:08 About 1 min\nLikely 1–2 min | 13:05:18 About 1 min\nLikely <1–2 min | 13:06:38 About <1 min\nLikely <1–1 min | 13:06:58 At your stop"
+   },
+   {
+    "id": "Red|45|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 45,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 10 min\nLikely 7–14 min | 13:00:13 About 9 min\nLikely 6–14 min | 13:00:23 About 9 min\nLikely 5–14 min | 13:00:43 About 9 min\nLikely 5–13 min | 13:00:58 About 8 min\nLikely 5–13 min | 13:01:33 About 8 min\nLikely 4–12 min | 13:01:58 About 7 min\nLikely 4–11 min | 13:02:03 About 5 min\nLikely 2–10 min | 13:02:08 About 6 min\nLikely 2–11 min | 13:02:18 About 6 min\nLikely 2–10 min | 13:02:38 About 6 min\nLikely 3–10 min | 13:03:38 About 6 min\nLikely 3–9 min | 13:03:53 About 5 min\nLikely 3–9 min | 13:03:58 About 4 min\nLikely 2–8 min | 13:05:08 About 3 min\nLikely 2–7 min | 13:05:18 About 3 min\nLikely 1–7 min | 13:06:38 About 3 min\nLikely 1–6 min | 13:06:53 About 2 min\nLikely 1–6 min | 13:06:58 About 2 min\nLikely <1–5 min | 13:07:23 About 2 min\nLikely <1–4 min | 13:07:43 About 1 min\nLikely <1–4 min | 13:08:03 About 1 min\nLikely <1–2 min | 13:08:08 About 1 min\nLikely <1–3 min | 13:09:23 About <1 min\nLikely <1–2 min | 13:09:48 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Red|75|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 75,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 11 min\nLikely 7–16 min | 13:00:08 About 11 min\nLikely 7–15 min | 13:00:13 About 10 min\nLikely 7–15 min | 13:00:23 About 10 min\nLikely 6–14 min | 13:00:43 About 9 min\nLikely 6–14 min | 13:00:58 About 9 min\nLikely 5–14 min | 13:01:03 About 9 min\nLikely 5–13 min | 13:01:48 About 8 min\nLikely 4–13 min | 13:01:58 About 8 min\nLikely 4–12 min | 13:02:03 About 6 min\nLikely 3–11 min | 13:02:08 About 7 min\nLikely 3–12 min | 13:02:18 About 7 min\nLikely 3–11 min | 13:02:53 About 7 min\nLikely 4–11 min | 13:03:53 About 6 min\nLikely 3–10 min | 13:03:58 About 5 min\nLikely 3–9 min | 13:04:43 About 5 min\nLikely 2–9 min | 13:04:53 About 5 min\nLikely 2–8 min | 13:05:08 About 4 min\nLikely 2–8 min | 13:06:08 About 4 min\nLikely 1–8 min | 13:06:38 About 4 min\nLikely 1–7 min | 13:06:43 About 3 min\nLikely 1–7 min | 13:06:58 About 3 min\nLikely 1–6 min | 13:07:13 About 3 min\nLikely <1–6 min | 13:07:23 About 2 min\nLikely <1–6 min | 13:07:43 About 2 min\nLikely <1–5 min | 13:08:03 About 1 min\nLikely <1–4 min | 13:08:13 About 2 min\nLikely <1–4 min | 13:08:23 About 2 min\nLikely <1–5 min | 13:08:53 About 2 min\nLikely <1–4 min | 13:09:23 About 1 min\nLikely <1–3 min | 13:09:48 About 1 min\nLikely <1–2 min | 13:09:58 About <1 min\nLikely <1–2 min | 13:10:18 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Red|30|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 30,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 15 min\nLikely 10–20 min | 13:00:08 About 14 min\nLikely 10–20 min | 13:00:13 About 14 min\nLikely 10–19 min | 13:00:23 About 13 min\nLikely 9–19 min | 13:00:43 About 13 min\nLikely 9–18 min | 13:00:58 About 12 min\nLikely 8–18 min | 13:01:33 About 12 min\nLikely 8–17 min | 13:01:58 About 12 min\nLikely 7–16 min | 13:02:03 About 10 min\nLikely 6–15 min | 13:02:28 About 10 min\nLikely 6–14 min | 13:03:28 About 10 min\nLikely 7–14 min | 13:03:53 About 9 min\nLikely 6–14 min | 13:03:58 About 9 min\nLikely 5–13 min | 13:04:53 About 8 min\nLikely 5–13 min | 13:05:08 About 8 min\nLikely 5–12 min | 13:06:08 About 7 min\nLikely 4–12 min | 13:06:38 About 7 min\nLikely 4–11 min | 13:06:53 About 6 min\nLikely 4–11 min | 13:06:58 About 6 min\nLikely 3–11 min | 13:07:23 About 6 min\nLikely 3–10 min | 13:07:53 About 6 min\nLikely 3–9 min | 13:08:03 About 5 min\nLikely 2–9 min | 13:08:23 About 5 min\nLikely 3–9 min | 13:09:23 About 5 min\nLikely 2–8 min | 13:09:33 About 4 min\nLikely 2–8 min | 13:09:48 About 4 min\nLikely 1–8 min | 13:09:58 About 3 min\nLikely 1–8 min | 13:10:13 About 3 min\nLikely 1–7 min | 13:10:18 About 3 min\nLikely <1–7 min | 13:10:28 About 3 min\nLikely <1–6 min | 13:10:43 About 2 min\nLikely 1–6 min | 13:10:53 About 2 min\nLikely <1–5 min | 13:11:03 About 1 min\nLikely <1–4 min | 13:11:13 About 1 min\nLikely <1–3 min | 13:12:13 About 1 min\nLikely <1–2 min | 13:12:23 About <1 min\nLikely <1–2 min | 13:13:13 About <1 min\nLikely <1–1 min | 13:14:43 At your stop"
+   },
+   {
+    "id": "Red|31|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 31,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 17 min\nLikely 12–22 min | 13:00:13 About 16 min\nLikely 11–22 min | 13:00:23 About 16 min\nLikely 11–21 min | 13:00:33 About 15 min\nLikely 11–21 min | 13:00:43 About 15 min\nLikely 10–21 min | 13:00:58 About 15 min\nLikely 10–20 min | 13:01:03 About 14 min\nLikely 10–20 min | 13:01:48 About 14 min\nLikely 9–19 min | 13:01:58 About 14 min\nLikely 9–18 min | 13:02:03 About 12 min\nLikely 8–17 min | 13:02:08 About 12 min\nLikely 8–18 min | 13:02:18 About 12 min\nLikely 8–17 min | 13:03:53 About 12 min\nLikely 8–16 min | 13:03:58 About 11 min\nLikely 8–15 min | 13:04:58 About 10 min\nLikely 7–15 min | 13:05:08 About 10 min\nLikely 7–14 min | 13:06:28 About 10 min\nLikely 6–14 min | 13:06:38 About 9 min\nLikely 6–14 min | 13:06:53 About 9 min\nLikely 5–14 min | 13:06:58 About 8 min\nLikely 5–13 min | 13:07:23 About 8 min\nLikely 5–12 min | 13:07:53 About 8 min\nLikely 4–12 min | 13:08:03 About 7 min\nLikely 4–11 min | 13:08:23 About 7 min\nLikely 4–12 min | 13:08:38 About 7 min\nLikely 4–11 min | 13:08:43 About 7 min\nLikely 4–12 min | 13:08:58 About 7 min\nLikely 4–11 min | 13:09:33 About 6 min\nLikely 3–10 min | 13:09:38 About 6 min\nLikely 3–11 min | 13:09:48 About 6 min\nLikely 3–10 min | 13:10:13 About 5 min\nLikely 3–10 min | 13:10:18 About 5 min\nLikely 2–9 min | 13:10:43 About 4 min\nLikely 2–8 min | 13:11:03 About 3 min\nLikely 1–7 min | 13:11:13 About 3 min\nLikely 1–6 min | 13:12:23 About 2 min\nLikely 1–5 min | 13:14:28 About 2 min\nLikely 1–4 min | 13:15:38 About 2 min\nLikely <1–4 min | 13:15:48 About <1 min\nLikely <1–2 min | 13:16:58 About <1 min\nLikely <1–1 min | 13:17:13 About <1 min\nLikely <1–62 min"
+   },
+   {
+    "id": "Red|41|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 41,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 19 min\nLikely 14–25 min | 13:00:13 About 18 min\nLikely 13–24 min | 13:00:43 About 17 min\nLikely 13–23 min | 13:00:58 About 17 min\nLikely 13–22 min | 13:01:03 About 17 min\nLikely 12–22 min | 13:01:48 About 16 min\nLikely 12–22 min | 13:01:58 About 16 min\nLikely 11–21 min | 13:02:03 About 14 min\nLikely 10–19 min | 13:02:08 About 15 min\nLikely 10–20 min | 13:02:18 About 15 min\nLikely 10–19 min | 13:03:53 About 14 min\nLikely 10–19 min | 13:03:58 About 13 min\nLikely 10–17 min | 13:04:53 About 13 min\nLikely 9–17 min | 13:05:08 About 12 min\nLikely 9–17 min | 13:05:18 About 12 min\nLikely 9–16 min | 13:06:18 About 12 min\nLikely 8–16 min | 13:06:38 About 11 min\nLikely 8–16 min | 13:06:58 About 11 min\nLikely 7–15 min | 13:07:23 About 10 min\nLikely 7–14 min | 13:08:03 About 9 min\nLikely 6–14 min | 13:09:23 About 9 min\nLikely 5–13 min | 13:09:33 About 8 min\nLikely 5–13 min | 13:09:38 About 9 min\nLikely 5–13 min | 13:09:48 About 8 min\nLikely 5–13 min | 13:10:03 About 8 min\nLikely 5–12 min | 13:10:13 About 8 min\nLikely 4–12 min | 13:10:18 About 7 min\nLikely 4–11 min | 13:10:53 About 6 min\nLikely 3–10 min | 13:11:03 About 6 min\nLikely 3–9 min | 13:11:13 About 5 min\nLikely 3–9 min | 13:12:03 About 5 min\nLikely 3–8 min | 13:12:13 About 5 min\nLikely 2–8 min | 13:12:23 About 4 min\nLikely 2–8 min | 13:14:43 About 4 min\nLikely 2–7 min | 13:15:38 About 4 min\nLikely 1–7 min | 13:15:48 About 2 min\nLikely 1–5 min | 13:16:58 About 2 min\nLikely <1–5 min | 13:17:03 About 2 min\nLikely <1–4 min | 13:17:28 About 1 min\nLikely <1–4 min | 13:17:38 About 1 min\nLikely <1–3 min | 13:17:48 About 1 min\nLikely <1–2 min | 13:17:58 About <1 min\nLikely <1–2 min | 13:18:13 About <1 min\nLikely <1–1 min | 13:18:33 At your stop"
+   },
+   {
+    "id": "Red|126|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 126,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 20 min\nLikely 15–26 min | 13:00:23 About 19 min\nLikely 14–25 min | 13:00:58 About 18 min\nLikely 14–24 min | 13:01:33 About 18 min\nLikely 13–24 min | 13:01:48 About 18 min\nLikely 13–23 min | 13:01:58 About 18 min\nLikely 13–22 min | 13:02:03 About 16 min\nLikely 12–21 min | 13:02:18 About 16 min\nLikely 11–21 min | 13:02:38 About 16 min\nLikely 12–21 min | 13:03:53 About 15 min\nLikely 11–20 min | 13:03:58 About 15 min\nLikely 11–19 min | 13:04:53 About 14 min\nLikely 11–19 min | 13:04:58 About 14 min\nLikely 11–18 min | 13:05:08 About 14 min\nLikely 10–18 min | 13:06:18 About 13 min\nLikely 10–18 min | 13:06:38 About 13 min\nLikely 10–17 min | 13:06:53 About 12 min\nLikely 9–17 min | 13:07:23 About 12 min\nLikely 9–16 min | 13:07:33 About 12 min\nLikely 8–16 min | 13:07:53 About 11 min\nLikely 8–15 min | 13:08:03 About 10 min\nLikely 7–15 min | 13:08:08 About 11 min\nLikely 7–15 min | 13:08:13 About 11 min\nLikely 8–15 min | 13:09:23 About 10 min\nLikely 7–15 min | 13:09:33 About 10 min\nLikely 7–14 min | 13:09:58 About 9 min\nLikely 6–14 min | 13:10:18 About 9 min\nLikely 6–13 min | 13:10:28 About 8 min\nLikely 5–13 min | 13:10:43 About 8 min\nLikely 5–12 min | 13:11:03 About 7 min\nLikely 4–11 min | 13:11:13 About 7 min\nLikely 4–10 min | 13:12:03 About 6 min\nLikely 4–10 min | 13:12:23 About 6 min\nLikely 3–9 min | 13:14:28 About 5 min\nLikely 3–9 min | 13:14:43 About 5 min\nLikely 3–8 min | 13:15:48 About 4 min\nLikely 2–7 min | 13:16:58 About 3 min\nLikely 2–6 min | 13:17:03 About 3 min\nLikely 1–6 min | 13:17:38 About 2 min\nLikely 1–5 min | 13:17:48 About 2 min\nLikely 1–4 min | 13:18:03 About 2 min\nLikely 1–3 min | 13:18:13 About 1 min\nLikely 1–3 min | 13:18:33 About 1 min\nLikely <1–2 min | 13:19:13 About <1 min\nLikely <1–1 min | 13:19:48 At your stop"
+   },
+   {
+    "id": "Red|36|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 36,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 21 min\nLikely 16–27 min | 13:00:13 About 20 min\nLikely 16–26 min | 13:00:23 About 20 min\nLikely 15–26 min | 13:00:43 About 20 min\nLikely 15–25 min | 13:00:58 About 19 min\nLikely 14–25 min | 13:01:03 About 19 min\nLikely 14–24 min | 13:01:58 About 18 min\nLikely 13–23 min | 13:02:03 About 16 min\nLikely 12–22 min | 13:02:08 About 17 min\nLikely 12–22 min | 13:02:43 About 17 min\nLikely 13–22 min | 13:03:53 About 16 min\nLikely 12–21 min | 13:03:58 About 15 min\nLikely 12–20 min | 13:04:43 About 15 min\nLikely 12–19 min | 13:04:53 About 15 min\nLikely 11–19 min | 13:05:08 About 14 min\nLikely 11–19 min | 13:06:08 About 14 min\nLikely 11–18 min | 13:06:38 About 14 min\nLikely 10–18 min | 13:06:43 About 13 min\nLikely 10–18 min | 13:06:58 About 13 min\nLikely 10–17 min | 13:07:13 About 13 min\nLikely 9–17 min | 13:07:23 About 12 min\nLikely 9–16 min | 13:08:03 About 11 min\nLikely 8–15 min | 13:08:08 About 11 min\nLikely 8–16 min | 13:08:13 About 12 min\nLikely 8–16 min | 13:08:23 About 12 min\nLikely 9–16 min | 13:09:23 About 11 min\nLikely 8–15 min | 13:09:48 About 10 min\nLikely 7–15 min | 13:09:58 About 10 min\nLikely 7–14 min | 13:10:18 About 9 min\nLikely 6–14 min | 13:10:28 About 9 min\nLikely 6–13 min | 13:10:53 About 8 min\nLikely 5–12 min | 13:11:13 About 8 min\nLikely 5–11 min | 13:11:53 About 7 min\nLikely 5–11 min | 13:12:13 About 7 min\nLikely 5–10 min | 13:12:23 About 6 min\nLikely 4–10 min | 13:14:28 About 6 min\nLikely 4–9 min | 13:15:48 About 4 min\nLikely 2–8 min | 13:16:58 About 4 min\nLikely 2–7 min | 13:17:28 About 3 min\nLikely 2–6 min | 13:17:38 About 3 min\nLikely 1–6 min | 13:17:48 About 3 min\nLikely 1–5 min | 13:17:58 About 2 min\nLikely 1–5 min | 13:18:03 About 2 min\nLikely 1–4 min | 13:18:33 About 1 min\nLikely 1–3 min | 13:19:13 About 1 min\nLikely <1–2 min | 13:19:43 About <1 min\nLikely <1–2 min | 13:19:58 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Blue Day|5|2026-09-10T13:00:03.117Z",
+    "label": "Blue Day",
+    "stopId": 5,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 15 min\nLikely 7–24 min | 13:01:13 About 15 min\nLikely 7–23 min | 13:02:08 About 14 min\nLikely 6–23 min | 13:02:28 About 14 min\nLikely 6–22 min | 13:02:43 About 13 min\nLikely 5–22 min | 13:02:58 About 13 min\nLikely 5–21 min | 13:03:23 About 13 min\nLikely 4–21 min | 13:03:28 About 13 min\nLikely 4–20 min | 13:03:38 About 12 min\nLikely 4–20 min | 13:03:43 About 12 min\nLikely 2–20 min | 13:03:53 About 12 min\nLikely 2–19 min | 13:03:58 About 11 min\nLikely 2–19 min | 13:04:53 About 11 min\nLikely 2–18 min | 13:04:58 About 11 min\nLikely 3–18 min | 13:05:18 About 10 min\nLikely 3–18 min | 13:06:18 About 10 min\nLikely 3–17 min | 13:06:38 About 9 min\nLikely 3–17 min | 13:06:53 About 9 min\nLikely 2–17 min | 13:07:53 About 8 min\nLikely 2–17 min | 13:08:08 About 8 min\nLikely 2–16 min | 13:09:13 About 7 min\nLikely 2–16 min | 13:09:23 About 7 min\nLikely 2–15 min | 13:11:03 About 7 min\nLikely 2–14 min | 13:11:13 About 6 min\nLikely 2–14 min | 13:13:38 About 6 min\nLikely 1–14 min | 13:16:28 About 5 min\nLikely 1–13 min | 13:16:33 About 3 min\nLikely 1–9 min | 13:16:38 About 4 min\nLikely 1–12 min | 13:16:48 About 3 min\nLikely 1–7 min | 13:16:58 About 3 min\nLikely 1–6 min | 13:17:13 About 3 min\nLikely 1–12 min | 13:17:18 About 4 min\nLikely 1–14 min | 13:17:28 About 4 min\nLikely <1–13 min | 13:17:48 About 2 min\nLikely 1–5 min | 13:18:43 About 2 min\nLikely 1–4 min | 13:18:53 About 1 min\nLikely <1–3 min | 13:19:23 About <1 min\nLikely <1–2 min | 13:19:33 About <1 min\nLikely <1–1 min | 13:20:08 At your stop"
+   },
+   {
+    "id": "Red|128|2026-09-10T13:00:03.117Z",
+    "label": "Red",
+    "stopId": 128,
+    "worstDriftSec": 55,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 22 min\nLikely 17–28 min | 13:00:13 About 21 min\nLikely 17–27 min | 13:00:23 About 21 min\nLikely 16–26 min | 13:00:43 About 20 min\nLikely 16–26 min | 13:00:48 About 20 min\nLikely 16–25 min | 13:00:58 About 20 min\nLikely 15–25 min | 13:01:48 About 19 min\nLikely 15–25 min | 13:01:58 About 19 min\nLikely 14–24 min | 13:02:03 About 17 min\nLikely 13–23 min | 13:02:08 About 18 min\nLikely 13–23 min | 13:02:28 About 18 min\nLikely 14–23 min | 13:03:53 About 17 min\nLikely 13–22 min | 13:03:58 About 16 min\nLikely 13–21 min | 13:04:53 About 16 min\nLikely 12–20 min | 13:05:08 About 15 min\nLikely 12–20 min | 13:06:08 About 15 min\nLikely 11–19 min | 13:06:38 About 14 min\nLikely 11–19 min | 13:06:53 About 14 min\nLikely 11–18 min | 13:07:08 About 14 min\nLikely 10–18 min | 13:07:23 About 13 min\nLikely 10–17 min | 13:08:03 About 12 min\nLikely 9–16 min | 13:08:08 About 12 min\nLikely 9–17 min | 13:08:23 About 13 min\nLikely 9–17 min | 13:09:03 About 13 min\nLikely 10–17 min | 13:09:13 About 13 min\nLikely 9–17 min | 13:09:23 About 12 min\nLikely 9–16 min | 13:09:33 About 11 min\nLikely 9–16 min | 13:09:38 About 12 min\nLikely 9–16 min | 13:09:48 About 11 min\nLikely 8–15 min | 13:10:18 About 10 min\nLikely 7–14 min | 13:10:53 About 9 min\nLikely 6–14 min | 13:11:03 About 8 min\nLikely 6–13 min | 13:11:13 About 8 min\nLikely 6–12 min | 13:11:53 About 8 min\nLikely 5–12 min | 13:12:13 About 8 min\nLikely 5–11 min | 13:12:23 About 7 min\nLikely 5–11 min | 13:14:28 About 7 min\nLikely 5–10 min | 13:15:38 About 7 min\nLikely 4–10 min | 13:15:48 About 5 min\nLikely 3–9 min | 13:16:58 About 5 min\nLikely 3–8 min | 13:17:13 About 4 min\nLikely 2–8 min | 13:17:28 About 4 min\nLikely 2–7 min | 13:17:48 About 3 min\nLikely 2–6 min | 13:18:18 About 3 min\nLikely 1–6 min | 13:18:23 About 2 min\nLikely 1–5 min | 13:18:53 About 2 min\nLikely 1–4 min | 13:19:23 About 1 min\nLikely <1–3 min | 13:19:58 About 1 min\nLikely <1–2 min | 13:20:08 About <1 min\nLikely <1–2 min | 13:20:23 About <1 min\nLikely <1–1 min"
+   }
+  ]
+ },
+ "holdout": {
+  "all": {
+   "waits": 43,
+   "arrived": 40,
+   "gaveUp": 0,
+   "dataEnded": 0,
+   "boardedOnArrival": 3,
+   "scored": 40,
+   "medianWaitMin": 8.2,
+   "p90WaitMin": 13.3,
+   "firstSight": {
+    "medianAbsSec": 0,
+    "p90AbsSec": 107.5,
+    "earlyOver60Pct": 7.5,
+    "lateOver60Pct": 5
+   },
+   "interval": {
+    "n": 40,
+    "insidePct": 70,
+    "earlyPct": 15,
+    "latePct": 15,
+    "medianWidthSec": 661
+   },
+   "pctJump180": 30,
+   "pctJump300": 17.5,
+   "pctReversal60": 22.5,
+   "pctStrand": 12.5,
+   "pctUnattributedStrand": 0,
+   "pctOvershoot": 30,
+   "pctPinChanged": 22.5,
+   "pctPinRight": 92.5,
+   "pctVanished": 0,
+   "pctLapRepriced": 2.5,
+   "pctNeverShown": 0,
+   "pctDropped": 10,
+   "drops": 4,
+   "dropsDeclined": 0,
+   "dropsRepriced": 4,
+   "worstDrift": {
+    "p50": 7.5,
+    "p90": 590,
+    "max": 650
+   }
+  },
+  "byRoute": {
+   "Green": {
+    "waits": 21,
+    "arrived": 19,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 2,
+    "scored": 19,
+    "medianWaitMin": 10.6,
+    "p90WaitMin": 11.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 10,
+     "earlyOver60Pct": 0,
+     "lateOver60Pct": 5.3
+    },
+    "interval": {
+     "n": 19,
+     "insidePct": 73.7,
+     "earlyPct": 0,
+     "latePct": 26.3,
+     "medianWidthSec": 516
+    },
+    "pctJump180": 5.3,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 15.8,
+    "pctPinChanged": 5.3,
+    "pctPinRight": 100,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 170,
+     "max": 230
+    }
+   },
+   "Purple": {
+    "waits": 22,
+    "arrived": 21,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 1,
+    "scored": 21,
+    "medianWaitMin": 5.8,
+    "p90WaitMin": 17.8,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 130,
+     "earlyOver60Pct": 14.3,
+     "lateOver60Pct": 4.8
+    },
+    "interval": {
+     "n": 21,
+     "insidePct": 66.7,
+     "earlyPct": 28.6,
+     "latePct": 4.8,
+     "medianWidthSec": 740
+    },
+    "pctJump180": 52.4,
+    "pctJump300": 33.3,
+    "pctReversal60": 42.9,
+    "pctStrand": 23.8,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 42.9,
+    "pctPinChanged": 38.1,
+    "pctPinRight": 85.7,
+    "pctVanished": 0,
+    "pctLapRepriced": 4.8,
+    "pctNeverShown": 0,
+    "pctDropped": 19,
+    "drops": 4,
+    "dropsDeclined": 0,
+    "dropsRepriced": 4,
+    "worstDrift": {
+     "p50": 220,
+     "p90": 590,
+     "max": 650
+    }
+   }
+  },
+  "worstStops": [],
+  "worstWaits": [
+   {
+    "id": "Purple|127|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 127,
+    "worstDriftSec": 650,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 14 min\nLikely 10–22 min | 13:00:43 About 14 min\nLikely 10–23 min | 13:01:13 About 14 min\nLikely 10–40 min | 13:01:23 About 25 min\nLikely 16–38 min | 13:01:38 About 26 min\nLikely 16–40 min | 13:01:48 About 26 min\nLikely 16–41 min | 13:01:58 About 26 min\nLikely 15–41 min | 13:02:03 About 26 min\nLikely 15–42 min | 13:02:08 About 25 min\nLikely 16–38 min | 13:02:18 About 25 min\nLikely 15–37 min | 13:02:28 About 24 min\nLikely 15–37 min | 13:03:08 About 24 min\nLikely 15–36 min | 13:03:18 About 12 min\nLikely 8–20 min | 13:03:43 About 12 min\nLikely 8–19 min | 13:03:58 About 12 min\nLikely 7–19 min | 13:04:03 About 11 min\nLikely 7–19 min | 13:04:28 About 11 min\nLikely 8–19 min | 13:04:33 About 11 min\nLikely 7–19 min | 13:05:28 About 10 min\nLikely 7–19 min | 13:06:08 About 10 min\nLikely 6–17 min | 13:06:18 About 10 min\nLikely 7–18 min | 13:06:23 About 10 min\nLikely 6–17 min | 13:06:43 About 10 min\nLikely 6–18 min | 13:06:58 About 10 min\nLikely 7–18 min | 13:07:13 About 10 min\nLikely 6–18 min | 13:07:53 About 10 min\nLikely 6–17 min | 13:08:08 About 10 min\nLikely 6–18 min | 13:08:13 About 9 min\nLikely 6–17 min | 13:08:58 About 9 min\nLikely 5–17 min | 13:09:38 About 9 min\nLikely 5–16 min | 13:09:58 About 8 min\nLikely 5–16 min | 13:10:03 About 8 min\nLikely 5–15 min | 13:10:38 About 7 min\nLikely 4–14 min | 13:11:03 About 7 min\nLikely 4–13 min | 13:11:28 About 6 min\nLikely 4–12 min | 13:11:48 About 6 min\nLikely 3–11 min | 13:11:58 At your stop | 13:12:13 About 5 min\nLikely 3–10 min | 13:12:43 About 5 min\nLikely 3–9 min | 13:12:53 About 4 min\nLikely 2–9 min | 13:13:28 About 4 min\nLikely 2–8 min | 13:13:58 About 3 min\nLikely 2–7 min | 13:14:13 About 3 min\nLikely 1–7 min | 13:14:23 About 3 min\nLikely 1–6 min | 13:14:43 About 2 min\nLikely 1–6 min | 13:14:48 About 2 min\nLikely 1–5 min | 13:15:03 About 2 min\nLikely 1–4 min | 13:15:23 About 1 min\nLikely 1–4 min | 13:15:28 About 1 min\nLikely 1–3 min | 13:16:08 About 1 min\nLikely <1–2 min | 13:16:28 About <1 min\nLikely <1–2 min | 13:16:58 About <1 min\nLikely <1–1 min | 13:17:48 At your stop"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 590,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 2 min\nLikely <1–6 min | 13:01:13 About 2 min\nLikely <1–31 min | 13:01:23 About 12 min\nLikely 6–23 min | 13:01:33 About 12 min\nLikely 6–24 min | 13:01:38 About 14 min\nLikely 6–25 min | 13:01:48 About 14 min\nLikely 5–26 min | 13:01:58 About 14 min\nLikely 4–25 min | 13:02:03 About 14 min\nLikely 4–26 min | 13:02:08 About 12 min\nLikely 6–23 min | 13:02:28 About 11 min\nLikely 5–22 min | 13:03:18 About <1 min\nLikely <1–2 min | 13:03:28 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 590,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 3 min\nLikely 1–7 min | 13:00:08 About 3 min\nLikely 1–8 min | 13:00:43 About 3 min\nLikely 1–7 min | 13:00:58 About 3 min\nLikely 1–8 min | 13:01:13 About 3 min\nLikely 1–33 min | 13:01:23 About 13 min\nLikely 7–24 min | 13:01:33 About 13 min\nLikely 7–25 min | 13:01:38 About 15 min\nLikely 7–27 min | 13:01:48 About 15 min\nLikely 6–27 min | 13:01:58 About 15 min\nLikely 6–28 min | 13:02:03 About 15 min\nLikely 5–27 min | 13:02:08 About 13 min\nLikely 7–24 min | 13:02:28 About 12 min\nLikely 6–24 min | 13:03:18 About 1 min\nLikely <1–4 min | 13:03:28 About 1 min\nLikely <1–3 min | 13:04:03 About <1 min\nLikely <1–2 min | 13:04:28 About 1 min\nLikely <1–2 min | 13:04:53 About <1 min\nLikely <1–2 min | 13:05:08 About <1 min\nLikely <1–1 min | 13:05:43 At your stop"
+   },
+   {
+    "id": "Purple|26|2026-09-10T13:00:03.117Z",
+    "label": "Purple",
+    "stopId": 26,
+    "worstDriftSec": 590,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:00:03 About 19 min\nLikely 14–27 min | 13:01:13 About 19 min\nLikely 14–44 min | 13:01:23 About 29 min\nLikely 21–41 min | 13:01:33 About 29 min\nLikely 21–42 min | 13:01:38 About 31 min\nLikely 22–42 min | 13:01:58 About 31 min\nLikely 21–43 min | 13:02:08 About 29 min\nLikely 21–41 min | 13:02:18 About 29 min\nLikely 20–41 min | 13:02:38 About 28 min\nLikely 20–41 min | 13:03:08 About 28 min\nLikely 19–41 min | 13:03:18 About 17 min\nLikely 12–24 min | 13:03:38 About 16 min\nLikely 11–24 min | 13:04:03 About 16 min\nLikely 11–23 min | 13:04:58 About 15 min\nLikely 11–23 min | 13:06:08 About 14 min\nLikely 10–22 min | 13:06:18 About 15 min\nLikely 11–22 min | 13:06:23 About 14 min\nLikely 10–22 min | 13:06:28 About 14 min\nLikely 10–21 min | 13:06:38 About 14 min\nLikely 10–22 min | 13:06:53 About 15 min\nLikely 10–23 min | 13:06:58 About 15 min\nLikely 10–22 min | 13:07:08 About 15 min\nLikely 11–23 min | 13:07:53 At your stop"
+   },
+   {
+    "id": "Purple|1|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 1,
+    "worstDriftSec": 590,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely 3–10 min | 13:30:13 About 5 min\nLikely 3–14 min | 13:30:23 About 7 min\nLikely 3–17 min | 13:30:28 About 7 min\nLikely <1–16 min | 13:30:38 About 7 min\nLikely <1–14 min | 13:30:48 About 7 min\nLikely 1–14 min | 13:31:23 About 5 min\nLikely 2–9 min | 13:32:03 About 4 min\nLikely 2–9 min | 13:32:13 About 4 min\nLikely 2–8 min | 13:32:33 About 4 min\nLikely 1–8 min | 13:32:48 About 3 min\nLikely 1–7 min | 13:32:58 About 3 min\nLikely <1–7 min | 13:33:13 About 2 min\nLikely <1–7 min | 13:33:18 About 2 min\nLikely <1–6 min | 13:34:08 About 2 min\nLikely <1–30 min | 13:34:18 About 2 min\nLikely <1–31 min | 13:34:28 About 12 min\nLikely 6–23 min | 13:35:23 About 11 min\nLikely 5–23 min | 13:35:33 About 11 min\nLikely 5–22 min | 13:36:28 About <1 min\nLikely <1–2 min | 13:36:43 About <1 min\nLikely <1–1 min"
+   },
+   {
+    "id": "Purple|122|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 122,
+    "worstDriftSec": 550,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely 3–12 min | 13:30:13 About 6 min\nLikely 3–15 min | 13:30:23 About 8 min\nLikely 3–19 min | 13:30:28 About 8 min\nLikely 2–17 min | 13:30:38 About 8 min\nLikely 1–16 min | 13:30:48 About 8 min\nLikely 2–15 min | 13:31:23 About 6 min\nLikely 3–10 min | 13:32:13 About 5 min\nLikely 3–10 min | 13:32:33 About 5 min\nLikely 2–9 min | 13:32:58 About 5 min\nLikely 1–9 min | 13:33:13 About 4 min\nLikely 1–8 min | 13:33:18 About 3 min\nLikely 1–7 min | 13:33:28 About 3 min\nLikely 1–8 min | 13:34:08 About 3 min\nLikely 1–31 min | 13:34:18 About 3 min\nLikely 1–33 min | 13:34:28 About 13 min\nLikely 7–24 min | 13:35:23 About 13 min\nLikely 6–24 min | 13:35:38 About 12 min\nLikely 6–24 min | 13:35:48 About 12 min\nLikely 6–23 min | 13:36:28 About 2 min\nLikely <1–4 min | 13:36:33 About 1 min\nLikely <1–4 min | 13:36:43 About 1 min\nLikely <1–3 min | 13:37:08 About 1 min\nLikely <1–2 min | 13:37:28 About <1 min\nLikely <1–2 min | 13:37:48 About <1 min\nLikely <1–1 min | 13:38:33 At your stop"
+   },
+   {
+    "id": "Purple|72|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 72,
+    "worstDriftSec": 355,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 34 min\nLikely 21–54 min | 13:30:23 About 34 min\nLikely 22–54 min | 13:30:58 About 34 min\nLikely 19–54 min | 13:31:03 About 36 min\nLikely 23–56 min | 13:31:13 About 34 min\nLikely 20–54 min | 13:31:23 About 34 min\nLikely 15–53 min | 13:31:28 About 27 min\nLikely 14–43 min | 13:31:33 About 27 min\nLikely 14–44 min | 13:31:43 About 27 min\nLikely 14–43 min | 13:32:03 About 26 min\nLikely 14–43 min | 13:32:13 About 26 min\nLikely 13–43 min | 13:32:33 About 26 min\nLikely 14–43 min | 13:32:38 About 26 min\nLikely 13–43 min | 13:32:48 About 26 min\nLikely 13–42 min | 13:33:13 About 25 min\nLikely 13–42 min | 13:33:28 About 25 min\nLikely 12–42 min | 13:33:38 About 25 min\nLikely 12–41 min | 13:33:48 About 24 min\nLikely 12–40 min | 13:33:58 About 24 min\nLikely 12–41 min | 13:34:08 About 25 min\nLikely 12–41 min | 13:34:28 About <1 min\nLikely <1–1 min | 13:34:38 About <1 min | 13:35:18 At your stop | 13:35:23 About 25 min\nLikely 11–45 min | 13:35:33 About 25 min\nLikely 11–46 min | 13:35:58 About 26 min\nLikely 13–44 min | 13:36:08 About 25 min\nLikely 12–42 min | 13:36:13 About 24 min\nLikely 12–40 min | 13:36:58 About 23 min\nLikely 11–40 min | 13:37:18 About 23 min\nLikely 11–39 min | 13:37:33 About 22 min\nLikely 10–39 min | 13:37:53 About 21 min\nLikely 10–38 min | 13:38:03 About 21 min\nLikely 9–38 min | 13:38:23 About 21 min\nLikely 9–37 min | 13:38:33 About 21 min\nLikely 8–37 min | 13:38:38 About 20 min\nLikely 8–36 min | 13:39:03 About 19 min\nLikely 8–36 min | 13:39:18 About 19 min\nLikely 7–36 min | 13:39:43 About 18 min\nLikely 7–35 min | 13:39:58 About 18 min\nLikely 6–34 min | 13:41:25 About 17 min\nLikely 6–33 min | 13:41:45 About 17 min\nLikely 6–32 min | 13:42:40 About 16 min\nLikely 6–31 min | 13:43:05 About 16 min\nLikely 6–30 min | 13:43:15 About 15 min\nLikely 5–29 min | 13:43:25 About 15 min\nLikely 5–28 min | 13:43:35 About 14 min\nLikely 5–27 min | 13:43:45 About 13 min\nLikely 5–26 min | 13:43:55 About 13 min\nLikely 5–25 min | 13:44:05 About 12 min\nLikely 4–24 min | 13:44:25 About 12 min\nLikely 4–23 min | 13:44:35 About 11 min\nLikely 4–22 min | 13:44:45 About 11 min\nLikely 4–21 min | 13:44:55 About 10 min\nLikely 4–20 min | 13:45:00 About 10 min\nLikely 3–20 min | 13:45:10 About 9 min\nLikely 3–20 min | 13:45:16 About 9 min\nLikely 2–19 min | 13:45:26 About 9 min\nLikely 2–18 min | 13:45:31 About 8 min\nLikely 2–18 min | 13:45:41 About 8 min\nLikely 2–17 min | 13:45:51 About 7 min\nLikely 2–16 min | 13:46:06 About 7 min\nLikely 2–15 min | 13:46:11 About 6 min\nLikely 1–14 min | 13:46:26 About 6 min\nLikely 1–13 min | 13:46:36 About 5 min\nLikely 1–12 min | 13:46:41 About 5 min\nLikely 1–11 min | 13:46:56 About 4 min\nLikely 1–10 min | 13:47:01 About 4 min\nLikely <1–10 min | 13:47:06 About 4 min\nLikely <1–9 min | 13:47:16 About 3 min\nLikely <1–9 min | 13:47:26 About 3 min\nLikely <1–8 min | 13:47:36 About 3 min\nLikely <1–7 min | 13:47:41 About 2 min\nLikely <1–7 min | 13:47:46 About 2 min\nLikely <1–6 min | 13:47:56 About 2 min\nLikely <1–5 min | 13:48:06 About 1 min\nLikely <1–4 min | 13:48:16 About 1 min\nLikely <1–3 min | 13:49:11 About 1 min\nLikely <1–2 min | 13:49:26 About <1 min\nLikely <1–2 min | 13:49:56 About <1 min\nLikely <1–1 min | 13:51:06 At your stop"
+   },
+   {
+    "id": "Purple|25|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 25,
+    "worstDriftSec": 295,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 6 min\nLikely <1–28 min | 13:30:23 About 6 min\nLikely <1–29 min | 13:30:58 About 6 min\nLikely <1–27 min | 13:31:03 About 8 min\nLikely 1–27 min | 13:31:13 About 6 min\nLikely <1–27 min | 13:31:23 About 6 min\nLikely <1–29 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:32:18 About <1 min\nLikely <1–74 min"
+   },
+   {
+    "id": "Purple|10|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 10,
+    "worstDriftSec": 295,
+    "strand": false,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 35 min\nLikely 23–55 min | 13:30:23 About <1 min | 13:31:23 About 35 min\nLikely 17–56 min | 13:31:28 About 29 min\nLikely 16–44 min | 13:31:33 About 29 min\nLikely 16–45 min | 13:31:43 About 28 min\nLikely 16–44 min | 13:32:38 About 27 min\nLikely 15–43 min | 13:33:28 About 26 min\nLikely 14–43 min | 13:33:38 About 26 min\nLikely 14–42 min | 13:34:28 About 1 min\nLikely <1–3 min | 13:35:23 About 1 min\nLikely <1–2 min | 13:35:33 About <1 min\nLikely <1–2 min | 13:35:48 About <1 min\nLikely <1–1 min | 13:36:08 About <1 min\nLikely <1–76 min | 13:36:13 About <1 min\nLikely <1–77 min | 13:36:18 About <1 min\nLikely <1–78 min | 13:36:28 About 26 min\nLikely 14–41 min | 13:36:43 About 25 min\nLikely 14–41 min | 13:36:48 About 25 min\nLikely 13–41 min | 13:36:58 About 25 min\nLikely 13–40 min | 13:37:18 About 24 min\nLikely 13–40 min | 13:37:28 About 24 min\nLikely 12–40 min | 13:37:43 About 23 min\nLikely 12–39 min | 13:38:03 About 23 min\nLikely 11–39 min | 13:38:18 About 22 min\nLikely 11–39 min | 13:38:23 About 22 min\nLikely 11–38 min | 13:38:33 About 22 min\nLikely 10–38 min | 13:38:38 About 21 min\nLikely 10–37 min | 13:39:03 About 21 min\nLikely 9–37 min | 13:39:08 About 21 min\nLikely 9–36 min | 13:39:23 About 20 min\nLikely 9–36 min | 13:39:33 About 20 min\nLikely 8–36 min | 13:39:38 About 20 min\nLikely 8–37 min | 13:39:48 About 20 min\nLikely 8–36 min | 13:40:15 About 20 min\nLikely 8–35 min | 13:40:45 About 19 min\nLikely 8–35 min | 13:41:25 About 19 min\nLikely 8–34 min | 13:41:45 About 18 min\nLikely 8–33 min | 13:41:55 About 18 min\nLikely 7–33 min | 13:42:45 About 18 min\nLikely 7–32 min | 13:42:55 About 17 min\nLikely 7–32 min | 13:43:05 About 17 min\nLikely 7–31 min | 13:43:15 About 16 min\nLikely 7–30 min | 13:43:25 About 16 min\nLikely 7–29 min | 13:43:35 About 15 min\nLikely 6–28 min | 13:43:45 About 15 min\nLikely 6–27 min | 13:43:55 About 14 min\nLikely 6–27 min | 13:44:00 About 14 min\nLikely 6–26 min | 13:44:15 About 13 min\nLikely 6–25 min | 13:44:25 About 13 min\nLikely 5–24 min | 13:44:35 About 12 min\nLikely 5–23 min | 13:44:55 About 12 min\nLikely 5–22 min | 13:45:00 About 11 min\nLikely 5–21 min | 13:45:10 About 11 min\nLikely 5–20 min | 13:45:16 About 10 min\nLikely 5–20 min | 13:45:26 About 10 min\nLikely 4–19 min | 13:45:41 About 9 min\nLikely 3–18 min | 13:45:51 About 9 min\nLikely 3–17 min | 13:46:06 About 8 min\nLikely 3–16 min | 13:46:11 About 8 min\nLikely 3–15 min | 13:46:16 About 7 min\nLikely 3–15 min | 13:46:26 About 7 min\nLikely 3–14 min | 13:46:36 About 6 min\nLikely 3–13 min | 13:46:41 About 6 min\nLikely 2–12 min | 13:46:56 About 6 min\nLikely 2–11 min | 13:47:01 About 5 min\nLikely 2–10 min | 13:47:16 About 5 min\nLikely 2–9 min | 13:47:26 About 4 min\nLikely 1–9 min | 13:47:36 About 4 min\nLikely 1–8 min | 13:47:56 About 3 min\nLikely 1–7 min | 13:48:06 About 3 min\nLikely 1–6 min | 13:48:16 About 2 min\nLikely 1–5 min | 13:49:26 About 2 min\nLikely 1–4 min | 13:49:56 About 1 min\nLikely 1–4 min | 13:50:06 About 1 min\nLikely 1–3 min | 13:51:06 About 1 min\nLikely <1–3 min | 13:51:46 About 1 min\nLikely <1–2 min | 13:51:51 About <1 min\nLikely <1–2 min | 13:52:06 About <1 min\nLikely <1–1 min | 13:52:26 About <1 min | 13:52:46 At your stop"
+   },
+   {
+    "id": "Purple|24|2026-09-10T13:30:03.345Z",
+    "label": "Purple",
+    "stopId": 24,
+    "worstDriftSec": 235,
+    "strand": true,
+    "outcome": "arrived",
+    "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min"
+   }
+  ]
+ },
+ "chain": null,
+ "bySource": {
+  "uniform": {
+   "all": {
+    "waits": 150,
+    "arrived": 141,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 9,
+    "scored": 141,
+    "medianWaitMin": 9.2,
+    "p90WaitMin": 18.9,
+    "firstSight": {
+     "medianAbsSec": 0,
+     "p90AbsSec": 173,
+     "earlyOver60Pct": 2.8,
+     "lateOver60Pct": 14.2
+    },
+    "interval": {
+     "n": 141,
+     "insidePct": 68.1,
+     "earlyPct": 5,
+     "latePct": 27,
+     "medianWidthSec": 386
+    },
+    "pctJump180": 8.5,
+    "pctJump300": 5,
+    "pctReversal60": 6.4,
+    "pctStrand": 3.5,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 8.5,
+    "pctPinChanged": 9.2,
+    "pctPinRight": 97.2,
+    "pctVanished": 0,
+    "pctLapRepriced": 0.7,
+    "pctNeverShown": 0,
+    "pctDropped": 5.7,
+    "drops": 11,
+    "dropsDeclined": 0,
+    "dropsRepriced": 11,
+    "worstDrift": {
+     "p50": 0,
+     "p90": 110,
+     "max": 650
+    }
+   },
+   "byRoute": {
+    "Blue Day": {
+     "waits": 56,
+     "arrived": 53,
+     "gaveUp": 0,
+     "dataEnded": 0,
+     "boardedOnArrival": 3,
+     "scored": 53,
+     "medianWaitMin": 10.1,
+     "p90WaitMin": 17.6,
+     "firstSight": {
+      "medianAbsSec": 0,
+      "p90AbsSec": 271.6,
+      "earlyOver60Pct": 1.9,
+      "lateOver60Pct": 32.1
+     },
+     "interval": {
+      "n": 53,
+      "insidePct": 49.1,
+      "earlyPct": 1.9,
+      "latePct": 49.1,
+      "medianWidthSec": 334
+     },
+     "pctJump180": 0,
+     "pctJump300": 0,
+     "pctReversal60": 0,
+     "pctStrand": 0,
+     "pctUnattributedStrand": 0,
+     "pctOvershoot": 0,
+     "pctPinChanged": 7.5,
+     "pctPinRight": 98.1,
+     "pctVanished": 0,
+     "pctLapRepriced": 0,
+     "pctNeverShown": 0,
+     "pctDropped": 7.5,
+     "drops": 7,
+     "dropsDeclined": 0,
+     "dropsRepriced": 7,
+     "worstDrift": {
+      "p50": 0,
+      "p90": 10,
+      "max": 55
+     }
+    },
+    "Green": {
+     "waits": 21,
+     "arrived": 19,
+     "gaveUp": 0,
+     "dataEnded": 0,
+     "boardedOnArrival": 2,
+     "scored": 19,
+     "medianWaitMin": 10.6,
+     "p90WaitMin": 11.8,
+     "firstSight": {
+      "medianAbsSec": 0,
+      "p90AbsSec": 10,
+      "earlyOver60Pct": 0,
+      "lateOver60Pct": 5.3
+     },
+     "interval": {
+      "n": 19,
+      "insidePct": 73.7,
+      "earlyPct": 0,
+      "latePct": 26.3,
+      "medianWidthSec": 516
+     },
+     "pctJump180": 5.3,
+     "pctJump300": 0,
+     "pctReversal60": 0,
+     "pctStrand": 0,
+     "pctUnattributedStrand": 0,
+     "pctOvershoot": 15.8,
+     "pctPinChanged": 5.3,
+     "pctPinRight": 100,
+     "pctVanished": 0,
+     "pctLapRepriced": 0,
+     "pctNeverShown": 0,
+     "pctDropped": 0,
+     "drops": 0,
+     "dropsDeclined": 0,
+     "dropsRepriced": 0,
+     "worstDrift": {
+      "p50": 0,
+      "p90": 170,
+      "max": 230
+     }
+    },
+    "Purple": {
+     "waits": 22,
+     "arrived": 21,
+     "gaveUp": 0,
+     "dataEnded": 0,
+     "boardedOnArrival": 1,
+     "scored": 21,
+     "medianWaitMin": 5.8,
+     "p90WaitMin": 17.8,
+     "firstSight": {
+      "medianAbsSec": 0,
+      "p90AbsSec": 130,
+      "earlyOver60Pct": 14.3,
+      "lateOver60Pct": 4.8
+     },
+     "interval": {
+      "n": 21,
+      "insidePct": 66.7,
+      "earlyPct": 28.6,
+      "latePct": 4.8,
+      "medianWidthSec": 740
+     },
+     "pctJump180": 52.4,
+     "pctJump300": 33.3,
+     "pctReversal60": 42.9,
+     "pctStrand": 23.8,
+     "pctUnattributedStrand": 0,
+     "pctOvershoot": 42.9,
+     "pctPinChanged": 38.1,
+     "pctPinRight": 85.7,
+     "pctVanished": 0,
+     "pctLapRepriced": 4.8,
+     "pctNeverShown": 0,
+     "pctDropped": 19,
+     "drops": 4,
+     "dropsDeclined": 0,
+     "dropsRepriced": 4,
+     "worstDrift": {
+      "p50": 220,
+      "p90": 590,
+      "max": 650
+     }
+    },
+    "Red": {
+     "waits": 51,
+     "arrived": 48,
+     "gaveUp": 0,
+     "dataEnded": 0,
+     "boardedOnArrival": 3,
+     "scored": 48,
+     "medianWaitMin": 9.5,
+     "p90WaitMin": 20.9,
+     "firstSight": {
+      "medianAbsSec": 0,
+      "p90AbsSec": 0,
+      "earlyOver60Pct": 0,
+      "lateOver60Pct": 2.1
+     },
+     "interval": {
+      "n": 48,
+      "insidePct": 87.5,
+      "earlyPct": 0,
+      "latePct": 12.5,
+      "medianWidthSec": 431.5
+     },
+     "pctJump180": 0,
+     "pctJump300": 0,
+     "pctReversal60": 0,
+     "pctStrand": 0,
+     "pctUnattributedStrand": 0,
+     "pctOvershoot": 0,
+     "pctPinChanged": 0,
+     "pctPinRight": 100,
+     "pctVanished": 0,
+     "pctLapRepriced": 0,
+     "pctNeverShown": 0,
+     "pctDropped": 0,
+     "drops": 0,
+     "dropsDeclined": 0,
+     "dropsRepriced": 0,
+     "worstDrift": {
+      "p50": 7.5,
+      "p90": 55,
+      "max": 55
+     }
+    }
+   },
+   "worstStops": [],
+   "worstWaits": [
+    {
+     "id": "Purple|127|2026-09-10T13:00:03.117Z",
+     "label": "Purple",
+     "stopId": 127,
+     "worstDriftSec": 650,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:00:03 About 14 min\nLikely 10–22 min | 13:00:43 About 14 min\nLikely 10–23 min | 13:01:13 About 14 min\nLikely 10–40 min | 13:01:23 About 25 min\nLikely 16–38 min | 13:01:38 About 26 min\nLikely 16–40 min | 13:01:48 About 26 min\nLikely 16–41 min | 13:01:58 About 26 min\nLikely 15–41 min | 13:02:03 About 26 min\nLikely 15–42 min | 13:02:08 About 25 min\nLikely 16–38 min | 13:02:18 About 25 min\nLikely 15–37 min | 13:02:28 About 24 min\nLikely 15–37 min | 13:03:08 About 24 min\nLikely 15–36 min | 13:03:18 About 12 min\nLikely 8–20 min | 13:03:43 About 12 min\nLikely 8–19 min | 13:03:58 About 12 min\nLikely 7–19 min | 13:04:03 About 11 min\nLikely 7–19 min | 13:04:28 About 11 min\nLikely 8–19 min | 13:04:33 About 11 min\nLikely 7–19 min | 13:05:28 About 10 min\nLikely 7–19 min | 13:06:08 About 10 min\nLikely 6–17 min | 13:06:18 About 10 min\nLikely 7–18 min | 13:06:23 About 10 min\nLikely 6–17 min | 13:06:43 About 10 min\nLikely 6–18 min | 13:06:58 About 10 min\nLikely 7–18 min | 13:07:13 About 10 min\nLikely 6–18 min | 13:07:53 About 10 min\nLikely 6–17 min | 13:08:08 About 10 min\nLikely 6–18 min | 13:08:13 About 9 min\nLikely 6–17 min | 13:08:58 About 9 min\nLikely 5–17 min | 13:09:38 About 9 min\nLikely 5–16 min | 13:09:58 About 8 min\nLikely 5–16 min | 13:10:03 About 8 min\nLikely 5–15 min | 13:10:38 About 7 min\nLikely 4–14 min | 13:11:03 About 7 min\nLikely 4–13 min | 13:11:28 About 6 min\nLikely 4–12 min | 13:11:48 About 6 min\nLikely 3–11 min | 13:11:58 At your stop | 13:12:13 About 5 min\nLikely 3–10 min | 13:12:43 About 5 min\nLikely 3–9 min | 13:12:53 About 4 min\nLikely 2–9 min | 13:13:28 About 4 min\nLikely 2–8 min | 13:13:58 About 3 min\nLikely 2–7 min | 13:14:13 About 3 min\nLikely 1–7 min | 13:14:23 About 3 min\nLikely 1–6 min | 13:14:43 About 2 min\nLikely 1–6 min | 13:14:48 About 2 min\nLikely 1–5 min | 13:15:03 About 2 min\nLikely 1–4 min | 13:15:23 About 1 min\nLikely 1–4 min | 13:15:28 About 1 min\nLikely 1–3 min | 13:16:08 About 1 min\nLikely <1–2 min | 13:16:28 About <1 min\nLikely <1–2 min | 13:16:58 About <1 min\nLikely <1–1 min | 13:17:48 At your stop"
+    },
+    {
+     "id": "Purple|1|2026-09-10T13:00:03.117Z",
+     "label": "Purple",
+     "stopId": 1,
+     "worstDriftSec": 590,
+     "strand": true,
+     "outcome": "arrived",
+     "sequence": "13:00:03 About 2 min\nLikely <1–6 min | 13:01:13 About 2 min\nLikely <1–31 min | 13:01:23 About 12 min\nLikely 6–23 min | 13:01:33 About 12 min\nLikely 6–24 min | 13:01:38 About 14 min\nLikely 6–25 min | 13:01:48 About 14 min\nLikely 5–26 min | 13:01:58 About 14 min\nLikely 4–25 min | 13:02:03 About 14 min\nLikely 4–26 min | 13:02:08 About 12 min\nLikely 6–23 min | 13:02:28 About 11 min\nLikely 5–22 min | 13:03:18 About <1 min\nLikely <1–2 min | 13:03:28 About <1 min\nLikely <1–1 min"
+    },
+    {
+     "id": "Purple|122|2026-09-10T13:00:03.117Z",
+     "label": "Purple",
+     "stopId": 122,
+     "worstDriftSec": 590,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:00:03 About 3 min\nLikely 1–7 min | 13:00:08 About 3 min\nLikely 1–8 min | 13:00:43 About 3 min\nLikely 1–7 min | 13:00:58 About 3 min\nLikely 1–8 min | 13:01:13 About 3 min\nLikely 1–33 min | 13:01:23 About 13 min\nLikely 7–24 min | 13:01:33 About 13 min\nLikely 7–25 min | 13:01:38 About 15 min\nLikely 7–27 min | 13:01:48 About 15 min\nLikely 6–27 min | 13:01:58 About 15 min\nLikely 6–28 min | 13:02:03 About 15 min\nLikely 5–27 min | 13:02:08 About 13 min\nLikely 7–24 min | 13:02:28 About 12 min\nLikely 6–24 min | 13:03:18 About 1 min\nLikely <1–4 min | 13:03:28 About 1 min\nLikely <1–3 min | 13:04:03 About <1 min\nLikely <1–2 min | 13:04:28 About 1 min\nLikely <1–2 min | 13:04:53 About <1 min\nLikely <1–2 min | 13:05:08 About <1 min\nLikely <1–1 min | 13:05:43 At your stop"
+    },
+    {
+     "id": "Purple|26|2026-09-10T13:00:03.117Z",
+     "label": "Purple",
+     "stopId": 26,
+     "worstDriftSec": 590,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:00:03 About 19 min\nLikely 14–27 min | 13:01:13 About 19 min\nLikely 14–44 min | 13:01:23 About 29 min\nLikely 21–41 min | 13:01:33 About 29 min\nLikely 21–42 min | 13:01:38 About 31 min\nLikely 22–42 min | 13:01:58 About 31 min\nLikely 21–43 min | 13:02:08 About 29 min\nLikely 21–41 min | 13:02:18 About 29 min\nLikely 20–41 min | 13:02:38 About 28 min\nLikely 20–41 min | 13:03:08 About 28 min\nLikely 19–41 min | 13:03:18 About 17 min\nLikely 12–24 min | 13:03:38 About 16 min\nLikely 11–24 min | 13:04:03 About 16 min\nLikely 11–23 min | 13:04:58 About 15 min\nLikely 11–23 min | 13:06:08 About 14 min\nLikely 10–22 min | 13:06:18 About 15 min\nLikely 11–22 min | 13:06:23 About 14 min\nLikely 10–22 min | 13:06:28 About 14 min\nLikely 10–21 min | 13:06:38 About 14 min\nLikely 10–22 min | 13:06:53 About 15 min\nLikely 10–23 min | 13:06:58 About 15 min\nLikely 10–22 min | 13:07:08 About 15 min\nLikely 11–23 min | 13:07:53 At your stop"
+    },
+    {
+     "id": "Purple|1|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 1,
+     "worstDriftSec": 590,
+     "strand": true,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 5 min\nLikely 3–10 min | 13:30:13 About 5 min\nLikely 3–14 min | 13:30:23 About 7 min\nLikely 3–17 min | 13:30:28 About 7 min\nLikely <1–16 min | 13:30:38 About 7 min\nLikely <1–14 min | 13:30:48 About 7 min\nLikely 1–14 min | 13:31:23 About 5 min\nLikely 2–9 min | 13:32:03 About 4 min\nLikely 2–9 min | 13:32:13 About 4 min\nLikely 2–8 min | 13:32:33 About 4 min\nLikely 1–8 min | 13:32:48 About 3 min\nLikely 1–7 min | 13:32:58 About 3 min\nLikely <1–7 min | 13:33:13 About 2 min\nLikely <1–7 min | 13:33:18 About 2 min\nLikely <1–6 min | 13:34:08 About 2 min\nLikely <1–30 min | 13:34:18 About 2 min\nLikely <1–31 min | 13:34:28 About 12 min\nLikely 6–23 min | 13:35:23 About 11 min\nLikely 5–23 min | 13:35:33 About 11 min\nLikely 5–22 min | 13:36:28 About <1 min\nLikely <1–2 min | 13:36:43 About <1 min\nLikely <1–1 min"
+    },
+    {
+     "id": "Purple|122|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 122,
+     "worstDriftSec": 550,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 6 min\nLikely 3–12 min | 13:30:13 About 6 min\nLikely 3–15 min | 13:30:23 About 8 min\nLikely 3–19 min | 13:30:28 About 8 min\nLikely 2–17 min | 13:30:38 About 8 min\nLikely 1–16 min | 13:30:48 About 8 min\nLikely 2–15 min | 13:31:23 About 6 min\nLikely 3–10 min | 13:32:13 About 5 min\nLikely 3–10 min | 13:32:33 About 5 min\nLikely 2–9 min | 13:32:58 About 5 min\nLikely 1–9 min | 13:33:13 About 4 min\nLikely 1–8 min | 13:33:18 About 3 min\nLikely 1–7 min | 13:33:28 About 3 min\nLikely 1–8 min | 13:34:08 About 3 min\nLikely 1–31 min | 13:34:18 About 3 min\nLikely 1–33 min | 13:34:28 About 13 min\nLikely 7–24 min | 13:35:23 About 13 min\nLikely 6–24 min | 13:35:38 About 12 min\nLikely 6–24 min | 13:35:48 About 12 min\nLikely 6–23 min | 13:36:28 About 2 min\nLikely <1–4 min | 13:36:33 About 1 min\nLikely <1–4 min | 13:36:43 About 1 min\nLikely <1–3 min | 13:37:08 About 1 min\nLikely <1–2 min | 13:37:28 About <1 min\nLikely <1–2 min | 13:37:48 About <1 min\nLikely <1–1 min | 13:38:33 At your stop"
+    },
+    {
+     "id": "Purple|72|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 72,
+     "worstDriftSec": 355,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 34 min\nLikely 21–54 min | 13:30:23 About 34 min\nLikely 22–54 min | 13:30:58 About 34 min\nLikely 19–54 min | 13:31:03 About 36 min\nLikely 23–56 min | 13:31:13 About 34 min\nLikely 20–54 min | 13:31:23 About 34 min\nLikely 15–53 min | 13:31:28 About 27 min\nLikely 14–43 min | 13:31:33 About 27 min\nLikely 14–44 min | 13:31:43 About 27 min\nLikely 14–43 min | 13:32:03 About 26 min\nLikely 14–43 min | 13:32:13 About 26 min\nLikely 13–43 min | 13:32:33 About 26 min\nLikely 14–43 min | 13:32:38 About 26 min\nLikely 13–43 min | 13:32:48 About 26 min\nLikely 13–42 min | 13:33:13 About 25 min\nLikely 13–42 min | 13:33:28 About 25 min\nLikely 12–42 min | 13:33:38 About 25 min\nLikely 12–41 min | 13:33:48 About 24 min\nLikely 12–40 min | 13:33:58 About 24 min\nLikely 12–41 min | 13:34:08 About 25 min\nLikely 12–41 min | 13:34:28 About <1 min\nLikely <1–1 min | 13:34:38 About <1 min | 13:35:18 At your stop | 13:35:23 About 25 min\nLikely 11–45 min | 13:35:33 About 25 min\nLikely 11–46 min | 13:35:58 About 26 min\nLikely 13–44 min | 13:36:08 About 25 min\nLikely 12–42 min | 13:36:13 About 24 min\nLikely 12–40 min | 13:36:58 About 23 min\nLikely 11–40 min | 13:37:18 About 23 min\nLikely 11–39 min | 13:37:33 About 22 min\nLikely 10–39 min | 13:37:53 About 21 min\nLikely 10–38 min | 13:38:03 About 21 min\nLikely 9–38 min | 13:38:23 About 21 min\nLikely 9–37 min | 13:38:33 About 21 min\nLikely 8–37 min | 13:38:38 About 20 min\nLikely 8–36 min | 13:39:03 About 19 min\nLikely 8–36 min | 13:39:18 About 19 min\nLikely 7–36 min | 13:39:43 About 18 min\nLikely 7–35 min | 13:39:58 About 18 min\nLikely 6–34 min | 13:41:25 About 17 min\nLikely 6–33 min | 13:41:45 About 17 min\nLikely 6–32 min | 13:42:40 About 16 min\nLikely 6–31 min | 13:43:05 About 16 min\nLikely 6–30 min | 13:43:15 About 15 min\nLikely 5–29 min | 13:43:25 About 15 min\nLikely 5–28 min | 13:43:35 About 14 min\nLikely 5–27 min | 13:43:45 About 13 min\nLikely 5–26 min | 13:43:55 About 13 min\nLikely 5–25 min | 13:44:05 About 12 min\nLikely 4–24 min | 13:44:25 About 12 min\nLikely 4–23 min | 13:44:35 About 11 min\nLikely 4–22 min | 13:44:45 About 11 min\nLikely 4–21 min | 13:44:55 About 10 min\nLikely 4–20 min | 13:45:00 About 10 min\nLikely 3–20 min | 13:45:10 About 9 min\nLikely 3–20 min | 13:45:16 About 9 min\nLikely 2–19 min | 13:45:26 About 9 min\nLikely 2–18 min | 13:45:31 About 8 min\nLikely 2–18 min | 13:45:41 About 8 min\nLikely 2–17 min | 13:45:51 About 7 min\nLikely 2–16 min | 13:46:06 About 7 min\nLikely 2–15 min | 13:46:11 About 6 min\nLikely 1–14 min | 13:46:26 About 6 min\nLikely 1–13 min | 13:46:36 About 5 min\nLikely 1–12 min | 13:46:41 About 5 min\nLikely 1–11 min | 13:46:56 About 4 min\nLikely 1–10 min | 13:47:01 About 4 min\nLikely <1–10 min | 13:47:06 About 4 min\nLikely <1–9 min | 13:47:16 About 3 min\nLikely <1–9 min | 13:47:26 About 3 min\nLikely <1–8 min | 13:47:36 About 3 min\nLikely <1–7 min | 13:47:41 About 2 min\nLikely <1–7 min | 13:47:46 About 2 min\nLikely <1–6 min | 13:47:56 About 2 min\nLikely <1–5 min | 13:48:06 About 1 min\nLikely <1–4 min | 13:48:16 About 1 min\nLikely <1–3 min | 13:49:11 About 1 min\nLikely <1–2 min | 13:49:26 About <1 min\nLikely <1–2 min | 13:49:56 About <1 min\nLikely <1–1 min | 13:51:06 At your stop"
+    },
+    {
+     "id": "Purple|25|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 25,
+     "worstDriftSec": 295,
+     "strand": true,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 6 min\nLikely <1–28 min | 13:30:23 About 6 min\nLikely <1–29 min | 13:30:58 About 6 min\nLikely <1–27 min | 13:31:03 About 8 min\nLikely 1–27 min | 13:31:13 About 6 min\nLikely <1–27 min | 13:31:23 About 6 min\nLikely <1–29 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:32:18 About <1 min\nLikely <1–74 min"
+    },
+    {
+     "id": "Purple|10|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 10,
+     "worstDriftSec": 295,
+     "strand": false,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 35 min\nLikely 23–55 min | 13:30:23 About <1 min | 13:31:23 About 35 min\nLikely 17–56 min | 13:31:28 About 29 min\nLikely 16–44 min | 13:31:33 About 29 min\nLikely 16–45 min | 13:31:43 About 28 min\nLikely 16–44 min | 13:32:38 About 27 min\nLikely 15–43 min | 13:33:28 About 26 min\nLikely 14–43 min | 13:33:38 About 26 min\nLikely 14–42 min | 13:34:28 About 1 min\nLikely <1–3 min | 13:35:23 About 1 min\nLikely <1–2 min | 13:35:33 About <1 min\nLikely <1–2 min | 13:35:48 About <1 min\nLikely <1–1 min | 13:36:08 About <1 min\nLikely <1–76 min | 13:36:13 About <1 min\nLikely <1–77 min | 13:36:18 About <1 min\nLikely <1–78 min | 13:36:28 About 26 min\nLikely 14–41 min | 13:36:43 About 25 min\nLikely 14–41 min | 13:36:48 About 25 min\nLikely 13–41 min | 13:36:58 About 25 min\nLikely 13–40 min | 13:37:18 About 24 min\nLikely 13–40 min | 13:37:28 About 24 min\nLikely 12–40 min | 13:37:43 About 23 min\nLikely 12–39 min | 13:38:03 About 23 min\nLikely 11–39 min | 13:38:18 About 22 min\nLikely 11–39 min | 13:38:23 About 22 min\nLikely 11–38 min | 13:38:33 About 22 min\nLikely 10–38 min | 13:38:38 About 21 min\nLikely 10–37 min | 13:39:03 About 21 min\nLikely 9–37 min | 13:39:08 About 21 min\nLikely 9–36 min | 13:39:23 About 20 min\nLikely 9–36 min | 13:39:33 About 20 min\nLikely 8–36 min | 13:39:38 About 20 min\nLikely 8–37 min | 13:39:48 About 20 min\nLikely 8–36 min | 13:40:15 About 20 min\nLikely 8–35 min | 13:40:45 About 19 min\nLikely 8–35 min | 13:41:25 About 19 min\nLikely 8–34 min | 13:41:45 About 18 min\nLikely 8–33 min | 13:41:55 About 18 min\nLikely 7–33 min | 13:42:45 About 18 min\nLikely 7–32 min | 13:42:55 About 17 min\nLikely 7–32 min | 13:43:05 About 17 min\nLikely 7–31 min | 13:43:15 About 16 min\nLikely 7–30 min | 13:43:25 About 16 min\nLikely 7–29 min | 13:43:35 About 15 min\nLikely 6–28 min | 13:43:45 About 15 min\nLikely 6–27 min | 13:43:55 About 14 min\nLikely 6–27 min | 13:44:00 About 14 min\nLikely 6–26 min | 13:44:15 About 13 min\nLikely 6–25 min | 13:44:25 About 13 min\nLikely 5–24 min | 13:44:35 About 12 min\nLikely 5–23 min | 13:44:55 About 12 min\nLikely 5–22 min | 13:45:00 About 11 min\nLikely 5–21 min | 13:45:10 About 11 min\nLikely 5–20 min | 13:45:16 About 10 min\nLikely 5–20 min | 13:45:26 About 10 min\nLikely 4–19 min | 13:45:41 About 9 min\nLikely 3–18 min | 13:45:51 About 9 min\nLikely 3–17 min | 13:46:06 About 8 min\nLikely 3–16 min | 13:46:11 About 8 min\nLikely 3–15 min | 13:46:16 About 7 min\nLikely 3–15 min | 13:46:26 About 7 min\nLikely 3–14 min | 13:46:36 About 6 min\nLikely 3–13 min | 13:46:41 About 6 min\nLikely 2–12 min | 13:46:56 About 6 min\nLikely 2–11 min | 13:47:01 About 5 min\nLikely 2–10 min | 13:47:16 About 5 min\nLikely 2–9 min | 13:47:26 About 4 min\nLikely 1–9 min | 13:47:36 About 4 min\nLikely 1–8 min | 13:47:56 About 3 min\nLikely 1–7 min | 13:48:06 About 3 min\nLikely 1–6 min | 13:48:16 About 2 min\nLikely 1–5 min | 13:49:26 About 2 min\nLikely 1–4 min | 13:49:56 About 1 min\nLikely 1–4 min | 13:50:06 About 1 min\nLikely 1–3 min | 13:51:06 About 1 min\nLikely <1–3 min | 13:51:46 About 1 min\nLikely <1–2 min | 13:51:51 About <1 min\nLikely <1–2 min | 13:52:06 About <1 min\nLikely <1–1 min | 13:52:26 About <1 min | 13:52:46 At your stop"
+    },
+    {
+     "id": "Purple|24|2026-09-10T13:30:03.345Z",
+     "label": "Purple",
+     "stopId": 24,
+     "worstDriftSec": 235,
+     "strand": true,
+     "outcome": "arrived",
+     "sequence": "13:30:03 About 5 min\nLikely <1–28 min | 13:30:58 About 5 min\nLikely <1–26 min | 13:31:03 About 7 min\nLikely 1–27 min | 13:31:13 About 5 min\nLikely <1–27 min | 13:31:23 About 5 min\nLikely <1–28 min | 13:31:28 About <1 min\nLikely <1–1 min | 13:31:33 About <1 min\nLikely <1–73 min"
+    }
+   ]
+  },
+  "targeted": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  },
+  "chain": {
+   "all": {
+    "waits": 0,
+    "arrived": 0,
+    "gaveUp": 0,
+    "dataEnded": 0,
+    "boardedOnArrival": 0,
+    "scored": 0,
+    "medianWaitMin": null,
+    "p90WaitMin": null,
+    "firstSight": {
+     "medianAbsSec": null,
+     "p90AbsSec": null,
+     "earlyOver60Pct": null,
+     "lateOver60Pct": null
+    },
+    "interval": {
+     "n": 0,
+     "insidePct": null,
+     "earlyPct": null,
+     "latePct": null,
+     "medianWidthSec": null
+    },
+    "pctJump180": 0,
+    "pctJump300": 0,
+    "pctReversal60": 0,
+    "pctStrand": 0,
+    "pctUnattributedStrand": 0,
+    "pctOvershoot": 0,
+    "pctPinChanged": 0,
+    "pctPinRight": null,
+    "pctVanished": 0,
+    "pctLapRepriced": 0,
+    "pctNeverShown": 0,
+    "pctDropped": 0,
+    "drops": 0,
+    "dropsDeclined": 0,
+    "dropsRepriced": 0,
+    "worstDrift": {
+     "p50": null,
+     "p90": null,
+     "max": null
+    }
+   },
+   "byRoute": {},
+   "worstStops": [],
+   "worstWaits": []
+  }
+ },
+ "named": []
+}

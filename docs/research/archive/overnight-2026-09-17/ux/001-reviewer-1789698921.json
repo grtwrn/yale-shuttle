@@ -1,0 +1,32 @@
+{
+  "verdict": "changes_requested",
+  "summary": "Independent tests, typechecks, build and browser checks passed. One rider-facing mismatch needs correction. Evidence: ux/independent-review-round-1.md. Tracked checkout remains unchanged.",
+  "head_sha": "b7c44c0e142d949de47375d9f56741cb404600f5",
+  "base_sha": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "next_task": "Show the supporting route’s window and named trip action alongside buffer/connection advice, preserving ETA math and route ordering. Add rendered regression cases and request fresh independent review.",
+  "blocking_findings": [
+    "P2 — arriveByMessage.ts:28–43 can describe Blue’s buffer or connection while ArriveBy.tsx:71 displays only Red’s late window and a late walk. Blue’s time and action are absent; actual ranking can also hide Blue behind Show more. Reproduced in Chromium for both buffer and connection cases. Keep the supporting route, time and action together."
+  ],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-round-1/verify.sh",
+      "exit_code": 0,
+      "result": "54 tests passed; backend/frontend typechecks and Vite build passed; 18-state component and built-SPA browser checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-round-1/supporting-route-check.mjs",
+      "exit_code": 1,
+      "result": "Confirmed missing supporting-route time/action in both buffer and connection scenarios."
+    },
+    {
+      "command": "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-round-1/routing-witness.mts",
+      "exit_code": 0,
+      "result": "Actual ranking/visibility helpers confirm the supporting route can be hidden behind Show more."
+    },
+    {
+      "command": "git diff --check 40af3c0bb8e2522972b4e9f0222b1756fbd3c227 b7c44c0e142d949de47375d9f56741cb404600f5",
+      "exit_code": 0,
+      "result": "Passed; exact HEAD/base verified and worktree clean."
+    }
+  ]
+}

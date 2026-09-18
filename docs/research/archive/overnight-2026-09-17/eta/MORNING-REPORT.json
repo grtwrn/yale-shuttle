@@ -1,0 +1,119 @@
+{
+  "round": 12,
+  "history": [
+    {
+      "at": "2026-09-18T02:57:42.754097+00:00",
+      "round": 1,
+      "research": "Completed the causal neighbor screen across 535 holds. Gains were too small or inconsistent, with worse tails, to justify an ETA change. Saved reproducible evidence, review request and checkpoint; prepared ten cases for the next clock audit. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T03:31:15.598866+00:00",
+      "round": 2,
+      "research": "Localized ten difficult ETA cases to different downstream delays and future Winchester waits. No common clock correction is supported. Saved reproducible traces, both-occurrence accounting, review request and updated handoff. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T04:05:49.845697+00:00",
+      "round": 3,
+      "research": "Longer service-role history added negligible value beyond two departures and did not justify an ETA change. Saved reproducible forecasts, regression audits and handoff in cycle-3. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T04:42:02.961869+00:00",
+      "round": 4,
+      "research": "Found a pickup smoothing defect that carries future-lap estimates into already-arrived stop rows. Saved reproducible decision evidence and review notes in cycle-4. Application code and HEAD remain unchanged."
+    },
+    {
+      "round": 5,
+      "at": "2026-09-18T07:08:38.582412+00:00",
+      "pr": "https://github.com/grtwrn/yale-shuttle/pull/289",
+      "merge": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+      "health": {
+        "ok": true,
+        "pollStalenessMs": 2806,
+        "collectorLagMs": null,
+        "knownBuses": 0,
+        "serverEta": {
+          "restored": 0,
+          "forecastAt": null,
+          "checkpointAt": 1789715301980,
+          "beliefs": 0,
+          "steps": 1,
+          "failures": 0,
+          "lastStepMs": 2,
+          "rows": 0
+        },
+        "pollSkipped": 0,
+        "droppedObservations": 0,
+        "build": "d5a392f533e8"
+      },
+      "summary": "Preserve walking caution alongside trip bus identity\nResolved and staged the import conflict, preserving both teams\u2019 changes. Combined checks pass; HEAD remains unchanged. Evidence and handoff saved in eta/cycle-9."
+    },
+    {
+      "at": "2026-09-18T07:34:35.679681+00:00",
+      "round": 6,
+      "research": "Confirmed pickup identity and wait-label defects when destination forecasts disappear or the same bus returns later. Saved reproducible evidence and a proposed contract in eta/cycle-10. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T08:04:57.031481+00:00",
+      "round": 7,
+      "research": "Prepared and verified the ETA pickup-metadata implementation in eta/cycle-11. All 9,376 paired decisions remain unchanged; mobile and desktop checks pass. Application files and HEAD remain untouched. UX consumption is required before release."
+    },
+    {
+      "at": "2026-09-18T08:59:58.427675+00:00",
+      "round": 8,
+      "research": "Found the cause of restart-dependent forecasts: movement-kernel caching depends on the first caller. An artifact-only correction restored exact parity across 78 polls and 10,592 arrival rows; broader outcome validation remains necessary. Also verified 487 recorded bus samples without resolving the 38 pickup uncertainties. Evidence and handoff saved in eta/cycle-13. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T09:33:55.624792+00:00",
+      "round": 9,
+      "research": "The fixed cache diagnostic passed eight-route restart checks; complete Red replay showed essentially unchanged ETA accuracy. Preserved tail changes and regressions, verified inputs for the next full-fleet evaluation, and saved evidence in eta/cycle-14. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T10:36:05.454358+00:00",
+      "round": 10,
+      "research": "Completed the saved 6,000-poll fleet evaluation and corrected replay occurrence labels. Average ETA changes are negligible; connected rider-trip error slightly worsens, with large individual changes retained. Evidence and handoff saved in eta/cycle-15. Application files and HEAD remain unchanged."
+    },
+    {
+      "at": "2026-09-18T11:10:02.513840+00:00",
+      "round": 11,
+      "research": "Corrected 11 current-stop and eight following-arrival replay labels; resolved 216 additional rows while preserving forecasts and regressions. No ETA improvement supports release. Evidence saved in eta/cycle-16; application files and HEAD remain unchanged."
+    }
+  ],
+  "running": false,
+  "deadline": "2026-09-18T07:30:00-04:00",
+  "pid": 1012450,
+  "team": "eta",
+  "repo": "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17",
+  "heartbeat": "2026-09-18T11:30:02.401884+00:00",
+  "phase": "finished",
+  "preparation": null,
+  "base": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "branch": "overnight/eta-20260917-012",
+  "review": null,
+  "log": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/012-reviewer-1789730952.jsonl",
+  "role_started": "2026-09-18T11:29:12.347461+00:00",
+  "model_pid": null,
+  "last_error": "Model interrupted by stop/deadline/log limit; source/artifacts preserved for recovery",
+  "consecutive_errors": 1,
+  "resume_phase": "retry_pending",
+  "finished_at": "2026-09-18T11:30:02.401857+00:00",
+  "last_result": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/012-builder-1789729833.json",
+  "builder": {
+    "outcome": "research",
+    "summary": "Completed 3,000 evening polls across 12 routes. ETA and connected-trip results remain negligible and mixed; no release is justified. Evidence and checkpoint saved in eta/cycle-17. Source files and HEAD remain unchanged.",
+    "next_task": "Independently review cycle-17/REVIEW_REQUEST.md, including uncertain identities, retained regressions and rider-decision changes. After acceptance, further coverage can resume frozen checkpoints from poll 9000.",
+    "tests": [
+      "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/run.sh \u2014 passed; 3,000 new polls per arm and checkpoint9000 saved.",
+      "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/analyze.sh \u2014 passed; 70,162 arrival records and 4,088 connected rider trips per arm verified.",
+      "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/audit_decision_changes.py \u2014 passed; all order, caution and deadline changes accounted for.",
+      "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/audit_ranking.mts \u2014 passed; 3,672 saved ranking rows reproduced exactly.",
+      "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/finish.py \u2014 passed; 912 tracked files, 241 prior artifacts and eight frozen inputs unchanged."
+    ]
+  },
+  "next_task": "Independently review cycle-17/REVIEW_REQUEST.md, including uncertain identities, retained regressions and rider-decision changes. After acceptance, further coverage can resume frozen checkpoints from poll 9000.",
+  "pr": null,
+  "pr_url": "https://github.com/grtwrn/yale-shuttle/pull/289",
+  "reviewed_head": "53b4076b6273deb6f4e2ad436420461a0e5174f4",
+  "reviewed_base": "373505d5076f21a08de69d9587be9b2a55956642",
+  "has_app": true,
+  "merge_sha": null
+}

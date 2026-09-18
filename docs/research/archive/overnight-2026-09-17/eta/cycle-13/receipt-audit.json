@@ -1,0 +1,671 @@
+{
+  "cohort": {
+    "decisions": 38,
+    "busPolls": 19,
+    "sources": 9
+  },
+  "inventory": [
+    {
+      "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789564462877.jsonl",
+      "samples": 1027,
+      "firstSample": 1789507497130,
+      "lastSample": 1789564452876,
+      "selected": 50,
+      "serverEtaSnapshots": 0
+    },
+    {
+      "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl",
+      "samples": 918,
+      "firstSample": 1789564462877,
+      "lastSample": 1789656033025,
+      "selected": 128,
+      "serverEtaSnapshots": 0
+    },
+    {
+      "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789665472736.jsonl",
+      "samples": 923,
+      "firstSample": 1789656043026,
+      "lastSample": 1789665462735,
+      "selected": 65,
+      "serverEtaSnapshots": 0
+    },
+    {
+      "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl",
+      "samples": 962,
+      "firstSample": 1789558644110,
+      "lastSample": 1789568363563,
+      "selected": 102,
+      "serverEtaSnapshots": 0
+    },
+    {
+      "file": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl",
+      "samples": 906,
+      "firstSample": 1789568373564,
+      "lastSample": 1789659922608,
+      "selected": 142,
+      "serverEtaSnapshots": 0
+    }
+  ],
+  "sanitizedSamples": 487,
+  "uniqueResponseSourcePairs": 487,
+  "serverEtaSnapshots": 0,
+  "perSource": [
+    {
+      "sourceId": 57454,
+      "bus": "309",
+      "stop": 121,
+      "samples": 101,
+      "withObservedAt": 0,
+      "uniqueMatch": 22,
+      "ambiguousMatch": 79,
+      "unmatched": 0,
+      "atStopSamples": 75,
+      "atStopReceivedAfterRecordedDeparture": 5,
+      "diffFieldUses": {
+        "lap": 1393
+      },
+      "transitions": [
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789561423468,
+          "sampledAt": 1789561428236,
+          "pinOffsetSec": -57.568,
+          "departureOffsetSec": -412.773,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789561483464,
+          "receiptAt": 1789561493422,
+          "sampledAt": 1789561498243,
+          "pinOffsetSec": 12.386,
+          "departureOffsetSec": -342.819,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.958
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789561853461,
+          "receiptAt": 1789561863463,
+          "sampledAt": 1789561868321,
+          "pinOffsetSec": 382.427,
+          "departureOffsetSec": 27.222,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.002
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789561420895,
+          "sampledAt": 1789561425482,
+          "pinOffsetSec": -60.141,
+          "departureOffsetSec": -415.346,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789561480880,
+          "receiptAt": 1789561490898,
+          "sampledAt": 1789561495493,
+          "pinOffsetSec": 9.862,
+          "departureOffsetSec": -345.343,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.018
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789561860885,
+          "receiptAt": 1789561870883,
+          "sampledAt": 1789561875581,
+          "pinOffsetSec": 389.847,
+          "departureOffsetSec": 34.642,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.998
+        }
+      ]
+    },
+    {
+      "sourceId": 57990,
+      "bus": "309",
+      "stop": 121,
+      "samples": 42,
+      "withObservedAt": 0,
+      "uniqueMatch": 22,
+      "ambiguousMatch": 20,
+      "unmatched": 0,
+      "atStopSamples": 14,
+      "atStopReceivedAfterRecordedDeparture": 4,
+      "diffFieldUses": {
+        "lap": 108,
+        "last_stop_id": 16
+      },
+      "transitions": [
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789565728348,
+          "sampledAt": 1789565733094,
+          "pinOffsetSec": -63.749,
+          "departureOffsetSec": -118.74,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789565788348,
+          "receiptAt": 1789565798339,
+          "sampledAt": 1789565803109,
+          "pinOffsetSec": 6.242,
+          "departureOffsetSec": -48.749,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.991
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789565858348,
+          "receiptAt": 1789565868332,
+          "sampledAt": 1789565873123,
+          "pinOffsetSec": 76.235,
+          "departureOffsetSec": 21.244,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.984
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789565728269,
+          "sampledAt": 1789565733094,
+          "pinOffsetSec": -63.828,
+          "departureOffsetSec": -118.819,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789565788269,
+          "receiptAt": 1789565798267,
+          "sampledAt": 1789565803110,
+          "pinOffsetSec": 6.17,
+          "departureOffsetSec": -48.821,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.998
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789565858271,
+          "receiptAt": 1789565868269,
+          "sampledAt": 1789565873124,
+          "pinOffsetSec": 76.172,
+          "departureOffsetSec": 21.181,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.998
+        }
+      ]
+    },
+    {
+      "sourceId": 58224,
+      "bus": "309",
+      "stop": 11,
+      "samples": 60,
+      "withObservedAt": 0,
+      "uniqueMatch": 19,
+      "ambiguousMatch": 41,
+      "unmatched": 0,
+      "atStopSamples": 32,
+      "atStopReceivedAfterRecordedDeparture": 4,
+      "diffFieldUses": {
+        "lap": 174,
+        "last_stop_id": 2,
+        "stationary": 2,
+        "at_stop_id": 2,
+        "at_stop_since": 2
+      },
+      "transitions": [
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789567178690,
+          "sampledAt": 1789567183346,
+          "pinOffsetSec": -63.636,
+          "departureOffsetSec": -213.708,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789567238675,
+          "receiptAt": 1789567248668,
+          "sampledAt": 1789567253364,
+          "pinOffsetSec": 6.342,
+          "departureOffsetSec": -143.73,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.993
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789567328626,
+          "receiptAt": 1789567338688,
+          "sampledAt": 1789567343377,
+          "pinOffsetSec": 96.362,
+          "departureOffsetSec": -53.71,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.062
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789567338688,
+          "receiptAt": 1789567348668,
+          "sampledAt": 1789567353379,
+          "pinOffsetSec": 106.342,
+          "departureOffsetSec": -43.73,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.98
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789567408798,
+          "receiptAt": 1789567418670,
+          "sampledAt": 1789567423387,
+          "pinOffsetSec": 176.344,
+          "departureOffsetSec": 26.272,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.872
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789567178588,
+          "sampledAt": 1789567183346,
+          "pinOffsetSec": -63.738,
+          "departureOffsetSec": -213.81,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789567238591,
+          "receiptAt": 1789567248590,
+          "sampledAt": 1789567253364,
+          "pinOffsetSec": 6.264,
+          "departureOffsetSec": -143.808,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.999
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789567328567,
+          "receiptAt": 1789567338574,
+          "sampledAt": 1789567343378,
+          "pinOffsetSec": 96.248,
+          "departureOffsetSec": -53.824,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.007
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789567338574,
+          "receiptAt": 1789567348571,
+          "sampledAt": 1789567353380,
+          "pinOffsetSec": 106.245,
+          "departureOffsetSec": -43.827,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.997
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789567408570,
+          "receiptAt": 1789567418578,
+          "sampledAt": 1789567423388,
+          "pinOffsetSec": 176.252,
+          "departureOffsetSec": 26.18,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.008
+        }
+      ]
+    },
+    {
+      "sourceId": 58510,
+      "bus": "309",
+      "stop": 121,
+      "samples": 154,
+      "withObservedAt": 0,
+      "uniqueMatch": 16,
+      "ambiguousMatch": 138,
+      "unmatched": 0,
+      "atStopSamples": 126,
+      "atStopReceivedAfterRecordedDeparture": 2,
+      "diffFieldUses": {
+        "lap": 2530,
+        "last_stop_id": 44
+      },
+      "transitions": [
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789568609025,
+          "sampledAt": 1789568613615,
+          "pinOffsetSec": -63.535,
+          "departureOffsetSec": -684.334,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789568669024,
+          "receiptAt": 1789568679192,
+          "sampledAt": 1789568683622,
+          "pinOffsetSec": 6.632,
+          "departureOffsetSec": -614.167,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.168
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789569299424,
+          "receiptAt": 1789569309087,
+          "sampledAt": 1789569313748,
+          "pinOffsetSec": 636.527,
+          "departureOffsetSec": 15.728,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.663
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789568608977,
+          "sampledAt": 1789568613615,
+          "pinOffsetSec": -63.583,
+          "departureOffsetSec": -684.382,
+          "collectionAt": null,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789568668964,
+          "receiptAt": 1789568678981,
+          "sampledAt": 1789568683623,
+          "pinOffsetSec": 6.421,
+          "departureOffsetSec": -614.378,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 10.017
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789569299088,
+          "receiptAt": 1789569308976,
+          "sampledAt": 1789569313749,
+          "pinOffsetSec": 636.416,
+          "departureOffsetSec": 15.617,
+          "collectionAt": null,
+          "leftCensored": false,
+          "intervalSec": 9.888
+        }
+      ]
+    },
+    {
+      "sourceId": 60836,
+      "bus": "316",
+      "stop": 11,
+      "samples": 0,
+      "withObservedAt": 0,
+      "uniqueMatch": 0,
+      "ambiguousMatch": 0,
+      "unmatched": 0,
+      "atStopSamples": 0,
+      "atStopReceivedAfterRecordedDeparture": 0,
+      "diffFieldUses": {},
+      "transitions": []
+    },
+    {
+      "sourceId": 61538,
+      "bus": "316",
+      "stop": 121,
+      "samples": 0,
+      "withObservedAt": 0,
+      "uniqueMatch": 0,
+      "ambiguousMatch": 0,
+      "unmatched": 0,
+      "atStopSamples": 0,
+      "atStopReceivedAfterRecordedDeparture": 0,
+      "diffFieldUses": {},
+      "transitions": []
+    },
+    {
+      "sourceId": 61907,
+      "bus": "309",
+      "stop": 11,
+      "samples": 0,
+      "withObservedAt": 0,
+      "uniqueMatch": 0,
+      "ambiguousMatch": 0,
+      "unmatched": 0,
+      "atStopSamples": 0,
+      "atStopReceivedAfterRecordedDeparture": 0,
+      "diffFieldUses": {},
+      "transitions": []
+    },
+    {
+      "sourceId": 63523,
+      "bus": "316",
+      "stop": 121,
+      "samples": 0,
+      "withObservedAt": 0,
+      "uniqueMatch": 0,
+      "ambiguousMatch": 0,
+      "unmatched": 0,
+      "atStopSamples": 0,
+      "atStopReceivedAfterRecordedDeparture": 0,
+      "diffFieldUses": {},
+      "transitions": []
+    },
+    {
+      "sourceId": 65347,
+      "bus": "309",
+      "stop": 11,
+      "samples": 130,
+      "withObservedAt": 130,
+      "uniqueMatch": 130,
+      "ambiguousMatch": 0,
+      "unmatched": 0,
+      "atStopSamples": 102,
+      "atStopReceivedAfterRecordedDeparture": 4,
+      "diffFieldUses": {
+        "lap": 70
+      },
+      "transitions": [
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789656588484,
+          "sampledAt": 1789656593092,
+          "pinOffsetSec": -64.372,
+          "departureOffsetSec": -564.497,
+          "collectionAt": 1789656586367,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789656648479,
+          "receiptAt": 1789656658489,
+          "sampledAt": 1789656663097,
+          "pinOffsetSec": 5.633,
+          "departureOffsetSec": -494.492,
+          "collectionAt": 1789656657917,
+          "leftCensored": false,
+          "intervalSec": 10.01
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789657093585,
+          "receiptAt": 1789657108483,
+          "sampledAt": 1789657113173,
+          "pinOffsetSec": 455.627,
+          "departureOffsetSec": -44.498,
+          "collectionAt": 1789657108062,
+          "leftCensored": false,
+          "intervalSec": 14.898
+        },
+        {
+          "stream": "red",
+          "atStop": true,
+          "previousReceiptAt": 1789657108483,
+          "receiptAt": 1789657118613,
+          "sampledAt": 1789657123174,
+          "pinOffsetSec": 465.757,
+          "departureOffsetSec": -34.368,
+          "collectionAt": 1789657117872,
+          "leftCensored": false,
+          "intervalSec": 10.13
+        },
+        {
+          "stream": "red",
+          "atStop": false,
+          "previousReceiptAt": 1789657168477,
+          "receiptAt": 1789657178493,
+          "sampledAt": 1789657183175,
+          "pinOffsetSec": 525.637,
+          "departureOffsetSec": 25.512,
+          "collectionAt": 1789657178012,
+          "leftCensored": false,
+          "intervalSec": 10.016
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": null,
+          "receiptAt": 1789656594221,
+          "sampledAt": 1789656598980,
+          "pinOffsetSec": -58.635,
+          "departureOffsetSec": -558.76,
+          "collectionAt": 1789656591273,
+          "leftCensored": true,
+          "intervalSec": null
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789656644222,
+          "receiptAt": 1789656654222,
+          "sampledAt": 1789656658987,
+          "pinOffsetSec": 1.366,
+          "departureOffsetSec": -498.759,
+          "collectionAt": 1789656652856,
+          "leftCensored": false,
+          "intervalSec": 10.0
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789657094250,
+          "receiptAt": 1789657104978,
+          "sampledAt": 1789657109143,
+          "pinOffsetSec": 452.122,
+          "departureOffsetSec": -48.003,
+          "collectionAt": 1789657102924,
+          "leftCensored": false,
+          "intervalSec": 10.728
+        },
+        {
+          "stream": "rotation",
+          "atStop": true,
+          "previousReceiptAt": 1789657104978,
+          "receiptAt": 1789657114226,
+          "sampledAt": 1789657119143,
+          "pinOffsetSec": 461.37,
+          "departureOffsetSec": -38.755,
+          "collectionAt": 1789657112906,
+          "leftCensored": false,
+          "intervalSec": 9.248
+        },
+        {
+          "stream": "rotation",
+          "atStop": false,
+          "previousReceiptAt": 1789657164275,
+          "receiptAt": 1789657174227,
+          "sampledAt": 1789657179151,
+          "pinOffsetSec": 521.371,
+          "departureOffsetSec": 21.246,
+          "collectionAt": 1789657173148,
+          "leftCensored": false,
+          "intervalSec": 9.952
+        }
+      ]
+    }
+  ],
+  "caseCoverage": {
+    "exactObservedAt": 0,
+    "uniqueCompatible": 8,
+    "ambiguousOnly": 14,
+    "noCompatibleReceipt": 16,
+    "nearbyRawAtSource": 26
+  },
+  "limitations": [
+    "Sample response receipt is an upper bound on when a field was published, not exact first publication.",
+    "Without observed_at, a unique match under a 120s search/clock contract is compatibility, not proof of collection identity.",
+    "No server_eta snapshots: never claim live served-position parity or replay accuracy from this audit.",
+    "Response onset brackets can include omitted polls, window censoring and prior/different stop visits.",
+    "Collected positions are not doors-open or physical boarding evidence."
+  ]
+}

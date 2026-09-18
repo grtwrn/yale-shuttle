@@ -1,0 +1,69 @@
+{
+  "referenceLap": 3231.6625,
+  "referenceUnionAge": 1402.2305000000001,
+  "probabilities": [
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    0.95
+  ],
+  "fits": {
+    "lap_elapsed_clock": {
+      "coefficients": [
+        -4.842443228851753,
+        1.0476558248633,
+        0.06996491634796109,
+        -0.0712926770548606,
+        0.06654494278670585,
+        1.1142925893141264,
+        -0.2292948425624249,
+        1.2917076636770948,
+        -0.19325070464227337
+      ],
+      "trainVisits": 160,
+      "dates": 6,
+      "riskBins": 3875,
+      "objective": 555.6795893224084,
+      "maxGradient": 4.628820925223209e-06,
+      "iterations": 33
+    },
+    "plus_own_union_age": {
+      "coefficients": [
+        -4.928472068113423,
+        1.0373795434921191,
+        0.0758533092170117,
+        -0.05954560223657147,
+        0.07260414859895899,
+        1.036427677733633,
+        -0.3620216101931454,
+        1.2391696706440982,
+        -0.22117825733593793,
+        0.1998636113096606,
+        0.02826359196693135
+      ],
+      "trainVisits": 160,
+      "dates": 6,
+      "riskBins": 3875,
+      "objective": 552.7769300161171,
+      "maxGradient": 2.4645127078309903e-05,
+      "iterations": 45
+    }
+  },
+  "trainingVisits": 160,
+  "evaluationVisits": 125,
+  "inputLandmarks": 1022,
+  "supportedCounts": {
+    "train_True": 136,
+    "train_False": 24,
+    "development_False": 16,
+    "development_True": 109
+  },
+  "knownTimeAudits": {
+    "unionOriginChanges": 0,
+    "arrivalAndCompletedContractsIdentical": true
+  },
+  "hash": "8fcd0aba32330bba09d4d7b7b7b7b80ff35cf07058a6b6131d4bd88b6cc77911"
+}

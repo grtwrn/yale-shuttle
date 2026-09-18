@@ -1,0 +1,25 @@
+{
+  "frozenAt": "2026-09-18T00:09:20.877593+00:00",
+  "arm": "smoothedUpper",
+  "config": {
+    "current": true,
+    "future": false,
+    "unclamp": true,
+    "smoothSec": 30,
+    "freezeLap": true,
+    "rawBand": "upper"
+  },
+  "rationale": "Current-hold conditional hazard; fixed30s temporal quantile pooling whilephysicallyatlayover; retain original lower-tail calibration to protect real earlydepartures; rawconditionalmodel upperquantiles. Samepositionbelief. Futureholds unchanged. Selectedondevelopmentdataonly. Holdout is new Sep17 after17:14:00.913UTC. Notduration-capped oroutliertrimmed.",
+  "files": {
+    "release-integration-2026-09-17/services/shuttle-v2/web/src/eta/arrival.ts": "d21e561f99de157bcd94bc9066cc2e5369193c749c659be19899ea5eeb2ad716",
+    "release-integration-2026-09-17/services/shuttle-v2/web/src/eta/index.ts": "ba9e8cceccc04c1a385e9b66098f5d49adeeb7e3895623747949e891fe1e88a4",
+    "release-integration-2026-09-17/services/shuttle-v2/web/src/eta/release.ts": "3c2fa8398cc068da3ca7deb4a69624179c78b75b8731fde20b77480033a726b2",
+    "release-integration-2026-09-17/services/shuttle-v2/web/src/eta/filter.ts": "0d02a48b64cc95d971630a220a7e7d3f1437eedbc9cd901efc4999f324c966a7",
+    "release-integration-data/replay.mts": "6619ac804b773df7af527ae433ceba13c0da6b95f78179837b7bc48287f1a3d7",
+    "red-window-data/release-survival-screen.json": "0f761685ea24a36d248879951b0716d20e34b54485351a24c3c624be31c68700"
+  },
+  "developmentEnd": 1789665240913,
+  "refreshPolicyDeclaredAt": "2026-09-18T00:10:46.321653+00:00",
+  "primaryValidation": "Samefrozencandidateusing9-feature15-secondhazardfitteroncompleteolddevelopmentlabelsreadybefore13:14ETSep17. Coefficientsrefreshedbecauseproductionmustrefitserverhistory. OldpreSep10fitsremainsecondarysensitivitycheck. Do notretuneonafternoonresults.",
+  "refreshFitSha256": "d78e229e6f98cc98385cec11fd4fac4ebd625a92028cae240169d0f81a2af7a3"
+}

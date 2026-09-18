@@ -1,0 +1,17 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [
+    "Collapsed controlled region remains hidden and outside Tab sequence",
+    "Complete forecast removal while strip is focused restores To",
+    "Repeated unavailable/recovered weather leaves no stale focus ownership",
+    "Forecast removal preserves deliberately focused place input and typed query",
+    "Expired failed-refresh forecast restores focus from removed strip"
+  ],
+  "errors": [],
+  "snapshots": {},
+  "geometry": [],
+  "failure": "TimeoutError: locator.click: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /^Show temperature in/ }).locator('..').locator('button').first()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" tabindex=\"-1\" aria-disabled=\"true\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    15 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- combobox \"To\"\n- button \"68°F · Clear · no rain expected\" [disabled]\n- button \"Show temperature in Celsius\": °F °C\n- status: No shuttles reporting right now\n- text: Choose a destination to check walking directions and route schedules.\n- button \"Union Station\"\n- button \"Med School (Cedar St)\"\n- button \"Science Hill\"\n- button \"Peabody Museum\"\n- button \"Payne Whitney Gym\"\n- button \"Old Campus\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "closed": true
+}

@@ -1,0 +1,72 @@
+{
+  "head": "bffa61342d00ce87fca5b8f228e206357b8b93b5",
+  "base": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "parent": "7f681d92a7d30331728d637216dabecf9d9e356c",
+  "tree": "d0ab5a7678483e956bd1e4072abe92b18a464218",
+  "checkoutAndIndexClean": true,
+  "changedFiles": [
+    "services/shuttle-v2/scripts/pickup-selection-check.mjs",
+    "services/shuttle-v2/scripts/ride-recovery-check.mjs",
+    "services/shuttle-v2/scripts/trip-identity-check.mjs",
+    "services/shuttle-v2/web/src/RideFinish.tsx",
+    "services/shuttle-v2/web/src/TransitMap.tsx",
+    "services/shuttle-v2/web/src/livePickupSelection.test.ts",
+    "services/shuttle-v2/web/src/livePickupSelection.ts",
+    "services/shuttle-v2/web/src/planner.ts",
+    "services/shuttle-v2/web/src/rideAlert.test.ts",
+    "services/shuttle-v2/web/src/rideAlert.ts",
+    "services/shuttle-v2/web/src/tripBusIdentity.test.ts",
+    "services/shuttle-v2/web/src/tripBusIdentity.ts"
+  ],
+  "unchangedBlocks": [
+    "rideMapAndStops",
+    "rideStopArithmetic",
+    "notificationTrigger",
+    "autoEndEngine"
+  ],
+  "exactBaseNumericalMemoWithAdditiveMetadataRemoved": true,
+  "builtSourcesMatch": true,
+  "browserReports": [
+    {
+      "path": "browser/ride-recovery.json",
+      "states": 14,
+      "requests": 44
+    },
+    {
+      "path": "browser/desktop/ride-recovery.json",
+      "states": 14,
+      "requests": 44
+    },
+    {
+      "path": "pickup/browser-mobile.json",
+      "states": 17,
+      "requests": 19
+    },
+    {
+      "path": "extra/ride-recovery.json",
+      "states": 5,
+      "requests": 151
+    },
+    {
+      "path": "extra-desktop/ride-recovery.json",
+      "states": 5,
+      "requests": 151
+    }
+  ],
+  "images": 256,
+  "imageBytes": 12588874,
+  "sourceSha256": {
+    "services/shuttle-v2/scripts/pickup-selection-check.mjs": "0eb04e0e19a11cf4076565662fb5b34ad857b9aa93fb986c5bd9a08a93e3b88b",
+    "services/shuttle-v2/scripts/ride-recovery-check.mjs": "c74ca834733051c14c78100b3021eff2d4533579ed7fafc8f64008ce5f144742",
+    "services/shuttle-v2/scripts/trip-identity-check.mjs": "5a20a9565cc478572a7fd459597040c38810b375ec6707a1575cce2f8769f884",
+    "services/shuttle-v2/web/src/RideFinish.tsx": "a3b3d19793a1b06415e267159ce92a15ac0c2f10ad8c58e2182c6788db9b69c7",
+    "services/shuttle-v2/web/src/TransitMap.tsx": "e2e535591ac4e643ae385a5a0a5c613b2d0f08a64a103537468c9d9b820ad9b2",
+    "services/shuttle-v2/web/src/livePickupSelection.test.ts": "bcd7ecabf650181e24df6721c67abd7501ba29583f38b99e7a90b7da6f4e960f",
+    "services/shuttle-v2/web/src/livePickupSelection.ts": "53f31c52212aabd4a65bcf3066483e24b687fe08994543fc961cf349f64f6ff2",
+    "services/shuttle-v2/web/src/planner.ts": "fcb61b8c27af38714cf8608a7c99b260f5a0b33c1b81b03be5c95e74b4ff1ed1",
+    "services/shuttle-v2/web/src/rideAlert.test.ts": "9e4483b1c6f8960acad5664ba78b63bd919dc16b4d4053c5a26848cb386e53b6",
+    "services/shuttle-v2/web/src/rideAlert.ts": "d1dc4356ce901676733a52ddd05b6fc482b2693e37f0d14cefeee59d5ca4e56a",
+    "services/shuttle-v2/web/src/tripBusIdentity.test.ts": "b4ebd17feb2e40cb13f3fd99375e2bdbabda25fcf20ac47b36bcd00d65e3f0ec",
+    "services/shuttle-v2/web/src/tripBusIdentity.ts": "7486dfc24ae1a3d31c98bcd36c426eb7371602bdbef7faf0ca14b116234ad5ef"
+  }
+}

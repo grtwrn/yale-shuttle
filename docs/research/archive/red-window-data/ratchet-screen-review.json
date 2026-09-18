@@ -1,0 +1,3107 @@
+{
+  "method": "Fixed elapsed pin-clock snapshots 60/180/300/420/600s; first paired forecast within15s, only if source visit still survives. Exact connected target occurrence. Passed targets retained as physical passage outcomes and identified explicitly.",
+  "limitations": [
+    "One service date, nine source visits and three buses, not independent dates; target48 and4 and repeated checkpoints share source journeys.",
+    "Fixed payload tables contain same-day outcomes; no out-of-time calibration or deployment claim.",
+    "Nine watcher-run resets create cold state; not continuously warm server replay.",
+    "Stop arrival is detector geofence/rest/pass timing, not verified boarding;3 target4 endpoints are passes.",
+    "Both arms retain existing widening/bias coefficients; no recalibration of candidate or future provenance repair was done.",
+    "Remaining source visit includes yard repositioning; no claim of continuous stillness.",
+    "Recorded five/ten-second polls and missing paired near-departure frames limit departure timing inference."
+  ],
+  "inputCounts": {
+    "pairs": 2163,
+    "watcherFrames": 1236,
+    "sourceVisits": 9,
+    "targetJourneys": 18,
+    "checkpoints": 40,
+    "scoredPostDeparture": 54,
+    "targetOutcomeCounts": {
+      "stopped": 15,
+      "passed": 3
+    }
+  },
+  "tableProvenance": {
+    "payloadQn": 230,
+    "matchingDbRecords": 230,
+    "recomputedQ": [
+      9,
+      120,
+      145,
+      191,
+      300,
+      355,
+      440,
+      505,
+      584,
+      710
+    ],
+    "payloadQExactlyReproduced": true,
+    "completedBeforeFirstForecast": 221,
+    "completedAfterFirstForecast": 9,
+    "futureSourceVisitIds": [
+      56968,
+      57100,
+      57226,
+      57463,
+      57581,
+      57789,
+      57965,
+      58061,
+      58224
+    ]
+  },
+  "scoresByTargetAndElapsed": {
+    "48": {
+      "60": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 143.73541938062237,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 709.3879117785029,
+          "meanWIS": 95.20433391210766,
+          "underBy120": 3,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 135.36415008416725,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 716.490084523172,
+          "meanWIS": 92.88738899626722,
+          "underBy120": 3,
+          "overBy120": 1
+        }
+      },
+      "180": {
+        "baseline": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 110.33551299046923,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 639.1269144067604,
+          "meanWIS": 79.38696529060711,
+          "underBy120": 2,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 92.35456484467926,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 675.6001675670523,
+          "meanWIS": 75.82486611936324,
+          "underBy120": 1,
+          "overBy120": 1
+        }
+      },
+      "300": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 58.74704256897903,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 634.2301350167755,
+          "meanWIS": 61.86435652411138,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.11938920681258,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 642.2763936413262,
+          "meanWIS": 59.85822264502594,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      },
+      "420": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.30612619615986,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 535.2223183347271,
+          "meanWIS": 52.783529954368426,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.30612619615986,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 535.2223183347271,
+          "meanWIS": 52.783529954368426,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      },
+      "600": {
+        "baseline": null,
+        "unclamped": null
+      }
+    },
+    "4": {
+      "60": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 113.351453852431,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 771.320479440172,
+          "meanWIS": 89.2051832468218,
+          "underBy120": 2,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 105.74567289431039,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 767.8485412285921,
+          "meanWIS": 86.4384603800096,
+          "underBy120": 2,
+          "overBy120": 1
+        }
+      },
+      "180": {
+        "baseline": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 52.31527409314331,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 716.8069692743835,
+          "meanWIS": 65.22555598267334,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 100.80377679575129,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 696.9723036999094,
+          "meanWIS": 80.06607917857772,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      },
+      "300": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 97.62114216961334,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 661.3238579152037,
+          "meanWIS": 76.62863791755136,
+          "underBy120": 0,
+          "overBy120": 2
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 100.02071704155587,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 657.2341376671086,
+          "meanWIS": 77.15584819165919,
+          "underBy120": 0,
+          "overBy120": 2
+        }
+      },
+      "420": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 170.22541785050606,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 633.2105260683936,
+          "meanWIS": 98.95584102139492,
+          "underBy120": 0,
+          "overBy120": 2
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 170.22541785050606,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 633.2105260683936,
+          "meanWIS": 98.95584102139492,
+          "underBy120": 0,
+          "overBy120": 2
+        }
+      },
+      "600": {
+        "baseline": null,
+        "unclamped": null
+      }
+    }
+  },
+  "postDepartureScores": {
+    "48": {
+      "0": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 72.82670695128768,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 457.8375384274503,
+          "meanWIS": 54.79807154559258,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 119.69099072338645,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 496.01085261149944,
+          "meanWIS": 72.96438708189545,
+          "underBy120": 0,
+          "overBy120": 3
+        }
+      },
+      "30": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 24.37647271751323,
+          "covered": 8,
+          "early": 0,
+          "late": 1,
+          "meanWidthSec": 132.4757088334678,
+          "meanWIS": 18.048998116644533,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 24.343056582491272,
+          "covered": 8,
+          "early": 0,
+          "late": 1,
+          "meanWidthSec": 132.4766769271824,
+          "meanWIS": 18.03792394455152,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      },
+      "60": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 12.296712700092359,
+          "covered": 8,
+          "early": 0,
+          "late": 1,
+          "meanWidthSec": 52.95814511709006,
+          "meanWIS": 8.638369422159528,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 12.386604210607423,
+          "covered": 8,
+          "early": 0,
+          "late": 1,
+          "meanWidthSec": 52.960749350232774,
+          "meanWIS": 8.668506874540729,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      }
+    },
+    "4": {
+      "0": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 146.00061299437937,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 626.6454119984978,
+          "meanWIS": 93.29380688132093,
+          "underBy120": 0,
+          "overBy120": 6
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 187.06401389222856,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 609.6650876287621,
+          "meanWIS": 108.08924488771267,
+          "underBy120": 0,
+          "overBy120": 7
+        }
+      },
+      "30": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 67.0381101578995,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 457.0400596039378,
+          "meanWIS": 54.5327332779788,
+          "underBy120": 0,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 67.0786216478457,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 457.04202745077475,
+          "meanWIS": 54.54636829774999,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      },
+      "60": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 57.00878478031629,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 401.29965781787905,
+          "meanWIS": 46.298219625979925,
+          "underBy120": 0,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 56.780674557871066,
+          "covered": 8,
+          "early": 1,
+          "late": 0,
+          "meanWidthSec": 401.3107382787635,
+          "meanWIS": 46.22292158255715,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      }
+    }
+  },
+  "jumpSummary": {
+    "48": {
+      "baseline": {
+        "adjacentPairs": 302,
+        "positiveOver60": 0,
+        "negativeUnderMinus60": 14,
+        "positiveOver180": 0,
+        "negativeUnderMinus180": 0,
+        "journeysWithPositiveOver60": 0,
+        "maxPositiveSec": 14.664259400741749,
+        "maxNegativeSec": -157.8445299952821
+      },
+      "unclamped": {
+        "adjacentPairs": 302,
+        "positiveOver60": 8,
+        "negativeUnderMinus60": 17,
+        "positiveOver180": 1,
+        "negativeUnderMinus180": 1,
+        "journeysWithPositiveOver60": 4,
+        "maxPositiveSec": 273.55883948478964,
+        "maxNegativeSec": -242.77911214416164
+      }
+    },
+    "4": {
+      "baseline": {
+        "adjacentPairs": 302,
+        "positiveOver60": 0,
+        "negativeUnderMinus60": 16,
+        "positiveOver180": 0,
+        "negativeUnderMinus180": 1,
+        "journeysWithPositiveOver60": 0,
+        "maxPositiveSec": 40.04704280934493,
+        "maxNegativeSec": -187.64038188660578
+      },
+      "unclamped": {
+        "adjacentPairs": 302,
+        "positiveOver60": 7,
+        "negativeUnderMinus60": 18,
+        "positiveOver180": 1,
+        "negativeUnderMinus180": 1,
+        "journeysWithPositiveOver60": 4,
+        "maxPositiveSec": 259.3847770342496,
+        "maxNegativeSec": -259.3822692012987
+      }
+    }
+  },
+  "stoppedTargetsOnly": {
+    "48": {
+      "60": {
+        "baseline": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 143.73541938062237,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 709.3879117785029,
+          "meanWIS": 95.20433391210766,
+          "underBy120": 3,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 9,
+          "sourceJourneys": 9,
+          "maeSec": 135.36415008416725,
+          "covered": 9,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 716.490084523172,
+          "meanWIS": 92.88738899626722,
+          "underBy120": 3,
+          "overBy120": 1
+        }
+      },
+      "180": {
+        "baseline": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 110.33551299046923,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 639.1269144067604,
+          "meanWIS": 79.38696529060711,
+          "underBy120": 2,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 5,
+          "sourceJourneys": 5,
+          "maeSec": 92.35456484467926,
+          "covered": 5,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 675.6001675670523,
+          "meanWIS": 75.82486611936324,
+          "underBy120": 1,
+          "overBy120": 1
+        }
+      },
+      "300": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 58.74704256897903,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 634.2301350167755,
+          "meanWIS": 61.86435652411138,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.11938920681258,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 642.2763936413262,
+          "meanWIS": 59.85822264502594,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      },
+      "420": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.30612619615986,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 535.2223183347271,
+          "meanWIS": 52.783529954368426,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 51.30612619615986,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 535.2223183347271,
+          "meanWIS": 52.783529954368426,
+          "underBy120": 0,
+          "overBy120": 0
+        }
+      },
+      "600": {
+        "baseline": null,
+        "unclamped": null
+      }
+    },
+    "4": {
+      "60": {
+        "baseline": {
+          "n": 6,
+          "sourceJourneys": 6,
+          "maeSec": 72.43779031930383,
+          "covered": 6,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 696.3482201789429,
+          "meanWIS": 70.56914478503082,
+          "underBy120": 1,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 6,
+          "sourceJourneys": 6,
+          "maeSec": 76.36581368427575,
+          "covered": 6,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 690.5188149508218,
+          "meanWIS": 71.48985889148005,
+          "underBy120": 1,
+          "overBy120": 0
+        }
+      },
+      "180": {
+        "baseline": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 54.162109949582224,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 712.6079826071823,
+          "meanWIS": 65.56123549033956,
+          "underBy120": 0,
+          "overBy120": 0
+        },
+        "unclamped": {
+          "n": 3,
+          "sourceJourneys": 3,
+          "maeSec": 135.84646921801107,
+          "covered": 3,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 677.7780386108205,
+          "meanWIS": 90.46735898005839,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      },
+      "300": {
+        "baseline": {
+          "n": 1,
+          "sourceJourneys": 1,
+          "maeSec": 137.00525261088472,
+          "covered": 1,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 681.5198509227448,
+          "meanWIS": 91.10307426514457,
+          "underBy120": 0,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 1,
+          "sourceJourneys": 1,
+          "maeSec": 144.2039772267123,
+          "covered": 1,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 669.2506901784594,
+          "meanWIS": 92.68470508746806,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      },
+      "420": {
+        "baseline": {
+          "n": 1,
+          "sourceJourneys": 1,
+          "maeSec": 211.55158836653248,
+          "covered": 1,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 646.6960737924687,
+          "meanWIS": 113.63026770834206,
+          "underBy120": 0,
+          "overBy120": 1
+        },
+        "unclamped": {
+          "n": 1,
+          "sourceJourneys": 1,
+          "maeSec": 211.55158836653248,
+          "covered": 1,
+          "early": 0,
+          "late": 0,
+          "meanWidthSec": 646.6960737924687,
+          "meanWIS": 113.63026770834206,
+          "underBy120": 0,
+          "overBy120": 1
+        }
+      },
+      "600": {
+        "baseline": null,
+        "unclamped": null
+      }
+    }
+  },
+  "journeys": [
+    {
+      "journeyId": "3:56968:56994",
+      "sourceId": 56968,
+      "targetVisitId": 56994,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.61725351132599,
+      "pinnedAt": 1789557808282,
+      "arrivedAtSource": 1789557813290,
+      "departedAt": 1789558368329,
+      "arrivedAtTarget": 1789558458337,
+      "standSec": 555.039,
+      "pinDurationSec": 560.047,
+      "observedRunIdsDuringVisit": [
+        "1789556360213"
+      ],
+      "legIds": [
+        52639,
+        52640,
+        52644
+      ],
+      "forecastRows": 65
+    },
+    {
+      "journeyId": "3:56968:57025",
+      "sourceId": 56968,
+      "targetVisitId": 57025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 54.38952166373697,
+      "pinnedAt": 1789557808282,
+      "arrivedAtSource": 1789557813290,
+      "departedAt": 1789558368329,
+      "arrivedAtTarget": 1789558708370,
+      "standSec": 555.039,
+      "pinDurationSec": 560.047,
+      "observedRunIdsDuringVisit": [
+        "1789556360213"
+      ],
+      "legIds": [
+        52639,
+        52640,
+        52644,
+        52663,
+        52678,
+        52686
+      ],
+      "forecastRows": 90
+    },
+    {
+      "journeyId": "3:57100:57124",
+      "sourceId": 57100,
+      "targetVisitId": 57124,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 24.30610304175295,
+      "pinnedAt": 1789558778374,
+      "arrivedAtSource": 1789558778374,
+      "departedAt": 1789559228434,
+      "arrivedAtTarget": 1789559319156,
+      "standSec": 450.06,
+      "pinDurationSec": 450.06,
+      "observedRunIdsDuringVisit": [
+        "1789556360213",
+        "1789559182280"
+      ],
+      "legIds": [
+        52766,
+        52769,
+        52779
+      ],
+      "forecastRows": 53
+    },
+    {
+      "journeyId": "3:57100:57158",
+      "sourceId": 57100,
+      "targetVisitId": 57158,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.42022558771122,
+      "pinnedAt": 1789558778374,
+      "arrivedAtSource": 1789558778374,
+      "departedAt": 1789559228434,
+      "arrivedAtTarget": 1789559574174,
+      "standSec": 450.06,
+      "pinDurationSec": 450.06,
+      "observedRunIdsDuringVisit": [
+        "1789556360213",
+        "1789559182280"
+      ],
+      "legIds": [
+        52766,
+        52769,
+        52779,
+        52801,
+        52807,
+        52811
+      ],
+      "forecastRows": 78
+    },
+    {
+      "journeyId": "3:57226:57258",
+      "sourceId": 57226,
+      "targetVisitId": 57258,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 18.815862942837136,
+      "pinnedAt": 1789559844189,
+      "arrivedAtSource": 1789559844189,
+      "departedAt": 1789560074288,
+      "arrivedAtTarget": 1789560199242,
+      "standSec": 230.099,
+      "pinDurationSec": 230.099,
+      "observedRunIdsDuringVisit": [
+        "1789559182280",
+        "1789559993863"
+      ],
+      "legIds": [
+        52891,
+        52902,
+        52905
+      ],
+      "forecastRows": 35
+    },
+    {
+      "journeyId": "3:57226:57297",
+      "sourceId": 57226,
+      "targetVisitId": 57297,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.2235641229436,
+      "pinnedAt": 1789559844189,
+      "arrivedAtSource": 1789559844189,
+      "departedAt": 1789560074288,
+      "arrivedAtTarget": 1789560565898,
+      "standSec": 230.099,
+      "pinDurationSec": 230.099,
+      "observedRunIdsDuringVisit": [
+        "1789559182280",
+        "1789559993863"
+      ],
+      "legIds": [
+        52891,
+        52902,
+        52905,
+        52928,
+        52943,
+        52953
+      ],
+      "forecastRows": 71
+    },
+    {
+      "journeyId": "3:57463:57490",
+      "sourceId": 57463,
+      "targetVisitId": 57490,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 26.8297742160246,
+      "pinnedAt": 1789561756333,
+      "arrivedAtSource": 1789561761461,
+      "departedAt": 1789561916261,
+      "arrivedAtTarget": 1789562026649,
+      "standSec": 154.8,
+      "pinDurationSec": 159.928,
+      "observedRunIdsDuringVisit": [
+        "1789561072248"
+      ],
+      "legIds": [
+        53115,
+        53124,
+        53128
+      ],
+      "forecastRows": 27
+    },
+    {
+      "journeyId": "3:57463:57525",
+      "sourceId": 57463,
+      "targetVisitId": 57525,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 38.555469073022685,
+      "pinnedAt": 1789561756333,
+      "arrivedAtSource": 1789561761461,
+      "departedAt": 1789561916261,
+      "arrivedAtTarget": 1789562396650,
+      "standSec": 154.8,
+      "pinDurationSec": 159.928,
+      "observedRunIdsDuringVisit": [
+        "1789561072248"
+      ],
+      "legIds": [
+        53115,
+        53124,
+        53128,
+        53146,
+        53171,
+        53179
+      ],
+      "forecastRows": 64
+    },
+    {
+      "journeyId": "3:57581:57596",
+      "sourceId": 57581,
+      "targetVisitId": 57596,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.348570717925094,
+      "pinnedAt": 1789562561646,
+      "arrivedAtSource": 1789562561646,
+      "departedAt": 1789562781707,
+      "arrivedAtTarget": 1789562946755,
+      "standSec": 220.061,
+      "pinDurationSec": 220.061,
+      "observedRunIdsDuringVisit": [
+        "1789561072248"
+      ],
+      "legIds": [
+        53232,
+        53237,
+        53244
+      ],
+      "forecastRows": 38
+    },
+    {
+      "journeyId": "3:57581:57639",
+      "sourceId": 57581,
+      "targetVisitId": 57639,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 45.181259376292104,
+      "pinnedAt": 1789562561646,
+      "arrivedAtSource": 1789562561646,
+      "departedAt": 1789562781707,
+      "arrivedAtTarget": 1789563246804,
+      "standSec": 220.061,
+      "pinDurationSec": 220.061,
+      "observedRunIdsDuringVisit": [
+        "1789561072248"
+      ],
+      "legIds": [
+        53232,
+        53237,
+        53244,
+        53254,
+        53268,
+        53283
+      ],
+      "forecastRows": 67
+    },
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "pinnedAt": 1789564246916,
+      "arrivedAtSource": 1789564251891,
+      "departedAt": 1789564426957,
+      "arrivedAtTarget": 1789564511964,
+      "standSec": 175.066,
+      "pinDurationSec": 180.041,
+      "observedRunIdsDuringVisit": [
+        "1789563867397"
+      ],
+      "legIds": [
+        53438,
+        53440,
+        53446
+      ],
+      "forecastRows": 26
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "pinnedAt": 1789564246916,
+      "arrivedAtSource": 1789564251891,
+      "departedAt": 1789564426957,
+      "arrivedAtTarget": 1789564912002,
+      "standSec": 175.066,
+      "pinDurationSec": 180.041,
+      "observedRunIdsDuringVisit": [
+        "1789563867397"
+      ],
+      "legIds": [
+        53438,
+        53440,
+        53446,
+        53463,
+        53478,
+        53490
+      ],
+      "forecastRows": 66
+    },
+    {
+      "journeyId": "3:57965:57987",
+      "sourceId": 57965,
+      "targetVisitId": 57987,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 13.556588116297691,
+      "pinnedAt": 1789565577048,
+      "arrivedAtSource": 1789565577048,
+      "departedAt": 1789565707078,
+      "arrivedAtTarget": 1789565792097,
+      "standSec": 130.03,
+      "pinDurationSec": 130.03,
+      "observedRunIdsDuringVisit": [
+        "1789565477316"
+      ],
+      "legIds": [
+        53608,
+        53616,
+        53618
+      ],
+      "forecastRows": 21
+    },
+    {
+      "journeyId": "3:57965:58025",
+      "sourceId": 57965,
+      "targetVisitId": 58025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.0527544182229,
+      "pinnedAt": 1789565577048,
+      "arrivedAtSource": 1789565577048,
+      "departedAt": 1789565707078,
+      "arrivedAtTarget": 1789566072097,
+      "standSec": 130.03,
+      "pinDurationSec": 130.03,
+      "observedRunIdsDuringVisit": [
+        "1789565477316"
+      ],
+      "legIds": [
+        53608,
+        53616,
+        53618,
+        53628,
+        53644,
+        53654
+      ],
+      "forecastRows": 49
+    },
+    {
+      "journeyId": "3:58061:58080",
+      "sourceId": 58061,
+      "targetVisitId": 58080,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 5.918401323159271,
+      "pinnedAt": 1789565842083,
+      "arrivedAtSource": 1789565842083,
+      "departedAt": 1789566367155,
+      "arrivedAtTarget": 1789566437170,
+      "standSec": 525.072,
+      "pinDurationSec": 525.072,
+      "observedRunIdsDuringVisit": [
+        "1789565477316"
+      ],
+      "legIds": [
+        53702,
+        53704,
+        53707
+      ],
+      "forecastRows": 60
+    },
+    {
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "targetVisitId": 58110,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "pinnedAt": 1789565842083,
+      "arrivedAtSource": 1789565842083,
+      "departedAt": 1789566367155,
+      "arrivedAtTarget": 1789566622188,
+      "standSec": 525.072,
+      "pinDurationSec": 525.072,
+      "observedRunIdsDuringVisit": [
+        "1789565477316"
+      ],
+      "legIds": [
+        53702,
+        53704,
+        53707,
+        53721,
+        53727,
+        53739
+      ],
+      "forecastRows": 78
+    },
+    {
+      "journeyId": "3:58224:58260",
+      "sourceId": 58224,
+      "targetVisitId": 58260,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 19.135548591046078,
+      "pinnedAt": 1789567242326,
+      "arrivedAtSource": 1789567247521,
+      "departedAt": 1789567392398,
+      "arrivedAtTarget": 1789567487296,
+      "standSec": 144.877,
+      "pinDurationSec": 150.072,
+      "observedRunIdsDuringVisit": [
+        "1789566667888"
+      ],
+      "legIds": [
+        53858,
+        53866,
+        53876
+      ],
+      "forecastRows": 25
+    },
+    {
+      "journeyId": "3:58224:58296",
+      "sourceId": 58224,
+      "targetVisitId": 58296,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 44.41010108723389,
+      "pinnedAt": 1789567242326,
+      "arrivedAtSource": 1789567247521,
+      "departedAt": 1789567392398,
+      "arrivedAtTarget": 1789567822338,
+      "standSec": 144.877,
+      "pinDurationSec": 150.072,
+      "observedRunIdsDuringVisit": [
+        "1789566667888"
+      ],
+      "legIds": [
+        53858,
+        53866,
+        53876,
+        53895,
+        53913,
+        53923
+      ],
+      "forecastRows": 58
+    }
+  ],
+  "postDeparture": [
+    {
+      "journeyId": "3:56968:56994",
+      "sourceId": 56968,
+      "targetVisitId": 56994,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.61725351132599,
+      "at": 1789558377699,
+      "truthSec": 80.638,
+      "baseline": {
+        "eta": 123.241426105927,
+        "low": 15.60203031420319,
+        "high": 381.8442043950454
+      },
+      "unclamped": {
+        "eta": 159.20975716603323,
+        "low": 28.70753980400295,
+        "high": 476.2797537384787
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": -24,
+      "modelRested": true,
+      "modelSince": 1789557808282,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:56968:56994",
+      "sourceId": 56968,
+      "targetVisitId": 56994,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.61725351132599,
+      "at": 1789558407701,
+      "truthSec": 50.636,
+      "baseline": {
+        "eta": 51.10879709392206,
+        "low": 31.800593802623773,
+        "high": 85.02855543227547
+      },
+      "unclamped": {
+        "eta": 51.10879709392206,
+        "low": 31.800593802623773,
+        "high": 85.02855543227547
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": 0,
+      "modelRested": true,
+      "modelSince": 1789558388328,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:56968:56994",
+      "sourceId": 56968,
+      "targetVisitId": 56994,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.61725351132599,
+      "at": 1789558437702,
+      "truthSec": 20.635,
+      "baseline": {
+        "eta": 36.02073653720612,
+        "low": 17.43851435630049,
+        "high": 93.03848352854465
+      },
+      "unclamped": {
+        "eta": 36.02073653720612,
+        "low": 17.43851435630049,
+        "high": 93.03848352854465
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": 1,
+      "modelRested": true,
+      "modelSince": 1789558388328,
+      "reportedSource": 49,
+      "stopsAhead": 1,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:56968:57025",
+      "sourceId": 56968,
+      "targetVisitId": 57025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 54.38952166373697,
+      "at": 1789558377699,
+      "truthSec": 330.671,
+      "baseline": {
+        "eta": 484.7915023791739,
+        "low": 272.9277293025693,
+        "high": 861.361626559418
+      },
+      "unclamped": {
+        "eta": 524.7105556763627,
+        "low": 310.97128785912037,
+        "high": 901.2806798566069
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": -24,
+      "modelRested": true,
+      "modelSince": 1789557808282,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:56968:57025",
+      "sourceId": 56968,
+      "targetVisitId": 57025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 54.38952166373697,
+      "at": 1789558407701,
+      "truthSec": 300.669,
+      "baseline": {
+        "eta": 383.08359323702143,
+        "low": 246.12405616714472,
+        "high": 631.1862909785639
+      },
+      "unclamped": {
+        "eta": 383.08359323702143,
+        "low": 246.12405616714472,
+        "high": 631.1862909785639
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": 0,
+      "modelRested": true,
+      "modelSince": 1789558388328,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:56968:57025",
+      "sourceId": 56968,
+      "targetVisitId": 57025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 54.38952166373697,
+      "at": 1789558437702,
+      "truthSec": 270.668,
+      "baseline": {
+        "eta": 376.8963483947285,
+        "low": 228.43783087197068,
+        "high": 631.276212061614
+      },
+      "unclamped": {
+        "eta": 376.8963483947285,
+        "low": 228.43783087197068,
+        "high": 631.276212061614
+      },
+      "runId": "1789556360213",
+      "feedAgeMs": 1,
+      "modelRested": true,
+      "modelSince": 1789558388328,
+      "reportedSource": 49,
+      "stopsAhead": 4,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57100:57124",
+      "sourceId": 57100,
+      "targetVisitId": 57124,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 24.30610304175295,
+      "at": 1789559237741,
+      "truthSec": 81.415,
+      "baseline": {
+        "eta": 188.82989920388815,
+        "low": 13.779961799471977,
+        "high": 520.6222027280717
+      },
+      "unclamped": {
+        "eta": 188.82989920388815,
+        "low": 13.779961799471977,
+        "high": 520.6222027280717
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4731,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57100:57124",
+      "sourceId": 57100,
+      "targetVisitId": 57124,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 24.30610304175295,
+      "at": 1789559267751,
+      "truthSec": 51.405,
+      "baseline": {
+        "eta": 42.74033159348657,
+        "low": 26.225060252687516,
+        "high": 64.8339877906609
+      },
+      "unclamped": {
+        "eta": 43.041076808684224,
+        "low": 26.525805467885167,
+        "high": 65.14344584928995
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4745,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57100:57124",
+      "sourceId": 57100,
+      "targetVisitId": 57124,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 24.30610304175295,
+      "at": 1789559297755,
+      "truthSec": 21.401,
+      "baseline": {
+        "eta": 37.1125103478817,
+        "low": 15.83623221568145,
+        "high": 59.62684033004274
+      },
+      "unclamped": {
+        "eta": 37.1125103478817,
+        "low": 15.83623221568145,
+        "high": 59.62684033004274
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4736,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": 49,
+      "stopsAhead": 2,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57100:57158",
+      "sourceId": 57100,
+      "targetVisitId": 57158,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.42022558771122,
+      "at": 1789559237741,
+      "truthSec": 336.433,
+      "baseline": {
+        "eta": 558.8699722942034,
+        "low": 320.00225517319234,
+        "high": 940.5164602205332
+      },
+      "unclamped": {
+        "eta": 558.8699722942034,
+        "low": 320.00225517319234,
+        "high": 940.5164602205332
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4731,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57100:57158",
+      "sourceId": 57100,
+      "targetVisitId": 57158,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.42022558771122,
+      "at": 1789559267751,
+      "truthSec": 306.423,
+      "baseline": {
+        "eta": 374.26863470314356,
+        "low": 237.2570309092421,
+        "high": 604.5578860761921
+      },
+      "unclamped": {
+        "eta": 374.63323811265934,
+        "low": 237.62163431875788,
+        "high": 604.9402001072406
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4745,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57100:57158",
+      "sourceId": 57100,
+      "targetVisitId": 57158,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.42022558771122,
+      "at": 1789559297755,
+      "truthSec": 276.419,
+      "baseline": {
+        "eta": 366.0091651187792,
+        "low": 221.6916004231187,
+        "high": 595.2510527015934
+      },
+      "unclamped": {
+        "eta": 366.0091651187792,
+        "low": 221.6916004231187,
+        "high": 595.2510527015934
+      },
+      "runId": "1789559182280",
+      "feedAgeMs": 4736,
+      "modelRested": true,
+      "modelSince": 1789558778374,
+      "reportedSource": 49,
+      "stopsAhead": 5,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57226:57258",
+      "sourceId": 57226,
+      "targetVisitId": 57258,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 18.815862942837136,
+      "at": 1789560077915,
+      "truthSec": 121.327,
+      "baseline": {
+        "eta": 234.71167243585256,
+        "low": 0,
+        "high": 630.3001785331097
+      },
+      "unclamped": {
+        "eta": 315.375082788027,
+        "low": 28.71971749015529,
+        "high": 680.6360655847367
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 3596,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57226:57258",
+      "sourceId": 57226,
+      "targetVisitId": 57258,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 18.815862942837136,
+      "at": 1789560107923,
+      "truthSec": 91.319,
+      "baseline": {
+        "eta": 170.82019573090804,
+        "low": 0,
+        "high": 653.4274164998678
+      },
+      "unclamped": {
+        "eta": 170.82019573090804,
+        "low": 0,
+        "high": 653.4274164998678
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 4626,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57226:57258",
+      "sourceId": 57226,
+      "targetVisitId": 57258,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 18.815862942837136,
+      "at": 1789560137933,
+      "truthSec": 61.309,
+      "baseline": {
+        "eta": 60.69394514276328,
+        "low": 33.5386949107887,
+        "high": 143.22047196373484
+      },
+      "unclamped": {
+        "eta": 60.69394514276328,
+        "low": 33.5386949107887,
+        "high": 143.22047196373484
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 4630,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 146,
+      "stopsAhead": 3,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57226:57297",
+      "sourceId": 57226,
+      "targetVisitId": 57297,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.2235641229436,
+      "at": 1789560077915,
+      "truthSec": 487.983,
+      "baseline": {
+        "eta": 610.1354224416414,
+        "low": 307.8108503516838,
+        "high": 1008.0206783896763
+      },
+      "unclamped": {
+        "eta": 681.7741320760072,
+        "low": 391.70012087593346,
+        "high": 1059.7159169104307
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 3596,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57226:57297",
+      "sourceId": 57226,
+      "targetVisitId": 57297,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.2235641229436,
+      "at": 1789560107923,
+      "truthSec": 457.975,
+      "baseline": {
+        "eta": 550.0488484207492,
+        "low": 248.154364194094,
+        "high": 1034.9705549349192
+      },
+      "unclamped": {
+        "eta": 550.0488484207492,
+        "low": 248.154364194094,
+        "high": 1034.9705549349192
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 4626,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57226:57297",
+      "sourceId": 57226,
+      "targetVisitId": 57297,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.2235641229436,
+      "at": 1789560137933,
+      "truthSec": 427.965,
+      "baseline": {
+        "eta": 407.62058016461305,
+        "low": 240.05238783029156,
+        "high": 777.6442273572533
+      },
+      "unclamped": {
+        "eta": 407.62058016461305,
+        "low": 240.05238783029156,
+        "high": 777.6442273572533
+      },
+      "runId": "1789559993863",
+      "feedAgeMs": 4630,
+      "modelRested": true,
+      "modelSince": 1789559844189,
+      "reportedSource": 146,
+      "stopsAhead": 6,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57463:57490",
+      "sourceId": 57463,
+      "targetVisitId": 57490,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 26.8297742160246,
+      "at": 1789561918327,
+      "truthSec": 108.322,
+      "baseline": {
+        "eta": 200.25288488231854,
+        "low": 0,
+        "high": 499.9600098276857
+      },
+      "unclamped": {
+        "eta": 229.8508588040215,
+        "low": 7.8994162344965275,
+        "high": 529.4310395055757
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4863,
+      "modelRested": true,
+      "modelSince": 1789561736355,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57463:57490",
+      "sourceId": 57463,
+      "targetVisitId": 57490,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 26.8297742160246,
+      "at": 1789561948339,
+      "truthSec": 78.31,
+      "baseline": {
+        "eta": 54.42783763607509,
+        "low": 33.955299287553046,
+        "high": 90.22652417462542
+      },
+      "unclamped": {
+        "eta": 54.42783763607509,
+        "low": 33.955299287553046,
+        "high": 90.22652417462542
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4857,
+      "modelRested": true,
+      "modelSince": 1789561931266,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57463:57490",
+      "sourceId": 57463,
+      "targetVisitId": 57490,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 26.8297742160246,
+      "at": 1789561978351,
+      "truthSec": 48.298,
+      "baseline": {
+        "eta": 53.90321290804095,
+        "low": 34.991927403836954,
+        "high": 89.03423581456592
+      },
+      "unclamped": {
+        "eta": 54.71223650267653,
+        "low": 35.800950998472544,
+        "high": 89.8666975074859
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4884,
+      "modelRested": true,
+      "modelSince": 1789561931266,
+      "reportedSource": 146,
+      "stopsAhead": 2,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57463:57525",
+      "sourceId": 57463,
+      "targetVisitId": 57525,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 38.555469073022685,
+      "at": 1789561918327,
+      "truthSec": 478.323,
+      "baseline": {
+        "eta": 564.4952055617852,
+        "low": 296.9385146979268,
+        "high": 903.6969297896139
+      },
+      "unclamped": {
+        "eta": 596.9958590089934,
+        "low": 344.55603709435945,
+        "high": 915.216689321914
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4863,
+      "modelRested": true,
+      "modelSince": 1789561736355,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57463:57525",
+      "sourceId": 57463,
+      "targetVisitId": 57525,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 38.555469073022685,
+      "at": 1789561948339,
+      "truthSec": 448.311,
+      "baseline": {
+        "eta": 385.7142315158727,
+        "low": 249.93653400817988,
+        "high": 638.2509256835791
+      },
+      "unclamped": {
+        "eta": 385.7142315158727,
+        "low": 249.93653400817988,
+        "high": 638.2509256835791
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4857,
+      "modelRested": true,
+      "modelSince": 1789561931266,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57463:57525",
+      "sourceId": 57463,
+      "targetVisitId": 57525,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 38.555469073022685,
+      "at": 1789561978351,
+      "truthSec": 418.299,
+      "baseline": {
+        "eta": 385.7142315158727,
+        "low": 247.1785587245189,
+        "high": 629.4190374239246
+      },
+      "unclamped": {
+        "eta": 387.7672235178797,
+        "low": 249.23155072652588,
+        "high": 631.5717535738917
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": 4884,
+      "modelRested": true,
+      "modelSince": 1789561931266,
+      "reportedSource": 146,
+      "stopsAhead": 5,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57581:57596",
+      "sourceId": 57581,
+      "targetVisitId": 57596,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.348570717925094,
+      "at": 1789562788426,
+      "truthSec": 158.329,
+      "baseline": {
+        "eta": 201.42405943828453,
+        "low": 0,
+        "high": 490.12806695468186
+      },
+      "unclamped": {
+        "eta": 213.17997071795384,
+        "low": 6.299590962676604,
+        "high": 501.772287105597
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57581:57596",
+      "sourceId": 57581,
+      "targetVisitId": 57596,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.348570717925094,
+      "at": 1789562818426,
+      "truthSec": 128.329,
+      "baseline": {
+        "eta": 58.01513438103358,
+        "low": 33.121839621346226,
+        "high": 113.58979060422939
+      },
+      "unclamped": {
+        "eta": 58.01513438103358,
+        "low": 33.121839621346226,
+        "high": 113.58979060422939
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": null,
+      "stopsAhead": 3,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57581:57596",
+      "sourceId": 57581,
+      "targetVisitId": 57596,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.348570717925094,
+      "at": 1789562848427,
+      "truthSec": 98.328,
+      "baseline": {
+        "eta": 45.304076100933855,
+        "low": 27.100723478411954,
+        "high": 84.70755055664306
+      },
+      "unclamped": {
+        "eta": 45.304076100933855,
+        "low": 27.100723478411954,
+        "high": 84.70755055664306
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": 146,
+      "stopsAhead": 2,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57581:57639",
+      "sourceId": 57581,
+      "targetVisitId": 57639,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 45.181259376292104,
+      "at": 1789562788426,
+      "truthSec": 458.378,
+      "baseline": {
+        "eta": 571.7436547962205,
+        "low": 314.6816999655585,
+        "high": 888.7540056787973
+      },
+      "unclamped": {
+        "eta": 582.7457788840733,
+        "low": 331.68812674689184,
+        "high": 891.7327509291815
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57581:57639",
+      "sourceId": 57581,
+      "targetVisitId": 57639,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 45.181259376292104,
+      "at": 1789562818426,
+      "truthSec": 428.378,
+      "baseline": {
+        "eta": 402.25028949907176,
+        "low": 242.33291576753746,
+        "high": 718.0536244355236
+      },
+      "unclamped": {
+        "eta": 402.25028949907176,
+        "low": 242.33291576753746,
+        "high": 718.0536244355236
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": null,
+      "stopsAhead": 6,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57581:57639",
+      "sourceId": 57581,
+      "targetVisitId": 57639,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 45.181259376292104,
+      "at": 1789562848427,
+      "truthSec": 398.377,
+      "baseline": {
+        "eta": 381.53690259531584,
+        "low": 241.52569653378754,
+        "high": 636.7580011341803
+      },
+      "unclamped": {
+        "eta": 381.53690259531584,
+        "low": 241.52569653378754,
+        "high": 636.7580011341803
+      },
+      "runId": "1789561072248",
+      "feedAgeMs": -27,
+      "modelRested": true,
+      "modelSince": 1789562536653,
+      "reportedSource": 146,
+      "stopsAhead": 5,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "at": 1789564432873,
+      "truthSec": 79.091,
+      "baseline": {
+        "eta": 93.02141145239851,
+        "low": 51.34984412905373,
+        "high": 162.5999868527229
+      },
+      "unclamped": {
+        "eta": 109.22110525069698,
+        "low": 60.58128968678105,
+        "high": 190.07661599482515
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4353,
+      "modelRested": true,
+      "modelSince": 1789564217073,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "at": 1789564462877,
+      "truthSec": 49.087,
+      "baseline": {
+        "eta": 62.582202316224624,
+        "low": 35.89617208107393,
+        "high": 127.63402260562596
+      },
+      "unclamped": {
+        "eta": 62.582202316224624,
+        "low": 35.89617208107393,
+        "high": 127.63402260562596
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4354,
+      "modelRested": true,
+      "modelSince": 1789564217073,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "at": 1789564492881,
+      "truthSec": 19.083,
+      "baseline": {
+        "eta": 33.077395068358484,
+        "low": 14.574729062134379,
+        "high": 68.9017676054946
+      },
+      "unclamped": {
+        "eta": 33.077395068358484,
+        "low": 14.574729062134379,
+        "high": 68.9017676054946
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4354,
+      "modelRested": true,
+      "modelSince": 1789564447165,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "at": 1789564432873,
+      "truthSec": 479.129,
+      "baseline": {
+        "eta": 441.88677253987015,
+        "low": 280.68121054198946,
+        "high": 700.205888099484
+      },
+      "unclamped": {
+        "eta": 455.92266973520725,
+        "low": 294.43884623006534,
+        "high": 714.6358855615911
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4353,
+      "modelRested": true,
+      "modelSince": 1789564217073,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "at": 1789564462877,
+      "truthSec": 449.125,
+      "baseline": {
+        "eta": 400.66022908702905,
+        "low": 252.5495106613466,
+        "high": 685.1172558851479
+      },
+      "unclamped": {
+        "eta": 400.66022908702905,
+        "low": 252.5495106613466,
+        "high": 685.1172558851479
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4354,
+      "modelRested": true,
+      "modelSince": 1789564217073,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "at": 1789564492881,
+      "truthSec": 419.121,
+      "baseline": {
+        "eta": 362.7822662997407,
+        "low": 222.93168882033362,
+        "high": 614.7662373278023
+      },
+      "unclamped": {
+        "eta": 362.7822662997407,
+        "low": 222.93168882033362,
+        "high": 614.7662373278023
+      },
+      "runId": "1789563867397",
+      "feedAgeMs": 4354,
+      "modelRested": true,
+      "modelSince": 1789564447165,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57965:57987",
+      "sourceId": 57965,
+      "targetVisitId": 57987,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 13.556588116297691,
+      "at": 1789565713089,
+      "truthSec": 79.008,
+      "baseline": {
+        "eta": 152.73026537585145,
+        "low": 29.730265963552426,
+        "high": 323.0971472368192
+      },
+      "unclamped": {
+        "eta": 152.73026537585145,
+        "low": 29.730265963552426,
+        "high": 323.0971472368192
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4736,
+      "modelRested": true,
+      "modelSince": 1789565567044,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57965:57987",
+      "sourceId": 57965,
+      "targetVisitId": 57987,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 13.556588116297691,
+      "at": 1789565743095,
+      "truthSec": 49.002,
+      "baseline": {
+        "eta": 57.93686029083464,
+        "low": 33.376728274601525,
+        "high": 123.04646196421884
+      },
+      "unclamped": {
+        "eta": 57.93686029083464,
+        "low": 33.376728274601525,
+        "high": 123.04646196421884
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4686,
+      "modelRested": true,
+      "modelSince": 1789565567044,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57965:57987",
+      "sourceId": 57965,
+      "targetVisitId": 57987,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 13.556588116297691,
+      "at": 1789565773102,
+      "truthSec": 18.995,
+      "baseline": {
+        "eta": 20.354495801953476,
+        "low": 7.25666100248216,
+        "high": 31.802023182431874
+      },
+      "unclamped": {
+        "eta": 20.354495801953476,
+        "low": 7.25666100248216,
+        "high": 31.802023182431874
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4750,
+      "modelRested": true,
+      "modelSince": 1789565752081,
+      "reportedSource": null,
+      "stopsAhead": 1,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:57965:58025",
+      "sourceId": 57965,
+      "targetVisitId": 58025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.0527544182229,
+      "at": 1789565713089,
+      "truthSec": 359.008,
+      "baseline": {
+        "eta": 512.6293950305571,
+        "low": 317.9261549602364,
+        "high": 794.7617864932217
+      },
+      "unclamped": {
+        "eta": 512.6293950305571,
+        "low": 317.9261549602364,
+        "high": 794.7617864932217
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4736,
+      "modelRested": true,
+      "modelSince": 1789565567044,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:57965:58025",
+      "sourceId": 57965,
+      "targetVisitId": 58025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.0527544182229,
+      "at": 1789565743095,
+      "truthSec": 329.002,
+      "baseline": {
+        "eta": 397.07420954809874,
+        "low": 251.38284981075,
+        "high": 685.1723716113204
+      },
+      "unclamped": {
+        "eta": 397.07420954809874,
+        "low": 251.38284981075,
+        "high": 685.1723716113204
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4686,
+      "modelRested": true,
+      "modelSince": 1789565567044,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:57965:58025",
+      "sourceId": 57965,
+      "targetVisitId": 58025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.0527544182229,
+      "at": 1789565773102,
+      "truthSec": 298.995,
+      "baseline": {
+        "eta": 345.1122682516844,
+        "low": 213.99080857726392,
+        "high": 579.022894709155
+      },
+      "unclamped": {
+        "eta": 345.1122682516844,
+        "low": 213.99080857726392,
+        "high": 579.022894709155
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4750,
+      "modelRested": true,
+      "modelSince": 1789565752081,
+      "reportedSource": null,
+      "stopsAhead": 4,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:58061:58080",
+      "sourceId": 58061,
+      "targetVisitId": 58080,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 5.918401323159271,
+      "at": 1789566373198,
+      "truthSec": 63.972,
+      "baseline": {
+        "eta": 142.2122985906094,
+        "low": 0,
+        "high": 444.255421632304
+      },
+      "unclamped": {
+        "eta": 169.03909614789933,
+        "low": 14.152218202319148,
+        "high": 490.8127567168491
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4865,
+      "modelRested": true,
+      "modelSince": 1789565842083,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:58061:58080",
+      "sourceId": 58061,
+      "targetVisitId": 58080,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 5.918401323159271,
+      "at": 1789566403209,
+      "truthSec": 33.961,
+      "baseline": {
+        "eta": 42.17433031544949,
+        "low": 24.594814808385504,
+        "high": 72.99876547115
+      },
+      "unclamped": {
+        "eta": 42.17433031544949,
+        "low": 24.594814808385504,
+        "high": 72.99876547115
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4869,
+      "modelRested": true,
+      "modelSince": 1789566377152,
+      "reportedSource": 146,
+      "stopsAhead": 2,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:58061:58080",
+      "sourceId": 58061,
+      "targetVisitId": 58080,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 5.918401323159271,
+      "at": 1789566433216,
+      "truthSec": 3.954,
+      "baseline": {
+        "eta": 8.116852898487993,
+        "low": 2.733796405826854,
+        "high": 10.964308542577589
+      },
+      "unclamped": {
+        "eta": 8.116852898487993,
+        "low": 2.733796405826854,
+        "high": 10.964308542577589
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4871,
+      "modelRested": true,
+      "modelSince": 1789566397209,
+      "reportedSource": null,
+      "stopsAhead": 1,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "targetVisitId": 58110,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "at": 1789566373198,
+      "truthSec": 248.99,
+      "baseline": {
+        "eta": 504.69070491958394,
+        "low": 287.47276362447747,
+        "high": 883.0947594475813
+      },
+      "unclamped": {
+        "eta": 536.4166692858676,
+        "low": 317.7081646032067,
+        "high": 914.8207238138648
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4865,
+      "modelRested": true,
+      "modelSince": 1789565842083,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "targetVisitId": 58110,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "at": 1789566403209,
+      "truthSec": 218.979,
+      "baseline": {
+        "eta": 373.16940543454314,
+        "low": 242.16334989862204,
+        "high": 627.3905000235288
+      },
+      "unclamped": {
+        "eta": 373.16940543454314,
+        "low": 242.16334989862204,
+        "high": 627.3905000235288
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4869,
+      "modelRested": true,
+      "modelSince": 1789566377152,
+      "reportedSource": 146,
+      "stopsAhead": 5,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "targetVisitId": 58110,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "at": 1789566433216,
+      "truthSec": 188.972,
+      "baseline": {
+        "eta": 327.8851639910952,
+        "low": 196.28874140321446,
+        "high": 565.0635802516446
+      },
+      "unclamped": {
+        "eta": 327.8851639910952,
+        "low": 196.28874140321446,
+        "high": 565.0635802516446
+      },
+      "runId": "1789565477316",
+      "feedAgeMs": 4871,
+      "modelRested": true,
+      "modelSince": 1789566397209,
+      "reportedSource": null,
+      "stopsAhead": 4,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:58224:58260",
+      "sourceId": 58224,
+      "targetVisitId": 58260,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 19.135548591046078,
+      "at": 1789567393381,
+      "truthSec": 93.915,
+      "baseline": {
+        "eta": 185.03344507645897,
+        "low": 0,
+        "high": 778.1927298928932
+      },
+      "unclamped": {
+        "eta": 405.79988105610664,
+        "low": 0,
+        "high": 941.2398050359978
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4712,
+      "modelRested": true,
+      "modelSince": 1789567242326,
+      "reportedSource": 11,
+      "stopsAhead": 3,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:58224:58260",
+      "sourceId": 58224,
+      "targetVisitId": 58260,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 19.135548591046078,
+      "at": 1789567423387,
+      "truthSec": 63.909,
+      "baseline": {
+        "eta": 57.99882767912451,
+        "low": 32.75193185521635,
+        "high": 113.21829494204431
+      },
+      "unclamped": {
+        "eta": 57.99882767912451,
+        "low": 32.75193185521635,
+        "high": 113.21829494204431
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4717,
+      "modelRested": true,
+      "modelSince": 1789567242326,
+      "reportedSource": null,
+      "stopsAhead": 3,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:58224:58260",
+      "sourceId": 58224,
+      "targetVisitId": 58260,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 19.135548591046078,
+      "at": 1789567453392,
+      "truthSec": 33.904,
+      "baseline": {
+        "eta": 33.09176801740036,
+        "low": 15.447062349494585,
+        "high": 64.24596571473285
+      },
+      "unclamped": {
+        "eta": 33.09176801740036,
+        "low": 15.447062349494585,
+        "high": 64.24596571473285
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4751,
+      "modelRested": true,
+      "modelSince": 1789567412344,
+      "reportedSource": null,
+      "stopsAhead": 2,
+      "afterDepartureSec": 60
+    },
+    {
+      "journeyId": "3:58224:58296",
+      "sourceId": 58224,
+      "targetVisitId": 58296,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 44.41010108723389,
+      "at": 1789567393381,
+      "truthSec": 428.957,
+      "baseline": {
+        "eta": 598.1504320661188,
+        "low": 99.21581427279028,
+        "high": 1157.0535661985796
+      },
+      "unclamped": {
+        "eta": 794.9704325091997,
+        "low": 326.97986704801764,
+        "high": 1310.2757561425385
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4712,
+      "modelRested": true,
+      "modelSince": 1789567242326,
+      "reportedSource": 11,
+      "stopsAhead": 6,
+      "afterDepartureSec": 0
+    },
+    {
+      "journeyId": "3:58224:58296",
+      "sourceId": 58224,
+      "targetVisitId": 58296,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 44.41010108723389,
+      "at": 1789567423387,
+      "truthSec": 398.951,
+      "baseline": {
+        "eta": 400.508050179513,
+        "low": 242.5824573690433,
+        "high": 701.1441955926252
+      },
+      "unclamped": {
+        "eta": 400.508050179513,
+        "low": 242.5824573690433,
+        "high": 701.1441955926252
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4717,
+      "modelRested": true,
+      "modelSince": 1789567242326,
+      "reportedSource": null,
+      "stopsAhead": 6,
+      "afterDepartureSec": 30
+    },
+    {
+      "journeyId": "3:58224:58296",
+      "sourceId": 58224,
+      "targetVisitId": 58296,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 44.41010108723389,
+      "at": 1789567453392,
+      "truthSec": 368.946,
+      "baseline": {
+        "eta": 362.8239021578984,
+        "low": 222.9636349794069,
+        "high": 617.5566255576502
+      },
+      "unclamped": {
+        "eta": 362.8239021578984,
+        "low": 222.9636349794069,
+        "high": 617.5566255576502
+      },
+      "runId": "1789566667888",
+      "feedAgeMs": 4751,
+      "modelRested": true,
+      "modelSince": 1789567412344,
+      "reportedSource": null,
+      "stopsAhead": 5,
+      "afterDepartureSec": 60
+    }
+  ],
+  "departurePairs": [
+    {
+      "journeyId": "3:56968:56994",
+      "sourceId": 56968,
+      "targetVisitId": 56994,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 17.61725351132599,
+      "beforeAt": 1789558367696,
+      "afterAt": 1789558377699,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.003,
+        "afterErrorSec": 42.603426105927
+      },
+      "unclamped": {
+        "remainingChangeSec": -2.616472993146999,
+        "absoluteArrivalChangeSec": 7.386527006852987,
+        "afterErrorSec": 78.57175716603322
+      }
+    },
+    {
+      "journeyId": "3:56968:57025",
+      "sourceId": 56968,
+      "targetVisitId": 57025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 54.38952166373697,
+      "beforeAt": 1789558367696,
+      "afterAt": 1789558377699,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.002999999999986,
+        "afterErrorSec": 154.1205023791739
+      },
+      "unclamped": {
+        "remainingChangeSec": -2.9517438271620904,
+        "absoluteArrivalChangeSec": 7.051256172837952,
+        "afterErrorSec": 194.03955567636268
+      }
+    },
+    {
+      "journeyId": "3:57100:57124",
+      "sourceId": 57100,
+      "targetVisitId": 57124,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 24.30610304175295,
+      "beforeAt": 1789559227740,
+      "afterAt": 1789559237741,
+      "baseline": {
+        "remainingChangeSec": -2.0238930835463975,
+        "absoluteArrivalChangeSec": 7.977106916453607,
+        "afterErrorSec": 107.41489920388814
+      },
+      "unclamped": {
+        "remainingChangeSec": -2.0238930835463975,
+        "absoluteArrivalChangeSec": 7.977106916453607,
+        "afterErrorSec": 107.41489920388814
+      }
+    },
+    {
+      "journeyId": "3:57100:57158",
+      "sourceId": 57100,
+      "targetVisitId": 57158,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 68.42022558771122,
+      "beforeAt": 1789559227740,
+      "afterAt": 1789559237741,
+      "baseline": {
+        "remainingChangeSec": -3.0546320510375153,
+        "absoluteArrivalChangeSec": 6.946367948962461,
+        "afterErrorSec": 222.43697229420343
+      },
+      "unclamped": {
+        "remainingChangeSec": -3.0546320510375153,
+        "absoluteArrivalChangeSec": 6.946367948962461,
+        "afterErrorSec": 222.43697229420343
+      }
+    },
+    {
+      "journeyId": "3:57226:57258",
+      "sourceId": 57226,
+      "targetVisitId": 57258,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 18.815862942837136,
+      "beforeAt": 1789560067915,
+      "afterAt": 1789560077915,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 113.38467243585256
+      },
+      "unclamped": {
+        "remainingChangeSec": -7.751359243696811,
+        "absoluteArrivalChangeSec": 2.248640756303189,
+        "afterErrorSec": 194.048082788027
+      }
+    },
+    {
+      "journeyId": "3:57226:57297",
+      "sourceId": 57226,
+      "targetVisitId": 57297,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 56.2235641229436,
+      "beforeAt": 1789560067915,
+      "afterAt": 1789560077915,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 122.15242244164136
+      },
+      "unclamped": {
+        "remainingChangeSec": -8.448991710243263,
+        "absoluteArrivalChangeSec": 1.5510082897567372,
+        "afterErrorSec": 193.79113207600716
+      }
+    },
+    {
+      "journeyId": "3:57463:57490",
+      "sourceId": 57463,
+      "targetVisitId": 57490,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 26.8297742160246,
+      "beforeAt": 1789561908323,
+      "afterAt": 1789561918327,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.00399999999999,
+        "afterErrorSec": 91.93088488231854
+      },
+      "unclamped": {
+        "remainingChangeSec": -7.4579526360613215,
+        "absoluteArrivalChangeSec": 2.546047363938669,
+        "afterErrorSec": 121.5288588040215
+      }
+    },
+    {
+      "journeyId": "3:57463:57525",
+      "sourceId": 57463,
+      "targetVisitId": 57525,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 38.555469073022685,
+      "beforeAt": 1789561908323,
+      "afterAt": 1789561918327,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.004000000000019,
+        "afterErrorSec": 86.17220556178518
+      },
+      "unclamped": {
+        "remainingChangeSec": -5.91702960749376,
+        "absoluteArrivalChangeSec": 4.0869703925062595,
+        "afterErrorSec": 118.67285900899344
+      }
+    },
+    {
+      "journeyId": "3:57581:57596",
+      "sourceId": 57581,
+      "targetVisitId": 57596,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 4.348570717925094,
+      "beforeAt": 1789562778426,
+      "afterAt": 1789562788426,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 43.09505943828452
+      },
+      "unclamped": {
+        "remainingChangeSec": -3.8070648390547035,
+        "absoluteArrivalChangeSec": 6.1929351609452965,
+        "afterErrorSec": 54.85097071795383
+      }
+    },
+    {
+      "journeyId": "3:57581:57639",
+      "sourceId": 57581,
+      "targetVisitId": 57639,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 45.181259376292104,
+      "beforeAt": 1789562778426,
+      "afterAt": 1789562788426,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 113.36565479622055
+      },
+      "unclamped": {
+        "remainingChangeSec": -5.62808736828822,
+        "absoluteArrivalChangeSec": 4.37191263171178,
+        "afterErrorSec": 124.36777888407329
+      }
+    },
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "beforeAt": 1789564422870,
+      "afterAt": 1789564432873,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.003,
+        "afterErrorSec": 13.930411452398516
+      },
+      "unclamped": {
+        "remainingChangeSec": -0.03311310945883861,
+        "absoluteArrivalChangeSec": 9.969886890541162,
+        "afterErrorSec": 30.130105250696985
+      }
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "beforeAt": 1789564422870,
+      "afterAt": 1789564432873,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.002999999999986,
+        "afterErrorSec": -37.24222746012987
+      },
+      "unclamped": {
+        "remainingChangeSec": -0.037356172488898665,
+        "absoluteArrivalChangeSec": 9.965643827511087,
+        "afterErrorSec": -23.20633026479277
+      }
+    },
+    {
+      "journeyId": "3:57965:57987",
+      "sourceId": 57965,
+      "targetVisitId": 57987,
+      "bus": "#308",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 13.556588116297691,
+      "beforeAt": 1789565703088,
+      "afterAt": 1789565713089,
+      "baseline": {
+        "remainingChangeSec": -2.5336546674215015,
+        "absoluteArrivalChangeSec": 7.467345332578503,
+        "afterErrorSec": 73.72226537585145
+      },
+      "unclamped": {
+        "remainingChangeSec": -2.5336546674215015,
+        "absoluteArrivalChangeSec": 7.467345332578503,
+        "afterErrorSec": 73.72226537585145
+      }
+    },
+    {
+      "journeyId": "3:57965:58025",
+      "sourceId": 57965,
+      "targetVisitId": 58025,
+      "bus": "#308",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 51.0527544182229,
+      "beforeAt": 1789565703088,
+      "afterAt": 1789565713089,
+      "baseline": {
+        "remainingChangeSec": -3.3002415513647065,
+        "absoluteArrivalChangeSec": 6.70075844863527,
+        "afterErrorSec": 153.62139503055715
+      },
+      "unclamped": {
+        "remainingChangeSec": -3.3002415513647065,
+        "absoluteArrivalChangeSec": 6.70075844863527,
+        "afterErrorSec": 153.62139503055715
+      }
+    },
+    {
+      "journeyId": "3:58061:58080",
+      "sourceId": 58061,
+      "targetVisitId": 58080,
+      "bus": "#316",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 5.918401323159271,
+      "beforeAt": 1789566363197,
+      "afterAt": 1789566373198,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.001000000000005,
+        "afterErrorSec": 78.2402985906094
+      },
+      "unclamped": {
+        "remainingChangeSec": -1.9355207417197846,
+        "absoluteArrivalChangeSec": 8.06547925828022,
+        "afterErrorSec": 105.06709614789932
+      }
+    },
+    {
+      "journeyId": "3:58061:58110",
+      "sourceId": 58061,
+      "targetVisitId": 58110,
+      "bus": "#316",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 72.7930512900023,
+      "beforeAt": 1789566363197,
+      "afterAt": 1789566373198,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.000999999999976,
+        "afterErrorSec": 255.70070491958393
+      },
+      "unclamped": {
+        "remainingChangeSec": -2.9466890730830073,
+        "absoluteArrivalChangeSec": 7.054310926916969,
+        "afterErrorSec": 287.42666928586755
+      }
+    },
+    {
+      "journeyId": "3:58224:58260",
+      "sourceId": 58224,
+      "targetVisitId": 58260,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 19.135548591046078,
+      "beforeAt": 1789567383381,
+      "afterAt": 1789567393381,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 91.11844507645897
+      },
+      "unclamped": {
+        "remainingChangeSec": 0.1594908678785032,
+        "absoluteArrivalChangeSec": 10.159490867878503,
+        "afterErrorSec": 311.8848810561066
+      }
+    },
+    {
+      "journeyId": "3:58224:58296",
+      "sourceId": 58224,
+      "targetVisitId": 58296,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "passed",
+      "targetClosestM": 44.41010108723389,
+      "beforeAt": 1789567383381,
+      "afterAt": 1789567393381,
+      "baseline": {
+        "remainingChangeSec": 0.0,
+        "absoluteArrivalChangeSec": 10.0,
+        "afterErrorSec": 169.19343206611882
+      },
+      "unclamped": {
+        "remainingChangeSec": -5.902671835800788,
+        "absoluteArrivalChangeSec": 4.097328164199212,
+        "afterErrorSec": 366.0134325091997
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "journeyId": "3:57789:57815",
+      "sourceId": 57789,
+      "targetVisitId": 57815,
+      "bus": "#309",
+      "target": 48,
+      "targetOutcome": "stopped",
+      "targetClosestM": 25.092605030905172,
+      "checkpointSec": 180,
+      "reason": "no forecast within15 seconds while source visit survives"
+    },
+    {
+      "journeyId": "3:57789:57852",
+      "sourceId": 57789,
+      "targetVisitId": 57852,
+      "bus": "#309",
+      "target": 4,
+      "targetOutcome": "stopped",
+      "targetClosestM": 54.07482151484576,
+      "checkpointSec": 180,
+      "reason": "no forecast within15 seconds while source visit survives"
+    }
+  ],
+  "_publication": {
+    "originalSource": "red-window-data/ratchet-screen-review.json",
+    "originalSha256": "4071b33cf0d7749b42cce5907c003f1433aa4b8691a5f8af855a5431115a005f",
+    "omittedArrays": [
+      {
+        "path": "checkpoints",
+        "items": 40,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "jumps",
+        "items": 604,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

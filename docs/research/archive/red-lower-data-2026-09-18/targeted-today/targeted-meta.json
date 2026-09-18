@@ -1,0 +1,16 @@
+{
+  "arm": "targeted",
+  "frames": 1992,
+  "emitted": 18209,
+  "parityChecks": 13,
+  "gaps": [
+    {
+      "at": 1789729218454,
+      "gapMs": null
+    }
+  ],
+  "routes": {
+    "3": 5598
+  },
+  "refitAt": 1789665240913
+}

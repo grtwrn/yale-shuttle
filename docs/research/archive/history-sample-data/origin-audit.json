@@ -1,0 +1,217 @@
+{
+  "at": "2026-09-17T13:10:29.767Z",
+  "out": [
+    {
+      "bus": "44",
+      "route": "Blue Day",
+      "stop": 72,
+      "eta": 1075,
+      "hops": 13,
+      "index": 9,
+      "source": 136,
+      "sourceName": "Whitney / Highland",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 130,
+        "standingSec": 20.299,
+        "approach": false
+      },
+      "atStop": 130,
+      "pin": "2026-09-17T13:10:11.842",
+      "moved": "2026-09-17T13:10:16.749",
+      "origin": null
+    },
+    {
+      "bus": "44",
+      "route": "Blue Day",
+      "stop": 72,
+      "eta": 4324,
+      "hops": 44,
+      "index": 9,
+      "source": 136,
+      "sourceName": "Whitney / Highland",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 130,
+        "standingSec": 20.299,
+        "approach": false
+      },
+      "atStop": 130,
+      "pin": "2026-09-17T13:10:11.842",
+      "moved": "2026-09-17T13:10:16.749",
+      "origin": null
+    },
+    {
+      "bus": "46",
+      "route": "Blue Day",
+      "stop": 72,
+      "eta": 1955,
+      "hops": 24,
+      "index": 29,
+      "source": 20,
+      "sourceName": "Becton / 15 Prospect",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 20,
+        "standingSec": 30.298,
+        "approach": true
+      },
+      "moved": "2026-09-17T13:10:26.997",
+      "origin": null
+    },
+    {
+      "bus": "46",
+      "route": "Blue Day",
+      "stop": 72,
+      "eta": 5178,
+      "hops": 55,
+      "index": 29,
+      "source": 20,
+      "sourceName": "Becton / 15 Prospect",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 20,
+        "standingSec": 30.298,
+        "approach": true
+      },
+      "moved": "2026-09-17T13:10:26.997",
+      "origin": null
+    },
+    {
+      "bus": "38",
+      "route": "Blue Day",
+      "stop": 72,
+      "eta": 3169,
+      "hops": 31,
+      "index": 22,
+      "source": 72,
+      "sourceName": "LEPH / 60 College",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 43,
+        "standingSec": 55.275,
+        "approach": false
+      },
+      "atStop": 43,
+      "pin": "2026-09-17T13:10:21.848",
+      "moved": "2026-09-17T13:10:21.848",
+      "origin": null
+    },
+    {
+      "bus": "309",
+      "route": "Red",
+      "stop": 72,
+      "eta": 207,
+      "hops": 3,
+      "index": 22,
+      "source": 98,
+      "sourceName": "Phelps Gate",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 38,
+        "standingSec": 70.299,
+        "approach": true
+      },
+      "moved": "2026-09-17T13:10:01.729",
+      "origin": null
+    },
+    {
+      "bus": "309",
+      "route": "Red",
+      "stop": 48,
+      "eta": 3082,
+      "hops": 24,
+      "index": 22,
+      "source": 98,
+      "sourceName": "Phelps Gate",
+      "sameOrder": true,
+      "rest": {
+        "stopId": 38,
+        "standingSec": 70.299,
+        "approach": true
+      },
+      "moved": "2026-09-17T13:10:01.729",
+      "origin": null
+    },
+    {
+      "bus": "316",
+      "route": "Red",
+      "stop": 48,
+      "eta": 2344,
+      "hops": 18,
+      "index": 28,
+      "source": 14,
+      "sourceName": "Amistad / Church St South",
+      "sameOrder": true,
+      "rest": null,
+      "moved": "2026-09-17T13:05:24.721",
+      "origin": {
+        "fromIndex": 28,
+        "toIndex": 17,
+        "fromStopId": 14,
+        "mode": "departure",
+        "elapsedSec": null
+      }
+    },
+    {
+      "bus": "316",
+      "route": "Red",
+      "stop": 72,
+      "eta": 3239,
+      "hops": 26,
+      "index": 28,
+      "source": 14,
+      "sourceName": "Amistad / Church St South",
+      "sameOrder": true,
+      "rest": null,
+      "moved": "2026-09-17T13:05:24.721",
+      "origin": {
+        "fromIndex": 28,
+        "toIndex": 25,
+        "fromStopId": 14,
+        "mode": "departure",
+        "elapsedSec": null
+      }
+    },
+    {
+      "bus": "300",
+      "route": "Red",
+      "stop": 48,
+      "eta": 1494,
+      "hops": 14,
+      "index": 3,
+      "source": 75,
+      "sourceName": "Olive / Chapel",
+      "sameOrder": true,
+      "rest": null,
+      "moved": "2026-09-17T13:10:26.997",
+      "origin": {
+        "fromIndex": 3,
+        "toIndex": 17,
+        "fromStopId": 75,
+        "mode": "departure",
+        "elapsedSec": null
+      }
+    },
+    {
+      "bus": "300",
+      "route": "Red",
+      "stop": 72,
+      "eta": 2410,
+      "hops": 22,
+      "index": 3,
+      "source": 75,
+      "sourceName": "Olive / Chapel",
+      "sameOrder": true,
+      "rest": null,
+      "moved": "2026-09-17T13:10:26.997",
+      "origin": {
+        "fromIndex": 3,
+        "toIndex": 25,
+        "fromStopId": 75,
+        "mode": "departure",
+        "elapsedSec": null
+      }
+    }
+  ]
+}

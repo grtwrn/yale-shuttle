@@ -1,0 +1,10 @@
+{
+  "createdAt": "2026-09-18T17:02:48.553791+00:00",
+  "beforeAnyFit": true,
+  "reason": "Independent code inspection establishes10-minute maximum accepted observation gap. Exact historical confirmation unavailable after shuffles.",
+  "additionalSensitivity": "known=max(departure+600sec+confirm_sec,first_moved_at+confirm_sec); current reducer maximum-gap assumption, not measured historical receipt.",
+  "scope": "All predefined models/metrics unchanged; fit strict sensitivity only if any history feature differs.",
+  "freshExtension": "After original285-visit coefficients are saved, open root immutable recordings.json and extend all frozen arms to newly completed eligible Winchester visits absent from base cohort; do not refit/select/recalibrate on extension.",
+  "helperSource": "/home/gwarren/projects/yale-shuttle-watcher/red-early-covariates-2026-09-18/union-survival/screen.py",
+  "helperSha256": "8fcd0aba32330bba09d4d7b7b7b7b80ff35cf07058a6b6131d4bd88b6cc77911"
+}

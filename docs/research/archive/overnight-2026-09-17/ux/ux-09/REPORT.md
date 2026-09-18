@@ -1,0 +1,44 @@
+# UX09 — useful crash recovery before technical details
+
+Builder proposal on deployed PR292, preserved HEAD `98e535b99649e74ca599d2e33bcfdc46df83d30d`. No commit, index change, branch change or publication by this role. Independent review and controller release gates remain.
+
+## Problem reproduced
+
+The real `main.tsx` ErrorBoundary, with only its child Page substituted by a controlled render failure, exposes the stack immediately. A long stack overflows a 390px phone and replacing the focused app control leaves focus on BODY. Reset is offered without describing what it clears. `baseline/initial-crash.png`, `baseline/crash-recovery.json` and `baseline.log` retain the successful before experiment; its checks describe existing storage/reload behavior, not candidate acceptance.
+
+Storage inspection and browser probes establish the scope: ordinary crash Reload retains local data and the session trip draft. The existing reset calls `localStorage.clear()` and reloads; it removes saved/recent places, stop alerts, physical ride tracking, preferences and the anonymous identity used for Your reports. Submitted reports are not deleted from the server. The current tab's session-storage trip draft is retained. Clearing or even accessing localStorage may throw; reload must still work. This crash Reload is separate from intentional header/pull-to-refresh trip clearing.
+
+## Proposal
+
+Three files, all inside `services/shuttle-v2`:
+
+- `web/src/main.tsx`: replace only the fallback JSX with `CrashRecovery`; ErrorBoundary capture/logging, preview routing, installable-app registration and pull-to-refresh remain unchanged.
+- `web/src/CrashRecovery.tsx`: primary Reload with a short explanation; guarded focus on the recovery heading; a Still having trouble disclosure explains saved-data and report-list consequences before the explicit reset button. Technical details have a separate native disclosure. Buttons/disclosure summaries meet 44px height; long stacks wrap. Reset/reload storage behavior is unchanged.
+- `scripts/crash-recovery-check.mjs`: bounded, tester-seeded actual-entry-boundary browser regression; only Page children are fault-injected. No fault trigger or special route is shipped in the app. The final script uses the real index HTML and additionally observes identity removal before the tester helper restores its excluded identity on reload.
+
+No ETA, filter, planner, transport, occurrence, notification or historical-data source changed. No service worker or offline policy change.
+
+## Executed verification
+
+Service cwd for Node commands: `/home/gwarren/projects/yale-shuttle-watcher/overnight-ux-2026-09-17/services/shuttle-v2`. Lock: `/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock`. Evidence root: `/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09`.
+
+1. `PROBE=1 OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/baseline flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node scripts/crash-recovery-check.mjs` — exit 0, original boundary baseline. Original `main.tsx` is frozen in `baseline-main.tsx`; current script supports `MAIN_SOURCE` for a reviewer who needs that exact baseline. Original baseline used the initial equivalent minimal document; final candidate harness uses real index HTML.
+2. `OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/after flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node scripts/crash-recovery-check.mjs` — exit 0, initial candidate mobile check; `after.log`.
+3. `flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify.sh` — exit 0, `verify.log`. 46 tests across tripDraft, pullToRefresh, anonId, recents and liveUpdates; backend and frontend typechecks; Vite 129 modules; mobile and desktop boundary browser suites; existing actual-built-SPA feed/filter/loading/empty/stale/recovery regression. No page errors, all browser resources closed. The tested runtime application source is final; subsequent changes strengthen only the browser test fixture.
+4. `OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/offline-second flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/offline-shell.mjs` — exit 0, `offline-second.log`. Actual built SPA plus actual service worker on a bounded local port8093 fixture server: open-page interruption/expiry, offline cached-shell reload, no cached API responses, unknown status rather than zero buses, keyboard Trip/Map and automatic network recovery pass. Server and browser closed. First run in `offline.log` exited 1 on a fixture selector: reload correctly restored Map, while the test waited for Trip-only copy. Corrected test explicitly selects Trip; no app edit. Failure snapshot has no page errors and proves cleanup.
+
+5. `flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/browser.sh` — exit 0, `browser-final.log`, final `release/mobile` and `release/desktop` evidence. Final script uses actual index HTML; both browser suites pass with no errors and closed resources. It also confirms report identity is absent immediately after explicit clear, before the tester helper reseeds on reload. Final phone screenshots were visually inspected.
+6. `flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/stress-compare.sh` — wrapper exit 0, but both underlying normal-clock map diagnostics exit 1 as expected on a **pre-existing reproduced defect**, not passing map tests. Each current/baseline build emits two `_leaflet_pos` exceptions after one iteration. Baseline build is an artifact-only Vite entry substitution; app source and candidate dist remain intact. `map-diagnostic.json` verifies exact baseline/candidate entries and identical map source. Original 32-cycle probe stopped during its first cycle with 59 errors and a click timeout. See `NEXT_MAP.md`; no repair included in this proposal.
+7. `python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify-integrity.py` — final exit 0, `integrity-final.log` / `integrity.json`: exact three-file scope, HEAD/index preserved, main/CrashRecovery built sourcemap parity, passing recovery/feed/offline reports, 278 screenshots / 13,483,581 bytes across both teams. First assertion accidentally also matched the operator stop-data/main.tsx; corrected the checker to exact /src/main.tsx, with no app or build change (`integrity-first-failure.txt`). `git diff --check` also exits 0.
+
+Reproduce the release proposal using `OUT=<fresh directory> flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-09/verify.sh`. After controller capture, integrity.py intentionally needs its builder-head check adapted; retain exact source/bundle and behavior comparisons.
+
+## Independent review focus
+
+Check that reset loss is understandable and accurately matches the existing scope, especially report identity versus server reports and the retained tab draft. Confirm that only an explicit reset clears storage, ordinary Reload retains data, blocked storage still reloads, and heading focus does not steal surviving external focus. Both disclosures must work by keyboard/touch and long technical text must reflow at 320px. Source-map integrity verifies the built app contains this exact component.
+
+## Limits and next work
+
+The crash is intentionally injected into the child of the real entry boundary; it is not an observed production crash and does not validate any particular production failure cause. Offline verification uses synthetic live data, a local fixture server and Chromium's network-offline mode, not a physical dead zone. Native assistive technology, physical iOS/Android devices, native zoom, service-worker version-update races and OS-background behavior are not certified. 640px and 320px widths are reflow checks. Full suite, complete backend staging/API smoke, CI and deployment remain controller work. No live DB, feedback, credentials, watcher or other team's files were changed.
+
+After independent review, fix the now-reproduced normal-clock map zoom teardown in `NEXT_MAP.md`; then proceed to UX10 saved places/recents/location/weather controls and the already recorded empty-editor-cancel/async-Enter focus follow-ups. Preserve separate wider UX08 and fullscreen modal audits; do not describe all reachable views as complete.

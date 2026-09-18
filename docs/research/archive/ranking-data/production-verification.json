@@ -1,0 +1,102 @@
+{
+  "health": [
+    {
+      "ok": true,
+      "pollStalenessMs": 3937,
+      "collectorLagMs": 3879,
+      "knownBuses": 17,
+      "serverEta": {
+        "restored": 17,
+        "forecastAt": 1789659027466,
+        "checkpointAt": 1789659012468,
+        "beliefs": 17,
+        "steps": 23,
+        "failures": 0,
+        "lastStepMs": 114,
+        "rows": 664
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "9e7b48b5b060"
+    },
+    {
+      "ok": true,
+      "pollStalenessMs": 3998,
+      "collectorLagMs": 3846,
+      "knownBuses": 17,
+      "serverEta": {
+        "restored": 17,
+        "forecastAt": 1789659032573,
+        "checkpointAt": 1789659012468,
+        "beliefs": 17,
+        "steps": 24,
+        "failures": 0,
+        "lastStepMs": 110,
+        "rows": 663
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "9e7b48b5b060"
+    },
+    {
+      "ok": true,
+      "pollStalenessMs": 4056,
+      "collectorLagMs": 3814,
+      "knownBuses": 17,
+      "serverEta": {
+        "restored": 17,
+        "forecastAt": 1789659037649,
+        "checkpointAt": 1789659012468,
+        "beliefs": 17,
+        "steps": 25,
+        "failures": 0,
+        "lastStepMs": 161,
+        "rows": 663
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "9e7b48b5b060"
+    },
+    {
+      "ok": true,
+      "pollStalenessMs": 4121,
+      "collectorLagMs": 4019,
+      "knownBuses": 17,
+      "serverEta": {
+        "restored": 17,
+        "forecastAt": 1789659042510,
+        "checkpointAt": 1789659042510,
+        "beliefs": 17,
+        "steps": 26,
+        "failures": 0,
+        "lastStepMs": 108,
+        "rows": 663
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "9e7b48b5b060"
+    },
+    {
+      "ok": true,
+      "pollStalenessMs": 4185,
+      "collectorLagMs": 4048,
+      "knownBuses": 17,
+      "serverEta": {
+        "restored": 17,
+        "forecastAt": 1789659047545,
+        "checkpointAt": 1789659042510,
+        "beliefs": 17,
+        "steps": 27,
+        "failures": 0,
+        "lastStepMs": 106,
+        "rows": 663
+      },
+      "pollSkipped": 0,
+      "droppedObservations": 0,
+      "build": "9e7b48b5b060"
+    }
+  ],
+  "planCount": 4,
+  "rows": 663,
+  "directWalkSec": 1021.8788442284334
+}

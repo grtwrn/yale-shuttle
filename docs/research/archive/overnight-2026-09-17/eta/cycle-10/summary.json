@@ -1,0 +1,348 @@
+{
+  "exactProductionDecisions": 4688,
+  "exactRankings": 4688,
+  "historical": {
+    "same-visit": 2490,
+    "raw-current": 1456,
+    "different-bus": 742,
+    "noDestination": 38,
+    "rawWithoutForecastLink": 38
+  },
+  "missingDestination": {
+    "same-visit": 2490,
+    "noDestination": 4688,
+    "raw-current": 1456,
+    "rawWithoutForecastLink": 68,
+    "different-bus": 742,
+    "presentedRideDiffersFromSelected": 742
+  },
+  "inputRowsUnchanged": 4688,
+  "examples": {
+    "historical|same-visit|true": {
+      "session": "57454:48:0",
+      "sourceId": 57454,
+      "at": 1789561421073,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789561421073,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121,
+          "stopsAhead": 1,
+          "etaSec": 65,
+          "lowSec": 49,
+          "highSec": 96
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789561421073,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121,
+          "stopsAhead": 1,
+          "etaSec": 65,
+          "lowSec": 49,
+          "highSec": 96
+        },
+        "relation": "same-visit",
+        "destinationAvailable": true
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 0,
+      "waitSec": 65,
+      "totalSec": 2448
+    },
+    "missingDestination|same-visit|false": {
+      "session": "57454:48:0",
+      "sourceId": 57454,
+      "at": 1789561421073,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789561421073,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121,
+          "stopsAhead": 1,
+          "etaSec": 65,
+          "lowSec": 49,
+          "highSec": 96
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789561421073,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121,
+          "stopsAhead": 1,
+          "etaSec": 65,
+          "lowSec": 49,
+          "highSec": 96
+        },
+        "relation": "same-visit",
+        "destinationAvailable": false
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 0,
+      "waitSec": 65,
+      "totalSec": 944.9449148391399
+    },
+    "historical|raw-current|true": {
+      "session": "57454:48:0",
+      "sourceId": 57454,
+      "at": 1789561481036,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561481036,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "boarding": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561481036,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "relation": "raw-current",
+        "forecastLink": {
+          "source": "forecast",
+          "selectedAtMs": 1789561481036,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121,
+          "stopsAhead": 1,
+          "etaSec": 10,
+          "lowSec": 8,
+          "highSec": 15
+        },
+        "destinationAvailable": true
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 0,
+      "waitSec": 0,
+      "totalSec": 2387
+    },
+    "missingDestination|raw-current|false": {
+      "session": "57454:48:0",
+      "sourceId": 57454,
+      "at": 1789561481036,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561481036,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "boarding": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561481036,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "relation": "raw-current",
+        "forecastLink": null,
+        "destinationAvailable": false
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 0,
+      "waitSec": 0,
+      "totalSec": 879.9449148391399
+    },
+    "historical|different-bus|true": {
+      "session": "57454:48:150",
+      "sourceId": 57454,
+      "at": 1789561661220,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789561661220,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 30,
+          "stopsAhead": 4,
+          "etaSec": 788,
+          "lowSec": 480,
+          "highSec": 1064
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789561661220,
+          "routeLabel": "Red",
+          "busName": "308",
+          "stopId": 30,
+          "stopsAhead": 20,
+          "etaSec": 2621,
+          "lowSec": 2225,
+          "highSec": 2945
+        },
+        "relation": "different-bus",
+        "destinationAvailable": true
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "308",
+        "different": true
+      },
+      "walkToSec": 852.4589353260236,
+      "waitSec": 1768.5410646739765,
+      "totalSec": 4127
+    },
+    "missingDestination|different-bus|false": {
+      "session": "57454:48:150",
+      "sourceId": 57454,
+      "at": 1789561661220,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "forecast",
+          "selectedAtMs": 1789561661220,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 30,
+          "stopsAhead": 4,
+          "etaSec": 788,
+          "lowSec": 480,
+          "highSec": 1064
+        },
+        "boarding": {
+          "source": "forecast",
+          "selectedAtMs": 1789561661220,
+          "routeLabel": "Red",
+          "busName": "308",
+          "stopId": 30,
+          "stopsAhead": 20,
+          "etaSec": 2621,
+          "lowSec": 2225,
+          "highSec": 2945
+        },
+        "relation": "different-bus",
+        "destinationAvailable": false
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 852.4589353260236,
+      "waitSec": 1768.5410646739765,
+      "totalSec": 3219.943062922227
+    },
+    "historical|raw-current|false": {
+      "session": "57454:48:0",
+      "sourceId": 57454,
+      "at": 1789561846275,
+      "contract": {
+        "status": "selected",
+        "countdown": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561846275,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "boarding": {
+          "source": "raw-at-stop",
+          "selectedAtMs": 1789561846275,
+          "routeLabel": "Red",
+          "busName": "309",
+          "stopId": 121
+        },
+        "relation": "raw-current",
+        "forecastLink": null,
+        "destinationAvailable": false
+      },
+      "identity": {
+        "pickup": "309",
+        "ride": "309",
+        "different": false
+      },
+      "walkToSec": 0,
+      "waitSec": 0,
+      "totalSec": 879.9449148391399
+    }
+  },
+  "scope": "4688 reused selected Red decisions; ablation is synthetic missing-target telemetry, not observed missing-data incidence or rider accuracy.",
+  "cohorts": {
+    "historical|same-visit": {
+      "n": 2490,
+      "sessions": 40,
+      "sources": 10,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    },
+    "missingDestination|same-visit": {
+      "n": 2490,
+      "sessions": 40,
+      "sources": 10,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    },
+    "historical|raw-current": {
+      "n": 1456,
+      "sessions": 20,
+      "sources": 10,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    },
+    "missingDestination|raw-current": {
+      "n": 1456,
+      "sessions": 20,
+      "sources": 10,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    },
+    "historical|different-bus": {
+      "n": 742,
+      "sessions": 18,
+      "sources": 9,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    },
+    "missingDestination|different-bus": {
+      "n": 742,
+      "sessions": 18,
+      "sources": 9,
+      "dates": [
+        "2026-09-16",
+        "2026-09-17"
+      ]
+    }
+  }
+}

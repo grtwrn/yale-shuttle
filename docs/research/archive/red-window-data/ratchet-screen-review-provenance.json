@@ -1,0 +1,24 @@
+{
+  "ceilingArmsOnStanding": false,
+  "pairsExactlyReproduced": true,
+  "beliefsIdenticalAtEveryFrame": true,
+  "frames": 1236,
+  "rows": 2163,
+  "resets": 9,
+  "codeHead": "0d41e474c37829305c1e8755a3a9dac7e2dd6b75",
+  "modelParamsVersion": "fit-2026-09-15",
+  "modelParamsPublishedAt": 1789546901938,
+  "inputHashes": {
+    "red-eta-data/payload.json": "a9654f864661923f97b4c240defaf62b2a6cbafec7805f920bb9a925f4fd38d6",
+    "red-eta-data/watcher.jsonl": "2535356f0c53d5b4f44de5cda3ae9ea0409b73a0e3de73aca852a20d0f02bca4",
+    "red-window-data/ratchet-screen-pairs.json": "7efbbdeae8e12ef206a7160b51e922d550176b6af9dc3fd5aff464b7da7118f1"
+  },
+  "codeHashes": {
+    "web/src/eta/arrival.ts": "67f946e317d07f33f4541fe18410c5b47edc3e851d855e10b9f787d2d089cc4b",
+    "web/src/eta/filter.ts": "084f9568d50b9091289585eef9df72b98d4a6e7f19c12b2a7f45ba88a3afda01",
+    "web/src/eta/tables.ts": "984e5331033e25096aa2c73d8377eccd11449006a56120278041e07f773e886c",
+    "web/src/eta/params.ts": "4563ed758686ae3dd78ca9aec167ac424539e1de99a2dc234315a82e1163ed2c",
+    "web/src/eta/index.ts": "f75c119a212424ccc3f15b076f77a679da75008b3e9ff1c903a4655200f33b1d",
+    "web/src/arrivals.ts": "8afede0e161484877cb17d78a20d17bb91212fa2ae3d6de0261d615b67fc166a"
+  }
+}

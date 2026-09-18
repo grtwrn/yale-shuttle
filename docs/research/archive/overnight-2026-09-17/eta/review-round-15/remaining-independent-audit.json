@@ -1,0 +1,6627 @@
+{
+  "counts": {
+    "current:no-unique-pin-any-index": 26,
+    "current:checked": 57,
+    "current:exact-pin-at-different-stop": 4,
+    "current:exact-pin-at-different-occurrence-of-same-stop": 25,
+    "current:exact-pin-at-priced-origin": 2,
+    "canonical:no-unique-pin-any-index": 27,
+    "canonical:checked": 58,
+    "canonical:exact-pin-at-different-stop": 4,
+    "canonical:exact-pin-at-different-occurrence-of-same-stop": 25,
+    "canonical:exact-pin-at-priced-origin": 2
+  },
+  "uniquePhysicalRows": 58,
+  "changedUncertainRows": [
+    {
+      "at": 1789559223404,
+      "poll": 508,
+      "route": 10,
+      "bus": "330",
+      "targetIndex": 11,
+      "targetStop": 24,
+      "occurrence": 0,
+      "sourceId": 57081,
+      "targetId": 57120,
+      "legIds": [
+        52775,
+        52785
+      ],
+      "truthSec": 155.74,
+      "current": [
+        4151,
+        18,
+        5473,
+        16
+      ],
+      "canonical": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maxBandDelta": 5473,
+      "reason": "connected"
+    }
+  ],
+  "descriptiveSensitivity": {
+    "inclusive": {
+      "current": {
+        "n": 183123,
+        "sumAE": 49275253.759,
+        "MAE": 269.0828227966995
+      },
+      "canonical": {
+        "n": 183123,
+        "sumAE": 49273420.627,
+        "MAE": 269.07281241023793
+      },
+      "canonicalMinusCurrentMAE": -0.01001038646154484
+    },
+    "uncertain-zero-hop": {
+      "current": {
+        "n": 58,
+        "sumAE": 51925.19,
+        "MAE": 895.2618965517241
+      },
+      "canonical": {
+        "n": 58,
+        "sumAE": 48085.67,
+        "MAE": 829.063275862069
+      },
+      "canonicalMinusCurrentMAE": -66.19862068965517
+    },
+    "other-rows-not-identity-certified": {
+      "current": {
+        "n": 183065,
+        "sumAE": 49223328.569,
+        "MAE": 268.8844321361265
+      },
+      "canonical": {
+        "n": 183065,
+        "sumAE": 49225334.957,
+        "MAE": 268.8953921120913
+      },
+      "canonicalMinusCurrentMAE": 0.010959975964794921
+    }
+  },
+  "sameOriginPinDespiteDifferentTrackedRest": [
+    {
+      "arm": "current",
+      "key": [
+        4553,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "oldTargetId": 60007,
+      "priorVisit": {
+        "id": 59757,
+        "bus_id": 66446,
+        "bus_name": "#307",
+        "anchor_bus_id": 66446,
+        "route_id": 8,
+        "stop_id": 123,
+        "stop_index": 10,
+        "anchored_at": 1789579436779,
+        "pinned_at": 1789579451782,
+        "arrived_at": 1789579461780,
+        "departed_at": 1789579461780,
+        "stand_sec": 0.0,
+        "inside_sec": 5.112,
+        "outcome": "passed",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": null,
+        "steps": 0,
+        "far_m": null,
+        "confirm_sec": null,
+        "rest_polls": 0,
+        "shuffles": 0,
+        "first_moved_at": null,
+        "last_at_rest_at": null,
+        "closest_m": 21.078101999418482,
+        "dow": 3,
+        "hour": 13
+      },
+      "latestSource": {
+        "id": 59764,
+        "bus_id": 66446,
+        "bus_name": "#307",
+        "anchor_bus_id": 66446,
+        "route_id": 8,
+        "stop_id": 124,
+        "stop_index": 11,
+        "anchored_at": 1789579461780,
+        "pinned_at": 1789579461780,
+        "arrived_at": 1789579461780,
+        "departed_at": 1789579516830,
+        "stand_sec": 55.05,
+        "inside_sec": 65.032,
+        "outcome": "stopped",
+        "how": "clock",
+        "confidence": 0.96,
+        "first_step_m": 30.889803863718676,
+        "steps": 4,
+        "far_m": 139.73409657703692,
+        "confirm_sec": 14.991,
+        "rest_polls": 11,
+        "shuffles": 0,
+        "first_moved_at": 1789579521818,
+        "last_at_rest_at": 1789579516830,
+        "closest_m": 7.493111741057499,
+        "dow": 3,
+        "hour": 13
+      },
+      "directLeg": null,
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "trackingRestSince": 1789579451782,
+      "priorArrivalRelativeSec": -40.023
+    },
+    {
+      "arm": "current",
+      "key": [
+        5846,
+        1,
+        "44",
+        23,
+        0
+      ],
+      "oldTargetId": 60996,
+      "priorVisit": {
+        "id": 60594,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "anchor_bus_id": 66454,
+        "route_id": 1,
+        "stop_id": 43,
+        "stop_index": 23,
+        "anchored_at": 1789585838962,
+        "pinned_at": 1789585843914,
+        "arrived_at": 1789585843914,
+        "departed_at": 1789585919114,
+        "stand_sec": 75.2,
+        "inside_sec": 85.01,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 31.148255806513127,
+        "steps": 4,
+        "far_m": 115.7467778701469,
+        "confirm_sec": 65.028,
+        "rest_polls": 8,
+        "shuffles": 2,
+        "first_moved_at": 1789585859032,
+        "last_at_rest_at": 1789585919114,
+        "closest_m": 62.506913505234714,
+        "dow": 3,
+        "hour": 15
+      },
+      "latestSource": {
+        "id": 60628,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "anchor_bus_id": 66454,
+        "route_id": 1,
+        "stop_id": 10,
+        "stop_index": 24,
+        "anchored_at": 1789585938916,
+        "pinned_at": 1789585988944,
+        "arrived_at": 1789585988944,
+        "departed_at": 1789586224145,
+        "stand_sec": 235.201,
+        "inside_sec": 240.045,
+        "outcome": "stopped",
+        "how": "clock",
+        "confidence": 0.96,
+        "first_step_m": 32.97394794146236,
+        "steps": 4,
+        "far_m": 131.42922499954116,
+        "confirm_sec": 90.016,
+        "rest_polls": 6,
+        "shuffles": 2,
+        "first_moved_at": 1789586119012,
+        "last_at_rest_at": 1789586224145,
+        "closest_m": 46.74645801261208,
+        "dow": 3,
+        "hour": 15
+      },
+      "directLeg": {
+        "id": 56119,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "route_id": 1,
+        "from_stop_id": 43,
+        "from_index": 23,
+        "to_stop_id": 10,
+        "to_index": 24,
+        "hops": 1,
+        "departed_at": 1789585919114,
+        "arrived_at": 1789585988944,
+        "to_pinned_at": 1789585988944,
+        "leg_sec": 69.83,
+        "hold_sec": 45.061,
+        "drive_sec": 24.769,
+        "holds": 1,
+        "reached": 1,
+        "dow": 3,
+        "hour": 15
+      },
+      "wireOrigin": 23,
+      "trackingRestIndex": 24,
+      "trackingRestSince": 1789585843914,
+      "priorArrivalRelativeSec": -140.063
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4553,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "oldTargetId": 60007,
+      "priorVisit": {
+        "id": 59757,
+        "bus_id": 66446,
+        "bus_name": "#307",
+        "anchor_bus_id": 66446,
+        "route_id": 8,
+        "stop_id": 123,
+        "stop_index": 10,
+        "anchored_at": 1789579436779,
+        "pinned_at": 1789579451782,
+        "arrived_at": 1789579461780,
+        "departed_at": 1789579461780,
+        "stand_sec": 0.0,
+        "inside_sec": 5.112,
+        "outcome": "passed",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": null,
+        "steps": 0,
+        "far_m": null,
+        "confirm_sec": null,
+        "rest_polls": 0,
+        "shuffles": 0,
+        "first_moved_at": null,
+        "last_at_rest_at": null,
+        "closest_m": 21.078101999418482,
+        "dow": 3,
+        "hour": 13
+      },
+      "latestSource": {
+        "id": 59764,
+        "bus_id": 66446,
+        "bus_name": "#307",
+        "anchor_bus_id": 66446,
+        "route_id": 8,
+        "stop_id": 124,
+        "stop_index": 11,
+        "anchored_at": 1789579461780,
+        "pinned_at": 1789579461780,
+        "arrived_at": 1789579461780,
+        "departed_at": 1789579516830,
+        "stand_sec": 55.05,
+        "inside_sec": 65.032,
+        "outcome": "stopped",
+        "how": "clock",
+        "confidence": 0.96,
+        "first_step_m": 30.889803863718676,
+        "steps": 4,
+        "far_m": 139.73409657703692,
+        "confirm_sec": 14.991,
+        "rest_polls": 11,
+        "shuffles": 0,
+        "first_moved_at": 1789579521818,
+        "last_at_rest_at": 1789579516830,
+        "closest_m": 7.493111741057499,
+        "dow": 3,
+        "hour": 13
+      },
+      "directLeg": null,
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "trackingRestSince": 1789579451782,
+      "priorArrivalRelativeSec": -40.023
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5846,
+        1,
+        "44",
+        23,
+        0
+      ],
+      "oldTargetId": 60996,
+      "priorVisit": {
+        "id": 60594,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "anchor_bus_id": 66454,
+        "route_id": 1,
+        "stop_id": 43,
+        "stop_index": 23,
+        "anchored_at": 1789585838962,
+        "pinned_at": 1789585843914,
+        "arrived_at": 1789585843914,
+        "departed_at": 1789585919114,
+        "stand_sec": 75.2,
+        "inside_sec": 85.01,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 31.148255806513127,
+        "steps": 4,
+        "far_m": 115.7467778701469,
+        "confirm_sec": 65.028,
+        "rest_polls": 8,
+        "shuffles": 2,
+        "first_moved_at": 1789585859032,
+        "last_at_rest_at": 1789585919114,
+        "closest_m": 62.506913505234714,
+        "dow": 3,
+        "hour": 15
+      },
+      "latestSource": {
+        "id": 60628,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "anchor_bus_id": 66454,
+        "route_id": 1,
+        "stop_id": 10,
+        "stop_index": 24,
+        "anchored_at": 1789585938916,
+        "pinned_at": 1789585988944,
+        "arrived_at": 1789585988944,
+        "departed_at": 1789586224145,
+        "stand_sec": 235.201,
+        "inside_sec": 240.045,
+        "outcome": "stopped",
+        "how": "clock",
+        "confidence": 0.96,
+        "first_step_m": 32.97394794146236,
+        "steps": 4,
+        "far_m": 131.42922499954116,
+        "confirm_sec": 90.016,
+        "rest_polls": 6,
+        "shuffles": 2,
+        "first_moved_at": 1789586119012,
+        "last_at_rest_at": 1789586224145,
+        "closest_m": 46.74645801261208,
+        "dow": 3,
+        "hour": 15
+      },
+      "directLeg": {
+        "id": 56119,
+        "bus_id": 66454,
+        "bus_name": "#44",
+        "route_id": 1,
+        "from_stop_id": 43,
+        "from_index": 23,
+        "to_stop_id": 10,
+        "to_index": 24,
+        "hops": 1,
+        "departed_at": 1789585919114,
+        "arrived_at": 1789585988944,
+        "to_pinned_at": 1789585988944,
+        "leg_sec": 69.83,
+        "hold_sec": 45.061,
+        "drive_sec": 24.769,
+        "holds": 1,
+        "reached": 1,
+        "dow": 3,
+        "hour": 15
+      },
+      "wireOrigin": 23,
+      "trackingRestIndex": 24,
+      "trackingRestSince": 1789585843914,
+      "priorArrivalRelativeSec": -140.063
+    }
+  ],
+  "cases": [
+    {
+      "arm": "current",
+      "key": [
+        484,
+        10,
+        "330",
+        11,
+        0
+      ],
+      "wireOrigin": 11,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789559103397,
+        "poll": 484,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 275.747,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        496,
+        10,
+        "330",
+        11,
+        0
+      ],
+      "wireOrigin": 11,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789559163410,
+        "poll": 496,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 215.734,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        520,
+        3,
+        "316",
+        15,
+        0
+      ],
+      "wireOrigin": 15,
+      "trackingRestIndex": 15,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57110
+      ],
+      "row": {
+        "at": 1789559284159,
+        "poll": 520,
+        "route": 3,
+        "bus": "316",
+        "targetIndex": 15,
+        "targetStop": 146,
+        "occurrence": 0,
+        "sourceId": 57110,
+        "targetId": 57584,
+        "legIds": [
+          52779,
+          52801,
+          52807,
+          52811,
+          52828,
+          52842,
+          52849,
+          52852,
+          52872,
+          52878,
+          52885,
+          52894,
+          52910,
+          53020,
+          53052,
+          53056,
+          53094,
+          53107,
+          53114,
+          53129,
+          53134,
+          53136,
+          53148,
+          53155,
+          53168,
+          53184,
+          53200,
+          53232
+        ],
+        "truthSec": 3522.529,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        688,
+        3,
+        "309",
+        14,
+        0
+      ],
+      "wireOrigin": 14,
+      "trackingRestIndex": 14,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789560124234,
+        "poll": 688,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 14,
+        "targetStop": 11,
+        "occurrence": 0,
+        "sourceId": 57239,
+        "targetId": 57789,
+        "legIds": [
+          52902,
+          52905,
+          52928,
+          52943,
+          52953,
+          52972,
+          52983,
+          52991,
+          53003,
+          53010,
+          53024,
+          53035,
+          53042,
+          53070,
+          53157,
+          53213,
+          53222,
+          53271,
+          53291,
+          53301,
+          53310,
+          53316,
+          53329,
+          53341,
+          53354,
+          53367,
+          53392,
+          53408
+        ],
+        "truthSec": 4127.657,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        963,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561501034,
+        "poll": 963,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1175.653,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        975,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561561103,
+        "poll": 975,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1115.584,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        987,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561621065,
+        "poll": 987,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1055.622,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        999,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561681305,
+        "poll": 999,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 995.382,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1011,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561741386,
+        "poll": 1011,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 935.301,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1023,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561801209,
+        "poll": 1023,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 875.478,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1035,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561861256,
+        "poll": 1035,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 815.431,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1047,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561921449,
+        "poll": 1047,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 755.238,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1059,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561981638,
+        "poll": 1059,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 695.049,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1071,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562041599,
+        "poll": 1071,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 635.088,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1083,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562101776,
+        "poll": 1083,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 574.911,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1095,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562161690,
+        "poll": 1095,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 514.997,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1107,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562221711,
+        "poll": 1107,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 454.976,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1119,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562281616,
+        "poll": 1119,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 395.071,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1131,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562341637,
+        "poll": 1131,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 335.05,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1143,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562401638,
+        "poll": 1143,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 275.049,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1143,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57527
+      ],
+      "row": {
+        "at": 1789562401638,
+        "poll": 1143,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57527,
+        "targetId": 57579,
+        "legIds": [
+          53190,
+          53197,
+          53206,
+          53223,
+          53230
+        ],
+        "truthSec": 345.081,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1299,
+        15,
+        "304",
+        2,
+        0
+      ],
+      "wireOrigin": 2,
+      "trackingRestIndex": 3,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57627
+      ],
+      "row": {
+        "at": 1789563181810,
+        "poll": 1299,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 2,
+        "targetStop": 154,
+        "occurrence": 0,
+        "sourceId": 57627,
+        "targetId": 57947,
+        "legIds": [
+          53281,
+          53299,
+          53318,
+          53325,
+          53334,
+          53336,
+          53352,
+          53389,
+          53532,
+          53579
+        ],
+        "truthSec": 2380.232,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1407,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57681
+      ],
+      "row": {
+        "at": 1789563721838,
+        "poll": 1407,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57681,
+        "targetId": 57739,
+        "legIds": [
+          53339,
+          53347,
+          53361,
+          53377,
+          53381
+        ],
+        "truthSec": 310.097,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1623,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57826
+      ],
+      "row": {
+        "at": 1789564802019,
+        "poll": 1623,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57826,
+        "targetId": 57882,
+        "legIds": [
+          53477,
+          53488,
+          53500,
+          53515,
+          53517
+        ],
+        "truthSec": 314.983,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1623,
+        1,
+        "46",
+        4,
+        0
+      ],
+      "wireOrigin": 4,
+      "trackingRestIndex": 3,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57834
+      ],
+      "row": {
+        "at": 1789564802019,
+        "poll": 1623,
+        "route": 1,
+        "bus": "46",
+        "targetIndex": 4,
+        "targetStop": 100,
+        "occurrence": 0,
+        "sourceId": 57834,
+        "targetId": 57839,
+        "legIds": [
+          53481
+        ],
+        "truthSec": 45.055,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1671,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57873
+      ],
+      "row": {
+        "at": 1789565042055,
+        "poll": 1671,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 57873,
+        "targetId": 58214,
+        "legIds": [
+          53533,
+          53535,
+          53543,
+          53571,
+          53577,
+          53678,
+          53688,
+          53697,
+          53751,
+          53759,
+          53760,
+          53792,
+          53799,
+          53806,
+          53848
+        ],
+        "truthSec": 2295.251,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        1827,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57988
+      ],
+      "row": {
+        "at": 1789565822246,
+        "poll": 1827,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57988,
+        "targetId": 58038,
+        "legIds": [
+          53631,
+          53633,
+          53650,
+          53662,
+          53669
+        ],
+        "truthSec": 329.88,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        2079,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58180
+      ],
+      "row": {
+        "at": 1789567082259,
+        "poll": 2079,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58180,
+        "targetId": 58307,
+        "legIds": [
+          53825,
+          53837,
+          53847,
+          53862,
+          53870
+        ],
+        "truthSec": 375.066,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        2091,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58180
+      ],
+      "row": {
+        "at": 1789567142267,
+        "poll": 2091,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58180,
+        "targetId": 58307,
+        "legIds": [
+          53825,
+          53837,
+          53847,
+          53862,
+          53870
+        ],
+        "truthSec": 315.058,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        2259,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 13,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789567982559,
+        "poll": 2259,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58308,
+        "targetId": 58417,
+        "legIds": [
+          53946,
+          53954,
+          54025,
+          54034,
+          54042
+        ],
+        "truthSec": 624.861,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        2739,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": -1,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58671
+      ],
+      "row": {
+        "at": 1789570384225,
+        "poll": 2739,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58671,
+        "targetId": 58789,
+        "legIds": [
+          54296,
+          54307,
+          54386,
+          54394,
+          54400
+        ],
+        "truthSec": 875.086,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        2979,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58822
+      ],
+      "row": {
+        "at": 1789571584369,
+        "poll": 2979,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58822,
+        "targetId": 58906,
+        "legIds": [
+          54448,
+          54455,
+          54498,
+          54504,
+          54512
+        ],
+        "truthSec": 650.064,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        3087,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 10,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789572124523,
+        "poll": 3087,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 58888,
+        "targetId": 59157,
+        "legIds": [
+          54523,
+          54525,
+          54528,
+          54542,
+          54545,
+          54611,
+          54619,
+          54625,
+          54653,
+          54658,
+          54659,
+          54679,
+          54681,
+          54693,
+          54754
+        ],
+        "truthSec": 2414.85,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        3714,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59243
+      ],
+      "row": {
+        "at": 1789575300772,
+        "poll": 3714,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59243,
+        "targetId": 59319,
+        "legIds": [
+          54831,
+          54841,
+          54883,
+          54889,
+          54891
+        ],
+        "truthSec": 600.031,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4193,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577700491,
+        "poll": 4193,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 565.069,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4205,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577760596,
+        "poll": 4205,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 504.964,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4217,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577820583,
+        "poll": 4217,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 444.977,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4229,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577880581,
+        "poll": 4229,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 384.979,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4241,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577940529,
+        "poll": 4241,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 325.031,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4553,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "category": "exact-pin-at-priced-origin",
+      "pinVisitIds": [
+        59757
+      ],
+      "row": {
+        "at": 1789579501803,
+        "poll": 4553,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 59764,
+        "targetId": 60007,
+        "legIds": [
+          55340,
+          55342,
+          55344,
+          55367,
+          55369,
+          55448,
+          55453,
+          55467,
+          55489,
+          55496,
+          55497,
+          55531,
+          55536,
+          55542,
+          55560
+        ],
+        "truthSec": 1940.22,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4901,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59986
+      ],
+      "row": {
+        "at": 1789581242008,
+        "poll": 4901,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59986,
+        "targetId": 60056,
+        "legIds": [
+          55545,
+          55555,
+          55575,
+          55585,
+          55588
+        ],
+        "truthSec": 523.704,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4970,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581600218,
+        "poll": 4970,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 512.069,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4982,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581660719,
+        "poll": 4982,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 451.568,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        4994,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581720753,
+        "poll": 4994,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 391.534,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5006,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581780706,
+        "poll": 5006,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 331.581,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5378,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789583642559,
+        "poll": 5378,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60292,
+        "targetId": 60360,
+        "legIds": [
+          55824,
+          55832,
+          55866,
+          55877,
+          55881
+        ],
+        "truthSec": 599.972,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5618,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584842577,
+        "poll": 5618,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 881.232,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5630,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584902593,
+        "poll": 5630,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 821.216,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5642,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584962674,
+        "poll": 5642,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 761.135,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5654,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585022576,
+        "poll": 5654,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 701.233,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5666,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585082630,
+        "poll": 5666,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 641.179,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5678,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585142625,
+        "poll": 5678,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 581.184,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5690,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585203587,
+        "poll": 5690,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 520.222,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5702,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585263639,
+        "poll": 5702,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 460.17,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5714,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585323745,
+        "poll": 5714,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 400.064,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5726,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585383700,
+        "poll": 5726,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 340.109,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "current",
+      "key": [
+        5846,
+        1,
+        "44",
+        23,
+        0
+      ],
+      "wireOrigin": 23,
+      "trackingRestIndex": 24,
+      "category": "exact-pin-at-priced-origin",
+      "pinVisitIds": [
+        60594
+      ],
+      "row": {
+        "at": 1789585983977,
+        "poll": 5846,
+        "route": 1,
+        "bus": "44",
+        "targetIndex": 23,
+        "targetStop": 43,
+        "occurrence": 0,
+        "sourceId": 60628,
+        "targetId": 60996,
+        "legIds": [
+          56159,
+          56239,
+          56243,
+          56263,
+          56279,
+          56285,
+          56294,
+          56300,
+          56302,
+          56312,
+          56319,
+          56323,
+          56331,
+          56338,
+          56341,
+          56353,
+          56356,
+          56364,
+          56370,
+          56376,
+          56378,
+          56387,
+          56393,
+          56408,
+          56424,
+          56440,
+          56450,
+          56459,
+          56478,
+          56493
+        ],
+        "truthSec": 3225.376,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        484,
+        10,
+        "330",
+        11,
+        0
+      ],
+      "wireOrigin": 11,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789559103397,
+        "poll": 484,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 275.747,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        496,
+        10,
+        "330",
+        11,
+        0
+      ],
+      "wireOrigin": 11,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789559163410,
+        "poll": 496,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 215.734,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        508,
+        10,
+        "330",
+        11,
+        0
+      ],
+      "wireOrigin": 11,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789559223404,
+        "poll": 508,
+        "route": 10,
+        "bus": "330",
+        "targetIndex": 11,
+        "targetStop": 24,
+        "occurrence": 0,
+        "sourceId": 57081,
+        "targetId": 57120,
+        "legIds": [
+          52775,
+          52785
+        ],
+        "truthSec": 155.74,
+        "current": [
+          4151,
+          18,
+          5473,
+          16
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 5473,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        520,
+        3,
+        "316",
+        15,
+        0
+      ],
+      "wireOrigin": 15,
+      "trackingRestIndex": 15,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57110
+      ],
+      "row": {
+        "at": 1789559284159,
+        "poll": 520,
+        "route": 3,
+        "bus": "316",
+        "targetIndex": 15,
+        "targetStop": 146,
+        "occurrence": 0,
+        "sourceId": 57110,
+        "targetId": 57584,
+        "legIds": [
+          52779,
+          52801,
+          52807,
+          52811,
+          52828,
+          52842,
+          52849,
+          52852,
+          52872,
+          52878,
+          52885,
+          52894,
+          52910,
+          53020,
+          53052,
+          53056,
+          53094,
+          53107,
+          53114,
+          53129,
+          53134,
+          53136,
+          53148,
+          53155,
+          53168,
+          53184,
+          53200,
+          53232
+        ],
+        "truthSec": 3522.529,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        688,
+        3,
+        "309",
+        14,
+        0
+      ],
+      "wireOrigin": 14,
+      "trackingRestIndex": 14,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789560124234,
+        "poll": 688,
+        "route": 3,
+        "bus": "309",
+        "targetIndex": 14,
+        "targetStop": 11,
+        "occurrence": 0,
+        "sourceId": 57239,
+        "targetId": 57789,
+        "legIds": [
+          52902,
+          52905,
+          52928,
+          52943,
+          52953,
+          52972,
+          52983,
+          52991,
+          53003,
+          53010,
+          53024,
+          53035,
+          53042,
+          53070,
+          53157,
+          53213,
+          53222,
+          53271,
+          53291,
+          53301,
+          53310,
+          53316,
+          53329,
+          53341,
+          53354,
+          53367,
+          53392,
+          53408
+        ],
+        "truthSec": 4127.657,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        963,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561501034,
+        "poll": 963,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1175.653,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        975,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561561103,
+        "poll": 975,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1115.584,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        987,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561621065,
+        "poll": 987,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 1055.622,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        999,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561681305,
+        "poll": 999,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 995.382,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1011,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561741386,
+        "poll": 1011,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 935.301,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1023,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561801209,
+        "poll": 1023,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 875.478,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1035,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561861256,
+        "poll": 1035,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 815.431,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1047,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561921449,
+        "poll": 1047,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 755.238,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1059,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789561981638,
+        "poll": 1059,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 695.049,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1071,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562041599,
+        "poll": 1071,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 635.088,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1083,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562101776,
+        "poll": 1083,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 574.911,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1095,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562161690,
+        "poll": 1095,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 514.997,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1107,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562221711,
+        "poll": 1107,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 454.976,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1119,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562281616,
+        "poll": 1119,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 395.071,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1131,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562341637,
+        "poll": 1131,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 335.05,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1143,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789562401638,
+        "poll": 1143,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 57559,
+        "targetId": 57573,
+        "legIds": [
+          53219
+        ],
+        "truthSec": 275.049,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1143,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57527
+      ],
+      "row": {
+        "at": 1789562401638,
+        "poll": 1143,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57527,
+        "targetId": 57579,
+        "legIds": [
+          53190,
+          53197,
+          53206,
+          53223,
+          53230
+        ],
+        "truthSec": 345.081,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1299,
+        15,
+        "304",
+        2,
+        0
+      ],
+      "wireOrigin": 2,
+      "trackingRestIndex": 3,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57627
+      ],
+      "row": {
+        "at": 1789563181810,
+        "poll": 1299,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 2,
+        "targetStop": 154,
+        "occurrence": 0,
+        "sourceId": 57627,
+        "targetId": 57947,
+        "legIds": [
+          53281,
+          53299,
+          53318,
+          53325,
+          53334,
+          53336,
+          53352,
+          53389,
+          53532,
+          53579
+        ],
+        "truthSec": 2380.232,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1407,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57681
+      ],
+      "row": {
+        "at": 1789563721838,
+        "poll": 1407,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57681,
+        "targetId": 57739,
+        "legIds": [
+          53339,
+          53347,
+          53361,
+          53377,
+          53381
+        ],
+        "truthSec": 310.097,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1623,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57826
+      ],
+      "row": {
+        "at": 1789564802019,
+        "poll": 1623,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57826,
+        "targetId": 57882,
+        "legIds": [
+          53477,
+          53488,
+          53500,
+          53515,
+          53517
+        ],
+        "truthSec": 314.983,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1623,
+        1,
+        "46",
+        4,
+        0
+      ],
+      "wireOrigin": 4,
+      "trackingRestIndex": 3,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57834
+      ],
+      "row": {
+        "at": 1789564802019,
+        "poll": 1623,
+        "route": 1,
+        "bus": "46",
+        "targetIndex": 4,
+        "targetStop": 100,
+        "occurrence": 0,
+        "sourceId": 57834,
+        "targetId": 57839,
+        "legIds": [
+          53481
+        ],
+        "truthSec": 45.055,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1671,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "category": "exact-pin-at-different-stop",
+      "pinVisitIds": [
+        57873
+      ],
+      "row": {
+        "at": 1789565042055,
+        "poll": 1671,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 57873,
+        "targetId": 58214,
+        "legIds": [
+          53533,
+          53535,
+          53543,
+          53571,
+          53577,
+          53678,
+          53688,
+          53697,
+          53751,
+          53759,
+          53760,
+          53792,
+          53799,
+          53806,
+          53848
+        ],
+        "truthSec": 2295.251,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        1827,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        57988
+      ],
+      "row": {
+        "at": 1789565822246,
+        "poll": 1827,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 57988,
+        "targetId": 58038,
+        "legIds": [
+          53631,
+          53633,
+          53650,
+          53662,
+          53669
+        ],
+        "truthSec": 329.88,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2079,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58180
+      ],
+      "row": {
+        "at": 1789567082259,
+        "poll": 2079,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58180,
+        "targetId": 58307,
+        "legIds": [
+          53825,
+          53837,
+          53847,
+          53862,
+          53870
+        ],
+        "truthSec": 375.066,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2091,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58180
+      ],
+      "row": {
+        "at": 1789567142267,
+        "poll": 2091,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58180,
+        "targetId": 58307,
+        "legIds": [
+          53825,
+          53837,
+          53847,
+          53862,
+          53870
+        ],
+        "truthSec": 315.058,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2259,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 13,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789567982559,
+        "poll": 2259,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58308,
+        "targetId": 58417,
+        "legIds": [
+          53946,
+          53954,
+          54025,
+          54034,
+          54042
+        ],
+        "truthSec": 624.861,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2739,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": -1,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58671
+      ],
+      "row": {
+        "at": 1789570384225,
+        "poll": 2739,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58671,
+        "targetId": 58789,
+        "legIds": [
+          54296,
+          54307,
+          54386,
+          54394,
+          54400
+        ],
+        "truthSec": 875.086,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        2979,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        58822
+      ],
+      "row": {
+        "at": 1789571584369,
+        "poll": 2979,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 58822,
+        "targetId": 58906,
+        "legIds": [
+          54448,
+          54455,
+          54498,
+          54504,
+          54512
+        ],
+        "truthSec": 650.064,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        3087,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 10,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789572124523,
+        "poll": 3087,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 58888,
+        "targetId": 59157,
+        "legIds": [
+          54523,
+          54525,
+          54528,
+          54542,
+          54545,
+          54611,
+          54619,
+          54625,
+          54653,
+          54658,
+          54659,
+          54679,
+          54681,
+          54693,
+          54754
+        ],
+        "truthSec": 2414.85,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        3714,
+        9,
+        "127",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59243
+      ],
+      "row": {
+        "at": 1789575300772,
+        "poll": 3714,
+        "route": 9,
+        "bus": "127",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59243,
+        "targetId": 59319,
+        "legIds": [
+          54831,
+          54841,
+          54883,
+          54889,
+          54891
+        ],
+        "truthSec": 600.031,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4193,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577700491,
+        "poll": 4193,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 565.069,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4205,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577760596,
+        "poll": 4205,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 504.964,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4217,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577820583,
+        "poll": 4217,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 444.977,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4229,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577880581,
+        "poll": 4229,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 384.979,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4241,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59563
+      ],
+      "row": {
+        "at": 1789577940529,
+        "poll": 4241,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59563,
+        "targetId": 59610,
+        "legIds": [
+          55136,
+          55147,
+          55159,
+          55169,
+          55172
+        ],
+        "truthSec": 325.031,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4553,
+        8,
+        "307",
+        10,
+        0
+      ],
+      "wireOrigin": 10,
+      "trackingRestIndex": 11,
+      "category": "exact-pin-at-priced-origin",
+      "pinVisitIds": [
+        59757
+      ],
+      "row": {
+        "at": 1789579501803,
+        "poll": 4553,
+        "route": 8,
+        "bus": "307",
+        "targetIndex": 10,
+        "targetStop": 123,
+        "occurrence": 0,
+        "sourceId": 59764,
+        "targetId": 60007,
+        "legIds": [
+          55340,
+          55342,
+          55344,
+          55367,
+          55369,
+          55448,
+          55453,
+          55467,
+          55489,
+          55496,
+          55497,
+          55531,
+          55536,
+          55542,
+          55560
+        ],
+        "truthSec": 1940.22,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4901,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        59986
+      ],
+      "row": {
+        "at": 1789581242008,
+        "poll": 4901,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 59986,
+        "targetId": 60056,
+        "legIds": [
+          55545,
+          55555,
+          55575,
+          55585,
+          55588
+        ],
+        "truthSec": 523.704,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4970,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581600218,
+        "poll": 4970,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 512.069,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4982,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581660719,
+        "poll": 4982,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 451.568,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        4994,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581720753,
+        "poll": 4994,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 391.534,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5006,
+        15,
+        "304",
+        1,
+        0
+      ],
+      "wireOrigin": 1,
+      "trackingRestIndex": -1,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789581780706,
+        "poll": 5006,
+        "route": 15,
+        "bus": "304",
+        "targetIndex": 1,
+        "targetStop": 153,
+        "occurrence": 0,
+        "sourceId": 60101,
+        "targetId": 60112,
+        "legIds": [
+          55644
+        ],
+        "truthSec": 331.581,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5378,
+        9,
+        "325",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "no-unique-pin-any-index",
+      "pinVisitIds": [],
+      "row": {
+        "at": 1789583642559,
+        "poll": 5378,
+        "route": 9,
+        "bus": "325",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60292,
+        "targetId": 60360,
+        "legIds": [
+          55824,
+          55832,
+          55866,
+          55877,
+          55881
+        ],
+        "truthSec": 599.972,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5618,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584842577,
+        "poll": 5618,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 881.232,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5630,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584902593,
+        "poll": 5630,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 821.216,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5642,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789584962674,
+        "poll": 5642,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 761.135,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5654,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585022576,
+        "poll": 5654,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 701.233,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5666,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585082630,
+        "poll": 5666,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 641.179,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5678,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585142625,
+        "poll": 5678,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 581.184,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5690,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585203587,
+        "poll": 5690,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 520.222,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5702,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585263639,
+        "poll": 5702,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 460.17,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5714,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585323745,
+        "poll": 5714,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 400.064,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5726,
+        9,
+        "122",
+        18,
+        0
+      ],
+      "wireOrigin": 18,
+      "trackingRestIndex": 18,
+      "category": "exact-pin-at-different-occurrence-of-same-stop",
+      "pinVisitIds": [
+        60528
+      ],
+      "row": {
+        "at": 1789585383700,
+        "poll": 5726,
+        "route": 9,
+        "bus": "122",
+        "targetIndex": 18,
+        "targetStop": 25,
+        "occurrence": 0,
+        "sourceId": 60528,
+        "targetId": 60567,
+        "legIds": [
+          56056,
+          56061,
+          56071,
+          56080,
+          56085
+        ],
+        "truthSec": 340.109,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    },
+    {
+      "arm": "canonical",
+      "key": [
+        5846,
+        1,
+        "44",
+        23,
+        0
+      ],
+      "wireOrigin": 23,
+      "trackingRestIndex": 24,
+      "category": "exact-pin-at-priced-origin",
+      "pinVisitIds": [
+        60594
+      ],
+      "row": {
+        "at": 1789585983977,
+        "poll": 5846,
+        "route": 1,
+        "bus": "44",
+        "targetIndex": 23,
+        "targetStop": 43,
+        "occurrence": 0,
+        "sourceId": 60628,
+        "targetId": 60996,
+        "legIds": [
+          56159,
+          56239,
+          56243,
+          56263,
+          56279,
+          56285,
+          56294,
+          56300,
+          56302,
+          56312,
+          56319,
+          56323,
+          56331,
+          56338,
+          56341,
+          56353,
+          56356,
+          56364,
+          56370,
+          56376,
+          56378,
+          56387,
+          56393,
+          56408,
+          56424,
+          56440,
+          56450,
+          56459,
+          56478,
+          56493
+        ],
+        "truthSec": 3225.376,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      }
+    }
+  ],
+  "rawContext": [
+    {
+      "poll": 484,
+      "observed_at": 1789559103397,
+      "bus_name": "#330",
+      "route_id": 10,
+      "last_stop_id": 22,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T11:45:03.397",
+      "at_stop_since": null
+    },
+    {
+      "poll": 496,
+      "observed_at": 1789559163410,
+      "bus_name": "#330",
+      "route_id": 10,
+      "last_stop_id": 22,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T11:45:38.407",
+      "at_stop_since": null
+    },
+    {
+      "poll": 508,
+      "observed_at": 1789559223404,
+      "bus_name": "#330",
+      "route_id": 10,
+      "last_stop_id": 22,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T11:45:38.407",
+      "at_stop_since": null
+    },
+    {
+      "poll": 520,
+      "observed_at": 1789559284159,
+      "bus_name": "#316",
+      "route_id": 3,
+      "last_stop_id": 146,
+      "at_stop_id": 49,
+      "stationary": true,
+      "stationary_since": "2026-09-16T11:47:39.262",
+      "at_stop_since": "2026-09-16T11:47:39.262"
+    },
+    {
+      "poll": 688,
+      "observed_at": 1789560124234,
+      "bus_name": "#309",
+      "route_id": 3,
+      "last_stop_id": 146,
+      "at_stop_id": 146,
+      "stationary": true,
+      "stationary_since": "2026-09-16T12:01:44.213",
+      "at_stop_since": "2026-09-16T12:01:44.213"
+    },
+    {
+      "poll": 963,
+      "observed_at": 1789561501034,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 975,
+      "observed_at": 1789561561103,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 987,
+      "observed_at": 1789561621065,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 999,
+      "observed_at": 1789561681305,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1011,
+      "observed_at": 1789561741386,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1023,
+      "observed_at": 1789561801209,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1035,
+      "observed_at": 1789561861256,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1047,
+      "observed_at": 1789561921449,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1059,
+      "observed_at": 1789561981638,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1071,
+      "observed_at": 1789562041599,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1083,
+      "observed_at": 1789562101776,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1095,
+      "observed_at": 1789562161690,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1107,
+      "observed_at": 1789562221711,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1119,
+      "observed_at": 1789562281616,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1131,
+      "observed_at": 1789562341637,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1143,
+      "observed_at": 1789562401638,
+      "bus_name": "#325",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T12:39:51.619",
+      "at_stop_since": "2026-09-16T12:39:51.619"
+    },
+    {
+      "poll": 1143,
+      "observed_at": 1789562401638,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T12:24:06.162",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1299,
+      "observed_at": 1789563181810,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 154,
+      "at_stop_id": 155,
+      "stationary": true,
+      "stationary_since": "2026-09-16T12:52:46.848",
+      "at_stop_since": "2026-09-16T12:52:46.848"
+    },
+    {
+      "poll": 1407,
+      "observed_at": 1789563721838,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T13:02:01.838",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1623,
+      "observed_at": 1789564802019,
+      "bus_name": "#127",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T13:19:56.979",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1623,
+      "observed_at": 1789564802019,
+      "bus_name": "#46",
+      "route_id": 1,
+      "last_stop_id": 34,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T13:19:27.007",
+      "at_stop_since": null
+    },
+    {
+      "poll": 1671,
+      "observed_at": 1789565042055,
+      "bus_name": "#307",
+      "route_id": 8,
+      "last_stop_id": 124,
+      "at_stop_id": 124,
+      "stationary": true,
+      "stationary_since": "2026-09-16T13:23:32.012",
+      "at_stop_since": "2026-09-16T13:23:32.012"
+    },
+    {
+      "poll": 1827,
+      "observed_at": 1789565822246,
+      "bus_name": "#325",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T13:36:17.080",
+      "at_stop_since": "2026-09-16T13:36:17.080"
+    },
+    {
+      "poll": 2079,
+      "observed_at": 1789567082259,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T13:57:42.241",
+      "at_stop_since": "2026-09-16T13:57:42.241"
+    },
+    {
+      "poll": 2091,
+      "observed_at": 1789567142267,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T13:58:47.255",
+      "at_stop_since": null
+    },
+    {
+      "poll": 2259,
+      "observed_at": 1789567982559,
+      "bus_name": "#127",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T14:12:37.518",
+      "at_stop_since": "2026-09-16T14:12:37.518"
+    },
+    {
+      "poll": 2739,
+      "observed_at": 1789570384225,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T14:52:59.118",
+      "at_stop_since": "2026-09-16T14:52:59.118"
+    },
+    {
+      "poll": 2979,
+      "observed_at": 1789571584369,
+      "bus_name": "#127",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T15:12:44.298",
+      "at_stop_since": "2026-09-16T15:12:44.298"
+    },
+    {
+      "poll": 3087,
+      "observed_at": 1789572124523,
+      "bus_name": "#307",
+      "route_id": 8,
+      "last_stop_id": 124,
+      "at_stop_id": 124,
+      "stationary": true,
+      "stationary_since": "2026-09-16T15:21:39.433",
+      "at_stop_since": "2026-09-16T15:21:39.433"
+    },
+    {
+      "poll": 3714,
+      "observed_at": 1789575300772,
+      "bus_name": "#127",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T16:14:45.734",
+      "at_stop_since": "2026-09-16T16:14:45.734"
+    },
+    {
+      "poll": 4193,
+      "observed_at": 1789577700491,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T16:54:35.347",
+      "at_stop_since": "2026-09-16T16:54:35.347"
+    },
+    {
+      "poll": 4205,
+      "observed_at": 1789577760596,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T16:54:35.347",
+      "at_stop_since": "2026-09-16T16:54:35.347"
+    },
+    {
+      "poll": 4217,
+      "observed_at": 1789577820583,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T16:54:35.347",
+      "at_stop_since": "2026-09-16T16:54:35.347"
+    },
+    {
+      "poll": 4229,
+      "observed_at": 1789577880581,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T16:54:35.347",
+      "at_stop_since": "2026-09-16T16:54:35.347"
+    },
+    {
+      "poll": 4241,
+      "observed_at": 1789577940529,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T16:59:00.529",
+      "at_stop_since": null
+    },
+    {
+      "poll": 4553,
+      "observed_at": 1789579501803,
+      "bus_name": "#307",
+      "route_id": 8,
+      "last_stop_id": 125,
+      "at_stop_id": 124,
+      "stationary": true,
+      "stationary_since": "2026-09-16T17:24:21.780",
+      "at_stop_since": "2026-09-16T17:24:21.780"
+    },
+    {
+      "poll": 4901,
+      "observed_at": 1789581242008,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T17:53:42.057",
+      "at_stop_since": "2026-09-16T17:53:42.057"
+    },
+    {
+      "poll": 4970,
+      "observed_at": 1789581600218,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T17:54:27.047",
+      "at_stop_since": null
+    },
+    {
+      "poll": 4982,
+      "observed_at": 1789581660719,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T17:54:27.047",
+      "at_stop_since": null
+    },
+    {
+      "poll": 4994,
+      "observed_at": 1789581720753,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T17:54:27.047",
+      "at_stop_since": null
+    },
+    {
+      "poll": 5006,
+      "observed_at": 1789581780706,
+      "bus_name": "#304",
+      "route_id": 15,
+      "last_stop_id": 10,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T17:54:27.047",
+      "at_stop_since": null
+    },
+    {
+      "poll": 5378,
+      "observed_at": 1789583642559,
+      "bus_name": "#325",
+      "route_id": 9,
+      "last_stop_id": 25,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:33:32.476",
+      "at_stop_since": "2026-09-16T18:33:32.476"
+    },
+    {
+      "poll": 5618,
+      "observed_at": 1789584842577,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5630,
+      "observed_at": 1789584902593,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5642,
+      "observed_at": 1789584962674,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5654,
+      "observed_at": 1789585022576,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5666,
+      "observed_at": 1789585082630,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5678,
+      "observed_at": 1789585142625,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5690,
+      "observed_at": 1789585203587,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5702,
+      "observed_at": 1789585263639,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5714,
+      "observed_at": 1789585323745,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5726,
+      "observed_at": 1789585383700,
+      "bus_name": "#122",
+      "route_id": 9,
+      "last_stop_id": 26,
+      "at_stop_id": 25,
+      "stationary": true,
+      "stationary_since": "2026-09-16T18:53:42.656",
+      "at_stop_since": "2026-09-16T18:53:42.656"
+    },
+    {
+      "poll": 5846,
+      "observed_at": 1789585983977,
+      "bus_name": "#44",
+      "route_id": 1,
+      "last_stop_id": 43,
+      "at_stop_id": null,
+      "stationary": false,
+      "stationary_since": "2026-09-16T19:10:43.914",
+      "at_stop_since": null
+    }
+  ],
+  "limits": "No exclusion, retargeting, app change or calibrated probability claim. Exploratory diagnostic requested by review. Exact-pin/different-rest cases need longitudinal provenance review before changing the builder label contract; same-stop IDs at repeated physical positions must not be conflated. Complementary rows are not fully identity certified."
+}

@@ -1,0 +1,35 @@
+{
+  "verdict": "research_only",
+  "summary": "Independent checks support the diagnostic conclusion: no common clock correction is justified. Selected, dependent historical cases establish no production improvement. Review saved in independent-review-round-2.md; checkout and builder evidence remain unchanged.",
+  "head_sha": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "base_sha": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "next_task": "Advance backlog 4 with one predeclared causal service-role state distinct from the already-tested two-departure phase predictor. Preserve training-only choices, reset/support/fallback rules, current-production comparisons, mixed score/weighting evidence and both-occurrence rider replay before promotion.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified 27 hash references, 4,116 raw observations, 33 connected endpoints, 177 scored/14 missing checkpoints, 242 archived forecasts and eight metric groups."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/verify_snapshots.mts",
+      "exit_code": 0,
+      "result": "From services/shuttle-v2: independently observed 2,560 wait addends reproducing five component means; verified 25 server rows and quantile vectors."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/score_trace.py > /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/score.log",
+      "exit_code": 0,
+      "result": "Exactly reproduced preserved scores, availability and jump summaries."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/audit_intermediate_raw.py > /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-2/raw-audit.log",
+      "exit_code": 0,
+      "result": "Exactly reproduced all ten intermediate-coordinate audits."
+    },
+    {
+      "command": "git diff --check && git diff --exit-code 40af3c0bb8e2522972b4e9f0222b1756fbd3c227 HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git rev-parse 40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+      "exit_code": 0,
+      "result": "Empty diffs/status; exact supplied HEAD and base verified."
+    }
+  ]
+}

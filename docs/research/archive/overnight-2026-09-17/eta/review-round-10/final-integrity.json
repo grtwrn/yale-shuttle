@@ -1,0 +1,37 @@
+{
+  "head": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "base": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "cleanCheckout": true,
+  "builderFilesUnchanged": 75,
+  "byteIdenticalReproductions": [
+    "eta-projection.patch",
+    "TransitMap.tsx",
+    "planner.ts",
+    "livePickupSelection.ts",
+    "shell-candidate.generated.mts",
+    "future-guard.generated.mts",
+    "source-extraction.json",
+    "paired-metadata.jsonl",
+    "audit-summary.json",
+    "boundaries.json",
+    "multi-option.json"
+  ],
+  "originalDistAssetsUnchanged": 20,
+  "browserBaselineStates": 24,
+  "browserExtendedStates": 32,
+  "futureAndPhysicalPersistence": [
+    "mobile",
+    "desktop"
+  ],
+  "directSelector": {
+    "ordinary": 6464,
+    "raw": 2912,
+    "frames": 1172,
+    "checked": 9376
+  },
+  "shuttleDiversityBatches": 100,
+  "differentBoardingIdentityBatches": 87,
+  "screenshotsTaken": 0,
+  "combinedImageFiles": 215,
+  "combinedImageBytes": 9445149
+}

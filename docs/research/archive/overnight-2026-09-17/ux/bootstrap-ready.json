@@ -1,0 +1,19 @@
+{
+  "ready": true,
+  "team": "ux",
+  "preparedAt": "2026-09-17T22:03:00-04:00",
+  "windowEndsAt": "2026-09-18T07:30:00-04:00",
+  "worktree": "/home/gwarren/projects/yale-shuttle-watcher/overnight-ux-2026-09-17",
+  "baseCommit": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "handoff": "HANDOFF.md",
+  "backlog": "BACKLOG.md",
+  "viewCoverage": "VIEW_COVERAGE.md",
+  "firstTask": "FIRST_TASK.md",
+  "scope": "Read-only application audit; wrote handoff artifacts only",
+  "applicationFilesChanged": false,
+  "buildsOrTestsRun": false,
+  "browserVerificationPerformed": false,
+  "committedOrDeployed": false,
+  "firstTaskId": "UX-01",
+  "firstTaskSummary": "Clarify class-deadline unknown, buffer, catch-risk and late states without changing ETA or route-choice calculations"
+}

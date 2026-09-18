@@ -1,0 +1,7227 @@
+{
+  "method": "Retrospective exact connected first-target then one-full-lap second-target outcomes. Fixed raw observation checkpoints before first arrival; second rows inferred by stopsAhead>N because capture occurrence=0 is not usable. Same-day complete chains only; absence is retained separately. Not calibrated or independent repeated-checkpoint evidence.",
+  "input": {
+    "pairs": "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/joint-release-pairs.jsonl",
+    "sha256": "cc998ce05aca27564e3e68471c983b94e382d8f52c69398b0ec1fbfcf07509b3",
+    "minWarmSec": 600,
+    "N": 29
+  },
+  "counts": {
+    "rows": {
+      "all": 117149,
+      "second": 44229,
+      "baselineUnavailableSecondRows": 2343,
+      "hEqualsN_ambiguous": 2574
+    },
+    "sourceVisits": 102,
+    "connectedJourneys": 84,
+    "checkpoints": 833,
+    "scoredSources": 40,
+    "scoredNextTargets": 49,
+    "availability": {
+      "paired": 574,
+      "both_absent": 229,
+      "candidate_only": 30
+    },
+    "excluded": {
+      "checkpoint unavailable/stale/unwarmed bus": 46,
+      "next: missing or ambiguous leg": 27,
+      "next: missing or ambiguous visit": 20,
+      "first: missing or ambiguous leg": 13,
+      "first: missing or ambiguous visit": 22,
+      "next: gap-resolved visit": 4,
+      "next: missing intermediate departure": 4,
+      "first: gap-resolved visit": 2,
+      "next target absent: right-censored or service-ended": 24,
+      "first: missing intermediate departure": 4
+    }
+  },
+  "scores": [
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -120
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 280.6609199247544,
+          "medianAbsSec": 262.8137777328084,
+          "p90AbsSec": 498.4160879617847,
+          "signedSec": 214.63549225301563,
+          "widthSec": 1662.280245754969,
+          "WIS": 204.37232302524941,
+          "early": 0,
+          "late": 0,
+          "covered": 24,
+          "over120": 18,
+          "under120": 2,
+          "over300": 9,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 247.44542440776942,
+          "medianAbsSec": 217.66345991771686,
+          "p90AbsSec": 519.3207118036469,
+          "signedSec": 157.95174784322464,
+          "widthSec": 1320.315802209122,
+          "WIS": 170.50286161653128,
+          "early": 0,
+          "late": 0,
+          "covered": 24,
+          "over120": 15,
+          "under120": 3,
+          "over300": 5,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 246.0283156194551,
+          "medianAbsSec": 214.20755339841344,
+          "p90AbsSec": 455.809478051969,
+          "signedSec": 172.41192132000387,
+          "widthSec": 1657.7526719098173,
+          "WIS": 192.5262833338062,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 12,
+          "under120": 1,
+          "over300": 4,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 211.76961652203235,
+          "medianAbsSec": 181.79089326151734,
+          "p90AbsSec": 403.2382111156703,
+          "signedSec": 119.19172765857708,
+          "widthSec": 1316.4135770800447,
+          "WIS": 158.35077731268044,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 9,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 284.74920705721723,
+            "medianAbsSec": 283.41308942372416,
+            "p90AbsSec": 506.0942371349356,
+            "signedSec": 209.29157543237287,
+            "widthSec": 1676.367263332358,
+            "WIS": 206.6742199078963,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 15,
+            "under120": 2,
+            "over300": 8,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 255.22764185391446,
+            "medianAbsSec": 218.09906872021566,
+            "p90AbsSec": 560.3288035930209,
+            "signedSec": 152.9491543515776,
+            "widthSec": 1336.0762097531426,
+            "WIS": 174.14762793484766,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 13,
+            "under120": 3,
+            "over300": 5,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 252.04290999751493,
+            "medianAbsSec": 242.2144660418926,
+            "p90AbsSec": 336.18453176619334,
+            "signedSec": 252.04290999751493,
+            "widthSec": 1563.6711227132455,
+            "WIS": 188.25904484672134,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 192.96990228475397,
+            "medianAbsSec": 202.92469887847528,
+            "p90AbsSec": 264.4477362409032,
+            "signedSec": 192.96990228475397,
+            "widthSec": 1209.9929494009775,
+            "WIS": 144.9894973883165,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "approach",
+        -60
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 269.87177214237335,
+          "medianAbsSec": 232.47759517216628,
+          "p90AbsSec": 469.4396180516143,
+          "signedSec": 204.98262906454502,
+          "widthSec": 1654.2153634344945,
+          "WIS": 200.23828160975742,
+          "early": 0,
+          "late": 0,
+          "covered": 24,
+          "over120": 16,
+          "under120": 2,
+          "over300": 8,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 242.2818771542397,
+          "medianAbsSec": 210.90276639923377,
+          "p90AbsSec": 495.03454299672904,
+          "signedSec": 154.0773522228928,
+          "widthSec": 1319.0474860362951,
+          "WIS": 168.69712478716625,
+          "early": 0,
+          "late": 0,
+          "covered": 24,
+          "over120": 15,
+          "under120": 2,
+          "over300": 6,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 229.5270870914017,
+          "medianAbsSec": 212.05266629617836,
+          "p90AbsSec": 438.96013711150385,
+          "signedSec": 160.76220429163138,
+          "widthSec": 1655.621591870459,
+          "WIS": 186.88380182183116,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 10,
+          "under120": 1,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 200.76267274804778,
+          "medianAbsSec": 189.770714488639,
+          "p90AbsSec": 395.8330385791798,
+          "signedSec": 113.7233443578504,
+          "widthSec": 1314.1616048669907,
+          "WIS": 154.5316645738153,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 9,
+          "under120": 1,
+          "over300": 3,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 273.7829630632268,
+            "medianAbsSec": 247.35154060877994,
+            "p90AbsSec": 469.9596169525157,
+            "signedSec": 199.6239424028516,
+            "widthSec": 1663.2780191672157,
+            "WIS": 202.14618896555666,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 14,
+            "under120": 2,
+            "over300": 7,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 249.29216470440895,
+            "medianAbsSec": 215.86194003766286,
+            "p90AbsSec": 526.7157154343167,
+            "signedSec": 148.48699335429822,
+            "widthSec": 1332.5394165530222,
+            "WIS": 171.9333493383378,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 13,
+            "under120": 2,
+            "over300": 5,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 242.4934356963989,
+            "medianAbsSec": 217.6036497355526,
+            "p90AbsSec": 355.7092147306794,
+            "signedSec": 242.4934356963989,
+            "widthSec": 1590.776773305446,
+            "WIS": 186.88293011916272,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 193.20986430305493,
+            "medianAbsSec": 191.21070707501622,
+            "p90AbsSec": 284.6423029444921,
+            "signedSec": 193.20986430305493,
+            "widthSec": 1224.6039724192058,
+            "WIS": 146.04355292896537,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        0
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 345.439875415402,
+          "medianAbsSec": 353.2036997446223,
+          "p90AbsSec": 494.7769383379876,
+          "signedSec": 292.6258172139856,
+          "widthSec": 1274.5696469362836,
+          "WIS": 203.54216666276278,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 19,
+          "under120": 2,
+          "over300": 18,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 299.4933175833684,
+          "medianAbsSec": 298.65622296043443,
+          "p90AbsSec": 482.76755883103226,
+          "signedSec": 230.08462595619434,
+          "widthSec": 1011.7702227337948,
+          "WIS": 174.89593037851918,
+          "early": 2,
+          "late": 1,
+          "covered": 21,
+          "over120": 18,
+          "under120": 2,
+          "over300": 11,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 347.2787491995554,
+          "medianAbsSec": 348.6811611873295,
+          "p90AbsSec": 466.419049182928,
+          "signedSec": 282.3155011368329,
+          "widthSec": 1270.8462630208066,
+          "WIS": 200.4826672679056,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 13,
+          "under120": 1,
+          "over300": 12,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 295.6682705503873,
+          "medianAbsSec": 293.46842546284915,
+          "p90AbsSec": 421.4035849994619,
+          "signedSec": 216.2828811273941,
+          "widthSec": 1014.5037217679243,
+          "WIS": 167.46379120230466,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 12,
+          "under120": 1,
+          "over300": 6,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 341.39365289386785,
+            "medianAbsSec": 357.72623830191515,
+            "p90AbsSec": 504.21722640942926,
+            "signedSec": 281.0347292351063,
+            "widthSec": 1275.2455151219342,
+            "WIS": 202.72765966251524,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 16,
+            "under120": 2,
+            "over300": 15,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 299.9134083413669,
+            "medianAbsSec": 303.8440204580197,
+            "p90AbsSec": 503.2759859606904,
+            "signedSec": 220.58918933888228,
+            "widthSec": 1012.6124945510758,
+            "WIS": 176.1797515621198,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 15,
+            "under120": 2,
+            "over300": 10,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 373.763433066141,
+            "medianAbsSec": 348.6811611873295,
+            "p90AbsSec": 423.38617725241863,
+            "signedSec": 373.763433066141,
+            "widthSec": 1269.8385696367277,
+            "WIS": 209.2437156644955,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 3,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 296.5526822773788,
+            "medianAbsSec": 280.0003735880914,
+            "p90AbsSec": 358.29772112068247,
+            "signedSec": 296.5526822773788,
+            "widthSec": 1005.8743200128274,
+            "WIS": 165.90918209331474,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        5
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 344.2575756751744,
+          "medianAbsSec": 351.6706218668337,
+          "p90AbsSec": 499.8187383379877,
+          "signedSec": 292.72018414042464,
+          "widthSec": 1292.781244315137,
+          "WIS": 204.64483433343875,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 19,
+          "under120": 2,
+          "over300": 16,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 295.5715434015293,
+          "medianAbsSec": 295.31933144541654,
+          "p90AbsSec": 475.9718458826864,
+          "signedSec": 227.43428209491282,
+          "widthSec": 1011.957274867939,
+          "WIS": 171.9365145148685,
+          "early": 2,
+          "late": 1,
+          "covered": 21,
+          "over120": 18,
+          "under120": 2,
+          "over300": 10,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 341.7933342036367,
+          "medianAbsSec": 338.17983854471686,
+          "p90AbsSec": 468.9141746685388,
+          "signedSec": 278.1787528075808,
+          "widthSec": 1293.4383448105616,
+          "WIS": 200.160334388583,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 13,
+          "under120": 1,
+          "over300": 10,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 287.6810735550818,
+          "medianAbsSec": 292.166237427984,
+          "p90AbsSec": 411.51492890807657,
+          "signedSec": 209.64435079875523,
+          "widthSec": 1009.0966427299807,
+          "WIS": 164.14414045762192,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 12,
+          "under120": 1,
+          "over300": 5,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 342.0381557628847,
+            "medianAbsSec": 362.73023830191505,
+            "p90AbsSec": 509.2602264094294,
+            "signedSec": 283.1382797231707,
+            "widthSec": 1293.0448801028176,
+            "WIS": 204.4521595324311,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 16,
+            "under120": 2,
+            "over300": 13,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 296.7739946143912,
+            "medianAbsSec": 298.47242546284906,
+            "p90AbsSec": 498.1689859606904,
+            "signedSec": 218.9028388354009,
+            "widthSec": 1016.7431719575346,
+            "WIS": 173.50622687605684,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 15,
+            "under120": 2,
+            "over300": 9,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 359.79351506120264,
+            "medianAbsSec": 336.91572078224726,
+            "p90AbsSec": 417.41182389739276,
+            "signedSec": 359.79351506120264,
+            "widthSec": 1290.9357938013727,
+            "WIS": 205.9935579404924,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 3,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 287.15438491149627,
+            "medianAbsSec": 263.43252566708725,
+            "p90AbsSec": 359.0073515364817,
+            "signedSec": 287.15438491149627,
+            "widthSec": 978.4559952407699,
+            "WIS": 160.9485279865501,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        15
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 283.20824372823967,
+          "medianAbsSec": 265.60084154610854,
+          "p90AbsSec": 453.82120447311155,
+          "signedSec": 223.07042752378604,
+          "widthSec": 1308.5144367209084,
+          "WIS": 185.47468984498806,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 18,
+          "under120": 2,
+          "over300": 9,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 251.5506368150445,
+          "medianAbsSec": 236.54506107377188,
+          "p90AbsSec": 446.6685282239036,
+          "signedSec": 164.84927547864834,
+          "widthSec": 996.3114067684625,
+          "WIS": 154.04831190063828,
+          "early": 1,
+          "late": 1,
+          "covered": 22,
+          "over120": 18,
+          "under120": 2,
+          "over300": 5,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 278.1143745195493,
+          "medianAbsSec": 267.32301681548506,
+          "p90AbsSec": 421.56255768833745,
+          "signedSec": 213.42682842173198,
+          "widthSec": 1306.4167156338092,
+          "WIS": 179.79923921543704,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 12,
+          "under120": 1,
+          "over300": 5,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 237.85211959390065,
+          "medianAbsSec": 217.34808136574748,
+          "p90AbsSec": 377.40062845322706,
+          "signedSec": 154.09439299984362,
+          "widthSec": 998.8559993603292,
+          "WIS": 145.8906283923264,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 12,
+          "under120": 1,
+          "over300": 3,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 282.52291639460896,
+            "medianAbsSec": 267.32301681548506,
+            "p90AbsSec": 464.6679430881336,
+            "signedSec": 213.79398358951906,
+            "widthSec": 1311.3918028990713,
+            "WIS": 185.986306977205,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 2,
+            "over300": 8,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 255.60545819473126,
+            "medianAbsSec": 255.74204078179628,
+            "p90AbsSec": 465.0581885115457,
+            "signedSec": 156.5181880959928,
+            "widthSec": 997.1658793503533,
+            "WIS": 155.99650374852556,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 15,
+            "under120": 2,
+            "over300": 4,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 288.00553506365486,
+            "medianAbsSec": 260.1559467803477,
+            "p90AbsSec": 370.31322748452374,
+            "signedSec": 288.00553506365486,
+            "widthSec": 1288.372873473768,
+            "WIS": 181.89336991946948,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 223.16688715723708,
+            "medianAbsSec": 206.58787985015397,
+            "p90AbsSec": 294.38665408935657,
+            "signedSec": 223.16688715723708,
+            "widthSec": 990.3300986952266,
+            "WIS": 140.4109689654275,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        30
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 284.39913241522936,
+          "medianAbsSec": 257.7246730881525,
+          "p90AbsSec": 468.57886487839744,
+          "signedSec": 202.31419933541187,
+          "widthSec": 1296.0945712302655,
+          "WIS": 184.2152395241206,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 18,
+          "under120": 3,
+          "over300": 9,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 255.51091105249066,
+          "medianAbsSec": 212.90901543901214,
+          "p90AbsSec": 423.4691278314465,
+          "signedSec": 145.77593876860556,
+          "widthSec": 981.5964600129245,
+          "WIS": 157.316561911363,
+          "early": 1,
+          "late": 1,
+          "covered": 22,
+          "over120": 18,
+          "under120": 4,
+          "over300": 5,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 279.00997829754033,
+          "medianAbsSec": 262.11189843656484,
+          "p90AbsSec": 412.98742516885176,
+          "signedSec": 193.99268954294948,
+          "widthSec": 1297.076690290129,
+          "WIS": 179.47510545185537,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 12,
+          "under120": 2,
+          "over300": 5,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 241.16051837438664,
+          "medianAbsSec": 207.60988573696886,
+          "p90AbsSec": 351.82632910678984,
+          "signedSec": 134.16265204824225,
+          "widthSec": 979.4010749191083,
+          "WIS": 151.23893102628895,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 12,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 283.4818330650542,
+            "medianAbsSec": 253.33744773974013,
+            "p90AbsSec": 490.9565581071515,
+            "signedSec": 189.6704809738342,
+            "widthSec": 1296.7389082436189,
+            "WIS": 184.38231801357523,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 3,
+            "over300": 8,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 260.25138283410104,
+            "medianAbsSec": 218.2081451410554,
+            "p90AbsSec": 451.6340304558503,
+            "signedSec": 134.83998593823236,
+            "widthSec": 981.3090688157481,
+            "WIS": 159.83563036251726,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 15,
+            "under120": 4,
+            "over300": 4,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 290.82022786645547,
+            "medianAbsSec": 262.11189843656484,
+            "p90AbsSec": 373.3075177437722,
+            "signedSec": 290.82022786645547,
+            "widthSec": 1291.584212136793,
+            "WIS": 183.045690097938,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 222.32760858121796,
+            "medianAbsSec": 207.60988573696886,
+            "p90AbsSec": 290.1270677987777,
+            "signedSec": 222.32760858121796,
+            "widthSec": 983.6081983931587,
+            "WIS": 139.68308275328323,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "departure",
+        60
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 279.1897862498498,
+          "medianAbsSec": 257.973308014798,
+          "p90AbsSec": 437.7597785195223,
+          "signedSec": 201.4215161749498,
+          "widthSec": 1299.1731551457558,
+          "WIS": 182.15842373560864,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 18,
+          "under120": 3,
+          "over300": 8,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 251.45398099191405,
+          "medianAbsSec": 212.1279757739053,
+          "p90AbsSec": 428.42959511887244,
+          "signedSec": 147.05184647087012,
+          "widthSec": 981.4501107591091,
+          "WIS": 152.97496966702207,
+          "early": 1,
+          "late": 1,
+          "covered": 22,
+          "over120": 18,
+          "under120": 4,
+          "over300": 5,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 271.05633595868954,
+          "medianAbsSec": 257.7355956150741,
+          "p90AbsSec": 411.39850533949414,
+          "signedSec": 194.31314971944678,
+          "widthSec": 1304.788272204198,
+          "WIS": 177.33799679984304,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 12,
+          "under120": 2,
+          "over300": 4,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 236.13023588248768,
+          "medianAbsSec": 210.59852251491247,
+          "p90AbsSec": 351.74613377950993,
+          "signedSec": 137.65367695920972,
+          "widthSec": 980.5989304331694,
+          "WIS": 145.91140161481394,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 12,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 278.7703354299566,
+            "medianAbsSec": 258.21102041452195,
+            "p90AbsSec": 446.4324157145138,
+            "signedSec": 189.89231248721376,
+            "widthSec": 1300.0636123503407,
+            "WIS": 182.4327731772749,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 3,
+            "over300": 7,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 255.98824755222077,
+            "medianAbsSec": 213.6574290328981,
+            "p90AbsSec": 458.37131833038666,
+            "signedSec": 136.67152238531344,
+            "widthSec": 981.9903565515332,
+            "WIS": 155.05483232839688,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 15,
+            "under120": 4,
+            "over300": 4,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 282.1259419891023,
+            "medianAbsSec": 257.7355956150741,
+            "p90AbsSec": 366.3757817641375,
+            "signedSec": 282.1259419891023,
+            "widthSec": 1292.939954713661,
+            "WIS": 180.23797764394482,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 219.71411506976696,
+            "medianAbsSec": 204.84437968057136,
+            "p90AbsSec": 288.30933434747055,
+            "signedSec": 219.71411506976696,
+            "widthSec": 977.6683902121404,
+            "WIS": 138.41593103739834,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        0
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 269.49972362627193,
+          "medianAbsSec": 230.60554244882042,
+          "p90AbsSec": 473.3967373679679,
+          "signedSec": 197.29780024760655,
+          "widthSec": 1545.1155895154016,
+          "WIS": 194.64685111385464,
+          "early": 2,
+          "late": 0,
+          "covered": 22,
+          "over120": 15,
+          "under120": 2,
+          "over300": 8,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 231.5038795814958,
+          "medianAbsSec": 191.7312604833878,
+          "p90AbsSec": 489.3393685718408,
+          "signedSec": 136.55317831152328,
+          "widthSec": 1199.0494300165512,
+          "WIS": 162.69331715285173,
+          "early": 2,
+          "late": 1,
+          "covered": 21,
+          "over120": 14,
+          "under120": 2,
+          "over300": 6,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 232.78353221582242,
+          "medianAbsSec": 206.7434763527499,
+          "p90AbsSec": 447.77825331216144,
+          "signedSec": 158.07420952728933,
+          "widthSec": 1574.454200614087,
+          "WIS": 182.55812411287997,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 9,
+          "under120": 1,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 187.79678184269017,
+          "medianAbsSec": 162.6141324630753,
+          "p90AbsSec": 365.2841126983,
+          "signedSec": 100.04851312242847,
+          "widthSec": 1223.1534660282766,
+          "WIS": 146.33229851292182,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 8,
+          "under120": 1,
+          "over300": 3,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 272.89190698210535,
+            "medianAbsSec": 247.49157433997425,
+            "p90AbsSec": 474.7229300158715,
+            "signedSec": 190.37542312077346,
+            "widthSec": 1524.0908281955183,
+            "WIS": 194.63391442124552,
+            "early": 2,
+            "late": 0,
+            "covered": 19,
+            "over120": 13,
+            "under120": 2,
+            "over300": 7,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 237.1343439783221,
+            "medianAbsSec": 192.47059058869309,
+            "p90AbsSec": 535.9222944073622,
+            "signedSec": 128.61925681263926,
+            "widthSec": 1195.2295215659271,
+            "WIS": 165.11386785859744,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 12,
+            "under120": 2,
+            "over300": 5,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 245.75444013543816,
+            "medianAbsSec": 206.7434763527499,
+            "p90AbsSec": 370.88380822573004,
+            "signedSec": 245.75444013543816,
+            "widthSec": 1692.2889187545852,
+            "WIS": 194.73740796211843,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 192.09062880371144,
+            "medianAbsSec": 162.6141324630753,
+            "p90AbsSec": 306.3160019424657,
+            "signedSec": 192.09062880371144,
+            "widthSec": 1225.7887891709188,
+            "WIS": 145.74946221263176,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        60
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 231.31579566091833,
+          "medianAbsSec": 158.12348731272778,
+          "p90AbsSec": 468.51786669778295,
+          "signedSec": 116.22748982795252,
+          "widthSec": 1363.0421062016665,
+          "WIS": 167.97473896708388,
+          "early": 0,
+          "late": 0,
+          "covered": 24,
+          "over120": 10,
+          "under120": 6,
+          "over300": 8,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 206.6294429229443,
+          "medianAbsSec": 188.91556904035997,
+          "p90AbsSec": 454.52330889459773,
+          "signedSec": 64.63047653025825,
+          "widthSec": 1035.890048794596,
+          "WIS": 139.06273762855736,
+          "early": 0,
+          "late": 1,
+          "covered": 23,
+          "over120": 9,
+          "under120": 6,
+          "over300": 4,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 185.55099698643588,
+          "medianAbsSec": 123.20105262055858,
+          "p90AbsSec": 437.69558421417975,
+          "signedSec": 77.61976226720026,
+          "widthSec": 1360.7536966426237,
+          "WIS": 152.5672454383202,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 5,
+          "under120": 3,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 161.82869619246307,
+          "medianAbsSec": 95.89243194308801,
+          "p90AbsSec": 368.66076372744925,
+          "signedSec": 32.66797987788926,
+          "widthSec": 1038.0358757957508,
+          "WIS": 124.94836255923566,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 4,
+          "under120": 3,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 236.54094847920337,
+            "medianAbsSec": 176.6633262811256,
+            "p90AbsSec": 472.98794406347315,
+            "signedSec": 105.01145609867102,
+            "widthSec": 1367.9687472218006,
+            "WIS": 170.0448993078545,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 8,
+            "under120": 6,
+            "over300": 7,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 214.4199950949538,
+            "medianAbsSec": 190.44629610167794,
+            "p90AbsSec": 483.9661980451988,
+            "signedSec": 53.799961428047396,
+            "widthSec": 1037.811039958296,
+            "WIS": 141.9486430112743,
+            "early": 0,
+            "late": 1,
+            "covered": 20,
+            "over120": 8,
+            "under120": 6,
+            "over300": 3,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 194.73972593292305,
+            "medianAbsSec": 139.58364834432996,
+            "p90AbsSec": 353.60267468381846,
+            "signedSec": 194.73972593292305,
+            "widthSec": 1328.555619060727,
+            "WIS": 153.4836165816895,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 152.0955777188777,
+            "medianAbsSec": 95.89243194308801,
+            "p90AbsSec": 293.51213279168155,
+            "signedSec": 140.44408224573422,
+            "widthSec": 1022.4431106486949,
+            "WIS": 118.86139994953889,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 1,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        180
+      ],
+      "availability": {
+        "paired": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 204.40386022207102,
+          "medianAbsSec": 170.81490458941244,
+          "p90AbsSec": 450.91252221848436,
+          "signedSec": 109.13568776990293,
+          "widthSec": 1330.2577279495122,
+          "WIS": 156.81846860399116,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 9,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 2,
+          "maeSec": 192.0354154897183,
+          "medianAbsSec": 183.3111805573817,
+          "p90AbsSec": 377.15759364960076,
+          "signedSec": 65.21795987249546,
+          "widthSec": 1002.283618657592,
+          "WIS": 133.80915918094067,
+          "early": 0,
+          "late": 1,
+          "covered": 14,
+          "over120": 8,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 239.40013455927567,
+          "medianAbsSec": 215.18746164689128,
+          "p90AbsSec": 464.1832264094296,
+          "signedSec": 148.16264359104198,
+          "widthSec": 1328.0196624718187,
+          "WIS": 168.3346890178798,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 8,
+          "under120": 1,
+          "over300": 2,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 207.44133290105177,
+          "medianAbsSec": 183.3111805573817,
+          "p90AbsSec": 394.88056219516375,
+          "signedSec": 106.2516895226429,
+          "widthSec": 1007.1232147130712,
+          "WIS": 140.35017603345773,
+          "early": 0,
+          "late": 1,
+          "covered": 10,
+          "over120": 7,
+          "under120": 1,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 13,
+            "sourceVisits": 13,
+            "targetVisits": 13,
+            "dates": 1,
+            "maeSec": 204.29401189994496,
+            "medianAbsSec": 170.81490458941244,
+            "p90AbsSec": 457.547874313957,
+            "signedSec": 94.36919753205872,
+            "widthSec": 1331.5453665307114,
+            "WIS": 156.86769506869575,
+            "early": 0,
+            "late": 0,
+            "covered": 13,
+            "over120": 7,
+            "under120": 2,
+            "over300": 2,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 13,
+            "sourceVisits": 13,
+            "targetVisits": 13,
+            "dates": 1,
+            "maeSec": 199.26032914945685,
+            "medianAbsSec": 183.3111805573817,
+            "p90AbsSec": 386.0190779223823,
+            "signedSec": 52.932495744968946,
+            "widthSec": 1005.7803157578783,
+            "WIS": 136.90879935223595,
+            "early": 0,
+            "late": 1,
+            "covered": 12,
+            "over120": 7,
+            "under120": 2,
+            "over300": 2,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 205.11787431589028,
+            "medianAbsSec": 205.11787431589028,
+            "p90AbsSec": 249.361693538642,
+            "signedSec": 205.11787431589028,
+            "widthSec": 1321.8880771717181,
+            "WIS": 156.49849658341128,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 145.0734767014178,
+            "medianAbsSec": 145.0734767014178,
+            "p90AbsSec": 187.41057824521113,
+            "signedSec": 145.0734767014178,
+            "widthSec": 979.5550875057311,
+            "WIS": 113.66149806752134,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        300
+      ],
+      "availability": {
+        "paired": 11
+      },
+      "paired": {
+        "baseline": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 233.55302700098466,
+          "medianAbsSec": 269.1317373814991,
+          "p90AbsSec": 334.9733301130573,
+          "signedSec": 203.26987464706144,
+          "widthSec": 1325.1930403191989,
+          "WIS": 166.19721168827482,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 8,
+          "under120": 1,
+          "over300": 4,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 185.17748544789984,
+          "medianAbsSec": 202.21241325308984,
+          "p90AbsSec": 267.3780212963602,
+          "signedSec": 136.19016892864553,
+          "widthSec": 1006.8655798344978,
+          "WIS": 128.8502004715998,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 7,
+          "under120": 1,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 2,
+          "maeSec": 254.12581092921778,
+          "medianAbsSec": 273.6161711289574,
+          "p90AbsSec": 326.41338909689256,
+          "signedSec": 254.12581092921778,
+          "widthSec": 1325.9899536986236,
+          "WIS": 173.10793388964748,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 7,
+          "under120": 0,
+          "over300": 3,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 2,
+          "maeSec": 183.60279728143792,
+          "medianAbsSec": 194.52673417646656,
+          "p90AbsSec": 246.11776541261088,
+          "signedSec": 183.60279728143792,
+          "widthSec": 1015.7993832391674,
+          "WIS": 128.92089130975714,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 6,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 9,
+            "sourceVisits": 9,
+            "targetVisits": 9,
+            "dates": 1,
+            "maeSec": 224.67770714354688,
+            "medianAbsSec": 269.1317373814991,
+            "p90AbsSec": 338.11931180449267,
+            "signedSec": 187.66496537764073,
+            "widthSec": 1326.0663753236358,
+            "WIS": 163.2969940694247,
+            "early": 0,
+            "late": 0,
+            "covered": 9,
+            "over120": 6,
+            "under120": 1,
+            "over300": 3,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 9,
+            "sourceVisits": 9,
+            "targetVisits": 9,
+            "dates": 1,
+            "maeSec": 186.20537590962067,
+            "medianAbsSec": 202.21241325308984,
+            "p90AbsSec": 273.6423612009874,
+            "signedSec": 126.33198905275428,
+            "widthSec": 1012.1104397679802,
+            "WIS": 129.54248795440557,
+            "early": 0,
+            "late": 0,
+            "covered": 9,
+            "over120": 5,
+            "under120": 1,
+            "over300": 0,
+            "under300": 0
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 273.49196635945464,
+            "medianAbsSec": 273.49196635945464,
+            "p90AbsSec": 307.50115615854503,
+            "signedSec": 273.49196635945464,
+            "widthSec": 1321.2630327992315,
+            "WIS": 179.24819097310032,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 180.55197837015612,
+            "medianAbsSec": 180.55197837015612,
+            "p90AbsSec": 212.46168239018652,
+            "signedSec": 180.55197837015612,
+            "widthSec": 983.2637101338269,
+            "WIS": 125.73490679897384,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        420
+      ],
+      "availability": {
+        "paired": 10
+      },
+      "paired": {
+        "baseline": {
+          "n": 10,
+          "sourceVisits": 10,
+          "targetVisits": 10,
+          "dates": 2,
+          "maeSec": 277.6282467473729,
+          "medianAbsSec": 304.01966186949744,
+          "p90AbsSec": 388.36039883079206,
+          "signedSec": 277.6282467473729,
+          "widthSec": 1303.7416918464965,
+          "WIS": 179.45886170555738,
+          "early": 0,
+          "late": 0,
+          "covered": 10,
+          "over120": 9,
+          "under120": 0,
+          "over300": 5,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 10,
+          "sourceVisits": 10,
+          "targetVisits": 10,
+          "dates": 2,
+          "maeSec": 213.73139477267145,
+          "medianAbsSec": 221.28798332726387,
+          "p90AbsSec": 308.22252006610904,
+          "signedSec": 207.3829033286433,
+          "widthSec": 1013.5020397630138,
+          "WIS": 138.81060090842476,
+          "early": 0,
+          "late": 0,
+          "covered": 10,
+          "over120": 9,
+          "under120": 0,
+          "over300": 2,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 2,
+          "maeSec": 294.61379917950654,
+          "medianAbsSec": 304.01966186949744,
+          "p90AbsSec": 351.3436325768718,
+          "signedSec": 294.61379917950654,
+          "widthSec": 1303.7422684103271,
+          "WIS": 185.12075095385734,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 8,
+          "under120": 0,
+          "over300": 4,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 2,
+          "maeSec": 222.9282498442662,
+          "medianAbsSec": 221.28798332726387,
+          "p90AbsSec": 279.74536032731856,
+          "signedSec": 222.9282498442662,
+          "widthSec": 1019.7028328661968,
+          "WIS": 142.28960547250185,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 8,
+          "under120": 0,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 271.12467928298645,
+            "medianAbsSec": 304.01966186949744,
+            "p90AbsSec": 389.2766951985725,
+            "signedSec": 271.12467928298645,
+            "widthSec": 1302.1785139086278,
+            "WIS": 177.18679402157065,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 7,
+            "under120": 0,
+            "over300": 4,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 210.370584661355,
+            "medianAbsSec": 221.28798332726387,
+            "p90AbsSec": 311.31651377418353,
+            "signedSec": 202.4349703563198,
+            "widthSec": 1016.2695281872643,
+            "WIS": 137.87483009960263,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 7,
+            "under120": 0,
+            "over300": 2,
+            "under300": 0
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 303.6425166049187,
+            "medianAbsSec": 303.6425166049187,
+            "p90AbsSec": 327.6982322708473,
+            "signedSec": 303.6425166049187,
+            "widthSec": 1309.994403597971,
+            "WIS": 188.5471324415043,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 2,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 2,
+            "sourceVisits": 2,
+            "targetVisits": 2,
+            "dates": 1,
+            "maeSec": 227.1746352179373,
+            "medianAbsSec": 227.1746352179373,
+            "p90AbsSec": 259.99801660209835,
+            "signedSec": 227.1746352179373,
+            "widthSec": 1002.4320860660118,
+            "WIS": 142.55368414371324,
+            "early": 0,
+            "late": 0,
+            "covered": 2,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        4,
+        "standing",
+        600
+      ],
+      "availability": {
+        "paired": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 307.8718655421153,
+          "medianAbsSec": 307.8718655421153,
+          "p90AbsSec": 307.8718655421153,
+          "signedSec": 307.8718655421153,
+          "widthSec": 1335.287043942517,
+          "WIS": 191.64309144353956,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 1,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 220.01476857575562,
+          "medianAbsSec": 220.01476857575562,
+          "p90AbsSec": 220.01476857575562,
+          "signedSec": 220.01476857575562,
+          "widthSec": 986.7925969206653,
+          "WIS": 139.1244293199629,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 307.8718655421153,
+          "medianAbsSec": 307.8718655421153,
+          "p90AbsSec": 307.8718655421153,
+          "signedSec": 307.8718655421153,
+          "widthSec": 1335.287043942517,
+          "WIS": 191.64309144353956,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 1,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 220.01476857575562,
+          "medianAbsSec": 220.01476857575562,
+          "p90AbsSec": 220.01476857575562,
+          "signedSec": 220.01476857575562,
+          "widthSec": 986.7925969206653,
+          "WIS": 139.1244293199629,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 307.8718655421153,
+            "medianAbsSec": 307.8718655421153,
+            "p90AbsSec": 307.8718655421153,
+            "signedSec": 307.8718655421153,
+            "widthSec": 1335.287043942517,
+            "WIS": 191.64309144353956,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 1,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 220.01476857575562,
+            "medianAbsSec": 220.01476857575562,
+            "p90AbsSec": 220.01476857575562,
+            "signedSec": 220.01476857575562,
+            "widthSec": 986.7925969206653,
+            "WIS": 139.1244293199629,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -120
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 221.22047716462873,
+          "medianAbsSec": 211.1126153931009,
+          "p90AbsSec": 423.41394392396194,
+          "signedSec": 156.8043740910301,
+          "widthSec": 1661.4851936087985,
+          "WIS": 184.50583862879617,
+          "early": 0,
+          "late": 0,
+          "covered": 25,
+          "over120": 15,
+          "under120": 2,
+          "over300": 5,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 193.9433360014188,
+          "medianAbsSec": 165.2907270007854,
+          "p90AbsSec": 412.32990359082976,
+          "signedSec": 105.84582400674468,
+          "widthSec": 1284.77439393375,
+          "WIS": 150.2994049293896,
+          "early": 0,
+          "late": 0,
+          "covered": 25,
+          "over120": 14,
+          "under120": 3,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 234.7881319094915,
+          "medianAbsSec": 213.6509404199187,
+          "p90AbsSec": 459.5284222713554,
+          "signedSec": 167.27752262209845,
+          "widthSec": 1656.9164653526739,
+          "WIS": 188.72380832667545,
+          "early": 0,
+          "late": 0,
+          "covered": 22,
+          "over120": 14,
+          "under120": 2,
+          "over300": 5,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 201.64763441412458,
+          "medianAbsSec": 165.41869454158655,
+          "p90AbsSec": 481.2366893389649,
+          "signedSec": 118.25415854279457,
+          "widthSec": 1283.9039687990532,
+          "WIS": 152.8094760579784,
+          "early": 0,
+          "late": 0,
+          "covered": 22,
+          "over120": 13,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 229.4346921058125,
+            "medianAbsSec": 211.1126153931009,
+            "p90AbsSec": 471.5665817204863,
+            "signedSec": 152.74885511343317,
+            "widthSec": 1665.755067782804,
+            "WIS": 187.52856855412443,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 12,
+            "under120": 2,
+            "over300": 5,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 206.62247288811744,
+            "medianAbsSec": 165.2907270007854,
+            "p90AbsSec": 504.2056179216761,
+            "signedSec": 101.74448241826728,
+            "widthSec": 1297.6693596282485,
+            "WIS": 155.3854482712557,
+            "early": 0,
+            "late": 0,
+            "covered": 21,
+            "over120": 11,
+            "under120": 3,
+            "over300": 2,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 178.09584872341395,
+            "medianAbsSec": 196.22038702435157,
+            "p90AbsSec": 253.1589414084117,
+            "signedSec": 178.09584872341395,
+            "widthSec": 1639.0683541952696,
+            "WIS": 168.63650652082265,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 127.37786734625104,
+            "medianAbsSec": 156.02974444950428,
+            "p90AbsSec": 175.98704846952637,
+            "signedSec": 127.37786734625104,
+            "widthSec": 1217.0758240376329,
+            "WIS": 123.59767738459254,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "approach",
+        -60
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 207.79141033343004,
+          "medianAbsSec": 171.46494105151942,
+          "p90AbsSec": 385.3887569441953,
+          "signedSec": 139.01363119943287,
+          "widthSec": 1658.4718334369288,
+          "WIS": 180.14433343379622,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 14,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 190.3260745957116,
+          "medianAbsSec": 160.24684139674628,
+          "p90AbsSec": 400.7504964908683,
+          "signedSec": 98.711555192145,
+          "widthSec": 1284.8058337331236,
+          "WIS": 149.2438132739486,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 13,
+          "under120": 3,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 218.11493007806334,
+          "medianAbsSec": 174.71900064131796,
+          "p90AbsSec": 420.3243482429828,
+          "signedSec": 151.8276435857932,
+          "widthSec": 1652.7794557422785,
+          "WIS": 183.24907043935968,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 13,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 196.92328339437856,
+          "medianAbsSec": 160.86440578860402,
+          "p90AbsSec": 461.3822395798189,
+          "signedSec": 113.05526323229083,
+          "widthSec": 1283.7579535204154,
+          "WIS": 151.39321503263474,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 12,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 218.88845641751328,
+            "medianAbsSec": 177.9730602311165,
+            "p90AbsSec": 431.9695453425784,
+            "signedSec": 137.01014792465952,
+            "widthSec": 1656.3894242230617,
+            "WIS": 183.76466267490412,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 11,
+            "under120": 2,
+            "over300": 3,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 204.3257773788148,
+            "medianAbsSec": 163.7489552332745,
+            "p90AbsSec": 481.5928206094686,
+            "signedSec": 95.52370000750153,
+            "widthSec": 1294.5556242926668,
+            "WIS": 154.58856998368333,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 11,
+            "under120": 3,
+            "over300": 2,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 149.53191839199303,
+            "medianAbsSec": 152.8509638470473,
+            "p90AbsSec": 248.5569441774211,
+            "signedSec": 149.53191839199303,
+            "widthSec": 1669.4044818097307,
+            "WIS": 161.13760491797973,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 116.82763498441977,
+            "medianAbsSec": 125.83194888740718,
+            "p90AbsSec": 196.41483031513027,
+            "signedSec": 115.44779491152326,
+            "widthSec": 1233.6194332955217,
+            "WIS": 121.18384054784137,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        0
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 278.6714836214193,
+          "medianAbsSec": 271.26730771629536,
+          "p90AbsSec": 402.60106969506586,
+          "signedSec": 220.74083251423278,
+          "widthSec": 1195.3975023027199,
+          "WIS": 176.38436634780192,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 19,
+          "under120": 2,
+          "over300": 7,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 246.3018921822445,
+          "medianAbsSec": 241.83426054375286,
+          "p90AbsSec": 390.774503129196,
+          "signedSec": 174.72525910579023,
+          "widthSec": 917.9177376387555,
+          "WIS": 149.4124450213235,
+          "early": 2,
+          "late": 1,
+          "covered": 22,
+          "over120": 19,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 289.9028182887482,
+          "medianAbsSec": 281.0260916937243,
+          "p90AbsSec": 419.4182094128714,
+          "signedSec": 229.25142530456426,
+          "widthSec": 1193.4352045515593,
+          "WIS": 180.51560267296034,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 17,
+          "under120": 2,
+          "over300": 7,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 254.76380008898033,
+          "medianAbsSec": 259.0233002423895,
+          "p90AbsSec": 438.42134094850053,
+          "signedSec": 183.70169195774557,
+          "widthSec": 919.0086394237018,
+          "WIS": 153.13998483744282,
+          "early": 2,
+          "late": 1,
+          "covered": 19,
+          "over120": 17,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 275.2400453968415,
+            "medianAbsSec": 262.38581938040943,
+            "p90AbsSec": 425.02392265213985,
+            "signedSec": 206.27498455495268,
+            "widthSec": 1196.8335972544398,
+            "WIS": 176.06023707679967,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 2,
+            "over300": 5,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 247.87406271911516,
+            "medianAbsSec": 237.89433600546454,
+            "p90AbsSec": 454.3036202216017,
+            "signedSec": 162.66378524714577,
+            "widthSec": 920.485780875271,
+            "WIS": 151.27290445439567,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 15,
+            "under120": 2,
+            "over300": 2,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 296.6865343004532,
+            "medianAbsSec": 315.4571790699217,
+            "p90AbsSec": 338.94269952827324,
+            "signedSec": 296.6865343004532,
+            "widthSec": 1187.8580038061903,
+            "WIS": 178.08604502056374,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 4,
+            "under120": 0,
+            "over300": 2,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 238.04799686367357,
+            "medianAbsSec": 266.31923458552205,
+            "p90AbsSec": 280.31228188249554,
+            "signedSec": 238.04799686367357,
+            "widthSec": 904.4355106470493,
+            "WIS": 139.6450329976945,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 4,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        5
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 274.7538285107041,
+          "medianAbsSec": 272.3798193804091,
+          "p90AbsSec": 399.8337747303797,
+          "signedSec": 218.0296204624302,
+          "widthSec": 1205.740623725675,
+          "WIS": 176.0385162213425,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 19,
+          "under120": 2,
+          "over300": 7,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 239.92979445656945,
+          "medianAbsSec": 228.74568226609335,
+          "p90AbsSec": 386.7618705943915,
+          "signedSec": 168.86653759116518,
+          "widthSec": 922.3816495711395,
+          "WIS": 146.91887137513558,
+          "early": 2,
+          "late": 1,
+          "covered": 22,
+          "over120": 19,
+          "under120": 3,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 284.97659831004495,
+          "medianAbsSec": 274.3255635483522,
+          "p90AbsSec": 414.89613567169994,
+          "signedSec": 225.71793259858825,
+          "widthSec": 1206.7773147948376,
+          "WIS": 180.0703823200452,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 17,
+          "under120": 2,
+          "over300": 7,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 247.3865401244581,
+          "medianAbsSec": 242.72487083612782,
+          "p90AbsSec": 433.58793281479944,
+          "signedSec": 177.54371676186963,
+          "widthSec": 925.2357542870599,
+          "WIS": 150.3379309919148,
+          "early": 2,
+          "late": 1,
+          "covered": 19,
+          "over120": 17,
+          "under120": 2,
+          "over300": 2,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 275.4120576401793,
+            "medianAbsSec": 272.3798193804091,
+            "p90AbsSec": 419.9169226521399,
+            "signedSec": 207.88323853509127,
+            "widthSec": 1207.6624468550976,
+            "WIS": 177.16151384825216,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 2,
+            "over300": 6,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 245.04457904985648,
+            "medianAbsSec": 228.74568226609335,
+            "p90AbsSec": 449.19662022160173,
+            "signedSec": 160.44546373389903,
+            "widthSec": 922.3095357142396,
+            "WIS": 149.6571183160639,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 15,
+            "under120": 3,
+            "over300": 2,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 271.29812558095955,
+            "medianAbsSec": 282.43046137460897,
+            "p90AbsSec": 331.445416010004,
+            "signedSec": 271.29812558095955,
+            "widthSec": 1195.6510522962055,
+            "WIS": 170.14277868006687,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 4,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 213.07717534181256,
+            "medianAbsSec": 223.53515515772915,
+            "p90AbsSec": 271.6615331019583,
+            "signedSec": 213.07717534181256,
+            "widthSec": 922.7602473198644,
+            "WIS": 132.54307493526184,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 4,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        15
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 228.95061615262813,
+          "medianAbsSec": 220.52556479603982,
+          "p90AbsSec": 364.75115318559904,
+          "signedSec": 162.56927600885527,
+          "widthSec": 1211.4955648415553,
+          "WIS": 161.3026184232001,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 18,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 195.61249614060114,
+          "medianAbsSec": 154.8545367931606,
+          "p90AbsSec": 371.13322436286643,
+          "signedSec": 100.41182402043509,
+          "widthSec": 932.57686141779,
+          "WIS": 132.1652914104371,
+          "early": 1,
+          "late": 1,
+          "covered": 23,
+          "over120": 15,
+          "under120": 4,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 238.69002612452266,
+          "medianAbsSec": 226.25643247723883,
+          "p90AbsSec": 394.9354802855048,
+          "signedSec": 171.16141016455097,
+          "widthSec": 1214.0237277650235,
+          "WIS": 165.29300197912318,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 16,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 204.40338179494918,
+          "medianAbsSec": 167.85788254708882,
+          "p90AbsSec": 383.86036921398636,
+          "signedSec": 108.74783998939007,
+          "widthSec": 934.5697750043562,
+          "WIS": 135.88153870737656,
+          "early": 1,
+          "late": 1,
+          "covered": 20,
+          "over120": 13,
+          "under120": 3,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 231.22261112693099,
+            "medianAbsSec": 217.4209115552244,
+            "p90AbsSec": 404.9969226521398,
+            "signedSec": 152.19720619386806,
+            "widthSec": 1213.543390994577,
+            "WIS": 163.0001623739572,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 2,
+            "over300": 3,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 202.8630627924766,
+            "medianAbsSec": 145.3676865309585,
+            "p90AbsSec": 388.10275083102624,
+            "signedSec": 89.52892931608845,
+            "widthSec": 934.8659570423775,
+            "WIS": 135.64700767299678,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 12,
+            "under120": 4,
+            "over300": 2,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 217.0226425375381,
+            "medianAbsSec": 237.56251955213497,
+            "p90AbsSec": 273.15500316448276,
+            "signedSec": 217.0226425375381,
+            "widthSec": 1200.7444775381898,
+            "WIS": 152.39051268172537,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 157.54702121825494,
+            "medianAbsSec": 167.85788254708882,
+            "p90AbsSec": 225.69654851472697,
+            "signedSec": 157.54702121825494,
+            "widthSec": 920.5591093887058,
+            "WIS": 113.8862810319987,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        30
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 233.46566788039374,
+          "medianAbsSec": 216.38266530062538,
+          "p90AbsSec": 398.62473206092767,
+          "signedSec": 146.0537130640027,
+          "widthSec": 1199.0626640317523,
+          "WIS": 161.52362776416226,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 18,
+          "under120": 3,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 201.4299027165206,
+          "medianAbsSec": 161.8374980711951,
+          "p90AbsSec": 372.08740919620965,
+          "signedSec": 81.45748009815547,
+          "widthSec": 920.2000705907403,
+          "WIS": 136.48102187794254,
+          "early": 1,
+          "late": 1,
+          "covered": 23,
+          "over120": 15,
+          "under120": 4,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 239.69242711219024,
+          "medianAbsSec": 236.7440177166759,
+          "p90AbsSec": 444.2558217214572,
+          "signedSec": 157.6542390316807,
+          "widthSec": 1201.8631119107397,
+          "WIS": 164.2992144548334,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 16,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 206.1325552120143,
+          "medianAbsSec": 163.46013369382263,
+          "p90AbsSec": 380.45925617948575,
+          "signedSec": 92.19849103187026,
+          "widthSec": 921.8306051029159,
+          "WIS": 139.2469635923654,
+          "early": 1,
+          "late": 1,
+          "covered": 20,
+          "over120": 14,
+          "under120": 3,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 235.57670435110478,
+            "medianAbsSec": 212.19001594551673,
+            "p90AbsSec": 459.4661849416334,
+            "signedSec": 131.51485337921068,
+            "widthSec": 1198.4793700297057,
+            "WIS": 162.90541604192902,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 3,
+            "over300": 3,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 209.6668584982613,
+            "medianAbsSec": 160.7769826971744,
+            "p90AbsSec": 383.2498718405777,
+            "signedSec": 66.84254585735042,
+            "widthSec": 920.6137782759132,
+            "WIS": 140.77635900319515,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 12,
+            "under120": 4,
+            "over300": 2,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 222.3827264091608,
+            "medianAbsSec": 248.17598281475875,
+            "p90AbsSec": 272.19138670892755,
+            "signedSec": 222.3827264091608,
+            "widthSec": 1202.1249575424968,
+            "WIS": 154.2692393058867,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 158.18588486238195,
+            "medianAbsSec": 171.30921600936244,
+            "p90AbsSec": 221.3923787344497,
+            "signedSec": 158.18588486238195,
+            "widthSec": 918.0281052435826,
+            "WIS": 113.93050197036617,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "departure",
+        60
+      ],
+      "availability": {
+        "paired": 24
+      },
+      "paired": {
+        "baseline": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 226.7263481111361,
+          "medianAbsSec": 205.68576629372865,
+          "p90AbsSec": 381.40781988307265,
+          "signedSec": 138.94966637703445,
+          "widthSec": 1199.3517949427492,
+          "WIS": 158.19934457010424,
+          "early": 1,
+          "late": 0,
+          "covered": 23,
+          "over120": 17,
+          "under120": 3,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 24,
+          "sourceVisits": 24,
+          "targetVisits": 24,
+          "dates": 2,
+          "maeSec": 195.8219951436242,
+          "medianAbsSec": 153.147322997826,
+          "p90AbsSec": 374.9744636470891,
+          "signedSec": 79.7504340435104,
+          "widthSec": 922.3379321814211,
+          "WIS": 130.88388046416924,
+          "early": 1,
+          "late": 1,
+          "covered": 22,
+          "over120": 12,
+          "under120": 4,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 21,
+          "sourceVisits": 21,
+          "targetVisits": 21,
+          "dates": 2,
+          "maeSec": 232.8803887274959,
+          "medianAbsSec": 217.3694569313716,
+          "p90AbsSec": 414.9412133780397,
+          "signedSec": 151.3261116517023,
+          "widthSec": 1203.6140573351988,
+          "WIS": 160.91585782127447,
+          "early": 1,
+          "late": 0,
+          "covered": 20,
+          "over120": 15,
+          "under120": 2,
+          "over300": 3,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 21,
+          "sourceVisits": 21,
+          "targetVisits": 21,
+          "dates": 2,
+          "maeSec": 200.17801564841596,
+          "medianAbsSec": 153.17545039851075,
+          "p90AbsSec": 386.6893330849098,
+          "signedSec": 90.96165995538225,
+          "widthSec": 924.8727778207385,
+          "WIS": 133.09354652327332,
+          "early": 1,
+          "late": 1,
+          "covered": 19,
+          "over120": 11,
+          "under120": 3,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 230.83371456273952,
+            "medianAbsSec": 201.6531277484837,
+            "p90AbsSec": 414.9412133780397,
+            "signedSec": 130.51750686662334,
+            "widthSec": 1196.9649915542936,
+            "WIS": 159.79036204762866,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 15,
+            "under120": 3,
+            "over300": 3,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 205.04153463260687,
+            "medianAbsSec": 153.11919559714124,
+            "p90AbsSec": 386.6893330849098,
+            "signedSec": 72.38832194676252,
+            "widthSec": 922.6430844004424,
+            "WIS": 134.5660732899839,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 10,
+            "under120": 4,
+            "over300": 2,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 197.9747829499121,
+            "medianAbsSec": 240.17032730554502,
+            "p90AbsSec": 244.8613820860447,
+            "signedSec": 197.9747829499121,
+            "widthSec": 1216.0594186619385,
+            "WIS": 147.06222222743327,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 131.28521872074558,
+            "medianAbsSec": 170.78901188248938,
+            "p90AbsSec": 174.86628843153966,
+            "signedSec": 131.28521872074558,
+            "widthSec": 920.2018666482718,
+            "WIS": 105.10853068346665,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        0
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 205.85708793673825,
+          "medianAbsSec": 169.4402918127671,
+          "p90AbsSec": 383.9499123505153,
+          "signedSec": 130.35452887530724,
+          "widthSec": 1544.8341384345188,
+          "WIS": 173.85175921577778,
+          "early": 2,
+          "late": 0,
+          "covered": 23,
+          "over120": 14,
+          "under120": 3,
+          "over300": 4,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 189.72760853297459,
+          "medianAbsSec": 150.58474845254068,
+          "p90AbsSec": 420.4533519738969,
+          "signedSec": 82.43807496296716,
+          "widthSec": 1172.43232949501,
+          "WIS": 146.8405243850358,
+          "early": 2,
+          "late": 1,
+          "covered": 22,
+          "over120": 12,
+          "under120": 3,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 214.94004786567962,
+          "medianAbsSec": 176.00003167625664,
+          "p90AbsSec": 420.97402700642726,
+          "signedSec": 143.01971004317522,
+          "widthSec": 1564.340638705099,
+          "WIS": 178.4858168778738,
+          "early": 2,
+          "late": 0,
+          "covered": 20,
+          "over120": 13,
+          "under120": 2,
+          "over300": 4,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 191.98464898766449,
+          "medianAbsSec": 148.29777770176793,
+          "p90AbsSec": 463.93331876700427,
+          "signedSec": 98.37109880724717,
+          "widthSec": 1190.9418137959992,
+          "WIS": 149.5680867652922,
+          "early": 2,
+          "late": 1,
+          "covered": 19,
+          "over120": 11,
+          "under120": 2,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 214.51635824097875,
+            "medianAbsSec": 169.4402918127671,
+            "p90AbsSec": 433.31539855839765,
+            "signedSec": 124.63235935832277,
+            "widthSec": 1506.9640950585851,
+            "WIS": 174.6409011571253,
+            "early": 2,
+            "late": 0,
+            "covered": 19,
+            "over120": 11,
+            "under120": 3,
+            "over300": 3,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 202.2303522474878,
+            "medianAbsSec": 155.71183345951613,
+            "p90AbsSec": 478.42664103137304,
+            "signedSec": 75.98587170930477,
+            "widthSec": 1154.6152717944374,
+            "WIS": 150.8556985208278,
+            "early": 2,
+            "late": 1,
+            "covered": 18,
+            "over120": 10,
+            "under120": 3,
+            "over300": 2,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 160.3959188394757,
+            "medianAbsSec": 156.08682305399225,
+            "p90AbsSec": 271.6991095890078,
+            "signedSec": 160.3959188394757,
+            "widthSec": 1743.65186615817,
+            "WIS": 169.70876402370322,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 3,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 124.08820403178026,
+            "medianAbsSec": 114.66162572525536,
+            "p90AbsSec": 219.83745057700605,
+            "signedSec": 116.31214204469472,
+            "widthSec": 1265.9718824230158,
+            "WIS": 125.7608601721278,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        60
+      ],
+      "availability": {
+        "paired": 25
+      },
+      "paired": {
+        "baseline": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 187.45691371413935,
+          "medianAbsSec": 162.8546570818189,
+          "p90AbsSec": 396.57423024062314,
+          "signedSec": 42.93866874681024,
+          "widthSec": 1283.0465658109606,
+          "WIS": 148.4076135251069,
+          "early": 1,
+          "late": 0,
+          "covered": 24,
+          "over120": 9,
+          "under120": 6,
+          "over300": 3,
+          "under300": 2
+        },
+        "candidate": {
+          "n": 25,
+          "sourceVisits": 25,
+          "targetVisits": 25,
+          "dates": 2,
+          "maeSec": 180.26453438498294,
+          "medianAbsSec": 150.3573910596724,
+          "p90AbsSec": 407.2786360288183,
+          "signedSec": -0.13799318574894642,
+          "widthSec": 969.6057441091384,
+          "WIS": 127.28770379522786,
+          "early": 1,
+          "late": 1,
+          "covered": 23,
+          "over120": 9,
+          "under120": 7,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 185.90697654946737,
+          "medianAbsSec": 150.90800810109067,
+          "p90AbsSec": 419.54505007382664,
+          "signedSec": 61.10121651235545,
+          "widthSec": 1278.7182617309147,
+          "WIS": 147.65498754816727,
+          "early": 1,
+          "late": 0,
+          "covered": 21,
+          "over120": 8,
+          "under120": 4,
+          "over300": 3,
+          "under300": 2
+        },
+        "candidate": {
+          "n": 22,
+          "sourceVisits": 22,
+          "targetVisits": 22,
+          "dates": 2,
+          "maeSec": 174.71930083317235,
+          "medianAbsSec": 144.81752113027142,
+          "p90AbsSec": 418.87023779361255,
+          "signedSec": 17.21397085935407,
+          "widthSec": 965.8248930861861,
+          "WIS": 125.53620988455809,
+          "early": 1,
+          "late": 1,
+          "covered": 20,
+          "over120": 8,
+          "under120": 5,
+          "over300": 2,
+          "under300": 2
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 197.75762505917004,
+            "medianAbsSec": 170.10684689303707,
+            "p90AbsSec": 427.20199001822766,
+            "signedSec": 34.36595919900581,
+            "widthSec": 1280.9597274883533,
+            "WIS": 151.77549720902203,
+            "early": 1,
+            "late": 0,
+            "covered": 20,
+            "over120": 8,
+            "under120": 6,
+            "over300": 2,
+            "under300": 2
+          },
+          "candidate": {
+            "n": 21,
+            "sourceVisits": 21,
+            "targetVisits": 21,
+            "dates": 1,
+            "maeSec": 192.02390964085524,
+            "medianAbsSec": 160.8249961848046,
+            "p90AbsSec": 422.7341050485438,
+            "signedSec": -7.292701392121888,
+            "widthSec": 963.8290402974233,
+            "WIS": 131.30983771712638,
+            "early": 1,
+            "late": 1,
+            "covered": 19,
+            "over120": 8,
+            "under120": 7,
+            "over300": 2,
+            "under300": 2
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 133.3781791527282,
+            "medianAbsSec": 87.702323603575,
+            "p90AbsSec": 240.84133509955277,
+            "signedSec": 87.94539387278348,
+            "widthSec": 1294.002467004648,
+            "WIS": 130.7262241845526,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 1,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 4,
+            "sourceVisits": 4,
+            "targetVisits": 4,
+            "dates": 1,
+            "maeSec": 118.52781429165327,
+            "medianAbsSec": 88.94875838796338,
+            "p90AbsSec": 210.61583300562683,
+            "signedSec": 37.424224897708996,
+            "widthSec": 999.933439120643,
+            "WIS": 106.17150070526063,
+            "early": 0,
+            "late": 0,
+            "covered": 4,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        180
+      ],
+      "availability": {
+        "paired": 16
+      },
+      "paired": {
+        "baseline": {
+          "n": 16,
+          "sourceVisits": 16,
+          "targetVisits": 16,
+          "dates": 2,
+          "maeSec": 156.09764435799983,
+          "medianAbsSec": 112.00349668701756,
+          "p90AbsSec": 295.6301780252163,
+          "signedSec": 36.51599046900978,
+          "widthSec": 1258.9119874234593,
+          "WIS": 135.9600139475639,
+          "early": 0,
+          "late": 0,
+          "covered": 16,
+          "over120": 5,
+          "under120": 2,
+          "over300": 1,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 16,
+          "sourceVisits": 16,
+          "targetVisits": 16,
+          "dates": 2,
+          "maeSec": 152.24434516805113,
+          "medianAbsSec": 125.71249011658938,
+          "p90AbsSec": 270.2472964472572,
+          "signedSec": 7.618457533372151,
+          "widthSec": 938.6393768990698,
+          "WIS": 116.02724380231679,
+          "early": 0,
+          "late": 1,
+          "covered": 15,
+          "over120": 5,
+          "under120": 4,
+          "over300": 0,
+          "under300": 1
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 2,
+          "maeSec": 164.55482914604386,
+          "medianAbsSec": 129.54652732256363,
+          "p90AbsSec": 301.7015162373032,
+          "signedSec": 55.57503922768141,
+          "widthSec": 1254.3945125621146,
+          "WIS": 138.47791055282227,
+          "early": 0,
+          "late": 0,
+          "covered": 14,
+          "over120": 5,
+          "under120": 2,
+          "over300": 1,
+          "under300": 1
+        },
+        "candidate": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 2,
+          "maeSec": 153.80403984047646,
+          "medianAbsSec": 122.87721009034931,
+          "p90AbsSec": 274.2729762693625,
+          "signedSec": 28.896306104007277,
+          "widthSec": 939.1101180059599,
+          "WIS": 116.96469195068387,
+          "early": 0,
+          "late": 1,
+          "covered": 13,
+          "over120": 5,
+          "under120": 2,
+          "over300": 0,
+          "under300": 1
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 13,
+            "sourceVisits": 13,
+            "targetVisits": 13,
+            "dates": 1,
+            "maeSec": 166.44276897666052,
+            "medianAbsSec": 114.34504836935685,
+            "p90AbsSec": 304.7371853433467,
+            "signedSec": 19.265348805595856,
+            "widthSec": 1258.6587656904217,
+            "WIS": 139.3915073715816,
+            "early": 0,
+            "late": 0,
+            "covered": 13,
+            "over120": 4,
+            "under120": 2,
+            "over300": 1,
+            "under300": 1
+          },
+          "candidate": {
+            "n": 13,
+            "sourceVisits": 13,
+            "targetVisits": 13,
+            "dates": 1,
+            "maeSec": 164.5586391472599,
+            "medianAbsSec": 131.0459409879195,
+            "p90AbsSec": 276.28581618041517,
+            "signedSec": -11.91471319773074,
+            "widthSec": 941.1294460614,
+            "WIS": 120.921821600497,
+            "early": 0,
+            "late": 1,
+            "covered": 12,
+            "over120": 4,
+            "under120": 4,
+            "over300": 0,
+            "under300": 1
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 111.26877101047012,
+            "medianAbsSec": 109.66194500467827,
+            "p90AbsSec": 186.23485031874407,
+            "signedSec": 111.26877101047012,
+            "widthSec": 1260.0092815999567,
+            "WIS": 121.09020911015381,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 98.88240459147983,
+            "medianAbsSec": 114.70847919277912,
+            "p90AbsSec": 160.54843483588994,
+            "signedSec": 92.26219736815135,
+            "widthSec": 927.8490771956391,
+            "WIS": 94.81740667686921,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        300
+      ],
+      "availability": {
+        "paired": 12
+      },
+      "paired": {
+        "baseline": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 2,
+          "maeSec": 184.06227046784196,
+          "medianAbsSec": 208.41769232952402,
+          "p90AbsSec": 264.60047439622133,
+          "signedSec": 141.54159471967034,
+          "widthSec": 1250.7149881075536,
+          "WIS": 144.73508936311757,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 7,
+          "under120": 1,
+          "over300": 0,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 2,
+          "maeSec": 137.68435178380707,
+          "medianAbsSec": 136.12875467872027,
+          "p90AbsSec": 202.74971183249448,
+          "signedSec": 83.54959072591983,
+          "widthSec": 935.385530378779,
+          "WIS": 108.25381928652095,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 7,
+          "under120": 1,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 197.10626353892087,
+          "medianAbsSec": 212.25655446236715,
+          "p90AbsSec": 265.6534099414648,
+          "signedSec": 150.72007181364276,
+          "widthSec": 1245.066731604101,
+          "WIS": 148.7065366199137,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 7,
+          "under120": 1,
+          "over300": 0,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 147.15964990585,
+          "medianAbsSec": 139.7518498753011,
+          "p90AbsSec": 202.93715571194844,
+          "signedSec": 94.18646919567027,
+          "widthSec": 935.913387301044,
+          "WIS": 111.44744245535294,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 7,
+          "under120": 1,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 9,
+            "sourceVisits": 9,
+            "targetVisits": 9,
+            "dates": 1,
+            "maeSec": 179.91405790713011,
+            "medianAbsSec": 212.25655446236715,
+            "p90AbsSec": 257.22992557951676,
+            "signedSec": 123.21982357623463,
+            "widthSec": 1249.6657848996133,
+            "WIS": 143.28240496235094,
+            "early": 0,
+            "late": 0,
+            "covered": 9,
+            "over120": 5,
+            "under120": 1,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 9,
+            "sourceVisits": 9,
+            "targetVisits": 9,
+            "dates": 1,
+            "maeSec": 139.64419157486105,
+            "medianAbsSec": 132.50565948213944,
+            "p90AbsSec": 217.21818837953506,
+            "signedSec": 67.46451016434473,
+            "widthSec": 942.505456480145,
+            "WIS": 109.38176095696335,
+            "early": 0,
+            "late": 0,
+            "covered": 9,
+            "over120": 5,
+            "under120": 1,
+            "over300": 0,
+            "under300": 0
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 196.50690814997748,
+            "medianAbsSec": 203.18215014239786,
+            "p90AbsSec": 259.95576213312734,
+            "signedSec": 196.50690814997748,
+            "widthSec": 1253.8625977313748,
+            "WIS": 149.09314256541748,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 131.80483241064516,
+            "medianAbsSec": 139.7518498753011,
+            "p90AbsSec": 190.30009454461896,
+            "signedSec": 131.80483241064516,
+            "widthSec": 914.0257520746809,
+            "WIS": 104.86999427519378,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        420
+      ],
+      "availability": {
+        "paired": 11
+      },
+      "paired": {
+        "baseline": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 209.0783427041479,
+          "medianAbsSec": 226.27630771629538,
+          "p90AbsSec": 300.18342263598606,
+          "signedSec": 209.0783427041479,
+          "widthSec": 1224.7598254334575,
+          "WIS": 151.3434359302798,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 9,
+          "under120": 0,
+          "over300": 2,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 11,
+          "sourceVisits": 11,
+          "targetVisits": 11,
+          "dates": 2,
+          "maeSec": 159.6953879847032,
+          "medianAbsSec": 185.54625066790686,
+          "p90AbsSec": 243.50834019503418,
+          "signedSec": 159.6953879847032,
+          "widthSec": 934.8063503832009,
+          "WIS": 115.55221935378113,
+          "early": 0,
+          "late": 0,
+          "covered": 11,
+          "over120": 8,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 10,
+          "sourceVisits": 10,
+          "targetVisits": 10,
+          "dates": 2,
+          "maeSec": 221.7844526732134,
+          "medianAbsSec": 230.49214947383962,
+          "p90AbsSec": 300.1991193189694,
+          "signedSec": 221.7844526732134,
+          "widthSec": 1218.9153030540238,
+          "WIS": 155.18917109467273,
+          "early": 0,
+          "late": 0,
+          "covered": 10,
+          "over120": 9,
+          "under120": 0,
+          "over300": 2,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 10,
+          "sourceVisits": 10,
+          "targetVisits": 10,
+          "dates": 2,
+          "maeSec": 174.18306572062866,
+          "medianAbsSec": 191.17756407546221,
+          "p90AbsSec": 243.97481610165323,
+          "signedSec": 174.18306572062866,
+          "widthSec": 936.4881294468319,
+          "WIS": 120.49356386999834,
+          "early": 0,
+          "late": 0,
+          "covered": 10,
+          "over120": 8,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 199.39605441062332,
+            "medianAbsSec": 223.90743546874296,
+            "p90AbsSec": 300.2305126849361,
+            "signedSec": 199.39605441062332,
+            "widthSec": 1223.868500529908,
+            "WIS": 148.05658483886833,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 6,
+            "under120": 0,
+            "over300": 2,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 151.80691847777013,
+            "medianAbsSec": 183.3658879721056,
+            "p90AbsSec": 233.92414446952745,
+            "signedSec": 151.80691847777013,
+            "widthSec": 944.5938113342146,
+            "WIS": 113.57522691487101,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 6,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        },
+        "2026-09-17": {
+          "baseline": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 234.89777815354682,
+            "medianAbsSec": 256.61128773195196,
+            "p90AbsSec": 275.03178246709905,
+            "signedSec": 234.89777815354682,
+            "widthSec": 1227.1366918429223,
+            "WIS": 160.10837217404378,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 3,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 3,
+            "sourceVisits": 3,
+            "targetVisits": 3,
+            "dates": 1,
+            "maeSec": 180.731306669858,
+            "medianAbsSec": 196.80887748301757,
+            "p90AbsSec": 237.90025490558327,
+            "signedSec": 180.731306669858,
+            "widthSec": 908.706454513831,
+            "WIS": 120.82419919087474,
+            "early": 0,
+            "late": 0,
+            "covered": 3,
+            "over120": 2,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        11,
+        48,
+        "standing",
+        600
+      ],
+      "availability": {
+        "paired": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 169.9485030725018,
+          "medianAbsSec": 169.9485030725018,
+          "p90AbsSec": 169.9485030725018,
+          "signedSec": 169.9485030725018,
+          "widthSec": 1213.8987811329434,
+          "WIS": 137.57608643303016,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 77.86397450377626,
+          "medianAbsSec": 77.86397450377626,
+          "p90AbsSec": 77.86397450377626,
+          "signedSec": 77.86397450377626,
+          "widthSec": 919.0409928370382,
+          "WIS": 87.22405769039464,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 0,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 169.9485030725018,
+            "medianAbsSec": 169.9485030725018,
+            "p90AbsSec": 169.9485030725018,
+            "signedSec": 169.9485030725018,
+            "widthSec": 1213.8987811329434,
+            "WIS": 137.57608643303016,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 77.86397450377626,
+            "medianAbsSec": 77.86397450377626,
+            "p90AbsSec": 77.86397450377626,
+            "signedSec": 77.86397450377626,
+            "widthSec": 919.0409928370382,
+            "WIS": 87.22405769039464,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 0,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "approach",
+        -120
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "approach",
+        -60
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "departure",
+        0
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "departure",
+        5
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "departure",
+        15
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "departure",
+        30
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "departure",
+        60
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        0
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        60
+      ],
+      "availability": {
+        "both_absent": 14
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        180
+      ],
+      "availability": {
+        "both_absent": 11
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        300
+      ],
+      "availability": {
+        "both_absent": 9
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        420
+      ],
+      "availability": {
+        "both_absent": 3
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        4,
+        "standing",
+        600
+      ],
+      "availability": {
+        "both_absent": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "approach",
+        -120
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "approach",
+        -60
+      ],
+      "availability": {
+        "both_absent": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        0
+      ],
+      "availability": {
+        "candidate_only": 9,
+        "paired": 5,
+        "both_absent": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 5,
+          "sourceVisits": 5,
+          "targetVisits": 5,
+          "dates": 1,
+          "maeSec": 282.9253350111994,
+          "medianAbsSec": 293.30697387188593,
+          "p90AbsSec": 431.3385338370757,
+          "signedSec": 266.4712526281128,
+          "widthSec": 1949.8963077418189,
+          "WIS": 224.3015321865211,
+          "early": 0,
+          "late": 0,
+          "covered": 5,
+          "over120": 4,
+          "under120": 0,
+          "over300": 2,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 5,
+          "sourceVisits": 5,
+          "targetVisits": 5,
+          "dates": 1,
+          "maeSec": 218.14374180955147,
+          "medianAbsSec": 190.54395211241354,
+          "p90AbsSec": 322.76543311449734,
+          "signedSec": 151.61170546029953,
+          "widthSec": 1423.5103078034645,
+          "WIS": 167.61526779008145,
+          "early": 0,
+          "late": 0,
+          "covered": 5,
+          "over120": 3,
+          "under120": 1,
+          "over300": 2,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 5,
+          "sourceVisits": 5,
+          "targetVisits": 5,
+          "dates": 1,
+          "maeSec": 282.9253350111994,
+          "medianAbsSec": 293.30697387188593,
+          "p90AbsSec": 431.3385338370757,
+          "signedSec": 266.4712526281128,
+          "widthSec": 1949.8963077418189,
+          "WIS": 224.3015321865211,
+          "early": 0,
+          "late": 0,
+          "covered": 5,
+          "over120": 4,
+          "under120": 0,
+          "over300": 2,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 5,
+          "sourceVisits": 5,
+          "targetVisits": 5,
+          "dates": 1,
+          "maeSec": 218.14374180955147,
+          "medianAbsSec": 190.54395211241354,
+          "p90AbsSec": 322.76543311449734,
+          "signedSec": 151.61170546029953,
+          "widthSec": 1423.5103078034645,
+          "WIS": 167.61526779008145,
+          "early": 0,
+          "late": 0,
+          "covered": 5,
+          "over120": 3,
+          "under120": 1,
+          "over300": 2,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 9,
+        "sourceVisits": 9,
+        "targetVisits": 9,
+        "dates": 1,
+        "maeSec": 277.2822623597233,
+        "medianAbsSec": 312.35305847656946,
+        "p90AbsSec": 446.29099575878126,
+        "signedSec": 258.8430852206389,
+        "widthSec": 1489.0803978091799,
+        "WIS": 191.69944730718643,
+        "early": 0,
+        "late": 0,
+        "covered": 9,
+        "over120": 6,
+        "under120": 0,
+        "over300": 5,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 5,
+            "sourceVisits": 5,
+            "targetVisits": 5,
+            "dates": 1,
+            "maeSec": 282.9253350111994,
+            "medianAbsSec": 293.30697387188593,
+            "p90AbsSec": 431.3385338370757,
+            "signedSec": 266.4712526281128,
+            "widthSec": 1949.8963077418189,
+            "WIS": 224.3015321865211,
+            "early": 0,
+            "late": 0,
+            "covered": 5,
+            "over120": 4,
+            "under120": 0,
+            "over300": 2,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 5,
+            "sourceVisits": 5,
+            "targetVisits": 5,
+            "dates": 1,
+            "maeSec": 218.14374180955147,
+            "medianAbsSec": 190.54395211241354,
+            "p90AbsSec": 322.76543311449734,
+            "signedSec": 151.61170546029953,
+            "widthSec": 1423.5103078034645,
+            "WIS": 167.61526779008145,
+            "early": 0,
+            "late": 0,
+            "covered": 5,
+            "over120": 3,
+            "under120": 1,
+            "over300": 2,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        5
+      ],
+      "availability": {
+        "paired": 8,
+        "candidate_only": 6,
+        "both_absent": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 1,
+          "maeSec": 241.83502316373824,
+          "medianAbsSec": 248.89073364560272,
+          "p90AbsSec": 407.0198379910902,
+          "signedSec": 197.66391622931997,
+          "widthSec": 1999.4987959635191,
+          "WIS": 213.91159411881404,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 5,
+          "under120": 1,
+          "over300": 3,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 8,
+          "sourceVisits": 8,
+          "targetVisits": 8,
+          "dates": 1,
+          "maeSec": 188.3503232500301,
+          "medianAbsSec": 190.52561333990843,
+          "p90AbsSec": 296.9278797728043,
+          "signedSec": 94.8076845508682,
+          "widthSec": 1457.1112876580562,
+          "WIS": 159.92419359388046,
+          "early": 0,
+          "late": 0,
+          "covered": 8,
+          "over120": 4,
+          "under120": 2,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 7,
+          "sourceVisits": 7,
+          "targetVisits": 7,
+          "dates": 1,
+          "maeSec": 269.64454595047454,
+          "medianAbsSec": 273.594141624274,
+          "p90AbsSec": 409.61672316832954,
+          "signedSec": 232.63995621302053,
+          "widthSec": 1986.225708102625,
+          "WIS": 222.29656252366652,
+          "early": 0,
+          "late": 0,
+          "covered": 7,
+          "over120": 5,
+          "under120": 1,
+          "over300": 3,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 7,
+          "sourceVisits": 7,
+          "targetVisits": 7,
+          "dates": 1,
+          "maeSec": 193.39353038273956,
+          "medianAbsSec": 215.10802269415944,
+          "p90AbsSec": 300.70762182618546,
+          "signedSec": 130.21562138971564,
+          "widthSec": 1442.8285423007937,
+          "WIS": 160.65307961429943,
+          "early": 0,
+          "late": 0,
+          "covered": 7,
+          "over120": 4,
+          "under120": 1,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 6,
+        "sourceVisits": 6,
+        "targetVisits": 6,
+        "dates": 1,
+        "maeSec": 340.07983237225943,
+        "medianAbsSec": 292.71157483116167,
+        "p90AbsSec": 580.6884027463134,
+        "signedSec": 316.5411829165043,
+        "widthSec": 1496.7862262551462,
+        "WIS": 213.1456925410962,
+        "early": 0,
+        "late": 0,
+        "covered": 6,
+        "over120": 5,
+        "under120": 0,
+        "over300": 2,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 241.83502316373824,
+            "medianAbsSec": 248.89073364560272,
+            "p90AbsSec": 407.0198379910902,
+            "signedSec": 197.66391622931997,
+            "widthSec": 1999.4987959635191,
+            "WIS": 213.91159411881404,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 5,
+            "under120": 1,
+            "over300": 3,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 8,
+            "sourceVisits": 8,
+            "targetVisits": 8,
+            "dates": 1,
+            "maeSec": 188.3503232500301,
+            "medianAbsSec": 190.52561333990843,
+            "p90AbsSec": 296.9278797728043,
+            "signedSec": 94.8076845508682,
+            "widthSec": 1457.1112876580562,
+            "WIS": 159.92419359388046,
+            "early": 0,
+            "late": 0,
+            "covered": 8,
+            "over120": 4,
+            "under120": 2,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        15
+      ],
+      "availability": {
+        "paired": 14,
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 1,
+          "maeSec": 274.17283472247993,
+          "medianAbsSec": 270.4099176346963,
+          "p90AbsSec": 395.09715125277063,
+          "signedSec": 244.58371837352323,
+          "widthSec": 2011.497661090748,
+          "WIS": 225.49078898020986,
+          "early": 0,
+          "late": 0,
+          "covered": 14,
+          "over120": 10,
+          "under120": 1,
+          "over300": 7,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 1,
+          "maeSec": 231.09303819791077,
+          "medianAbsSec": 224.22125554363402,
+          "p90AbsSec": 289.3696174128563,
+          "signedSec": 146.69018064948827,
+          "widthSec": 1495.6220075866402,
+          "WIS": 176.73914657174626,
+          "early": 0,
+          "late": 0,
+          "covered": 14,
+          "over120": 8,
+          "under120": 2,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 1,
+          "maeSec": 296.43637815000403,
+          "medianAbsSec": 327.7291178265409,
+          "p90AbsSec": 397.97100756122757,
+          "signedSec": 271.7033000905846,
+          "widthSec": 2006.2059721081764,
+          "WIS": 232.5591908572131,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 9,
+          "under120": 1,
+          "over300": 7,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 1,
+          "maeSec": 244.59616570317098,
+          "medianAbsSec": 243.11436914555088,
+          "p90AbsSec": 291.45102987016617,
+          "signedSec": 175.7160586736746,
+          "widthSec": 1490.0191147261974,
+          "WIS": 180.8666628828035,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 7,
+          "under120": 1,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 106.44584882589425,
+        "medianAbsSec": 106.44584882589425,
+        "p90AbsSec": 106.44584882589425,
+        "signedSec": -106.44584882589425,
+        "widthSec": 1601.8471954630795,
+        "WIS": 142.2717626395034,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 0,
+        "under120": 0,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 14,
+            "sourceVisits": 14,
+            "targetVisits": 14,
+            "dates": 1,
+            "maeSec": 274.17283472247993,
+            "medianAbsSec": 270.4099176346963,
+            "p90AbsSec": 395.09715125277063,
+            "signedSec": 244.58371837352323,
+            "widthSec": 2011.497661090748,
+            "WIS": 225.49078898020986,
+            "early": 0,
+            "late": 0,
+            "covered": 14,
+            "over120": 10,
+            "under120": 1,
+            "over300": 7,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 14,
+            "sourceVisits": 14,
+            "targetVisits": 14,
+            "dates": 1,
+            "maeSec": 231.09303819791077,
+            "medianAbsSec": 224.22125554363402,
+            "p90AbsSec": 289.3696174128563,
+            "signedSec": 146.69018064948827,
+            "widthSec": 1495.6220075866402,
+            "WIS": 176.73914657174626,
+            "early": 0,
+            "late": 0,
+            "covered": 14,
+            "over120": 8,
+            "under120": 2,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        30
+      ],
+      "availability": {
+        "paired": 15
+      },
+      "paired": {
+        "baseline": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 1,
+          "maeSec": 255.8075589328135,
+          "medianAbsSec": 219.48841879047723,
+          "p90AbsSec": 389.3113263625843,
+          "signedSec": 228.29331274844589,
+          "widthSec": 2016.261832064448,
+          "WIS": 219.68664178190105,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 10,
+          "under120": 1,
+          "over300": 7,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 15,
+          "sourceVisits": 15,
+          "targetVisits": 15,
+          "dates": 1,
+          "maeSec": 219.94153740011637,
+          "medianAbsSec": 217.71106243262966,
+          "p90AbsSec": 279.26651556439174,
+          "signedSec": 126.51898625554355,
+          "widthSec": 1504.0866780543633,
+          "WIS": 173.586291003663,
+          "early": 0,
+          "late": 0,
+          "covered": 15,
+          "over120": 7,
+          "under120": 3,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 13,
+          "sourceVisits": 13,
+          "targetVisits": 13,
+          "dates": 1,
+          "maeSec": 274.08075305746416,
+          "medianAbsSec": 322.49526689599134,
+          "p90AbsSec": 391.7038918979504,
+          "signedSec": 250.72972676083862,
+          "widthSec": 2012.241198856636,
+          "WIS": 225.5096642762638,
+          "early": 0,
+          "late": 0,
+          "covered": 13,
+          "over120": 9,
+          "under120": 1,
+          "over300": 7,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 13,
+          "sourceVisits": 13,
+          "targetVisits": 13,
+          "dates": 1,
+          "maeSec": 231.61233706819706,
+          "medianAbsSec": 235.8786331619758,
+          "p90AbsSec": 279.44134793073135,
+          "signedSec": 150.17112770800765,
+          "widthSec": 1500.0788549653855,
+          "WIS": 177.20936935375806,
+          "early": 0,
+          "late": 0,
+          "covered": 13,
+          "over120": 7,
+          "under120": 2,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 15,
+            "sourceVisits": 15,
+            "targetVisits": 15,
+            "dates": 1,
+            "maeSec": 255.8075589328135,
+            "medianAbsSec": 219.48841879047723,
+            "p90AbsSec": 389.3113263625843,
+            "signedSec": 228.29331274844589,
+            "widthSec": 2016.261832064448,
+            "WIS": 219.68664178190105,
+            "early": 0,
+            "late": 0,
+            "covered": 15,
+            "over120": 10,
+            "under120": 1,
+            "over300": 7,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 15,
+            "sourceVisits": 15,
+            "targetVisits": 15,
+            "dates": 1,
+            "maeSec": 219.94153740011637,
+            "medianAbsSec": 217.71106243262966,
+            "p90AbsSec": 279.26651556439174,
+            "signedSec": 126.51898625554355,
+            "widthSec": 1504.0866780543633,
+            "WIS": 173.586291003663,
+            "early": 0,
+            "late": 0,
+            "covered": 15,
+            "over120": 7,
+            "under120": 3,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "departure",
+        60
+      ],
+      "availability": {
+        "paired": 14,
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 1,
+          "maeSec": 247.89983437332896,
+          "medianAbsSec": 201.30013073792725,
+          "p90AbsSec": 380.4528543862058,
+          "signedSec": 215.32674724884924,
+          "widthSec": 2017.196550196397,
+          "WIS": 217.11304813753614,
+          "early": 0,
+          "late": 0,
+          "covered": 14,
+          "over120": 9,
+          "under120": 1,
+          "over300": 6,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 14,
+          "sourceVisits": 14,
+          "targetVisits": 14,
+          "dates": 1,
+          "maeSec": 219.53687449192486,
+          "medianAbsSec": 193.39247085375428,
+          "p90AbsSec": 280.444133090614,
+          "signedSec": 116.582863786464,
+          "widthSec": 1516.20355486632,
+          "WIS": 174.25919515506294,
+          "early": 0,
+          "late": 0,
+          "covered": 14,
+          "over120": 7,
+          "under120": 3,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 1,
+          "maeSec": 265.462735027937,
+          "medianAbsSec": 254.37645363967022,
+          "p90AbsSec": 384.70538031420637,
+          "signedSec": 237.99488481365688,
+          "widthSec": 2014.0405383965424,
+          "WIS": 222.75694756908183,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 8,
+          "under120": 1,
+          "over300": 6,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 12,
+          "sourceVisits": 12,
+          "targetVisits": 12,
+          "dates": 1,
+          "maeSec": 230.8606055996131,
+          "medianAbsSec": 224.33347833323296,
+          "p90AbsSec": 282.9865902772684,
+          "signedSec": 140.4546716103574,
+          "widthSec": 1512.4645315750618,
+          "WIS": 177.78450397154182,
+          "early": 0,
+          "late": 0,
+          "covered": 12,
+          "over120": 6,
+          "under120": 2,
+          "over300": 1,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 332.18913448572584,
+        "medianAbsSec": 332.18913448572584,
+        "p90AbsSec": 332.18913448572584,
+        "signedSec": 332.18913448572584,
+        "widthSec": 1390.9541190100554,
+        "WIS": 203.4599860959123,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 1,
+        "under120": 0,
+        "over300": 1,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 14,
+            "sourceVisits": 14,
+            "targetVisits": 14,
+            "dates": 1,
+            "maeSec": 247.89983437332896,
+            "medianAbsSec": 201.30013073792725,
+            "p90AbsSec": 380.4528543862058,
+            "signedSec": 215.32674724884924,
+            "widthSec": 2017.196550196397,
+            "WIS": 217.11304813753614,
+            "early": 0,
+            "late": 0,
+            "covered": 14,
+            "over120": 9,
+            "under120": 1,
+            "over300": 6,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 14,
+            "sourceVisits": 14,
+            "targetVisits": 14,
+            "dates": 1,
+            "maeSec": 219.53687449192486,
+            "medianAbsSec": 193.39247085375428,
+            "p90AbsSec": 280.444133090614,
+            "signedSec": 116.582863786464,
+            "widthSec": 1516.20355486632,
+            "WIS": 174.25919515506294,
+            "early": 0,
+            "late": 0,
+            "covered": 14,
+            "over120": 7,
+            "under120": 3,
+            "over300": 1,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        0
+      ],
+      "availability": {
+        "both_absent": 14,
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 285.37528536902573,
+        "medianAbsSec": 285.37528536902573,
+        "p90AbsSec": 285.37528536902573,
+        "signedSec": 285.37528536902573,
+        "widthSec": 1584.2717023792593,
+        "WIS": 200.74320861495917,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 1,
+        "under120": 0,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        60
+      ],
+      "availability": {
+        "both_absent": 13,
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 280.711119321807,
+        "medianAbsSec": 280.711119321807,
+        "p90AbsSec": 280.711119321807,
+        "signedSec": 280.711119321807,
+        "widthSec": 1455.4456307384244,
+        "WIS": 190.600081823164,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 1,
+        "under120": 0,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        180
+      ],
+      "availability": {
+        "both_absent": 6,
+        "candidate_only": 5
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 5,
+        "sourceVisits": 5,
+        "targetVisits": 5,
+        "dates": 1,
+        "maeSec": 189.61962162868932,
+        "medianAbsSec": 211.80168980667713,
+        "p90AbsSec": 299.10991917220383,
+        "signedSec": 58.02906339962046,
+        "widthSec": 1475.8866392144332,
+        "WIS": 161.59898315719198,
+        "early": 0,
+        "late": 0,
+        "covered": 5,
+        "over120": 2,
+        "under120": 1,
+        "over300": 0,
+        "under300": 1
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        300
+      ],
+      "availability": {
+        "both_absent": 4,
+        "candidate_only": 4,
+        "paired": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 395.658183462323,
+          "medianAbsSec": 395.658183462323,
+          "p90AbsSec": 395.658183462323,
+          "signedSec": 395.658183462323,
+          "widthSec": 1929.9168833171098,
+          "WIS": 260.54718670858165,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 1,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 274.02123420177486,
+          "medianAbsSec": 274.02123420177486,
+          "p90AbsSec": 274.02123420177486,
+          "signedSec": 274.02123420177486,
+          "widthSec": 1421.3009277314159,
+          "WIS": 186.09380658268603,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 395.658183462323,
+          "medianAbsSec": 395.658183462323,
+          "p90AbsSec": 395.658183462323,
+          "signedSec": 395.658183462323,
+          "widthSec": 1929.9168833171098,
+          "WIS": 260.54718670858165,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 1,
+          "under300": 0
+        },
+        "candidate": {
+          "n": 1,
+          "sourceVisits": 1,
+          "targetVisits": 1,
+          "dates": 1,
+          "maeSec": 274.02123420177486,
+          "medianAbsSec": 274.02123420177486,
+          "p90AbsSec": 274.02123420177486,
+          "signedSec": 274.02123420177486,
+          "widthSec": 1421.3009277314159,
+          "WIS": 186.09380658268603,
+          "early": 0,
+          "late": 0,
+          "covered": 1,
+          "over120": 1,
+          "under120": 0,
+          "over300": 0,
+          "under300": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 4,
+        "sourceVisits": 4,
+        "targetVisits": 4,
+        "dates": 1,
+        "maeSec": 170.6174597626848,
+        "medianAbsSec": 200.4970622181031,
+        "p90AbsSec": 254.53488512054201,
+        "signedSec": 48.0723021741062,
+        "widthSec": 1458.8734773586384,
+        "WIS": 154.1307184114708,
+        "early": 0,
+        "late": 0,
+        "covered": 4,
+        "over120": 2,
+        "under120": 1,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 395.658183462323,
+            "medianAbsSec": 395.658183462323,
+            "p90AbsSec": 395.658183462323,
+            "signedSec": 395.658183462323,
+            "widthSec": 1929.9168833171098,
+            "WIS": 260.54718670858165,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 1,
+            "under120": 0,
+            "over300": 1,
+            "under300": 0
+          },
+          "candidate": {
+            "n": 1,
+            "sourceVisits": 1,
+            "targetVisits": 1,
+            "dates": 1,
+            "maeSec": 274.02123420177486,
+            "medianAbsSec": 274.02123420177486,
+            "p90AbsSec": 274.02123420177486,
+            "signedSec": 274.02123420177486,
+            "widthSec": 1421.3009277314159,
+            "WIS": 186.09380658268603,
+            "early": 0,
+            "late": 0,
+            "covered": 1,
+            "over120": 1,
+            "under120": 0,
+            "over300": 0,
+            "under300": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        420
+      ],
+      "availability": {
+        "both_absent": 2,
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 188.29419530104406,
+        "medianAbsSec": 188.29419530104406,
+        "p90AbsSec": 188.29419530104406,
+        "signedSec": 188.29419530104406,
+        "widthSec": 1472.4706334647408,
+        "WIS": 160.92944066466407,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 1,
+        "under120": 0,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    },
+    {
+      "key": [
+        121,
+        48,
+        "standing",
+        600
+      ],
+      "availability": {
+        "candidate_only": 1
+      },
+      "paired": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "stoppedTargetsOnly": {
+        "baseline": {
+          "n": 0
+        },
+        "candidate": {
+          "n": 0
+        }
+      },
+      "candidateOnly": {
+        "n": 1,
+        "sourceVisits": 1,
+        "targetVisits": 1,
+        "dates": 1,
+        "maeSec": 271.67678267671,
+        "medianAbsSec": 271.67678267671,
+        "p90AbsSec": 271.67678267671,
+        "signedSec": 271.67678267671,
+        "widthSec": 1480.5143680900692,
+        "WIS": 189.25988543157462,
+        "early": 0,
+        "late": 0,
+        "covered": 1,
+        "over120": 1,
+        "under120": 0,
+        "over300": 0,
+        "under300": 0
+      },
+      "byDate": {
+        "2026-09-16": {
+          "baseline": {
+            "n": 0
+          },
+          "candidate": {
+            "n": 0
+          }
+        }
+      }
+    }
+  ],
+  "candidateOnly": {
+    "n": 30,
+    "sourceVisits": 15,
+    "targetVisits": 15,
+    "dates": 1,
+    "maeSec": 254.37598895484862,
+    "medianAbsSec": 265.1296703150656,
+    "p90AbsSec": 338.72200018381517,
+    "signedSec": 198.76900195025738,
+    "widthSec": 1486.0957230821948,
+    "WIS": 183.86504452376252,
+    "early": 0,
+    "late": 0,
+    "covered": 30,
+    "over120": 20,
+    "under120": 2,
+    "over300": 8,
+    "under300": 1
+  },
+  "largestPairedRegressions": [
+    {
+      "journeyId": "61067:61323:61866",
+      "sourceId": 61067,
+      "sourceStop": 121,
+      "firstTargetId": 61323,
+      "nextTargetId": 61866,
+      "target": 48,
+      "bus": "316",
+      "day": "2026-09-16",
+      "pin": 1789589329415,
+      "departure": 1789589739422,
+      "firstArrival": 1789591634742,
+      "nextArrival": 1789595705129,
+      "targetOutcome": "stopped",
+      "legIds": [
+        56587,
+        56606,
+        56615,
+        56663,
+        56670,
+        56680,
+        56687,
+        56693,
+        56702,
+        56714,
+        56726,
+        56732,
+        56748,
+        56758,
+        56804,
+        56809,
+        56814,
+        56826,
+        56840,
+        56850,
+        56867,
+        56877,
+        56887,
+        56895,
+        56908,
+        56921,
+        56930,
+        56933,
+        56949,
+        57047,
+        57100,
+        57112,
+        57168,
+        57190,
+        57206,
+        57213,
+        57220,
+        57235,
+        57247,
+        57268,
+        57275,
+        57290,
+        57323,
+        57336,
+        57340,
+        57342
+      ],
+      "at": 1789589739422,
+      "phase": "departure",
+      "checkpointSec": 0,
+      "truthSec": 5965.707,
+      "baseline": {
+        "eta": 5924.571794042284,
+        "low": 4958.76402132541,
+        "high": 6898.471847603007
+      },
+      "candidate": {
+        "eta": 5799.3769091268705,
+        "low": 4987.973354595198,
+        "high": 6422.060373739688
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60699:60967:61477",
+      "sourceId": 60699,
+      "sourceStop": 121,
+      "firstTargetId": 60967,
+      "nextTargetId": 61477,
+      "target": 48,
+      "bus": "309",
+      "day": "2026-09-16",
+      "pin": 1789586459064,
+      "departure": 1789586854075,
+      "firstArrival": 1789589009340,
+      "nextArrival": 1789592814752,
+      "targetOutcome": "stopped",
+      "legIds": [
+        56223,
+        56259,
+        56276,
+        56316,
+        56334,
+        56350,
+        56369,
+        56374,
+        56388,
+        56402,
+        56415,
+        56423,
+        56431,
+        56442,
+        56456,
+        56462,
+        56465,
+        56483,
+        56500,
+        56515,
+        56534,
+        56548,
+        56562,
+        56565,
+        56579,
+        56586,
+        56594,
+        56602,
+        56630,
+        56676,
+        56724,
+        56733,
+        56774,
+        56792,
+        56825,
+        56835,
+        56843,
+        56855,
+        56874,
+        56888,
+        56903,
+        56917,
+        56939,
+        56955,
+        56960,
+        56964
+      ],
+      "at": 1789586914091,
+      "phase": "departure",
+      "checkpointSec": 60,
+      "truthSec": 5900.661,
+      "baseline": {
+        "eta": 5872.685608456222,
+        "low": 4863.267351015871,
+        "high": 6935.303015986738
+      },
+      "candidate": {
+        "eta": 5748.626099797891,
+        "low": 4904.404259923101,
+        "high": 6479.301829236064
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60924:61198:61707",
+      "sourceId": 60924,
+      "sourceStop": 121,
+      "firstTargetId": 61198,
+      "nextTargetId": 61707,
+      "target": 48,
+      "bus": "308",
+      "day": "2026-09-16",
+      "pin": 1789588494351,
+      "departure": 1789588679364,
+      "firstArrival": 1789590734571,
+      "nextArrival": 1789594664935,
+      "targetOutcome": "passed",
+      "legIds": [
+        56445,
+        56469,
+        56474,
+        56521,
+        56544,
+        56561,
+        56578,
+        56584,
+        56588,
+        56607,
+        56616,
+        56633,
+        56650,
+        56662,
+        56691,
+        56695,
+        56698,
+        56706,
+        56719,
+        56729,
+        56743,
+        56764,
+        56771,
+        56777,
+        56800,
+        56803,
+        56812,
+        56817,
+        56852,
+        56931,
+        56957,
+        56978,
+        57038,
+        57058,
+        57079,
+        57089,
+        57093,
+        57102,
+        57117,
+        57132,
+        57136,
+        57151,
+        57159,
+        57178,
+        57185,
+        57192
+      ],
+      "at": 1789588699356,
+      "phase": "departure",
+      "checkpointSec": 15,
+      "truthSec": 5965.579,
+      "baseline": {
+        "eta": 5906.8536539138195,
+        "low": 4907.770222994077,
+        "high": 6996.325371322582
+      },
+      "candidate": {
+        "eta": 5788.039639338021,
+        "low": 4955.429354193991,
+        "high": 6510.095968397704
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60924:61198:61707",
+      "sourceId": 60924,
+      "sourceStop": 121,
+      "firstTargetId": 61198,
+      "nextTargetId": 61707,
+      "target": 48,
+      "bus": "308",
+      "day": "2026-09-16",
+      "pin": 1789588494351,
+      "departure": 1789588679364,
+      "firstArrival": 1789590734571,
+      "nextArrival": 1789594664935,
+      "targetOutcome": "passed",
+      "legIds": [
+        56445,
+        56469,
+        56474,
+        56521,
+        56544,
+        56561,
+        56578,
+        56584,
+        56588,
+        56607,
+        56616,
+        56633,
+        56650,
+        56662,
+        56691,
+        56695,
+        56698,
+        56706,
+        56719,
+        56729,
+        56743,
+        56764,
+        56771,
+        56777,
+        56800,
+        56803,
+        56812,
+        56817,
+        56852,
+        56931,
+        56957,
+        56978,
+        57038,
+        57058,
+        57079,
+        57089,
+        57093,
+        57102,
+        57117,
+        57132,
+        57136,
+        57151,
+        57159,
+        57178,
+        57185,
+        57192
+      ],
+      "at": 1789588709465,
+      "phase": "departure",
+      "checkpointSec": 30,
+      "truthSec": 5955.47,
+      "baseline": {
+        "eta": 5900.894824545309,
+        "low": 4905.7699664317715,
+        "high": 6984.527320882654
+      },
+      "candidate": {
+        "eta": 5784.168727256935,
+        "low": 4952.364628662502,
+        "high": 6503.254464839052
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60699:60967:61477",
+      "sourceId": 60699,
+      "sourceStop": 121,
+      "firstTargetId": 60967,
+      "nextTargetId": 61477,
+      "target": 48,
+      "bus": "309",
+      "day": "2026-09-16",
+      "pin": 1789586459064,
+      "departure": 1789586854075,
+      "firstArrival": 1789589009340,
+      "nextArrival": 1789592814752,
+      "targetOutcome": "stopped",
+      "legIds": [
+        56223,
+        56259,
+        56276,
+        56316,
+        56334,
+        56350,
+        56369,
+        56374,
+        56388,
+        56402,
+        56415,
+        56423,
+        56431,
+        56442,
+        56456,
+        56462,
+        56465,
+        56483,
+        56500,
+        56515,
+        56534,
+        56548,
+        56562,
+        56565,
+        56579,
+        56586,
+        56594,
+        56602,
+        56630,
+        56676,
+        56724,
+        56733,
+        56774,
+        56792,
+        56825,
+        56835,
+        56843,
+        56855,
+        56874,
+        56888,
+        56903,
+        56917,
+        56939,
+        56955,
+        56960,
+        56964
+      ],
+      "at": 1789586884075,
+      "phase": "departure",
+      "checkpointSec": 30,
+      "truthSec": 5930.677,
+      "baseline": {
+        "eta": 5917.410522155411,
+        "low": 4909.122042094744,
+        "high": 6999.605361970876
+      },
+      "candidate": {
+        "eta": 5800.991146061714,
+        "low": 4957.449845628627,
+        "high": 6513.856061091044
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60924:61198:61707",
+      "sourceId": 60924,
+      "sourceStop": 121,
+      "firstTargetId": 61198,
+      "nextTargetId": 61707,
+      "target": 48,
+      "bus": "308",
+      "day": "2026-09-16",
+      "pin": 1789588494351,
+      "departure": 1789588679364,
+      "firstArrival": 1789590734571,
+      "nextArrival": 1789594664935,
+      "targetOutcome": "passed",
+      "legIds": [
+        56445,
+        56469,
+        56474,
+        56521,
+        56544,
+        56561,
+        56578,
+        56584,
+        56588,
+        56607,
+        56616,
+        56633,
+        56650,
+        56662,
+        56691,
+        56695,
+        56698,
+        56706,
+        56719,
+        56729,
+        56743,
+        56764,
+        56771,
+        56777,
+        56800,
+        56803,
+        56812,
+        56817,
+        56852,
+        56931,
+        56957,
+        56978,
+        57038,
+        57058,
+        57079,
+        57089,
+        57093,
+        57102,
+        57117,
+        57132,
+        57136,
+        57151,
+        57159,
+        57178,
+        57185,
+        57192
+      ],
+      "at": 1789588744341,
+      "phase": "departure",
+      "checkpointSec": 60,
+      "truthSec": 5920.594,
+      "baseline": {
+        "eta": 5857.389491414323,
+        "low": 4870.508644533048,
+        "high": 6928.631189732456
+      },
+      "candidate": {
+        "eta": 5742.351528997308,
+        "low": 4908.818711159408,
+        "high": 6465.719398391802
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60924:61198:61707",
+      "sourceId": 60924,
+      "sourceStop": 121,
+      "firstTargetId": 61198,
+      "nextTargetId": 61707,
+      "target": 48,
+      "bus": "308",
+      "day": "2026-09-16",
+      "pin": 1789588494351,
+      "departure": 1789588679364,
+      "firstArrival": 1789590734571,
+      "nextArrival": 1789594664935,
+      "targetOutcome": "passed",
+      "legIds": [
+        56445,
+        56469,
+        56474,
+        56521,
+        56544,
+        56561,
+        56578,
+        56584,
+        56588,
+        56607,
+        56616,
+        56633,
+        56650,
+        56662,
+        56691,
+        56695,
+        56698,
+        56706,
+        56719,
+        56729,
+        56743,
+        56764,
+        56771,
+        56777,
+        56800,
+        56803,
+        56812,
+        56817,
+        56852,
+        56931,
+        56957,
+        56978,
+        57038,
+        57058,
+        57079,
+        57089,
+        57093,
+        57102,
+        57117,
+        57132,
+        57136,
+        57151,
+        57159,
+        57178,
+        57185,
+        57192
+      ],
+      "at": 1789588689295,
+      "phase": "departure",
+      "checkpointSec": 5,
+      "truthSec": 5975.64,
+      "baseline": {
+        "eta": 5928.471636343416,
+        "low": 4919.750193685254,
+        "high": 7012.160604675033
+      },
+      "candidate": {
+        "eta": 5822.592126678936,
+        "low": 4964.2352506194775,
+        "high": 6521.325755778371
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60699:60967:61477",
+      "sourceId": 60699,
+      "sourceStop": 121,
+      "firstTargetId": 60967,
+      "nextTargetId": 61477,
+      "target": 48,
+      "bus": "309",
+      "day": "2026-09-16",
+      "pin": 1789586459064,
+      "departure": 1789586854075,
+      "firstArrival": 1789589009340,
+      "nextArrival": 1789592814752,
+      "targetOutcome": "stopped",
+      "legIds": [
+        56223,
+        56259,
+        56276,
+        56316,
+        56334,
+        56350,
+        56369,
+        56374,
+        56388,
+        56402,
+        56415,
+        56423,
+        56431,
+        56442,
+        56456,
+        56462,
+        56465,
+        56483,
+        56500,
+        56515,
+        56534,
+        56548,
+        56562,
+        56565,
+        56579,
+        56586,
+        56594,
+        56602,
+        56630,
+        56676,
+        56724,
+        56733,
+        56774,
+        56792,
+        56825,
+        56835,
+        56843,
+        56855,
+        56874,
+        56888,
+        56903,
+        56917,
+        56939,
+        56955,
+        56960,
+        56964
+      ],
+      "at": 1789586869109,
+      "phase": "departure",
+      "checkpointSec": 15,
+      "truthSec": 5945.643,
+      "baseline": {
+        "eta": 5927.975175433551,
+        "low": 4919.3659021213825,
+        "high": 7019.724340369712
+      },
+      "candidate": {
+        "eta": 5826.792143610535,
+        "low": 4963.364606911617,
+        "high": 6525.382971653307
+      },
+      "stopsAhead": 46,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60836:60860:61323",
+      "sourceId": 60836,
+      "sourceStop": 11,
+      "firstTargetId": 60860,
+      "nextTargetId": 61323,
+      "target": 48,
+      "bus": "316",
+      "day": "2026-09-16",
+      "pin": 1789587164077,
+      "departure": 1789587999220,
+      "firstArrival": 1789588074287,
+      "nextArrival": 1789591634742,
+      "targetOutcome": "passed",
+      "legIds": [
+        56348,
+        56357,
+        56360,
+        56380,
+        56396,
+        56403,
+        56418,
+        56439,
+        56444,
+        56448,
+        56454,
+        56458,
+        56466,
+        56467,
+        56511,
+        56587,
+        56606,
+        56615,
+        56663,
+        56670,
+        56680,
+        56687,
+        56693,
+        56702,
+        56714,
+        56726,
+        56732,
+        56748,
+        56758,
+        56804,
+        56809,
+        56814
+      ],
+      "at": 1789587164077,
+      "phase": "standing",
+      "checkpointSec": 0,
+      "truthSec": 4470.665,
+      "baseline": {
+        "eta": 4445.945984746561,
+        "low": 3695.7300933181095,
+        "high": 5151.869091899537
+      },
+      "candidate": {
+        "eta": 4352.020603495628,
+        "low": 3779.8102458155336,
+        "high": 4819.161861087346
+      },
+      "stopsAhead": 32,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "61186:61198:61707",
+      "sourceId": 61186,
+      "sourceStop": 11,
+      "firstTargetId": 61198,
+      "nextTargetId": 61707,
+      "target": 48,
+      "bus": "308",
+      "day": "2026-09-16",
+      "pin": 1789590374587,
+      "departure": 1789590654560,
+      "firstArrival": 1789590734571,
+      "nextArrival": 1789594664935,
+      "targetOutcome": "passed",
+      "legIds": [
+        56691,
+        56695,
+        56698,
+        56706,
+        56719,
+        56729,
+        56743,
+        56764,
+        56771,
+        56777,
+        56800,
+        56803,
+        56812,
+        56817,
+        56852,
+        56931,
+        56957,
+        56978,
+        57038,
+        57058,
+        57079,
+        57089,
+        57093,
+        57102,
+        57117,
+        57132,
+        57136,
+        57151,
+        57159,
+        57178,
+        57185,
+        57192
+      ],
+      "at": 1789590259508,
+      "phase": "approach",
+      "checkpointSec": -120,
+      "truthSec": 4405.427,
+      "baseline": {
+        "eta": 4342.84241374134,
+        "low": 3589.8629892059535,
+        "high": 5220.172955735748
+      },
+      "candidate": {
+        "eta": 4252.7979991366665,
+        "low": 3591.0816424048035,
+        "high": 4856.9249481282195
+      },
+      "stopsAhead": 34,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "60943:61019:61534",
+      "sourceId": 60943,
+      "sourceStop": 11,
+      "firstTargetId": 61019,
+      "nextTargetId": 61534,
+      "target": 4,
+      "bus": "309",
+      "day": "2026-09-16",
+      "pin": 1789588749302,
+      "departure": 1789588914333,
+      "firstArrival": 1789589354436,
+      "nextArrival": 1789593219899,
+      "targetOutcome": "stopped",
+      "legIds": [
+        56456,
+        56462,
+        56465,
+        56483,
+        56500,
+        56515,
+        56534,
+        56548,
+        56562,
+        56565,
+        56579,
+        56586,
+        56594,
+        56602,
+        56630,
+        56676,
+        56724,
+        56733,
+        56774,
+        56792,
+        56825,
+        56835,
+        56843,
+        56855,
+        56874,
+        56888,
+        56903,
+        56917,
+        56939,
+        56955,
+        56960,
+        56964,
+        56982,
+        57012,
+        57018
+      ],
+      "at": 1789588634281,
+      "phase": "approach",
+      "checkpointSec": -120,
+      "truthSec": 4585.618,
+      "baseline": {
+        "eta": 4539.589279889052,
+        "low": 3802.237652292207,
+        "high": 5399.112340799748
+      },
+      "candidate": {
+        "eta": 4451.612637117107,
+        "low": 3848.875293285183,
+        "high": 5126.690322190965
+      },
+      "stopsAhead": 36,
+      "availability": "paired"
+    },
+    {
+      "journeyId": "57226:57258:57815",
+      "sourceId": 57226,
+      "sourceStop": 11,
+      "firstTargetId": 57258,
+      "nextTargetId": 57815,
+      "target": 48,
+      "bus": "309",
+      "day": "2026-09-16",
+      "pin": 1789559844189,
+      "departure": 1789560074288,
+      "firstArrival": 1789560199242,
+      "nextArrival": 1789564511964,
+      "targetOutcome": "stopped",
+      "legIds": [
+        52891,
+        52902,
+        52905,
+        52928,
+        52943,
+        52953,
+        52972,
+        52983,
+        52991,
+        53003,
+        53010,
+        53024,
+        53035,
+        53042,
+        53070,
+        53157,
+        53213,
+        53222,
+        53271,
+        53291,
+        53301,
+        53310,
+        53316,
+        53329,
+        53341,
+        53354,
+        53367,
+        53392,
+        53408,
+        53438,
+        53440,
+        53446
+      ],
+      "at": 1789560109223,
+      "phase": "departure",
+      "checkpointSec": 30,
+      "truthSec": 4402.741,
+      "baseline": {
+        "eta": 3921.893224666601,
+        "low": 3295.115579844988,
+        "high": 4560.281906576057
+      },
+      "candidate": {
+        "eta": 3836.024428715111,
+        "low": 3311.3075254212736,
+        "high": 4250.380983230299
+      },
+      "stopsAhead": 32,
+      "availability": "paired"
+    }
+  ],
+  "_publication": {
+    "originalSource": "conditional-replay-data/joint-next-occurrence-review.json",
+    "originalSha256": "70cdfe6fc742476cedb89bb99815f77c547ad037fd51f2c555239e140273d9dd",
+    "omittedArrays": [
+      {
+        "path": "journeys",
+        "items": 84,
+        "reason": "per-observation result rows; aggregate scores retained"
+      },
+      {
+        "path": "checkpoints",
+        "items": 833,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

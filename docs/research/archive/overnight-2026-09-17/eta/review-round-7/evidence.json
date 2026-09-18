@@ -1,0 +1,25 @@
+{
+  "head": "1b66a1914a92a79c0936cf65473617cf7b7695f9",
+  "base": "2dbc060bf517225c219fba8cbc5cb343fb19312b",
+  "priorSmoothingDiffExact": true,
+  "mergedShellDiffExact": true,
+  "prototypeDecisionsExact": 4688,
+  "missingCases": 68,
+  "connectedLegUses": 13598,
+  "connectedOutcomes": 1400,
+  "changedOutcomes": 30,
+  "changedMAE": [
+    880.8808492743099,
+    396.8725333468484
+  ],
+  "largestRetainedRegression": {
+    "source": 63523,
+    "target": 63632,
+    "at": 1789644066335,
+    "changed": true,
+    "e0": -339.0629809391146,
+    "e1": 781.8900001013631
+  },
+  "builderArtifactsPreserved": true,
+  "scope": "Selected reused Red history; no population coverage, fresh holdout, or walking-outcome claim."
+}

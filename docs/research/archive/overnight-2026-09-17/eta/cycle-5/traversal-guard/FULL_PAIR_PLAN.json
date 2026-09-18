@@ -1,0 +1,15 @@
+{
+  "createdAtUTC": "2026-09-18T04:54:19.150464+00:00",
+  "baselineHead": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "baselineSources": {
+    "web/src/eta/index.ts": "70a04d165c73215cfe6c994fe7e54ef2082b7d77a55687d7ebb98ec1751298c5",
+    "web/src/arrivals.ts": "8afede0e161484877cb17d78a20d17bb91212fa2ae3d6de0261d615b67fc166a",
+    "src/server/serverEta.ts": "283de1730e1de77bc7ccdee5921bf0e88aa45d185fccc750ef7217769921ca83"
+  },
+  "source": "Adapted existing continuous paired FocusEngine; current release ON and same causal fit refresh in BOTH arms.",
+  "purpose": "Preserve prior audited development and reused afternoon regressions and compare full endpoint forecasts, both occurrences, tracking belief arrays and availability.",
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/raw-complete-frames.jsonl": "ad1d5d8343a90b3aecfd9d18cbee826f9c8c5e68ee23c4d325aca60a91c4d0a0",
+    "/home/gwarren/projects/yale-shuttle-watcher/release-integration-data/runtime-fits-development.json": "d78e229e6f98cc98385cec11fd4fac4ebd625a92028cae240169d0f81a2af7a3"
+  }
+}

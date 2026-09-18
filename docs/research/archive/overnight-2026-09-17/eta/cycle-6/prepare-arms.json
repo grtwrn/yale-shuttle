@@ -1,0 +1,8 @@
+{
+  "sources": {
+    "shell-fallthrough.generated.mts": "36f69a96c7abc36fda3a59a679b5886fe8ff295b22eea0b61344f250e839d16b",
+    "shell-baseline.generated.mts": "393ae22c2d00720a5416ed5581ebb8ceff309b49f75da6247e70430dd4ebdba3",
+    "shell-ordered.generated.mts": "fb72adb8c34879606fbbbc1ad5417aa6ea269d85d3b973c8d8f46f8586979580"
+  },
+  "source": "Exact prior extraction; two declared string substitutions only."
+}

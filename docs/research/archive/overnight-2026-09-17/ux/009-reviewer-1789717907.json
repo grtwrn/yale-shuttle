@@ -1,0 +1,30 @@
+{
+  "verdict": "approve",
+  "summary": "Stop-alert focus and accessibility changes pass independent review. 212 tests, typechecks, build and browser checks passed. Checkout unchanged. Evidence: ux/independent-review-round-11.md.",
+  "head_sha": "48651d63165bc4cddd7160a73fa6933583ecb856",
+  "base_sha": "7e29064475315c2d621b77cdca130c05737d1ab8",
+  "next_task": "Controller completes publication gates. After ETA prototype review, integrate pickup-selection metadata with UX identity/wait/actions; otherwise continue on-board recovery verification.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08/browser flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-08/verify.sh",
+      "exit_code": 0,
+      "result": "126 tests, backend/frontend typechecks, Vite build and mobile/desktop browser checks across four notification-permission states passed."
+    },
+    {
+      "command": "OUT=/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08 flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08/lifecycle.mjs",
+      "exit_code": 0,
+      "result": "Delayed permission, reload persistence, eligible stale/fresh forecasts, automatic disarm focus and blocked-storage checks passed. All browser resources closed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock npm test -- src/server/serverEta.closure.test.ts src/server/serverEta.test.ts src/server/serverEta.parity.test.ts src/server/serverEta.release.test.ts web/src/etaSource.test.ts web/src/atStopJourney.test.ts web/src/arriveBy.test.ts web/src/arriveByMessage.test.ts web/src/ArriveBy.render.test.tsx",
+      "exit_code": 0,
+      "result": "86 integration tests passed, including restart recovery, both forecast occurrences, transport parity, Docker imports and deadline states."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/review-ux08/verify-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, clean checkout/index, source/bundle equality, unchanged numerical and alert-engine code, and 44 preserved evidence files verified."
+    }
+  ]
+}

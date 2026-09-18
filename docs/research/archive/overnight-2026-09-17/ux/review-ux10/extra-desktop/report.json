@@ -1,0 +1,15 @@
+{
+  "source": "Built SPA, local intercepted fixtures, no production traffic",
+  "checks": [
+    "Pointer Done commits a dirty trimmed name before replacing inputs; reload retains it; Escape remains cancelled after tapping another input",
+    "Deleting middle and final rows preserves exact identities and focuses next then previous surviving input",
+    "Pointer deletion of a different row retains active dirty input and delays its commit until ordinary blur",
+    "Pointer recent promotion while renaming commits first name, preserves both entries and focuses new saved input",
+    "Duplicate display names retain separate destination coordinates when selected",
+    "320px and 640px at 200% CSS zoom preserve readable controls and horizontal reflow"
+  ],
+  "errors": [],
+  "sizes": [],
+  "passed": true,
+  "closed": true
+}

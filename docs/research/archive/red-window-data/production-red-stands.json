@@ -1,0 +1,16 @@
+{
+  "at": 1789653594211,
+  "_publication": {
+    "originalSource": "red-window-data/production-red-stands.json",
+    "originalSha256": "01c988ce5c5f14db5530f0c96c5884dcead00ed76a7dc8dfef57ac0488a9bebb",
+    "omittedArrays": [
+      {
+        "path": "rows",
+        "items": 262,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

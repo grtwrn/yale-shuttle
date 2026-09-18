@@ -1,0 +1,110 @@
+[
+  {
+    "stop": 11,
+    "regime": "arrival15",
+    "arm": "landmark_lap_elapsed_clock",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 3.737256398066505e-05,
+    "objective": 331.7660944712458
+  },
+  {
+    "stop": 11,
+    "regime": "arrival15",
+    "arm": "plus_ahead_snapshot",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 6.706506559395198e-05,
+    "objective": 314.18468136581845
+  },
+  {
+    "stop": 11,
+    "regime": "arrival15",
+    "arm": "plus_ahead_follower_snapshot",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 0.00012684707580468135,
+    "objective": 309.92850826468424
+  },
+  {
+    "stop": 11,
+    "regime": "completed120",
+    "arm": "landmark_lap_elapsed_clock",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 3.737256398066505e-05,
+    "objective": 331.7660944712458
+  },
+  {
+    "stop": 11,
+    "regime": "completed120",
+    "arm": "plus_ahead_snapshot",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 0.0002758631350602281,
+    "objective": 313.72576133242603
+  },
+  {
+    "stop": 11,
+    "regime": "completed120",
+    "arm": "plus_ahead_follower_snapshot",
+    "riskRows": 6196,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 0.0001379257108605758,
+    "objective": 309.77775510565425
+  },
+  {
+    "stop": 121,
+    "regime": "arrival15",
+    "arm": "landmark_lap_elapsed_clock",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 6.396123743357407e-05,
+    "objective": 375.2215772132546
+  },
+  {
+    "stop": 121,
+    "regime": "arrival15",
+    "arm": "plus_ahead_snapshot",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 3.7189002479065536e-05,
+    "objective": 357.0902610405008
+  },
+  {
+    "stop": 121,
+    "regime": "arrival15",
+    "arm": "plus_ahead_follower_snapshot",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 6.83586132418923e-05,
+    "objective": 350.1009794457255
+  },
+  {
+    "stop": 121,
+    "regime": "completed120",
+    "arm": "landmark_lap_elapsed_clock",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 6.396123743357407e-05,
+    "objective": 375.2215772132546
+  },
+  {
+    "stop": 121,
+    "regime": "completed120",
+    "arm": "plus_ahead_snapshot",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 7.600208394548114e-05,
+    "objective": 357.3392516024377
+  },
+  {
+    "stop": 121,
+    "regime": "completed120",
+    "arm": "plus_ahead_follower_snapshot",
+    "riskRows": 9272,
+    "rightCensoredLandmarks": 0,
+    "maxGradient": 0.00015306893306121783,
+    "objective": 350.4876894360169
+  }
+]

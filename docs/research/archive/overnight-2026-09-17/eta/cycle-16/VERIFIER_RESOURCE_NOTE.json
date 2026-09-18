@@ -1,0 +1,5 @@
+{
+  "at": "2026-09-18T10:46:24.353074+00:00",
+  "initial": "Own uncached verification process stopped with SIGTERM after repeated identical SQL queries; no completed validation or semantic failure. Initial source and empty log preserved.",
+  "correction": "Cache exact parameterized read-only SQL results; no input, scoring, identity rule or output truth changes. Full corrected verification runs next."
+}

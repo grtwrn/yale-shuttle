@@ -1,0 +1,104 @@
+{
+  "at": "2026-09-17T13:10:04.785Z",
+  "out": [
+    {
+      "route": "Red",
+      "bus": "300",
+      "stop": 48,
+      "eta": 1527,
+      "status": 200,
+      "ms": 21,
+      "recent": 3
+    },
+    {
+      "route": "Red",
+      "bus": "316",
+      "stop": 48,
+      "eta": 2360,
+      "status": 200,
+      "ms": 37,
+      "from": "Amistad / Church St South",
+      "to": "Division / Prospect",
+      "mode": "departure",
+      "elapsed": null,
+      "trips": 24,
+      "dates": 8,
+      "recent": 3
+    },
+    {
+      "route": "Red",
+      "bus": "309",
+      "stop": 48,
+      "eta": 3096,
+      "status": 200,
+      "ms": 15,
+      "recent": 3
+    },
+    {
+      "route": "Red",
+      "bus": "309",
+      "stop": 72,
+      "eta": 204,
+      "status": 200,
+      "ms": 16,
+      "recent": 3
+    },
+    {
+      "route": "Red",
+      "bus": "300",
+      "stop": 72,
+      "eta": 2444,
+      "status": 200,
+      "ms": 38,
+      "recent": 3
+    },
+    {
+      "route": "Red",
+      "bus": "316",
+      "stop": 72,
+      "eta": 3253,
+      "status": 200,
+      "ms": 46,
+      "from": "Amistad / Church St South",
+      "to": "LEPH / 60 College",
+      "mode": "departure",
+      "elapsed": null,
+      "trips": 24,
+      "dates": 7,
+      "recent": 3
+    },
+    {
+      "route": "Blue Day",
+      "bus": "44",
+      "stop": 72,
+      "eta": 1087,
+      "status": 200,
+      "ms": 16,
+      "recent": 3
+    },
+    {
+      "route": "Blue Day",
+      "bus": "46",
+      "stop": 72,
+      "eta": 2005,
+      "status": 200,
+      "ms": 42,
+      "from": "College / Wall (N)",
+      "to": "LEPH / 60 College",
+      "mode": "departure",
+      "elapsed": null,
+      "trips": 24,
+      "dates": 4,
+      "recent": 3
+    },
+    {
+      "route": "Blue Day",
+      "bus": "38",
+      "stop": 72,
+      "eta": 3322,
+      "status": 200,
+      "ms": 15,
+      "recent": 3
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "head": "da51fcb0af70f554ef0b141aa07d4a390f3c7de0",
+  "indexPreserved": true,
+  "changedTracked": [
+    "services/shuttle-v2/web/src/TransitMap.tsx"
+  ],
+  "newScript": "services/shuttle-v2/scripts/map-lifecycle-check.mjs",
+  "sourceBundleParity": [
+    "services/shuttle-v2/web/dist/assets/rider-DuHxjI64.js.map"
+  ],
+  "runtimeOnlyTwoMapOptionsAndComments": true,
+  "priorSystemBaselineProvenance": true,
+  "passingBrowserReports": [
+    "browser-second/mobile/map-lifecycle.json",
+    "browser-second/desktop/map-lifecycle.json",
+    "browser-second/original-repro/map-stress.json",
+    "browser-second/feed/empty-service.json",
+    "browser-second/fullscreen/after-browser.json",
+    "gestures/mobile/map-lifecycle.json",
+    "gestures/desktop/map-lifecycle.json"
+  ],
+  "newRideBaselineErrors": [
+    "Cannot read properties of undefined (reading '_leaflet_pos')"
+  ],
+  "screenshots": {
+    "count": 321,
+    "bytes": 15179028
+  },
+  "hashes": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "717f6e90c42f2db26e81d400ba9fd01f7a28ee78098c3f14132558ccf27dcbec",
+    "services/shuttle-v2/scripts/map-lifecycle-check.mjs": "2f30fdeaf6ec7aa504c71905fa1be36c4c1dc2de78f80c76bf28e7fc9c364cfb"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "verdict": "research_only",
+  "summary": "Independently reproduced both pickup-identity/wait-label defects. Research is supported; no application diff or blocking research findings. Review and handoff saved in eta/independent-review-round-9.md.",
+  "head_sha": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "base_sha": "d5a392f533e8684320259ff0d323a3b0da75cc50",
+  "next_task": "Coordinate one ETA/UX proposal retaining selected pickup bus and occurrence independently of destination availability. Preserve countdowns, both arrivals, numerical decisions, walking caution and 38 unresolved raw-stop cases. Test missing/recovered destinations, later same-bus visits, folded routes and manual boarding.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/reproduce-light.sh",
+      "exit_code": 0,
+      "result": "4,688 exact decisions/rankings, 4,688 missing-target comparisons, 13 boundaries and 81 built-source matches."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/browser-contract.mjs",
+      "exit_code": 0,
+      "result": "Eight browser states passed; zero page errors; resources closed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/extra.sh",
+      "exit_code": 0,
+      "result": "101 application tests passed; mobile/desktop rendered-wait and boarding-action focus checks passed."
+    },
+    {
+      "command": "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/direct-selector-audit.mts",
+      "exit_code": 0,
+      "result": "9,376 selections verified directly without the builder's projection helper."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Frozen inputs, 1,400 outcomes, 38 unresolved cases and the 442.827-second historical regression preserved."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-9/final-integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base and clean checkout/index verified; 30 builder files unchanged; five reproduced artifacts byte-identical."
+    }
+  ]
+}

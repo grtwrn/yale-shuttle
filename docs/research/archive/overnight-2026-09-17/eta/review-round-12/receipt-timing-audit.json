@@ -1,0 +1,21 @@
+{
+  "sourceVisitClocksChecked": 9,
+  "decisions": 38,
+  "busPolls": 19,
+  "postDepartureAtStopHandlerOffsetsSec": {
+    "57454": 24.644,
+    "57990": 11.26,
+    "58224": 16.4,
+    "58510": 6.065,
+    "65347": 15.496
+  },
+  "source65347FreshCollectionOffsetsSec": [
+    4.975,
+    9.99,
+    15.137
+  ],
+  "preDepartureExcursionFromPlateauMeters": 95.41859900843613,
+  "stepFromImmediatelyPreviousCapturedPositionMeters": 65.27945648258388,
+  "preservedPin": true,
+  "scope": "Retrospective transition provenance; no doors-open, live belief, first-publication or boarding inference."
+}

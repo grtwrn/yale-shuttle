@@ -1,0 +1,19 @@
+{
+  "source": "Actual application shell, only planTrip substituted with fixed synthetic options; real live-arrival transport, destination update, ranking and navigation; checked-in network",
+  "phase": "after",
+  "checks": [
+    "Blue Day advice/action visible while its main card is behind Show more",
+    "Selected route details reflow at 360/390/430/1280/640px",
+    "Enter opens Blue Day details",
+    "Selected Blue Day route map remains available",
+    "Back preserves original top-three overview and collapsed list",
+    "Back retains class time, buffer and supporting action"
+  ],
+  "errors": [],
+  "requests": [
+    "/api/my-reports"
+  ],
+  "initial": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Winchester / Mansfield\n⇅\nTO\n🏁 Laboratory of Epidemiology and Public Health / 60 College Street\n☆\nLEAVE\nNow\nPlan for later…\nArrive by class\nClear\nClass starts · local time\nTime to get inside\n0 min\n5 min\n10 min\n15 min\n20 min\n30 min\n\nReach Laboratory of Epidemiology and Public Health / 60 College Street by 2:15 PM · 5 min before class.\n\nYour buffer may be tight\n\nThe Blue Day window ends by class time, but may leave less time to get inside. Check the trip times.\n\nEstimated arrival at destination\n\nRed · #309\n2:05 PM–2:31 PM\nWindow extends past class · View trip ›\nBlue Day · #410\n2:05 PM–2:19 PM\nMay use your buffer · View trip ›\nWalk\nAbout 2:37 PM\nEstimate past class time · View trip ›\nHow to read these times ▾\nOVERVIEW — TOP 3 OF 4 ROUTES\n▴\n🚌\n🚌\n🚌\n🚌 (R) 4–8 min\n (O) 4–8 min\n (B) 4–8 min\n🏁 (R) 2:11p\n (O) 2:12p\n (B) 2:14p\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\nOrange Day\nBrown\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAbout 5 min ⓘ\nLikely 4–8 min\n11 min\n🚶 1 min\n›\n🚌 4 min\n›\n🚶 1 min\n2:12p\n›\nOrange Day\nAbout 5 min ⓘ\nLikely 4–8 min\n13 min\n🚶 1 min\n›\n🚌 6 min\n›\n🚶 1 min\n2:13p\n›\nBrown\nAbout 5 min ⓘ\nLikely 4–8 min\n15 min\n🚶 1 min\n›\n🚌 8 min\n›\n🚶 1 min\n2:15p\n›\n🚶 Walk\n37 min\n2:37p\n›\nShow 1 more route\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "details": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n← All routes\nBLUE DAY ROUTE · Runs M–F 7a–6p\n▴\n🚌\n🚌 (B) 4–8 min\n🏁 (B) 2:16p\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nBlue Day\nBlue Day\nAbout 5 min ⓘ\nLikely 4–8 min\n17 min\n2:17p\n🚶 1 min\n›\n⏳ 3-6 min\n›\n🚌 #410 · 10 min\n›\n🚶 1 min\n🧭 Directions to stop\n🚌 I'm on it\n·\n🔔 Remind me\n·\n🚩 Report\n📱 Yale tracker\n▾\n🚌 #410 · 1 stop away\n🚌Temple/Grove\nBOARDCollege/Wall (S)\nArrival: About 5 min · Likely 4–8 min\nGET OFFPhelps Gate\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "routeMapCount": 1
+}

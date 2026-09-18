@@ -1,0 +1,35 @@
+{
+  "head": "e7e9063df1fb15a364529075a702789e2bf348c7",
+  "indexPreserved": true,
+  "trackedDiffOnlyTwoCancelCallsAndImport": true,
+  "priorRecoveryAndMapRegressionByteIdentical": true,
+  "sourceBundleParity": {
+    "entry": {
+      "services/shuttle-v2/web/src/TransitMap.tsx": "717f6e90c42f2db26e81d400ba9fd01f7a28ee78098c3f14132558ccf27dcbec"
+    },
+    "candidate": {
+      "services/shuttle-v2/web/src/mapLifecycle.ts": "15384ac96988307c70d4440d6802be0b0a7bb25e018a7e99d9fbf1abff853f91",
+      "services/shuttle-v2/web/src/TransitMap.tsx": "9416a432e78dd2002105f314b36c246fb13fba8b87409b464dd52b6598800314"
+    }
+  },
+  "passingBrowserReports": [
+    "touch/map-touch-teardown.json",
+    "reviewer-manual/interrupt-pinch.json",
+    "reviewer-expiry/interrupt-pinch.json",
+    "mobile/map-lifecycle.json",
+    "desktop/map-lifecycle.json",
+    "original-repro/map-stress.json",
+    "feed/empty-service.json",
+    "fullscreen/after-browser.json"
+  ],
+  "heldTouchCases": 8,
+  "screenshots": {
+    "count": 365,
+    "bytes": 16894004
+  },
+  "hashes": {
+    "services/shuttle-v2/web/src/TransitMap.tsx": "9416a432e78dd2002105f314b36c246fb13fba8b87409b464dd52b6598800314",
+    "services/shuttle-v2/scripts/map-touch-teardown-check.mjs": "0377ffff4a541eb5e0c71c5b6f05b8d1f89bd3f107995d1046456ef8cbbdadcb",
+    "services/shuttle-v2/web/src/mapLifecycle.ts": "15384ac96988307c70d4440d6802be0b0a7bb25e018a7e99d9fbf1abff853f91"
+  }
+}

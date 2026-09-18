@@ -1,0 +1,31 @@
+{
+  "createdAt": "2026-09-18T17:32:14.679003+00:00",
+  "scope": "Offline completed-cohort experiment; no production changes",
+  "hashes": {
+    "PLAN.json": "17c13ac15139be9ebdc4632702205d9aaee92f37bceae6428f50404955ba521b",
+    "build-provenance.json": "d028ee04e30a32dcd0524df8c3f005f53ecdabffdfea5bcfe78c88219114a6f0",
+    "history-release.ts": "df75f1e925fcc4886caec1b93038a22c5d337a8c830538844e9bbc7dd350a219",
+    "replay.mts": "b2a041c9a245309fb440cbae645330aa402fdcbcfc7399b9bbac56414b3f2f97",
+    "pair.py": "54892773c243b9854e9a26eea6581c697920fae0240e1abfa4555661883d10f4",
+    "score.py": "cac3618d54498e4d10a153ee8cb5dd52bfe92ebb59f1c0765e92e47f44b30e8f",
+    "summarize.py": "79bc4596a238dfe2a7f9b30484c6cd490711fb97582eeec96a5644e6e668bf7f",
+    "continuous.py": "e97fcad020883e9c54427541dbb4a9060829ec8ea3c3abac93774e8eade5a904",
+    "following-occurrence.py": "a3c61da17b5c11b44ac0220adc469b99e0fe7c137614268353cb47ce1f359ad4",
+    "fold-check.json": "ceb496a38d96415c1f3ff0cd86d7824547bb69ce063d23bd09b70d6fd7ed5adf",
+    "pair-validation.json": "9081601a17411da833e25da452ba1c4d21b3d382c5bbbc834867378b6cc794e2",
+    "summary.json": "ca8593dbc001a753d365edbc10254019ba023ee11629807ab2fffca6984e2ac2",
+    "continuous.json": "530014d371ad56497b9e108ed8bbd3fa58073b6cae382eb64b4ce3b70f863448",
+    "following-occurrence.json": "c1adc6753e4780fd2a6f1be2b2767ffcf624c4d57f8069a4e78a246af4c3d308",
+    "../own-history/fits.json": "b8553e86bb83e6ae350c603d6fd65cd3f04e8c8dfbc6bb2ce6c5cf6e4f5c8262",
+    "../own-history/cohort.json": "c8260e360d8d85f88d7d6a2019ba83dedc2d399bfa17c0cd957db76b0eb584c7",
+    "../own-history/extension-cohort.json": "89b76162beb63a1e44d101284eb170690f8e0403e2295d70667dd3cf40f895e5",
+    "../recordings.json": "ba808edd5eb18974a91087511d833c99b2410ec6461da5996d2ede71415d5142",
+    "REPORT.md": "a040060ae72d1a933e6648e9b9686e65708c87ad35148473458ff19f7fb3f1df",
+    "independent-review.md": "ed0a0445e521f02a21994ade1a481a44af8d5a7ba29d974861e3c2bd328007cf",
+    "independent-case-audit.py": "1054d90df76410d461162500205766df40ce97340974e973884a0668803b7c85",
+    "independent-case-audit.json": "d97062c55e9c7010347337102b9b63308b275e31f90a7dce3529f7f0bf74c2fe",
+    "following-occurrence.md": "6b974980fe150a67a3c601e8e5c58510a7ead9f01fb4f7c592a891e86b140718",
+    "../README.md": "e99e201a3ced9779d43a9902572917786d20e8a8e8fbc16201488cf4ebf8e8c1",
+    "../own-history/REPORT.md": "67f4a769bb81d0f73a18b03ec434de114bdb7ea318b3702966a00a8fc30c7e7b"
+  }
+}

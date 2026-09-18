@@ -1,0 +1,415 @@
+{
+  "method": {
+    "elapsedSec": 55,
+    "lookbackDays": [
+      30,
+      7
+    ],
+    "timeWindowMinutes": 120,
+    "trainingCutoff": "ET midnight before each later service date; all known completion/confirmation lower bounds <= cutoff",
+    "minTrainingTrips": 10,
+    "minTrainingDates": 3,
+    "old": "arrival completion >48h before cutoff",
+    "filter": "Tukey [q25-1.5*IQR,q75+1.5*IQR], computed solely from training; recent observations always retained",
+    "baseline": "empirical connected-journey quantiles, not served-model replay",
+    "limitation": "Legacy exact ingestion/confirmation timestamps missing; descriptive trip-level screen, no nominal coverage or promotion claim"
+  },
+  "fixture": {
+    "n": 75,
+    "dates": 9,
+    "q0_10_25_50_75_90_100_sec": [
+      90.123,
+      160.167,
+      242.575,
+      450.03,
+      588.16,
+      697.995,
+      785.154
+    ],
+    "remainingWaitMedianSec": 309.962,
+    "travelMedianSec": 85.007
+  },
+  "recent48h": {
+    "n": 19,
+    "dates": 3,
+    "q0_10_25_50_75_90_100_sec": [
+      129.957,
+      156.049,
+      212.682,
+      415.209,
+      565.106,
+      668.114,
+      760.047
+    ],
+    "remainingWaitMedianSec": 284.986,
+    "travelMedianSec": 85.019
+  },
+  "older48h": {
+    "n": 56,
+    "dates": 7,
+    "q0_10_25_50_75_90_100_sec": [
+      90.123,
+      165.185,
+      270.652,
+      454.062,
+      592.194,
+      712.763,
+      785.154
+    ],
+    "remainingWaitMedianSec": 337.824,
+    "travelMedianSec": 82.553
+  },
+  "fixtureIQR": {
+    "boundsSec": [
+      -275.80125000000015,
+      1106.5367500000002
+    ],
+    "removed": 0,
+    "kept": 75
+  },
+  "allConnectedJourneys": {
+    "n": 180,
+    "dates": 9,
+    "q0_10_25_50_75_90_100_sec": [
+      90.123,
+      159.539,
+      213.737,
+      392.549,
+      554.3,
+      676.503,
+      925.134
+    ],
+    "remainingWaitMedianSec": 288.281,
+    "travelMedianSec": 85.037
+  },
+  "skippedByDate": {
+    "2026-09-03": 21,
+    "2026-09-04": 23,
+    "2026-09-08": 24,
+    "2026-09-09": 2
+  },
+  "pooled": {
+    "30d_q10_90": {
+      "n": 110,
+      "early": 12,
+      "late": 22,
+      "coveragePct": 69.09,
+      "meanWidthSec": 470.6,
+      "medianWidthSec": 476.13,
+      "maeSec": 191.08,
+      "meanWIS": 109.31,
+      "removedTrainingMemberships": 0
+    },
+    "30d_old_iqr_q10_90": {
+      "n": 110,
+      "early": 12,
+      "late": 22,
+      "coveragePct": 69.09,
+      "meanWidthSec": 469.67,
+      "medianWidthSec": 471.47,
+      "maeSec": 191.17,
+      "meanWIS": 109.7,
+      "removedTrainingMemberships": 3
+    },
+    "7d_old_iqr_q10_90": {
+      "n": 110,
+      "early": 14,
+      "late": 20,
+      "coveragePct": 69.09,
+      "meanWidthSec": 479.14,
+      "medianWidthSec": 486.89,
+      "maeSec": 188.02,
+      "meanWIS": 108.8,
+      "removedTrainingMemberships": 3
+    },
+    "30d_old_iqr_q20_80": {
+      "n": 110,
+      "early": 24,
+      "late": 35,
+      "coveragePct": 46.36,
+      "meanWidthSec": 358.88,
+      "medianWidthSec": 365.38,
+      "maeSec": 191.17,
+      "meanWIS": 143.29,
+      "removedTrainingMemberships": 3
+    }
+  },
+  "byDate": {
+    "2026-09-09": {
+      "30d_q10_90": {
+        "n": 14,
+        "early": 4,
+        "late": 4,
+        "coveragePct": 42.86,
+        "meanWidthSec": 420.67,
+        "medianWidthSec": 425.2,
+        "maeSec": 213.53,
+        "meanWIS": 128.61,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 14,
+        "early": 4,
+        "late": 4,
+        "coveragePct": 42.86,
+        "meanWidthSec": 420.67,
+        "medianWidthSec": 425.2,
+        "maeSec": 213.53,
+        "meanWIS": 128.61,
+        "removedTrainingMemberships": 0
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 14,
+        "early": 4,
+        "late": 4,
+        "coveragePct": 42.86,
+        "meanWidthSec": 420.67,
+        "medianWidthSec": 425.2,
+        "maeSec": 213.53,
+        "meanWIS": 128.61,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 14,
+        "early": 4,
+        "late": 5,
+        "coveragePct": 35.71,
+        "meanWidthSec": 317.73,
+        "medianWidthSec": 299.98,
+        "maeSec": 213.53,
+        "meanWIS": 163.29,
+        "removedTrainingMemberships": 0
+      }
+    },
+    "2026-09-10": {
+      "30d_q10_90": {
+        "n": 26,
+        "early": 3,
+        "late": 7,
+        "coveragePct": 61.54,
+        "meanWidthSec": 441.55,
+        "medianWidthSec": 461.78,
+        "maeSec": 199.12,
+        "meanWIS": 117.71,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 26,
+        "early": 3,
+        "late": 7,
+        "coveragePct": 61.54,
+        "meanWidthSec": 438.12,
+        "medianWidthSec": 461.78,
+        "maeSec": 199.14,
+        "meanWIS": 119.28,
+        "removedTrainingMemberships": 2
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 26,
+        "early": 3,
+        "late": 7,
+        "coveragePct": 61.54,
+        "meanWidthSec": 438.12,
+        "medianWidthSec": 461.78,
+        "maeSec": 199.14,
+        "meanWIS": 119.28,
+        "removedTrainingMemberships": 2
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 26,
+        "early": 6,
+        "late": 9,
+        "coveragePct": 42.31,
+        "meanWidthSec": 328.04,
+        "medianWidthSec": 337.81,
+        "maeSec": 199.14,
+        "meanWIS": 155.37,
+        "removedTrainingMemberships": 2
+      }
+    },
+    "2026-09-11": {
+      "30d_q10_90": {
+        "n": 21,
+        "early": 1,
+        "late": 6,
+        "coveragePct": 66.67,
+        "meanWidthSec": 474.38,
+        "medianWidthSec": 477.75,
+        "maeSec": 213.2,
+        "meanWIS": 122.68,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 21,
+        "early": 1,
+        "late": 6,
+        "coveragePct": 66.67,
+        "meanWidthSec": 473.77,
+        "medianWidthSec": 469.92,
+        "maeSec": 213.68,
+        "meanWIS": 122.79,
+        "removedTrainingMemberships": 1
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 21,
+        "early": 1,
+        "late": 6,
+        "coveragePct": 66.67,
+        "meanWidthSec": 474.67,
+        "medianWidthSec": 470.99,
+        "maeSec": 211.89,
+        "meanWIS": 121.17,
+        "removedTrainingMemberships": 1
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 21,
+        "early": 1,
+        "late": 11,
+        "coveragePct": 42.86,
+        "meanWidthSec": 362.27,
+        "medianWidthSec": 365.7,
+        "maeSec": 213.68,
+        "meanWIS": 159.04,
+        "removedTrainingMemberships": 1
+      }
+    },
+    "2026-09-14": {
+      "30d_q10_90": {
+        "n": 19,
+        "early": 1,
+        "late": 4,
+        "coveragePct": 73.68,
+        "meanWidthSec": 491.5,
+        "medianWidthSec": 480.75,
+        "maeSec": 164.98,
+        "meanWIS": 91.97,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 19,
+        "early": 1,
+        "late": 4,
+        "coveragePct": 73.68,
+        "meanWidthSec": 491.5,
+        "medianWidthSec": 480.75,
+        "maeSec": 164.98,
+        "meanWIS": 91.97,
+        "removedTrainingMemberships": 0
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 19,
+        "early": 3,
+        "late": 3,
+        "coveragePct": 68.42,
+        "meanWidthSec": 519.56,
+        "medianWidthSec": 526.94,
+        "maeSec": 146.39,
+        "meanWIS": 86.41,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 19,
+        "early": 3,
+        "late": 6,
+        "coveragePct": 52.63,
+        "meanWidthSec": 376.69,
+        "medianWidthSec": 373.62,
+        "maeSec": 164.98,
+        "meanWIS": 124.84,
+        "removedTrainingMemberships": 0
+      }
+    },
+    "2026-09-15": {
+      "30d_q10_90": {
+        "n": 21,
+        "early": 2,
+        "late": 1,
+        "coveragePct": 85.71,
+        "meanWidthSec": 500.34,
+        "medianWidthSec": 520.69,
+        "maeSec": 174.12,
+        "meanWIS": 94.98,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 21,
+        "early": 2,
+        "late": 1,
+        "coveragePct": 85.71,
+        "meanWidthSec": 500.34,
+        "medianWidthSec": 520.69,
+        "maeSec": 174.12,
+        "meanWIS": 94.98,
+        "removedTrainingMemberships": 0
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 21,
+        "early": 2,
+        "late": 0,
+        "coveragePct": 90.48,
+        "meanWidthSec": 519.46,
+        "medianWidthSec": 511.38,
+        "maeSec": 175.52,
+        "meanWIS": 96.49,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 21,
+        "early": 6,
+        "late": 4,
+        "coveragePct": 52.38,
+        "meanWidthSec": 384.18,
+        "medianWidthSec": 382.31,
+        "maeSec": 174.12,
+        "meanWIS": 122.94,
+        "removedTrainingMemberships": 0
+      }
+    },
+    "2026-09-16": {
+      "30d_q10_90": {
+        "n": 9,
+        "early": 1,
+        "late": 0,
+        "coveragePct": 88.89,
+        "meanWidthSec": 509.81,
+        "medianWidthSec": 512.21,
+        "maeSec": 175.95,
+        "meanWIS": 93.82,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q10_90": {
+        "n": 9,
+        "early": 1,
+        "late": 0,
+        "coveragePct": 88.89,
+        "meanWidthSec": 509.81,
+        "medianWidthSec": 512.21,
+        "maeSec": 175.95,
+        "meanWIS": 93.82,
+        "removedTrainingMemberships": 0
+      },
+      "7d_old_iqr_q10_90": {
+        "n": 9,
+        "early": 1,
+        "late": 0,
+        "coveragePct": 88.89,
+        "meanWidthSec": 519.57,
+        "medianWidthSec": 524.7,
+        "maeSec": 177.62,
+        "meanWIS": 94.88,
+        "removedTrainingMemberships": 0
+      },
+      "30d_old_iqr_q20_80": {
+        "n": 9,
+        "early": 4,
+        "late": 0,
+        "coveragePct": 55.56,
+        "meanWidthSec": 407.45,
+        "medianWidthSec": 409.08,
+        "maeSec": 175.95,
+        "meanWIS": 126.94,
+        "removedTrainingMemberships": 0
+      }
+    }
+  }
+}

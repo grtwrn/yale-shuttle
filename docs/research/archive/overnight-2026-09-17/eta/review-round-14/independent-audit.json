@@ -1,0 +1,23 @@
+{
+  "freshBuildsEqualFrozenExceptEntryComments": 2,
+  "onlyArmDifference": "canonical mean rounding, exactly one substitution",
+  "exactCurrentNumericalMemoBody": true,
+  "exactRescoredForecastRecords": 182918,
+  "allScoreFieldsEqualExceptTiedRegressionOrdering": true,
+  "regressionRankingCutoffsEqual": true,
+  "current-decisions.jsonl": "byte-identical",
+  "canonical-decisions.jsonl": "byte-identical",
+  "current-rider-outcomes.jsonl": "byte-identical",
+  "canonical-rider-outcomes.jsonl": "byte-identical",
+  "riderSummaryEqualExceptRunTimestamp": true,
+  "verification.json": "identical",
+  "semantic-verification.json": "identical",
+  "decision-verification.json": "identical",
+  "resume-comparison.json": "identical",
+  "originalRetargetedRecordsReproduced": 125,
+  "selectedZeroHopRiderPickupsStayAtSource": {
+    "current": 538,
+    "canonical": 538
+  },
+  "knownRemainingIdentityDefect": "Independent lagged-origin gate fails: 11 current rows and 8 following rows; reproduced arithmetic does not validate those labels."
+}

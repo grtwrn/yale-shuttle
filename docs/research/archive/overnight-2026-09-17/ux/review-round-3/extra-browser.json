@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "To blur/refocus before 180ms preserves the new editor and query when the old blur deadline passes.",
+    "Focus moved to navigation between selection and requestAnimationFrame stays there.",
+    "To selection followed by immediate keyboard reopening preserves the reopened editor; the next pick returns focus.",
+    "View change during an uncommitted From edit cancels delayed blur/debounce; prior endpoints persist and navigation retains focus.",
+    "From failure is announced and clears on successful recovery; active descendant names a selected rendered option.",
+    "Final selected endpoints survive reload without stale editor state."
+  ],
+  "errors": [],
+  "queries": [
+    "new destination after refocus",
+    "rapid destination reopen",
+    "failed origin",
+    "recovered origin"
+  ],
+  "resourcesClosed": true,
+  "completed": true
+}

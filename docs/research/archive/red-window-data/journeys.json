@@ -1,0 +1,1802 @@
+[
+  {
+    "sourceId": 1020,
+    "targetId": 1043,
+    "busName": "#304",
+    "startedAt": 1788444337319,
+    "departedAt": 1788444427468,
+    "arrivedAt": 1788444527370,
+    "availableAfter": 1788444597485.0,
+    "actualSec": 190.051
+  },
+  {
+    "sourceId": 1243,
+    "targetId": 1260,
+    "busName": "#309",
+    "startedAt": 1788445475211,
+    "departedAt": 1788446018875,
+    "arrivedAt": 1788446093892,
+    "availableAfter": 1788446154004.0,
+    "actualSec": 618.681
+  },
+  {
+    "sourceId": 1355,
+    "targetId": 1371,
+    "busName": "#316",
+    "startedAt": 1788446319166,
+    "departedAt": 1788446740090,
+    "arrivedAt": 1788446820185,
+    "availableAfter": 1788446855120.0,
+    "actualSec": 501.019
+  },
+  {
+    "sourceId": 1515,
+    "targetId": 1536,
+    "busName": "#304",
+    "startedAt": 1788447600190,
+    "departedAt": 1788447860198,
+    "arrivedAt": 1788447930388,
+    "availableAfter": 1788447995292.0,
+    "actualSec": 330.198
+  },
+  {
+    "sourceId": 1711,
+    "targetId": 1733,
+    "busName": "#309",
+    "startedAt": 1788449360756,
+    "departedAt": 1788449596391,
+    "arrivedAt": 1788449681595,
+    "availableAfter": 1788449756667.0,
+    "actualSec": 320.839
+  },
+  {
+    "sourceId": 1806,
+    "targetId": 1819,
+    "busName": "#316",
+    "startedAt": 1788449976712,
+    "departedAt": 1788450348626,
+    "arrivedAt": 1788450434806,
+    "availableAfter": 1788450474850.0,
+    "actualSec": 458.094
+  },
+  {
+    "sourceId": 1937,
+    "targetId": 1959,
+    "busName": "#304",
+    "startedAt": 1788451280634,
+    "departedAt": 1788451495593,
+    "arrivedAt": 1788451575541,
+    "availableAfter": 1788451655865.0,
+    "actualSec": 294.907
+  },
+  {
+    "sourceId": 2126,
+    "targetId": 2146,
+    "busName": "#309",
+    "startedAt": 1788452553818,
+    "departedAt": 1788453196304,
+    "arrivedAt": 1788453306230,
+    "availableAfter": 1788453371253.0,
+    "actualSec": 752.412
+  },
+  {
+    "sourceId": 2570,
+    "targetId": 2585,
+    "busName": "#309",
+    "startedAt": 1788456963689,
+    "departedAt": 1788457043734,
+    "arrivedAt": 1788457143844,
+    "availableAfter": 1788457223744.0,
+    "actualSec": 180.155
+  },
+  {
+    "sourceId": 2631,
+    "targetId": 2646,
+    "busName": "#316",
+    "startedAt": 1788457158713,
+    "departedAt": 1788457568773,
+    "arrivedAt": 1788457633786,
+    "availableAfter": 1788457678839.0,
+    "actualSec": 475.073
+  },
+  {
+    "sourceId": 2753,
+    "targetId": 2770,
+    "busName": "#304",
+    "startedAt": 1788458063960,
+    "departedAt": 1788458603935,
+    "arrivedAt": 1788458679116,
+    "availableAfter": 1788458739065.0,
+    "actualSec": 615.156
+  },
+  {
+    "sourceId": 2942,
+    "targetId": 2952,
+    "busName": "#309",
+    "startedAt": 1788460229322,
+    "departedAt": 1788460314260,
+    "arrivedAt": 1788460394346,
+    "availableAfter": 1788460439442.0,
+    "actualSec": 165.024
+  },
+  {
+    "sourceId": 3022,
+    "targetId": 3042,
+    "busName": "#316",
+    "startedAt": 1788460954304,
+    "departedAt": 1788461134315,
+    "arrivedAt": 1788461224341,
+    "availableAfter": 1788461299345.0,
+    "actualSec": 270.037
+  },
+  {
+    "sourceId": 3339,
+    "targetId": 3350,
+    "busName": "#309",
+    "startedAt": 1788463439565,
+    "departedAt": 1788463884736,
+    "arrivedAt": 1788463969772,
+    "availableAfter": 1788464029811.0,
+    "actualSec": 530.207
+  },
+  {
+    "sourceId": 3432,
+    "targetId": 3445,
+    "busName": "#316",
+    "startedAt": 1788464374792,
+    "departedAt": 1788464769875,
+    "arrivedAt": 1788464834838,
+    "availableAfter": 1788464879862.0,
+    "actualSec": 460.046
+  },
+  {
+    "sourceId": 3536,
+    "targetId": 3555,
+    "busName": "#304",
+    "startedAt": 1788465434992,
+    "departedAt": 1788465711589,
+    "arrivedAt": 1788465806614,
+    "availableAfter": 1788465856655.0,
+    "actualSec": 371.622
+  },
+  {
+    "sourceId": 3741,
+    "targetId": 3754,
+    "busName": "#309",
+    "startedAt": 1788467357973,
+    "departedAt": 1788467502984,
+    "arrivedAt": 1788467573074,
+    "availableAfter": 1788467602897.0,
+    "actualSec": 215.101
+  },
+  {
+    "sourceId": 3838,
+    "targetId": 3855,
+    "busName": "#316",
+    "startedAt": 1788468033178,
+    "departedAt": 1788468378149,
+    "arrivedAt": 1788468438153,
+    "availableAfter": 1788468478036.0,
+    "actualSec": 404.975
+  },
+  {
+    "sourceId": 4124,
+    "targetId": 4138,
+    "busName": "#309",
+    "startedAt": 1788470767719,
+    "departedAt": 1788470857942,
+    "arrivedAt": 1788470962768,
+    "availableAfter": 1788471022755.0,
+    "actualSec": 195.049
+  },
+  {
+    "sourceId": 4267,
+    "targetId": 4279,
+    "busName": "#316",
+    "startedAt": 1788472079493,
+    "departedAt": 1788472139562,
+    "arrivedAt": 1788472199507,
+    "availableAfter": 1788472234530.0,
+    "actualSec": 120.014
+  },
+  {
+    "sourceId": 4321,
+    "targetId": 4334,
+    "busName": "#304",
+    "startedAt": 1788472559440,
+    "departedAt": 1788472614644,
+    "arrivedAt": 1788472695512,
+    "availableAfter": 1788472750523.0,
+    "actualSec": 136.072
+  },
+  {
+    "sourceId": 782,
+    "targetId": 803,
+    "busName": "#310",
+    "startedAt": 1788521415791,
+    "departedAt": 1788521700955,
+    "arrivedAt": 1788521810825,
+    "availableAfter": 1788521870935.0,
+    "actualSec": 395.034
+  },
+  {
+    "sourceId": 871,
+    "targetId": 5264,
+    "busName": "#316",
+    "startedAt": 1788521740894,
+    "departedAt": 1788522395906,
+    "arrivedAt": 1788522500909,
+    "availableAfter": 1788522585956.0,
+    "actualSec": 760.015
+  },
+  {
+    "sourceId": 5618,
+    "targetId": 5646,
+    "busName": "#310",
+    "startedAt": 1788524904413,
+    "departedAt": 1788525154941,
+    "arrivedAt": 1788525249955,
+    "availableAfter": 1788525355164.0,
+    "actualSec": 345.542
+  },
+  {
+    "sourceId": 5772,
+    "targetId": 5789,
+    "busName": "#316",
+    "startedAt": 1788526213762,
+    "departedAt": 1788526288789,
+    "arrivedAt": 1788526368814,
+    "availableAfter": 1788526424068.0,
+    "actualSec": 155.052
+  },
+  {
+    "sourceId": 6229,
+    "targetId": 6251,
+    "busName": "#316",
+    "startedAt": 1788529155388,
+    "departedAt": 1788529556106,
+    "arrivedAt": 1788529621086,
+    "availableAfter": 1788529721156.0,
+    "actualSec": 465.698
+  },
+  {
+    "sourceId": 6354,
+    "targetId": 6371,
+    "busName": "#304",
+    "startedAt": 1788530475598,
+    "departedAt": 1788530505740,
+    "arrivedAt": 1788530565721,
+    "availableAfter": 1788530605799.0,
+    "actualSec": 90.123
+  },
+  {
+    "sourceId": 7109,
+    "targetId": 7127,
+    "busName": "#310",
+    "startedAt": 1788535670942,
+    "departedAt": 1788536016424,
+    "arrivedAt": 1788536096608,
+    "availableAfter": 1788536131417.0,
+    "actualSec": 425.666
+  },
+  {
+    "sourceId": 7220,
+    "targetId": 7234,
+    "busName": "#316",
+    "startedAt": 1788536567839,
+    "departedAt": 1788536788325,
+    "arrivedAt": 1788536843405,
+    "availableAfter": 1788536873502.0,
+    "actualSec": 275.566
+  },
+  {
+    "sourceId": 7326,
+    "targetId": 7340,
+    "busName": "#304",
+    "startedAt": 1788537609435,
+    "departedAt": 1788537679763,
+    "arrivedAt": 1788537769780,
+    "availableAfter": 1788537809831.0,
+    "actualSec": 160.345
+  },
+  {
+    "sourceId": 7542,
+    "targetId": 7557,
+    "busName": "#310",
+    "startedAt": 1788539576506,
+    "departedAt": 1788539656682,
+    "arrivedAt": 1788539731783,
+    "availableAfter": 1788539791939.0,
+    "actualSec": 155.277
+  },
+  {
+    "sourceId": 7708,
+    "targetId": 7734,
+    "busName": "#304",
+    "startedAt": 1788541010203,
+    "departedAt": 1788541260352,
+    "arrivedAt": 1788541370373,
+    "availableAfter": 1788541415418.0,
+    "actualSec": 360.17
+  },
+  {
+    "sourceId": 8031,
+    "targetId": 8047,
+    "busName": "#316",
+    "startedAt": 1788543911962,
+    "departedAt": 1788544021995,
+    "arrivedAt": 1788544087027,
+    "availableAfter": 1788544142187.0,
+    "actualSec": 175.065
+  },
+  {
+    "sourceId": 8200,
+    "targetId": 8214,
+    "busName": "#304",
+    "startedAt": 1788545518669,
+    "departedAt": 1788545603693,
+    "arrivedAt": 1788545709025,
+    "availableAfter": 1788545769094.0,
+    "actualSec": 190.356
+  },
+  {
+    "sourceId": 8319,
+    "targetId": 8335,
+    "busName": "#310",
+    "startedAt": 1788546309035,
+    "departedAt": 1788546624136,
+    "arrivedAt": 1788546709128,
+    "availableAfter": 1788546764134.0,
+    "actualSec": 400.093
+  },
+  {
+    "sourceId": 8410,
+    "targetId": 8429,
+    "busName": "#316",
+    "startedAt": 1788547234757,
+    "departedAt": 1788547561939,
+    "arrivedAt": 1788547646984,
+    "availableAfter": 1788547711650.0,
+    "actualSec": 412.227
+  },
+  {
+    "sourceId": 8514,
+    "targetId": 8526,
+    "busName": "#304",
+    "startedAt": 1788548392154,
+    "departedAt": 1788548497219,
+    "arrivedAt": 1788548572211,
+    "availableAfter": 1788548612241.0,
+    "actualSec": 180.057
+  },
+  {
+    "sourceId": 8704,
+    "targetId": 8722,
+    "busName": "#310",
+    "startedAt": 1788550003058,
+    "departedAt": 1788550320761,
+    "arrivedAt": 1788550415786,
+    "availableAfter": 1788550480968.0,
+    "actualSec": 412.728
+  },
+  {
+    "sourceId": 8791,
+    "targetId": 8810,
+    "busName": "#316",
+    "startedAt": 1788550951121,
+    "departedAt": 1788551206145,
+    "arrivedAt": 1788551261129,
+    "availableAfter": 1788551306221.0,
+    "actualSec": 310.008
+  },
+  {
+    "sourceId": 8887,
+    "targetId": 8908,
+    "busName": "#304",
+    "startedAt": 1788552041602,
+    "departedAt": 1788552127099,
+    "arrivedAt": 1788552216946,
+    "availableAfter": 1788552291750.0,
+    "actualSec": 175.344
+  },
+  {
+    "sourceId": 9108,
+    "targetId": 9127,
+    "busName": "#310",
+    "startedAt": 1788553447603,
+    "departedAt": 1788553887565,
+    "arrivedAt": 1788554002514,
+    "availableAfter": 1788554047397.0,
+    "actualSec": 554.911
+  },
+  {
+    "sourceId": 9202,
+    "targetId": 9217,
+    "busName": "#316",
+    "startedAt": 1788554387581,
+    "departedAt": 1788554757660,
+    "arrivedAt": 1788554827634,
+    "availableAfter": 1788554877817.0,
+    "actualSec": 440.053
+  },
+  {
+    "sourceId": 9316,
+    "targetId": 9339,
+    "busName": "#304",
+    "startedAt": 1788555202618,
+    "departedAt": 1788555607660,
+    "arrivedAt": 1788555687745,
+    "availableAfter": 1788555762769.0,
+    "actualSec": 485.127
+  },
+  {
+    "sourceId": 9614,
+    "targetId": 9628,
+    "busName": "#316",
+    "startedAt": 1788558012636,
+    "departedAt": 1788558107655,
+    "arrivedAt": 1788558177697,
+    "availableAfter": 1788558217836.0,
+    "actualSec": 165.061
+  },
+  {
+    "sourceId": 16065,
+    "targetId": 16094,
+    "busName": "#307",
+    "startedAt": 1788867057437,
+    "departedAt": 1788867257423,
+    "arrivedAt": 1788867342523,
+    "availableAfter": 1788867422524.0,
+    "actualSec": 285.086
+  },
+  {
+    "sourceId": 16192,
+    "targetId": 16209,
+    "busName": "#306",
+    "startedAt": 1788867807464,
+    "departedAt": 1788868017482,
+    "arrivedAt": 1788868092500,
+    "availableAfter": 1788868152501.0,
+    "actualSec": 285.036
+  },
+  {
+    "sourceId": 16282,
+    "targetId": 16309,
+    "busName": "#304",
+    "startedAt": 1788868542533,
+    "departedAt": 1788868752589,
+    "arrivedAt": 1788868852546,
+    "availableAfter": 1788868967629.0,
+    "actualSec": 310.013
+  },
+  {
+    "sourceId": 16565,
+    "targetId": 16593,
+    "busName": "#307",
+    "startedAt": 1788870357807,
+    "departedAt": 1788870887872,
+    "arrivedAt": 1788870977719,
+    "availableAfter": 1788871107930.0,
+    "actualSec": 619.912
+  },
+  {
+    "sourceId": 16655,
+    "targetId": 16678,
+    "busName": "#306",
+    "startedAt": 1788871287785,
+    "departedAt": 1788871567777,
+    "arrivedAt": 1788871647770,
+    "availableAfter": 1788871702700.0,
+    "actualSec": 359.985
+  },
+  {
+    "sourceId": 16768,
+    "targetId": 16795,
+    "busName": "#304",
+    "startedAt": 1788872117858,
+    "departedAt": 1788872397954,
+    "arrivedAt": 1788872497871,
+    "availableAfter": 1788872577780.0,
+    "actualSec": 380.013
+  },
+  {
+    "sourceId": 17044,
+    "targetId": 17066,
+    "busName": "#307",
+    "startedAt": 1788873737886,
+    "departedAt": 1788874343963,
+    "arrivedAt": 1788874413965,
+    "availableAfter": 1788874484494.0,
+    "actualSec": 676.079
+  },
+  {
+    "sourceId": 17163,
+    "targetId": 17185,
+    "busName": "#306",
+    "startedAt": 1788874759759,
+    "departedAt": 1788875144751,
+    "arrivedAt": 1788875224781,
+    "availableAfter": 1788875284763.0,
+    "actualSec": 465.022
+  },
+  {
+    "sourceId": 17276,
+    "targetId": 17302,
+    "busName": "#304",
+    "startedAt": 1788875509843,
+    "departedAt": 1788876009837,
+    "arrivedAt": 1788876094856,
+    "availableAfter": 1788876139862.0,
+    "actualSec": 585.013
+  },
+  {
+    "sourceId": 17674,
+    "targetId": 17693,
+    "busName": "#306",
+    "startedAt": 1788878570061,
+    "departedAt": 1788878750145,
+    "arrivedAt": 1788878820189,
+    "availableAfter": 1788878875123.0,
+    "actualSec": 250.128
+  },
+  {
+    "sourceId": 17847,
+    "targetId": 17861,
+    "busName": "#304",
+    "startedAt": 1788879500189,
+    "departedAt": 1788879865363,
+    "arrivedAt": 1788879965212,
+    "availableAfter": 1788880030181.0,
+    "actualSec": 465.023
+  },
+  {
+    "sourceId": 18046,
+    "targetId": 18074,
+    "busName": "#307",
+    "startedAt": 1788881105318,
+    "departedAt": 1788881625385,
+    "arrivedAt": 1788881715488,
+    "availableAfter": 1788881780460.0,
+    "actualSec": 610.17
+  },
+  {
+    "sourceId": 18155,
+    "targetId": 18163,
+    "busName": "#306",
+    "startedAt": 1788882060539,
+    "departedAt": 1788882370501,
+    "arrivedAt": 1788882445509,
+    "availableAfter": 1788882490548.0,
+    "actualSec": 384.97
+  },
+  {
+    "sourceId": 18265,
+    "targetId": 18293,
+    "busName": "#304",
+    "startedAt": 1788883270606,
+    "departedAt": 1788883355577,
+    "arrivedAt": 1788883420601,
+    "availableAfter": 1788883495654.0,
+    "actualSec": 149.995
+  },
+  {
+    "sourceId": 18486,
+    "targetId": 18494,
+    "busName": "#307",
+    "startedAt": 1788884655691,
+    "departedAt": 1788885180961,
+    "arrivedAt": 1788885270855,
+    "availableAfter": 1788885305761.0,
+    "actualSec": 615.164
+  },
+  {
+    "sourceId": 18611,
+    "targetId": 18634,
+    "busName": "#306",
+    "startedAt": 1788886235982,
+    "departedAt": 1788886296062,
+    "arrivedAt": 1788886361129,
+    "availableAfter": 1788886431112.0,
+    "actualSec": 125.147
+  },
+  {
+    "sourceId": 18911,
+    "targetId": 18929,
+    "busName": "#307",
+    "startedAt": 1788888981365,
+    "departedAt": 1788889046574,
+    "arrivedAt": 1788889136578,
+    "availableAfter": 1788889206922.0,
+    "actualSec": 155.213
+  },
+  {
+    "sourceId": 19053,
+    "targetId": 19067,
+    "busName": "#304",
+    "startedAt": 1788889886629,
+    "departedAt": 1788890352584,
+    "arrivedAt": 1788890427911,
+    "availableAfter": 1788890488156.0,
+    "actualSec": 541.282
+  },
+  {
+    "sourceId": 19243,
+    "targetId": 19260,
+    "busName": "#307",
+    "startedAt": 1788892253273,
+    "departedAt": 1788892353129,
+    "arrivedAt": 1788892463187,
+    "availableAfter": 1788892533057.0,
+    "actualSec": 209.914
+  },
+  {
+    "sourceId": 19611,
+    "targetId": 19621,
+    "busName": "#307",
+    "startedAt": 1788895843640,
+    "departedAt": 1788895993726,
+    "arrivedAt": 1788896078745,
+    "availableAfter": 1788896123772.0,
+    "actualSec": 235.105
+  },
+  {
+    "sourceId": 19774,
+    "targetId": 19788,
+    "busName": "#304",
+    "startedAt": 1788897603849,
+    "departedAt": 1788897688938,
+    "arrivedAt": 1788897798906,
+    "availableAfter": 1788897853977.0,
+    "actualSec": 195.057
+  },
+  {
+    "sourceId": 19983,
+    "targetId": 19994,
+    "busName": "#307",
+    "startedAt": 1788899273969,
+    "departedAt": 1788899488971,
+    "arrivedAt": 1788899579004,
+    "availableAfter": 1788899619146.0,
+    "actualSec": 305.035
+  },
+  {
+    "sourceId": 20175,
+    "targetId": 20191,
+    "busName": "#304",
+    "startedAt": 1788901129137,
+    "departedAt": 1788901224226,
+    "arrivedAt": 1788901309283,
+    "availableAfter": 1788901364159.0,
+    "actualSec": 180.146
+  },
+  {
+    "sourceId": 20523,
+    "targetId": 20533,
+    "busName": "#304",
+    "startedAt": 1788904549554,
+    "departedAt": 1788904629573,
+    "arrivedAt": 1788904729677,
+    "availableAfter": 1788904819742.0,
+    "actualSec": 180.123
+  },
+  {
+    "sourceId": 22091,
+    "targetId": 22125,
+    "busName": "#119",
+    "startedAt": 1788953714435,
+    "departedAt": 1788953859441,
+    "arrivedAt": 1788953959501,
+    "availableAfter": 1788954069494.0,
+    "actualSec": 245.066
+  },
+  {
+    "sourceId": 22270,
+    "targetId": 22300,
+    "busName": "#306",
+    "startedAt": 1788955009524,
+    "departedAt": 1788955254575,
+    "arrivedAt": 1788955339608,
+    "availableAfter": 1788955454852.0,
+    "actualSec": 330.084
+  },
+  {
+    "sourceId": 22513,
+    "targetId": 22553,
+    "busName": "#119",
+    "startedAt": 1788956841468,
+    "departedAt": 1788957342177,
+    "arrivedAt": 1788957497265,
+    "availableAfter": 1788957672076.0,
+    "actualSec": 655.797
+  },
+  {
+    "sourceId": 22715,
+    "targetId": 22739,
+    "busName": "#306",
+    "startedAt": 1788958872968,
+    "departedAt": 1788958958071,
+    "arrivedAt": 1788959042994,
+    "availableAfter": 1788959107994.0,
+    "actualSec": 170.026
+  },
+  {
+    "sourceId": 23008,
+    "targetId": 23025,
+    "busName": "#119",
+    "startedAt": 1788960988149,
+    "departedAt": 1788961073158,
+    "arrivedAt": 1788961148162,
+    "availableAfter": 1788961198195.0,
+    "actualSec": 160.013
+  },
+  {
+    "sourceId": 23188,
+    "targetId": 23201,
+    "busName": "#306",
+    "startedAt": 1788962218282,
+    "departedAt": 1788962463601,
+    "arrivedAt": 1788962533495,
+    "availableAfter": 1788962589030.0,
+    "actualSec": 315.213
+  },
+  {
+    "sourceId": 23465,
+    "targetId": 23483,
+    "busName": "#119",
+    "startedAt": 1788963732746,
+    "departedAt": 1788964402637,
+    "arrivedAt": 1788964502664,
+    "availableAfter": 1788964537664.0,
+    "actualSec": 769.918
+  },
+  {
+    "sourceId": 23671,
+    "targetId": 23684,
+    "busName": "#306",
+    "startedAt": 1788965567772,
+    "departedAt": 1788966032866,
+    "arrivedAt": 1788966097949,
+    "availableAfter": 1788966137914.0,
+    "actualSec": 530.177
+  },
+  {
+    "sourceId": 24100,
+    "targetId": 24115,
+    "busName": "#306",
+    "startedAt": 1788969283337,
+    "departedAt": 1788969667909,
+    "arrivedAt": 1788969777948,
+    "availableAfter": 1788969812970.0,
+    "actualSec": 494.611
+  },
+  {
+    "sourceId": 24301,
+    "targetId": 24316,
+    "busName": "#119",
+    "startedAt": 1788970953269,
+    "departedAt": 1788971608342,
+    "arrivedAt": 1788971698359,
+    "availableAfter": 1788971748321.0,
+    "actualSec": 745.09
+  },
+  {
+    "sourceId": 24687,
+    "targetId": 24702,
+    "busName": "#119",
+    "startedAt": 1788975179667,
+    "departedAt": 1788975239562,
+    "arrivedAt": 1788975309558,
+    "availableAfter": 1788975354472.0,
+    "actualSec": 129.891
+  },
+  {
+    "sourceId": 24905,
+    "targetId": 24915,
+    "busName": "#306",
+    "startedAt": 1788976920366,
+    "departedAt": 1788977045382,
+    "arrivedAt": 1788977135397,
+    "availableAfter": 1788977180425.0,
+    "actualSec": 215.031
+  },
+  {
+    "sourceId": 25064,
+    "targetId": 25077,
+    "busName": "#119",
+    "startedAt": 1788978240489,
+    "departedAt": 1788978631074,
+    "arrivedAt": 1788978731475,
+    "availableAfter": 1788978791634.0,
+    "actualSec": 490.986
+  },
+  {
+    "sourceId": 25281,
+    "targetId": 25306,
+    "busName": "#306",
+    "startedAt": 1788980132146,
+    "departedAt": 1788980447130,
+    "arrivedAt": 1788980537167,
+    "availableAfter": 1788980617215.0,
+    "actualSec": 405.021
+  },
+  {
+    "sourceId": 25516,
+    "targetId": 25536,
+    "busName": "#119",
+    "startedAt": 1788982387398,
+    "departedAt": 1788982437374,
+    "arrivedAt": 1788982507435,
+    "availableAfter": 1788982577537.0,
+    "actualSec": 120.037
+  },
+  {
+    "sourceId": 25622,
+    "targetId": 25634,
+    "busName": "#310",
+    "startedAt": 1788982562435,
+    "departedAt": 1788983227462,
+    "arrivedAt": 1788983287469,
+    "availableAfter": 1788983332456.0,
+    "actualSec": 725.034
+  },
+  {
+    "sourceId": 28254,
+    "targetId": 28278,
+    "busName": "#309",
+    "startedAt": 1789039302523,
+    "departedAt": 1789040142613,
+    "arrivedAt": 1789040227657,
+    "availableAfter": 1789040282714.0,
+    "actualSec": 925.134
+  },
+  {
+    "sourceId": 28359,
+    "targetId": 28381,
+    "busName": "#316",
+    "startedAt": 1789040682636,
+    "departedAt": 1789040817696,
+    "arrivedAt": 1789040907666,
+    "availableAfter": 1789040982646.0,
+    "actualSec": 225.03
+  },
+  {
+    "sourceId": 28464,
+    "targetId": 28493,
+    "busName": "#310",
+    "startedAt": 1789041307769,
+    "departedAt": 1789041622774,
+    "arrivedAt": 1789041717765,
+    "availableAfter": 1789041827913.0,
+    "actualSec": 409.996
+  },
+  {
+    "sourceId": 28731,
+    "targetId": 28753,
+    "busName": "#309",
+    "startedAt": 1789043142943,
+    "departedAt": 1789043682940,
+    "arrivedAt": 1789043782991,
+    "availableAfter": 1789043917830.0,
+    "actualSec": 640.048
+  },
+  {
+    "sourceId": 28799,
+    "targetId": 28835,
+    "busName": "#316",
+    "startedAt": 1789044053001,
+    "departedAt": 1789044353066,
+    "arrivedAt": 1789044503031,
+    "availableAfter": 1789044598073.0,
+    "actualSec": 450.03
+  },
+  {
+    "sourceId": 28950,
+    "targetId": 28977,
+    "busName": "#310",
+    "startedAt": 1789045248270,
+    "departedAt": 1789045378173,
+    "arrivedAt": 1789045458244,
+    "availableAfter": 1789045593173.0,
+    "actualSec": 209.974
+  },
+  {
+    "sourceId": 29191,
+    "targetId": 29218,
+    "busName": "#309",
+    "startedAt": 1789046908298,
+    "departedAt": 1789047238464,
+    "arrivedAt": 1789047368347,
+    "availableAfter": 1789047423267.0,
+    "actualSec": 460.049
+  },
+  {
+    "sourceId": 29301,
+    "targetId": 29322,
+    "busName": "#316",
+    "startedAt": 1789047795569,
+    "departedAt": 1789047961289,
+    "arrivedAt": 1789048051478,
+    "availableAfter": 1789048121680.0,
+    "actualSec": 255.909
+  },
+  {
+    "sourceId": 29679,
+    "targetId": 29704,
+    "busName": "#309",
+    "startedAt": 1789050615169,
+    "departedAt": 1789050675137,
+    "arrivedAt": 1789050765088,
+    "availableAfter": 1789050855170.0,
+    "actualSec": 149.919
+  },
+  {
+    "sourceId": 29811,
+    "targetId": 29835,
+    "busName": "#316",
+    "startedAt": 1789051195111,
+    "departedAt": 1789051565163,
+    "arrivedAt": 1789051655150,
+    "availableAfter": 1789051720519.0,
+    "actualSec": 460.039
+  },
+  {
+    "sourceId": 30165,
+    "targetId": 30184,
+    "busName": "#309",
+    "startedAt": 1789054015414,
+    "departedAt": 1789054420475,
+    "arrivedAt": 1789054495484,
+    "availableAfter": 1789054540521.0,
+    "actualSec": 480.07
+  },
+  {
+    "sourceId": 30272,
+    "targetId": 30291,
+    "busName": "#316",
+    "startedAt": 1789055025517,
+    "departedAt": 1789055160512,
+    "arrivedAt": 1789055240627,
+    "availableAfter": 1789055325464.0,
+    "actualSec": 215.11
+  },
+  {
+    "sourceId": 30355,
+    "targetId": 30371,
+    "busName": "#310",
+    "startedAt": 1789055749164,
+    "departedAt": 1789055844744,
+    "arrivedAt": 1789055929770,
+    "availableAfter": 1789055970128.0,
+    "actualSec": 180.606
+  },
+  {
+    "sourceId": 30612,
+    "targetId": 30629,
+    "busName": "#309",
+    "startedAt": 1789057390054,
+    "departedAt": 1789058050087,
+    "arrivedAt": 1789058120404,
+    "availableAfter": 1789058180572.0,
+    "actualSec": 730.35
+  },
+  {
+    "sourceId": 30702,
+    "targetId": 30717,
+    "busName": "#316",
+    "startedAt": 1789058390525,
+    "departedAt": 1789058810423,
+    "arrivedAt": 1789058885421,
+    "availableAfter": 1789058950580.0,
+    "actualSec": 494.896
+  },
+  {
+    "sourceId": 31052,
+    "targetId": 31065,
+    "busName": "#309",
+    "startedAt": 1789061680642,
+    "departedAt": 1789061740664,
+    "arrivedAt": 1789061830649,
+    "availableAfter": 1789061885665.0,
+    "actualSec": 150.007
+  },
+  {
+    "sourceId": 31146,
+    "targetId": 31168,
+    "busName": "#316",
+    "startedAt": 1789062580784,
+    "departedAt": 1789062675711,
+    "arrivedAt": 1789062745711,
+    "availableAfter": 1789062830726.0,
+    "actualSec": 164.927
+  },
+  {
+    "sourceId": 31206,
+    "targetId": 31219,
+    "busName": "#310",
+    "startedAt": 1789062795712,
+    "departedAt": 1789063355926,
+    "arrivedAt": 1789063455796,
+    "availableAfter": 1789063510783.0,
+    "actualSec": 660.084
+  },
+  {
+    "sourceId": 31414,
+    "targetId": 31428,
+    "busName": "#309",
+    "startedAt": 1789064806365,
+    "departedAt": 1789065167234,
+    "arrivedAt": 1789065257215,
+    "availableAfter": 1789065302235.0,
+    "actualSec": 450.85
+  },
+  {
+    "sourceId": 31647,
+    "targetId": 31666,
+    "busName": "#310",
+    "startedAt": 1789066578134,
+    "departedAt": 1789067279582,
+    "arrivedAt": 1789067364595,
+    "availableAfter": 1789067424482.0,
+    "actualSec": 786.461
+  },
+  {
+    "sourceId": 31823,
+    "targetId": 31835,
+    "busName": "#309",
+    "startedAt": 1789068326683,
+    "departedAt": 1789068794922,
+    "arrivedAt": 1789068880779,
+    "availableAfter": 1789068925921.0,
+    "actualSec": 554.096
+  },
+  {
+    "sourceId": 31925,
+    "targetId": 31933,
+    "busName": "#316",
+    "startedAt": 1789069255849,
+    "departedAt": 1789069715819,
+    "arrivedAt": 1789069785824,
+    "availableAfter": 1789069835839.0,
+    "actualSec": 529.975
+  },
+  {
+    "sourceId": 32016,
+    "targetId": 32035,
+    "busName": "#310",
+    "startedAt": 1789070230940,
+    "departedAt": 1789070661998,
+    "arrivedAt": 1789070757091,
+    "availableAfter": 1789070822069.0,
+    "actualSec": 526.151
+  },
+  {
+    "sourceId": 32349,
+    "targetId": 32374,
+    "busName": "#316",
+    "startedAt": 1789072891106,
+    "departedAt": 1789073367715,
+    "arrivedAt": 1789073487374,
+    "availableAfter": 1789073567562.0,
+    "actualSec": 596.268
+  },
+  {
+    "sourceId": 32465,
+    "targetId": 32485,
+    "busName": "#310",
+    "startedAt": 1789074278373,
+    "departedAt": 1789074428378,
+    "arrivedAt": 1789074553399,
+    "availableAfter": 1789074648717.0,
+    "actualSec": 275.026
+  },
+  {
+    "sourceId": 32657,
+    "targetId": 32672,
+    "busName": "#309",
+    "startedAt": 1789076239468,
+    "departedAt": 1789076304476,
+    "arrivedAt": 1789076375184,
+    "availableAfter": 1789076430411.0,
+    "actualSec": 135.716
+  },
+  {
+    "sourceId": 34401,
+    "targetId": 34418,
+    "busName": "#310",
+    "startedAt": 1789125812351,
+    "departedAt": 1789126532425,
+    "arrivedAt": 1789126612389,
+    "availableAfter": 1789126657646.0,
+    "actualSec": 800.038
+  },
+  {
+    "sourceId": 34492,
+    "targetId": 34520,
+    "busName": "#316",
+    "startedAt": 1789126782405,
+    "departedAt": 1789127227441,
+    "arrivedAt": 1789127307487,
+    "availableAfter": 1789127392591.0,
+    "actualSec": 525.082
+  },
+  {
+    "sourceId": 34607,
+    "targetId": 34631,
+    "busName": "#304",
+    "startedAt": 1789127672459,
+    "departedAt": 1789128062502,
+    "arrivedAt": 1789128142509,
+    "availableAfter": 1789128222628.0,
+    "actualSec": 470.05
+  },
+  {
+    "sourceId": 34867,
+    "targetId": 34890,
+    "busName": "#310",
+    "startedAt": 1789129502819,
+    "departedAt": 1789130037999,
+    "arrivedAt": 1789130133062,
+    "availableAfter": 1789130265065.0,
+    "actualSec": 630.243
+  },
+  {
+    "sourceId": 34960,
+    "targetId": 34978,
+    "busName": "#316",
+    "startedAt": 1789130330435,
+    "departedAt": 1789130766342,
+    "arrivedAt": 1789130841304,
+    "availableAfter": 1789130896324.0,
+    "actualSec": 510.869
+  },
+  {
+    "sourceId": 35077,
+    "targetId": 35109,
+    "busName": "#304",
+    "startedAt": 1789131076279,
+    "departedAt": 1789131651499,
+    "arrivedAt": 1789131741498,
+    "availableAfter": 1789131841537.0,
+    "actualSec": 665.219
+  },
+  {
+    "sourceId": 35356,
+    "targetId": 35383,
+    "busName": "#310",
+    "startedAt": 1789132982351,
+    "departedAt": 1789133547874,
+    "arrivedAt": 1789133642953,
+    "availableAfter": 1789133717862.0,
+    "actualSec": 660.602
+  },
+  {
+    "sourceId": 35594,
+    "targetId": 35620,
+    "busName": "#304",
+    "startedAt": 1789134587728,
+    "departedAt": 1789135248862,
+    "arrivedAt": 1789135323909,
+    "availableAfter": 1789135383821.0,
+    "actualSec": 736.181
+  },
+  {
+    "sourceId": 35854,
+    "targetId": 35882,
+    "busName": "#310",
+    "startedAt": 1789136930218,
+    "departedAt": 1789137190164,
+    "arrivedAt": 1789137275202,
+    "availableAfter": 1789137330491.0,
+    "actualSec": 344.984
+  },
+  {
+    "sourceId": 36076,
+    "targetId": 36094,
+    "busName": "#304",
+    "startedAt": 1789138295145,
+    "departedAt": 1789138821353,
+    "arrivedAt": 1789138881347,
+    "availableAfter": 1789138931466.0,
+    "actualSec": 586.202
+  },
+  {
+    "sourceId": 36443,
+    "targetId": 36462,
+    "busName": "#316",
+    "startedAt": 1789141432886,
+    "departedAt": 1789141696245,
+    "arrivedAt": 1789141791156,
+    "availableAfter": 1789141841258.0,
+    "actualSec": 358.27
+  },
+  {
+    "sourceId": 36526,
+    "targetId": 36549,
+    "busName": "#304",
+    "startedAt": 1789141916162,
+    "departedAt": 1789142434139,
+    "arrivedAt": 1789142494162,
+    "availableAfter": 1789142569200.0,
+    "actualSec": 578.0
+  },
+  {
+    "sourceId": 36772,
+    "targetId": 36790,
+    "busName": "#310",
+    "startedAt": 1789143680517,
+    "departedAt": 1789144395653,
+    "arrivedAt": 1789144465671,
+    "availableAfter": 1789144510872.0,
+    "actualSec": 785.154
+  },
+  {
+    "sourceId": 36874,
+    "targetId": 36894,
+    "busName": "#316",
+    "startedAt": 1789144695775,
+    "departedAt": 1789145195802,
+    "arrivedAt": 1789145296008,
+    "availableAfter": 1789145355804.0,
+    "actualSec": 600.233
+  },
+  {
+    "sourceId": 36958,
+    "targetId": 36977,
+    "busName": "#304",
+    "startedAt": 1789145355767,
+    "departedAt": 1789146005865,
+    "arrivedAt": 1789146070892,
+    "availableAfter": 1789146130940.0,
+    "actualSec": 715.125
+  },
+  {
+    "sourceId": 37256,
+    "targetId": 37271,
+    "busName": "#310",
+    "startedAt": 1789148365482,
+    "departedAt": 1789148652053,
+    "arrivedAt": 1789148722304,
+    "availableAfter": 1789148762559.0,
+    "actualSec": 356.822
+  },
+  {
+    "sourceId": 37460,
+    "targetId": 37475,
+    "busName": "#304",
+    "startedAt": 1789150571462,
+    "departedAt": 1789150686716,
+    "arrivedAt": 1789150756535,
+    "availableAfter": 1789150801540.0,
+    "actualSec": 185.073
+  },
+  {
+    "sourceId": 37563,
+    "targetId": 37577,
+    "busName": "#310",
+    "startedAt": 1789151416630,
+    "departedAt": 1789151461707,
+    "arrivedAt": 1789151551626,
+    "availableAfter": 1789151621598.0,
+    "actualSec": 134.996
+  },
+  {
+    "sourceId": 38305,
+    "targetId": 38322,
+    "busName": "#304",
+    "startedAt": 1789157912159,
+    "departedAt": 1789158187122,
+    "arrivedAt": 1789158292101,
+    "availableAfter": 1789158347141.0,
+    "actualSec": 379.942
+  },
+  {
+    "sourceId": 38379,
+    "targetId": 38393,
+    "busName": "#310",
+    "startedAt": 1789158157034,
+    "departedAt": 1789158762296,
+    "arrivedAt": 1789158837357,
+    "availableAfter": 1789158892415.0,
+    "actualSec": 680.323
+  },
+  {
+    "sourceId": 38791,
+    "targetId": 38806,
+    "busName": "#310",
+    "startedAt": 1789161912798,
+    "departedAt": 1789162342879,
+    "arrivedAt": 1789162422868,
+    "availableAfter": 1789162452958.0,
+    "actualSec": 510.07
+  },
+  {
+    "sourceId": 45102,
+    "targetId": 45120,
+    "busName": "#310",
+    "startedAt": 1789385148540,
+    "departedAt": 1789385663601,
+    "arrivedAt": 1789385763613,
+    "availableAfter": 1789385843691.0,
+    "actualSec": 615.073
+  },
+  {
+    "sourceId": 45545,
+    "targetId": 45565,
+    "busName": "#310",
+    "startedAt": 1789388570437,
+    "departedAt": 1789389230416,
+    "arrivedAt": 1789389300509,
+    "availableAfter": 1789389390458.0,
+    "actualSec": 730.072
+  },
+  {
+    "sourceId": 45643,
+    "targetId": 45667,
+    "busName": "#316",
+    "startedAt": 1789389975507,
+    "departedAt": 1789389980487,
+    "arrivedAt": 1789390185504,
+    "availableAfter": 1789390220473.0,
+    "actualSec": 209.997
+  },
+  {
+    "sourceId": 45996,
+    "targetId": 46030,
+    "busName": "#310",
+    "startedAt": 1789392505711,
+    "departedAt": 1789392715743,
+    "arrivedAt": 1789392795782,
+    "availableAfter": 1789392880764.0,
+    "actualSec": 290.071
+  },
+  {
+    "sourceId": 46117,
+    "targetId": 46150,
+    "busName": "#316",
+    "startedAt": 1789392970744,
+    "departedAt": 1789393460792,
+    "arrivedAt": 1789393665920,
+    "availableAfter": 1789393740589.0,
+    "actualSec": 695.176
+  },
+  {
+    "sourceId": 46496,
+    "targetId": 46508,
+    "busName": "#310",
+    "startedAt": 1789395746154,
+    "departedAt": 1789396381098,
+    "arrivedAt": 1789396446029,
+    "availableAfter": 1789396476029.0,
+    "actualSec": 699.875
+  },
+  {
+    "sourceId": 46566,
+    "targetId": 46594,
+    "busName": "#316",
+    "startedAt": 1789396881087,
+    "departedAt": 1789397091150,
+    "arrivedAt": 1789397296296,
+    "availableAfter": 1789397326103.0,
+    "actualSec": 415.209
+  },
+  {
+    "sourceId": 46865,
+    "targetId": 46882,
+    "busName": "#310",
+    "startedAt": 1789399256358,
+    "departedAt": 1789399936361,
+    "arrivedAt": 1789400016405,
+    "availableAfter": 1789400066466.0,
+    "actualSec": 760.047
+  },
+  {
+    "sourceId": 46954,
+    "targetId": 46985,
+    "busName": "#316",
+    "startedAt": 1789400391480,
+    "departedAt": 1789400681471,
+    "arrivedAt": 1789400891436,
+    "availableAfter": 1789400976446.0,
+    "actualSec": 499.956
+  },
+  {
+    "sourceId": 47277,
+    "targetId": 47292,
+    "busName": "#310",
+    "startedAt": 1789402993281,
+    "departedAt": 1789403558595,
+    "arrivedAt": 1789403618502,
+    "availableAfter": 1789403688579.0,
+    "actualSec": 625.221
+  },
+  {
+    "sourceId": 47364,
+    "targetId": 47391,
+    "busName": "#316",
+    "startedAt": 1789403898407,
+    "departedAt": 1789404323393,
+    "arrivedAt": 1789404553474,
+    "availableAfter": 1789404598440.0,
+    "actualSec": 655.067
+  },
+  {
+    "sourceId": 47701,
+    "targetId": 47712,
+    "busName": "#310",
+    "startedAt": 1789407248739,
+    "departedAt": 1789407388687,
+    "arrivedAt": 1789407483700,
+    "availableAfter": 1789407528698.0,
+    "actualSec": 234.961
+  },
+  {
+    "sourceId": 48062,
+    "targetId": 48074,
+    "busName": "#310",
+    "startedAt": 1789410340583,
+    "departedAt": 1789410735688,
+    "arrivedAt": 1789410855643,
+    "availableAfter": 1789410900658.0,
+    "actualSec": 515.06
+  },
+  {
+    "sourceId": 48370,
+    "targetId": 48386,
+    "busName": "#310",
+    "startedAt": 1789413685880,
+    "departedAt": 1789413750957,
+    "arrivedAt": 1789413825946,
+    "availableAfter": 1789413865905.0,
+    "actualSec": 140.066
+  },
+  {
+    "sourceId": 48568,
+    "targetId": 48592,
+    "busName": "#308",
+    "startedAt": 1789415816081,
+    "departedAt": 1789416121148,
+    "arrivedAt": 1789416201160,
+    "availableAfter": 1789416256183.0,
+    "actualSec": 385.079
+  },
+  {
+    "sourceId": 48738,
+    "targetId": 48749,
+    "busName": "#310",
+    "startedAt": 1789417321323,
+    "departedAt": 1789417601507,
+    "arrivedAt": 1789417716388,
+    "availableAfter": 1789417771535.0,
+    "actualSec": 395.065
+  },
+  {
+    "sourceId": 48783,
+    "targetId": 48796,
+    "busName": "#310",
+    "startedAt": 1789418071481,
+    "departedAt": 1789418141780,
+    "arrivedAt": 1789418236481,
+    "availableAfter": 1789418306645.0,
+    "actualSec": 165.0
+  },
+  {
+    "sourceId": 48950,
+    "targetId": 48963,
+    "busName": "#308",
+    "startedAt": 1789419326733,
+    "departedAt": 1789419646658,
+    "arrivedAt": 1789419741662,
+    "availableAfter": 1789419816742.0,
+    "actualSec": 414.929
+  },
+  {
+    "sourceId": 49151,
+    "targetId": 49167,
+    "busName": "#310",
+    "startedAt": 1789421148320,
+    "departedAt": 1789421408433,
+    "arrivedAt": 1789421493369,
+    "availableAfter": 1789421558475.0,
+    "actualSec": 345.049
+  },
+  {
+    "sourceId": 50993,
+    "targetId": 51021,
+    "busName": "#310",
+    "startedAt": 1789471306143,
+    "departedAt": 1789471886425,
+    "arrivedAt": 1789471966224,
+    "availableAfter": 1789472041174.0,
+    "actualSec": 660.081
+  },
+  {
+    "sourceId": 51246,
+    "targetId": 51282,
+    "busName": "#316",
+    "startedAt": 1789473132461,
+    "departedAt": 1789473642506,
+    "arrivedAt": 1789473817605,
+    "availableAfter": 1789473922670.0,
+    "actualSec": 685.144
+  },
+  {
+    "sourceId": 51476,
+    "targetId": 51508,
+    "busName": "#310",
+    "startedAt": 1789474937754,
+    "departedAt": 1789475492715,
+    "arrivedAt": 1789475607808,
+    "availableAfter": 1789475727818.0,
+    "actualSec": 670.054
+  },
+  {
+    "sourceId": 51708,
+    "targetId": 51735,
+    "busName": "#316",
+    "startedAt": 1789477394840,
+    "departedAt": 1789477429798,
+    "arrivedAt": 1789477524797,
+    "availableAfter": 1789477634909.0,
+    "actualSec": 129.957
+  },
+  {
+    "sourceId": 51941,
+    "targetId": 51961,
+    "busName": "#310",
+    "startedAt": 1789478984969,
+    "departedAt": 1789479074974,
+    "arrivedAt": 1789479219992,
+    "availableAfter": 1789479269938.0,
+    "actualSec": 235.023
+  },
+  {
+    "sourceId": 52170,
+    "targetId": 52186,
+    "busName": "#316",
+    "startedAt": 1789480585147,
+    "departedAt": 1789480870133,
+    "arrivedAt": 1789480945128,
+    "availableAfter": 1789481010132.0,
+    "actualSec": 359.981
+  },
+  {
+    "sourceId": 52421,
+    "targetId": 52441,
+    "busName": "#310",
+    "startedAt": 1789482290250,
+    "departedAt": 1789482755338,
+    "arrivedAt": 1789482830343,
+    "availableAfter": 1789482905407.0,
+    "actualSec": 540.093
+  },
+  {
+    "sourceId": 52625,
+    "targetId": 52649,
+    "busName": "#316",
+    "startedAt": 1789483915535,
+    "departedAt": 1789484485667,
+    "arrivedAt": 1789484575709,
+    "availableAfter": 1789484665663.0,
+    "actualSec": 660.174
+  },
+  {
+    "sourceId": 52858,
+    "targetId": 52877,
+    "busName": "#310",
+    "startedAt": 1789486375782,
+    "departedAt": 1789486440897,
+    "arrivedAt": 1789486515830,
+    "availableAfter": 1789486590803.0,
+    "actualSec": 140.048
+  },
+  {
+    "sourceId": 53030,
+    "targetId": 53041,
+    "busName": "#316",
+    "startedAt": 1789487680943,
+    "departedAt": 1789488105956,
+    "arrivedAt": 1789488165981,
+    "availableAfter": 1789488211024.0,
+    "actualSec": 485.038
+  },
+  {
+    "sourceId": 53243,
+    "targetId": 53255,
+    "busName": "#310",
+    "startedAt": 1789489441099,
+    "departedAt": 1789489936525,
+    "arrivedAt": 1789490031217,
+    "availableAfter": 1789490111303.0,
+    "actualSec": 590.118
+  },
+  {
+    "sourceId": 53422,
+    "targetId": 53439,
+    "busName": "#316",
+    "startedAt": 1789491361426,
+    "departedAt": 1789491646465,
+    "arrivedAt": 1789491716605,
+    "availableAfter": 1789491781404.0,
+    "actualSec": 355.179
+  },
+  {
+    "sourceId": 53627,
+    "targetId": 53653,
+    "busName": "#310",
+    "startedAt": 1789493481662,
+    "departedAt": 1789493586610,
+    "arrivedAt": 1789493696628,
+    "availableAfter": 1789493756605.0,
+    "actualSec": 214.966
+  },
+  {
+    "sourceId": 53837,
+    "targetId": 53849,
+    "busName": "#316",
+    "startedAt": 1789495464886,
+    "departedAt": 1789495559890,
+    "arrivedAt": 1789495619900,
+    "availableAfter": 1789495679728.0,
+    "actualSec": 155.014
+  },
+  {
+    "sourceId": 54010,
+    "targetId": 54027,
+    "busName": "#310",
+    "startedAt": 1789497135152,
+    "departedAt": 1789497280073,
+    "arrivedAt": 1789497360112,
+    "availableAfter": 1789497430218.0,
+    "actualSec": 224.96
+  },
+  {
+    "sourceId": 54190,
+    "targetId": 54208,
+    "busName": "#316",
+    "startedAt": 1789498395256,
+    "departedAt": 1789498900287,
+    "arrivedAt": 1789499005357,
+    "availableAfter": 1789499065305.0,
+    "actualSec": 610.101
+  },
+  {
+    "sourceId": 54377,
+    "targetId": 54391,
+    "busName": "#310",
+    "startedAt": 1789500445499,
+    "departedAt": 1789500600652,
+    "arrivedAt": 1789500685465,
+    "availableAfter": 1789500765486.0,
+    "actualSec": 239.966
+  },
+  {
+    "sourceId": 54579,
+    "targetId": 54590,
+    "busName": "#316",
+    "startedAt": 1789502155707,
+    "departedAt": 1789502545762,
+    "arrivedAt": 1789502615862,
+    "availableAfter": 1789502655745.0,
+    "actualSec": 460.155
+  },
+  {
+    "sourceId": 54785,
+    "targetId": 54796,
+    "busName": "#310",
+    "startedAt": 1789504020910,
+    "departedAt": 1789504321080,
+    "arrivedAt": 1789504410974,
+    "availableAfter": 1789504451063.0,
+    "actualSec": 390.064
+  },
+  {
+    "sourceId": 54977,
+    "targetId": 54990,
+    "busName": "#316",
+    "startedAt": 1789505906234,
+    "departedAt": 1789505996099,
+    "arrivedAt": 1789506066249,
+    "availableAfter": 1789506101124.0,
+    "actualSec": 160.015
+  },
+  {
+    "sourceId": 55191,
+    "targetId": 55203,
+    "busName": "#310",
+    "startedAt": 1789507871345,
+    "departedAt": 1789507946399,
+    "arrivedAt": 1789508031497,
+    "availableAfter": 1789508071677.0,
+    "actualSec": 160.152
+  },
+  {
+    "sourceId": 56968,
+    "targetId": 56994,
+    "busName": "#308",
+    "startedAt": 1789557863282,
+    "departedAt": 1789558368329,
+    "arrivedAt": 1789558458337,
+    "availableAfter": 1789558543359.0,
+    "actualSec": 595.055
+  },
+  {
+    "sourceId": 57100,
+    "targetId": 57124,
+    "busName": "#316",
+    "startedAt": 1789558833374,
+    "departedAt": 1789559228434,
+    "arrivedAt": 1789559319156,
+    "availableAfter": 1789559419148.0,
+    "actualSec": 485.782
+  },
+  {
+    "sourceId": 57226,
+    "targetId": 57258,
+    "busName": "#309",
+    "startedAt": 1789559899189,
+    "departedAt": 1789560074288,
+    "arrivedAt": 1789560199242,
+    "availableAfter": 1789560314280.0,
+    "actualSec": 300.053
+  },
+  {
+    "sourceId": 57463,
+    "targetId": 57490,
+    "busName": "#308",
+    "startedAt": 1789561811333,
+    "departedAt": 1789561916261,
+    "arrivedAt": 1789562026649,
+    "availableAfter": 1789562146521.0,
+    "actualSec": 215.316
+  },
+  {
+    "sourceId": 57581,
+    "targetId": 57596,
+    "busName": "#316",
+    "startedAt": 1789562616646,
+    "departedAt": 1789562781707,
+    "arrivedAt": 1789562946755,
+    "availableAfter": 1789563012024.0,
+    "actualSec": 330.109
+  },
+  {
+    "sourceId": 57789,
+    "targetId": 57815,
+    "busName": "#309",
+    "startedAt": 1789564301916,
+    "departedAt": 1789564426957,
+    "arrivedAt": 1789564511964,
+    "availableAfter": 1789564651965.0,
+    "actualSec": 210.048
+  },
+  {
+    "sourceId": 57965,
+    "targetId": 57987,
+    "busName": "#308",
+    "startedAt": 1789565632048,
+    "departedAt": 1789565707078,
+    "arrivedAt": 1789565792097,
+    "availableAfter": 1789565837196.0,
+    "actualSec": 160.049
+  },
+  {
+    "sourceId": 58061,
+    "targetId": 58080,
+    "busName": "#316",
+    "startedAt": 1789565897083,
+    "departedAt": 1789566367155,
+    "arrivedAt": 1789566437170,
+    "availableAfter": 1789566472162.0,
+    "actualSec": 540.087
+  },
+  {
+    "sourceId": 58224,
+    "targetId": 58260,
+    "busName": "#309",
+    "startedAt": 1789567297326,
+    "departedAt": 1789567392398,
+    "arrivedAt": 1789567487296,
+    "availableAfter": 1789567557344.0,
+    "actualSec": 189.97
+  }
+]

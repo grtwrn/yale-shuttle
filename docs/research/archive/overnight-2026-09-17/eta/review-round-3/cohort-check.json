@@ -1,0 +1,15 @@
+{
+  "originalLandmarkParity": 3898,
+  "uniqueDevelopmentCheckpoints": 722,
+  "identicalArmContractCohorts": 6,
+  "latencyFeatureEqualities": 1949,
+  "maxTrainingHoldSec": 924.526,
+  "cohorts": {
+    "(121, 'train')": 112,
+    "(11, 'train')": 102,
+    "(121, 'calibration')": 61,
+    "(11, 'calibration')": 58,
+    "(121, 'development')": 103,
+    "(11, 'development')": 99
+  }
+}

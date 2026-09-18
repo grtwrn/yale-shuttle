@@ -1,0 +1,746 @@
+{
+  "previousScored": 182918,
+  "correctedScored": 183123,
+  "counts": {
+    "unchanged": 177564,
+    "same-target-prior-origin": 5335,
+    "newly-resolved": 216,
+    "moved-to-transition": 11,
+    "retargeted": 8
+  },
+  "byRoute": {
+    "3": {
+      "same-target-prior-origin": 1522,
+      "newly-resolved": 62,
+      "moved-to-transition": 3,
+      "retargeted": 2
+    },
+    "9": {
+      "newly-resolved": 8,
+      "same-target-prior-origin": 101
+    },
+    "2": {
+      "same-target-prior-origin": 1557,
+      "moved-to-transition": 2,
+      "newly-resolved": 56,
+      "retargeted": 1
+    },
+    "1": {
+      "same-target-prior-origin": 1709,
+      "newly-resolved": 55,
+      "moved-to-transition": 1,
+      "retargeted": 1
+    },
+    "8": {
+      "same-target-prior-origin": 318,
+      "newly-resolved": 16,
+      "moved-to-transition": 4,
+      "retargeted": 3
+    },
+    "10": {
+      "newly-resolved": 8,
+      "same-target-prior-origin": 33
+    },
+    "15": {
+      "same-target-prior-origin": 85,
+      "newly-resolved": 9,
+      "moved-to-transition": 1,
+      "retargeted": 1
+    },
+    "19": {
+      "newly-resolved": 2,
+      "same-target-prior-origin": 10
+    }
+  },
+  "examples": {
+    "same-target-prior-origin": {
+      "key": [
+        124,
+        3,
+        "308",
+        0,
+        0
+      ],
+      "change": "same-target-prior-origin",
+      "previous": {
+        "at": 1789557303289,
+        "poll": 124,
+        "route": 3,
+        "bus": "308",
+        "targetIndex": 0,
+        "targetStop": 121,
+        "occurrence": 0,
+        "sourceId": 56834,
+        "targetId": 57204,
+        "legIds": [
+          52514,
+          52521,
+          52541,
+          52552,
+          52564,
+          52576,
+          52639,
+          52640,
+          52644,
+          52663,
+          52678,
+          52686,
+          52701,
+          52712,
+          52725,
+          52726,
+          52750,
+          52757,
+          52773,
+          52778,
+          52786
+        ],
+        "truthSec": 2090.854,
+        "current": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "canonical": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      },
+      "corrected": {
+        "at": 1789557303289,
+        "poll": 124,
+        "route": 3,
+        "bus": "308",
+        "targetIndex": 0,
+        "targetStop": 121,
+        "occurrence": 0,
+        "sourceId": 56829,
+        "targetId": 57204,
+        "legIds": [
+          52507,
+          52514,
+          52521,
+          52541,
+          52552,
+          52564,
+          52576,
+          52639,
+          52640,
+          52644,
+          52663,
+          52678,
+          52686,
+          52701,
+          52712,
+          52725,
+          52726,
+          52750,
+          52757,
+          52773,
+          52778,
+          52786
+        ],
+        "truthSec": 2090.854,
+        "current": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "canonical": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 56834,
+          "pricedSourceId": 56829,
+          "originIndex": 7,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            52507
+          ],
+          "restSince": [
+            1789557263313,
+            1789557263313
+          ]
+        },
+        "historicalSourceId": 56834
+      },
+      "retainedAlignment": {
+        "at": 1789557303289,
+        "poll": 124,
+        "route": 3,
+        "bus": "308",
+        "targetIndex": 0,
+        "targetStop": 121,
+        "occurrence": 0,
+        "sourceId": 56829,
+        "targetId": 57204,
+        "legIds": [
+          52507,
+          52514,
+          52521,
+          52541,
+          52552,
+          52564,
+          52576,
+          52639,
+          52640,
+          52644,
+          52663,
+          52678,
+          52686,
+          52701,
+          52712,
+          52725,
+          52726,
+          52750,
+          52757,
+          52773,
+          52778,
+          52786
+        ],
+        "truthSec": 2090.854,
+        "current": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "canonical": [
+          2340,
+          1908,
+          2789,
+          22
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 56834,
+          "pricedSourceId": 56829,
+          "originIndex": 7,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            52507
+          ],
+          "restSince": [
+            1789557263313,
+            1789557263313
+          ]
+        },
+        "historicalSourceId": 56834
+      }
+    },
+    "newly-resolved": {
+      "key": [
+        124,
+        3,
+        "308",
+        8,
+        0
+      ],
+      "change": "newly-resolved",
+      "previous": null,
+      "corrected": {
+        "at": 1789557303289,
+        "poll": 124,
+        "route": 3,
+        "bus": "308",
+        "targetIndex": 8,
+        "targetStop": 36,
+        "occurrence": 0,
+        "sourceId": 56829,
+        "targetId": 56834,
+        "legIds": [
+          52507
+        ],
+        "truthSec": 4.942,
+        "current": [
+          4,
+          3,
+          6,
+          1
+        ],
+        "canonical": [
+          4,
+          3,
+          6,
+          1
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 56834,
+          "pricedSourceId": 56829,
+          "originIndex": 7,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            52507
+          ],
+          "restSince": [
+            1789557263313,
+            1789557263313
+          ]
+        },
+        "historicalSourceId": 56834
+      },
+      "retainedAlignment": {
+        "at": 1789557303289,
+        "poll": 124,
+        "route": 3,
+        "bus": "308",
+        "targetIndex": 8,
+        "targetStop": 36,
+        "occurrence": 0,
+        "sourceId": 56829,
+        "targetId": 56834,
+        "legIds": [
+          52507
+        ],
+        "truthSec": 4.942,
+        "current": [
+          4,
+          3,
+          6,
+          1
+        ],
+        "canonical": [
+          4,
+          3,
+          6,
+          1
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 56834,
+          "pricedSourceId": 56829,
+          "originIndex": 7,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            52507
+          ],
+          "restSince": [
+            1789557263313,
+            1789557263313
+          ]
+        },
+        "historicalSourceId": 56834
+      }
+    },
+    "moved-to-transition": {
+      "key": [
+        220,
+        2,
+        "53",
+        1,
+        0
+      ],
+      "change": "moved-to-transition",
+      "previous": {
+        "at": 1789557783285,
+        "poll": 220,
+        "route": 2,
+        "bus": "53",
+        "targetIndex": 1,
+        "targetStop": 28,
+        "occurrence": 0,
+        "sourceId": 56906,
+        "targetId": 57352,
+        "legIds": [
+          52578,
+          52588,
+          52594,
+          52598,
+          52601,
+          52606,
+          52611,
+          52616,
+          52622,
+          52629,
+          52645,
+          52664,
+          52677,
+          52679,
+          52695,
+          52705,
+          52709,
+          52740,
+          52742,
+          52756,
+          52860,
+          52873,
+          52886,
+          52926,
+          52935,
+          52944,
+          52957,
+          52959,
+          52971,
+          52977,
+          52984,
+          52997
+        ],
+        "truthSec": 3127.679,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      },
+      "corrected": null,
+      "retainedAlignment": {
+        "at": 1789557783285,
+        "poll": 220,
+        "route": 2,
+        "bus": "53",
+        "targetIndex": 1,
+        "targetStop": 28,
+        "occurrence": 0,
+        "sourceId": 56897,
+        "targetId": 56897,
+        "legIds": [],
+        "truthSec": -75.006,
+        "current": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "canonical": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxBandDelta": 0,
+        "reason": "current-source-transition",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 56906,
+          "pricedSourceId": 56897,
+          "originIndex": 1,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            52575
+          ],
+          "restSince": [
+            1789557703290,
+            1789557703290
+          ]
+        },
+        "historicalSourceId": 56906
+      }
+    },
+    "retargeted": {
+      "key": [
+        1227,
+        2,
+        "49",
+        13,
+        1
+      ],
+      "change": "retargeted",
+      "previous": {
+        "at": 1789562821780,
+        "poll": 1227,
+        "route": 2,
+        "bus": "49",
+        "targetIndex": 13,
+        "targetStop": 19,
+        "occurrence": 1,
+        "sourceId": 57598,
+        "targetId": 58554,
+        "legIds": [
+          53251,
+          53265,
+          53275,
+          53289,
+          53293,
+          53305,
+          53317,
+          53327,
+          53566,
+          53570,
+          53586,
+          53624,
+          53634,
+          53667,
+          53676,
+          53679,
+          53701,
+          53703,
+          53708,
+          53719,
+          53724,
+          53728,
+          53738,
+          53745,
+          53757,
+          53761,
+          53769,
+          53776,
+          53779,
+          53783,
+          53796,
+          53812,
+          53818,
+          53832,
+          53839,
+          53863,
+          53877,
+          53883,
+          53907,
+          53915,
+          53924,
+          53949,
+          53968,
+          53978,
+          54002,
+          54028,
+          54046,
+          54055,
+          54056,
+          54065,
+          54081,
+          54085,
+          54090,
+          54100,
+          54104,
+          54116,
+          54123,
+          54126,
+          54130,
+          54133,
+          54140,
+          54148,
+          54154,
+          54165,
+          54182
+        ],
+        "truthSec": 6781.658,
+        "current": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "canonical": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected"
+      },
+      "corrected": {
+        "at": 1789562821780,
+        "poll": 1227,
+        "route": 2,
+        "bus": "49",
+        "targetIndex": 13,
+        "targetStop": 19,
+        "occurrence": 1,
+        "sourceId": 57578,
+        "targetId": 58178,
+        "legIds": [
+          53238,
+          53251,
+          53265,
+          53275,
+          53289,
+          53293,
+          53305,
+          53317,
+          53327,
+          53566,
+          53570,
+          53586,
+          53624,
+          53634,
+          53667,
+          53676,
+          53679,
+          53701,
+          53703,
+          53708,
+          53719,
+          53724,
+          53728,
+          53738,
+          53745,
+          53757,
+          53761,
+          53769,
+          53776,
+          53779,
+          53783,
+          53796,
+          53812
+        ],
+        "truthSec": 4265.453,
+        "current": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "canonical": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 57598,
+          "pricedSourceId": 57578,
+          "originIndex": 13,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            53238
+          ],
+          "restSince": [
+            1789562671684,
+            1789562671684
+          ]
+        },
+        "historicalSourceId": 57598
+      },
+      "retainedAlignment": {
+        "at": 1789562821780,
+        "poll": 1227,
+        "route": 2,
+        "bus": "49",
+        "targetIndex": 13,
+        "targetStop": 19,
+        "occurrence": 1,
+        "sourceId": 57578,
+        "targetId": 58178,
+        "legIds": [
+          53238,
+          53251,
+          53265,
+          53275,
+          53289,
+          53293,
+          53305,
+          53317,
+          53327,
+          53566,
+          53570,
+          53586,
+          53624,
+          53634,
+          53667,
+          53676,
+          53679,
+          53701,
+          53703,
+          53708,
+          53719,
+          53724,
+          53728,
+          53738,
+          53745,
+          53757,
+          53761,
+          53769,
+          53776,
+          53779,
+          53783,
+          53796,
+          53812
+        ],
+        "truthSec": 4265.453,
+        "current": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "canonical": [
+          3441,
+          2898,
+          6164,
+          33
+        ],
+        "maxBandDelta": 0,
+        "reason": "connected",
+        "alignment": {
+          "kind": "exact-lagged-rest",
+          "historicalSourceId": 57598,
+          "pricedSourceId": 57578,
+          "originIndex": 13,
+          "sourceOffsetHops": 1,
+          "proofLegIds": [
+            53238
+          ],
+          "restSince": [
+            1789562671684,
+            1789562671684
+          ]
+        },
+        "historicalSourceId": 57598
+      }
+    }
+  },
+  "allRawForecastChangesAvailabilityStabilityProgressPreserved": true,
+  "previousLargestRegressionsRetained": 25,
+  "largestPointRegression": {
+    "at": 1789563181810,
+    "poll": 1299,
+    "route": 15,
+    "bus": "304",
+    "targetIndex": 4,
+    "targetStop": 156,
+    "occurrence": 0,
+    "sourceId": 57627,
+    "targetId": 57634,
+    "legIds": [
+      53281
+    ],
+    "truthSec": 44.997,
+    "current": [
+      94,
+      -4,
+      222,
+      2
+    ],
+    "canonical": [
+      163,
+      -11,
+      382,
+      2
+    ],
+    "maxBandDelta": 160,
+    "reason": "connected",
+    "errorIncrease": 69.0
+  },
+  "legacyUncertainty": "Only exact lagged-rest subset has new identity proof. Unchanged rows retain prior source-alignment caveats; no complete all-row physical identity certification."
+}

@@ -1,0 +1,1671 @@
+{
+  "thresholdsSec": {
+    "121": 467.6855999231334,
+    "11": 358.04905006885525
+  },
+  "trainingThresholdPairs": [
+    {
+      "stop": 121,
+      "previous": 970,
+      "current": 1483,
+      "known": 1788447785176,
+      "deltaSec": 7.15099978446961
+    },
+    {
+      "stop": 121,
+      "previous": 1483,
+      "current": 1915,
+      "known": 1788451435646,
+      "deltaSec": 50.46999979019163
+    },
+    {
+      "stop": 121,
+      "previous": 1915,
+      "current": 2319,
+      "known": 1788455073501,
+      "deltaSec": 37.85500001907352
+    },
+    {
+      "stop": 121,
+      "previous": 2319,
+      "current": 2747,
+      "known": 1788458643950,
+      "deltaSec": 29.550999879837043
+    },
+    {
+      "stop": 121,
+      "previous": 2747,
+      "current": 3133,
+      "known": 1788462149443,
+      "deltaSec": 94.50699996948242
+    },
+    {
+      "stop": 121,
+      "previous": 3133,
+      "current": 3526,
+      "known": 1788465736246,
+      "deltaSec": 13.197000026702879
+    },
+    {
+      "stop": 121,
+      "previous": 3526,
+      "current": 3954,
+      "known": 1788469373398,
+      "deltaSec": 37.151999950408936
+    },
+    {
+      "stop": 121,
+      "previous": 3954,
+      "current": 4314,
+      "known": 1788472659526,
+      "deltaSec": 313.8719999790193
+    },
+    {
+      "stop": 121,
+      "previous": 1106,
+      "current": 1605,
+      "known": 1788448661236,
+      "deltaSec": 53.652999877929666
+    },
+    {
+      "stop": 121,
+      "previous": 1605,
+      "current": 1999,
+      "known": 1788452200644,
+      "deltaSec": 60.59200000762935
+    },
+    {
+      "stop": 121,
+      "previous": 1999,
+      "current": 2402,
+      "known": 1788455813504,
+      "deltaSec": 12.859999895095706
+    },
+    {
+      "stop": 121,
+      "previous": 2402,
+      "current": 2837,
+      "known": 1788459474114,
+      "deltaSec": 60.61000013351447
+    },
+    {
+      "stop": 121,
+      "previous": 2837,
+      "current": 3240,
+      "known": 1788463009595,
+      "deltaSec": 64.5190000534057
+    },
+    {
+      "stop": 121,
+      "previous": 3240,
+      "current": 3645,
+      "known": 1788466632840,
+      "deltaSec": 23.24499988555897
+    },
+    {
+      "stop": 121,
+      "previous": 3645,
+      "current": 4050,
+      "known": 1788470223719,
+      "deltaSec": 9.120999813079845
+    },
+    {
+      "stop": 121,
+      "previous": 4050,
+      "current": 4399,
+      "known": 1788473549295,
+      "deltaSec": 274.4240000247955
+    },
+    {
+      "stop": 11,
+      "previous": 1020,
+      "current": 1515,
+      "known": 1788447980198,
+      "deltaSec": 167.2699999809265
+    },
+    {
+      "stop": 11,
+      "previous": 1515,
+      "current": 1937,
+      "known": 1788451615593,
+      "deltaSec": 35.39499998092644
+    },
+    {
+      "stop": 11,
+      "previous": 1937,
+      "current": 2359,
+      "known": 1788455373485,
+      "deltaSec": 157.89199995994574
+    },
+    {
+      "stop": 11,
+      "previous": 2359,
+      "current": 2753,
+      "known": 1788458723935,
+      "deltaSec": 249.54999995231626
+    },
+    {
+      "stop": 11,
+      "previous": 2753,
+      "current": 3143,
+      "known": 1788462229485,
+      "deltaSec": 94.45000004768373
+    },
+    {
+      "stop": 11,
+      "previous": 3143,
+      "current": 3536,
+      "known": 1788465831589,
+      "deltaSec": 2.104000091552727
+    },
+    {
+      "stop": 11,
+      "previous": 3536,
+      "current": 3957,
+      "known": 1788469378303,
+      "deltaSec": 53.28600001335144
+    },
+    {
+      "stop": 11,
+      "previous": 3957,
+      "current": 4321,
+      "known": 1788472734644,
+      "deltaSec": 243.6589999198911
+    },
+    {
+      "stop": 11,
+      "previous": 1243,
+      "current": 1711,
+      "known": 1788449716391,
+      "deltaSec": 22.483999967575084
+    },
+    {
+      "stop": 11,
+      "previous": 1711,
+      "current": 2126,
+      "known": 1788453316304,
+      "deltaSec": 0.08700013160701921
+    },
+    {
+      "stop": 11,
+      "previous": 2126,
+      "current": 2570,
+      "known": 1788457163734,
+      "deltaSec": 247.4300000667572
+    },
+    {
+      "stop": 11,
+      "previous": 2570,
+      "current": 2942,
+      "known": 1788460434260,
+      "deltaSec": 329.4739999771118
+    },
+    {
+      "stop": 11,
+      "previous": 2942,
+      "current": 3339,
+      "known": 1788464004736,
+      "deltaSec": 29.523999929428008
+    },
+    {
+      "stop": 11,
+      "previous": 3339,
+      "current": 3741,
+      "known": 1788467622984,
+      "deltaSec": 18.247999906539647
+    },
+    {
+      "stop": 11,
+      "previous": 3741,
+      "current": 4124,
+      "known": 1788470977942,
+      "deltaSec": 245.0420000553128
+    },
+    {
+      "stop": 121,
+      "previous": 1242,
+      "current": 1727,
+      "known": 1788449821576,
+      "deltaSec": 112.80999994277948
+    },
+    {
+      "stop": 121,
+      "previous": 1727,
+      "current": 2105,
+      "known": 1788453141126,
+      "deltaSec": 280.4500000476838
+    },
+    {
+      "stop": 121,
+      "previous": 2105,
+      "current": 2531,
+      "known": 1788456823853,
+      "deltaSec": 82.72699999809252
+    },
+    {
+      "stop": 121,
+      "previous": 2531,
+      "current": 2937,
+      "known": 1788460379277,
+      "deltaSec": 44.57599997520443
+    },
+    {
+      "stop": 121,
+      "previous": 2937,
+      "current": 3328,
+      "known": 1788463894683,
+      "deltaSec": 84.59399986267078
+    },
+    {
+      "stop": 121,
+      "previous": 3328,
+      "current": 3743,
+      "known": 1788467567953,
+      "deltaSec": 73.26999998092657
+    },
+    {
+      "stop": 121,
+      "previous": 3743,
+      "current": 4135,
+      "known": 1788471047801,
+      "deltaSec": 120.151999950409
+    },
+    {
+      "stop": 11,
+      "previous": 1355,
+      "current": 1806,
+      "known": 1788450468626,
+      "deltaSec": 8.536000013351549
+    },
+    {
+      "stop": 11,
+      "previous": 1806,
+      "current": 2206,
+      "known": 1788454006227,
+      "deltaSec": 62.39899992942762
+    },
+    {
+      "stop": 11,
+      "previous": 2206,
+      "current": 2631,
+      "known": 1788457688773,
+      "deltaSec": 82.5460000038148
+    },
+    {
+      "stop": 11,
+      "previous": 2631,
+      "current": 3022,
+      "known": 1788461254315,
+      "deltaSec": 34.45799994468707
+    },
+    {
+      "stop": 11,
+      "previous": 3022,
+      "current": 3432,
+      "known": 1788464889875,
+      "deltaSec": 35.559999942779456
+    },
+    {
+      "stop": 11,
+      "previous": 3432,
+      "current": 3838,
+      "known": 1788468498149,
+      "deltaSec": 8.273999929428301
+    },
+    {
+      "stop": 11,
+      "previous": 3838,
+      "current": 4267,
+      "known": 1788472259562,
+      "deltaSec": 161.4130001068108
+    },
+    {
+      "stop": 121,
+      "previous": 580,
+      "current": 5364,
+      "known": 1788523385990,
+      "deltaSec": 494.62800002098083
+    },
+    {
+      "stop": 121,
+      "previous": 6349,
+      "current": 6883,
+      "known": 1788534225705,
+      "deltaSec": 65.15399980545044
+    },
+    {
+      "stop": 121,
+      "previous": 6883,
+      "current": 7332,
+      "known": 1788537824953,
+      "deltaSec": 0.7519998550415089
+    },
+    {
+      "stop": 121,
+      "previous": 7332,
+      "current": 7709,
+      "known": 1788541335281,
+      "deltaSec": 89.67200016975403
+    },
+    {
+      "stop": 121,
+      "previous": 7709,
+      "current": 8123,
+      "known": 1788544952282,
+      "deltaSec": 17.001000165939328
+    },
+    {
+      "stop": 121,
+      "previous": 8123,
+      "current": 8505,
+      "known": 1788548567273,
+      "deltaSec": 14.990999937057504
+    },
+    {
+      "stop": 121,
+      "previous": 8505,
+      "current": 8868,
+      "known": 1788551986365,
+      "deltaSec": 180.90799999237075
+    },
+    {
+      "stop": 121,
+      "previous": 8868,
+      "current": 9319,
+      "known": 1788555707753,
+      "deltaSec": 121.38800001144388
+    },
+    {
+      "stop": 121,
+      "previous": 622,
+      "current": 5489,
+      "known": 1788524267362,
+      "deltaSec": 31.69799995422359
+    },
+    {
+      "stop": 121,
+      "previous": 5489,
+      "current": 5976,
+      "known": 1788527813026,
+      "deltaSec": 54.33599996566774
+    },
+    {
+      "stop": 121,
+      "previous": 5976,
+      "current": 6475,
+      "known": 1788531399251,
+      "deltaSec": 13.775000095367313
+    },
+    {
+      "stop": 121,
+      "previous": 6475,
+      "current": 6994,
+      "known": 1788534999612,
+      "deltaSec": 0.36100006103506066
+    },
+    {
+      "stop": 121,
+      "previous": 6994,
+      "current": 7426,
+      "known": 1788538600398,
+      "deltaSec": 0.7860000133515179
+    },
+    {
+      "stop": 121,
+      "previous": 8209,
+      "current": 8596,
+      "known": 1788549407942,
+      "deltaSec": 14.112999916076754
+    },
+    {
+      "stop": 121,
+      "previous": 8596,
+      "current": 8993,
+      "known": 1788553032608,
+      "deltaSec": 24.6660001277923
+    },
+    {
+      "stop": 121,
+      "previous": 8993,
+      "current": 9433,
+      "known": 1788556632279,
+      "deltaSec": 0.3289999961852642
+    },
+    {
+      "stop": 121,
+      "previous": 9433,
+      "current": 9763,
+      "known": 1788559852837,
+      "deltaSec": 379.4420001506806
+    },
+    {
+      "stop": 121,
+      "previous": 759,
+      "current": 5606,
+      "known": 1788525144525,
+      "deltaSec": 91.27600002288797
+    },
+    {
+      "stop": 121,
+      "previous": 5606,
+      "current": 6103,
+      "known": 1788528747066,
+      "deltaSec": 2.54099988937383
+    },
+    {
+      "stop": 121,
+      "previous": 6103,
+      "current": 6613,
+      "known": 1788532339723,
+      "deltaSec": 7.342999935150121
+    },
+    {
+      "stop": 121,
+      "previous": 6613,
+      "current": 7094,
+      "known": 1788535921055,
+      "deltaSec": 18.66799998283395
+    },
+    {
+      "stop": 121,
+      "previous": 7094,
+      "current": 7521,
+      "known": 1788539526556,
+      "deltaSec": 5.500999927520805
+    },
+    {
+      "stop": 121,
+      "previous": 7521,
+      "current": 7916,
+      "known": 1788543118039,
+      "deltaSec": 8.516999959945645
+    },
+    {
+      "stop": 121,
+      "previous": 7916,
+      "current": 8346,
+      "known": 1788547029316,
+      "deltaSec": 311.27699995040894
+    },
+    {
+      "stop": 121,
+      "previous": 8346,
+      "current": 8703,
+      "known": 1788550395758,
+      "deltaSec": 233.558000087738
+    },
+    {
+      "stop": 121,
+      "previous": 8703,
+      "current": 9063,
+      "known": 1788553582525,
+      "deltaSec": 413.2329998016355
+    },
+    {
+      "stop": 121,
+      "previous": 9063,
+      "current": 9510,
+      "known": 1788557252584,
+      "deltaSec": 70.0590000152587
+    },
+    {
+      "stop": 11,
+      "previous": 782,
+      "current": 5618,
+      "known": 1788525274941,
+      "deltaSec": 146.01399993896487
+    },
+    {
+      "stop": 11,
+      "previous": 6131,
+      "current": 6639,
+      "known": 1788532535152,
+      "deltaSec": 87.0740001201631
+    },
+    {
+      "stop": 11,
+      "previous": 6639,
+      "current": 7109,
+      "known": 1788536136424,
+      "deltaSec": 1.2720000743864226
+    },
+    {
+      "stop": 11,
+      "previous": 7109,
+      "current": 7542,
+      "known": 1788539776682,
+      "deltaSec": 40.2579998970033
+    },
+    {
+      "stop": 11,
+      "previous": 7542,
+      "current": 7960,
+      "known": 1788543533188,
+      "deltaSec": 156.50600004196176
+    },
+    {
+      "stop": 11,
+      "previous": 7960,
+      "current": 8319,
+      "known": 1788546744136,
+      "deltaSec": 389.05200004577637
+    },
+    {
+      "stop": 11,
+      "previous": 8319,
+      "current": 8704,
+      "known": 1788550440761,
+      "deltaSec": 96.625
+    },
+    {
+      "stop": 11,
+      "previous": 8704,
+      "current": 9108,
+      "known": 1788554007565,
+      "deltaSec": 33.19599986076365
+    },
+    {
+      "stop": 11,
+      "previous": 9108,
+      "current": 9495,
+      "known": 1788557192597,
+      "deltaSec": 414.9680001735685
+    },
+    {
+      "stop": 11,
+      "previous": 871,
+      "current": 5772,
+      "known": 1788526408789,
+      "deltaSec": 292.88300013542147
+    },
+    {
+      "stop": 11,
+      "previous": 5772,
+      "current": 6229,
+      "known": 1788529676106,
+      "deltaSec": 332.68300008773764
+    },
+    {
+      "stop": 11,
+      "previous": 6229,
+      "current": 6749,
+      "known": 1788533269163,
+      "deltaSec": 6.942999839783127
+    },
+    {
+      "stop": 11,
+      "previous": 6749,
+      "current": 7220,
+      "known": 1788536908325,
+      "deltaSec": 39.16199994087271
+    },
+    {
+      "stop": 11,
+      "previous": 8031,
+      "current": 8410,
+      "known": 1788547681939,
+      "deltaSec": 60.05599999427793
+    },
+    {
+      "stop": 11,
+      "previous": 8410,
+      "current": 8791,
+      "known": 1788551326145,
+      "deltaSec": 44.20600008964493
+    },
+    {
+      "stop": 11,
+      "previous": 8791,
+      "current": 9202,
+      "known": 1788554877660,
+      "deltaSec": 48.484999895095406
+    },
+    {
+      "stop": 11,
+      "previous": 9202,
+      "current": 9614,
+      "known": 1788558227655,
+      "deltaSec": 250.0050001144411
+    },
+    {
+      "stop": 11,
+      "previous": 5360,
+      "current": 5836,
+      "known": 1788526974114,
+      "deltaSec": 6.951999902725212
+    },
+    {
+      "stop": 11,
+      "previous": 5836,
+      "current": 6354,
+      "known": 1788530625740,
+      "deltaSec": 51.62599992752076
+    },
+    {
+      "stop": 11,
+      "previous": 6354,
+      "current": 6882,
+      "known": 1788534285881,
+      "deltaSec": 60.14100003242493
+    },
+    {
+      "stop": 11,
+      "previous": 6882,
+      "current": 7326,
+      "known": 1788537799763,
+      "deltaSec": 86.11800003051758
+    },
+    {
+      "stop": 11,
+      "previous": 7326,
+      "current": 7708,
+      "known": 1788541380352,
+      "deltaSec": 19.411000013351444
+    },
+    {
+      "stop": 11,
+      "previous": 7708,
+      "current": 8200,
+      "known": 1788545723693,
+      "deltaSec": 743.3410000801085
+    },
+    {
+      "stop": 11,
+      "previous": 8200,
+      "current": 8514,
+      "known": 1788548617219,
+      "deltaSec": 706.4739999771117
+    },
+    {
+      "stop": 11,
+      "previous": 8514,
+      "current": 8887,
+      "known": 1788552247099,
+      "deltaSec": 29.87999987602232
+    },
+    {
+      "stop": 11,
+      "previous": 8887,
+      "current": 9316,
+      "known": 1788555727660,
+      "deltaSec": 119.43899989128109
+    },
+    {
+      "stop": 11,
+      "previous": 9316,
+      "current": 9727,
+      "known": 1788559507887,
+      "deltaSec": 180.22699999809265
+    },
+    {
+      "stop": 121,
+      "previous": 15883,
+      "current": 16300,
+      "known": 1788868972546,
+      "deltaSec": 449.7539999485016
+    },
+    {
+      "stop": 121,
+      "previous": 16300,
+      "current": 16782,
+      "known": 1788872517954,
+      "deltaSec": 54.59200000762956
+    },
+    {
+      "stop": 121,
+      "previous": 16782,
+      "current": 17322,
+      "known": 1788876289887,
+      "deltaSec": 171.9330000877382
+    },
+    {
+      "stop": 121,
+      "previous": 17322,
+      "current": 17796,
+      "known": 1788879650163,
+      "deltaSec": 239.72399997711176
+    },
+    {
+      "stop": 121,
+      "previous": 17796,
+      "current": 18244,
+      "known": 1788883320675,
+      "deltaSec": 70.51199984550472
+    },
+    {
+      "stop": 121,
+      "previous": 18244,
+      "current": 18680,
+      "known": 1788886961386,
+      "deltaSec": 40.710999965667725
+    },
+    {
+      "stop": 121,
+      "previous": 18680,
+      "current": 19099,
+      "known": 1788890908096,
+      "deltaSec": 346.710000038147
+    },
+    {
+      "stop": 121,
+      "previous": 19099,
+      "current": 19428,
+      "known": 1788894228197,
+      "deltaSec": 279.898999929428
+    },
+    {
+      "stop": 121,
+      "previous": 19428,
+      "current": 19783,
+      "known": 1788897848902,
+      "deltaSec": 20.704999923706062
+    },
+    {
+      "stop": 121,
+      "previous": 19783,
+      "current": 20172,
+      "known": 1788901244139,
+      "deltaSec": 204.76300001144455
+    },
+    {
+      "stop": 121,
+      "previous": 20172,
+      "current": 20520,
+      "known": 1788904699747,
+      "deltaSec": 144.39199995994494
+    },
+    {
+      "stop": 121,
+      "previous": 15974,
+      "current": 16425,
+      "known": 1788869862704,
+      "deltaSec": 464.6919999122616
+    },
+    {
+      "stop": 121,
+      "previous": 16425,
+      "current": 16907,
+      "known": 1788873412993,
+      "deltaSec": 49.71099996566788
+    },
+    {
+      "stop": 121,
+      "previous": 16907,
+      "current": 17416,
+      "known": 1788877000121,
+      "deltaSec": 12.871999979019089
+    },
+    {
+      "stop": 121,
+      "previous": 17416,
+      "current": 17906,
+      "known": 1788880615282,
+      "deltaSec": 15.161000013351394
+    },
+    {
+      "stop": 121,
+      "previous": 17906,
+      "current": 18381,
+      "known": 1788884285689,
+      "deltaSec": 70.40699982643117
+    },
+    {
+      "stop": 121,
+      "previous": 18381,
+      "current": 18793,
+      "known": 1788887836284,
+      "deltaSec": 49.40499997138967
+    },
+    {
+      "stop": 121,
+      "previous": 16035,
+      "current": 16513,
+      "known": 1788870672683,
+      "deltaSec": 99.789999961853
+    },
+    {
+      "stop": 121,
+      "previous": 16513,
+      "current": 17005,
+      "known": 1788874237968,
+      "deltaSec": 34.71500015258792
+    },
+    {
+      "stop": 121,
+      "previous": 17005,
+      "current": 17532,
+      "known": 1788877970022,
+      "deltaSec": 132.05400013923625
+    },
+    {
+      "stop": 121,
+      "previous": 17532,
+      "current": 18035,
+      "known": 1788881655366,
+      "deltaSec": 85.343999862671
+    },
+    {
+      "stop": 121,
+      "previous": 18035,
+      "current": 18491,
+      "known": 1788885350804,
+      "deltaSec": 95.43799996376028
+    },
+    {
+      "stop": 121,
+      "previous": 18491,
+      "current": 18859,
+      "known": 1788888621513,
+      "deltaSec": 329.2909998893736
+    },
+    {
+      "stop": 121,
+      "previous": 18859,
+      "current": 19268,
+      "known": 1788892683169,
+      "deltaSec": 461.65599989891035
+    },
+    {
+      "stop": 121,
+      "previous": 19268,
+      "current": 19618,
+      "known": 1788896148654,
+      "deltaSec": 134.5149998664857
+    },
+    {
+      "stop": 121,
+      "previous": 19618,
+      "current": 19970,
+      "known": 1788899428961,
+      "deltaSec": 319.69300007820124
+    },
+    {
+      "stop": 121,
+      "previous": 19970,
+      "current": 20348,
+      "known": 1788903010969,
+      "deltaSec": 17.991999864578172
+    },
+    {
+      "stop": 121,
+      "previous": 20348,
+      "current": 20633,
+      "known": 1788906079665,
+      "deltaSec": 531.3040001392365
+    },
+    {
+      "stop": 11,
+      "previous": 16065,
+      "current": 16565,
+      "known": 1788871007872,
+      "deltaSec": 30.448999881744456
+    },
+    {
+      "stop": 11,
+      "previous": 16565,
+      "current": 17044,
+      "known": 1788874463963,
+      "deltaSec": 143.90899991989141
+    },
+    {
+      "stop": 11,
+      "previous": 17044,
+      "current": 17562,
+      "known": 1788878150032,
+      "deltaSec": 86.06900000572199
+    },
+    {
+      "stop": 11,
+      "previous": 17562,
+      "current": 18046,
+      "known": 1788881745385,
+      "deltaSec": 4.647000074386621
+    },
+    {
+      "stop": 11,
+      "previous": 18046,
+      "current": 18486,
+      "known": 1788885300961,
+      "deltaSec": 44.42400002479536
+    },
+    {
+      "stop": 11,
+      "previous": 18486,
+      "current": 18911,
+      "known": 1788889166574,
+      "deltaSec": 265.6129999160766
+    },
+    {
+      "stop": 11,
+      "previous": 18911,
+      "current": 19243,
+      "known": 1788892473129,
+      "deltaSec": 293.44499993324285
+    },
+    {
+      "stop": 11,
+      "previous": 19243,
+      "current": 19611,
+      "known": 1788896113726,
+      "deltaSec": 40.59700012207034
+    },
+    {
+      "stop": 11,
+      "previous": 19611,
+      "current": 19983,
+      "known": 1788899608971,
+      "deltaSec": 104.75500011444097
+    },
+    {
+      "stop": 11,
+      "previous": 19983,
+      "current": 20376,
+      "known": 1788903296018,
+      "deltaSec": 87.04699993133542
+    },
+    {
+      "stop": 11,
+      "previous": 16192,
+      "current": 16655,
+      "known": 1788871687777,
+      "deltaSec": 49.70500016212472
+    },
+    {
+      "stop": 11,
+      "previous": 16655,
+      "current": 17163,
+      "known": 1788875264751,
+      "deltaSec": 23.02600002288839
+    },
+    {
+      "stop": 11,
+      "previous": 17163,
+      "current": 17674,
+      "known": 1788878870145,
+      "deltaSec": 5.394000053405694
+    },
+    {
+      "stop": 11,
+      "previous": 17674,
+      "current": 18155,
+      "known": 1788882490501,
+      "deltaSec": 20.355999946594483
+    },
+    {
+      "stop": 11,
+      "previous": 18155,
+      "current": 18611,
+      "known": 1788886416062,
+      "deltaSec": 325.56100010871916
+    },
+    {
+      "stop": 11,
+      "previous": 16282,
+      "current": 16768,
+      "known": 1788872517954,
+      "deltaSec": 45.365000009536324
+    },
+    {
+      "stop": 11,
+      "previous": 16768,
+      "current": 17276,
+      "known": 1788876129837,
+      "deltaSec": 11.882999897003335
+    },
+    {
+      "stop": 11,
+      "previous": 17276,
+      "current": 17847,
+      "known": 1788879985363,
+      "deltaSec": 255.52600002288827
+    },
+    {
+      "stop": 11,
+      "previous": 17847,
+      "current": 18265,
+      "known": 1788883475577,
+      "deltaSec": 109.78600001335147
+    },
+    {
+      "stop": 11,
+      "previous": 18265,
+      "current": 18697,
+      "known": 1788887056352,
+      "deltaSec": 19.22499990463261
+    },
+    {
+      "stop": 11,
+      "previous": 18697,
+      "current": 19053,
+      "known": 1788890472584,
+      "deltaSec": 183.7679998874662
+    },
+    {
+      "stop": 11,
+      "previous": 19053,
+      "current": 19432,
+      "known": 1788894323446,
+      "deltaSec": 250.8619999885557
+    },
+    {
+      "stop": 11,
+      "previous": 19432,
+      "current": 19774,
+      "known": 1788897808938,
+      "deltaSec": 114.50800013542174
+    },
+    {
+      "stop": 11,
+      "previous": 19774,
+      "current": 20175,
+      "known": 1788901344226,
+      "deltaSec": 64.71199989318845
+    },
+    {
+      "stop": 11,
+      "previous": 20175,
+      "current": 20523,
+      "known": 1788904749573,
+      "deltaSec": 194.65300011634807
+    },
+    {
+      "stop": 121,
+      "previous": 21913,
+      "current": 22268,
+      "known": 1788955339557,
+      "deltaSec": 739.7920000553133
+    },
+    {
+      "stop": 121,
+      "previous": 22268,
+      "current": 22798,
+      "known": 1788959583006,
+      "deltaSec": 643.449000120163
+    },
+    {
+      "stop": 121,
+      "previous": 22798,
+      "current": 23187,
+      "known": 1788962548612,
+      "deltaSec": 634.3940000534058
+    },
+    {
+      "stop": 121,
+      "previous": 23187,
+      "current": 23687,
+      "known": 1788966217949,
+      "deltaSec": 69.33699989318848
+    },
+    {
+      "stop": 121,
+      "previous": 23687,
+      "current": 24099,
+      "known": 1788969762908,
+      "deltaSec": 55.040999889373786
+    },
+    {
+      "stop": 121,
+      "previous": 24099,
+      "current": 24472,
+      "known": 1788973383556,
+      "deltaSec": 20.648000001907356
+    },
+    {
+      "stop": 121,
+      "previous": 24472,
+      "current": 24868,
+      "known": 1788976890403,
+      "deltaSec": 93.15299987792987
+    },
+    {
+      "stop": 121,
+      "previous": 24868,
+      "current": 25316,
+      "known": 1788980862201,
+      "deltaSec": 371.7979998588565
+    },
+    {
+      "stop": 121,
+      "previous": 25316,
+      "current": 25725,
+      "known": 1788984282574,
+      "deltaSec": 179.62700009346014
+    },
+    {
+      "stop": 121,
+      "previous": 26192,
+      "current": 26615,
+      "known": 1788991286007,
+      "deltaSec": 50.62899994850155
+    },
+    {
+      "stop": 121,
+      "previous": 22033,
+      "current": 22483,
+      "known": 1788957147298,
+      "deltaSec": 7.870000123977476
+    },
+    {
+      "stop": 121,
+      "previous": 22483,
+      "current": 22965,
+      "known": 1788960913139,
+      "deltaSec": 165.8409998416902
+    },
+    {
+      "stop": 121,
+      "previous": 22965,
+      "current": 23438,
+      "known": 1788964342675,
+      "deltaSec": 170.4639999866485
+    },
+    {
+      "stop": 121,
+      "previous": 23438,
+      "current": 23885,
+      "known": 1788967903120,
+      "deltaSec": 39.55500006675731
+    },
+    {
+      "stop": 121,
+      "previous": 23885,
+      "current": 24290,
+      "known": 1788971518300,
+      "deltaSec": 15.18000006675717
+    },
+    {
+      "stop": 121,
+      "previous": 24290,
+      "current": 24656,
+      "known": 1788975109680,
+      "deltaSec": 8.619999885558986
+    },
+    {
+      "stop": 121,
+      "previous": 24656,
+      "current": 25069,
+      "known": 1788978771092,
+      "deltaSec": 61.411999940872086
+    },
+    {
+      "stop": 121,
+      "previous": 25069,
+      "current": 25486,
+      "known": 1788982337355,
+      "deltaSec": 33.73699998855579
+    },
+    {
+      "stop": 121,
+      "previous": 25486,
+      "current": 25945,
+      "known": 1788985917808,
+      "deltaSec": 19.546999931335538
+    },
+    {
+      "stop": 11,
+      "previous": 22091,
+      "current": 22513,
+      "known": 1788957462177,
+      "deltaSec": 117.26399993896455
+    },
+    {
+      "stop": 11,
+      "previous": 22513,
+      "current": 23008,
+      "known": 1788961193158,
+      "deltaSec": 130.9809999465941
+    },
+    {
+      "stop": 11,
+      "previous": 23008,
+      "current": 23465,
+      "known": 1788964522637,
+      "deltaSec": 270.5209999084474
+    },
+    {
+      "stop": 11,
+      "previous": 23465,
+      "current": 23908,
+      "known": 1788968183111,
+      "deltaSec": 60.473999977112
+    },
+    {
+      "stop": 11,
+      "previous": 23908,
+      "current": 24301,
+      "known": 1788971728342,
+      "deltaSec": 54.769000053406046
+    },
+    {
+      "stop": 11,
+      "previous": 24301,
+      "current": 24687,
+      "known": 1788975359562,
+      "deltaSec": 31.220000028610517
+    },
+    {
+      "stop": 11,
+      "previous": 24687,
+      "current": 25064,
+      "known": 1788978751074,
+      "deltaSec": 208.4880001544952
+    },
+    {
+      "stop": 11,
+      "previous": 25064,
+      "current": 25516,
+      "known": 1788982557374,
+      "deltaSec": 206.3000001907347
+    },
+    {
+      "stop": 11,
+      "previous": 22270,
+      "current": 22715,
+      "known": 1788959078071,
+      "deltaSec": 103.49600005149843
+    },
+    {
+      "stop": 11,
+      "previous": 22715,
+      "current": 23188,
+      "known": 1788962583601,
+      "deltaSec": 94.47000002861024
+    },
+    {
+      "stop": 11,
+      "previous": 23188,
+      "current": 23671,
+      "known": 1788966152866,
+      "deltaSec": 30.735000133514404
+    },
+    {
+      "stop": 11,
+      "previous": 23671,
+      "current": 24100,
+      "known": 1788969787909,
+      "deltaSec": 35.04299998283386
+    },
+    {
+      "stop": 11,
+      "previous": 24100,
+      "current": 24466,
+      "known": 1788973373526,
+      "deltaSec": 14.38299989700317
+    },
+    {
+      "stop": 11,
+      "previous": 24466,
+      "current": 24905,
+      "known": 1788977165382,
+      "deltaSec": 191.85599994659424
+    },
+    {
+      "stop": 11,
+      "previous": 24905,
+      "current": 25281,
+      "known": 1788980567130,
+      "deltaSec": 198.25199985504153
+    },
+    {
+      "stop": 11,
+      "previous": 25281,
+      "current": 25679,
+      "known": 1788983857532,
+      "deltaSec": 309.5980000495909
+    },
+    {
+      "stop": 11,
+      "previous": 25172,
+      "current": 25622,
+      "known": 1788983347462,
+      "deltaSec": 55.54299998283384
+    },
+    {
+      "stop": 11,
+      "previous": 26541,
+      "current": 26834,
+      "known": 1788993521218,
+      "deltaSec": 629.9910001754761
+    },
+    {
+      "stop": 121,
+      "previous": 25385,
+      "current": 25846,
+      "known": 1788985092672,
+      "deltaSec": 70.34599995613102
+    },
+    {
+      "stop": 121,
+      "previous": 26313,
+      "current": 26711,
+      "known": 1788992241214,
+      "deltaSec": 64.5360000133515
+    }
+  ],
+  "temporalChecks": 1070,
+  "groups": [
+    {
+      "stop": 11,
+      "contract": "confirmed120",
+      "split": "train",
+      "visits": 102,
+      "reasons": {
+        "no_confirmed_history": 3,
+        "fewer_than_two_histories": 14,
+        "known": 69,
+        "unsupported_lap": 15,
+        "missing_opposite_at_pin": 1
+      },
+      "historyCounts": {
+        "0": 12,
+        "1": 16,
+        "2": 13,
+        "3": 12,
+        "4": 12,
+        "5": 10,
+        "6": 9,
+        "7": 8,
+        "8": 5,
+        "9": 3,
+        "10": 2
+      },
+      "supportedThreePlus": 57
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed120",
+      "split": "calibration",
+      "visits": 58,
+      "reasons": {
+        "unsupported_lap": 9,
+        "fewer_than_two_histories": 10,
+        "known": 39
+      },
+      "historyCounts": {
+        "0": 6,
+        "1": 10,
+        "2": 9,
+        "3": 9,
+        "4": 6,
+        "5": 5,
+        "6": 5,
+        "7": 2,
+        "8": 2,
+        "9": 2,
+        "10": 2
+      },
+      "supportedThreePlus": 30
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed120",
+      "split": "development",
+      "visits": 99,
+      "reasons": {
+        "unsupported_lap": 13,
+        "fewer_than_two_histories": 17,
+        "known": 67,
+        "stale_history": 1,
+        "missing_opposite_at_pin": 1
+      },
+      "historyCounts": {
+        "0": 11,
+        "1": 18,
+        "2": 13,
+        "3": 12,
+        "4": 10,
+        "5": 9,
+        "6": 7,
+        "7": 6,
+        "8": 6,
+        "9": 4,
+        "10": 3
+      },
+      "supportedThreePlus": 55
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed120",
+      "split": "train",
+      "visits": 112,
+      "reasons": {
+        "no_confirmed_history": 3,
+        "fewer_than_two_histories": 19,
+        "known": 74,
+        "unsupported_lap": 15,
+        "stale_history": 1
+      },
+      "historyCounts": {
+        "0": 9,
+        "1": 20,
+        "2": 13,
+        "3": 12,
+        "4": 12,
+        "5": 11,
+        "6": 11,
+        "7": 9,
+        "8": 6,
+        "9": 4,
+        "10": 4,
+        "11": 1
+      },
+      "supportedThreePlus": 62
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed120",
+      "split": "calibration",
+      "visits": 61,
+      "reasons": {
+        "unsupported_lap": 8,
+        "fewer_than_two_histories": 9,
+        "known": 44
+      },
+      "historyCounts": {
+        "0": 5,
+        "1": 10,
+        "2": 8,
+        "3": 7,
+        "4": 7,
+        "5": 6,
+        "6": 4,
+        "7": 4,
+        "8": 3,
+        "9": 3,
+        "10": 3,
+        "11": 1
+      },
+      "supportedThreePlus": 36
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed120",
+      "split": "development",
+      "visits": 103,
+      "reasons": {
+        "unsupported_lap": 11,
+        "fewer_than_two_histories": 13,
+        "known": 77,
+        "missing_opposite_at_pin": 1,
+        "stale_history": 1
+      },
+      "historyCounts": {
+        "0": 10,
+        "1": 13,
+        "2": 12,
+        "3": 11,
+        "4": 12,
+        "5": 9,
+        "6": 9,
+        "7": 6,
+        "8": 6,
+        "9": 6,
+        "10": 6,
+        "11": 3
+      },
+      "supportedThreePlus": 65
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed240",
+      "split": "train",
+      "visits": 102,
+      "reasons": {
+        "no_confirmed_history": 3,
+        "fewer_than_two_histories": 14,
+        "known": 69,
+        "unsupported_lap": 15,
+        "missing_opposite_at_pin": 1
+      },
+      "historyCounts": {
+        "0": 12,
+        "1": 16,
+        "2": 13,
+        "3": 12,
+        "4": 12,
+        "5": 10,
+        "6": 9,
+        "7": 8,
+        "8": 5,
+        "9": 3,
+        "10": 2
+      },
+      "supportedThreePlus": 57
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed240",
+      "split": "calibration",
+      "visits": 58,
+      "reasons": {
+        "unsupported_lap": 9,
+        "fewer_than_two_histories": 10,
+        "known": 39
+      },
+      "historyCounts": {
+        "0": 6,
+        "1": 10,
+        "2": 9,
+        "3": 9,
+        "4": 6,
+        "5": 5,
+        "6": 5,
+        "7": 2,
+        "8": 2,
+        "9": 2,
+        "10": 2
+      },
+      "supportedThreePlus": 30
+    },
+    {
+      "stop": 11,
+      "contract": "confirmed240",
+      "split": "development",
+      "visits": 99,
+      "reasons": {
+        "unsupported_lap": 13,
+        "fewer_than_two_histories": 17,
+        "known": 67,
+        "stale_history": 1,
+        "missing_opposite_at_pin": 1
+      },
+      "historyCounts": {
+        "0": 11,
+        "1": 18,
+        "2": 13,
+        "3": 12,
+        "4": 10,
+        "5": 9,
+        "6": 7,
+        "7": 6,
+        "8": 6,
+        "9": 4,
+        "10": 3
+      },
+      "supportedThreePlus": 55
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed240",
+      "split": "train",
+      "visits": 112,
+      "reasons": {
+        "no_confirmed_history": 3,
+        "fewer_than_two_histories": 19,
+        "known": 74,
+        "unsupported_lap": 15,
+        "stale_history": 1
+      },
+      "historyCounts": {
+        "0": 9,
+        "1": 20,
+        "2": 13,
+        "3": 12,
+        "4": 12,
+        "5": 11,
+        "6": 11,
+        "7": 9,
+        "8": 6,
+        "9": 4,
+        "10": 4,
+        "11": 1
+      },
+      "supportedThreePlus": 62
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed240",
+      "split": "calibration",
+      "visits": 61,
+      "reasons": {
+        "unsupported_lap": 8,
+        "fewer_than_two_histories": 9,
+        "known": 44
+      },
+      "historyCounts": {
+        "0": 5,
+        "1": 10,
+        "2": 8,
+        "3": 7,
+        "4": 7,
+        "5": 6,
+        "6": 4,
+        "7": 4,
+        "8": 3,
+        "9": 3,
+        "10": 3,
+        "11": 1
+      },
+      "supportedThreePlus": 36
+    },
+    {
+      "stop": 121,
+      "contract": "confirmed240",
+      "split": "development",
+      "visits": 103,
+      "reasons": {
+        "unsupported_lap": 11,
+        "fewer_than_two_histories": 13,
+        "known": 77,
+        "missing_opposite_at_pin": 1,
+        "stale_history": 1
+      },
+      "historyCounts": {
+        "0": 10,
+        "1": 13,
+        "2": 12,
+        "3": 11,
+        "4": 12,
+        "5": 9,
+        "6": 9,
+        "7": 6,
+        "8": 6,
+        "9": 6,
+        "10": 6,
+        "11": 3
+      },
+      "supportedThreePlus": 65
+    }
+  ],
+  "rows": 3898
+}

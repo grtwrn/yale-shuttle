@@ -1,0 +1,31 @@
+{
+  "scope": "Built SPA, real browser clock, synthetic current wire; all network intercepted",
+  "desktop": true,
+  "scenarios": [
+    {
+      "name": "system",
+      "iterations": 6,
+      "checks": [
+        "Settled keyboard zoom and pan remain functional",
+        "Phone/desktop reflow and touch pinch or mouse-wheel zoom remain functional",
+        "Six rapid zoom/teardown cycles; no duplicate or leftover map; recovery focus and final destination preserved"
+      ],
+      "passed": true
+    },
+    {
+      "name": "ride",
+      "iterations": 6,
+      "checks": [
+        "Settled keyboard zoom and pan remain functional",
+        "Phone/desktop reflow and touch pinch or mouse-wheel zoom remain functional",
+        "Six rapid zoom/teardown cycles; no duplicate or leftover map; recovery focus and final destination preserved"
+      ],
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "errorStacks": [],
+  "requests": 8,
+  "completed": true,
+  "resourcesClosed": true
+}

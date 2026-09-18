@@ -1,0 +1,332 @@
+{
+  "pairedPolls": 3000,
+  "arms": {
+    "current": {
+      "counts": {
+        "polls": 3000,
+        "minuteSamples": 250,
+        "rows": 1670421
+      },
+      "routes": [
+        1,
+        2,
+        3,
+        8,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19
+      ],
+      "firstAt": 1789586754049,
+      "lastAt": 1789601751305,
+      "checkpointChecks": {
+        "6000": {
+          "n": 6000,
+          "last": 1789586749204,
+          "kernels": 77,
+          "buses": 21,
+          "steps": 6000,
+          "failures": 0
+        },
+        "9000": {
+          "n": 9000,
+          "last": 1789601751305,
+          "kernels": 87,
+          "buses": 28,
+          "steps": 9000,
+          "failures": 0
+        }
+      },
+      "boundaryTracking": [
+        {
+          "bus": "Brown|126",
+          "previousLead": 4,
+          "lead": 4,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Green|325",
+          "previousLead": 10,
+          "lead": 10,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Green|127",
+          "previousLead": 19,
+          "lead": 20,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Red|308",
+          "previousLead": 12,
+          "lead": 12,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Blue Day|38",
+          "previousLead": 4,
+          "lead": 4,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Red|309",
+          "previousLead": 0,
+          "lead": 0,
+          "numericallyBackward": false,
+          "warmupMs": 28550668
+        },
+        {
+          "bus": "Gold|304",
+          "previousLead": 1,
+          "lead": 1,
+          "numericallyBackward": false,
+          "warmupMs": 17025628
+        },
+        {
+          "bus": "Orange Day|51",
+          "previousLead": 30,
+          "lead": 30,
+          "numericallyBackward": false,
+          "warmupMs": 16014883
+        },
+        {
+          "bus": "Green|122",
+          "previousLead": 1,
+          "lead": 1,
+          "numericallyBackward": false,
+          "warmupMs": 10628202
+        },
+        {
+          "bus": "Pink|307",
+          "previousLead": 10,
+          "lead": 10,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Pink|119",
+          "previousLead": 2,
+          "lead": 2,
+          "numericallyBackward": false,
+          "warmupMs": 9973922
+        },
+        {
+          "bus": "Purple|302",
+          "previousLead": 13,
+          "lead": 13,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Purple|330",
+          "previousLead": 2,
+          "lead": 2,
+          "numericallyBackward": false,
+          "warmupMs": 8603496
+        },
+        {
+          "bus": "Red|316",
+          "previousLead": 8,
+          "lead": 8,
+          "numericallyBackward": false,
+          "warmupMs": 5952089
+        },
+        {
+          "bus": "Blue Day|44",
+          "previousLead": 25,
+          "lead": 25,
+          "numericallyBackward": false,
+          "warmupMs": 4621867
+        },
+        {
+          "bus": "Blue Day|46",
+          "previousLead": 14,
+          "lead": 14,
+          "numericallyBackward": false,
+          "warmupMs": 4086694
+        },
+        {
+          "bus": "Purple|329",
+          "previousLead": 3,
+          "lead": 3,
+          "numericallyBackward": false,
+          "warmupMs": 3251626
+        }
+      ]
+    },
+    "canonical": {
+      "counts": {
+        "polls": 3000,
+        "minuteSamples": 250,
+        "rows": 1670415
+      },
+      "routes": [
+        1,
+        2,
+        3,
+        8,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19
+      ],
+      "firstAt": 1789586754049,
+      "lastAt": 1789601751305,
+      "checkpointChecks": {
+        "6000": {
+          "n": 6000,
+          "last": 1789586749204,
+          "kernels": 77,
+          "buses": 21,
+          "steps": 6000,
+          "failures": 0
+        },
+        "9000": {
+          "n": 9000,
+          "last": 1789601751305,
+          "kernels": 87,
+          "buses": 28,
+          "steps": 9000,
+          "failures": 0
+        }
+      },
+      "boundaryTracking": [
+        {
+          "bus": "Brown|126",
+          "previousLead": 4,
+          "lead": 4,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Green|325",
+          "previousLead": 10,
+          "lead": 10,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Green|127",
+          "previousLead": 19,
+          "lead": 20,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Red|308",
+          "previousLead": 12,
+          "lead": 12,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Blue Day|38",
+          "previousLead": 4,
+          "lead": 4,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Red|309",
+          "previousLead": 0,
+          "lead": 0,
+          "numericallyBackward": false,
+          "warmupMs": 28550668
+        },
+        {
+          "bus": "Gold|304",
+          "previousLead": 1,
+          "lead": 1,
+          "numericallyBackward": false,
+          "warmupMs": 17025628
+        },
+        {
+          "bus": "Orange Day|51",
+          "previousLead": 30,
+          "lead": 30,
+          "numericallyBackward": false,
+          "warmupMs": 16014883
+        },
+        {
+          "bus": "Green|122",
+          "previousLead": 1,
+          "lead": 1,
+          "numericallyBackward": false,
+          "warmupMs": 10628202
+        },
+        {
+          "bus": "Pink|307",
+          "previousLead": 10,
+          "lead": 10,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Pink|119",
+          "previousLead": 2,
+          "lead": 2,
+          "numericallyBackward": false,
+          "warmupMs": 9973922
+        },
+        {
+          "bus": "Purple|302",
+          "previousLead": 13,
+          "lead": 13,
+          "numericallyBackward": false,
+          "warmupMs": 30070883
+        },
+        {
+          "bus": "Purple|330",
+          "previousLead": 2,
+          "lead": 2,
+          "numericallyBackward": false,
+          "warmupMs": 8603496
+        },
+        {
+          "bus": "Red|316",
+          "previousLead": 8,
+          "lead": 8,
+          "numericallyBackward": false,
+          "warmupMs": 5952089
+        },
+        {
+          "bus": "Blue Day|44",
+          "previousLead": 25,
+          "lead": 25,
+          "numericallyBackward": false,
+          "warmupMs": 4621867
+        },
+        {
+          "bus": "Blue Day|46",
+          "previousLead": 14,
+          "lead": 14,
+          "numericallyBackward": false,
+          "warmupMs": 4086694
+        },
+        {
+          "bus": "Purple|329",
+          "previousLead": 3,
+          "lead": 3,
+          "numericallyBackward": false,
+          "warmupMs": 3251626
+        }
+      ]
+    }
+  },
+  "frozenHashesVerified": 4,
+  "inputHashesVerified": 8,
+  "limits": "Native checkpoint/global kernel cache continuity, causal saved input order, wire totals and boundary accounting. No original receipt-time or outcome-identity proof."
+}

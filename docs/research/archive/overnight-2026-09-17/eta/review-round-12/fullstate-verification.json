@@ -1,0 +1,11 @@
+{
+  "completeModelEntryMatches": 78,
+  "seenAtMatches": 78,
+  "wireMatches": 78,
+  "observedEntryFields": [
+    "belief",
+    "floors",
+    "releasePin",
+    "releaseSmoothing"
+  ]
+}

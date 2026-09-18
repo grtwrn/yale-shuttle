@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "frames": 78,
+    "fixtureMaxDifference": 3768,
+    "fixtureDifferentRows": 1828,
+    "parityRows": 423,
+    "rawZeroRows": 33,
+    "positivePooledZeroRows": 19,
+    "proof": "Raw zero current-stop rows become positive only in current production pooling. Observer matches same-process wire; cross-process fixture deviations separately reported. Future occurrence rows retained for follow-up."
+  },
+  "_publication": {
+    "originalSource": "overnight-2026-09-17/eta/review-round-4/pool-observer.json",
+    "originalSha256": "7c5019fe11f7818b52990a36ff8685edafebfa60b50356af5b070e8e1cfdeb29",
+    "omittedArrays": [
+      {
+        "path": "records",
+        "items": 120,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

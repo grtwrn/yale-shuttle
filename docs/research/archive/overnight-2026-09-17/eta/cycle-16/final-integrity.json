@@ -1,0 +1,16 @@
+{
+  "at": "2026-09-18T10:55:32.305529+00:00",
+  "head": "98e535b99649e74ca599d2e33bcfdc46df83d30d",
+  "cleanCheckoutAndIndex": true,
+  "priorCycle15FilesPreserved": 140,
+  "priorReview14FilesPreserved": 76,
+  "frozenInputHashesVerified": 8,
+  "artifactFilesHashed": 52,
+  "newScreenshots": 0,
+  "combinedScreenshotFiles": 433,
+  "combinedScreenshotBytes": 19424373,
+  "correctedStructuralTruthRecords": 183123,
+  "priorCurrentCasesAcceptedPerArm": 11,
+  "priorFollowingCasesAccepted": 8,
+  "limitations": "Builder verification of research artifacts only. Independent corrected-label review remains required; no application or release claim."
+}

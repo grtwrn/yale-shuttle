@@ -1,0 +1,6 @@
+{
+  "at": "2026-09-18T09:39:57.571382+00:00",
+  "reason": "Measured first500polls need33.5s at active fleet; full two-arm run plus scoring exceeds bounded role. Stop only own initial process, preserve partial output, choose first6000 chronological polls before scoring any outcomes.",
+  "scope": "First6000fullfleetpolls, every route present; complete original order. Capture global kernel cache+native server state at5900and6000; verify fresh continuation5900:6000 against uninterrupted. Remaining input resumes from6000in next role without rewarming.",
+  "noOutcomeSelection": true
+}

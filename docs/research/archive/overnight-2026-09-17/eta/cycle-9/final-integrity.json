@@ -1,0 +1,42 @@
+{
+  "at": "2026-09-18T06:52:09.424509+00:00",
+  "checks": [
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git diff --cached --check",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git diff --exit-code",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git ls-files --unmerged",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git rev-parse HEAD",
+      "exitCode": 0,
+      "output": "0d0f34fa87f7d051d4c4419f04c83db13c0d4c72\n"
+    },
+    {
+      "command": "git rev-parse MERGE_HEAD",
+      "exitCode": 0,
+      "output": "373505d5076f21a08de69d9587be9b2a55956642\n"
+    },
+    {
+      "command": "git status --short",
+      "exitCode": 0,
+      "output": "A  services/shuttle-v2/scripts/trip-identity-check.mjs\nM  services/shuttle-v2/web/src/TransitMap.tsx\nA  services/shuttle-v2/web/src/TripBoardingActions.tsx\nA  services/shuttle-v2/web/src/tripBusIdentity.test.ts\nA  services/shuttle-v2/web/src/tripBusIdentity.ts\n"
+    }
+  ],
+  "sourceHashesPreserved": true,
+  "priorArtifactsPreserved": 147
+}

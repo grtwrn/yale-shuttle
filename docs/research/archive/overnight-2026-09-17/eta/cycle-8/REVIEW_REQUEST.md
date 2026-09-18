@@ -1,0 +1,9 @@
+# Independent rereview request — raw-at-stop walking caution
+
+Candidate: four-file uncommitted delta over preserved HEAD1b66a1914a92a79c0936cf65473617cf7b7695f9. Read RESULTS.md, proposal.patch and independent-review-round-7.md. No commits/branches/publication by builder.
+
+Verify that the new optional `pickupState` changes only catchRisk, defaults to existing approaching logic, and is supplied only by the raw-at-stop dwell-gated shell branch. Inspect zero/nonzero walking, positive pickup lower-bound equality, unavailable destinations, both occurrences/folded pickups, ordinary approach and beyond-dwell fallthrough. The destination window must not move or be replaced with synthetic boarding rows. Class fits can remain true but risky shuttle advice must carry caution and not gain an unconditional recommendation.
+
+Evidence:173tests/types/Vite,4688 exact historical decisions,223 actual-SPA numerical comparisons plus five original walking cases, fixed original reviewer browser, six new rendered risk scenarios, eight separately frozen HEAD/candidate pairs,1400 connected outcomes and130 untouched prior artifacts. Check outputs rather than assuming generic-helper tests exercise the shell. All scripts write cycle-8 only. Run prepare.py before verify.sh; then the separate browser-risk-matrix.mjs/risk-logic.mts/evidence verifier commands in RESULTS.md. The evidence verifier deliberately pins the entry HEAD, so a controller capture requires explicit reviewed SHA adaptation; it must not silently bless a different base.
+
+Retain the existing30 restored forecasts,63523+442.83sec regression,61907 and38 outgoing unknowns. This correction has zero historical forecast changes; no new calibration or observed walking claim. Prior smoothing change is untouched. Fresh review must remain independent. Controller retains full gates and deployment verification. No owned browser/server/lock remains; watcher untouched; zero new screenshots.

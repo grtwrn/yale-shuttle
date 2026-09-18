@@ -1,0 +1,749 @@
+{
+  "sourceSha256": "e8e92443910b4acfcbe479ce9c70225fe0b686dcffb35313ebe8ccb83e0b665b",
+  "rawUnknownFallbackChecks": 840,
+  "identityByDate": [
+    {
+      "stop": 11,
+      "day": "2026-09-14",
+      "counts": {
+        "same": 8,
+        "distinct": 16,
+        "unknown": 4
+      }
+    },
+    {
+      "stop": 11,
+      "day": "2026-09-15",
+      "counts": {
+        "same": 19,
+        "distinct": 0,
+        "unknown": 2
+      }
+    },
+    {
+      "stop": 11,
+      "day": "2026-09-16",
+      "counts": {
+        "same": 1,
+        "distinct": 29,
+        "unknown": 3
+      }
+    },
+    {
+      "stop": 11,
+      "day": "2026-09-17",
+      "counts": {
+        "same": 0,
+        "distinct": 14,
+        "unknown": 3
+      }
+    },
+    {
+      "stop": 121,
+      "day": "2026-09-14",
+      "counts": {
+        "same": 8,
+        "distinct": 18,
+        "unknown": 3
+      }
+    },
+    {
+      "stop": 121,
+      "day": "2026-09-15",
+      "counts": {
+        "same": 21,
+        "distinct": 0,
+        "unknown": 2
+      }
+    },
+    {
+      "stop": 121,
+      "day": "2026-09-16",
+      "counts": {
+        "same": 1,
+        "distinct": 30,
+        "unknown": 2
+      }
+    },
+    {
+      "stop": 121,
+      "day": "2026-09-17",
+      "counts": {
+        "same": 2,
+        "distinct": 12,
+        "unknown": 4
+      }
+    }
+  ],
+  "unionIncrementalWithinDate": [
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-14",
+      "group": "distinct",
+      "n": 18,
+      "baseline": 3.2548852198892684,
+      "candidate": 3.1280208405403225,
+      "percentImprovement": 3.8976606171464887
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-14",
+      "group": "same",
+      "n": 8,
+      "baseline": 4.066667884582422,
+      "candidate": 3.958678548451191,
+      "percentImprovement": 2.655474683355409
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-14",
+      "group": "unknown",
+      "n": 3,
+      "baseline": 3.4831069959847145,
+      "candidate": 3.4831069959847145,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-15",
+      "group": "same",
+      "n": 21,
+      "baseline": 3.2476596381133094,
+      "candidate": 3.3841304787173225,
+      "percentImprovement": -4.202128788449467
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-15",
+      "group": "unknown",
+      "n": 2,
+      "baseline": 2.860047648005594,
+      "candidate": 2.860047648005594,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-16",
+      "group": "distinct",
+      "n": 30,
+      "baseline": 3.435552803955263,
+      "candidate": 3.3432827788013757,
+      "percentImprovement": 2.68574027002756
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-16",
+      "group": "same",
+      "n": 1,
+      "baseline": 5.1702894595389965,
+      "candidate": 5.187927712607203,
+      "percentImprovement": -0.34114633631709484
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-16",
+      "group": "unknown",
+      "n": 2,
+      "baseline": 2.374914594699156,
+      "candidate": 2.374914594699156,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-17",
+      "group": "distinct",
+      "n": 12,
+      "baseline": 2.9524862867827717,
+      "candidate": 2.8493842432273917,
+      "percentImprovement": 3.4920414031025677
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-17",
+      "group": "same",
+      "n": 2,
+      "baseline": 2.520701741606154,
+      "candidate": 2.531305180492474,
+      "percentImprovement": -0.42065424525646244
+    },
+    {
+      "arm": "progress_clock",
+      "day": "2026-09-17",
+      "group": "unknown",
+      "n": 4,
+      "baseline": 4.242772519068117,
+      "candidate": 4.242772519068117,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-14",
+      "group": "distinct",
+      "n": 18,
+      "baseline": 3.2548852198892684,
+      "candidate": 3.1293382288058176,
+      "percentImprovement": 3.857186432144662
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-14",
+      "group": "same",
+      "n": 8,
+      "baseline": 4.066667884582422,
+      "candidate": 3.9574760979582577,
+      "percentImprovement": 2.6850431292442916
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-14",
+      "group": "unknown",
+      "n": 3,
+      "baseline": 3.4831069959847145,
+      "candidate": 3.4831069959847145,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-15",
+      "group": "same",
+      "n": 21,
+      "baseline": 3.2476596381133094,
+      "candidate": 3.4078578811743316,
+      "percentImprovement": -4.93272882358102
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-15",
+      "group": "unknown",
+      "n": 2,
+      "baseline": 2.860047648005594,
+      "candidate": 2.860047648005594,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-16",
+      "group": "distinct",
+      "n": 30,
+      "baseline": 3.435552803955263,
+      "candidate": 3.336246982428331,
+      "percentImprovement": 2.890533989540309
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-16",
+      "group": "same",
+      "n": 1,
+      "baseline": 5.1702894595389965,
+      "candidate": 5.521355405724765,
+      "percentImprovement": -6.790063669221928
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-16",
+      "group": "unknown",
+      "n": 2,
+      "baseline": 2.374914594699156,
+      "candidate": 2.374914594699156,
+      "percentImprovement": 0.0
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-17",
+      "group": "distinct",
+      "n": 12,
+      "baseline": 2.9524862867827717,
+      "candidate": 2.781569916616452,
+      "percentImprovement": 5.788896325495279
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-17",
+      "group": "same",
+      "n": 2,
+      "baseline": 2.520701741606154,
+      "candidate": 2.401941758923236,
+      "percentImprovement": 4.7113857511458646
+    },
+    {
+      "arm": "reached_clock",
+      "day": "2026-09-17",
+      "group": "unknown",
+      "n": 4,
+      "baseline": 4.242772519068117,
+      "candidate": 4.242772519068117,
+      "percentImprovement": 0.0
+    }
+  ],
+  "mainScores": [
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.1922857150168165,
+      "meanBrierPerHold": 0.053278184684353996
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1131737834154767,
+      "meanBrierPerHold": 0.05464943472111041
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 3.176656927241501,
+      "meanBrierPerHold": 0.05611393079920852
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.173844305587254,
+      "meanBrierPerHold": 0.05312325355377835
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.094688741739575,
+      "meanBrierPerHold": 0.054210799703008024
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1544854295024933,
+      "meanBrierPerHold": 0.05606212738530814
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.1767333073105455,
+      "meanBrierPerHold": 0.0531002635997037
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.096175739537327,
+      "meanBrierPerHold": 0.054116679511911674
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1586273825917957,
+      "meanBrierPerHold": 0.05606821823102521
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.064852573923299,
+      "meanBrierPerHold": 0.0522443518857338
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1258259409562035,
+      "meanBrierPerHold": 0.05484114908828339
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 2.967590997637685,
+      "meanBrierPerHold": 0.05439529330580377
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.06162197985924,
+      "meanBrierPerHold": 0.05215772770650647
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1256115951509402,
+      "meanBrierPerHold": 0.05461510969783544
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 2.962271893742864,
+      "meanBrierPerHold": 0.05435721380053321
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 99,
+      "dates": 4,
+      "meanLogLossPerHold": 3.0703055221776276,
+      "meanBrierPerHold": 0.052142115533994046
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 28,
+      "dates": 3,
+      "meanLogLossPerHold": 3.132193700949717,
+      "meanBrierPerHold": 0.05471797704715028
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 11,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 59,
+      "dates": 3,
+      "meanLogLossPerHold": 2.9737188721692127,
+      "meanBrierPerHold": 0.05428219870121888
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.372886199841836,
+      "meanBrierPerHold": 0.0756638650163495
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.4316627901290717,
+      "meanBrierPerHold": 0.0978250274612357
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.300691390678783,
+      "meanBrierPerHold": 0.04741363020852358
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.3379439850420347,
+      "meanBrierPerHold": 0.07565983082594395
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.4856166058252165,
+      "meanBrierPerHold": 0.09934962060222645
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.211931886901181,
+      "meanBrierPerHold": 0.04659358850646564
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.3317983618099167,
+      "meanBrierPerHold": 0.07531499153583114
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.499876394026557,
+      "meanBrierPerHold": 0.09853303413544748
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.1937766799786633,
+      "meanBrierPerHold": 0.0464371271740541
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.3584522086163524,
+      "meanBrierPerHold": 0.07516943630442725
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.467059013118443,
+      "meanBrierPerHold": 0.09739767040203028
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "baseline",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.2847392253009664,
+      "meanBrierPerHold": 0.04735583095121772
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.3172088492854113,
+      "meanBrierPerHold": 0.07537348135639443
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.5308345785707957,
+      "meanBrierPerHold": 0.09966489114860466
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "progress_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.179924490208263,
+      "meanBrierPerHold": 0.046496923892255036
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "all",
+      "n": 103,
+      "dates": 4,
+      "meanLogLossPerHold": 3.312958595653267,
+      "meanBrierPerHold": 0.07522656578113615
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "same_as_ahead",
+      "n": 32,
+      "dates": 4,
+      "meanLogLossPerHold": 3.5484394753718207,
+      "meanBrierPerHold": 0.09920698254003327
+    },
+    {
+      "identity": "departure_order",
+      "regime": "arrival15_clear30_proxy",
+      "stop": 121,
+      "offset": "lap_clock_ahead",
+      "arm": "reached_clock",
+      "calibrated": false,
+      "group": "distinct_from_ahead",
+      "n": 60,
+      "dates": 3,
+      "meanLogLossPerHold": 3.163238943179201,
+      "meanBrierPerHold": 0.04648893674596641
+    }
+  ],
+  "verdict": "No future-feature leakage identified by code inspection. Small exploratory Union follower signal remains after predecessor adjustment; Winchester adds little. Date and identity overlap are confounded. Sequential log-loss gain does not imply calibrated probabilities or ETA gains."
+}

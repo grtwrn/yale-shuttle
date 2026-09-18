@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Desktop mouse/keyboard context: search works while live feed fails; labels, selection focus, selected navigation and endpoint draft are preserved.",
+    "1280px desktop and 640px equivalent reflow have no horizontal overflow; 16px input and navigation >=44x44."
+  ],
+  "errors": [],
+  "queries": [
+    "search while live feed is unavailable"
+  ],
+  "resourcesClosed": true,
+  "feedFailureText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nLive bus updates unavailable. Reconnecting…\n📚\nFirst review match\n📚\nSecond review match with a long destination name\nPick a destination from the list to see trips.\n😴 No shuttles running right now\nRECENT PLACES\nClear all\n→Review origin\n☆\n✕\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+  "completed": true
+}

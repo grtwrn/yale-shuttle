@@ -1,0 +1,40 @@
+{
+  "verdict": "research_only",
+  "summary": "Independent checks support the no-integration decision. Results are mixed by weighting and do not establish improved rider ETAs. Forecasts, scores, fitting contracts and comparator reproduced successfully. Review saved in independent-review-round-1.md; checkout unchanged.",
+  "head_sha": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "base_sha": "40af3c0bb8e2522972b4e9f0222b1756fbd3c227",
+  "next_task": "Continue cycle-2’s current-production trace for Union 63523/57990 versus 57454/61538. Separate pre-Winchester movement/intermediate waits from future Winchester holds, preserve endpoint clocks and shared-target clustering, and verify both target occurrences before proposing a fix. Retain the review’s weighting caveat; do not retune cycle-1.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "git diff --exit-code 40af3c0bb8e2522972b4e9f0222b1756fbd3c227 HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD",
+      "exit_code": 0,
+      "result": "Empty diffs/status; HEAD matches supplied base."
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/test_landmark_contract.py",
+      "exit_code": 0,
+      "result": "Six tests passed."
+    },
+    {
+      "command": "OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-1/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified 15 hashes, 3,898 landmarks, 4,332 forecasts, 480 score rows, 16 regression comparisons and 20 connected chains. Initial reviewer endpoint-clock assumption was corrected in the harness only; documented in review."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-1/verify_comparator.mts",
+      "exit_code": 0,
+      "result": "Executed from services/shuttle-v2; frozen fit and all 722 component forecasts matched exactly."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock env OPENBLAS_NUM_THREADS=1 python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-1/verify_fit_contract.py",
+      "exit_code": 0,
+      "result": "All 12 training-only support, objective and gradient checks passed without refitting."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-1/downstream_labels.py",
+      "exit_code": 0,
+      "result": "Verified five downstream Winchester visit mappings; saved retrospective labels for the next trace."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "inputHashes": 15,
+  "unchangedBuilderFiles": 61,
+  "frames": 1172,
+  "wireRows": 160496,
+  "zeroHopRows": 1734,
+  "positiveZeroHopRows": 101,
+  "positiveStops": {
+    "11": 90,
+    "146": 11
+  },
+  "downstreamContradictions": 84,
+  "aliases": [
+    {
+      "at": 1789561806450,
+      "bus": "308",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": -0.3488348952614615
+    },
+    {
+      "at": 1789567312286,
+      "bus": "309",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": -0.3832629905086833
+    },
+    {
+      "at": 1789567327355,
+      "bus": "309",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": 0.5158725199030414
+    },
+    {
+      "at": 1789587934188,
+      "bus": "316",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": -0.646924737568952
+    },
+    {
+      "at": 1789596110124,
+      "bus": "309",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": 0.10536989433057897
+    },
+    {
+      "at": 1789657102924,
+      "bus": "309",
+      "stop": 11,
+      "hopsBefore": 29,
+      "hopsAfter": 0,
+      "error": -0.4396724670509684
+    }
+  ],
+  "previousTraceParity": 6025,
+  "outcomeRows": 1420,
+  "connectedLegUses": 12964,
+  "reachable": 1382,
+  "modeledMisses": 38,
+  "contexts": 20,
+  "unmatched": 3268,
+  "journeyAvailable": 1245,
+  "sessions": 40,
+  "rankChanges": 48,
+  "observerSourceExact": true
+}

@@ -1,0 +1,16 @@
+{
+  "client": {
+    "n": 66,
+    "coverage": 0.7272727272727273,
+    "medianDisplayWidth": 589.1299486070188,
+    "medianWorstDrift": 50.0,
+    "p90WorstDrift": 170
+  },
+  "server": {
+    "n": 66,
+    "coverage": 0.7272727272727273,
+    "medianDisplayWidth": 449.0,
+    "medianWorstDrift": 30.0,
+    "p90WorstDrift": 65
+  }
+}

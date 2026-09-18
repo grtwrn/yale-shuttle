@@ -1,0 +1,23 @@
+{
+  "head": "56a5258bd4c6a4869667a99d3b480b12a3ce61c9",
+  "unchanged_tracked_files": 911,
+  "changed": [
+    "services/shuttle-v2/web/src/TransitMap.tsx"
+  ],
+  "new": [
+    "services/shuttle-v2/scripts/weather-controls-check.mjs"
+  ],
+  "index_preserved": true,
+  "baseline_map": "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/ux/ux-10-weather/entry-dist/assets/rider-aB0dKCWf.js.map",
+  "current_map": "/home/gwarren/projects/yale-shuttle-watcher/overnight-ux-2026-09-17/services/shuttle-v2/web/dist/assets/rider-CNqoxkK-.js.map",
+  "reports": {
+    "baseline/report.json": 3,
+    "final/mobile/report.json": 6,
+    "final/desktop/report.json": 6,
+    "final/navigation/after-browser.json": 12,
+    "supplemental-verified/report.json": 8
+  },
+  "combined_images": 445,
+  "combined_image_bytes": 19822610,
+  "source_sha256": "ed70e56b8655eec8fc04efb5ca0551378821882209c84bd71d55354bd901480f"
+}

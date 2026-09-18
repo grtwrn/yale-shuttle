@@ -1,0 +1,45 @@
+{
+  "verdict": "approve",
+  "summary": "Approved the pickup smoothing repair: 101 corrupt rows fixed and 149 journeys restored. Destination forecasts remain unchanged; the modest fallback-to-full-forecast accuracy regression is documented. Review saved in independent-review-round-5.md. Checkout unchanged.",
+  "head_sha": "b574a1c800654544685a8d9f1097ad3484ac13fc",
+  "base_sha": "6220b860a69f5567557926f41de59ed1af72d2f8",
+  "next_task": "Controller: complete staging, CI, merge and deployment verification. Next builder: investigate the 68 remaining missing-board cases and coordinate countdown versus catchable-shuttle identity with UX; keep cache determinism separately scoped.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/verify.sh",
+      "exit_code": 1,
+      "result": "2,755 tests, both typechecks and Vite build passed. A reviewer-only browser script quoting error then failed before launch; corrected browser runs passed below."
+    },
+    {
+      "command": "python /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified exact source provenance, 101 repaired pickups, 149 gained journeys, 150,020 unchanged forecasts and 1,382 exact paired outcomes. Retained accuracy regressions independently confirmed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/native-replay.mts",
+      "exit_code": 0,
+      "result": "11,081 polls, 160,496 exact serialized wire rows, 32,081 identical full beliefs and 143 boundary cases passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/browser_parity.mjs",
+      "exit_code": 0,
+      "result": "156 actual built-shell numerical/order comparisons passed; zero page errors."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/browser-transition.mjs",
+      "exit_code": 0,
+      "result": "32 comparisons plus arrived/following shuttle identity, keyboard focus, touch target, stale/missing data and recovery checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock ./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-5/legacy-checkpoint.mts",
+      "exit_code": 0,
+      "result": "Legacy checkpoint restored three beliefs; 78 frames preserved all 79 zero-hop rows exactly. Scoped cache priming used; cold-restart determinism is not claimed."
+    },
+    {
+      "command": "git diff --check 6220b860a69f5567557926f41de59ed1af72d2f8 HEAD && git diff --exit-code && git diff --cached --exit-code && git status --porcelain && git rev-parse HEAD && git rev-parse HEAD^",
+      "exit_code": 0,
+      "result": "Exact head/base verified; worktree and index clean. All 53 builder artifacts also retain their original hashes."
+    }
+  ]
+}

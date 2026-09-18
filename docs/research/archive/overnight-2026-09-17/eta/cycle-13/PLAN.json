@@ -1,0 +1,35 @@
+{
+  "createdAt": "2026-09-18T08:29:55.758739+00:00",
+  "base": "8aa67bd7f3883598f9458d825d97a52cbc004e0f",
+  "question": "Which actual sampled collector fields support the 19 raw/served disagreements, and what receipt bounds can be recovered without asserting unrecorded server timing?",
+  "cohort": "Exactly all 38 outgoing cycle6 decisions / 19 unique bus-polls / 9 source visits; both destinations retained. Windows from pin-60s to departure+90s for each visit. No selection by prediction error.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/missing-cases.json": "edd3dd518a0479e98d80373a485572519cd645b63394913c014dc03af64676ac",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/observed-states.json": "43b76e0d8e61c9c2751e56eb58ec9599a2bfcff5f468854ee49a967a5622bdd2",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-12/alternative-outcomes.json": "8be7958bcdf6946fcc058989ed245e198e34eef1e34311e91bf5d493d1869251",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-6/paired-outcomes.json": "4838c1be68431b90c48775b2cf3a8208ca914660262f798eeb4592aed5ff6e32",
+    "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789564462877.jsonl": "49aa8391f163e8503904e0f00b8613fe978dec994e92aa469d827d50d3335ae3",
+    "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789656043026.jsonl": "9c32d5607890f6e05924ce81326b7d0cc3f121b937fd6dcd0cc62fe138dc4a44",
+    "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789665472736.jsonl": "ed327687122153d815306d91a3607ca38e8bbcde720807912220d37e7907ce1c",
+    "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789568373564.jsonl": "7141e19b7c78c526f8fa23b70e841bbf1c917f192dde072902439103c6e5c4ff",
+    "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789659932611.jsonl": "644fcb2673c3390baf222bf7fb1f38656ad1b6268cf882ededd362fa701f9852",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/scripts/rider-watch/runner.mjs": "181714ba4398a542949662ad06203d38c9bd8141664a2f36da38ec342ce578e5",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/collector/collector.ts": "69ed7052f1434925217b8fd9dd11557c4ca518efd62ebc28cfc81c09c9504acb"
+  },
+  "rules": [
+    "Only whitelist raw transit fields, sample clock and feedAgeMs; no DOM text or private data exported.",
+    "For observed_at, exact equality to archived raw frame gives exact collection identity; require same bus_id/route/lat/lon/heading.",
+    "Without observed_at, retain ALL raw frames matching bus id/route/GPS/heading and published last_moved_at within [feed receipt - 120s, feed receipt]; no nearest-time arbitrary matching.",
+    "feedAt = sampleAt-feedAgeMs is watcher response-handler clock, not source collection nor first-publication time. Field onset bracket from successive captured responses, with skipped polls and censoring explicit.",
+    "No served ETA rows are stored by the watcher; cannot assert historical live server disagreement from raw evidence alone.",
+    "No new fit, thresholds, ETA arms, source edit or production claim. Stop after bounded provenance audit; leave missing captures and ambiguous matches visible."
+  ],
+  "outputs": [
+    "sanitized-receipts.jsonl",
+    "receipt-audit.json",
+    "case-evidence.json",
+    "RESULTS.md",
+    "REVIEW_REQUEST.md"
+  ]
+}

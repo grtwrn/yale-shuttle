@@ -1,0 +1,9 @@
+# Independent rereview request — integrated walking caution
+
+Please review the cycle8 walking-caution correction now combined with production PR288 trip identity. Read cycle9/RESULTS.md and proposal.patch, cycle8/REVIEW_REQUEST.md, and independent-review-round-7.md. Prior caution blocker must remain fixed for every positive walk inside the raw-at-stop dwell gate, including below/equal positive pickup lower bound, without changing destination or pickup forecasts or normal approaching behavior. Independent approval has not been asserted by this builder.
+
+Only this invocation's import conflict resolution is newly edited; preserved HEAD0d0f34fa and MERGE_HEAD373505d5 are still in a pending resolved merge. The controller must finish its merge. All original staged UX changes are retained and verified byte-for-byte against production except the expected combined shell. Full seven-file ETA proposal against production is saved; prior smoothing approval is unchanged.
+
+221targeted tests/types/build,4688exact decisions,223actual browser comparisons,5walk gates,original reviewer reproducer,6risk boundaries,8paired old-regression cases,UXmobile+desktop boarding/identity and1400connected outcomes pass. See exact commands/logs in RESULTS.147prior artifact hashes and the443sec legitimate regression remain. Two inspected screenshots only; every browser closed.
+
+Reproduce prepare.py then the locked verify.sh and separate risk-logic/evidence commands. All writes target cycle9; adapt/copy to your own review directory to preserve this builder evidence. The evidence verifier's HEAD/MERGE_HEAD requirements intentionally need explicit provenance adaptation after controller capture. Fullsuite/staging/CI/deploy stay controller-owned. No remaining38-case or same-bus occurrence solution is claimed.

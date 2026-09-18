@@ -1,0 +1,40 @@
+{
+  "verdict": "approve",
+  "summary": "Walking caution is correctly preserved, with prior smoothing, destination forecasts and trip identity intact. No blocking findings. Review saved in eta/independent-review-round-8.md; checkout remains clean.",
+  "head_sha": "53b4076b6273deb6f4e2ad436420461a0e5174f4",
+  "base_sha": "373505d5076f21a08de69d9587be9b2a55956642",
+  "next_task": "Controller runs remaining full-suite, staging and CI gates, then merges/deploys and verifies production. Separately scope the boardable pickup occurrence contract and remaining 38 unavailable journeys.",
+  "blocking_findings": [],
+  "tests": [
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-8/verify.sh",
+      "exit_code": 0,
+      "result": "221 tests, both typechecks, Vite build, 4,688 decision comparisons, 223 browser comparisons, walking boundaries and mobile/desktop boarding checks passed."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock npm run test:accuracy",
+      "exit_code": 0,
+      "result": "175 tests passed; 285 distinct application tests across both test commands."
+    },
+    {
+      "command": "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock node /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-8/state-transitions.mjs",
+      "exit_code": 0,
+      "result": "11 browser states plus reload passed, including walking caution, empty/missing forecasts, feed failure and recovery. Two earlier harness assumptions were corrected and preserved. Zero page errors; browser closed."
+    },
+    {
+      "command": "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-8/risk-logic.mts",
+      "exit_code": 0,
+      "result": "Eight paired regression cases passed; destination, pickup and ranking values preserved."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-8/verify_evidence.py",
+      "exit_code": 0,
+      "result": "Verified source provenance, 1,400 connected outcomes, retained 443-second regression and 183 unchanged builder artifacts."
+    },
+    {
+      "command": "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/review-round-8/final_integrity.py",
+      "exit_code": 0,
+      "result": "Exact head/base, frozen proposal, seven source hashes and clean checkout/index verified."
+    }
+  ]
+}

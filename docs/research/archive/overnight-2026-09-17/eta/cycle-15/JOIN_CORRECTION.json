@@ -1,0 +1,17 @@
+{
+  "at": "2026-09-18T10:04:55.979764+00:00",
+  "trigger": {
+    "route": 1,
+    "bus": "38",
+    "source": 59329,
+    "poll": 3870,
+    "targetPhysicalIndex": 18,
+    "sourceDeparted": 1789576075828,
+    "pollAt": 1789576080852,
+    "secondRowHops": 31,
+    "ringLength": 31
+  },
+  "defect": "Post-departure zero-hop current row was paired with next actual return, shifting its following row to the second future return. Exact historical chain verification alone did not test semantic occurrence identity. Initial aggregate scores are superseded, not evidence for promotion.",
+  "fixedRule": "When target physical index equals latest source, zero-hop first row reserves source as occurrence0 even after departure. A full-lap first row (hops>=N) starts at the next connected source return. A positive sub-lap first row at that same physical target cannot independently distinguish a lagged current approach from next-return pricing, so retain forecast/chain possibilities as explicit unresolved identity rather than assert truth. Non-source physical targets keep exact forward-chain occurrence mapping. Match each arm separately; differing target IDs remain unpaired truth, never silently coerced.",
+  "noOutcomeTuning": "Frozen before corrected scoring; all forecasts, original scores and original outcome rows retained. No source/input/model change, caps or detector-error exclusions."
+}

@@ -1,0 +1,6 @@
+{
+  "services/shuttle-v2/web/src/TransitMap.tsx": "68c5d16eb712e16963d5d32a4dd0218ed34d6586ac1b073426519f9c3fca3f2d",
+  "services/shuttle-v2/web/src/journeyArrival.ts": "e5dac7ae24c86324486d4e1b36bc64914b0ddf41578b3dca0169bdaef032134b",
+  "services/shuttle-v2/web/src/atStopJourney.test.ts": "3ae844d8af0bbdcfc0d94275638f0c50957957a9a8ab5934e8690725c9b83801",
+  "docs/server-side-eta.md": "aa11c29ec7972dd42977d9a7abd0f5e86482569cd8f1f1a92002902118415f75"
+}

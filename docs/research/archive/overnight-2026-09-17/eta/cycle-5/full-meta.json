@@ -1,0 +1,30 @@
+{
+  "arms": [
+    "baseline",
+    "candidate"
+  ],
+  "refitAt": 1789665240913,
+  "unavailable": {
+    "baseline": 0,
+    "candidate": 0
+  },
+  "parityChecks": 302,
+  "frames": 16253,
+  "emitted": 150020,
+  "changed": 12988,
+  "beliefChecks": 46790,
+  "gaps": [
+    {
+      "at": 1789556683166,
+      "gapMs": null
+    },
+    {
+      "at": 1789642866201,
+      "gapMs": 45035866
+    }
+  ],
+  "params": "fit-2026-09-15",
+  "priorCutoff": "2026-09-14T04:00:00Z",
+  "candidatePatch": "unchanged-marginals-plus-release-fit-for-Winchester",
+  "note": "BOTH arms use current production release ON. Baseline copied mechanically from current HEAD with import paths rewritten; candidate native checkout. Historical afternoon already used. Unrounded target-scoped estimator output with periodic full ServerEta parity checks; continuous within observed segments; no synthetic observations or watcher-run resets. Distributions/tables priorSep14; parameter version publishedbeforeSep16. Actual approximately five-second raw cadence. Includes both target occurrences; collector lacks prior-day seeds. Marginal tables unchanged. Winchester-only current-release model and30s absolutequantile pooling; lower-tail legacywidening retained. Coefficients refreshcausally at13:14ETSep17usingonlyalreadyavailableoutcomes. Otherroutebeliefs andfutureholds unchanged."
+}

@@ -1,0 +1,20 @@
+{
+  "autoEnd": false,
+  "scope": "Independent held-pinch interruption probe; current built SPA; real clock; all network intercepted",
+  "errors": [
+    {
+      "message": "Cannot set properties of undefined (setting '_leaflet_pos')",
+      "stack": "TypeError: Cannot set properties of undefined (setting '_leaflet_pos')\n    at bt (https://map-interrupt.test/assets/rider-DuHxjI64.js:4:21985)\n    at n._resetView (https://map-interrupt.test/assets/rider-DuHxjI64.js:4:40637)\n    at n._onTouchEnd (https://map-interrupt.test/assets/rider-DuHxjI64.js:4:148778)\n    at HTMLDocument.x (https://map-interrupt.test/assets/rider-DuHxjI64.js:4:24216)",
+      "phase": "subsequent normal touch on finish view"
+    }
+  ],
+  "phases": [
+    "pinch begins",
+    "Done while fingers remain down",
+    "release held pinch after teardown",
+    "subsequent normal touch on finish view",
+    "complete"
+  ],
+  "completed": true,
+  "resourcesClosed": true
+}

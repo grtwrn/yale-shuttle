@@ -1,0 +1,14 @@
+{
+  "counts": {
+    "pairedDecisions": 1836,
+    "visibleOrderDifferences": 1,
+    "boardingVehicleDifferences": 0,
+    "pickupSelectionMetadataDifferences": 20,
+    "journeyAvailabilityDifferences": 0,
+    "cautionDifferences": 1,
+    "syntheticPointDeadlineDifferences": 4
+  },
+  "sessions": 12,
+  "cautionField": "journeyArrival.catchRisk",
+  "note": "Checks the actual nested journeyArrival.catchRisk field on the new6000:9000 slice; counts above exactly match saved paired decisions. No browser assertion. Initial inherited prefix note was corrected; comparison logic and decisions were unchanged."
+}

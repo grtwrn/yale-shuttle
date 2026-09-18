@@ -1,0 +1,24 @@
+{
+  "scope": "Built SPA on bounded local server, normal browser clock; synthetic feed; no live backend",
+  "checks": [
+    "Up to 3 normal-clock zoom-in/unmount and zoom-out/filter/unmount cycles completed; no page error or crash fallback"
+  ],
+  "states": [
+    {
+      "name": "after-rapid-map-transitions",
+      "body": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\n🚌 2 shuttles reporting on 1 route\nPick a destination — we compare walking against every shuttle.\nUnion Station\nMed School (Cedar St)\nScience Hill\nPeabody Museum\nPayne Whitney Gym\nOld Campus\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    }
+  ],
+  "errors": [
+    "Cannot read properties of undefined (reading '_leaflet_pos')",
+    "Cannot read properties of undefined (reading '_leaflet_pos')"
+  ],
+  "errorStacks": [
+    "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-BRUcU96P.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-BRUcU96P.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-BRUcU96P.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-BRUcU96P.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-BRUcU96P.js:4:48420)",
+    "TypeError: Cannot read properties of undefined (reading '_leaflet_pos')\n    at Ke (http://localhost:8093/assets/rider-BRUcU96P.js:4:22074)\n    at n._getMapPanePos (http://localhost:8093/assets/rider-BRUcU96P.js:4:44398)\n    at n._getNewPixelOrigin (http://localhost:8093/assets/rider-BRUcU96P.js:4:44763)\n    at n._move (http://localhost:8093/assets/rider-BRUcU96P.js:4:41084)\n    at n._onZoomTransitionEnd (http://localhost:8093/assets/rider-BRUcU96P.js:4:48420)"
+  ],
+  "iterations": 1,
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- combobox \"To\"\n- status: 🚌 2 shuttles reporting on 1 route\n- text: Pick a destination — we compare walking against every shuttle.\n- button \"Union Station\"\n- button \"Med School (Cedar St)\"\n- button \"Science Hill\"\n- button \"Peabody Museum\"\n- button \"Payne Whitney Gym\"\n- button \"Old Campus\"\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "requests": 1,
+  "resourcesClosed": true
+}

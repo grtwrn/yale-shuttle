@@ -1,0 +1,84 @@
+{
+  "matchedRedPolls": 16253,
+  "matchedBusRows": 46790,
+  "differentAvailability": 0,
+  "fieldChanges": {
+    "lap": 46544
+  },
+  "examples": [
+    {
+      "at": "2026-09-16T11:07:28.184Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 0
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:33.190Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 5
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:38.245Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 10
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:43.183Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 15
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:48.304Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 20
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:53.182Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 25
+      }
+    },
+    {
+      "at": "2026-09-16T11:07:58.186Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 30
+      }
+    },
+    {
+      "at": "2026-09-16T11:08:03.314Z",
+      "bus": "#308",
+      "field": "lap",
+      "old": null,
+      "allFleet": {
+        "115": 35
+      }
+    }
+  ],
+  "exactRowsAfterOriginalRedLapKeyProjection": 46790,
+  "interpretation": "Only intentional extra lap-age keys differ. Restricting all-fleet lap map to original11/121 makes all46790Redbusrows exactly equal at16253original poll clocks. Future full-fleet arms must both use same expanded observations, not compare against earlier Red-only forecasts."
+}

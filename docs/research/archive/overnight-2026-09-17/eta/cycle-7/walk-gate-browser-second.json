@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "walkSec": 0,
+      "from": {
+        "lat": 41.297857,
+        "lon": -72.926763
+      },
+      "option": {
+        "mode": "shuttle",
+        "routeLabel": "Red",
+        "color": "#C62828",
+        "boardStopId": 121,
+        "alightStopId": 48,
+        "walkToSec": 0,
+        "waitSec": 0,
+        "rideSec": 879.9449148391399,
+        "plannedRideSec": 879.9449148391399,
+        "walkFromSec": 0,
+        "totalSec": 879.9449148391399,
+        "busName": "309",
+        "directWalkSec": 2731.5421006008964,
+        "busEtaSec": 0,
+        "busDepartNowSec": 0,
+        "busLowSec": 0,
+        "busHighSec": 0,
+        "computedAtMs": 1789561481036
+      },
+      "text": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Current location\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 9:04a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 32 min\n39 min\n🚌 39 min\n9:04a\n›\n🚶 Walk\n45 min\n9:10a\n›\nClear\n🚌 On Red #309?\nDetected near your board stop\nYes, I'm on it\nNot me\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    }
+  ],
+  "errors": [],
+  "scope": "Recorded current-state fixture, synthetic live GPS walking offsets with the origin/plan held fixed; no observed walking or all-route claim.",
+  "resourcesClosed": true
+}

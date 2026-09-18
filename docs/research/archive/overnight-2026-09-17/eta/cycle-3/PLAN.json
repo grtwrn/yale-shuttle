@@ -1,0 +1,53 @@
+{
+  "createdAtUTC": "2026-09-18T03:34:31.867851+00:00",
+  "baseCommit": "948712e153cea1017e9471ce84851a41fae4508a",
+  "question": "Does a discounted, shrunken same-day departure-phase state add remaining-wait information beyond lap/elapsed/15-minute clock and beyond a matched two-history phase?",
+  "chronology": "Reuse cycle1 535 completed visits: train Sep3/4/8/9, calibration Sep10/11 unused for fitting, inspected development Sep14\u201317 through13:14 ET. No fresh holdout.",
+  "arms": [
+    "landmark_lap_elapsed_clock",
+    "plus_two_history_phase",
+    "plus_recursive_role"
+  ],
+  "core": "Reuse exact cycle1 frozen core coefficients and source design; do not refit or change own-lap support.",
+  "state": "Per stable bus_name, stop, ET date. Use only modern confirmed departures available at focal pin. Retain phase as complex weighted sum with two-hour elapsed-departure half-life; confidence=abs(sum)/(sumWeights+2). Minimum two confirmed same-stop histories; zero features if unsupported.",
+  "twoHistoryAblation": "Same history eligibility, reset and shrinkage; only the two most recent departures, equal weight. This is a matched hazard ablation, not the earlier calibrated slot-center residual model.",
+  "phase": "Hourly period fixed from prior recurrence evidence, no vehicle ID coefficient and no retrospective bus/day phase. Three columns: confidence*sin(future deterministic hourly clock - prior phase), confidence*cos(...), confidence.",
+  "resets": "ET date; latest known all-route non-Red anchor; gap outside30\u201390min between recorded same-stop departures; absent intervening confirmed opposite departure; circular phase innovation beyond training-only pooled per-stop95th percentile of absolute adjacent hourly phase changes (no development selection). At pin require last history within90min, intervening confirmed opposite and supported existing lap.",
+  "availability": "Primary max(departed+120s, first_moved+confirm_sec). Sensitivity adds another120s to all departure availability. Anchors known at anchored+15s only for route reassignment. These proxies are not original publication receipts. Snapshot frozen at pin through every forecast landmark and future hazard row.",
+  "penaltyL2": 10,
+  "support": "At least5 training visits and2 dates; no per-stop or feature choice from development. Core offset fixed; fit three added columns jointly.",
+  "weighting": "Reuse cycle1 inverse eligible-landmark count per visit. Primary overall each visit equal total weight. Also equal-checkpoint scores; at fixed landmarks explicitly original-cohort weighted vs equal-checkpoint.",
+  "survival": "Reuse15sec hazard risk-bin likelihood and1800sec right-censored exposure with continued final hazard tail; no outcome trimming, no quantile cap.",
+  "comparators": "Exact frozen current-code component and matched core on identical722 development checkpoints. PR282 changes no comparator ETA/calibration code; all previous comparator input hashes verified before reuse. Not live pooled full ETA.",
+  "checks": [
+    "future-event truncation invariance",
+    "unknown/future own departure exclusion",
+    "resets and phase wrap fixtures",
+    "exact fallback",
+    "equal cohort and weight sums",
+    "ordered nonnegative unbounded-tail quantiles",
+    "per-date/checkpoint/support/history-count/tail metrics",
+    "retain prior legitimate regressions"
+  ],
+  "promotion": "No release from component screen. Any positive candidate requires independent audit then complete warm release-ON rider replay with connected first/second targets, both tails, stability, availability and transitions.",
+  "inputs": {
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/landmarks.jsonl": "162ebbbe356ff91b10e8219ac52a85338a62d976d3362329114fc5ecd39b06e8",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/fits.json": "f687e901cfab90c4be82e8747ce4c4f8293e799af410618f49bbf00f0675000f",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/fit_landmarks.py": "63ab2f9405171d0f57938e7e41f6fdc4620359c4bee8231723358d2149bc8e1a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/extract_landmarks.py": "3f3d533d5e111f51a823122fb5d153065336fef486bb3369f4e74f331d500572",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/comparator.json": "d1fa71765b776f08b9e68e200127e354d4e5a4d9c2ee155c2f373319fb877e0b",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-1/COMPARATOR_PLAN.json": "e459e8f640e88a9c48fa57c4ac764d9709f7e2eaf0cbd54e20be74cfa0565e0b",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-window-data/release-policy-review.json": "45a19bb98370bf75ef5971cb0a4b280ae2a5ac41e5cea03bd9e9851b05a1115f",
+    "/home/gwarren/projects/yale-shuttle-watcher/red-window-data/release-survival-screen.json": "0f761685ea24a36d248879951b0716d20e34b54485351a24c3c624be31c68700"
+  },
+  "currentComparatorHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/baseline-patch.json": "f7adb4932de11f6fdcd92fd950baefe1a7561b8b8617143526fd96b61ae8478d",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/calibrator/releaseFit.ts": "934e33d3d6b607f749674002fcb2d84a787980c4da668ffc1c71b4b16ac5098e",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/release.ts": "29046e91cd297d59e8275e23c52a035120db21a221ff99756d33d7cafb9022da",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/tables.ts": "30d1c62ecffa83d8e942a2000d4925f80349b1aad49e6378e2cf5826ea3501a4",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/lap.ts": "dd4f89623a4e99c570e558c3520be078af3976d0348881caeb2396e2d16e48e0",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/dist.ts": "983e7e0dbcd08d8bb36dd18e9128e3a199d5bfe4821e976156f73352fa8bb80d"
+  }
+}

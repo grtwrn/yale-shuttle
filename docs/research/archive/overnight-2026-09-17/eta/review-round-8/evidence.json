@@ -1,0 +1,36 @@
+{
+  "head": "53b4076b6273deb6f4e2ad436420461a0e5174f4",
+  "base": "373505d5076f21a08de69d9587be9b2a55956642",
+  "priorSmoothingUntouched": true,
+  "exactCombinedSource": true,
+  "numericalBlockUnchangedFromHead": true,
+  "sourceHashes": {
+    "docs/red-current-release.md": "cbabbd46c73441cf0ea63ec9093140e91daf789a3f7a394fee4b5f47dd068b36",
+    "docs/server-side-eta.md": "aa11c29ec7972dd42977d9a7abd0f5e86482569cd8f1f1a92002902118415f75",
+    "services/shuttle-v2/web/src/TransitMap.tsx": "ce774d4a7252175dc5d5db9f995e006115743e05bbe66e3d643e4fa4b3718981",
+    "services/shuttle-v2/web/src/atStopJourney.test.ts": "3ae844d8af0bbdcfc0d94275638f0c50957957a9a8ab5934e8690725c9b83801",
+    "services/shuttle-v2/web/src/eta/index.ts": "042a57b0ede10dc067079ae790c631e8adc94c8d3592852ad4de6114552cbf41",
+    "services/shuttle-v2/web/src/eta/releaseSmoothing.test.ts": "5f67e3583c2a0a6e8d4e2e021a8146cffe9a56b966499c27cb74f3ac09019e3f",
+    "services/shuttle-v2/web/src/journeyArrival.ts": "e5dac7ae24c86324486d4e1b36bc64914b0ddf41578b3dca0169bdaef032134b"
+  },
+  "prototypeDecisionsExact": 4688,
+  "missingCases": 68,
+  "connectedLegUses": 13598,
+  "connectedOutcomes": 1400,
+  "changedOutcomes": 30,
+  "changedMAE": [
+    880.8808492743099,
+    396.8725333468484
+  ],
+  "largestRetainedRegression": {
+    "source": 63523,
+    "target": 63632,
+    "at": 1789644066335,
+    "changed": true,
+    "e0": -339.0629809391146,
+    "e1": 781.8900001013631
+  },
+  "priorArtifactCount": 183,
+  "priorArtifactsPreserved": true,
+  "scope": "Selected reused Red history; no population coverage, fresh holdout, or walking-outcome claim."
+}

@@ -1,0 +1,12 @@
+{
+  "outcome": "research",
+  "summary": "Completed 3,000 evening polls across 12 routes. ETA and connected-trip results remain negligible and mixed; no release is justified. Evidence and checkpoint saved in eta/cycle-17. Source files and HEAD remain unchanged.",
+  "next_task": "Independently review cycle-17/REVIEW_REQUEST.md, including uncertain identities, retained regressions and rider-decision changes. After acceptance, further coverage can resume frozen checkpoints from poll 9000.",
+  "tests": [
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/run.sh — passed; 3,000 new polls per arm and checkpoint9000 saved.",
+    "flock -w 900 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/heavy.lock bash /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/analyze.sh — passed; 70,162 arrival records and 4,088 connected rider trips per arm verified.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/audit_decision_changes.py — passed; all order, caution and deadline changes accounted for.",
+    "./node_modules/.bin/tsx /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/audit_ranking.mts — passed; 3,672 saved ranking rows reproduced exactly.",
+    "python3 /home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-17/finish.py — passed; 912 tracked files, 241 prior artifacts and eight frozen inputs unchanged."
+  ]
+}

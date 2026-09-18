@@ -1,0 +1,78 @@
+{
+  "counts": {
+    "pairedRows": 190157,
+    "changed_vs_core": 22300,
+    "changed_vs_union": 22299
+  },
+  "fullBeliefTrackingHashes": {
+    "core": "751a420974d0dcc8c2ec5ee7454feebf05b36c6d588355e7772311393d5d2a7d",
+    "union": "751a420974d0dcc8c2ec5ee7454feebf05b36c6d588355e7772311393d5d2a7d",
+    "history": "751a420974d0dcc8c2ec5ee7454feebf05b36c6d588355e7772311393d5d2a7d"
+  },
+  "changes": {
+    "core:4:occurrence0": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 98.18030395961023,
+        "low": 33.392623612488705,
+        "high": 117.1330307602991
+      }
+    },
+    "union:4:occurrence0": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 65.94340628951898,
+        "low": 36.00080227261219,
+        "high": 83.7427404896655
+      }
+    },
+    "core:4:occurrence1": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 45.033596193674384,
+        "low": 36.713569960934365,
+        "high": 66.31640070890353
+      }
+    },
+    "union:4:occurrence1": {
+      "rows": 5574,
+      "maxAbsoluteDeltaSec": {
+        "eta": 28.5194577267348,
+        "low": 27.663777924237365,
+        "high": 52.63825752345201
+      }
+    },
+    "core:48:occurrence0": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 119.1903143016732,
+        "low": 31.928935530322377,
+        "high": 198.56402329686773
+      }
+    },
+    "union:48:occurrence0": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 77.46678057146869,
+        "low": 29.679579075501522,
+        "high": 114.42819433800184
+      }
+    },
+    "core:48:occurrence1": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 47.01591508061938,
+        "low": 58.24648624717065,
+        "high": 96.67116746673946
+      }
+    },
+    "union:48:occurrence1": {
+      "rows": 5575,
+      "maxAbsoluteDeltaSec": {
+        "eta": 32.83179843430389,
+        "low": 39.931418855010634,
+        "high": 57.91161104249295
+      }
+    }
+  }
+}

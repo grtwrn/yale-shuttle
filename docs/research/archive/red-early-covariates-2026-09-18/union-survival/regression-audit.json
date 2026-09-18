@@ -1,0 +1,694 @@
+{
+  "newBoundCrossings": [
+    {
+      "id": 45643,
+      "bus": "#316",
+      "day": "2026-09-14",
+      "elapsed": 0,
+      "truthRemaining": 59.98,
+      "baselineLow": 57.61141779136945,
+      "candidateLow": 60.26832792432732,
+      "baselineHigh": 264.43829223806955,
+      "candidateHigh": 268.8380433920873,
+      "newEarly": true,
+      "newLate": false,
+      "earlyShortfall": 0.28832792432732646,
+      "lateShortfall": 0
+    },
+    {
+      "id": 58717,
+      "bus": "#309",
+      "day": "2026-09-16",
+      "elapsed": 60,
+      "truthRemaining": 110.095,
+      "baselineLow": 105.66603915973548,
+      "candidateLow": 111.51572210040325,
+      "baselineHigh": 360.1705204220608,
+      "candidateHigh": 371.86359848618844,
+      "newEarly": true,
+      "newLate": false,
+      "earlyShortfall": 1.4207221004032533,
+      "lateShortfall": 0
+    },
+    {
+      "id": 70719,
+      "bus": "#306",
+      "day": "2026-09-18",
+      "elapsed": 300,
+      "truthRemaining": 340.054,
+      "baselineLow": 77.47722721876403,
+      "candidateLow": 75.17137198974973,
+      "baselineHigh": 342.2514391696752,
+      "candidateHigh": 333.0231865898945,
+      "newEarly": false,
+      "newLate": true,
+      "earlyShortfall": 0,
+      "lateShortfall": 7.030813410105452
+    }
+  ],
+  "largestSupportedRegressions": [
+    {
+      "id": 48738,
+      "day": "2026-09-14",
+      "deltaWIS": 4.325608785077023,
+      "deltaMAE": 12.117803295445853
+    },
+    {
+      "id": 45756,
+      "day": "2026-09-14",
+      "deltaWIS": 4.058685806557854,
+      "deltaMAE": 5.507896332711255
+    },
+    {
+      "id": 58717,
+      "day": "2026-09-16",
+      "deltaWIS": 3.875790520378665,
+      "deltaMAE": 9.149118825575329
+    },
+    {
+      "id": 67419,
+      "day": "2026-09-17",
+      "deltaWIS": 2.8069056138496578,
+      "deltaMAE": 7.154855696894472
+    },
+    {
+      "id": 54977,
+      "day": "2026-09-15",
+      "deltaWIS": 2.5427378167633634,
+      "deltaMAE": 3.1862631098218515
+    },
+    {
+      "id": 70719,
+      "day": "2026-09-18",
+      "deltaWIS": 5.6136369455934485,
+      "deltaMAE": 4.23465628519412
+    },
+    {
+      "id": 71867,
+      "day": "2026-09-18",
+      "deltaWIS": 1.9906645593455181,
+      "deltaMAE": 5.340207661580088
+    },
+    {
+      "id": 71757,
+      "day": "2026-09-18",
+      "deltaWIS": 1.0720300851913862,
+      "deltaMAE": -0.6674912326282367
+    },
+    {
+      "id": 70813,
+      "day": "2026-09-18",
+      "deltaWIS": 0.8424680386506616,
+      "deltaMAE": 2.3056119473016707
+    },
+    {
+      "id": 71329,
+      "day": "2026-09-18",
+      "deltaWIS": 0.4319449927176926,
+      "deltaMAE": 1.4823744703321324
+    }
+  ],
+  "cases": {
+    "45643": {
+      "visit": {
+        "id": 45643,
+        "bus_id": 66322,
+        "bus_name": "#316",
+        "anchor_bus_id": 66322,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789389900492,
+        "pinned_at": 1789389920507,
+        "arrived_at": 1789389920507,
+        "departed_at": 1789389980487,
+        "stand_sec": 59.98,
+        "inside_sec": 109.98,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 30.35716725214859,
+        "steps": 9,
+        "far_m": 105.42749801748934,
+        "confirm_sec": 50.005,
+        "rest_polls": 3,
+        "shuffles": 1,
+        "first_moved_at": 1789389930611,
+        "last_at_rest_at": 1789389980487,
+        "closest_m": 69.50868698261402,
+        "dow": 1,
+        "hour": 8
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "45756": {
+      "visit": {
+        "id": 45756,
+        "bus_id": 66324,
+        "bus_name": "#308",
+        "anchor_bus_id": 66324,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789390785560,
+        "pinned_at": 1789390800563,
+        "arrived_at": 1789390800563,
+        "departed_at": 1789390845545,
+        "stand_sec": 44.982,
+        "inside_sec": 95.146,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 37.529436429418084,
+        "steps": 7,
+        "far_m": 102.98773432430343,
+        "confirm_sec": 45.027,
+        "rest_polls": 3,
+        "shuffles": 1,
+        "first_moved_at": 1789390815544,
+        "last_at_rest_at": 1789390845545,
+        "closest_m": 53.00780175797773,
+        "dow": 1,
+        "hour": 9
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "48738": {
+      "visit": {
+        "id": 48738,
+        "bus_id": 66339,
+        "bus_name": "#310",
+        "anchor_bus_id": 66339,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789417251321,
+        "pinned_at": 1789417266323,
+        "arrived_at": 1789417266323,
+        "departed_at": 1789417601507,
+        "stand_sec": 335.184,
+        "inside_sec": 350.065,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 31.845459292831084,
+        "steps": 3,
+        "far_m": 69.40493703932715,
+        "confirm_sec": 9.999,
+        "rest_polls": 14,
+        "shuffles": 3,
+        "first_moved_at": 1789417276323,
+        "last_at_rest_at": 1789417601507,
+        "closest_m": 68.19926232173495,
+        "dow": 1,
+        "hour": 16
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "54977": {
+      "visit": {
+        "id": 54977,
+        "bus_id": 66399,
+        "bus_name": "#316",
+        "anchor_bus_id": 66399,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789505836108,
+        "pinned_at": 1789505851234,
+        "arrived_at": 1789505856104,
+        "departed_at": 1789505996099,
+        "stand_sec": 139.995,
+        "inside_sec": 154.893,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 33.63714445710267,
+        "steps": 3,
+        "far_m": 84.24946840128919,
+        "confirm_sec": 10.127,
+        "rest_polls": 8,
+        "shuffles": 2,
+        "first_moved_at": 1789505881124,
+        "last_at_rest_at": 1789505996099,
+        "closest_m": 54.95107357601569,
+        "dow": 2,
+        "hour": 16
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "58717": {
+      "visit": {
+        "id": 58717,
+        "bus_id": 66434,
+        "bus_name": "#309",
+        "anchor_bus_id": 66434,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789570629131,
+        "pinned_at": 1789570644134,
+        "arrived_at": 1789570649140,
+        "departed_at": 1789570814229,
+        "stand_sec": 165.089,
+        "inside_sec": 190.026,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1.0,
+        "first_step_m": 37.779827198588215,
+        "steps": 3,
+        "far_m": 85.19309798886238,
+        "confirm_sec": 20.035,
+        "rest_polls": 8,
+        "shuffles": 3,
+        "first_moved_at": 1789570694136,
+        "last_at_rest_at": 1789570814229,
+        "closest_m": 57.52279543062389,
+        "dow": 3,
+        "hour": 10
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 69,
+        "heldSamples": 35,
+        "maxHeldGapSec": 5.21,
+        "observedPins": [
+          [
+            11,
+            "2026-09-16T14:57:24.134"
+          ]
+        ],
+        "finalPlateauSec": 40.053,
+        "firstDistinctMovementAfterDepartureSec": 4.91
+      }
+    },
+    "64318": {
+      "visit": {
+        "id": 64318,
+        "bus_id": 66491,
+        "bus_name": "#309",
+        "anchor_bus_id": 66491,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789649753079,
+        "pinned_at": 1789649768217,
+        "arrived_at": 1789649768217,
+        "departed_at": 1789649928303,
+        "stand_sec": 160.086,
+        "inside_sec": 170.288,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 30.182977866156076,
+        "steps": 3,
+        "far_m": 77.52781842696558,
+        "confirm_sec": 10.046,
+        "rest_polls": 9,
+        "shuffles": 3,
+        "first_moved_at": 1789649778210,
+        "last_at_rest_at": 1789649928303,
+        "closest_m": 63.60766521184506,
+        "dow": 4,
+        "hour": 8
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 68,
+        "heldSamples": 33,
+        "maxHeldGapSec": 5.257,
+        "observedPins": [
+          [
+            11,
+            "2026-09-17T12:56:08.217"
+          ]
+        ],
+        "finalPlateauSec": 45.195,
+        "firstDistinctMovementAfterDepartureSec": 4.789
+      }
+    },
+    "65347": {
+      "visit": {
+        "id": 65347,
+        "bus_id": 66491,
+        "bus_name": "#309",
+        "anchor_bus_id": 66491,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789656637744,
+        "pinned_at": 1789656652856,
+        "arrived_at": 1789656652856,
+        "departed_at": 1789657152981,
+        "stand_sec": 500.125,
+        "inside_sec": 515.262,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 31.691025689341433,
+        "steps": 3,
+        "far_m": 80.71910263683685,
+        "confirm_sec": 15.192,
+        "rest_polls": 7,
+        "shuffles": 3,
+        "first_moved_at": 1789656667748,
+        "last_at_rest_at": 1789657152981,
+        "closest_m": 65.86926007526351,
+        "dow": 4,
+        "hour": 10
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 136,
+        "heldSamples": 101,
+        "maxHeldGapSec": 5.215,
+        "observedPins": [
+          [
+            11,
+            "2026-09-17T14:50:52.856"
+          ]
+        ],
+        "finalPlateauSec": 35.109,
+        "firstDistinctMovementAfterDepartureSec": 4.975
+      }
+    },
+    "67419": {
+      "visit": {
+        "id": 67419,
+        "bus_id": 66507,
+        "bus_name": "#300",
+        "anchor_bus_id": 66507,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789673390700,
+        "pinned_at": 1789673409865,
+        "arrived_at": 1789673409865,
+        "departed_at": 1789673559896,
+        "stand_sec": 150.031,
+        "inside_sec": 165.173,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 31.936804914521694,
+        "steps": 2,
+        "far_m": 68.79598197361918,
+        "confirm_sec": 10.008,
+        "rest_polls": 5,
+        "shuffles": 3,
+        "first_moved_at": 1789673434861,
+        "last_at_rest_at": 1789673559896,
+        "closest_m": 60.9069946473844,
+        "dow": 4,
+        "hour": 15
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 66,
+        "heldSamples": 31,
+        "maxHeldGapSec": 6.067,
+        "observedPins": [
+          [
+            11,
+            "2026-09-17T19:30:09.865"
+          ]
+        ],
+        "finalPlateauSec": 24.984,
+        "firstDistinctMovementAfterDepartureSec": 5.134
+      }
+    },
+    "70719": {
+      "visit": {
+        "id": 70719,
+        "bus_id": 66539,
+        "bus_name": "#306",
+        "anchor_bus_id": 66539,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789734186959,
+        "pinned_at": 1789734206831,
+        "arrived_at": 1789734206831,
+        "departed_at": 1789734846885,
+        "stand_sec": 640.054,
+        "inside_sec": 645.182,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 33.712272284419385,
+        "steps": 2,
+        "far_m": 78.09582515017404,
+        "confirm_sec": 4.901,
+        "rest_polls": 5,
+        "shuffles": 3,
+        "first_moved_at": 1789734231858,
+        "last_at_rest_at": 1789734846885,
+        "closest_m": 59.94136978948397,
+        "dow": 5,
+        "hour": 8
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 164,
+        "heldSamples": 129,
+        "maxHeldGapSec": 5.312,
+        "observedPins": [
+          [
+            11,
+            "2026-09-18T12:23:26.831"
+          ]
+        ],
+        "finalPlateauSec": 24.854,
+        "firstDistinctMovementAfterDepartureSec": 5.128
+      }
+    },
+    "70813": {
+      "visit": {
+        "id": 70813,
+        "bus_id": 66541,
+        "bus_name": "#316",
+        "anchor_bus_id": 66541,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789735286960,
+        "pinned_at": 1789735306933,
+        "arrived_at": 1789735306933,
+        "departed_at": 1789735606974,
+        "stand_sec": 300.041,
+        "inside_sec": 315.095,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 30.30606167550841,
+        "steps": 3,
+        "far_m": 74.00589420755277,
+        "confirm_sec": 10.076,
+        "rest_polls": 8,
+        "shuffles": 3,
+        "first_moved_at": 1789735316931,
+        "last_at_rest_at": 1789735606974,
+        "closest_m": 64.13381584356294,
+        "dow": 5,
+        "hour": 8
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 96,
+        "heldSamples": 61,
+        "maxHeldGapSec": 5.245,
+        "observedPins": [
+          [
+            11,
+            "2026-09-18T12:41:46.933"
+          ]
+        ],
+        "finalPlateauSec": 40.026,
+        "firstDistinctMovementAfterDepartureSec": 4.978
+      }
+    },
+    "71329": {
+      "visit": {
+        "id": 71329,
+        "bus_id": 66541,
+        "bus_name": "#316",
+        "anchor_bus_id": 66541,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789738767272,
+        "pinned_at": 1789738782293,
+        "arrived_at": 1789738782293,
+        "departed_at": 1789739182316,
+        "stand_sec": 400.023,
+        "inside_sec": 415.102,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 31.131073030056655,
+        "steps": 3,
+        "far_m": 72.59617685637762,
+        "confirm_sec": 10.07,
+        "rest_polls": 12,
+        "shuffles": 2,
+        "first_moved_at": 1789738802351,
+        "last_at_rest_at": 1789739182316,
+        "closest_m": 58.48954868197293,
+        "dow": 5,
+        "hour": 9
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with pin/rest evidence; no affirmative measurement-error evidence in this bounded record audit.",
+      "rawSummary": {
+        "samples": 92,
+        "heldSamples": 80,
+        "maxHeldGapSec": 5.168,
+        "observedPins": [
+          [
+            11,
+            "2026-09-18T13:39:42.293"
+          ]
+        ],
+        "finalPlateauSec": 54.957,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "71757": {
+      "visit": {
+        "id": 71757,
+        "bus_id": 66539,
+        "bus_name": "#306",
+        "anchor_bus_id": 66539,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789741270702,
+        "pinned_at": 1789741286033,
+        "arrived_at": 1789741286033,
+        "departed_at": 1789742105879,
+        "stand_sec": 819.846,
+        "inside_sec": 829.923,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 32.9674530162717,
+        "steps": 3,
+        "far_m": 79.36284469177401,
+        "confirm_sec": 9.926,
+        "rest_polls": 8,
+        "shuffles": 3,
+        "first_moved_at": 1789741295741,
+        "last_at_rest_at": 1789742105879,
+        "closest_m": 65.04771546865165,
+        "dow": 5,
+        "hour": 10
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    },
+    "71867": {
+      "visit": {
+        "id": 71867,
+        "bus_id": 66541,
+        "bus_name": "#316",
+        "anchor_bus_id": 66541,
+        "route_id": 3,
+        "stop_id": 11,
+        "stop_index": 14,
+        "anchored_at": 1789742536057,
+        "pinned_at": 1789742555942,
+        "arrived_at": 1789742555942,
+        "departed_at": 1789742780966,
+        "stand_sec": 225.024,
+        "inside_sec": 245.012,
+        "outcome": "stopped",
+        "how": "next",
+        "confidence": 1,
+        "first_step_m": 30.22849570660138,
+        "steps": 3,
+        "far_m": 67.71474117442088,
+        "confirm_sec": 14.949,
+        "rest_polls": 5,
+        "shuffles": 2,
+        "first_moved_at": 1789742570979,
+        "last_at_rest_at": 1789742780966,
+        "closest_m": 61.63589002808465,
+        "dow": 5,
+        "hour": 10
+      },
+      "incoming": [],
+      "outgoing": [],
+      "verdict": "Retained: completed non-gap stopped visit with rest evidence and adjacent leg records. No raw fixes in the two available frame archives; absence is not evidence of error.",
+      "rawSummary": {
+        "samples": 0,
+        "heldSamples": 0,
+        "maxHeldGapSec": null,
+        "observedPins": [],
+        "finalPlateauSec": null,
+        "firstDistinctMovementAfterDepartureSec": null
+      }
+    }
+  }
+}

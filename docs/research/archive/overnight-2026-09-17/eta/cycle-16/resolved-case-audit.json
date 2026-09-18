@@ -1,0 +1,573 @@
+{
+  "newlyResolved": 216,
+  "truthRangeSec": [
+    0.0,
+    4652.771
+  ],
+  "pointErrors": {
+    "current": {
+      "mean": 166.79210185185184,
+      "max": 1574.321
+    },
+    "canonical": {
+      "mean": 166.78747222222222,
+      "max": 1574.321
+    }
+  },
+  "newlyResolvedMostInaccurate": [
+    {
+      "at": 1789557783285,
+      "poll": 220,
+      "route": 2,
+      "bus": "53",
+      "targetIndex": 1,
+      "targetStop": 28,
+      "occurrence": 1,
+      "sourceId": 56897,
+      "targetId": 57352,
+      "legIds": [
+        52575,
+        52578,
+        52588,
+        52594,
+        52598,
+        52601,
+        52606,
+        52611,
+        52616,
+        52622,
+        52629,
+        52645,
+        52664,
+        52677,
+        52679,
+        52695,
+        52705,
+        52709,
+        52740,
+        52742,
+        52756,
+        52860,
+        52873,
+        52886,
+        52926,
+        52935,
+        52944,
+        52957,
+        52959,
+        52971,
+        52977,
+        52984,
+        52997
+      ],
+      "truthSec": 3127.679,
+      "current": [
+        4702,
+        3019,
+        7272,
+        33
+      ],
+      "canonical": [
+        4702,
+        3019,
+        7272,
+        33
+      ],
+      "maxBandDelta": 0,
+      "reason": "connected",
+      "alignment": {
+        "kind": "exact-lagged-rest",
+        "historicalSourceId": 56906,
+        "pricedSourceId": 56897,
+        "originIndex": 1,
+        "sourceOffsetHops": 1,
+        "proofLegIds": [
+          52575
+        ],
+        "restSince": [
+          1789557703290,
+          1789557703290
+        ]
+      },
+      "historicalSourceId": 56906
+    },
+    {
+      "at": 1789560424254,
+      "poll": 748,
+      "route": 2,
+      "bus": "48",
+      "targetIndex": 15,
+      "targetStop": 63,
+      "occurrence": 1,
+      "sourceId": 57271,
+      "targetId": 57879,
+      "legIds": [
+        52937,
+        52945,
+        52954,
+        52963,
+        52965,
+        52986,
+        52994,
+        52999,
+        53212,
+        53235,
+        53273,
+        53297,
+        53307,
+        53322,
+        53337,
+        53345,
+        53355,
+        53365,
+        53379,
+        53383,
+        53390,
+        53398,
+        53404,
+        53410,
+        53418,
+        53424,
+        53434,
+        53443,
+        53452,
+        53457,
+        53465,
+        53482,
+        53497,
+        53514
+      ],
+      "truthSec": 4652.771,
+      "current": [
+        3351,
+        2882,
+        7313,
+        34
+      ],
+      "canonical": [
+        3351,
+        2882,
+        7313,
+        34
+      ],
+      "maxBandDelta": 0,
+      "reason": "connected",
+      "alignment": {
+        "kind": "exact-lagged-rest",
+        "historicalSourceId": 57282,
+        "pricedSourceId": 57271,
+        "originIndex": 14,
+        "sourceOffsetHops": 1,
+        "proofLegIds": [
+          52937
+        ],
+        "restSince": [
+          1789560319281,
+          1789560319281
+        ]
+      },
+      "historicalSourceId": 57282
+    },
+    {
+      "at": 1789562401638,
+      "poll": 1143,
+      "route": 2,
+      "bus": "49",
+      "targetIndex": 10,
+      "targetStop": 79,
+      "occurrence": 1,
+      "sourceId": 57523,
+      "targetId": 58148,
+      "legIds": [
+        53180,
+        53181,
+        53192,
+        53217,
+        53238,
+        53251,
+        53265,
+        53275,
+        53289,
+        53293,
+        53305,
+        53317,
+        53327,
+        53566,
+        53570,
+        53586,
+        53624,
+        53634,
+        53667,
+        53676,
+        53679,
+        53701,
+        53703,
+        53708,
+        53719,
+        53724,
+        53728,
+        53738,
+        53745,
+        53757,
+        53761,
+        53769,
+        53776,
+        53779
+      ],
+      "truthSec": 4470.563,
+      "current": [
+        3352,
+        2879,
+        3941,
+        34
+      ],
+      "canonical": [
+        3352,
+        2879,
+        3941,
+        34
+      ],
+      "maxBandDelta": 0,
+      "reason": "connected",
+      "alignment": {
+        "kind": "exact-lagged-rest",
+        "historicalSourceId": 57526,
+        "pricedSourceId": 57523,
+        "originIndex": 9,
+        "sourceOffsetHops": 1,
+        "proofLegIds": [
+          53180
+        ],
+        "restSince": [
+          1789562291754,
+          1789562291754
+        ]
+      },
+      "historicalSourceId": 57526
+    },
+    {
+      "at": 1789562821780,
+      "poll": 1227,
+      "route": 2,
+      "bus": "49",
+      "targetIndex": 14,
+      "targetStop": 64,
+      "occurrence": 1,
+      "sourceId": 57578,
+      "targetId": 58195,
+      "legIds": [
+        53238,
+        53251,
+        53265,
+        53275,
+        53289,
+        53293,
+        53305,
+        53317,
+        53327,
+        53566,
+        53570,
+        53586,
+        53624,
+        53634,
+        53667,
+        53676,
+        53679,
+        53701,
+        53703,
+        53708,
+        53719,
+        53724,
+        53728,
+        53738,
+        53745,
+        53757,
+        53761,
+        53769,
+        53776,
+        53779,
+        53783,
+        53796,
+        53812,
+        53818
+      ],
+      "truthSec": 4320.487,
+      "current": [
+        3396,
+        2914,
+        3997,
+        34
+      ],
+      "canonical": [
+        3396,
+        2914,
+        3996,
+        34
+      ],
+      "maxBandDelta": 1,
+      "reason": "connected",
+      "alignment": {
+        "kind": "exact-lagged-rest",
+        "historicalSourceId": 57598,
+        "pricedSourceId": 57578,
+        "originIndex": 13,
+        "sourceOffsetHops": 1,
+        "proofLegIds": [
+          53238
+        ],
+        "restSince": [
+          1789562671684,
+          1789562671684
+        ]
+      },
+      "historicalSourceId": 57598
+    },
+    {
+      "at": 1789567742343,
+      "poll": 2211,
+      "route": 2,
+      "bus": "49",
+      "targetIndex": 21,
+      "targetStop": 43,
+      "occurrence": 1,
+      "sourceId": 58284,
+      "targetId": 58650,
+      "legIds": [
+        53915,
+        53924,
+        53949,
+        53968,
+        53978,
+        54002,
+        54028,
+        54046,
+        54055,
+        54056,
+        54065,
+        54081,
+        54085,
+        54090,
+        54100,
+        54104,
+        54116,
+        54123,
+        54126,
+        54130,
+        54133,
+        54140,
+        54148,
+        54154,
+        54165,
+        54182,
+        54189,
+        54199,
+        54209,
+        54216,
+        54224,
+        54230,
+        54253,
+        54256
+      ],
+      "truthSec": 2486.83,
+      "current": [
+        3357,
+        2892,
+        3946,
+        34
+      ],
+      "canonical": [
+        3357,
+        2892,
+        3946,
+        34
+      ],
+      "maxBandDelta": 0,
+      "reason": "connected",
+      "alignment": {
+        "kind": "exact-lagged-rest",
+        "historicalSourceId": 58292,
+        "pricedSourceId": 58284,
+        "originIndex": 20,
+        "sourceOffsetHops": 1,
+        "proofLegIds": [
+          53915
+        ],
+        "restSince": [
+          1789567672369,
+          1789567672369
+        ]
+      },
+      "historicalSourceId": 58292
+    }
+  ],
+  "allEightFollowingCorrections": [
+    {
+      "poll": 1227,
+      "route": 2,
+      "bus": "49",
+      "oldTarget": 58554,
+      "correctTarget": 58178,
+      "oldTruth": 6781.658,
+      "correctTruth": 4265.453,
+      "current": [
+        3441,
+        2898,
+        6164,
+        33
+      ],
+      "canonical": [
+        3441,
+        2898,
+        6164,
+        33
+      ]
+    },
+    {
+      "poll": 1383,
+      "route": 8,
+      "bus": "124",
+      "oldTarget": 58335,
+      "correctTarget": 58003,
+      "oldTruth": 4530.485,
+      "correctTruth": 2370.367,
+      "current": [
+        2334,
+        1816,
+        3413,
+        16
+      ],
+      "canonical": [
+        2339,
+        1820,
+        3473,
+        16
+      ]
+    },
+    {
+      "poll": 4061,
+      "route": 15,
+      "bus": "304",
+      "oldTarget": 59977,
+      "correctTarget": 59748,
+      "oldTruth": 3866.905,
+      "correctTruth": 1626.329,
+      "current": [
+        2149,
+        1442,
+        4512,
+        11
+      ],
+      "canonical": [
+        2149,
+        1442,
+        4512,
+        11
+      ]
+    },
+    {
+      "poll": 4265,
+      "route": 1,
+      "bus": "38",
+      "oldTarget": 60327,
+      "correctTarget": 59967,
+      "oldTruth": 5901.757,
+      "correctTruth": 2986.288,
+      "current": [
+        3427,
+        2796,
+        6855,
+        31
+      ],
+      "canonical": [
+        3427,
+        2796,
+        6855,
+        31
+      ]
+    },
+    {
+      "poll": 5342,
+      "route": 3,
+      "bus": "316",
+      "oldTarget": 61204,
+      "correctTarget": 60693,
+      "oldTruth": 7307.084,
+      "correctTruth": 3311.657,
+      "current": [
+        3841,
+        3289,
+        4483,
+        29
+      ],
+      "canonical": [
+        3841,
+        3289,
+        4483,
+        29
+      ]
+    },
+    {
+      "poll": 5618,
+      "route": 8,
+      "bus": "119",
+      "oldTarget": 61032,
+      "correctTarget": 60747,
+      "oldTruth": 4646.822,
+      "correctTruth": 2391.509,
+      "current": [
+        2327,
+        1818,
+        5247,
+        16
+      ],
+      "canonical": [
+        2327,
+        1818,
+        5247,
+        16
+      ]
+    },
+    {
+      "poll": 5630,
+      "route": 8,
+      "bus": "119",
+      "oldTarget": 61032,
+      "correctTarget": 60747,
+      "oldTruth": 4586.806,
+      "correctTruth": 2331.493,
+      "current": [
+        2317,
+        1840,
+        5245,
+        16
+      ],
+      "canonical": [
+        2317,
+        1840,
+        5245,
+        16
+      ]
+    },
+    {
+      "poll": 5666,
+      "route": 3,
+      "bus": "316",
+      "oldTarget": 61405,
+      "correctTarget": 60937,
+      "oldTruth": 7147.112,
+      "correctTruth": 3776.695,
+      "current": [
+        3761,
+        3197,
+        4309,
+        29
+      ],
+      "canonical": [
+        3761,
+        3197,
+        4309,
+        29
+      ]
+    }
+  ]
+}

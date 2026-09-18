@@ -1,0 +1,149 @@
+{
+  "phase": "review",
+  "desktop": false,
+  "source": "Actual CombinedTripMap with synthetic props; test-only export/map reference; no estimator or live network",
+  "states": [
+    {
+      "name": "review-identity-transition",
+      "width": 360,
+      "map": {
+        "x": 9,
+        "y": 36,
+        "width": 342,
+        "height": 320,
+        "left": 9,
+        "right": 351,
+        "top": 36,
+        "bottom": 356
+      },
+      "labels": [
+        {
+          "text": "🚌 (Blue Day) 2–19 min🚌 (Brown) 41–119 min",
+          "wait": false,
+          "x": 115,
+          "y": 116,
+          "width": 124.3125,
+          "height": 34,
+          "left": 115,
+          "right": 239.3125,
+          "top": 116,
+          "bottom": 150
+        },
+        {
+          "text": "🏁 (Blue Day) 12:59–1:32 PM🏁 (Brown) 2:37 PM",
+          "wait": false,
+          "x": 108,
+          "y": 291,
+          "width": 150.4375,
+          "height": 34,
+          "left": 108,
+          "right": 258.4375,
+          "top": 291,
+          "bottom": 325
+        }
+      ],
+      "buses": [
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Blue Day #307",
+          "title": "Blue Day #307",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        },
+        {
+          "text": "\n          \n            \n            🚌\n          \n        ",
+          "name": "Brown #507",
+          "title": "Brown #507",
+          "role": "button",
+          "x": 163,
+          "y": 152,
+          "width": 28,
+          "height": 28,
+          "left": 163,
+          "right": 191,
+          "top": 152,
+          "bottom": 180
+        }
+      ],
+      "overflow": false
+    }
+  ],
+  "checks": [
+    "Wait→moving→long nearby wait keeps focused marker, clears obsolete text/title, preserves untrimmed observed elapsed and historical-total meaning",
+    "Shuttle replacement moves wait identity to #309 and marks #307 passed without stale markers or focus stealing",
+    "Missing bus number retains route identity with no invented number",
+    "Adding/removing a same-initial route expands/restores both endpoint tags and removes dropped route/bus names",
+    "Touch reveals bus tooltip and ordinary Tab traversal reaches the named moving marker",
+    "Clearing routes removes hovered/focused identity and tooltip layers"
+  ],
+  "errors": [],
+  "tabOrder": [
+    {
+      "tag": "DIV",
+      "name": null,
+      "text": "@keyframes youPulse {\n          0%   { transform: scale(0.9); opacity: 0.5; }\n          80%  { transform: scale(1.6); opacity: 0; }\n          100% { transform: scale(1.6); opacity: 0; }\n        }\n      \n    \n  \n    \n      \n      \n    \n  \n          \n            \n            🚌\n          \n        Blue Day #307+− Leaflet | © OpenStreetMap contributors"
+    },
+    {
+      "tag": "path",
+      "name": null,
+      "text": ""
+    },
+    {
+      "tag": "path",
+      "name": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "name": null,
+      "text": "@keyframes youPulse {\n          0%   { transform: scale(0.9); opacity: 0.5; }\n          80%  { transform: scale(1.6); opacity: 0; }\n          100% { transform: scale(1.6); opacity: 0; }\n        }"
+    },
+    {
+      "tag": "DIV",
+      "name": null,
+      "text": ""
+    },
+    {
+      "tag": "DIV",
+      "name": "Blue Day #307",
+      "text": "🚌"
+    },
+    {
+      "tag": "A",
+      "name": "Zoom in",
+      "text": "+"
+    },
+    {
+      "tag": "A",
+      "name": "Zoom out",
+      "text": "−"
+    },
+    {
+      "tag": "A",
+      "name": null,
+      "text": "Leaflet"
+    },
+    {
+      "tag": "BUTTON",
+      "name": "Fullscreen",
+      "text": "⛶"
+    },
+    {
+      "tag": "BUTTON",
+      "name": null,
+      "text": "After map"
+    },
+    {
+      "tag": "BODY",
+      "name": null,
+      "text": "Before map\n        .trip-map-wrap .leaflet-tile-pane {\n          filter: grayscale(0.9) contrast(0.95) brightness(1.05);\n        }\n        .trip-map-wrap.map-fs .leaflet-top.leaflet-left { margin-top: 52px; }\n        .trip-map-wrap .eta-tip {\n          padding: 1px 6px;\n          font-size: 10px;\n          font-weight: 700;\n          border-radius: 6px;\n          box-shadow: 0 1px 3px rgba(0,0,0,0.25);\n        }\n        .trip-map-wrap .bus-wait-tip::before { display: none; }\n      \n    \n      \n      \n      \n        @keyframes youPulse {\n          0%   { transform: scale(0.9); opacity: 0.5; }\n          80%  { transform: scale(1.6); opacity: 0; }\n          100% { transform: scale(1.6); opacity: 0; }\n        }\n      \n    \n  \n    \n      \n      \n    \n  \n          \n            \n            🚌\n          \n        Board Blue DayGet off Blue DayYouEndBlue Day #307+− Leaflet | © OpenStreetMap contributors⛶Blue DayAfter map"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "appTree": "9d92b802a3ebb4841381a8a78e0f15bb0309422b (identical tree to production95a21c5)",
+  "hook": "Fold frozen history covariates into runtime9-feature fit; unmodified runtime release distribution thereafter.",
+  "files": {
+    "PLAN.json": "17c13ac15139be9ebdc4632702205d9aaee92f37bceae6428f50404955ba521b",
+    "replay.mts": "b2a041c9a245309fb440cbae645330aa402fdcbcfc7399b9bbac56414b3f2f97",
+    "build.mjs": "baccafc747d355f4d0c707bc6a04624acba1cf095ad5fb115ce88c7dad537806",
+    "history-release.ts": "df75f1e925fcc4886caec1b93038a22c5d337a8c830538844e9bbc7dd350a219",
+    "replay.mjs": "2f2433ca283bc6423eec5498f716a14a7e23a8110904e08200fa3c5d5d89b7cb",
+    "raw-today-frames.jsonl": "44067a86f8bf8702301444248683da0b2c1c000f3cf80f2dd02eef7d03d4b2a0",
+    "../own-history/fits.json": "b8553e86bb83e6ae350c603d6fd65cd3f04e8c8dfbc6bb2ce6c5cf6e4f5c8262"
+  }
+}

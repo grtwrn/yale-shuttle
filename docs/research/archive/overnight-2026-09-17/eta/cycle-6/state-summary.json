@@ -1,0 +1,40 @@
+{
+  "currentShellBodyExact": true,
+  "stateCount": 34,
+  "allLeadingSituationsMoving": true,
+  "stateCrossTab": [
+    {
+      "reason": "modeled pickup still ahead before first destination",
+      "afterRecordedDeparture": "False",
+      "rested": "False",
+      "decisions": 30
+    },
+    {
+      "reason": "only next-lap pickup; first destination precedes it",
+      "afterRecordedDeparture": "True",
+      "rested": "True",
+      "decisions": 12
+    },
+    {
+      "reason": "only next-lap pickup; first destination precedes it",
+      "afterRecordedDeparture": "True",
+      "rested": "False",
+      "decisions": 2
+    },
+    {
+      "reason": "only next-lap pickup; first destination precedes it",
+      "afterRecordedDeparture": "False",
+      "rested": "True",
+      "decisions": 24
+    }
+  ],
+  "inputHashes": {
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/raw-frames.jsonl": "2f65e30e8986a7cada4f5527adb77444748367d62bf68e508c17edd0ba25bcb6",
+    "/home/gwarren/projects/yale-shuttle-watcher/conditional-replay-data/outcomes.db": "daf4702f128f47f010b6a2235e54196e0aacc5cc5b3db790cc8cdbc951a69b5e",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-2026-09-17/eta/cycle-5/traversal-guard/calibration-payload.json": "24dbea4480e14e1c4168fe4c64f9f8cbbf3571d88959331dd833982f98895c6a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/arrival.ts": "7b92e398a3aa6a02b5358106380058e82d44c3400879caf94e402010d478d59a",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/web/src/eta/filter.ts": "084f9568d50b9091289585eef9df72b98d4a6e7f19c12b2a7f45ba88a3afda01",
+    "/home/gwarren/projects/yale-shuttle-watcher/overnight-eta-2026-09-17/services/shuttle-v2/src/server/serverEta.ts": "283de1730e1de77bc7ccdee5921bf0e88aa45d185fccc750ef7217769921ca83"
+  },
+  "interpretation": "All34 missing-board polls lead with moving situation:15 before source on incoming leg,19 on source outgoing leg. Existing startChain intentionally emits zero only when standingAt>=0; retained rest metadata alone is not a zero-row guarantee. No tracker or pin-clock repair established."
+}

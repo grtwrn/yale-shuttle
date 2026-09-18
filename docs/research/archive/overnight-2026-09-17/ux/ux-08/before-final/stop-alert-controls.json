@@ -1,0 +1,27 @@
+{
+  "scope": "Actual built SPA with synthetic two-bus feed and mocked Notification API; no native notification/accuracy claim",
+  "states": [
+    {
+      "permission": "denied",
+      "checks": [],
+      "expanded": null,
+      "escapeClosed": false,
+      "escapeFocus": false,
+      "cancelFocus": false,
+      "armFocus": false,
+      "stored": [
+        {
+          "routeId": "3",
+          "routeLabel": "Red",
+          "stopId": 48,
+          "stopName": "Division / Prospect",
+          "leadMin": 3,
+          "createdAt": 1789668001693
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "completed": true,
+  "resourcesClosed": true
+}

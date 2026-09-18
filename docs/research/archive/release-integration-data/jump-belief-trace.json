@@ -1,0 +1,19 @@
+{
+  "frames": 12654,
+  "beliefChecks": 72920,
+  "cutoff": 1789665240913,
+  "method": "Same ring profile and causal belief stepping as completed integrated replay, with release transition experiment explicitly off; parity checked against every available first-occurrence row lead/restSince/rested. Raw pricing counterfactuals have no display floor. Standing/moving counterfactuals condition within the same lead leg, not different routes or model fits.",
+  "_publication": {
+    "originalSource": "release-integration-data/jump-belief-trace.json",
+    "originalSha256": "ed4118527ef966f273d6ee42ecabd06f0dec0159f988b0eb27e795dccb176581",
+    "omittedArrays": [
+      {
+        "path": "rows",
+        "items": 913,
+        "reason": "per-observation result rows; aggregate scores retained"
+      }
+    ],
+    "omittedIdentifierFields": [],
+    "note": "Publication summary, not byte-identical original input. Frozen source/hash references describe the original experiment."
+  }
+}

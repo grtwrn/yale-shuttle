@@ -1,0 +1,926 @@
+// Client-side trip planning. Extracted from TransitMap.tsx unchanged except
+// for the walk model, which now matches the server (see walk.ts).
+
+import { computeUpcomingArrivals } from "./liveArrivals";
+import { liveEtaAvailable, liveBusAvailable } from './etaSource';
+import type { AnchorStore } from "./eta";
+import type { DwellTimes, SegmentTimes, UpcomingArrival } from "./arrivals";
+import { haversineMeters } from "./geo";
+import type { LatLon } from "./geo";
+import type { BusData } from "./map-data";
+import { BUS_SPEED_M_S, mergedRouteStops, ROUTE_LISTS } from "./routes";
+import {
+  fmtSchedule, fmtWindows, HEADWAY_MIN, isRouteScheduledAt, ROUTE_CALENDAR, ROUTE_HOURS, serviceStateAt,
+} from "./schedule";
+import type { PublishedWindow } from "./schedule";
+import { AT_PLACE_M, MAX_WALK_M, WALK_ONLY_MAX_SEC, walkSecFromMeters, savesWalking } from "./walk";
+import type { JourneyArrival } from './journeyArrival';
+import type { LivePickupSelection } from './livePickupSelection';
+
+export type TripOption = {
+  mode: "shuttle" | "walk";
+  routeLabel: string; color: string;
+  boardStopId: number; alightStopId: number;
+  walkToSec: number; waitSec: number; rideSec: number; walkFromSec: number;
+  totalSec: number; busName: string;
+  /** Route's ride duration at planning time, independent of live ETA differences. */
+  plannedRideSec?: number;
+  directWalkSec: number;
+  // True when the pinned bus has already gone past the board stop and
+  // isn't catchable anymore. Set only while the rider is watching the
+  // option (expanded) so we stop advancing to the next catchable bus
+  // and show "departed" instead of an arrival time.
+  departed?: boolean;
+  // Set when the originally-planned bus is no longer catchable and we advanced
+  // to a later bus. Drives the "#X just passed — next is …" note. Cleared
+  // automatically once the missed bus drops out of the live feed.
+  missedBus?: string;
+  // The pinned bus's own arrival at the board stop, in seconds remaining as
+  // of `computedAtMs` (0 for a bus dwelling there right now). This — not
+  // walkToSec + waitSec — is what "🚌 in …" must display: waitSec clamps at 0
+  // once the bus will beat the rider to the stop, which freezes the sum at
+  // the constant walk time while the bus visibly closes in (report #48, the
+  // stuck "1:49"). Undefined for walk options and future-mode plans, where no
+  // live bus exists to count down.
+  busEtaSec?: number;
+  /**
+   * The same pinned arrival's DRIVE FLOOR (arrivals.ts `UpcomingArrival.
+   * departNow`): where that bus reaches the board stop if the rest it is in
+   * right now ends this second. Carried on the pin beside `busEtaSec` so the
+   * two can only ever come from one row of one estimator pass — the standing
+   * card's range is floored by it (standWait.ts), and reconstructing it there
+   * by subtraction is what printed "in <1 min" for a bus three hops out.
+   * Equal to `busEtaSec` for a bus that is not resting.
+   */
+  busDepartNowSec?: number;
+  /**
+   * The same pinned arrival's 10-90 band (arrivals.ts `UpcomingArrival.low` /
+   * `.high`), carried beside `busEtaSec` for the same reason as the floor:
+   * the row's range must be the band of the very row its point came from.
+   * etaBand.ts decides whether it is wide enough to print.
+   */
+  busDistribution?: number[] | undefined;
+  busLowSec?: number;
+  busHighSec?: number;
+  computedAtMs?: number;
+  /** Destination arrival for the catchable bus, including the final walk. */
+  journeyArrival?: JourneyArrival;
+  /** Existing countdown and selected boarding evidence, independent of destination availability. */
+  livePickupSelection?: LivePickupSelection;
+  etaUnavailable?: boolean;
+};
+
+/** Don't keep looping past a boarding point. */
+export const MAX_RIDE_SEC = 25 * 60;
+
+/**
+ * How long a rider still has to board a bus that's dwelling at a stop RIGHT
+ * NOW. Floor of 120 s (GPS slack + "the driver waits for someone running"),
+ * stretched by the calibrated remaining dwell when we have data — layover
+ * stops where the bus rests for minutes are catchable from much farther
+ * away. Shared by planTrip (option generation) and the live recompute so the
+ * two never disagree about whether a parked bus is boardable. The backend
+ * planner's expectedWait applies the same elapsed-vs-median dwell logic.
+ */
+export function dwellBoardWindowSec(
+  bus: BusData,
+  routeListId: string,
+  stopId: number,
+  dwellTimes: DwellTimes,
+  now = Date.now(),
+): number {
+  let remaining = 0;
+  const d = dwellTimes[routeListId]?.[String(stopId)];
+  if (d && d.n >= 2 && bus.at_stop_since) {
+    const elapsed = Math.max(0, (now - new Date(bus.at_stop_since + "Z").getTime()) / 1000);
+    remaining = Math.max(0, d.med - elapsed);
+  }
+  return Math.max(120, remaining + 60);
+}
+
+// ── Live bus selection for a planned option ────────────────────────────────
+//
+// Once a trip is planned, the option stays pinned to its bus so the card does
+// not flap between vehicles mid-glance. These constants bound that loyalty:
+//
+//   STOP_DWELL_SEC    — a bus dwells ~60 s at a stop, so a rider is catchable
+//                       until eta + 60 s. Shared with planTrip's own pick.
+//   SWITCH_BUFFER_SEC — walking GPS can read 50–100 m long; require the
+//                       overshoot past catchability to exceed 90 s before
+//                       giving up on the planned bus (spurious-flip guard).
+//   PIN_SWITCH_MARGIN_SEC — report #49: loyalty must not survive dominance.
+//                       When the pinned bus passes the rider's stop its next
+//                       arrival is a full lap out (20–40 min), yet a rider
+//                       standing AT the stop made canCatch true for ANY eta
+//                       (0 <= eta + 60), so the card told them to wait for it
+//                       to come back around while a second bus a few minutes
+//                       out was ignored — until an incidental GPS jitter
+//                       re-ran planTrip (the rider's observed ~20 s "lag" was
+//                       that luck, not design). If a DIFFERENT catchable bus
+//                       beats the pinned one by at least this margin, switch
+//                       to it in the same poll. 5 min is far above per-poll
+//                       ETA noise between two live buses (tens of seconds),
+//                       so near-equivalent buses still never trade places,
+//                       and far below any lap time (~25 min+), so the
+//                       passed-bus case always clears it.
+
+export const STOP_DWELL_SEC = 60;
+export const SWITCH_BUFFER_SEC = 90;
+export const PIN_SWITCH_MARGIN_SEC = 5 * 60;
+
+export type LiveArrivalPick<A> = {
+  /** The arrival the row COUNTS DOWN to — the bus the rider can see coming. */
+  match: A;
+  /**
+   * The arrival the rider can actually REACH, which is what the option's wait
+   * and total are priced on. Identical to `match` except when `match` is out
+   * of reach by the walk model, which is the only case where the two
+   * questions have different answers:
+   *
+   *   "where is my bus?"        -> match     (report: the closing bus vanished)
+   *   "when will I get there?"  -> boardable (report #99: "How could I catch
+   *                                the blue if its a 7min walk and it arrives
+   *                                in 5?")
+   *
+   * #99's card read `Blue Day · in 5, 17 min · 16 min · arrive 11:46a ·
+   * 🚶 7 min › 🚌 4 min › 🚶 5 min` — a 7-minute walk, a bus 5 minutes out,
+   * and a total that quietly assumed a wait of zero. The pin was right to
+   * stay (SWITCH_BUFFER_SEC is a spurious-flip guard against walking GPS
+   * reading 50-100 m long, and 60 s is ~66 m); what was wrong was pricing a
+   * boarding on it. `waitSec` is `max(0, eta - walk)`, which clamps to zero
+   * exactly when the bus beats the rider to the stop — right when they can
+   * catch it and dwell covers the gap, a lie when they cannot.
+   */
+  boardable: A;
+  departed: boolean;
+  missedBus?: string;
+};
+
+/**
+ * Which live arrival an already-planned option should follow this poll.
+ * `live` is computeUpcomingArrivals output for the board stop (soonest
+ * first, may contain each vehicle twice — this lap and the next);
+ * `pinnedBusName` is the bus the plan pinned; `effectiveWalkToSec` is the
+ * rider's remaining walk. Pure and stateless: called fresh every poll, so
+ * every verdict below is reachable within one poll of the data changing.
+ * Returns null only for an empty `live`.
+ */
+export function pickLiveArrival<A extends { eta: number; busName: string }>(
+  live: readonly A[],
+  pinnedBusName: string,
+  effectiveWalkToSec: number,
+): LiveArrivalPick<A> | null {
+  if (live.length === 0) return null;
+  const norm = (s: string) => s.replace(/^#/, "");
+  const canCatch = (a: A) => effectiveWalkToSec <= a.eta + STOP_DWELL_SEC;
+  const canCatchWithBuffer = (a: A) =>
+    effectiveWalkToSec <= a.eta + STOP_DWELL_SEC + SWITCH_BUFFER_SEC;
+  const catchable = live.filter(canCatch);
+  /**
+   * THE SOONEST ARRIVAL, catchable or not — the bus the rider can SEE coming.
+   *
+   * `catchable[0]` answers "which bus can I get on"; it is the wrong list to
+   * pick the row's countdown from, because `canCatch` deletes a bus for being
+   * TOO CLOSE. A rider 83 m from the stop is 76 s of walk away, so the moment
+   * a bus's ETA falls below `walk - STOP_DWELL_SEC` (16 s here) it drops out
+   * of `catchable` — while it is 97 m from the kerb and closing.
+   *
+   * That is the second half of the "declined" drop class. #120 closed the
+   * first half (the pin released in favour of the SAME vehicle a lap later);
+   * this is the dominance branch below, which was choosing among the
+   * survivors of that filter. The canary caught it on Red, 2026-09-04 16:03
+   * ET, on the operator's own trip (Prospect / Canner -> YSPH, board stop
+   * Division / Prospect, 83.5 m from the origin — just outside `AT_PLACE_M`):
+   *
+   *   16:03:15  "in <1, 19 min"   #304 235 m out, live [304:23s, 316, 310]
+   *   16:03:30  "in 26, 46 min"   #304  97 m out, live [304:11s, 310:1580s]
+   *   16:03:37  #304 at the kerb, 6 m
+   *
+   * #304 never left `live` — it was 11 seconds away. It fell out of
+   * `catchable` by five seconds of walk, so the dominance rule compared the
+   * pinned vehicle against #310 twenty-six minutes out and handed it the row.
+   * The rider standing at the stop was told their next bus was 26 min away
+   * while it pulled in. Replayed off the production rows in
+   * `__fixtures__/red-closing-bus.json`, this reproduces the exact card:
+   * "in 26, 46 min", total 39 min.
+   *
+   * `boardable` still comes from `catchable`, so the wait and the total stay
+   * honest (report #99) — only the vehicle the row FOLLOWS changes. On a
+   * rider standing at the stop (walk 0) `canCatch` is true for every entry,
+   * so `catchable` IS `live` and this is byte-identical to master.
+   */
+  const soonest = live.reduce((best, a) => (a.eta < best.eta ? a : best), live[0]!);
+  const pinned = live.find((a) => norm(a.busName) === norm(pinnedBusName));
+  /**
+   * Every verdict below answers "which bus does the row follow"; this answers
+   * "which one can the rider get on". They differ only when the followed bus
+   * is out of reach, so on a rider standing at the stop — walk 0, `canCatch`
+   * true for every entry — `boardable` IS `match` and nothing changes.
+   */
+  const pick = (match: A, departed: boolean, missedBus?: string): LiveArrivalPick<A> => ({
+    match,
+    boardable: canCatch(match) ? match : (catchable[0] ?? match),
+    departed,
+    ...(missedBus ? { missedBus } : {}),
+  });
+  if (pinned && canCatch(pinned)) {
+    // Dominance check (report #49): stay loyal to the pinned bus unless a
+    // different vehicle beats it by the full margin. Same-name entries are the
+    // same vehicle a lap sooner/later — never a "switch".
+    //
+    // The candidate is the SOONEST arrival, not the soonest catchable one —
+    // see `soonest` above. Report #49's own case is unchanged, because the bus
+    // that has passed the rider's stop is the one whose next entry is a lap
+    // out, and the alternative a few minutes away is both soonest and
+    // catchable.
+    //
+    // `SWITCH_BUFFER_SEC` bounds it, and bounds it with the constant that
+    // already means "walking GPS reads 50–100 m long, do not give up on a bus
+    // this close": the soonest arrival takes the row only when the rider is
+    // within that slack of catching it. So a bus pulling in 500 s before the
+    // rider can possibly arrive is still not what the row counts down to, and
+    // the incident above — five seconds outside `canCatch` — is.
+    const better = canCatchWithBuffer(soonest) ? soonest : catchable[0];
+    if (
+      better &&
+      norm(better.busName) !== norm(pinned.busName) &&
+      pinned.eta - better.eta >= PIN_SWITCH_MARGIN_SEC
+    ) {
+      return pick(better, false);
+    }
+    return pick(pinned, false);
+  }
+  if (pinned && canCatchWithBuffer(pinned)) {
+    // Borderline — GPS may be reading long. Stay on the planned bus. (A
+    // sooner catchable alternative cannot exist here: catchable requires
+    // eta >= walk - 60, which in this branch exceeds the pinned eta.)
+    return pick(pinned, false);
+  }
+  if (catchable.length > 0) {
+    // A LATER LAP OF THE PINNED VEHICLE IS NOT ANOTHER BUS.
+    //
+    // `live` carries each vehicle twice — this lap and the next — and the
+    // pinned entry above is its SOONEST. When that entry is out of reach by
+    // the walk model, the first catchable arrival on a route the rider's own
+    // bus is running alone is that same vehicle a loop later. Swapping to it
+    // does not offer an alternative: it deletes the one fact the rider can
+    // act on ("your bus is a minute away, run") and replaces it with a lap.
+    //
+    // The canary caught it as "in 1, 57 min" -> "in 56 min" in fifteen
+    // seconds on Brown, 77 m before #301 pulled in (it reached the kerb 7 s
+    // after the row stopped showing it), and the card sank to the bottom of
+    // the list with no explanation. The old code's own tell was that it had
+    // to SUPPRESS "You can't catch #301" whenever the missed bus and the new
+    // match were the same vehicle — a swap that cannot be explained is a swap
+    // that should not happen. The operator's invariant (2026-09-04): a bus
+    // that has been shown is not removed until it has actually arrived or
+    // actually departed.
+    //
+    // So the pin is released for uncatchability only in favour of a
+    // DIFFERENT vehicle — the case that has something to say, and that says
+    // it in the "#X just passed" line. Once the pinned bus really does reach
+    // the stop and leave, `computeUpcomingArrivals` re-prices it a lap out on
+    // its own, its soonest entry becomes catchable again, and the first
+    // branch above takes over: departure still clears the row, and nothing
+    // here holds a stale number — every value returned is this poll's.
+    //
+    // The test is on the SOONEST catchable arrival only, so this is master's
+    // pick everywhere else: a genuinely different vehicle that beats the
+    // pinned one's next lap still takes the row, and still says so.
+    const match = catchable[0];
+    if (pinned && norm(match.busName) === norm(pinned.busName)) {
+      return pick(pinned, false);
+    }
+    // The planned bus is still in the feed, a different one is taking the
+    // row, and we can no longer make the planned one — so name it. (The
+    // same-vehicle case that used to need suppressing here has returned
+    // above; it is no longer reachable.)
+    return pick(match, false, pinned ? norm(pinned.busName) : undefined);
+  }
+  return pick(pinned ?? live[0], true);
+}
+
+/** Positive evidence that this visit returns to pickup before reaching the
+ * destination. Missing destination/horizon data is unknown, not rejection. */
+export function boardingVisitConflict(board: UpcomingArrival, arrivals: readonly UpcomingArrival[], alightStopId: number) {
+  const ahead = arrivals.filter(a => a.busName === board.busName && a.routeLabel === board.routeLabel && a.stopsAhead > board.stopsAhead);
+  const destination = ahead.filter(a => a.stopId === alightStopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  const nextPickup = ahead.filter(a => a.stopId === board.stopId).sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return destination && nextPickup && nextPickup.stopsAhead < destination.stopsAhead
+    && nextPickup.eta >= board.eta && destination.eta >= nextPickup.eta
+    ? {nextPickup, destination} : null;
+}
+
+/** Skip only a proven wrong visit. Unknown/missing destination evidence keeps
+ * the existing recommendation. A rejected visit may select a later bus; if
+ * no retained arrival exists the usual unavailable/departed UI is used. */
+export function rideBoardArrivals(arrivals: readonly UpcomingArrival[], boardStopId: number, alightStopId: number): UpcomingArrival[] {
+  return arrivals.filter(a => a.stopId === boardStopId && !boardingVisitConflict(a, arrivals, alightStopId));
+}
+
+/** A raw at-stop flag cannot restore a pickup visit rejected above. No ETA
+ * equality/epsilon is used: the evidence is canonical visit ordering. */
+export function boardingVisitAllowed(busName: string, boardStopId: number, alightStopId: number, arrivals: readonly UpcomingArrival[]): boolean {
+  const norm = (s: string) => s.replace(/^#/, "");
+  const first = arrivals.filter(a => a.stopId === boardStopId && norm(a.busName) === norm(busName))
+    .sort((a,b) => a.stopsAhead-b.stopsAhead)[0];
+  return !first || !boardingVisitConflict(first, arrivals, alightStopId);
+}
+
+export function planTrip(
+  from: LatLon, to: LatLon,
+  buses: BusData[],
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  segmentTimes: SegmentTimes,
+  dwellTimes: DwellTimes,
+  targetDate?: Date | null,
+  now = Date.now(),
+  anchorStore?: AnchorStore,
+): TripOption[] {
+  // Future-plan mode: the user picked a date/time >60s away. We can't
+  // rely on live buses, so we filter by published operating hours and
+  // estimate wait from headway.
+  const futureMode = !!targetDate && targetDate.getTime() - now > 60_000;
+  const directWalkM = haversineMeters(from, to);
+  const directWalkSec = walkSecFromMeters(directWalkM);
+
+  const fromDist: Record<number, number> = {};
+  const toDist: Record<number, number> = {};
+  for (const [k, c] of Object.entries(stopCoords)) {
+    const sid = Number(k);
+    fromDist[sid] = haversineMeters(from, c);
+    toDist[sid] = haversineMeters(to, c);
+  }
+  const options: TripOption[] = [];
+
+  for (const cfg of ROUTE_LISTS) {
+    // Skip routes that won't be running at the target time. In live mode
+    // we still let computeUpcomingArrivals gate (bus presence filters
+    // naturally).
+    // The calendar question, alternation included: a plan for next Saturday
+    // must not ride the grocery line that runs the OTHER weekends.
+    if (futureMode && !isRouteScheduledAt(cfg.label, targetDate!)) continue;
+    if (!futureMode && !liveEtaAvailable(buses, now, cfg.label)) continue;
+    const stops = mergedRouteStops(cfg, routeStops);
+    if (stops.length < 2) continue;
+    const routeSegs = segmentTimes[cfg.routeIds[0]] ?? {};
+
+    for (let i = 0; i < stops.length; i++) {
+      const b = stops[i];
+      if (fromDist[b] === undefined || fromDist[b] > MAX_WALK_M) continue;
+      // Compute ride-time cumulatively walking forward along the route,
+      // WRAPPING around the loop — these are circular routes, so a board
+      // stop late in the stop array still reaches an alight earlier in
+      // it. The old forward-only scan couldn't pair those, which made
+      // the planner skip the stop nearest the rider whenever it sat
+      // "after" the destination in array order and suggest a farther
+      // one instead (user report 2026-07-17, Blue). MAX_RIDE_SEC still
+      // caps how far around the loop an option can ride.
+      // These two depend only on the BOARD stop, not on how far around the
+      // loop we ride, but they sat inside the alight scan and were recomputed
+      // for every candidate. computeUpcomingArrivals is the expensive one, and
+      // the wrap-around change above roughly doubled the (board, alight) pairs
+      // — so it was running about 4x more often than it used to.
+      const hereBus = futureMode ? undefined : buses.find(
+        (bb) => cfg.busRouteIds.includes(bb.route_id) && bb.at_stop_id === b && liveBusAvailable(bb, cfg.label, now),
+      );
+      const boardArrivals = futureMode ? [] : computeUpcomingArrivals(
+        [b, ...stops.filter(s => toDist[s] !== undefined && toDist[s]! <= MAX_WALK_M)], buses, routeStops, stopCoords, segmentTimes, now, dwellTimes, anchorStore,
+      ).filter((a) => a.routeLabel === cfg.label);
+      let cumRide = 0;
+      for (let step = 1; step < stops.length; step++) {
+        const prev = stops[(i + step - 1) % stops.length];
+        const cur = stops[(i + step) % stops.length];
+        const seg = routeSegs[`${prev}-${cur}`];
+        if (seg && seg.n >= 1) {
+          cumRide += seg.avg;
+        } else {
+          // Fall back to haversine / bus-speed when we have no observed
+          // segment time. Using a fixed 180 s default inflated long
+          // routes to unusable totals whenever a route had no active
+          // buses collecting data.
+          const pc = stopCoords[prev], cc = stopCoords[cur];
+          if (pc && cc) {
+            cumRide += Math.max(30, haversineMeters(pc, cc) / BUS_SPEED_M_S);
+          } else {
+            cumRide += 90;
+          }
+        }
+        // Stop searching along this route once the ride would wrap past
+        // 25 minutes — any further alight would mean the bus is just
+        // circling back near the boarding point.
+        if (cumRide > MAX_RIDE_SEC) break;
+        if (toDist[cur] === undefined || toDist[cur] > MAX_WALK_M) continue;
+        const walkToSec = walkSecFromMeters(fromDist[b]);
+        const walkFromSec = walkSecFromMeters(toDist[cur]);
+        // (The "more walking than walking direct" test used to live here,
+        // before waitSec/rideSec were known. See the dominance check below.)
+        // Wait time: for a live plan we need a real bus on the route; for
+        // a future plan we use half the published headway since no bus
+        // exists yet to time against.
+        let waitSec: number; let busName: string;
+        let busEtaSec: number | undefined;
+        let busDistribution: number[] | undefined;
+        let busDepartNowSec: number | undefined;
+        let busLowSec: number | undefined;
+        let busHighSec: number | undefined;
+        if (futureMode) {
+          waitSec = (HEADWAY_MIN[cfg.label] ?? 15) * 30;
+          busName = "";
+        } else {
+          // A bus physically dwelling AT this board stop is boardable NOW if
+          // the rider can reach it before it pulls away — generate the option
+          // with wait 0 instead of relying on ETA math. Without this the
+          // stop was silently DROPPED here (a dwelling bus used to emit no
+          // ETA for its own stop), which is how the planner missed a 10-min
+          // fastest route entirely (report #28: bus parked 13 m from the
+          // board stop, every pair boarding there discarded).
+          const arrivals = rideBoardArrivals(boardArrivals, b, cur);
+          if (hereBus && boardingVisitAllowed(hereBus.bus_name, b, cur, boardArrivals) && walkToSec <= dwellBoardWindowSec(hereBus, cfg.routeIds[0], b, dwellTimes, now)) {
+            waitSec = 0;
+            busEtaSec = 0; // it is AT the stop
+            busDepartNowSec = 0;
+            busLowSec = 0; busHighSec = 0;
+            busName = hereBus.bus_name.replace(/^#/, "");
+          } else if (arrivals.length === 0) {
+            continue;
+          } else {
+            // Pin the soonest *catchable* bus (one the rider can reach before it
+            // finishes dwelling), not merely the soonest — with second-lap
+            // arrivals that's usually the same vehicle a loop later rather
+            // than nothing. Pinning an uncatchable bus made the live recompute
+            // flag it "🚌 #X just passed your stop" the instant a fresh plan
+            // rendered. Falls back to the soonest when none is catchable —
+            // the option then correctly shows "departed".
+            // STOP_DWELL_SEC is shared with pickLiveArrival's canCatch so
+            // plan-time and live pinning can never disagree.
+            const next = arrivals.find((a) => walkToSec <= a.eta + STOP_DWELL_SEC) ?? arrivals[0];
+            waitSec = Math.max(0, next.eta - walkToSec);
+            busEtaSec = next.eta;
+            busDistribution = next.distribution;
+            busDepartNowSec = next.departNow;
+            busLowSec = next.low; busHighSec = next.high;
+            busName = next.busName;
+          }
+        }
+        const totalSec = walkToSec + waitSec + cumRide + walkFromSec;
+        // A shuttle that saves almost no walking adds a wait/boarding/ride
+        // without enough benefit, even if a noisy ETA briefly looks attractive.
+        if (!savesWalking(walkToSec + walkFromSec, directWalkSec)) continue;
+        options.push({
+          mode: "shuttle",
+          routeLabel: cfg.label, color: cfg.color,
+          boardStopId: b, alightStopId: cur,
+          walkToSec, waitSec, rideSec: cumRide, plannedRideSec: cumRide, walkFromSec,
+          totalSec, busName,
+          directWalkSec,
+          busEtaSec,
+          ...(busDistribution ? { busDistribution } : {}),
+          busDepartNowSec,
+          busLowSec, busHighSec,
+          computedAtMs: busEtaSec !== undefined ? now : undefined,
+        });
+      }
+    }
+  }
+  // Options slower than just walking are KEPT (the user wants to see every
+  // route), but the picker demotes and labels them "slower than walking" at
+  // render time so one can't masquerade as the recommendation — that was
+  // report #15: a 2-min ride wrapped in 29 min of walking totalled MORE
+  // than the direct walk yet read like the top pick.
+  const viable = options;
+  // Per-route pick: lowest total time, with one carve-out — among options
+  // whose totals are within ~3 min of the route's best, prefer the
+  // least total walking, then the shortest ride.
+  // The old pick minimized walk-to unconditionally, which ignored wait:
+  // report #3 saw a 43-min wait at the nearest stop chosen over boarding
+  // the same (resting) bus a 4-min walk away.
+  const TOTAL_TIE_SEC = 180;
+  const byRoute = new Map<string, TripOption[]>();
+  for (const o of viable) {
+    const bucket = byRoute.get(o.routeLabel);
+    if (bucket) bucket.push(o);
+    else byRoute.set(o.routeLabel, [o]);
+  }
+  const bestPerRoute = new Map<string, TripOption>();
+  for (const [label, group] of byRoute) {
+    const minTotal = Math.min(...group.map((o) => o.totalSec));
+    const nearBest = group.filter((o) => o.totalSec <= minTotal + TOTAL_TIE_SEC);
+    nearBest.sort((a, b) => (a.walkToSec + a.walkFromSec) - (b.walkToSec + b.walkFromSec)
+      || a.rideSec - b.rideSec || a.totalSec - b.totalSec);
+    bestPerRoute.set(label, nearBest[0]);
+  }
+  // Sort the chosen options by total time for display.
+  const dedup = [...bestPerRoute.values()]
+    .sort((a, b) => a.totalSec - b.totalSec)
+    .slice(0, 6);
+  // Include the direct-walk option and sort the whole list by totalSec
+  // so the FASTEST badge actually lands on the fastest one — previously
+  // walk was hard-prepended and always got the badge. Skip the walk
+  // suggestion entirely when the direct walk exceeds an hour: nobody
+  // plans a 60+ min walk across New Haven, and offering it as a trip
+  // option clutters the picker when the only viable choice is a bus.
+  // ...unless it's the only thing we have. Report #35: a 4.3 km trip where
+  // the server planner returned a perfectly good 53-min walk, but the client
+  // walk model put it at 66 min — over this cutoff — so the walk was
+  // suppressed, no shuttle matched, and the rider got a bare "No trip options
+  // found between these locations." Suppressing the clutter is fine;
+  // suppressing the last option is not. (The 29% model gap that produced those
+  // 66 min is itself fixed — see walk.ts — but the guard stays: any trip with
+  // no shuttle option must still offer the walk.)
+  const walkList: TripOption[] = directWalkSec <= WALK_ONLY_MAX_SEC || dedup.length === 0
+    ? [{
+        mode: "walk",
+        routeLabel: "Walk",
+        color: "#546e7a",
+        boardStopId: 0, alightStopId: 0,
+        walkToSec: 0, waitSec: 0, rideSec: 0, walkFromSec: 0,
+        totalSec: directWalkSec, busName: "",
+        directWalkSec,
+      }]
+    : [];
+  return [...walkList, ...dedup].sort((a, b) => a.totalSec - b.totalSec);
+}
+
+/**
+ * Wording split inside the "already there" state: at or below this the two
+ * points are ONE spot ("the same place you're starting from"); above it they
+ * are two, a few steps apart.
+ *
+ * 10 m because that is smaller than any separation this network treats as two
+ * places: the closest pair of distinct stops it serves is 10.3 m (Front / Rt 1
+ * (N) and (S) — measured over the 172-stop fixture; the next four pairs are
+ * 10.3–10.8 m). So the stronger sentence is never printed for two points the
+ * app itself would call different stops.
+ */
+export const SAME_SPOT_M = 10;
+
+/**
+ * "You're already there": the destination is within `AT_PLACE_M` of the origin
+ * and the planner produced no shuttle worth showing.
+ *
+ * The state is real and the planner is right to produce it. With endpoints
+ * this close the dominance rule above discards every shuttle option — both
+ * walk legs would have to fit inside a direct walk of ~zero — leaving a single
+ * 0-minute Walk. What was wrong is what the screen then said: the "shuttles
+ * that go there" fallback keys on exactly that walk-only shape and answered a
+ * rider standing at their destination with a dozen routes and "should be
+ * running now — no bus reporting yet".
+ *
+ * Both halves of the test matter. Distance alone is not enough: two stops can
+ * be 10 m apart, so a (silly but real) ride between them can survive, and an
+ * option must never be overruled by a message. An empty shuttle list alone is
+ * not enough either: that is also what an off-hours cross-town trip looks
+ * like, and THAT rider does want the route list.
+ *
+ * The threshold cannot hide a ride. Measured on the test network from Phelps
+ * Gate, the first surviving shuttle option needs ~200 m of separation — well
+ * clear of AT_PLACE_M — and `planner.test.ts` pins that.
+ */
+export function isAlreadyThere(
+  from: LatLon | null | undefined,
+  to: LatLon | null | undefined,
+  options: readonly TripOption[] | null | undefined,
+): boolean {
+  if (!from || !to || !options) return false;
+  if (options.some((o) => o.mode === "shuttle")) return false;
+  return haversineMeters(from, to) <= AT_PLACE_M;
+}
+
+// Routes that geographically connect from→to (a stop within walking
+// distance of each) regardless of whether they're running right now.
+// Used as a fallback when planTrip returns only Walk: lets the picker
+// explain "the Grocery TJ route goes there, but it's Sa/Su 10a–6p,
+// next active Sat 10:00 AM" rather than leaving the rider staring at
+// just "walk 45 min".
+export interface PotentialRoute {
+  label: string;
+  color: string;
+  boardStopId: number;
+  alightStopId: number;
+  schedule: string;
+  nextActive: Date | null;
+  /**
+   * The schedule says this route should be running at `after`, yet no bus
+   * produced a trip — the feed is empty (first bus not out yet, a dropout)
+   * or the bus is off its route. The rider must read "should be running,
+   * no bus reporting", never "Next: tomorrow 7:00 AM", which is what
+   * `nextActive` alone says at 07:02 on a school morning.
+   */
+  activeNow: boolean;
+  /**
+   * The hours say the line runs now, yet it is not out today — upstream's
+   * `active` flag, the partner line's bus, or the published calendar says so
+   * (`ROUTE_CALENDAR`, schedule.ts). `partner` names the line running instead
+   * when this one alternates weekends ("Not this weekend"), null otherwise
+   * ("Not running today"). Never "should be running now" in this state.
+   * `nextActive` is then the line's own next start.
+   */
+  off: { partner: string | null } | null;
+  /** The published sheet's one-line note for the route (FlexiStop, holidays), if any. */
+  note: string | null;
+  /** Where the calendar facts come from, for the card's small print. */
+  source: string | null;
+}
+
+/**
+ * The published window for a ROUTE_LISTS entry, if the payload carries one.
+ * Looked up by the route ids the config lists (`routeIds`, then `busRouteIds`
+ * as served by upstream), so a merged config still finds its timetable.
+ */
+export function publishedWindowFor(
+  cfg: { routeIds: readonly string[]; busRouteIds: readonly number[] },
+  publishedHours: Record<string, PublishedWindow> | undefined,
+): PublishedWindow | undefined {
+  if (!publishedHours) return undefined;
+  for (const rid of cfg.routeIds) {
+    const w = publishedHours[rid];
+    if (w) return w;
+  }
+  for (const rid of cfg.busRouteIds) {
+    const w = publishedHours[String(rid)];
+    if (w) return w;
+  }
+  return undefined;
+}
+
+/** Upstream's `active` flag for a ROUTE_LISTS entry, looked up like `publishedWindowFor`. */
+export function routeActiveFor(
+  cfg: { routeIds: readonly string[]; busRouteIds: readonly number[] },
+  routeActive: Record<string, boolean> | undefined,
+): boolean | undefined {
+  if (!routeActive) return undefined;
+  for (const rid of cfg.routeIds) if (rid in routeActive) return routeActive[rid];
+  for (const rid of cfg.busRouteIds) if (String(rid) in routeActive) return routeActive[String(rid)];
+  return undefined;
+}
+
+/**
+ * The hours line a rider reads on a route's details page ("Runs M–F 7a–6p"):
+ * the operator's published window when the payload carries one, ROUTE_HOURS
+ * rendered as text otherwise, and null when neither knows the route — the
+ * caller renders nothing rather than "Runs ". Same precedence as the All tab
+ * and the "Shuttles that go there" panel, so the three never disagree.
+ */
+export function routeHoursCaption(
+  cfg: { label: string; routeIds: readonly string[]; busRouteIds: readonly number[] },
+  publishedHours: Record<string, PublishedWindow> | undefined,
+): string | null {
+  const published = publishedWindowFor(cfg, publishedHours);
+  const hours = published ? fmtWindows([published]) : fmtSchedule(cfg.label);
+  return hours ? `Runs ${hours}` : null;
+}
+
+export function findPotentialRoutes(
+  from: LatLon, to: LatLon,
+  routeStops: Record<string, number[]>,
+  stopCoords: Record<number, LatLon>,
+  after: Date,
+  // `/api/buses` `route_hours`: the operator's published timetable, keyed by
+  // route id. When a route has one it is what the rider is told ("Runs …",
+  // "Next: …", "should be running"); otherwise the hand-maintained ROUTE_HOURS
+  // — which is the widened in-service gate, not the timetable — stands in.
+  publishedHours?: Record<string, PublishedWindow>,
+  // The feed's evidence at `now`: upstream's `active` flag per route id
+  // (`/api/buses` `route_active`) and the lines with a bus reporting — the
+  // live word on a line that alternates weekends with another. Bears on
+  // `after` only when `after` is today.
+  live?: { labels: ReadonlySet<string>; now: Date; active?: Record<string, boolean> },
+): PotentialRoute[] {
+  const out: PotentialRoute[] = [];
+  const directWalkSec = walkSecFromMeters(haversineMeters(from, to));
+  for (const cfg of ROUTE_LISTS) {
+    const stops = mergedRouteStops(cfg, routeStops);
+    if (stops.length < 2) continue;
+    const published = publishedWindowFor(cfg, publishedHours);
+    const state = serviceStateAt(
+      published ? [published] : ROUTE_HOURS[cfg.label], cfg.label, after,
+      live ? { labels: live.labels, now: live.now, active: routeActiveFor(cfg, live.active) } : undefined,
+    );
+    // Any board stop near "from" and any alight stop near "to",
+    // with alight further along the route than board (so we're not
+    // suggesting a ride that goes the wrong way).
+    let bestBoard = -1;
+    let bestAlight = -1;
+    let bestTotal = Infinity;
+    for (let i = 0; i < stops.length; i++) {
+      const b = stops[i];
+      const bc = stopCoords[b];
+      if (!bc) continue;
+      const dFrom = haversineMeters(from, bc);
+      if (dFrom > MAX_WALK_M) continue;
+      // Wrap around the loop — same circular-route fix as planTrip.
+      for (let j = 1; j < stops.length; j++) {
+        const a = stops[(i + j) % stops.length];
+        const ac = stopCoords[a];
+        if (!ac) continue;
+        const dTo = haversineMeters(to, ac);
+        if (dTo > MAX_WALK_M) continue;
+        const total = dFrom + dTo;
+        if (!savesWalking(walkSecFromMeters(total), directWalkSec)) continue;
+        if (total < bestTotal) {
+          bestTotal = total; bestBoard = b; bestAlight = a;
+        }
+      }
+    }
+    if (bestBoard === -1) continue;
+    out.push({
+      label: cfg.label,
+      color: cfg.color,
+      boardStopId: bestBoard,
+      alightStopId: bestAlight,
+      schedule: published ? fmtWindows([published]) : fmtSchedule(cfg.label),
+      nextActive: state.next,
+      activeNow: state.open,
+      off: state.off,
+      note: ROUTE_CALENDAR[cfg.label]?.note ?? null,
+      source: ROUTE_CALENDAR[cfg.label]?.source ?? null,
+    });
+  }
+  // Routes that should be running now first, then by next-active — soonest
+  // first, routes with no schedule last.
+  out.sort((a, b) => {
+    if (a.activeNow !== b.activeNow) return a.activeNow ? -1 : 1;
+    const ta = a.nextActive ? a.nextActive.getTime() : Infinity;
+    const tb = b.nextActive ? b.nextActive.getTime() : Infinity;
+    return ta - tb;
+  });
+  return out;
+}
+
+/**
+ * Time actually spent TRAVELLING on an option: walk to the stop + ride + walk
+ * from the stop. Waiting is excluded — the rider spends it at their desk, not
+ * on the trip — which is the same distinction `slowerThanWalk` already draws.
+ *
+ * Unlike `totalSec`, every term here is fixed by the plan's geometry and the
+ * calibrated segment times. The planned ride is retained separately from the live ride estimate. Waiting
+ * and ETA differences cannot change this cost; walking can follow the rider. Anything decided
+ * by it therefore cannot flicker poll to poll.
+ */
+export function commuteSec(o: TripOption): number {
+  return o.mode === 'walk' ? o.totalSec : o.walkToSec + (o.plannedRideSec ?? o.rideSec) + o.walkFromSec;
+}
+
+/**
+ * A shuttle is "slower than walking" only when the time spent actually
+ * COMMUTING exceeds the direct walk — not when the arrival time does. Waiting
+ * isn't commuting: the rider can spend it at their desk and leave at the
+ * leave-by time, so a late arrival caused purely by wait shouldn't demote or
+ * tag the route. Only judged when walking is a real alternative (direct walk
+ * ≤ 60 min — the walk card itself is suppressed beyond that).
+ *
+ * Lives here rather than in the component because `mostDirectOption` must
+ * agree with the row ordering about which options are worth offering.
+ */
+export function slowerThanWalk(o: TripOption): boolean {
+  return o.mode === "shuttle" && !o.departed &&
+    o.directWalkSec <= 3600 &&
+    commuteSec(o) > o.directWalkSec;
+}
+
+/**
+ * The most DIRECT usable shuttle: the one with the least `commuteSec`.
+ *
+ * Report #93 — "red flashed off screen but should always be shown for this
+ * route … whatever is shortest ride time (and gets you closest to dest or is
+ * closest to home) is always shown. A short route that doesn't get you far
+ * wouldn't be good." That caveat is why the metric is the SUM of the three
+ * moving legs rather than ride time alone: a two-minute hop that drops the
+ * rider a twelve-minute walk short of the destination scores 14 min and loses
+ * to a route that carries them to the door. "Shortest ride", "closest to the
+ * destination" and "closest to home" are exactly walkTo + ride + walkFrom.
+ *
+ * Departed options and ones slower than walking are never candidates — the
+ * rider must never be steered onto a bus they cannot catch or that costs them
+ * time (the alternate-pickup lesson).
+ */
+export function mostDirectOption(options: readonly TripOption[]): TripOption | undefined {
+  let best: TripOption | undefined;
+  for (const o of options) {
+    if (o.mode !== "shuttle" || o.departed || o.etaUnavailable || slowerThanWalk(o)) continue;
+    if (!best) { best = o; continue; }
+    const d = commuteSec(o) - commuteSec(best);
+    // Geometry-only ties: a live ETA must not change which route is direct.
+    const walk = o.walkToSec + o.walkFromSec, bestWalk = best.walkToSec + best.walkFromSec;
+    if (d < 0 || (d === 0 && (walk < bestWalk || (walk === bestWalk && o.routeLabel < best.routeLabel)))) best = o;
+  }
+  return best;
+}
+
+/**
+ * How much more direct a hidden option must be before it earns a row of its
+ * own. Below this the top of the list already IS the direct answer and a
+ * fourth row is noise.
+ */
+export const DIRECT_COMMUTE_MARGIN_SEC = 2 * 60;
+
+/**
+ * The option promoted into the collapsed list purely for being the direct
+ * route, or undefined when the list already shows it.
+ *
+ * Report #93: Division/Prospect → LEPH ranked Blue Day 22 min, Orange Day
+ * 34, Walk 37, Red 39 — and Red is the one that runs straight there. Its
+ * 39 minutes are a 28-minute WAIT wrapped around a 13-minute commute (0 min
+ * walk, 12.2 ride, 0.8 walk, measured live 2026-09-04); Blue's commute is
+ * 23 min and Orange's 30. So Red sat below the "Show N more routes" fold,
+ * and — because a wait that long moves by minutes between polls — it crossed
+ * the third-shuttle slack boundary back and forth: the "flashing" the report
+ * describes.
+ *
+ * The promotion is measured against the first TWO shuttles only. Those two
+ * are visible unconditionally, so the decision never depends on the
+ * `keepThird` boundary that was doing the flickering — and since every term
+ * is a `commuteSec`, it does not move with the live ETA at all.
+ *
+ * This adds a row; it never removes or reorders one. The fastest option keeps
+ * the top of the list, and the direct route appears in its own ranked
+ * position — "here is the route that goes straight there, and here is when it
+ * next runs", not "take this one".
+ */
+export function directPromotion(sorted: readonly TripOption[]): TripOption | undefined {
+  const shuttles = sorted.filter((o) => o.mode === "shuttle");
+  const direct = mostDirectOption(shuttles);
+  if (!direct) return undefined;
+  const alwaysVisible = shuttles.slice(0, 2);
+  if (alwaysVisible.some((o) => o.routeLabel === direct.routeLabel)) return undefined;
+  const bestVisible = Math.min(...alwaysVisible.map(commuteSec));
+  if (commuteSec(direct) > bestVisible - DIRECT_COMMUTE_MARGIN_SEC) return undefined;
+  return direct;
+}
+
+/**
+ * Which of the sorted options the collapsed list shows.
+ *
+ * Two shuttles plus the walk row, and a third shuttle ONLY when its walking and riding time is nearly
+ * as good as the second — riders weigh similar options themselves (from
+ * Prospect/Canner to the Green, Blue ranked one minute behind Orange with a
+ * quarter of the walking, and sat hidden behind "show more": report #46). A
+ * distant third is noise and cedes its slot; the walk row always shows because
+ * it is a different kind of answer, not a competing shuttle.
+ *
+ * Plus, always, the most direct route (`directPromotion`) — report #93.
+ */
+export const THIRD_SHUTTLE_SLACK_SEC = 5 * 60;
+
+/**
+ * ...and once it is on screen it stays there until it falls THIS far behind —
+ * the appear and disappear thresholds are deliberately different.
+ *
+ * With one threshold, a third shuttle sitting near the 5 min line vanished and
+ * came back on every 5 s poll, because both totals wander by tens of seconds
+ * as the buses move (report #76: "Orange route flashes in and out. Need
+ * smooth decision whether it should be shown" — Blue 26 min, Orange 31 min,
+ * i.e. the gap was the boundary). The list order already uses this shape of
+ * rule for exactly the same reason (the 90 s hysteresis in TransitMap's
+ * `orderedOptions`, user feedback 2026-07-17: "make sure there's some
+ * stability — avoid flicker"); the visibility cut was the one place that
+ * still decided afresh each render.
+ *
+ * The band is generous on purpose: 3 min of extra room costs nothing (the row
+ * was already judged worth showing once) and is far wider than poll-to-poll
+ * ETA noise, so a row that appears stays put for as long as the rider is
+ * looking at it.
+ */
+export const THIRD_SHUTTLE_KEEP_SLACK_SEC = 8 * 60;
+
+/**
+ * @param shownThird the route label of the third shuttle currently on screen,
+ *   from {@link keptThirdLabel} of the previous render — that row, and only
+ *   that row, gets the wider slack. A different route in the third slot has
+ *   not earned it and must clear the normal bar.
+ */
+export function topVisibleOptions(
+  sorted: readonly TripOption[],
+  shownThird?: string | null,
+): TripOption[] {
+  const shuttles = sorted.filter((o) => o.mode === "shuttle");
+  const second = shuttles[1];
+  const third = shuttles[2];
+  const slack = third !== undefined && third.routeLabel === shownThird
+    ? THIRD_SHUTTLE_KEEP_SLACK_SEC
+    : THIRD_SHUTTLE_SLACK_SEC;
+  const keepThird =
+    second !== undefined && third !== undefined &&
+    commuteSec(third) <= commuteSec(second) + slack;
+  const promoted = directPromotion(sorted);
+  let seen = 0;
+  return sorted.filter((o) => {
+    if (o.mode !== "shuttle") return true;
+    seen++;
+    if (seen <= 2 || (seen === 3 && keepThird)) return true;
+    return promoted !== undefined && o.routeLabel === promoted.routeLabel;
+  });
+}
+
+/**
+ * The third shuttle in a visible list, if it kept its slot — what the caller
+ * feeds back into the next {@link topVisibleOptions} call. Null when only two
+ * shuttles are showing, which is what makes the widened slack expire the
+ * moment the row actually goes away.
+ */
+export function keptThirdLabel(visible: readonly TripOption[]): string | null {
+  const shuttles = visible.filter((o) => o.mode === "shuttle");
+  return shuttles.length >= 3 ? shuttles[2]!.routeLabel : null;
+}

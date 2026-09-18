@@ -1,0 +1,24 @@
+{
+  "sessions": [
+    {
+      "id": "58224:48:0",
+      "frames": 32,
+      "firstText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) <1–4 min\n🏁 (R) 10:09a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAbout 1 min ⓘ\nLikely <1–4 min\n10 min\n🚌 8 min\n10:09a\n›\n🚶 Walk\n6 min\n10:06a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "lastText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) At stop\n🏁 (R) 10:05a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAt your stop ⓘ\nNext about 28 min\n3 min\n🚌 3 min\n10:05a\n›\n🚶 Walk\n6 min\n10:08a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "changedState": {
+        "at": 1789567342286,
+        "text": "Red arrival\n×\n\nAt your stop\n\nShuttle\n#309\nStops to pickup\n0\nFollowing shuttle · #308\nAbout 28 min later\n\nThe following arrival is estimated in about 28 min from now. Both arrival estimates can change.\n\nPast trips to this stop\n\nRecorded trips are unavailable right now.\n\nRefresh comparison",
+        "closeTarget": {
+          "x": 304,
+          "y": 226.5,
+          "width": 44,
+          "height": 44
+        },
+        "staleMissingRecovery": true
+      }
+    }
+  ],
+  "errors": [],
+  "checks": 32,
+  "scope": "Actual built React shell numerical hook parity, stationary explicit origins; no screen reader or physical phone claim."
+}

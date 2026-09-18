@@ -1,0 +1,19 @@
+{
+  "sessions": [
+    {
+      "id": "58224:48:0",
+      "frames": 78,
+      "firstText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) <1–4 min\n🏁 (R) 10:09a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\nRed\nAbout 1 min ⓘ\nLikely <1–4 min\n10 min\n🚌 8 min\n10:09a\n›\n🚶 Walk\n6 min\n10:06a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout",
+      "lastText": "YALE SHUTTLE TRACKER\nNot affiliated with or endorsed by Yale University.\nTrip\nMap\nIssues\n↻\nFROM\n📍 Research explicit origin\n⇅\nTO\n🏁 Research destination\n☆\nLEAVE\nNow\nPlan for later…\nArrive by… Plan for class\nOVERVIEW — ALL 1 ROUTE\n▴\n🚌\n🚌 (R) 18–28 min\n🏁 (R) 10:36a\n+\n−\n Leaflet | © OpenStreetMap contributors\n⛶\nRed\n\nWhen arrival timing is unclear, shorter walks and rides come first.\n\n🚶 Walk\n6 min\n10:12a\n›\nRed\nAbout 22 min ⓘ\nLikely 18–28 min\n30 min\n🚌 7 min\n10:36a\n›\nClear\n💬 Send feedback\nContribute\n🧪\nIn beta — please report any issues\n›\nAbout"
+    },
+    {
+      "id": "58224:48:150",
+      "frames": 0,
+      "firstText": null,
+      "lastText": null
+    }
+  ],
+  "errors": [],
+  "checks": 78,
+  "scope": "Actual built React shell numerical hook parity, stationary explicit origins; no screen reader or physical phone claim."
+}

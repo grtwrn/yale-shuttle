@@ -1,0 +1,44 @@
+{
+  "sourceFiles": [
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789134661954.jsonl",
+      "sha256": "f90b6e4d96a4e36cdf8f3f5d863857675e73e2d8c3c84d391b3aebb377924904"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789144495764.jsonl",
+      "sha256": "47cee1bdf83eb772b3638f6f388218504bf79adafceaa001123d39cf5a21a7f6"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples-1789155478399.jsonl",
+      "sha256": "a35fc633380630e95a0054259f6169b7c7b2e63bc8cd089af2f36ea20b71cd27"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/red/samples.jsonl",
+      "sha256": "3087d9832acb8fc8524dd30fb7f07bdc4a2ccf47a5c8d96c68d3f1b7ba299452"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789130047117.jsonl",
+      "sha256": "42d17f6eda8e1fe856867f6f1681f618feec3388801e0b3ae3325a8454bba4e4"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789140300886.jsonl",
+      "sha256": "4da6673db585638a6ccb94d7c5dbb3522503bbfee4691e75af49fab208d8d1de"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789151534162.jsonl",
+      "sha256": "fa545ce35f302a61eaf98fbb86760373851ac07d487d602e542802eb122d6ae6"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples-1789163199375.jsonl",
+      "sha256": "dc38debaae7d016376768806e58e1ec181dacea9063e85812f4b0a5609dd365a"
+    },
+    {
+      "path": "/home/gwarren/projects/yale-shuttle-watcher/ongoing-rider-qa/rotation/samples.jsonl",
+      "sha256": "422d47af96ae9b560079da4ad0e26882ab4489fa6aab20ab9df847fd6e0760d1"
+    }
+  ],
+  "skippedStaleOrInvalid": 24,
+  "frames": 3579,
+  "inputSha256": "dfeca827eacb40fa9a754aa6a4f31d2b16cca0b30b2e4db2bf95e4708b400f97",
+  "selection": "freshest recorded response per 15-second bucket; original rows unmodified"
+}

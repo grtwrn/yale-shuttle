@@ -1,0 +1,14 @@
+{
+  "source": "Actual built SPA, fixed clock and intercepted local fixtures",
+  "baseline": false,
+  "checks": [
+    "Location permission denied: explicit current-location request settles; typed From selects correct coordinates and clears stale error/spinner",
+    "Weather removal restores selected To summary without changing either endpoint, location case 1"
+  ],
+  "errors": [],
+  "snapshots": {},
+  "geometry": [],
+  "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n",
+  "failureSnapshot": "- heading \"Yale Shuttle Tracker\" [level=1]\n- text: Not affiliated with or endorsed by Yale University.\n- navigation \"Main\":\n  - button \"trip\"\n  - button \"map\"\n  - button \"issues\"\n  - button \"Refresh the app\": ↻\n- button \"From 📍 Tap to set start\"\n- button \"To 🏁 Union Station Save this destination\":\n  - text: To 🏁 Union Station\n  - button \"Save this destination\": ☆\n- text: 📍 Location unavailable (no GPS / offline?) Leave Now\n- button \"Plan for later…\"\n- button \"68°F · Clear · no rain expected\"\n- button \"Show temperature in Celsius\": °F °C\n- status: No shuttles reporting right now\n- region \"Recent places\":\n  - text: Recent places\n  - button \"Clear all recent places\": Clear all\n  - button \"Plan trip to Union Station\": Union Station\n  - button \"Save destination Union Station\": ☆\n  - button \"Remove recent place Union Station\": ✕\n- button \"💬 Send feedback\"\n- link \"Contribute on GitHub (opens in a new tab)\":\n  - /url: https://github.com/grtwrn/yale-shuttle\n  - text: Contribute\n- status\n- button \"In beta — open the feedback form to report an issue\": In beta — please report any issues\n- link \"About\":\n  - /url: /about",
+  "closed": true
+}
