@@ -34,7 +34,11 @@ its complete arrival forecasts did not consistently improve.
   time through floating-point CDF rounding.
 - The accepted current-wait model replaces only that residual wait. It bypasses
   the old median ceiling and upper-side global widening; lower-side widening
-  remains because removing both sides increased early-arrival misses.
+  remains because removing both sides increased early-arrival misses. The
+  narrowly validated exception is the next Division / Prospect pickup after
+  a supported Winchester hold: it uses the modeled lower tail and matching
+  distribution dots. Other destinations, unsupported fits and following laps
+  retain the existing lower margin. See [the pickup validation](red-division-lower-bound.md).
 - During a tracked Winchester rest, consecutive absolute arrival quantiles
   are convexly pooled with a 30-second time constant. Both target occurrences
   and the plotted distribution use the same pooling. Marginal fallbacks at
