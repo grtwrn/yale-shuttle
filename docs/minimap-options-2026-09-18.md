@@ -23,7 +23,9 @@ fixture. Only map tile and font requests are allowed externally. App API calls
 use the recorded fixture. The renderer checks that map size, paths, marker
 positions and tile URLs remain identical for all eleven images. The manifest
 records source and image hashes; the reviewed images are committed and reused
-for deployment. The gallery makes no live API requests. No build, test or
+for deployment. App source hashes describe the dated reference, so future app
+edits do not invalidate this snapshot. Renderer/fixture changes require new
+previews, and missing or modified committed images fail verification. The gallery makes no live API requests. No build, test or
 browser runs on the watcher Pi.
 
 The same hosted job checks route cards at 320, 390 and 1280 pixels: the total

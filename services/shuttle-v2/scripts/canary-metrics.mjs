@@ -96,8 +96,8 @@ export function parseBusEtaText(line) {
   // Compact pickup summary: both values are arrivals from now, not a gap.
   const compact = t.match(/^(Arrives in (~?)(<1|\d+) min|At your stop)\s*ⓘ?(?:\s*\nNext in ~?(<1|\d+) min)?$/);
   if (compact) return {
-    first: compact[1] === 'At your stop' ? [0, 10] : bucketOf(compact[3]),
-    second: compact[4] ? bucketOf(compact[4]) : null,
+    first: compact[1] === 'At your stop' ? [0, 10] : compact[3] === '<1' ? [0, 60] : bucketOf(compact[3]),
+    second: compact[4] === '<1' ? [0, 60] : compact[4] ? bucketOf(compact[4]) : null,
     raw: full, spread: false, bunched: false,
   };
   // The tappable ETA keeps the point and prediction window on separate lines.

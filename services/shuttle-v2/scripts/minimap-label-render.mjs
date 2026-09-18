@@ -16,7 +16,12 @@ try { reviewed = JSON.parse(await fs.readFile(path.join(out, 'manifest.json'), '
 catch (e) { if (e.code !== 'ENOENT') throw e; }
 if (reviewed) {
   const manifest = reviewed;
-  assert.deepEqual(manifest.sourceHashes, sourceHashes, 'Preview source changed: remove previews and regenerate in hosted CI');
+  // Keep this dated design reference stable when the app evolves. App source
+  // hashes record provenance; changes to the renderer/fixture require a new
+  // capture. Missing or changed committed image bytes always fail validation.
+  for (const name of sources.filter(name => name.startsWith('scripts/'))) {
+    assert.equal(manifest.sourceHashes[name], sourceHashes[name], 'Preview renderer/fixture changed: regenerate in hosted CI');
+  }
   for (const [file, checksum] of Object.entries(manifest.images)) assert.equal(hash(await fs.readFile(path.join(out, file))), checksum, `Image changed: ${file}`);
   console.log('Reviewed preview images match their source and checksums.');
   process.exit(0);
