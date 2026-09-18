@@ -36,7 +36,7 @@ import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
 import { ArrivalDetails } from "./ArrivalDetails";
-import { compactMapArrival, mapArrivalLabel, mapWaitLabel, placeWaitLabel } from "./mapLabels";
+import { compactMapArrival, mapArrivalLabel, mapRouteTag, mapWaitLabel, placeWaitLabel } from "./mapLabels";
 import { ArriveBy } from "./ArriveBy";
 import { journeyArrival } from "./journeyArrival";
 import {
@@ -995,10 +995,9 @@ const CombinedTripMap: FC<{
       for (const e of ends) {
         if (!e.text) continue;
         const p = map.latLngToContainerPoint([e.c.lat, e.c.lon]);
-        // "(B) 4 min" — route-initial tag so a time is attributable to
-        // its route even without judging the text color (user request
-        // 2026-07-17; also helps color-blind riders).
-        const tagged = `(${o.label.charAt(0).toUpperCase()}) ${e.text}`;
+        // Shared initials (Blue/Brown, Orange Night/East) need the route name
+        // so these times remain attributable without judging their color.
+        const tagged = `(${mapRouteTag(o.label, optionsRef.current.map(option => option.label))}) ${e.text}`;
         chips.push({
           lat: e.c.lat, lon: e.c.lon, kind: e.kind, label: o.label,
           part: `<span style="color:${o.color}">${tagged}</span>`,
@@ -1235,14 +1234,13 @@ const CombinedTripMap: FC<{
       label: string,
       dim: boolean,
       wait: OverviewOption['busWait'] = null,
-      routeName = label,
     ) => {
       seenKeys.add(key);
       const latlng: [number, number] = [pos.lat, pos.lon];
       const existing = busMarkersRef.current[key];
       if (existing) {
         existing.setLatLng(latlng);
-        updateWait(existing, label, color, routeName, wait);
+        updateWait(existing, label, color, wait);
         return;
       }
       const icon = L.divIcon({
@@ -1258,12 +1256,19 @@ const CombinedTripMap: FC<{
       });
       const marker = busMarkersRef.current[key] = L.marker(latlng, { icon, zIndexOffset: dim ? 900 : 1000 })
         .addTo(map);
-      updateWait(marker, label, color, routeName, wait);
+      updateWait(marker, label, color, wait);
     };
-    const updateWait = (marker: L.Marker, label: string, color: string, routeName: string, wait: OverviewOption['busWait']) => {
+    const updateWait = (marker: L.Marker, label: string, color: string, wait: OverviewOption['busWait']) => {
       const permanent = !!wait;
       const content = document.createElement('div');
       content.title = wait ? `${label}. ${wait.elapsed}. ${wait.typical}. Typical total wait is historical context, not time remaining.` : label;
+      // Leaflet's div icon otherwise exposes only the bus emoji. Keep the
+      // keyboard/touch marker named even when its hover tooltip is closed.
+      const icon = marker.getElement();
+      if (icon) {
+        icon.setAttribute('aria-label', content.title);
+        icon.title = content.title;
+      }
       content.className = wait ? 'bus-wait-label' : '';
       if (wait) {
         content.setAttribute('role', 'img');
@@ -1271,7 +1276,7 @@ const CombinedTripMap: FC<{
         content.style.whiteSpace = 'nowrap';
         const route = document.createElement('span');
         route.className = 'bus-wait-route';
-        route.textContent = routeName; route.style.color = color;
+        route.textContent = label; route.style.color = color;
         const time = document.createElement('span');
         time.textContent = wait.compact;
         time.style.color = wait.overdue ? '#8a5300' : '#374151';
@@ -1286,14 +1291,14 @@ const CombinedTripMap: FC<{
     };
     for (const o of options) {
       if (o.bus) {
-        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait, o.label);
+        upsert(`${o.label}-${o.bus.name}`, o.bus, o.color, o.bus.name ? `${o.label} #${o.bus.name}` : o.label, false, o.busWait);
       }
       if (o.passedBus) {
         upsert(
           `${o.label}-passed-${o.passedBus.name}`,
           o.passedBus,
           o.color,
-          o.passedBus.name ? `#${o.passedBus.name} — just passed` : "Just passed",
+          o.passedBus.name ? `${o.label} #${o.passedBus.name} — just passed` : `${o.label} — just passed`,
           true,
         );
       }
