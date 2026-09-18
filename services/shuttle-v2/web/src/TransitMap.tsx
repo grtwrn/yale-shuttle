@@ -32,6 +32,7 @@ import { noteShown } from "./shownLog";
 // from. All the reasoning lives there; this file only places the strings.
 import { berthFor, type Berth } from "./berths";
 import { BerthDisclosure } from "./BerthDisclosure";
+import { useMapFullscreen } from "./useMapFullscreen";
 import { clusterChips } from "./chipCluster";
 import { arrivalBand, standChipFor, standWaitFor } from "./standWait";
 import { waitLegText } from "./etaBand";
@@ -823,17 +824,11 @@ const TripMap: FC<{
   // Fullscreen toggle: an inset button the user can tap to expand the
   // map to the viewport. Leaflet's invalidateSize is called after the
   // DOM layout changes so tiles re-fit to the new container size.
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, wrapperRef, toggleRef, closeFullscreen, toggleFullscreen } = useMapFullscreen();
   useEffect(() => {
     // Give the browser one frame to apply the new style, then redraw.
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
-  }, [fullscreen]);
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
@@ -846,7 +841,7 @@ const TripMap: FC<{
         border: "1px solid #e0ddd8", overflow: "hidden", marginBottom: 10,
       };
   return (
-    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
+    <div ref={wrapperRef} className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       {/* Desaturate the OSM tile layer so the route color, bus pin,
           and user/endpoint markers pop against a quieter background.
           Only the tile pane is filtered; SVG overlays (polylines,
@@ -864,7 +859,7 @@ const TripMap: FC<{
           this corner, so the stylesheet above drops it below the button. */}
       {fullscreen && (
         <button
-          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
           title="Back"
           aria-label="Back"
           style={{
@@ -882,7 +877,8 @@ const TripMap: FC<{
         </button>
       )}
       <button
-        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        ref={toggleRef}
+        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         style={{
@@ -1314,16 +1310,10 @@ const CombinedTripMap: FC<{
   }, [options]);
 
   // Fullscreen toggle — matches the per-option TripMap behavior.
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, wrapperRef, toggleRef, closeFullscreen, toggleFullscreen } = useMapFullscreen();
   useEffect(() => {
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 80);
     return () => clearTimeout(t);
-  }, [fullscreen]);
-  useEffect(() => {
-    if (!fullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen]);
   const wrapperStyle: React.CSSProperties = fullscreen
     ? {
@@ -1339,7 +1329,7 @@ const CombinedTripMap: FC<{
       };
 
   return (
-    <div className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
+    <div ref={wrapperRef} className={`trip-map-wrap${fullscreen ? " map-fs" : ""}`} style={wrapperStyle}>
       <style>{`
         .trip-map-wrap .leaflet-tile-pane {
           filter: grayscale(0.9) contrast(0.95) brightness(1.05);
@@ -1361,7 +1351,7 @@ const CombinedTripMap: FC<{
           this corner, so the stylesheet above drops it below the button. */}
       {fullscreen && (
         <button
-          onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}
+          onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
           title="Back"
           aria-label="Back"
           style={{
@@ -1379,7 +1369,8 @@ const CombinedTripMap: FC<{
         </button>
       )}
       <button
-        onClick={(e) => { e.stopPropagation(); setFullscreen((v) => !v); }}
+        ref={toggleRef}
+        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
         title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
         style={{
