@@ -45,6 +45,9 @@ its complete arrival forecasts did not consistently improve.
 - The wire payload carries the small fit with dwell statistics. It is also
   included in the shared runtime module's Docker dependency closure. Fit cost
   and fit count are included in collector calibration logs.
+  Periodic topology refreshes calibrate their replacement network with both
+  cached fits before swapping it in; a failed refresh retains the fitted live
+  network. A regression test covers refresh, failure and retry.
 
 No normality assumption or calibrated on-time probability is introduced.
 Pooling and asymmetric widening change the displayed distribution, so interval
