@@ -28,7 +28,10 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
   const targetMs = classMs - bufferMin * 60_000;
   const comparison = compareDeadline(options, classMs, bufferMin, now, lastBusUpdateAt, busUpdateFailed, departureMs);
   const { recommendation, shuttle, walk } = comparison;
-  const { heading, explanation } = deadlineMessage(comparison, stopNames);
+  const { heading, explanation, supportingRow } = deadlineMessage(comparison, stopNames);
+  // Keep the existing shuttle/walk comparison and include any other route
+  // whose window supports the advice, even when its main card is collapsed.
+  const additionalRow = supportingRow !== shuttle && supportingRow !== walk ? supportingRow : undefined;
   const renderRow = (r: DeadlineOption) => {
     const walking = r.option.mode === 'walk';
     const busName = r.option.journeyArrival?.busName ?? r.option.busName;
@@ -68,7 +71,7 @@ export function ArriveBy({ value, onChange, bufferMin, onBufferChange, options, 
       <h3 style={{ fontSize: 20, margin: '16px 0 6px', color: recommendation ? '#174ea6' : '#795000' }}>{heading}</h3>
       <p style={{ fontSize: 13, lineHeight: 1.5, margin: '0 0 16px' }}>{explanation}</p>
       <p style={{ fontSize: 12, color: '#5f6368', marginBottom: 6 }}>Estimated arrival at destination</p>
-      <div aria-label="Arrival at destination">{shuttle && renderRow(shuttle)}{walk && renderRow(walk)}</div>
+      <div aria-label="Arrival at destination">{shuttle && renderRow(shuttle)}{additionalRow && renderRow(additionalRow)}{walk && renderRow(walk)}</div>
       {shuttle?.pointMs !== undefined && shuttle.option.journeyArrival?.distributionMs?.length && !comparison.stale && !comparison.future
         ? <DestinationDistribution row={shuttle} classMs={classMs} targetMs={targetMs} walkMs={walk?.pointMs} destination={destination} /> : null}
       <details style={{ fontSize: 12, color: '#5f6368', lineHeight: 1.5, borderTop: '1px solid #e5e7eb', paddingTop: 6 }}>
@@ -89,7 +92,7 @@ function DestinationDistribution({ row, classMs, targetMs, walkMs, destination }
   const [open, setOpen] = useState(false);
   const arrival = row.option.journeyArrival!;
   return <details onToggle={e => setOpen(e.currentTarget.open)} style={{ borderTop: '1px solid #e5e7eb', fontSize: 13 }}>
-    <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>See possible arrival times ▾</summary>
+    <summary style={{ minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#174ea6' }}>See {row.option.routeLabel} arrival times ▾</summary>
     {open && <>
       <ArrivalPlot values={arrival.distributionMs!} title={`Model estimate: arrival at ${destination}`}
         markers={[

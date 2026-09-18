@@ -43,6 +43,7 @@ describe('class-deadline presentation', () => {
     expect(c.shuttle?.option.routeLabel).toBe('Red');
     expect(message(c).kind).toBe('buffer');
     expect(message(c).explanation).toContain('Blue');
+    expect(message(c).supportingRow).toBe(c.rows[1]);
   });
   it('does not infer lateness from unavailable, interrupted, old, or future windows', () => {
     for (const c of [compare([missing, walk]), compare([shuttle, walk], null),
@@ -71,6 +72,7 @@ describe('class-deadline presentation', () => {
         expect(c.recommendation).toBeUndefined();
         expect(message(c).kind).toBe(kind);
         expect(message(c).explanation).toContain(c.shuttle!.caution);
+        expect(message(c).supportingRow).toBe(c.shuttle);
       }
     }
   });

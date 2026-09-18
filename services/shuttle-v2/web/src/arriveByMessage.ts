@@ -1,15 +1,17 @@
-import type { compareDeadline } from './arriveBy';
+import type { compareDeadline, DeadlineOption } from './arriveBy';
 
 type DeadlineComparison = ReturnType<typeof compareDeadline>;
 interface DeadlineMessage {
   kind: 'recommendation' | 'buffer' | 'connection' | 'limited' | 'unknown' | 'late';
   heading: string;
   explanation: string;
+  /** Keep advice about an alternative attached to its own time and trip action. */
+  supportingRow?: DeadlineOption;
 }
 
 /** Describe the available evidence without changing route selection or times.
  * Inspect every alternative before making an overall lateness statement: the
- * two displayed rows do not necessarily include an unavailable second route. */
+ * primary comparison rows may not include the route supporting the advice. */
 export function deadlineMessage(comparison: DeadlineComparison, stopNames: Record<number, string>): DeadlineMessage {
   const { recommendation, rows, future, stale } = comparison;
   const walkAdvice = comparison.walk ? ' Compare walking below.' : '';
@@ -28,6 +30,7 @@ export function deadlineMessage(comparison: DeadlineComparison, stopNames: Recor
   const buffer = rows.find(r => r.status === 'buffer' && !r.caution);
   if (buffer) return {
     kind: 'buffer',
+    supportingRow: buffer,
     heading: 'Your buffer may be tight',
     explanation: `${buffer.option.mode === 'walk' ? 'The walking estimate' : `The ${buffer.option.routeLabel} window`} ends by class time, but may leave less time to get inside. Check the trip times.`,
   };
@@ -39,6 +42,7 @@ export function deadlineMessage(comparison: DeadlineComparison, stopNames: Recor
     const connection = conditional.option.journeyArrival?.catchRisk;
     return {
       kind: connection ? 'connection' : 'limited',
+      supportingRow: conditional,
       heading: connection ? 'Check the shuttle connection' : 'Allow extra time for this shuttle',
       explanation: `${conditional.option.routeLabel}: ${conditional.caution}`,
     };

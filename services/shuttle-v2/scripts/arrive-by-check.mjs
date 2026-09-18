@@ -90,7 +90,7 @@ try {
   await page.screenshot({ path: out + '/class-arrival-320.png' });
   result.checks.push('390px and 320px layouts', 'buffer changes destination target');
   if (local) assert.equal(historyQueries.length, 0, 'closed disclosures must not fetch history');
-  await panel.getByText('See possible arrival times ▾', { exact: true }).click();
+  await panel.getByText(/^See .+ arrival times ▾$/).click();
   const destinationPlot = panel.getByRole('img', { name: /^Model estimate: arrival at / });
   await destinationPlot.waitFor();
   assert.equal(await destinationPlot.locator('circle').count(), 50);

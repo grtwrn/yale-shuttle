@@ -3554,9 +3554,9 @@ const TripPlanner: FC<{
             // Same rule as the list below — the map shows what the list shows.
             const _visibleForMap = showAllOptions ? _sortedForMap : (visibleOptions ?? []);
             // Route-details view open: the map narrows to just that route,
-            // like Google Maps' directions-detail screen.
+            // including a route opened from deadline advice behind Show more.
             const _mapOpts = expandedKey
-              ? _visibleForMap.filter((o) => o.routeLabel === expandedKey)
+              ? _sortedForMap.filter((o) => o.routeLabel === expandedKey)
               : _visibleForMap;
             for (const o of _mapOpts) {
               if (o.mode !== "shuttle") continue;
